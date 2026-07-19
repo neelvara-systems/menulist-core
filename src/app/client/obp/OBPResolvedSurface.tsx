@@ -16,7 +16,7 @@ import {
     shouldExposePublicLanguageSwitcher,
 } from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
-import { getBusinessCoverAltText, getBusinessLogoAltText } from "@lib/media/altText";
+import { createPublicCustomerTranslator } from "@lib/localization/publicCustomerMessages";
 import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
@@ -538,12 +538,14 @@ export default function OBPResolvedSurface({
 }: OBPResolvedSurfaceProps) {
     const pp = store?.publicPresence || {};
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
+    const publicCustomerT = createPublicCustomerTranslator(contentLanguage);
     const iconVariant: OBPIconVariant = pp.iconVariant === 'emoji' ? 'emoji' : 'icons';
     const isPermanentlyClosed = store?.permanentlyClosed === true;
     const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
     const languageOptions = getPublicLanguageOptions(store);
     const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
+    const activeLanguageDirection = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.direction || 'ltr';
     const { hasMenu, defaultSlug, projects: activeProjects } = menuInfo;
 
     const accentColor = resolveOBPAccentColor(pp);
@@ -608,7 +610,10 @@ export default function OBPResolvedSurface({
     const menuUrl = buildProjectUrl(defaultSlug);
     const defaultActionProject = activeProjects.find((project) => project.isDefault) || activeProjects.find((project) => !project.isSpecialMenu) || activeProjects[0];
     const feedbackUrl = defaultActionProject?.projectId
-        ? `${masterBase}/feedback/${defaultActionProject.projectId}?source=direct_link`
+        ? appendPublicLanguageParam(
+            `${masterBase}/feedback/${defaultActionProject.projectId}?source=direct_link`,
+            contentLanguage,
+        )
         : '';
     const ctaProjects: OBPMenuCTAProjectEntry[] = activeProjects.map((p) => ({
         slug: p.slug,
@@ -839,9 +844,9 @@ export default function OBPResolvedSurface({
     const runtimeTrackingEnabled = includeRuntime && analyticsPreferences.trackOfficialBusinessPage;
     const includeLocation = analyticsPreferences.trackLocation;
     const policyLinks = [
-        pp.showPrivacyLink !== false ? { href: '/privacy', label: t('publicPrivacy') } : null,
-        pp.showTermsLink !== false ? { href: '/terms', label: t('publicTerms') } : null,
-        pp.showRefundLink !== false ? { href: '/refund', label: t('publicRefund') } : null,
+        pp.showPrivacyLink !== false ? { href: appendPublicLanguageParam('/privacy', contentLanguage), label: t('publicPrivacy') } : null,
+        pp.showTermsLink !== false ? { href: appendPublicLanguageParam('/terms', contentLanguage), label: t('publicTerms') } : null,
+        pp.showRefundLink !== false ? { href: appendPublicLanguageParam('/refund', contentLanguage), label: t('publicRefund') } : null,
     ].filter(Boolean) as Array<{ href: string; label: string }>;
     const officialPageLabel = t('publicOfficialPagePoweredBy').split('·')[0]?.trim() || t('publicOfficialPagePoweredBy');
 
@@ -863,7 +868,13 @@ export default function OBPResolvedSurface({
                     {schema ? <JsonLdScript id="obp-schema-jsonld" data={schema} /> : null}
                 </>
             ) : null}
-            <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
+            <main
+                className={styles.page}
+                data-obp-page="true"
+                dir={activeLanguageDirection}
+                lang={contentLanguage}
+                style={{ '--obp-accent': accentColor } as any}
+            >
                 <div className={`${styles.shell} ${useStarterCompactLayout ? styles.starterPreviewShell : ''}`}>
                     {showLanguageSwitcher ? (
                         <OBPLanguageSwitcher
@@ -876,6 +887,7 @@ export default function OBPResolvedSurface({
 
                     {isOutletSurface && publicOutletSlug && (masterBrandName || store?.name) ? (
                         <MenuBreadcrumb
+                            ariaLabel={t('publicBusinessDetailsLabel')}
                             businessName={masterBrandName || brandName}
                             outletName={storeLocationName || undefined}
                             outletSlug={publicOutletSlug}
@@ -883,13 +895,17 @@ export default function OBPResolvedSurface({
                     ) : null}
 
                     {FEATURE_FLAGS.ENABLE_TEMP_STATUS && store?.tempStatus ? (
-                        <TempStatusBanner tempStatus={store.tempStatus} variant="pill" />
+                        <TempStatusBanner
+                            activeLanguage={contentLanguage}
+                            tempStatus={store.tempStatus}
+                            variant="pill"
+                        />
                     ) : null}
 
                     {businessCover ? (
                         <div className={styles.businessCover}>
                             <img
-                                alt={getBusinessCoverAltText(storeName)}
+                                alt={storeName}
                                 src={businessCover}
                                 loading="eager"
                             />
@@ -902,7 +918,7 @@ export default function OBPResolvedSurface({
                                 {logo ? (
                                     <img
                                         src={logo}
-                                        alt={getBusinessLogoAltText(storeName)}
+                                        alt={storeName}
                                         className={styles.logo}
                                         width={72}
                                         height={72}
@@ -1059,6 +1075,8 @@ export default function OBPResolvedSurface({
 
                         <OBPPhotoStrip
                             closePreviewLabel={t('publicPhotoPreviewClose')}
+                            direction={activeLanguageDirection}
+                            language={contentLanguage}
                             nextPhotoLabel={t('publicPhotoNext')}
                             photoLabelTemplate={t('publicPhotoLabel', { index: '{index}' })}
                             photoPositionTemplate={t('publicPhotoPosition', { index: '{index}', total: '{total}' })}
@@ -1262,6 +1280,7 @@ export default function OBPResolvedSurface({
                         <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
                             <PublicMenuListAttribution
                                 activePlanType={(store as any)?.activePlanType}
+                                ariaLabel={publicCustomerT('common.createOfficialCustomerLink')}
                                 mode="compact"
                                 surfaceLabel={t('publicOfficialPagePoweredBy')}
                                 rightsLabel={t('publicAllRightsReserved')}
@@ -1277,6 +1296,7 @@ export default function OBPResolvedSurface({
 
             {includeRuntime && FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && store?.storeId ? (
                 <OBPCustomerAppMount
+                    activeLanguage={contentLanguage}
                     storeId={store.storeId}
                     tenantId={store.tenantId}
                     storeName={storeName || t('publicFallbackMenu')}

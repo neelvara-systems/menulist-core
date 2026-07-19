@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Firebase Cost
 
-> **Version:** 1.7.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.8.1
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers / Ops
 
 ---
@@ -10,8 +10,9 @@
 
 | Collection | Operation | Count | Purpose |
 |------------|-----------|-------|---------|
-| `users` | QUERY | 1 | Duplicate check in Answerlattice project by email |
-| `platformSummary` | READ | 1 | Get current tenant/store counters |
+| `users` | READ/QUERY | 2+ | Direct account check, transaction revalidation, and normalized-email fallback capped at two records so duplicate identity fails closed |
+| `platformSummary` | READ | 2+ | Canonical counter plus compatibility/summary reads used by shared allocation |
+| `tenants` / `stores` | READ | 2+ | Candidate-ID collision probes and finalization ownership checks |
 | `tenants` | WRITE | 1 | Create new tenant |
 | `stores` | WRITE | 1 | Create new store |
 | `stores` | WRITE | 1 | Set initial `answerlatticeWidgetApi` key-manager state (`keyHashes`, `keysByHash`, active key metadata, purpose, productId, and widget scopes) |
@@ -22,17 +23,24 @@
 | Default auth `users` | WRITE | 1 | Add only `productAccounts.AL` bridge while keeping MenuList root tenant/store |
 | `subscriptions` | WRITE | 1 | Create subscription record |
 
-**Approx total per onboarding: 2 reads + 13-18 writes = still negligible for a one-time client event.** Actual billed reads can vary slightly with duplicate checks and rule/auth behavior.
+**Normal successful onboarding is a bounded one-time path, but it is not a two-read path.** Current source performs roughly 11 or more document/query reads and about 13-18 writes before optional transaction retries, email fallback, collision probes, summary/bootstrap helpers, or provider-recovery work. Firestore may retry transactions, so billed reads are not a fixed promise.
 
-The get-started browser client parses onboarding responses through a 16 KB bounded JSON reader and validates the success, plan, billing, subscription, recovery, and widget-key shape before showing completion state. This adds no Firestore operations; it prevents malformed, oversized, redirected, or wrong-shape browser responses from being treated as completed onboarding.
+The get-started browser client parses onboarding responses through a 16 KB bounded JSON reader and validates the success, plan, billing, subscription, recovery, and widget-key shape before showing completion state. HTTP(S)-only product URL admission and route-wide private/no-store response headers add no Firestore operations; they prevent unsafe stored URLs and cached account/billing responses.
 
 Resumable provisioning adds correctness reads only on retries or failures:
 
 - the Answerlattice user read recovers `provisioning` or `payment_pending` state even after the default-auth session already contains `productAccounts.AL`;
 - a resumed provisioning attempt reads its scoped store and uses a bounded Razorpay provider search before creating another subscription;
+- an indeterminate provider result writes `provider_recovery_pending` across the exact tenant/store/user scope; the transaction reads and writes all three documents and preserves their ownership;
+- a known provider ID is preserved before provider fetch, so a transient fetch failure does not rewrite the recovery scope as unknown;
+- retries without a known provider ID wait 15 minutes before bounded provider search, so a timeout cannot immediately produce a duplicate provider object;
+- a known exact provider checkout in `cancelled`, `completed`, or `expired` state uses the existing compensation transaction so it cannot hold the founder in recovery forever;
+- a new attempt after compensation clears stale provider/recovery fields on the reused user document;
 - pending subscription, store summary, widget-key state, and tenant/store/user statuses commit in one transaction;
 - payment-pending recovery reads the scoped store and returns the existing checkout with no new subscription or widget-key write;
-- compensation reads the exact attempt-owned tenant/store/user and optional subscription, then deactivates only that scope and updates the two compact summary documents.
+- compensation runs only when provider creation is proven not to have occurred or the exact owned provider checkout is confirmed terminal; it reads the exact attempt-owned tenant/store/user and optional subscription, then deactivates only that scope and updates compact summaries.
+
+The shared allocator creates a provisional `storesSummary` row. A recovery-pending scope remains active so it can be resumed, while compensation marks it inactive. Paid AI and Knowledge Intake still require active/trialing subscription entitlement, and the Answerlattice scheduler registry is published only by post-finalization summary work.
 
 ## No New Collections
 
@@ -42,22 +50,22 @@ Reuses ALL existing collections. Zero new Firestore collections created.
 
 | New Clients/Month | Approx Reads | Approx Writes | Cost Profile |
 |-------------------|--------------|---------------|--------------|
-| 10 | 20 | 130-180 | Negligible |
-| 50 | 100 | 650-900 | Negligible |
-| 100 | 200 | 1,300-1,800 | Negligible |
-| 500 | 1,000 | 6,500-9,000 | Still small; watch auth/duplicate-query volume only if onboarding spikes |
+| 10 | 110+ | 130-180 | Small one-time volume; excludes retries |
+| 50 | 550+ | 650-900 | Small one-time volume; monitor failures/retries |
+| 100 | 1,100+ | 1,300-1,800 | Track transaction retry and provider-recovery rates |
+| 500 | 5,500+ | 6,500-9,000 | Review allocator contention and recovery frequency |
 
 ## Workspace Profile API
 
-`GET /api/answerlattice/workspace-profile` reads the existing `stores/{sId}` document once.
+After permission admission, `GET /api/answerlattice/workspace-profile` reads the existing `stores/{sId}` profile document once. Permission admission separately reads the scoped store and, for non-platform users, performs the bounded scoped staff-user lookup.
 
-`PUT /api/answerlattice/workspace-profile` reads the store once, skips the write when unchanged, and writes only the product profile fields plus `answerlatticeLaunchProfile` when values changed.
+After the same permission admission, `PUT /api/answerlattice/workspace-profile` transactionally reads the store once for unchanged or stale-revision requests. A changed request also reads and validates the compiled source-version and manifest documents, then commits four writes together: the store profile and launch-profile mirror, one tenant-summary shard entry, the compiled source-version document, and the compiled bundle stale marker. This prevents the UI from acknowledging profile truth while scheduler timing or runtime context remains stale.
 
-The Settings UI sends workspace-profile load/save calls with no-store cache, same-origin credentials, and manual redirect handling, then parses responses through a 64 KB bounded response reader and requires a valid `profile` object before form state or success copy advances. This adds no Firestore operations; it prevents cached, redirected, malformed, oversized, rejected, or wrong-shape browser responses from being shown as saved product details.
+The Settings UI sends workspace-profile load/save calls with no-store cache, same-origin credentials, and manual redirect handling, then parses responses through a 64 KB bounded response reader and requires a strict `{ profile, revision }` object before form state or success copy advances. Stale edits receive `409` and reload current values. This browser validation adds no Firestore operations.
 
 No new collection is introduced.
 
-**Negligible cost.** Onboarding is a one-time event per client.
+See `__docs__/answerlattice/workspace-profile/workspace-profile_firebase.md` for the maintained profile-save cost boundary.
 
 ## Subscription Ownership Shape
 
@@ -96,6 +104,9 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.8.2 | Corrected workspace-profile cost and atomic downstream synchronization after the Feature 29 audit |
+| 2026-07-19 | 1.8.1 | Documented duplicate-email read cap, terminal-checkout compensation, known-provider preservation, retry-field cleanup, and zero-read URL/response hardening |
+| 2026-07-19 | 1.8.0 | Replaced the obsolete two-read estimate with the shared allocator/finalization cost boundary and documented durable provider-recovery, entitlement, summary, and transaction-retry behavior |
 | 2026-07-11 | 1.7.0 | Added retry/recovery/compensation operation notes and the atomic pending-subscription plus widget-key finalization boundary |
 | 2026-06-30 | 1.6.2 | Documented that get-started response-boundary hardening is browser-local and adds no Firebase operations |
 | 2026-05-21 | 1.6.1 | Documented product-scoped Razorpay plan lookup for paid Answerlattice onboarding |

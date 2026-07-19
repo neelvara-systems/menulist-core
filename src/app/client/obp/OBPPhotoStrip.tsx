@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { getBusinessGalleryAltText } from '@lib/media/altText';
 import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
 import styles from './obp.module.scss';
 
 interface OBPPhotoStripProps {
     closePreviewLabel: string;
+    direction?: 'ltr' | 'rtl';
+    language?: string;
     nextPhotoLabel: string;
     photoLabelTemplate: string;
     photoPositionTemplate: string;
@@ -18,6 +19,8 @@ interface OBPPhotoStripProps {
 
 export default function OBPPhotoStrip({
     closePreviewLabel,
+    direction,
+    language,
     nextPhotoLabel,
     photoLabelTemplate,
     photoPositionTemplate,
@@ -31,9 +34,9 @@ export default function OBPPhotoStrip({
     const visiblePhotos = galleryPhotos.slice(0, 3);
     const formatPhotoLabel = (index: number) => photoLabelTemplate.replace('{index}', String(index));
     const viewerImages = useMemo(() => galleryPhotos.map((url, index) => ({
-        alt: getBusinessGalleryAltText(storeName, index + 1),
+        alt: `${storeName} ${formatPhotoLabel(index + 1)}`,
         url,
-    })), [galleryPhotos, storeName]);
+    })), [galleryPhotos, photoLabelTemplate, storeName]);
 
     if (galleryPhotos.length === 0) return null;
 
@@ -52,7 +55,7 @@ export default function OBPPhotoStrip({
                     >
                         <img
                             src={url}
-                            alt={getBusinessGalleryAltText(storeName, index + 1)}
+                            alt={`${storeName} ${formatPhotoLabel(index + 1)}`}
                             loading="lazy"
                         />
                     </button>
@@ -60,8 +63,10 @@ export default function OBPPhotoStrip({
             </div>
             <PublicImageViewer
                 closeLabel={closePreviewLabel}
+                direction={direction}
                 images={viewerImages}
                 initialIndex={previewIndex || 0}
+                language={language}
                 nextLabel={nextPhotoLabel}
                 onClose={() => setPreviewIndex(null)}
                 onIndexChange={setPreviewIndex}

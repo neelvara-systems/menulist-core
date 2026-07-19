@@ -61,16 +61,24 @@ All fields are **optional**. The system works without any context (existing beha
 | Field | Type | Max Length | Description | Example |
 |-------|------|-----------|-------------|---------|
 | `contextVersion` | number | — | Schema version (default: 1) | `1` |
+| `contextKey` | string | 100 chars | Exact Product Surface key | `"billing_invoices"` |
+| `path` | string | 180 chars | Transient current route for surface matching | `"/settings/integrations/stripe"` |
+| `title` | string | 120 chars | Optional safe page title | `"Stripe settings"` |
 | `feature` | string | 100 chars | Product subsystem | `"integrations"` |
 | `page` | string | 100 chars | UI location identifier | `"stripe_integration_page"` |
 | `workflow` | string | 100 chars | Current user action | `"connect_integration"` |
 | `entityHints` | string[] | 5 items, 64 chars each | Entity references | `["stripe"]` |
+| `role` | string | 80 chars | Public role alias, normalized into `userRole` | `"admin"` |
 | `userRole` | string | 100 chars | User permission level | `"admin"` |
+| `locale` | string | 24 chars | Public locale label | `"en_us"` |
 | `plan` | string | 100 chars | Subscription tier | `"pro"` |
+| `state` | string | 100 chars | Current product state | `"connection_failed"` |
+| `version` | string | 32 chars | Numeric product version label | `"2.4.1"` |
 
 ### Best Practices for Field Values
 
-- **Use stable identifiers, not URLs:** `"stripe_integration_page"` not `"/settings/integrations/stripe"`
+- **Use `page` for stable identifiers and `path` for the transient route:** `page: "stripe_integration_page"`, `path: "/settings/integrations/stripe"`
+- **Do not send wildcard paths:** configure `/settings/integrations/*` on the Product Surface; send the current exact path from the client
 - **Use lowercase with underscores:** `"connect_integration"` not `"Connect Integration"`
 - **entityHints should match your product entity names:** If your product has a "Stripe" integration, use `"stripe"` as a hint
 - **Keep values simple:** Context should answer "what is the user doing?" not "who is the user?"
@@ -91,11 +99,14 @@ Body:
   "context": {
     "contextVersion": 1,
     "feature": "integrations",
+    "path": "/settings/integrations/stripe",
     "page": "stripe_integration_page",
     "workflow": "connect_integration",
     "entityHints": ["stripe"],
     "userRole": "admin",
-    "plan": "pro"
+    "plan": "pro",
+    "state": "connection_failed",
+    "version": "2.4.1"
   }
 }
 ```

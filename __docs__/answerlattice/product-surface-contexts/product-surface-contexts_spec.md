@@ -23,6 +23,9 @@ Articles, changelogs, and tickets can reference the same surface key. Runtime su
 - Route patterns are input mapping only. Knowledge attaches to semantic context.
 - Tags remain secondary labels, not the source of truth.
 - Context payloads are transient and sanitized.
+- Raw route paths are matching input only; they are not copied into compact page identifiers or widget search history.
+- Product-surface context keys are immutable after creation and duplicate active keys are invalid.
+- Summary rebuilds replace the complete compact surface map and fail closed on overflow or duplicate keys.
 - Tickets are signal sources. Public widget output must not expose ticket details.
 - Feedback can be assigned to a surface by owners after submission; the end-user feedback form does not require surface selection.
 - Runtime lookup must use a compact summary/read model, not broad collection scans.

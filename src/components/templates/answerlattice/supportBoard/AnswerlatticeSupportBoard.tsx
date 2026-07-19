@@ -15,7 +15,7 @@ import {
     type AnswerlatticeSupportBoardPriority,
     type AnswerlatticeSupportBoardStatus,
 } from '@type/answerlattice';
-import { Alert, Badge, Button, Card, Col, Empty, Flex, Form, Grid, Input, Modal, Row, Select, Skeleton, Space, Statistic, Tag, Tooltip, Typography, theme } from 'antd';
+import { Alert, Badge, Button, Card, Col, Empty, Flex, Form, Grid, Input, Modal, Popconfirm, Row, Select, Skeleton, Space, Statistic, Tag, Tooltip, Typography, theme } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -28,6 +28,7 @@ import {
     LuKanbanSquare,
     LuMessageSquarePlus,
     LuRefreshCw,
+    LuShieldCheck,
     LuSparkles,
     LuTicket,
 } from 'react-icons/lu';
@@ -83,6 +84,10 @@ const STATUS_OPTIONS = BOARD_COLUMNS.map((column) => ({
     label: column.title,
     value: column.status,
 }));
+
+const CREATE_STATUS_OPTIONS = STATUS_OPTIONS.filter(
+    (option) => option.value !== ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED,
+);
 
 const STATUS_LABELS = BOARD_COLUMNS.reduce((acc, column) => {
     acc[column.status] = column.title;
@@ -301,6 +306,7 @@ export default function AnswerlatticeSupportBoard() {
         hasScope,
         loading,
         moveCard,
+        redactSourceIdentity,
         refresh,
         saving,
         sourceSyncEnabled,
@@ -395,6 +401,12 @@ export default function AnswerlatticeSupportBoard() {
         await addNote(selectedCard.id, values.note);
         noteForm.resetFields();
         setSelectedCard(null);
+    };
+
+    const handleRedactSourceIdentity = async () => {
+        if (!selectedCard) return;
+        const redacted = await redactSourceIdentity(selectedCard.id);
+        if (redacted) setSelectedCard(null);
     };
 
     if (!enabled) {
@@ -580,7 +592,7 @@ export default function AnswerlatticeSupportBoard() {
                     <Row gutter={12}>
                         <Col xs={24} md={12}>
                             <Form.Item name="status" label="Status">
-                                <Select options={STATUS_OPTIONS} />
+                                <Select options={CREATE_STATUS_OPTIONS} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
@@ -662,6 +674,7 @@ export default function AnswerlatticeSupportBoard() {
                             {selectedCard.sourceId ? <Tag>Source: {selectedCard.sourceId.slice(0, 10)}</Tag> : null}
                             {selectedCard.dueDate ? <Tag color="warning">Due {formatDate(selectedCard.dueDate) || selectedCard.dueDate}</Tag> : null}
                             {selectedCard.relatedProposalId ? <Tag color="purple">Proposal {selectedCard.relatedProposalId.slice(0, 8)}</Tag> : null}
+                            {selectedCard.sourceIdentityRedactedAt ? <Tag>Source details removed</Tag> : null}
                         </Space>
 
                         {hasCardSourceIdentity(selectedCard) ? (() => {
@@ -691,6 +704,17 @@ export default function AnswerlatticeSupportBoard() {
                                                 <Text code>{sourceIdentity.sessionId}</Text>
                                             </Flex>
                                         ) : null}
+                                        <Popconfirm
+                                            title="Remove source customer details?"
+                                            description="This permanently clears copied name, contact, page, and session details from this card. The source card and source ID remain."
+                                            okText="Remove details"
+                                            cancelText="Keep details"
+                                            onConfirm={handleRedactSourceIdentity}
+                                        >
+                                            <Button danger icon={<LuShieldCheck />} loading={saving}>
+                                                Remove source details
+                                            </Button>
+                                        </Popconfirm>
                                     </Flex>
                                 </Card>
                             );

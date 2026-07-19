@@ -79,8 +79,15 @@ export function safePayloadStringArray(
         .filter(Boolean);
 }
 
+export function safeSlackMrkdwnText(value: unknown, maxLength = 200): string {
+    return redactSecrets(safeText(value, maxLength))
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 export function escapeHtml(value: unknown, maxLength = 400): string {
-    return safeText(value, maxLength)
+    return redactSecrets(safeText(value, maxLength))
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')

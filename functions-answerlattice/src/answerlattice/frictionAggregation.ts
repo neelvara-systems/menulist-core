@@ -21,6 +21,15 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+    ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
+    ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS,
+    ANSWERLATTICE_SUPPORT_METRIC_WINDOWS,
+    calculateAnswerlatticeFrictionLoad,
+    classifyAnswerlatticeFrictionLevel,
+    detectAnswerlatticeFrictionTrend,
+    getAnswerlatticeUtcFrictionWindows,
+} from '../sharedData/answerlatticeSupportMetrics';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 const ANSWERLATTICE_FRICTION_AGGREGATION_FAILED = 'ANSWERLATTICE_FRICTION_AGGREGATION_FAILED';
@@ -58,7 +67,7 @@ function getFrictionAggregationScopeContext(tId?: number, sId?: number): {
 // ═══════════════════════════════════════════════════════════════
 
 type FrictionTrendDirection = 'rising' | 'stable' | 'improving' | 'new';
-type FrictionHealth = 'HIGH' | 'MODERATE' | 'LOW';
+type FrictionLevel = 'HIGH' | 'MODERATE' | 'LOW';
 
 interface EntitySignalCounts {
     entityId: string;
@@ -114,34 +123,14 @@ export interface FrictionAggregationResult {
     snapshotWritten: boolean;
     topEntityCount: number;
     emergingCount: number;
-    overallHealth: FrictionHealth;
+    overallHealth: FrictionLevel;
+    unmappedEvidenceCount: number;
+    legacyDailyStatCount: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // FRICTION SCORE ALGORITHM
 // ═══════════════════════════════════════════════════════════════
-
-function calculateFrictionScore(queryCount: number, escalationCount: number, lowConfidenceCount: number): number {
-    if (queryCount === 0) return 0;
-    const escalationRate = escalationCount / queryCount;
-    const lowConfidenceRate = lowConfidenceCount / queryCount;
-    return Math.round(queryCount * (1 + escalationRate + lowConfidenceRate) * 100) / 100;
-}
-
-function detectTrend(last7d: number, previous7d: number): { direction: FrictionTrendDirection; score: number } {
-    if (previous7d === 0 && last7d > 0) return { direction: 'new', score: 0 };
-    if (previous7d === 0) return { direction: 'stable', score: 1.0 };
-    const ratio = Math.round((last7d / previous7d) * 100) / 100;
-    if (ratio > 1.5) return { direction: 'rising', score: ratio };
-    if (ratio < 0.7) return { direction: 'improving', score: ratio };
-    return { direction: 'stable', score: ratio };
-}
-
-function classifyOverallHealth(totalFrictionScore: number): FrictionHealth {
-    if (totalFrictionScore > 500) return 'HIGH';
-    if (totalFrictionScore > 100) return 'MODERATE';
-    return 'LOW';
-}
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN AGGREGATION
@@ -155,29 +144,43 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
         topEntityCount: 0,
         emergingCount: 0,
         overallHealth: 'LOW',
+        unmappedEvidenceCount: 0,
+        legacyDailyStatCount: 0,
     };
 
     if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE) return result;
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
-    const dayStartTimestamp = Timestamp.fromDate(dayStart);
+    const now = new Date();
+    const windows = getAnswerlatticeUtcFrictionWindows(now);
+    const today = windows.today;
+    const dayStartTimestamp = Timestamp.fromMillis(windows.dayStartMs);
+    const signalLimit = ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS.dailyFrictionSignals;
+    const missLimit = ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS.dailyCanonicalMisses;
+    const historyLimit = ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS.frictionHistoryRows;
 
     try {
         // ─── Step 1: Query today's signal events, group by entityId ───
         const signalsSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('timestamp', '>=', dayStartTimestamp)
-            .limit(500)
+            .orderBy('timestamp', 'desc')
+            .limit(signalLimit + 1)
             .get();
+
+        if (signalsSnap.size > signalLimit) {
+            throw new Error(`Daily signal evidence exceeded the complete-window limit of ${signalLimit}.`);
+        }
 
         const entitySignals = new Map<string, EntitySignalCounts>();
 
         for (const doc of signalsSnap.docs) {
             const data = doc.data();
+            if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
+                throw new Error('Daily signal evidence contained an invalid Answerlattice scope.');
+            }
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
             if (!entityId) continue;
 
@@ -200,34 +203,34 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
         // ─── Step 2: Query today's canonical misses from search history ───
         const entityMissCounts = new Map<string, number>();
 
-        try {
-            const missesSnap = await db
-                .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
-                .where('tId', '==', tId)
-                .where('sId', '==', sId)
-                .where('canonical', '==', false)
-                .where('createdOn', '>=', dayStartTimestamp)
-                .limit(500)
-                .get();
+        const missesSnap = await db
+            .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+            .where('tId', '==', tId)
+            .where('sId', '==', sId)
+            .where('canonical', '==', false)
+            .where('createdOn', '>=', dayStartTimestamp)
+            .orderBy('createdOn', 'desc')
+            .limit(missLimit + 1)
+            .get();
 
-            for (const doc of missesSnap.docs) {
-                const data = doc.data();
-                const matchedEntityIds: string[] = data.matchedEntityIds || [];
-                for (const rawEntityId of matchedEntityIds) {
-                    const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);
-                    if (entityId) {
-                        entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
-                    }
+        if (missesSnap.size > missLimit) {
+            throw new Error(`Daily canonical misses exceeded the complete-window limit of ${missLimit}.`);
+        }
+
+        for (const doc of missesSnap.docs) {
+            const data = doc.data();
+            if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) continue;
+            const matchedEntityIds = Array.isArray(data.matchedEntityIds) ? data.matchedEntityIds : [];
+            for (const rawEntityId of matchedEntityIds) {
+                const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);
+                if (entityId) {
+                    entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
                 }
             }
-        } catch {
-            // Non-blocking: search history may not have all fields
         }
 
         // ─── Step 3: Denormalize entity names + write daily stats ───
         const allEntityIds = new Set([...entitySignals.keys(), ...entityMissCounts.keys()]);
-        if (allEntityIds.size === 0) return result;
-
         // Fetch entity names/types in bulk
         const entityNameMap = new Map<string, { name: string; type: string }>();
         const entityIdsArray = Array.from(allEntityIds);
@@ -241,7 +244,7 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             for (const doc of entityDocs) {
                 if (!doc.exists) continue;
                 const data = doc.data();
-                if (data?.tId !== tId || data?.sId !== sId) continue;
+                if (data?.pId !== 'AL' || data?.tId !== tId || data?.sId !== sId || data?.status !== 'active') continue;
                 entityNameMap.set(doc.id, { name: data.name || doc.id, type: data.type || 'feature' });
             }
         }
@@ -253,10 +256,13 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
                 entityId, ticketCount: 0, chatNegativeCount: 0, escalationCount: 0, queryCount: 0,
             };
             const lowConfidenceCount = entityMissCounts.get(entityId) || 0;
-            const entityInfo = entityNameMap.get(entityId) || { name: entityId, type: 'feature' };
+            const entityInfo = entityNameMap.get(entityId);
+            if (!entityInfo) {
+                result.unmappedEvidenceCount += signals.queryCount + lowConfidenceCount;
+                continue;
+            }
 
-            // Skip deprecated entities
-            const frictionScore = calculateFrictionScore(
+            const frictionScore = calculateAnswerlatticeFrictionLoad(
                 signals.queryCount + lowConfidenceCount,
                 signals.escalationCount,
                 lowConfidenceCount
@@ -278,36 +284,42 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             dailyStats.push(stat);
         }
 
-        // Write daily stats (set with merge = idempotent)
-        for (const stat of dailyStats) {
-            const docId = `${tId}_${sId}_${stat.entityId}_${today}`;
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS).doc(docId).set({
-                tId,
-                sId,
-                ...stat,
-                createdOn: Timestamp.now(),
-            }, { merge: true });
-            result.dailyStatsWritten++;
+        // Write daily stats in bounded batches (set with merge = idempotent).
+        for (let offset = 0; offset < dailyStats.length; offset += 400) {
+            const writeBatch = db.batch();
+            const chunk = dailyStats.slice(offset, offset + 400);
+            for (const stat of chunk) {
+                const docId = `${tId}_${sId}_${stat.entityId}_${today}`;
+                const ref = db.collection(DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS).doc(docId);
+                writeBatch.set(ref, {
+                    pId: 'AL',
+                    tId,
+                    sId,
+                    schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
+                    ...stat,
+                    createdOn: Timestamp.now(),
+                }, { merge: true });
+            }
+            await writeBatch.commit();
+            result.dailyStatsWritten += chunk.length;
         }
 
         result.entitiesProcessed = dailyStats.length;
 
         // ─── Step 4: Compute 7d snapshot with trends ───
-        const fourteenDaysAgo = new Date();
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-        const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().split('T')[0];
-
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
-
         const historicalSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
-            .where('date', '>=', fourteenDaysAgoStr)
-            .limit(500)
+            .where('date', '>=', windows.previousStart)
+            .where('date', '<=', windows.currentEnd)
+            .orderBy('date', 'desc')
+            .limit(historyLimit + 1)
             .get();
+
+        if (historicalSnap.size > historyLimit) {
+            throw new Error(`Friction history exceeded the complete-window limit of ${historyLimit}.`);
+        }
 
         // Aggregate per entity: last7d vs previous7d
         const entityAgg = new Map<string, {
@@ -320,6 +332,12 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
 
         for (const doc of historicalSnap.docs) {
             const data = doc.data();
+            if (data.tId !== tId || data.sId !== sId || (data.pId !== undefined && data.pId !== 'AL')) {
+                throw new Error('Friction history contained an invalid Answerlattice scope.');
+            }
+            if (data.pId !== 'AL' || data.schemaVersion !== ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION) {
+                result.legacyDailyStatCount++;
+            }
             const eid = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
             if (!eid) continue;
 
@@ -331,7 +349,7 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
                 firstSeenDate: data.date,
             };
 
-            if (data.date >= sevenDaysAgoStr) {
+            if (data.date >= windows.currentStart && data.date <= windows.currentEnd) {
                 agg.last7d.queryCount += data.queryCount || 0;
                 agg.last7d.escalationCount += data.escalationCount || 0;
                 agg.last7d.lowConfidenceCount += data.lowConfidenceCount || 0;
@@ -347,9 +365,9 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
         }
 
         // Build top friction entities (sorted by last7d frictionScore)
-        const topEntities: FrictionEntitySummary[] = Array.from(entityAgg.entries())
+        const allEntitySummaries: FrictionEntitySummary[] = Array.from(entityAgg.entries())
             .map(([entityId, agg]) => {
-                const trend = detectTrend(agg.last7d.frictionScore, agg.previous7d.frictionScore);
+                const trend = detectAnswerlatticeFrictionTrend(agg.last7d.frictionScore, agg.previous7d.frictionScore);
                 return {
                     entityId,
                     entityName: agg.entityName,
@@ -357,12 +375,12 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
                     last7d: agg.last7d,
                     previous7d: agg.previous7d,
                     trendDirection: trend.direction,
-                    trendScore: trend.score,
+                    trendScore: trend.ratio,
                 };
             })
             .filter(e => e.last7d.queryCount > 0)
-            .sort((a, b) => b.last7d.frictionScore - a.last7d.frictionScore)
-            .slice(0, 10);
+            .sort((a, b) => b.last7d.frictionScore - a.last7d.frictionScore);
+        const topEntities = allEntitySummaries.slice(0, 10);
 
         // ─── Step 5: Detect emerging topics ───
         const emerging: EmergingTopic[] = Array.from(entityAgg.entries())
@@ -380,26 +398,46 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             .sort((a, b) => b.queryCount - a.queryCount)
             .slice(0, 5);
 
-        // Overall health
-        const totalFrictionScore = topEntities.reduce((sum, e) => sum + e.last7d.frictionScore, 0);
-        const overallHealth = classifyOverallHealth(totalFrictionScore);
-        const totalSignals7d = topEntities.reduce((sum, e) => sum + e.last7d.queryCount, 0);
-        const totalEscalations7d = topEntities.reduce((sum, e) => sum + e.last7d.escalationCount, 0);
+        const totalFrictionScore = allEntitySummaries.reduce((sum, e) => sum + e.last7d.frictionScore, 0);
+        const frictionLevel = classifyAnswerlatticeFrictionLevel(totalFrictionScore);
+        const totalSignals7d = allEntitySummaries.reduce((sum, e) => sum + e.last7d.queryCount, 0);
+        const totalEscalations7d = allEntitySummaries.reduce((sum, e) => sum + e.last7d.escalationCount, 0);
 
         // ─── Step 6: Write frictionSnapshot to platformSummary ───
         await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`frictionSnapshot_${tId}_${sId}`).set({
+            pId: 'AL',
+            tId,
+            sId,
+            schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
             lastUpdated: Timestamp.now(),
+            window: {
+                kind: ANSWERLATTICE_SUPPORT_METRIC_WINDOWS.UTC_CALENDAR_7_DAYS,
+                startAt: Timestamp.fromDate(new Date(`${windows.currentStart}T00:00:00.000Z`)),
+                endAt: Timestamp.fromDate(new Date(`${windows.currentEnd}T23:59:59.999Z`)),
+                complete: true,
+                sourceLimit: historyLimit,
+                observedCount: historicalSnap.size,
+                currentStartDate: windows.currentStart,
+                currentEndDate: windows.currentEnd,
+                previousStartDate: windows.previousStart,
+                previousEndDate: windows.previousEnd,
+            },
             topFrictionEntities: topEntities,
             emergingTopics: emerging,
-            overallHealth,
+            frictionLevel,
+            totalWeightedLoad: Math.round(totalFrictionScore * 100) / 100,
+            // Compatibility alias; this is a volume-sensitive friction level, not product health.
+            overallHealth: frictionLevel,
             totalSignals7d,
             totalEscalations7d,
+            unmappedEvidenceCount: result.unmappedEvidenceCount,
+            legacyDailyStatCount: result.legacyDailyStatCount,
         }, { merge: true });
 
         result.snapshotWritten = true;
         result.topEntityCount = topEntities.length;
         result.emergingCount = emerging.length;
-        result.overallHealth = overallHealth;
+        result.overallHealth = frictionLevel;
 
     } catch (error) {
         logger.error('[Answerlattice Friction] Aggregation failed', {
@@ -407,6 +445,7 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             ...getFrictionAggregationScopeContext(tId, sId),
             ...getFrictionAggregationSourceErrorContext(error),
         });
+        throw error;
     }
 
     return result;

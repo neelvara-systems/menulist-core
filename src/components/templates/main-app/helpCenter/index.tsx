@@ -3,6 +3,7 @@ import KnowledgeBaseExplorer from '@organisms/KnowledgeBaseExplorer';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { Card, Flex, Typography } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ChangelogView from './ChangelogView';
 import HeroSearchBar from './HeroSearchBar';
@@ -21,6 +22,7 @@ interface HelpCenterProps {
 }
 
 function HelpCenter({ initialArticleId, initialChangelogId, initialTab, syncRoute = true }: HelpCenterProps) {
+    const t = useTranslations('HelpCenter');
     const router = useRouter();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab') || initialTab;
@@ -94,7 +96,6 @@ function HelpCenter({ initialArticleId, initialChangelogId, initialTab, syncRout
                 <HeroSearchBar activeTab={activeKey} setActiveTab={handleTabChange} />
                 {activeKey === HOME_TAB_KEY ?
                     <>
-                        {/* <GettingStarted /> */}
                         <MainSectionTabs activeKey={activeKey} onSelect={handleTabChange} />
                         <LandingPage />
                     </>
@@ -107,7 +108,11 @@ function HelpCenter({ initialArticleId, initialChangelogId, initialTab, syncRout
                             </div>
                         ) : (
                             <Card style={tabCardStyle}>
-                                {shouldShowTabTitle && <Title level={4} style={titleStyle}>{activeTab?.title ?? DEFAULT_HOME_TAB.title}</Title>}
+                                {shouldShowTabTitle && (
+                                    <Title level={4} style={titleStyle}>
+                                        {t((activeTab?.titleKey ?? DEFAULT_HOME_TAB.titleKey) as any)}
+                                    </Title>
+                                )}
                                 {activeTabContent}
                             </Card>
                         )}

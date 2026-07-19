@@ -8,7 +8,9 @@ export type AnswerlatticeContextKey =
   | 'role'
   | 'locale'
   | 'userRole'
-  | 'plan';
+  | 'plan'
+  | 'state'
+  | 'version';
 
 export type AnswerlatticePageContext = {
   contextVersion?: number;
@@ -24,6 +26,10 @@ export type AnswerlatticePageContext = {
   userRole?: string;
   /** Legacy compatibility field. Public plan label only; never billing metadata. */
   plan?: string;
+  /** Public product-state slug used only for governed answer applicability. */
+  state?: string;
+  /** Numeric product version label, for example 2.4.1. */
+  version?: string;
   /** Legacy compatibility field. Public slugs/tags/hints only. */
   entityHints?: string[];
 };
@@ -102,7 +108,7 @@ export type AnswerlatticeWebClient = {
 };
 
 const DEFAULT_SCRIPT_SRC = 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
-const CONTEXT_STRING_KEYS: AnswerlatticeContextKey[] = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'];
+const CONTEXT_STRING_KEYS: AnswerlatticeContextKey[] = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state'];
 const MAX_CONTEXT_STRING_LENGTH = 100;
 const MAX_ENTITY_HINTS = 5;
 const MAX_ENTITY_HINT_LENGTH = 64;
@@ -148,7 +154,17 @@ function normalizeContextPath(value: unknown): string | null {
   if (!route.startsWith('/')) route = `/${route}`;
   route = route.replace(/\/{2,}/g, '/');
   if (route.length > 1 && route.endsWith('/')) route = route.slice(0, -1);
+  if (route.includes('*')) return null;
   return route.slice(0, 180);
+}
+
+function sanitizeContextVersion(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().replace(/^v/i, '');
+  if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(normalized)) return null;
+  const [major, minor = '0', patch = '0'] = normalized.split('.');
+  if (Number(major) <= 0 || Number(minor) > 999 || Number(patch) > 999) return null;
+  return normalized;
 }
 
 function getPayloadByteLength(value: unknown): number {
@@ -175,7 +191,6 @@ export function validateAnswerlatticePageContext(input: AnswerlatticePageContext
   const path = normalizeContextPath(input.path);
   if (path) {
     context.path = path;
-    if (!context.page) context.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home', MAX_CONTEXT_STRING_LENGTH) || undefined;
   }
   const title = sanitizeContextTitle(input.title);
   if (title) context.title = title;
@@ -186,6 +201,8 @@ export function validateAnswerlatticePageContext(input: AnswerlatticePageContext
   }
   const locale = sanitizeContextString(input.locale, 24);
   if (locale) context.locale = locale;
+  const version = sanitizeContextVersion(input.version);
+  if (version) context.version = version;
 
   if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
     context.contextVersion = Math.floor(input.contextVersion);
@@ -202,7 +219,7 @@ export function validateAnswerlatticePageContext(input: AnswerlatticePageContext
   }
 
   const hasMeaningfulContext = CONTEXT_STRING_KEYS.some((key) => Boolean(context[key]))
-    || Boolean(context.path || context.title || context.role || context.locale)
+    || Boolean(context.path || context.title || context.role || context.locale || context.version)
     || Boolean(context.entityHints?.length);
 
   if (!hasMeaningfulContext) {

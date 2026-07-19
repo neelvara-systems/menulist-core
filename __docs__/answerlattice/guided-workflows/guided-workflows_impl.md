@@ -1,14 +1,14 @@
 # Answerlattice Guided Workflows Implementation
 
 > **Status:** Implemented, workspace opt-in
-> **Version:** 2.1.0
+> **Version:** 2.2.0
 > **Last verified:** 2026-07-18
 
 ## Architecture
 
 ```text
 approved canonical answer
-  -> widget search response with validated procedure
+  -> widget search response + retained validated procedure snapshot
   -> end user starts guide
   -> iframe sends current step to host loader
   -> loader finds exact semantic target
@@ -119,6 +119,8 @@ The iframe keeps one active session in React state and a ref:
 
 The state is not stored in Firestore. A matching expected event advances only the current session and current step. A stale event, stale session, invalid target, or invalid procedure is ignored.
 
+The host checks an exact target immediately and then at most four more times at 200 ms intervals. This bounded lookup covers normal asynchronous component rendering without installing a MutationObserver or scanning beyond the existing 500 marked-target cap. Starting another step, route/context reset, hide, or close cancels the pending lookup.
+
 ## Outcome Boundary
 
 `POST /api/widget/guidance-outcome`:
@@ -132,11 +134,14 @@ The state is not stored in Firestore. A matching expected event advances only th
 7. Verifies allowed origin and runtime token.
 8. Reads at most 4 KB of JSON and rejects unknown fields.
 9. Returns without a write when signal mutation is disabled.
-10. Reads one exact AI search-history document.
-11. Requires exact Answerlattice workspace scope, `mountContext === "widget"`, `canonical === true`, and a valid canonical answer ID.
-12. Emits one deduplicated signal keyed by search-history ID plus procedure-session ID.
+10. Reads one exact, unexpired AI search-history document.
+11. Requires exact Answerlattice workspace scope, `mountContext === "widget"`, `canonical === true`, a valid canonical answer ID, and the validated procedure snapshot saved with that answer.
+12. Requires the submitted procedure slug, step count, completed-step count, blocked step, target, expected event, context key, and widget session to match the served snapshot and stored request evidence.
+13. Emits one deduplicated signal keyed by search-history ID plus procedure-session ID.
 
 An escalation uses the existing `ESCALATION` signal type. Completed, abandoned, and target-missing outcomes use `GUIDED_RESOLUTION`. These non-escalation outcomes do not automatically enter a mutation proposal or change approved knowledge.
+
+Selecting **Still stuck** does not itself claim a handoff. It opens the explicit Feature 16 support form while the guide remains active. Only successful ticket creation ends the guide with the `escalated` outcome, keeping the signal aligned with an actual asynchronous support request.
 
 ## Backward Compatibility
 
@@ -149,14 +154,15 @@ An escalation uses the existing `ESCALATION` signal type. Completed, abandoned, 
 
 | Failure | Behavior |
 |---|---|
-| Target absent | Written step remains usable; user can report target missing |
-| Expected event never arrives | User can continue manually or escalate |
+| Target absent after bounded lookup | Written step remains usable; user can report target missing or open support |
+| Expected event never arrives | Event-gated step cannot be completed manually; user can stop or open support |
 | Route/context changes | Highlight and in-memory session are cleared |
 | Outcome network failure | Product workflow remains unaffected; UI does not claim the outcome was persisted |
 | Invalid/revoked key | Generic unauthorized response |
 | Disallowed origin/runtime token | Fail closed |
 | Signal mutation disabled | Success response with `recorded: false`, no write |
-| Search history absent/non-canonical | Generic not-found response, no signal |
+| Search history absent, expired, non-canonical, or missing its served procedure snapshot | Generic not-found/conflict response, no signal |
+| Outcome does not match the served procedure/session evidence | Conflict response, no signal |
 
 ## Future Admission Gate
 

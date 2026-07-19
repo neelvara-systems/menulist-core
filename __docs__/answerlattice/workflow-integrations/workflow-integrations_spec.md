@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Spec
 
-> **Version:** 1.2.0
-> **Last Updated:** 2026-07-13
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-19
 > **Audience:** CEO / PM / Clients
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS`
 
@@ -9,16 +9,14 @@
 
 ## §1 — Problem Statement
 
-SaaS founders using Answerlattice need to know when:
-- Knowledge drift is detected (answer may be stale)
-- A mutation proposal is created (signal cluster → new or updated answer needed)
-- AI repeatedly fails to resolve a query (knowledge gap)
-- Canonical coverage drops below threshold
-- An article is approved and published
+SaaS founders using Answerlattice need passive awareness when the current runtime records:
+- a nightly governance summary after bounded maintenance work;
+- repeated AI workflow failures that require review;
+- canonical coverage below the configured threshold.
 
-Today, these events are visible only inside the Answerlattice governance dashboard. Founders must log into Answerlattice to see them. This creates a monitoring burden that contradicts Answerlattice's "infrastructure that runs silently" identity.
+Without a configured destination, these events remain dashboard or nightly-run evidence. Founders must remember to inspect Answerlattice to see them, creating avoidable monitoring work.
 
-**The solution:** Push bounded digest and critical review events into tools founders already use — Slack channels and email inboxes. Linear/GitHub issue creation remains controlled rollout until per-tenant secret handling is self-service safe.
+**The solution:** Push those bounded digest and critical review events into tools founders already use — Slack channels and email inboxes. Other event schemas remain formatter/filter contracts without direct producers. Linear/GitHub issue creation remains controlled rollout until per-tenant secret handling is self-service safe.
 
 ---
 
@@ -32,7 +30,7 @@ Today, these events are visible only inside the Answerlattice governance dashboa
 | Deliver events to configured endpoints | Orchestrate multi-step workflows |
 | Log delivery success/failure | Sync data bidirectionally |
 | Allow founders to filter which events go where | Build automation builders (Zapier-style) |
-| Retry explicit provider 429/5xx failures within 3 total attempts | Maintain external tool state |
+| Apply provider-specific bounded retry rules | Maintain or reconcile external tool state |
 
 This keeps the system small, durable, and aligned with the 3-year architecture freeze.
 
@@ -82,7 +80,7 @@ The Firestore document ID is the event ID; it is not duplicated as an `eventId` 
 
 ### 4.1 — Slack (Tier A — Must Have)
 
-**Purpose:** Instant team awareness of governance events.
+**Purpose:** Team awareness of bounded governance events after the workspace nightly run or an owner test.
 
 **Delivery method:** Incoming Webhook URL (no Slack app installation required).
 
@@ -91,6 +89,7 @@ The Firestore document ID is the event ID; it is not duplicated as an `eventId` 
 - Section: key details (entity, drift class, coverage %)
 - Context: severity badge + timestamp
 - Fixed fallback notification text for clients that do not render Block Kit
+- Dynamic values escape Slack control characters and use `verbatim: true`; event content cannot create a channel/user mention or injected angle-bracket link
 
 **Example notification:**
 ```
@@ -98,8 +97,9 @@ The Firestore document ID is the event ID; it is not duplicated as an `eventId` 
 Answer "How to configure webhooks" has signal anomaly.
 Negative feedback rate: 12% (threshold: 8%)
 Severity: HIGH | 2026-03-09 03:00 UTC
-[View in Answerlattice →]
 ```
+
+This is a formatter example for the reserved direct drift schema. The current owner-facing production flow reports aggregate drift counts in `nightly_summary`; it does not emit this direct notification or a dashboard action link.
 
 ### 4.2 — Email (Tier A — Must Have)
 
@@ -108,7 +108,7 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 **Delivery method:** SMTP (reuses existing nodemailer infrastructure from lifecycle messaging).
 
 **Use cases:**
-- Real-time: critical events (coverage_drop, ai_failure_recurring)
+- Separate higher-priority nightly-run events: `coverage_drop`, `ai_failure_recurring`
 - Batch: nightly_summary delivered as digest email
 
 **Rate limit:** Max 50 deliveries per tenant/adapter/day plus max 20 integration emails per recipient/day.
@@ -143,7 +143,7 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 
 ### 5.1 — Founder (Primary User)
 
-> "As a SaaS founder, I want to receive a Slack notification when Answerlattice detects drift in a canonical answer, so I can review and fix it without logging into the Answerlattice dashboard."
+> "As a SaaS founder, I want a nightly Slack or email summary when Answerlattice records drift or review movement, so I know whether the dashboard needs attention."
 
 > "As a SaaS founder, I want to receive a nightly email digest when the scheduler records governance activity, so I have passive awareness without active monitoring."
 
@@ -165,23 +165,23 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 
 ### 6.1 — Settings Location
 
-Answerlattice Dashboard → Settings → Integrations tab
+Answerlattice Dashboard → Support Control → Workflow Notifications
 
 ### 6.2 — Per-Integration Configuration
 
 Each integration card shows:
 - **Enable/Disable toggle**
 - **Connection details** (webhook URL for Slack, recipients for Email)
-- **Event filter** — checkboxes for which event types to receive
-- **Send Test Notification** — queues one controlled test event that honors the selected event filters
+- **Event filter** — selectors for the three active producers only: `coverage_drop`, `ai_failure_recurring`, and `nightly_summary`
+- **Send Test Notification** — queues one controlled test event to every saved, enabled Slack/email destination even when ordinary `nightly_summary` delivery is filtered out
 - **Delivery health** — sanitized last success/failure/rate-limit status from the compact health summary
 
 ### 6.3 — Default Configuration
 
 When a founder enables an integration:
 - `nightly_summary`, `coverage_drop`, and `ai_failure_recurring` are enabled by default
-- Founder can deselect event types they don't want
-- Minimum: at least 1 event type must remain enabled
+- Founder can deselect event types they do not want
+- An empty submitted filter list is normalized back to the three active defaults; the owner UI does not expose reserved formatter-only event types
 
 ---
 
@@ -190,10 +190,12 @@ When a founder enables an integration:
 | Guardrail | Implementation |
 |-----------|---------------|
 | Rate limiting | Max 20 events per minute per integration per tenant |
-| Retry cap | 3 total adapter attempts (initial + delays of 1s and 4s) only for explicit retryable HTTP 429/5xx responses |
-| Secret storage | Raw webhook/token config stays server-side; email runtime uses Answerlattice-scoped `ANSWERLATTICE_SMTP_*` secrets |
-| Payload sanitization | No PII in event payloads (no user emails, no ticket content) |
-| Circuit breaker | After 10 consecutive failures, disable integration + alert founder |
+| Retry cap | At most 3 total adapter attempts (initial + delays of 1s and 4s) when that adapter marks the response retryable. Slack retries `5xx`; Slack `429` is retained as provider status and is not replayed with a fixed delay. |
+| Secret storage | The raw Slack webhook is returned neither by the API nor direct Firestore client reads, including platform-admin browser clients. Email runtime uses Answerlattice-scoped `ANSWERLATTICE_SMTP_*` secrets. Application-level per-tenant encryption is not claimed. |
+| Payload sanitization | Active automated payloads contain bounded workspace operational aggregates and fixed failure-phase labels, not ticket bodies or user email addresses. Sanitization removes secret-like keys and bounds values; it is not a general PII detector. Reserved source-text schemas require a separate privacy review before activation. |
+| Email recipient admission | All normalized configured recipients are admitted in one transaction. If any recipient is at the daily cap, nobody receives a partial notification and no recipient counter is consumed. |
+| Slack text safety | Dynamic `&`, `<`, and `>` are entity-encoded and automatic parsing is disabled for the `mrkdwn` detail block |
+| Circuit breaker | After 10 consecutive failures, open the adapter circuit, show owner-safe delivery health, and permit one serialized recovery probe after the 24-hour cooldown |
 | Delivery logging | Every attempt logged (success/failure/retry count/error) |
 | Retention | Events, delivery logs, and rate counters use Firestore TTL |
 | Cost cap | Nightly emits at most one digest, one critical coverage event, and one recurring-AI-failure event per active tenant |
@@ -215,15 +217,17 @@ Per Answerlattice Non-Goals Charter (doctrine/02):
 
 ---
 
-## §9 — Success Metrics
+## §9 — Validation Metrics
+
+These are launch-validation measures, not achieved performance claims. Product instrumentation and real provider delivery evidence must establish targets.
 
 | Metric | Target | How Measured |
 |--------|--------|-------------|
-| Integration adoption rate | 40% of active tenants enable ≥1 integration within 30 days | Config store query |
-| Event delivery success rate | >99% | Delivery log aggregation |
-| Mean time to awareness | <5 minutes after scheduler/test event emission | Event timestamp vs delivery timestamp |
-| Nightly digest open rate | >30% | Email tracking (if implemented) |
-| Test notification success rate | >95% for configured Slack/email workspaces | Delivery health summary |
+| Integration activation rate | Observe; set a target after founder pilot evidence | Saved enabled config plus successful test health |
+| Event delivery success rate | Validate before publishing a target | Delivery log aggregation |
+| Time from event to provider acceptance | Validate before publishing a target | Event timestamp vs successful attempt timestamp |
+| Email provider-acceptance rate | Validate after SMTP is configured | Delivery log and compact health summary; no inbox/open claim |
+| Test notification success rate | Validate with real configured Slack/email workspaces | Delivery health summary plus external receipt confirmation |
 
 ---
 
@@ -241,6 +245,7 @@ Per Answerlattice Non-Goals Charter (doctrine/02):
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.3.0 | Added the dedicated permission-gated route, browser-denied secret config, strict response contracts, nested health, atomic all-recipient email admission, provider-specific Slack retry behavior, active-producer-only filters, and validation rather than achieved metric targets. |
 | 2026-07-13 | 1.2.0 | Aligned active producer coverage, event identity, three-total-attempt retry semantics, partial-delivery failure, circuit-probe serialization, and separate-project SMTP secret requirements with runtime. |
 | 2026-05-24 | 1.1.1 | Aligned repeated-AI-failure trigger wording and daily adapter delivery caps with runtime. |
 | 2026-05-24 | 1.1.0 | Updated production scope to Slack/email, added test notification, health summary, TTL, digest-first event caps, and controlled-rollout status for issue trackers. |

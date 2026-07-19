@@ -1,91 +1,39 @@
-# AI Failure Escalation — Help Documentation
+# Requesting Support From The Answerlattice Widget
 
-> **Version:** 1.0.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
-> **Audience:** Answerlattice Customers (SaaS Founders)
+> **Last Updated:** 2026-07-18
 
----
+## When The Answer Does Not Resolve Your Question
 
-## What is Intelligent Escalation?
+Select **Still need help** below the answer. Answerlattice records that the answer was not resolved and opens a support-request form.
 
-When Answerlattice's AI can't confidently answer a user's question, it automatically detects the failure and offers a smooth path to human support. Instead of a dead end, users see a "Still need help?" option that creates a pre-filled support ticket with full context.
+The form requires a reply email. Name and additional details are optional. The original question and bounded page/workflow context already stored with the widget search are attached by the server, so you do not need to re-enter the question.
 
----
+After submission, the widget shows the support-request reference. This is an asynchronous ticket. It does not mean a support person is online, and Answerlattice does not promise a response time in the widget.
 
-## How It Works
+## What Is Included
 
-### For Your End Users
+The support request may include:
 
-1. **User asks a question** in your help widget or knowledge base
-2. **AI answers** — but if the answer has low confidence, the system detects it
-3. **"Still need help?"** button appears below the AI answer
-4. **User clicks** — a ticket form opens, pre-filled with:
-   - Their original question as the subject
-   - The conversation context attached
-   - Category auto-detected
-5. **User submits** — ticket goes to your inbox with full debugging context
+- your original question;
+- the answer source and confidence summary retained by the search runtime;
+- bounded supporting-reference labels;
+- the mapped page, feature, workflow, or widget session when the client product supplied that allowlisted context;
+- your reply email, optional name, and optional details.
 
-Your users never hit a dead end. They never have to re-explain their problem.
+The browser cannot add arbitrary internal debug fields or change ticket status, priority, or workspace scope.
 
-### For You (the Founder)
+## Screenshots
 
-When you open an escalation ticket, you see:
-- The user's exact question
-- What the AI searched for
-- What documents were found (with confidence scores)
-- How the AI interpreted the query (entity resolution)
-- The product context (which page, feature, plan the user was on)
+If a screenshot cannot be processed, the widget says that the answer is based on text only. Do not upload passwords, tokens, payment data, recovery codes, or private customer information.
 
-This means you can answer most escalation tickets in under a minute — the investigation is already done for you.
+## Sources And Related Content
 
----
+Public source links are shown only when their URL is approved for public delivery. Related article, FAQ, or changelog labels run a new support search; they do not expose private source paths.
 
-## Escalation Triggers
+## Knowledge Improvement
 
-Answerlattice uses five independent signals to detect when escalation is needed:
+An unresolved support request can create evidence for the founder's review queue. It does not automatically change or publish an approved answer.
 
-| Signal | What It Means |
-|--------|--------------|
-| Low confidence | AI found something but isn't sure it's correct |
-| No entity match | AI couldn't understand what product concept the question relates to |
-| Repeated failures | User asked 2+ questions with poor answers in the same session |
-| Explicit request | User typed "talk to a human" or "create a ticket" |
-| Weak search results | AI's best search result has very low relevance |
+## Automatic Suggestions
 
-These triggers work automatically. No configuration needed.
-
----
-
-## Knowledge Improvement Loop
-
-Every escalation automatically signals a knowledge gap in your system. Here's what happens behind the scenes:
-
-1. Escalation creates an **ESCALATION signal** in Answerlattice's mutation engine
-2. If the same topic gets escalated multiple times, the system **auto-proposes a new canonical answer**
-3. You review and approve the proposal
-4. Future users get a confident, instant answer instead of escalation
-
-This means your knowledge base literally improves from its own failures.
-
----
-
-## FAQ
-
-### How do I enable Intelligent Escalation?
-It's enabled automatically when you activate Answerlattice's canonical answer engine. No separate setup required.
-
-### Will escalation overwhelm my inbox?
-No. Escalation is rate-limited to prevent floods. Typical escalation rate is 3-5% of conversations. As your knowledge base improves, this rate decreases.
-
-### Can I customize the escalation triggers?
-In v1, triggers are pre-configured with industry-standard thresholds. Custom threshold configuration is planned for a future release.
-
-### Does escalation work in the embeddable widget?
-Widget-side escalation UI is planned for a future release. Currently, escalation is available in the help center chat interface.
-
-### What happens if no one is available to answer?
-Answerlattice creates an asynchronous ticket — there's no live chat queue. Users are notified when their ticket is answered, just like regular support.
-
-### Can I see escalation analytics?
-Escalation metrics (rate, top failure topics, knowledge conversion rate) will be available in the Founder Trust Dashboard (coming soon).
+Automatic low-confidence escalation suggestions are rollout-gated and may not be enabled in the current workspace. The explicit **Still need help** support request is a separate widget workflow.

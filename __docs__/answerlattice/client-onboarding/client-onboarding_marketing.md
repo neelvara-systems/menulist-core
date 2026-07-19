@@ -1,0 +1,37 @@
+# Answerlattice Client Onboarding — Marketing
+
+> **Last Audited:** 2026-07-19
+
+## Safe Positioning
+
+Answerlattice offers authenticated self-service setup for founder-led SaaS teams. A founder can select a paid monthly plan, create a product workspace, receive a one-time widget key, and continue to knowledge activation without a mandatory sales call.
+
+## Verified Claims
+
+- Google-authenticated self-service workspace creation is implemented.
+- Starter, Growth, and Studio monthly plans can be selected in INR or USD.
+- The flow is resumable across response loss and indeterminate provider outcomes.
+- An exact known cancelled, completed, or expired checkout is separated from unknown provider state and can be retried after scoped recovery. This is not a claim that every provider failure self-recovers.
+- The initial widget key is shown once; lost plaintext credentials require rotation.
+- Unknown payment-provider state is held for recovery rather than silently treated as success or failure.
+
+## Claims Requiring External Evidence
+
+- Setup completes in a specific number of minutes.
+- Every founder completes setup without assistance.
+- Payment succeeds, activation is immediate, or the provider never duplicates subscriptions.
+- A created workspace has accurate product knowledge or is ready for live customer support.
+- The widget reduces support volume or resolves a stated percentage of questions.
+
+## Prohibited Claims
+
+- “Free workspace” or “no payment required.”
+- “Guaranteed instant activation.”
+- “Exactly once” provider execution.
+- “Automatic cancellation” after any onboarding failure.
+- “Your data is fully imported during signup.”
+- “The one-time widget key can be recovered later.”
+
+## Conversion Event
+
+The commercial event is a founder reaching a valid `payment_pending` workspace with a safe checkout link and an explicit next step. It is not a completed payment, accurate answer set, installed widget, or verified customer resolution.

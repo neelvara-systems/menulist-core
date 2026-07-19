@@ -35,11 +35,29 @@ export type StorePublicApiCredentialPurpose =
 export type StorePublicApiCredentialScope =
     | 'public:read'
     | 'signals:write'
+    | 'mcp:read'
     | 'widget:config'
     | 'widget:content'
     | 'widget:search'
     | 'widget:feedback'
     | 'widget:predictive';
+
+export type ExternalLocationIdentityProvider = 'google_maps' | 'google_business_profile';
+
+export type ExternalLocationIdentityBinding = {
+    provider: ExternalLocationIdentityProvider;
+    providerLocationId?: string;
+    providerUri?: string;
+    resolution: 'provider_uri' | 'provider_location_id';
+    confirmationStatus: 'owner_confirmed';
+    source: 'owner_maps_link' | 'maps_place_check' | 'gbp_connection';
+    confirmedAt: string;
+};
+
+export type StoreExternalLocationIdentity = {
+    schemaVersion: 'menulist.external-location-identity.v1';
+    bindings?: Partial<Record<ExternalLocationIdentityProvider, ExternalLocationIdentityBinding>>;
+};
 
 export type StoreDataType = {
     storeId: number;
@@ -275,6 +293,16 @@ export type StoreDataType = {
         lastFixResult?: "SUCCESS" | "FAILED" | "SKIPPED";
         failureReason?: string;
     };
+
+    /**
+     * Provider-neutral external location bindings for this exact store/outlet.
+     *
+     * Only explicit owner-confirmed bindings are persisted. Provider proposals,
+     * grounded text, match candidates, reviews, ratings, and source snapshots
+     * are never stored here. This field is internal metadata and is not part of
+     * the public OBP, menu JSON-LD, or Platform Pull API contract.
+     */
+    externalLocationIdentity?: StoreExternalLocationIdentity;
 
     // ─────────────────────────────────────────────────────────────
     // GUEST FEEDBACK SETTINGS (Feature: Internal Feedback System)
@@ -540,12 +568,13 @@ export type StoreDataType = {
 
     /**
      * Public API configuration for external system access.
-     * Owner generates a product-scoped public API key in Business Settings.
+     * MenuList owners manage keys in Business Settings. Answerlattice owners
+     * manage a separate rollout-gated key from the Answerlattice Public API page.
      * External systems use X-API-Key header to pull data.
      * Raw public API keys are legacy-only; new public API keys are stored as SHA-256 hashes and shown once.
      * Answerlattice widget keys use the dedicated `answerlatticeWidgetApi` manager below.
      *
-     * Feature flags: ENABLE_PUBLIC_API, ENABLE_ANSWERLATTICE_WIDGET
+     * Feature flags: ENABLE_PUBLIC_API, ENABLE_ANSWERLATTICE_PUBLIC_API
      */
     publicApi?: {
         apiKey?: string;        // Legacy raw key fallback only

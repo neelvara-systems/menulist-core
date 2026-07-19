@@ -1,20 +1,22 @@
 import { fetchLatestChangelogPage } from '@database/changelog';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ChangelogPage } from '@type/changelog';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useContext } from 'react';
 
-let changelogFetchInFlight: Promise<ChangelogPage | null> | null = null;
+const changelogFetchInFlight = new Map<string, Promise<ChangelogPage | null>>();
 
-const fetchLatestChangelogPageOnce = () => {
-    if (!changelogFetchInFlight) {
-        changelogFetchInFlight = fetchLatestChangelogPage().finally(() => {
-            changelogFetchInFlight = null;
+const fetchLatestChangelogPageOnce = (scopeKey: string) => {
+    if (!changelogFetchInFlight.has(scopeKey)) {
+        const request = fetchLatestChangelogPage().finally(() => {
+            changelogFetchInFlight.delete(scopeKey);
         });
+        changelogFetchInFlight.set(scopeKey, request);
     }
 
-    return changelogFetchInFlight;
+    return changelogFetchInFlight.get(scopeKey)!;
 };
 
 /**
@@ -36,13 +38,15 @@ const fetchLatestChangelogPageOnce = () => {
  */
 export const useChangelogCache = () => {
     const { cachedChangelog, setCachedChangelog } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const scopeKey = useAnswerlatticeCacheScope();
+    const scopedChangelog = cachedChangelog.scopeKey === scopeKey ? cachedChangelog.changelog : null;
 
     /**
      * Clear cache
      * Useful for manual refresh or logout
      */
     const clearCache = useCallback(() => {
-        setCachedChangelog({ cachedOn: null, changelog: null });
+        setCachedChangelog({ cachedOn: null, changelog: null, scopeKey: null });
     }, [setCachedChangelog]);
 
     /**
@@ -52,13 +56,13 @@ export const useChangelogCache = () => {
         const memoryEstimate = JSON.stringify(cachedChangelog).length;
         
         return {
-            isCached: !!cachedChangelog.changelog,
-            cachedOn: cachedChangelog.cachedOn,
+            isCached: Boolean(scopedChangelog),
+            cachedOn: cachedChangelog.scopeKey === scopeKey ? cachedChangelog.cachedOn : null,
             memoryBytes: memoryEstimate,
             memoryKB: Math.round(memoryEstimate / 1024),
-            entriesCount: cachedChangelog.changelog?.entries?.length || 0
+            entriesCount: scopedChangelog?.entries?.length || 0
         };
-    }, [cachedChangelog]);
+    }, [cachedChangelog.cachedOn, cachedChangelog.scopeKey, scopeKey, scopedChangelog]);
 
     /**
      * Get item - checks cache first, fetches if not found
@@ -94,6 +98,7 @@ export const useChangelogCache = () => {
             onCacheMiss?: () => void; // Callback when fetching
         }
     ): Promise<ChangelogPage | null> => {
+        if (!scopeKey) return null;
         // ============================================
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================
@@ -106,7 +111,8 @@ export const useChangelogCache = () => {
                 if (changelog) {
                     setCachedChangelog({
                         cachedOn: Timestamp.now(),
-                        changelog
+                        changelog,
+                        scopeKey,
                     });
                     return changelog;
                 }
@@ -115,8 +121,8 @@ export const useChangelogCache = () => {
             } catch (error) {
                 logHookFailure('answerlattice_changelog_cache_fetch_failed', error, {
                     forceRefresh: true,
-                    hadCachedChangelog: Boolean(cachedChangelog.changelog),
-                    cachedEntryCount: cachedChangelog.changelog?.entries?.length || 0,
+                    hadCachedChangelog: Boolean(scopedChangelog),
+                    cachedEntryCount: scopedChangelog?.entries?.length || 0,
                 });
                 return null;
             }
@@ -125,11 +131,11 @@ export const useChangelogCache = () => {
         // ============================================
         // STEP 2: Check Cache
         // ============================================
-        if (cachedChangelog.changelog) {
+        if (scopedChangelog) {
             // ✅ Cache hit - instant return
             options?.onCacheHit?.();
             
-            return cachedChangelog.changelog;
+            return scopedChangelog;
         }
 
         // ============================================
@@ -138,12 +144,13 @@ export const useChangelogCache = () => {
         options?.onCacheMiss?.();
 
         try {
-            const changelog = await fetchLatestChangelogPageOnce();
+            const changelog = await fetchLatestChangelogPageOnce(scopeKey);
             
             if (changelog) {
                 setCachedChangelog({
                     cachedOn: Timestamp.now(),
-                    changelog
+                    changelog,
+                    scopeKey,
                 });
                 return changelog;
             }
@@ -153,19 +160,19 @@ export const useChangelogCache = () => {
         } catch (error) {
             logHookFailure('answerlattice_changelog_cache_fetch_failed', error, {
                 forceRefresh: false,
-                hadCachedChangelog: Boolean(cachedChangelog.changelog),
-                cachedEntryCount: cachedChangelog.changelog?.entries?.length || 0,
+                hadCachedChangelog: Boolean(scopedChangelog),
+                cachedEntryCount: scopedChangelog?.entries?.length || 0,
             });
             return null;
         }
-    }, [cachedChangelog, setCachedChangelog]);
+    }, [scopeKey, scopedChangelog, setCachedChangelog]);
 
     /**
      * Check if item is cached
      */
     const isItemCached = useCallback((): boolean => {
-        return !!cachedChangelog.changelog;
-    }, [cachedChangelog.changelog]);
+        return Boolean(scopedChangelog);
+    }, [scopedChangelog]);
 
     return {
         // Primary method - use this!
@@ -176,7 +183,7 @@ export const useChangelogCache = () => {
         clearCache,
         
         // Cache state
-        cachedItem: cachedChangelog.changelog,
+        cachedItem: scopedChangelog,
         cacheStats: getCacheStats(),
     };
 };

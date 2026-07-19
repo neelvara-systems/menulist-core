@@ -1,42 +1,18 @@
 # Compiled Context Distribution Test Cases
 
-## Backend
+| Case | Expected result |
+| --- | --- |
+| Existing ready manifest plus onboarding initialization | Existing counters and active pointers remain unchanged; only missing documents are created. |
+| Wrong product, tenant, or workspace manifest | Reader and builder fail closed before Storage access. |
+| Ready manifest with unequal bundle/active/last-ready versions | Rejected as not ready. |
+| Manifest ref points outside derived version path | Rejected before Storage access. |
+| Public object exceeds its file-specific limit | Build fails; prior ready version remains available. |
+| Source query returns maximum plus one | Build fails instead of publishing truncated context. |
+| Sources change during build | New version is marked superseded and does not replace the active pointer. |
+| Build fails after uploads | Failed version prefixes are deleted best effort; last-ready pointer remains. |
+| Public manifest download | Contains no tenant/workspace IDs, source versions, private refs, stats, or limits. |
+| Widget config with bootstrap flag off | Returns legacy governed config without bundle pointers. |
+| Public API invalid/missing private bundle | Falls back to bounded Firestore path. |
+| MCP invalid/missing bundle | Tool call fails closed with bounded output. |
 
-- Onboarding initializes `sourceVersions_*` and `bundleManifest_*` without a heavy rebuild.
-- Manual rebuild writes immutable Storage objects and updates `bundleManifest_*`.
-- Nightly repair skips current manifests and rebuilds stale manifests from bounded source reads.
-- Failed rebuild preserves `lastReadyVersion`.
-- Source changes mark the manifest stale and increment only relevant counters.
-- Builder excludes drafts, proposals, tickets, chats, raw signals, audit logs, API keys, and billing internals.
-
-## Widget
-
-- Config endpoint returns existing widget config when bundles are missing.
-- Config endpoint returns bundle metadata when a ready manifest exists.
-- Predictive support capability remains correct.
-- Invalid key, disallowed origin, and rate-limit behavior stay unchanged.
-
-## Public API
-
-- Entities endpoint uses bundle-first reads when enabled and ready.
-- Entities endpoint falls back to bounded Firestore query when bundle is missing.
-- ETag behavior still works.
-
-## MCP
-
-- Session endpoint rejects missing secret, invalid key, and disabled flag.
-- Session endpoint returns a short-lived token for valid scoped `al_*` keys.
-- JSON-RPC endpoint lists tools.
-- `tools/list` filters out tools outside the signed session's exact capabilities.
-- A `context:read`-only session cannot write a missing-context signal, and a `signals:write`-only session cannot read a private bundle.
-- Read tools return context from private bundles.
-- `report_missing_context` writes one aggregated bucket update even when no ready bundle exists.
-- Expired or tampered session tokens are rejected.
-
-## Rules
-
-- Tenant members cannot directly read `sourceVersions_*` or `bundleManifest_*`; server APIs return sanitized owner summaries.
-- Tenant writes to `sourceVersions_*` and `bundleManifest_*` are limited to source counters and stale-marker fields.
-- Client writes to Storage bundles are denied.
-- Public Storage bundle reads use opaque `publicBundleId`.
-- Private MCP bundle reads are server-only.
+Focused source proof: `npm run test:answerlattice-context-bundle-version-boundary`, runtime truth verifier, root Answerlattice typecheck, focused ESLint, dedicated Functions build, dependency freeze, and `git diff --check`.

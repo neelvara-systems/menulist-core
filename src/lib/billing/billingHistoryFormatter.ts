@@ -1,4 +1,5 @@
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
+import { normalizeRazorpayInvoiceUrl } from '@lib/razorpay/checkoutUrl';
 import { BillingHistoryItem } from '@type/razorpay';
 
 type BillingHistoryRawEvent = Record<string, any>;
@@ -118,7 +119,7 @@ export const formatBillingHistoryEvents = (
                     currency: payment.currency,
                     status: payment.status,
                     invoiceId: payment.invoice_id,
-                    invoiceUrl: event.invoiceUrl,
+                    invoiceUrl: normalizeRazorpayInvoiceUrl(event.invoiceUrl) || undefined,
                     billingCycle: options.formatBillingCycle?.(startSeconds, endSeconds, event),
                 };
             }
@@ -141,7 +142,7 @@ export const formatBillingHistoryEvents = (
                     currency: payment.currency,
                     status: payment.status,
                     invoiceId: payment.invoice_id,
-                    invoiceUrl: event.invoiceUrl,
+                    invoiceUrl: normalizeRazorpayInvoiceUrl(event.invoiceUrl) || undefined,
                     credits: orderNotes.creditAmount || undefined,
                 };
             }

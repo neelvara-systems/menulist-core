@@ -1,4 +1,4 @@
-export type AnswerlatticeContextKey = 'contextKey' | 'path' | 'title' | 'feature' | 'page' | 'workflow' | 'role' | 'locale' | 'userRole' | 'plan';
+export type AnswerlatticeContextKey = 'contextKey' | 'path' | 'title' | 'feature' | 'page' | 'workflow' | 'role' | 'locale' | 'userRole' | 'plan' | 'state' | 'version';
 export type AnswerlatticePageContext = {
     contextVersion?: number;
     contextKey?: string;
@@ -13,6 +13,10 @@ export type AnswerlatticePageContext = {
     userRole?: string;
     /** Legacy compatibility field. Public plan label only; never billing metadata. */
     plan?: string;
+    /** Public product-state slug used only for governed answer applicability. */
+    state?: string;
+    /** Numeric product version label, for example 2.4.1. */
+    version?: string;
     /** Legacy compatibility field. Public slugs/tags/hints only. */
     entityHints?: string[];
 };

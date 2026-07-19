@@ -12,6 +12,7 @@
 
 import {
     LuBarChart3,
+    LuBell,
     LuBookOpen,
     LuBoxes,
     LuCode,
@@ -30,6 +31,7 @@ import {
     LuLanguages,
     LuMailCheck,
     LuKanbanSquare,
+    LuKeyRound,
     LuListChecks,
     LuMessageSquare,
     LuPaintbrush,
@@ -191,6 +193,8 @@ export const ANSWERLATTICE_SUPPORT_CONTROL_SUB_NAV: AnswerlatticeNavItem[] = [
     { key: 'support-conversations', label: 'Conversations', route: ANSWERLATTICE_ROUTES.CONVERSATIONS, icon: LuMessageSquare, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT },
     { key: 'support-feedback', label: 'Feedback', route: ANSWERLATTICE_ROUTES.FEEDBACK, icon: LuHeart, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT, featureFlag: 'ENABLE_ANSWERLATTICE_FEEDBACK_REVIEW' },
     { key: 'support-weekly-digest', label: 'Weekly Digest', route: ANSWERLATTICE_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_ANSWERLATTICE_WEEKLY_DIGEST' },
+    { key: 'support-workflow-notifications', label: 'Workflow Notifications', route: ANSWERLATTICE_ROUTES.WORKFLOW_NOTIFICATIONS, icon: LuBell, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS, featureFlag: 'ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS' },
+    { key: 'support-public-api', label: 'Public API', route: ANSWERLATTICE_ROUTES.PUBLIC_API, icon: LuKeyRound, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS, featureFlag: 'ENABLE_ANSWERLATTICE_PUBLIC_API' },
     { key: 'support-knowledge-base', label: 'Knowledge Base', route: ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE, icon: LuBookOpen, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
     { key: 'support-faqs', label: 'FAQs', route: ANSWERLATTICE_ROUTES.FAQS, icon: LuHelpCircle, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT' },
     { key: 'support-changelog', label: 'Changelog', route: ANSWERLATTICE_ROUTES.CHANGELOG, icon: LuReceipt, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE },

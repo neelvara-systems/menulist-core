@@ -48,6 +48,12 @@ import {
     AnswerlatticeSupportSearchCapacityError,
     createAnswerlatticeSupportSearchAccounting,
 } from '@lib/answerlattice/supportSearchAccounting';
+import {
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticePublicCitationUrl,
+    normalizeAnswerlatticePublicFallbackReason,
+    normalizeAnswerlatticeScopeClarification,
+} from '@lib/answerlattice/publicAnswerContracts';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -377,7 +383,6 @@ export async function POST(request: NextRequest) {
                     || (acceptUnsignedVisitor ? cleanWidgetEmail(body.visitor?.email) : null),
                 widgetSessionId: cleanWidgetIdentityText(body.sessionId, 120),
                 requestOrigin: cleanWidgetIdentityText(requestOrigin, 180),
-                requestPath: cleanWidgetIdentityText(validatedContext?.path, 180),
                 userAgentFamily: detectUserAgentFamily(request.headers.get('user-agent')),
                 visitorVerified: Boolean(verifiedVisitor),
                 evidenceLinks,
@@ -387,36 +392,59 @@ export async function POST(request: NextRequest) {
         await supportSearchAccounting.settle(result, Date.now() - operationStart);
 
         // ===== FORMAT RESPONSE for Widget frontend =====
-        // Widget expects: answer (not craftedAnswer), canonical, references (compact: id+title only)
-        const compactReferences = (result.references || []).map((ref: any) => ({
-            id: ref.id,
-            title: ref.title,
-            url: ref.url,
-        }));
+        // Keep KB references separate from reviewer-approved canonical citations.
+        const compactReferences = (result.references || []).slice(0, 12).flatMap((ref: any) => {
+            const id = typeof ref?.id === 'string' ? ref.id.trim().slice(0, 180) : '';
+            const title = typeof ref?.title === 'string' ? ref.title.trim().slice(0, 300) : '';
+            if (!id || !title) return [];
+            const url = normalizeAnswerlatticePublicCitationUrl(ref.url);
+            return [{ id, title, ...(url ? { url } : {}) }];
+        });
+        const publicFallbackReason = normalizeAnswerlatticePublicFallbackReason(result.fallbackReason);
 
         const response: Record<string, any> = {
             answer: result.craftedAnswer,
             canonical: result.canonical,
             references: compactReferences,
+            citations: normalizeAnswerlatticePublicCitations(result.citations),
             suggestedQuestions: result.suggestedQuestions || [],
             searchHistoryId: result.searchHistoryId,
             imageProcessed: result.imageProcessed,
             answerSource: result.answerSource || (result.canonical ? 'canonical' : 'rag'),
+            fallbackReason: publicFallbackReason,
+            fallbackSuggested: result.answerSource === 'empty'
+                || Boolean(publicFallbackReason)
+                || result.escalation?.escalationSuggested === true,
+            clarification: normalizeAnswerlatticeScopeClarification(result.clarification),
         };
 
         if (result.relatedContent) {
             response.relatedContent = {
                 key: result.relatedContent.key,
                 label: result.relatedContent.label,
-                articles: result.relatedContent.articles || [],
-                faqs: result.relatedContent.faqs || [],
-                changelogs: result.relatedContent.changelogs || [],
+                articles: (result.relatedContent.articles || []).slice(0, 5).map((article: any) => ({
+                    id: article.id,
+                    title: article.title,
+                })),
+                faqs: (result.relatedContent.faqs || []).slice(0, 5).map((faq: any) => ({
+                    id: faq.id,
+                    question: faq.question,
+                    ...(faq.articleId ? { articleId: faq.articleId } : {}),
+                })),
+                changelogs: (result.relatedContent.changelogs || []).slice(0, 3).map((entry: any) => ({
+                    id: entry.id,
+                    ...(entry.pageId ? { pageId: entry.pageId } : {}),
+                    title: entry.title,
+                    ...(entry.version ? { version: entry.version } : {}),
+                })),
             };
         }
 
         // Add canonical-specific fields when applicable
-        if (result.canonical) {
+        if (result.confidence) {
             response.confidence = result.confidence;
+        }
+        if (result.canonical) {
             response.answerType = result.answerType;
         }
 

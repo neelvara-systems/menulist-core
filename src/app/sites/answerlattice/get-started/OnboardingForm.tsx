@@ -7,7 +7,7 @@ import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkout
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { trackPlausibleEvent } from '@lib/website/plausible';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -72,23 +72,23 @@ const isOnboardResult = (value: unknown): value is OnboardResult => {
     if (value.workspaceCreated !== true) return false;
     if (value.apiKey !== null && !isNonEmptyString(value.apiKey)) return false;
     if (typeof value.recovered !== 'boolean' || typeof value.widgetKeyNeedsRotation !== 'boolean') return false;
+    if (value.widgetKeyNeedsRotation ? value.apiKey !== null : !isNonEmptyString(value.apiKey)) return false;
     if (!isPlainRecord(value.billing)) return false;
     if (!Number.isFinite(value.billing.amount) || Number(value.billing.amount) <= 0) return false;
     if (!['INR', 'USD'].includes(String(value.billing.currency))) return false;
     if (value.billing.interval !== 'MONTH') return false;
     if (!isPlainRecord(value.plan)) return false;
     if (!isNonEmptyString(value.plan.id) || !isNonEmptyString(value.plan.name) || typeof value.plan.isBeta !== 'boolean') return false;
+    if (!ONBOARDING_PLAN_IDS.has(value.plan.id)) return false;
 
-    if (value.subscription !== undefined && value.subscription !== null) {
-        if (!isPlainRecord(value.subscription)) return false;
-        if (!isNonEmptyString(value.subscription.id)) return false;
-        if (
-            value.subscription.shortUrl !== undefined
-            && value.subscription.shortUrl !== null
-            && normalizeRazorpaySubscriptionCheckoutUrl(value.subscription.shortUrl) === null
-        ) return false;
-        if (value.subscription.status !== undefined && value.subscription.status !== null && typeof value.subscription.status !== 'string') return false;
-    }
+    if (!isPlainRecord(value.subscription)) return false;
+    if (!isNonEmptyString(value.subscription.id)) return false;
+    if (
+        value.subscription.shortUrl !== undefined
+        && value.subscription.shortUrl !== null
+        && normalizeRazorpaySubscriptionCheckoutUrl(value.subscription.shortUrl) === null
+    ) return false;
+    if (!['created', 'pending'].includes(String(value.subscription.status))) return false;
 
     return true;
 };
@@ -131,22 +131,28 @@ const colors = {
 } as const;
 
 interface OnboardingFormProps {
+    basePath?: string;
     initialCurrency?: BillingCurrency;
     initialPlanId?: string;
 }
 
 export default function OnboardingForm({
+    basePath = '',
     initialCurrency = 'INR',
     initialPlanId = 'answerlattice_starter',
 }: OnboardingFormProps) {
     return (
         <SessionProvider>
-            <OnboardingFormInner initialCurrency={initialCurrency} initialPlanId={initialPlanId} />
+            <OnboardingFormInner
+                basePath={basePath}
+                initialCurrency={initialCurrency}
+                initialPlanId={initialPlanId}
+            />
         </SessionProvider>
     );
 }
 
-function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<OnboardingFormProps>) {
+function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Required<OnboardingFormProps>) {
     const { data: session, status, update } = useSession();
     const [step, setStep] = useState<OnboardingStep>(status === 'authenticated' ? 'details' : 'auth');
     const [companyName, setCompanyName] = useState('');
@@ -192,7 +198,7 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
         if (step !== 'done' || !result) return;
 
         trackPlausibleEvent('onboarding_completed');
-        trackPlausibleEvent('widget_key_generated');
+        if (result.apiKey) trackPlausibleEvent('widget_key_generated');
 
         const win = window as AnswerlatticeAnalyticsWindow;
         if (typeof win.gtag !== 'function') return;
@@ -201,10 +207,12 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
             event_category: 'answerlattice_website',
             event_label: result.plan.id,
         });
-        win.gtag('event', 'widget_key_generated', {
-            event_category: 'answerlattice_website',
-            event_label: result.plan.id,
-        });
+        if (result.apiKey) {
+            win.gtag('event', 'widget_key_generated', {
+                event_category: 'answerlattice_website',
+                event_label: result.plan.id,
+            });
+        }
     }, [result, step]);
 
     const handleGoogleSignIn = () => {
@@ -215,7 +223,8 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
         signOut({ callbackUrl: window.location.href });
     };
 
-    const handleCreateAccount = async () => {
+    const handleCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         const trimmedCompanyName = companyName.trim();
         const trimmedProductName = productName.trim();
         const trimmedProductUrl = productUrl.trim();
@@ -228,11 +237,19 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
         if (trimmedProductUrl) {
             try {
                 const parsed = new URL(trimmedProductUrl);
-                if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid URL');
+                if (
+                    !['http:', 'https:'].includes(parsed.protocol)
+                    || parsed.username
+                    || parsed.password
+                ) throw new Error('Invalid URL');
             } catch {
                 setError('Enter a valid product URL, for example https://app.example.com.');
                 return;
             }
+        }
+        if (primarySurfaces.length === 0) {
+            setError('Choose at least one main product page.');
+            return;
         }
 
         setStep('creating');
@@ -285,6 +302,21 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                         setStep('details');
                         return;
                     }
+                    if (data.code === 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING') {
+                        setError('Payment setup is still being verified. Wait a few minutes, then retry with the same details.');
+                        setStep('details');
+                        return;
+                    }
+                    if (data.code === 'ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED') {
+                        setError('The previous payment checkout is no longer usable. Submit the same details again to create a new checkout.');
+                        setStep('details');
+                        return;
+                    }
+                    if (data.code === 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED') {
+                        setError('Too many setup attempts. Wait until the retry window ends, then try again.');
+                        setStep('details');
+                        return;
+                    }
                     if (data.code === 'ANSWERLATTICE_ACCOUNT_EXISTS') {
                         await update();
                         setError('This Google account already has an AnswerLattice workspace. Refresh to open it.');
@@ -325,6 +357,7 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                     <h2 style={styles.cardTitle}>Create your AnswerLattice account</h2>
                     <p style={styles.cardSubtext}>Sign in with Google to create your workspace and continue setup.</p>
                     <button
+                        type="button"
                         onClick={handleGoogleSignIn}
                         style={styles.googleBtn}
                         data-answerlattice-event="google_signin_clicked"
@@ -339,7 +372,10 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                         <span>Continue with Google</span>
                     </button>
                     <p style={styles.terms}>
-                        By signing up, you agree to our Terms of Service and Privacy Policy.
+                        By signing up, you agree to our{' '}
+                        <a href={`${basePath}/terms-of-service`} style={styles.termsLink}>Terms of Service</a>
+                        {' '}and{' '}
+                        <a href={`${basePath}/privacy-policy`} style={styles.termsLink}>Privacy Policy</a>.
                     </p>
                 </div>
             )}
@@ -399,7 +435,7 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
 
             {/* Step 2: Company Details */}
             {step === 'details' && (!existingAnswerlatticeScope || status !== 'authenticated') && (
-                <div style={styles.card}>
+                <form style={styles.card} onSubmit={handleCreateAccount}>
                     <h2 style={styles.cardTitle}>Set up your account</h2>
                     <p style={styles.cardSubtext}>
                         Welcome{session?.user?.name ? `, ${session.user.name}` : ''}! Tell us about your product.
@@ -422,53 +458,67 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                     )}
 
                     <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Company name *</label>
+                        <label htmlFor="answerlattice-company-name" style={styles.label}>Company name *</label>
                         <input
+                            id="answerlattice-company-name"
                             type="text"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
                             placeholder="Company or studio name"
                             style={styles.input}
+                            autoComplete="organization"
                             autoFocus
+                            minLength={2}
+                            maxLength={120}
+                            required
                         />
                     </div>
 
                     <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Product name (optional)</label>
+                        <label htmlFor="answerlattice-product-name" style={styles.label}>Product name (optional)</label>
                         <input
+                            id="answerlattice-product-name"
                             type="text"
                             value={productName}
                             onChange={(e) => setProductName(e.target.value)}
                             placeholder="Product, app, or workspace name"
                             style={styles.input}
+                            maxLength={120}
                         />
                     </div>
 
                     <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Product URL (optional)</label>
+                        <label htmlFor="answerlattice-product-url" style={styles.label}>Product URL (optional)</label>
                         <input
+                            id="answerlattice-product-url"
                             type="url"
                             value={productUrl}
                             onChange={(e) => setProductUrl(e.target.value)}
                             placeholder="https://app.example.com"
                             style={styles.input}
+                            autoComplete="url"
+                            maxLength={300}
                         />
                     </div>
 
                     <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Support email (optional)</label>
+                        <label htmlFor="answerlattice-support-email" style={styles.label}>Support email (optional)</label>
                         <input
+                            id="answerlattice-support-email"
                             type="email"
                             value={supportEmail}
                             onChange={(e) => setSupportEmail(e.target.value)}
                             placeholder="support@example.com"
                             style={styles.input}
+                            autoComplete="email"
+                            maxLength={160}
                         />
                     </div>
 
                     <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Billing model</label>
+                        <label htmlFor="answerlattice-billing-model" style={styles.label}>Billing model</label>
                         <select
+                            id="answerlattice-billing-model"
                             value={billingModel}
                             onChange={(e) => setBillingModel(e.target.value as BillingModel)}
                             style={styles.select}
@@ -513,13 +563,15 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                         </div>
                     </fieldset>
 
-                    <div style={styles.fieldGroup}>
-                        <label style={styles.label}>Main product pages</label>
+                    <fieldset style={styles.fieldset}>
+                        <legend style={styles.label}>Main product pages</legend>
                         <div style={styles.checkboxGrid}>
                             {SURFACE_OPTIONS.map((surface) => (
                                 <label key={surface.key} style={styles.checkboxOption}>
                                     <input
                                         type="checkbox"
+                                        name="answerlattice-primary-surfaces"
+                                        value={surface.key}
                                         checked={primarySurfaces.includes(surface.key)}
                                         onChange={() => toggleSurface(surface.key)}
                                         style={styles.checkboxInput}
@@ -528,7 +580,7 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                                 </label>
                             ))}
                         </div>
-                    </div>
+                    </fieldset>
 
                     <div style={styles.planBadge}>
                         <span style={styles.planLabel}>{selectedPlan.name} plan</span>
@@ -536,17 +588,17 @@ function OnboardingFormInner({ initialCurrency, initialPlanId }: Required<Onboar
                         <span style={styles.planDesc}>{selectedPlan.priceINR.monthlyCredits} support credits each month. Workspace setup creates a pending paid subscription and a one-time widget key.</span>
                     </div>
 
-                    {error && <p style={styles.error}>{error}</p>}
+                    {error && <p style={styles.error} role="alert" aria-live="polite">{error}</p>}
 
                     <button
-                        onClick={handleCreateAccount}
+                        type="submit"
                         style={styles.primaryBtn}
                         data-answerlattice-event="onboarding_create_clicked"
                         data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}
                     >
                         Create workspace
                     </button>
-                </div>
+                </form>
             )}
 
             {/* Step 3: Creating */}
@@ -649,6 +701,7 @@ const styles: Record<string, CSSProperties> = {
         color: colors.textPrimary, fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%', minHeight: 44, justifyContent: 'center',
     },
     terms: { fontSize: 11, color: colors.textMuted, marginTop: 16, textAlign: 'center' },
+    termsLink: { color: colors.primaryLight, fontWeight: 600 },
     signedInBox: {
         width: '100%',
         display: 'flex',

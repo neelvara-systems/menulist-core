@@ -1,68 +1,51 @@
 # Answerlattice Help Widget - Mobile Support
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-05-19
-> **Audience:** Developers / Ops
+> **Updated:** July 18, 2026
+> **Status:** Supported through the existing Answerlattice dashboard shell
 
----
+## Decision
 
-## Mobile Decision
+`/answerlattice/widget` uses the same management template on desktop and mobile. Answerlattice does not add a second client-product settings surface or a mobile-only data path.
 
-`/answerlattice/widget` is supported on mobile through the existing Answerlattice dashboard shell. Client product mobile apps must not expose Answerlattice management screens inside their own app shell; widget configuration belongs in the Answerlattice dashboard.
+## Mobile Jobs
 
-Reason:
+A workspace operator can:
 
-- Widget setup is not a daily mobile workflow, so duplicating the full management console would add maintenance cost.
-- Emergency actions such as copying a just-created visible key, deleting a key, adding an origin, or confirming cache strategy should still be readable and usable on a phone.
-- The existing route already owns the single save path through `GET`/`PUT /api/answerlattice/widget-config` and `POST /api/answerlattice/widget-key`.
+- review the install state;
+- create a widget key and copy it during the one-time reveal;
+- rename or revoke a key;
+- add or remove exact HTTP/HTTPS origins;
+- add or remove exact or descendant route blocks;
+- edit bounded appearance and behavior settings;
+- save through the same protected configuration route.
 
-## Mobile Surface
+## Touch And Layout Contract
 
-The mobile route uses the same `AnswerlatticeWidgetManagement` template as desktop:
+- Key, origin, and blocked-route controls use at least a 44px touch target.
+- Primary create/add controls use the large button size on narrow screens.
+- Tabs and code snippets may scroll within their own bounds; the page must not overflow horizontally.
+- Save remains reachable after scrolling.
+- Raw keys are never shown again after the one-time reveal.
+- Destructive wording is `Revoke`, not `Delete`, because bounded audit metadata remains.
 
-- UI Configuration tab: appearance, behavior, desktop/mobile preview.
-- Install & Embed tab: install snippets, route/context snippets, runtime update note.
-- Access & Security tab: key create/copy/rename/delete, origin allowlist, and blocked routes.
+## Installed Mobile Runtime
 
-Client mobile apps may show an installed widget only when they explicitly embed the generic public widget script from their own runtime. Answerlattice core does not ship client-product-specific mobile hosts.
+The client product may load the same public widget script on a responsive web application. The maintained loader:
 
-## Runtime Update Mobile Rule
+- uses the fixed `/widget/embed` iframe route;
+- receives safe page/workflow context from explicit SDK/script calls;
+- checks the current pathname against blocked routes locally;
+- hides itself on terminal config denial;
+- does not expose Answerlattice management inside the client application.
 
-The old Cost & Cache section is not a customer-facing configuration surface. Runtime caching is an internal Answerlattice performance decision, so the UI now shows only a short runtime update note in the Install & Embed tab.
+Native mobile SDKs are outside the current contract. A native app would require an explicit product and security decision rather than reusing browser postMessage assumptions.
 
-Current mobile-visible behavior:
+## Verification
 
-| Area | Mobile display | Runtime behavior |
-| ---- | -------------- | ---------------- |
-| Dashboard settings | "Installed widgets update automatically" | Short cache through `/api/widget/config`; no realtime listener |
-| Widget auth | Key status and revoke controls only | Bounded auth freshness; revoke delay stays seconds-level |
-| Blocked routes | Route list in Access & Security | Local pathname check in the loader; no Firebase call |
-| Canonical answers | Not exposed as a setting | Answerlattice-owned retrieval cache stays internal |
-
-## Mobile UX Requirements
-
-- Touch targets must remain at least 44px where possible.
-- Save remains sticky at the bottom on mobile.
-- Code snippets may scroll inside textarea controls instead of widening the page.
-- No horizontal page overflow.
-- Runtime update note must stay compact and not become a dashboard.
-- No new mobile-only Firebase read path.
-
-## Test Cases
-
-1. Open `/answerlattice/widget` at mobile width.
-2. Confirm the Answerlattice drawer includes the Widget route under Management for platform users.
-3. Confirm client product mobile navigation does not expose Answerlattice management screens.
-4. Confirm the UI Configuration, Install & Embed, and Access & Security tabs fit on mobile.
-5. Confirm Save remains reachable after switching tabs and scrolling.
-6. Confirm the runtime update note does not make its own request.
-7. Confirm desktop layout still exposes the same settings without a separate Cost & Cache card.
-8. Confirm adding `/help-center/*` hides the installed widget on `/help-center` and child routes after runtime config refresh.
-
-## Version History
-
-| Date | Version | Change |
-| ---- | ------- | ------ |
-| 2026-05-20 | 1.2.0 | Added blocked route management to the mobile-supported widget settings contract. |
-| 2026-05-20 | 1.1.0 | Split widget management into tabs and replaced the customer-facing Cost & Cache section with a compact runtime update note. |
-| 2026-05-19 | 1.0.0 | Added mobile support decision for `/answerlattice/widget` and the Cost & Cache summary section. |
+1. Open `/answerlattice/widget` at a narrow viewport.
+2. Confirm all three management tabs remain reachable.
+3. Confirm key create, rename, and revoke controls have 44px targets.
+4. Confirm origin and route rows wrap without horizontal page overflow.
+5. Confirm the one-time key reveal remains readable and copyable.
+6. Confirm save and error states remain visible.
+7. Confirm no client-product mobile navigation exposes the Answerlattice management route.

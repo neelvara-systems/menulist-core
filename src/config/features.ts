@@ -2389,7 +2389,8 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Public API
      *
-     * true: Public canonical answer retrieval API, drift webhooks, signal ingestion
+     * true: Server-to-server canonical answer retrieval, public entity registry,
+     *       and governed signal ingestion endpoints
      * false: Internal-only access
      *
      * Pillar 5 of 5 — Infrastructure legitimacy.
@@ -2470,13 +2471,15 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Weekly Digest Surface
      *
-     * true: Answerlattice clients can review a weekly readiness/action digest built
-     *       from existing compact activation, context, coverage, and trust
-     *       summaries. No new scheduler or AI generation is required.
+     * true: Answerlattice clients can review a deterministic completed-week digest
+     *       built from exact-workspace chatAnalytics summaries. The Answerlattice
+     *       nightly scheduler prepares it on Sunday UTC, and support managers may
+     *       request the same bounded deterministic refresh without a model call.
      * false: Weekly Digest route/nav item hidden.
      *
-     * Cost model: reuses /api/answerlattice/activation/summary instead of scanning
-     * tickets, chats, KB, changelog, or signal collections.
+     * Cost model: the customer surface reads one scoped insight document. Manual
+     * prepare reads at most 14 daily analytics documents plus the current insight,
+     * writes only when the source hash changes, and makes no provider call.
      *
      * @see __docs__/answerlattice/self-sellable-product-strategy.md
      */
@@ -2490,9 +2493,10 @@ export const FEATURE_FLAGS = {
      *       dashboard.
      * false: Feedback review route/nav item is hidden.
      *
-     * Cost model: one bounded tenant/store feedback query on load. Feedback
-     * submission writes one feedback doc and, when signal mutation is enabled,
-     * one non-blocking feedback signal event.
+     * Cost model: one bounded tenant/store feedback query on load. A new
+     * authenticated submission transaction reads one deterministic feedback ID,
+     * writes at most one private feedback doc, and may emit one deterministic
+     * best-effort feedback signal. Exact request replays reuse both identities.
      *
      * @see __docs__/answerlattice/feedback-system/
      */
@@ -2766,30 +2770,31 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_SIGNAL_QUALITY: false,
 
     /**
-     * Answerlattice White-Label / Custom Branding
+     * Answerlattice Advanced Branding Profile
      *
-     * true: Per-tenant branding config active (custom colors, logo, favicon,
-     *       company name on help widget, KB pages, and email notifications)
-     * false: Default Answerlattice branding used everywhere
+     * true: Exposes a private, validated branding-profile prototype.
+     * false: Hides the prototype.
      *
-     * Phase 4 of Answerlattice build roadmap — competitive differentiator for B2B SaaS.
-     * Stores branding config on existing tenant/store document (no new collection).
+     * This flag does not apply the profile to the widget, hosted help, knowledge
+     * base, email, or any other customer-facing surface. The working widget has
+     * its own bounded widgetConfig branding contract.
      *
-     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
+     * @see __docs__/answerlattice/advanced-white-label/
      */
     ENABLE_ANSWERLATTICE_WHITE_LABEL: false,
 
     /**
      * Answerlattice Multi-Language KB Articles
      *
-     * true: Articles can have locale field + translated content stored per locale
-     * false: English-only articles (current behavior)
+     * true: Authorized owners can prepare source-fingerprinted translation drafts
+     *       on KB articles. This flag does not enable customer delivery.
+     * false: Translation draft generation and its governance tab remain hidden.
      *
-     * Phase 4 of Answerlattice build roadmap — 75% of internet users non-English.
-     * Additive field on existing kb_articles collection (no new collection).
-     * Leverages existing next-intl infrastructure.
+     * Keep disabled until a separate reviewed publication, locale selection,
+     * fallback, freshness, and customer-delivery workflow is implemented and
+     * validated. Existing app localization does not provide that workflow.
      *
-     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
+     * @see __docs__/answerlattice/multi-language-articles/
      */
     ENABLE_ANSWERLATTICE_MULTI_LANGUAGE: false,
 
@@ -2892,7 +2897,7 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Instant Response Cache (Upstash Redis)
      *
-     * true: Canonical answer hits cached in Upstash Redis for sub-10ms responses.
+     * true: Canonical answer hits use an optional bounded Upstash Redis fast path.
      *       Only deterministic canonical answers are cached (not RAG responses).
      *       Cache keys include entity ID + answer version + plan + role.
      *       TTL: 24 hours. Invalidation: automatic via version in key.
@@ -2910,8 +2915,8 @@ export const FEATURE_FLAGS = {
      * Answerlattice Compiled Context Bundles
      *
      * true: Approved Answerlattice context is compiled into immutable Firebase
-     *       Storage JSON bundles and served through manifest/cache-first
-     *       runtime paths for widget, public API, and MCP.
+     *       Storage JSON bundles and served through validated manifest/cache-first
+     *       runtime paths for public API and MCP. Widget consumption remains gated.
      * false: Runtime paths keep existing Firestore-backed behavior.
      *
      * Cost model: source-change-driven rebuilds only. Runtime reads use
@@ -2938,12 +2943,12 @@ export const FEATURE_FLAGS = {
      * Answerlattice Widget Bundle Bootstrap
      *
      * true: Widget config response includes active public bundle version and
-     *       proxy paths when a ready manifest exists.
+     *       proxy paths when a ready manifest exists and the widget consumes them.
      * false: Widget config returns only the legacy remote config payload.
      *
      * Requires: ENABLE_ANSWERLATTICE_WIDGET + ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true
      */
-    ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP: true,
+    ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP: false,
 
     /**
      * Answerlattice Public API Bundle Reads
@@ -2959,30 +2964,33 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice MCP
      *
-     * true: Enables session-token auth and read-only JSON-RPC MCP tools backed
-     *       by private compiled context bundles.
+     * true: Enables session-token auth and bounded JSON-RPC MCP tools backed
+     *       by private compiled context bundles. An optional signals:write tool
+     *       may record a governed missing-context signal; no tool mutates truth
+     *       or performs product/account actions.
      * false: MCP endpoints return disabled responses.
      *
      * Keep disabled by default until selected design-partner rollout. MCP can
      * multiply context reads quickly, so this must never query raw Firestore
      * collections per tool call.
      *
-     * Requires: ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true
+     * Requires: ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true. Owner-issued
+     * mcp:read credentials also require the Public API key-management surface.
      */
     ENABLE_ANSWERLATTICE_MCP: false,
 
     /**
      * Answerlattice Automatic Knowledge Creation (AI Draft Generation)
      *
-     * true: When new_answer_required mutation proposals are created (nightly batch
-     *       or recurring fallback detection), Gemini generates a structured draft
-     *       canonical answer stored on proposal.suggestedChange.
-     *       Founder reviews draft → edits → approves → canonical answer created.
-     * false: Proposals created without drafts (current behavior). Founder writes from scratch.
+     * true: Eligible new-answer and content-refinement mutation proposals can receive
+     *       a bounded structured draft stored on proposal.suggestedChange.
+     *       Founder review and server-owned governance remain mandatory.
+     * false: Proposals remain available without automatic draft generation.
      *
      * Expansion Item #4 — Last-mile enhancement to Signal Mutation Engine.
      * Zero new Firestore collections. Draft stored on existing proposal document.
-     * Max 10 drafts per nightly run. Cost: <$0.01/run.
+     * Max 10 successful drafts per tenant scheduler run. Measure actual provider
+     * and Firestore cost through runtime accounting instead of static estimates.
      *
      * Doctrine: "LLM assists the control plane. It never becomes the control plane."
      * AI drafts are PROPOSALS — never auto-published.
@@ -2995,7 +3003,7 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Product Friction Intelligence
      *
-     * true: Nightly friction aggregation + weekly AI insight generation active
+     * true: Nightly scoped friction-evidence aggregation + weekly advisory review active
      * false: No friction stats computed, GovernanceHub friction tab hidden
      *
      * Expansion Item #5 — Converts support signals into product friction insights.
@@ -3049,11 +3057,15 @@ export const FEATURE_FLAGS = {
      * true: Escalation detection in coreSearch() pipeline. Low-confidence answers
      *       trigger "Still need help?" UI. Tickets created with retrieval debug,
      *       entity debug, and product context. ESCALATION signals emitted.
-     * false: No escalation detection. AI answers shown as-is (current behavior).
+     * false: Automatic evaluator-driven suggestions are disabled. The embedded
+     *        widget still supports an explicit, user-submitted support request
+     *        from a stored widget search result; that path is governed by the
+     *        widget flag, key/origin admission, and its own server contract.
      *
      * Expansion Item #8 — AI failure capture pipeline.
      * Zero new Firestore collections. Enriches existing ticket + signal docs.
-     * Cost: ~$0.01/month at 10 tenants.
+     * Cost must be measured from actual search, ticket, and signal usage before
+     * any packaging or public claim.
      *
      * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true (for canonical confidence)
      * @see __docs__/answerlattice/ai-failure-escalation/
@@ -3063,13 +3075,12 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Ticket → Knowledge Loop (Expansion Item #9)
      *
-     * true: Ticket resolution signals enriched with conversation data.
-     *       Nightly batch extracts knowledge candidates from resolved ticket clusters.
-     *       Proposals created with draftSource: 'ticket_resolution'.
-     * false: Standard ticket signals only (no resolution extraction)
+     * true: Bounded ticket-resolution evidence can produce human-reviewed mutation
+     *       proposals with draftSource: 'ticket_resolution'.
+     * false: Ticket-resolution extraction is disabled.
      *
-     * Accumulation architecture: requires 3+ resolved tickets per entity before extraction.
-     * Max 5 drafts per nightly run. Working estimate: ~INR 10/tenant/month.
+     * Accumulation architecture: requires 3+ unique resolved tickets per entity.
+     * Max 5 new ticket-derived proposals per tenant scheduler run; no auto-publish.
      *
      * Requires: ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true
      * Requires: ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE = true (for draft generation)
@@ -3080,9 +3091,10 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Founder Trust Layer (Trust Metrics Dashboard)
      *
-     * true: Nightly batch aggregates 4 trust metrics (coverage, resolution, drift, entity health)
-     *       into platformSummary/trustMetrics_{tId}_{sId}. GovernanceHub shows "System Trust" tab
-     *       with metric cards, top failing entities, and escalation breakdown.
+     * true: Nightly batch aggregates complete-window coverage, non-escalation,
+     *       explicit resolution outcomes, drift, and entity answer coverage into
+     *       platformSummary/trustMetrics_{tId}_{sId}. GovernanceHub shows answer
+     *       evidence, top review areas, and a query escalation breakdown.
      * false: Trust metrics not computed, trust tab hidden in GovernanceHub.
      *
      * Expansion Item #10 — Founder confidence in AI answer quality.

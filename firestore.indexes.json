@@ -211,6 +211,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "event",
           "order": "ASCENDING"
         },
@@ -2588,6 +2592,15 @@
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "modifiedOn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_supportBoardCards",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "priority", "order": "ASCENDING" }
       ]
     },
     {

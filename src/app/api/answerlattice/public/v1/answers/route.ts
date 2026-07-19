@@ -9,8 +9,17 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { attemptCanonicalRetrieval } from '@lib/answerlattice/canonicalRetrieval';
-import { ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION, authenticateAnswerlatticePublicApi, toIsoTimestamp } from '@lib/answerlattice/publicApi';
-import { apiError } from '@lib/publicApi/auth';
+import {
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticeScopeClarification,
+} from '@lib/answerlattice/publicAnswerContracts';
+import {
+    ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,
+    answerlatticePublicApiError,
+    authenticateAnswerlatticePublicApi,
+    buildAnswerlatticePublicApiResponseHeaders,
+    toIsoTimestamp,
+} from '@lib/answerlattice/publicApi';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
@@ -22,9 +31,9 @@ const PUBLIC_ANSWER_REQUEST_MAX_BODY_BYTES = 16 * 1024;
 const PublicAnswerRequestSchema = z.object({
     query: z.string().trim().min(1).max(500),
     currentVersion: z.number().int().positive().max(999_999_999).optional(),
-    planId: z.string().trim().max(80).optional(),
-    roleId: z.string().trim().max(80).optional(),
-    stateId: z.string().trim().max(80).optional(),
+    planId: z.string().trim().min(1).max(80).optional(),
+    roleId: z.string().trim().min(1).max(80).optional(),
+    stateId: z.string().trim().min(1).max(80).optional(),
     context: z.unknown().optional(),
     includeDebug: z.boolean().optional().default(false),
 }).strict();
@@ -64,7 +73,6 @@ function serializeAnswer(answer: any) {
         governance: {
             driftFlag: Boolean(answer.governance?.driftFlag),
             reviewRequired: Boolean(answer.governance?.reviewRequired),
-            driftReason: answer.governance?.driftReason || null,
         },
         modifiedOn: toIsoTimestamp(answer.modifiedOn),
     };
@@ -77,6 +85,7 @@ function serializeFallbackReason(reason?: string | null): string | null {
 
     const allowedReasons = new Set([
         'canonical_answers_disabled',
+        'canonical_retrieval_unavailable',
         'no_entity_index',
         'no_entity_match',
         'no_canonical_answers_for_entities',
@@ -94,7 +103,7 @@ export async function POST(request: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS) {
-        return apiError('CANONICAL_ANSWERS_DISABLED', 'Canonical answers are not enabled for this workspace', 503);
+        return answerlatticePublicApiError('CANONICAL_ANSWERS_DISABLED', 'Canonical answers are not enabled for this workspace', 503);
     }
 
     try {
@@ -103,7 +112,7 @@ export async function POST(request: NextRequest) {
             tooLargeMessage: 'Request body too large',
         });
         if (bodyResult.ok === false) {
-            return apiError(
+            return answerlatticePublicApiError(
                 bodyResult.response.status === 413 ? 'REQUEST_BODY_TOO_LARGE' : 'INVALID_INPUT',
                 bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid request body',
                 bodyResult.response.status,
@@ -112,7 +121,7 @@ export async function POST(request: NextRequest) {
 
         const validation = PublicAnswerRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
-            return apiError('INVALID_INPUT', 'Invalid request body', 400);
+            return answerlatticePublicApiError('INVALID_INPUT', 'Invalid request body', 400);
         }
 
         const body = validation.data;
@@ -120,7 +129,7 @@ export async function POST(request: NextRequest) {
             ? AnswerlatticeContextSchema.safeParse(body.context)
             : null;
         if (productContext && !productContext.success) {
-            return apiError('INVALID_INPUT', 'Invalid page context', 400);
+            return answerlatticePublicApiError('INVALID_INPUT', 'Invalid page context', 400);
         }
 
         const result = await attemptCanonicalRetrieval(body.query, {
@@ -141,30 +150,22 @@ export async function POST(request: NextRequest) {
             matchedEntityIds: result.matchedEntityIds,
             fallbackReason: serializeFallbackReason(result.fallbackReason),
             answer: serializeAnswer(result.answer),
+            citations: normalizeAnswerlatticePublicCitations(result.citations),
+            clarification: normalizeAnswerlatticeScopeClarification(result.clarification),
         };
-
-        if (result.graphExpansion && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH) {
-            response.graphExpansion = {
-                interactionDetected: result.graphExpansion.interactionDetected || null,
-                expandedEntities: result.graphExpansion.expandedEntities || [],
-                relatedSuggestions: result.graphExpansion.relatedSuggestions || [],
-            };
-        }
 
         if (body.includeDebug && isPublicApiDebugResponseAllowed()) {
             response.entityDebug = result.entityDebug || null;
         }
 
         return NextResponse.json(response, {
-            headers: {
-                'Cache-Control': 'private, no-store',
-            },
+            headers: buildAnswerlatticePublicApiResponseHeaders(),
         });
     } catch (error) {
         logRuntimeFailure('answerlattice_public_answers_retrieval_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', auth.context.tId),
             ...getBoundedRuntimeStringContext('storeId', auth.context.sId),
         });
-        return apiError('INTERNAL_ERROR', 'Internal error', 500);
+        return answerlatticePublicApiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

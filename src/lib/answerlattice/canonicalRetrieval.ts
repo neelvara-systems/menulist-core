@@ -30,8 +30,9 @@ import {
     parseAnswerlatticeRetrievalRelease,
     parseAnswerlatticeRetrievalSearchIndex,
 } from '@lib/answerlattice/retrievalContracts';
+import { normalizeAnswerlatticePublicCitations } from '@lib/answerlattice/publicAnswerContracts';
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
-import { AnswerlatticeAnswerType, AnswerlatticeCanonicalAnswer, AnswerlatticeContextPayload, AnswerlatticeEntity, AnswerlatticeEntityGraphIndex, AnswerlatticeEntitySearchIndex, AnswerlatticeGraphExpansionResult, AnswerlatticeRelease } from "@type/answerlattice";
+import { AnswerlatticeAnswerType, AnswerlatticeCanonicalAnswer, AnswerlatticeContextPayload, AnswerlatticeEntity, AnswerlatticeEntityGraphIndex, AnswerlatticeEntitySearchIndex, AnswerlatticeGraphExpansionResult, AnswerlatticePublicCitation, AnswerlatticeRelease, AnswerlatticeScopeClarification } from "@type/answerlattice";
 
 // ═══════════════════════════════════════════════════════════════
 // KNOWLEDGE INTEGRITY GUARD (Phase 4 — ChatGPT Review Fix)
@@ -72,6 +73,9 @@ export interface CanonicalRetrievalResult {
     confidence: 'high' | 'medium' | 'low' | 'none';
     fallbackReason?: string;
     answerType?: AnswerlatticeAnswerType;  // Guided Workflows (Item #2) — exposed for widget/API response
+    citations?: AnswerlatticePublicCitation[];
+    evidenceReferenceIds?: string[];
+    clarification?: AnswerlatticeScopeClarification;
 
     /** Entity resolution debug (AI Failure Escalation — Item #8) */
     entityDebug?: {
@@ -804,7 +808,10 @@ export async function attemptCanonicalRetrieval(
             .map(item => item.answer);
 
         if (scopeMatchedAnswers.length === 0) {
-            const missingContext = scopeEvaluations.some(item => item.match.missingContext.length > 0);
+            const requiredContext = Array.from(new Set(
+                scopeEvaluations.flatMap(item => item.match.missingContext),
+            ));
+            const missingContext = requiredContext.length > 0;
             return {
                 found: false,
                 canonical: false,
@@ -813,6 +820,12 @@ export async function attemptCanonicalRetrieval(
                 fallbackReason: missingContext
                     ? 'canonical_scope_context_required'
                     : 'canonical_scope_not_covered',
+                ...(missingContext ? {
+                    clarification: {
+                        type: 'scope_context' as const,
+                        requiredContext,
+                    },
+                } : {}),
                 entityDebug: buildEntityDebug(),
             };
         }
@@ -870,8 +883,10 @@ export async function attemptCanonicalRetrieval(
 
         // Determine confidence based on entity match score and answer quality
         const topEntityScore = matchedEntities[0].score;
+        const validationConfidence = getAnswerConfidenceScore(bestAnswer);
         let confidence: CanonicalRetrievalResult['confidence'] = 'high';
-        if (topEntityScore < 3) confidence = 'medium';
+        if (validationConfidence < 0.5) confidence = 'low';
+        else if (topEntityScore < 3 || validationConfidence < 0.8) confidence = 'medium';
 
         // Knowledge Graph: rebuild suggestions now that we have bestAnswer
         if (graphExpansion && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH) {
@@ -899,6 +914,11 @@ export async function attemptCanonicalRetrieval(
             matchedEntityIds: topEntityIds,
             confidence,
             answerType: bestAnswer.answerType || 'explanation',
+            citations: normalizeAnswerlatticePublicCitations(bestAnswer.evidence?.citations),
+            evidenceReferenceIds: Array.from(new Set([
+                ...(bestAnswer.evidence?.sourceIds || []),
+                ...(bestAnswer.evidence?.citations || []).map(citation => citation.id),
+            ])).slice(0, 20),
             entityDebug: buildEntityDebug(),
             graphExpansion,
         };

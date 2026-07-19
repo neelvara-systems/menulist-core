@@ -1,6 +1,8 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveAnswerlatticeHelpChatDraftScope } from '@lib/answerlattice/helpChatDrafts';
 import { Button, Drawer, Flex, Grid, Modal, Typography, theme } from 'antd';
 import { useEffect, useReducer, useState } from 'react';
 import { LuHistory, LuPlus, LuX } from 'react-icons/lu';
@@ -28,6 +30,7 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
 
     // Auth session
     const loggedInSession = useClientAuthSession();
+    const draftScope = resolveAnswerlatticeHelpChatDraftScope(loggedInSession);
 
     // State Management
     const [activeSessionId, setActiveSessionId] = useState<string | null | undefined>(undefined);
@@ -146,6 +149,7 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
             onRetry={(query) => handlers.onRetry(query)}
             isNewChat={isNewChat}
             sessionId={activeSessionId}
+            draftScope={draftScope}
             sessionTitle={activeSession?.title}
             chatState={chatState}
             onSkipTyping={() => dispatchChatState({ type: 'SKIP_TYPING' })}
@@ -168,7 +172,11 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
             }
             onStartFollowUp={handlers.handleStartFollowUp}
             onNewQuestion={isMobile ? handleMobileNewChat : handlers.handleNewChat}
-            onEscalate={handlers.handleEscalate}
+            onEscalate={
+                FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION
+                    ? handlers.handleEscalate
+                    : undefined
+            }
             isMobile={isMobile}
         />
     );

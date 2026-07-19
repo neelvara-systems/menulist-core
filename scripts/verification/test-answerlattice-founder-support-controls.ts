@@ -7,7 +7,13 @@ import {
     verifyAnswerlatticeVisitorToken,
 } from '../../src/lib/answerlattice/verifiedWidgetContextServer';
 import {
+    ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     AnswerlatticeAnswerTestCaseSchema,
+    AnswerlatticeAnswerTestRunRequestSchema,
+    createEmptyAnswerlatticeAnswerTestSummary,
+    getAnswerlatticeAnswerTestSummaryId,
+    isAnswerlatticeAnswerTestRunCurrent,
+    parseAnswerlatticeAnswerTestSummaryIdentity,
     prepareAnswerlatticeAnswerTestCasesForWrite,
     type AnswerlatticeAnswerTestCase,
 } from '../../src/lib/answerlattice/answerTestContracts';
@@ -16,7 +22,13 @@ import {
     extractAnswerTestReferenceIds,
     getAnswerTestProofSummary,
 } from '../../src/lib/answerlattice/answerTestEvaluation';
+import { getAnswerlatticeAnswerTestRunRequestFingerprint } from '../../src/lib/answerlattice/answerTestRunIdentity';
 import { buildAnswerlatticeActivationAnswerTestSummary } from '../../src/lib/answerlattice/activationAnswerTestSummary';
+import {
+    ANSWERLATTICE_WIDGET_RUNTIME_PROOF_MAX_AGE_MS,
+    buildAnswerlatticeActivationSummary,
+} from '../../src/lib/answerlattice/activationSummary';
+import { isAnswerlatticeActivationSummaryResponse } from '../../src/lib/answerlattice/activationDashboardResponseClient';
 import { ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS } from '../../src/lib/answerlattice/answerTestStarterPack';
 import {
     AnswerlatticeProposalImpactResponseSchema,
@@ -227,6 +239,96 @@ assert.throws(
     }),
     'specific-source tests must declare at least one reference ID',
 );
+assert.equal(
+    AnswerlatticeAnswerTestCaseSchema.safeParse({
+        ...legacyCase,
+        expected: {
+            ...legacyCase.expected,
+            mustInclude: ['invoice'],
+            mustNotInclude: ['Invoice'],
+        },
+    }).success,
+    false,
+    'one phrase cannot be both required and blocked',
+);
+assert.equal(
+    AnswerlatticeAnswerTestRunRequestSchema.safeParse({
+        requestId: 'answer_test_duplicate_ids',
+        caseIds: ['legacy_case', 'legacy_case'],
+        mode: 'canonical_only',
+    }).success,
+    false,
+    'one run request must not repeat a case ID',
+);
+
+const exactSummary = {
+    ...createEmptyAnswerlatticeAnswerTestSummary(11, 22),
+    revision: 3,
+    cases: [legacyCase],
+};
+assert.equal(
+    parseAnswerlatticeAnswerTestSummaryIdentity(exactSummary, { tId: 11, sId: 22 })?.revision,
+    exactSummary.revision,
+    'an exact Answerlattice answer-test summary must remain usable',
+);
+for (const malformedSummary of [
+    { ...exactSummary, pId: 'ML' },
+    { ...exactSummary, id: 'answerTests_11_999' },
+    { ...exactSummary, schemaVersion: ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION + 1 },
+    { ...exactSummary, revision: '3' },
+]) {
+    assert.equal(
+        parseAnswerlatticeAnswerTestSummaryIdentity(
+            malformedSummary as unknown as Record<string, unknown>,
+            { tId: 11, sId: 22 },
+        ),
+        null,
+        'malformed persisted answer-test truth must fail closed instead of being partially accepted',
+    );
+}
+assert.throws(
+    () => getAnswerlatticeAnswerTestSummaryId(Number.NaN, 22),
+    'answer-test summary IDs must reject non-numeric scope',
+);
+
+const answerTestFingerprint = getAnswerlatticeAnswerTestRunRequestFingerprint({
+    kind: 'answer_test',
+    mode: 'canonical_only',
+    suiteRevision: 3,
+    caseIds: ['legacy_case'],
+});
+assert.equal(answerTestFingerprint.length, 64, 'answer-test request fingerprints must be SHA-256 evidence');
+assert.equal(
+    answerTestFingerprint,
+    getAnswerlatticeAnswerTestRunRequestFingerprint({
+        kind: 'answer_test',
+        mode: 'canonical_only',
+        suiteRevision: 3,
+        caseIds: ['legacy_case'],
+    }),
+    'identical answer-test requests must produce the same fingerprint',
+);
+assert.notEqual(
+    answerTestFingerprint,
+    getAnswerlatticeAnswerTestRunRequestFingerprint({
+        kind: 'release_check',
+        mode: 'canonical_only',
+        suiteRevision: 3,
+        caseIds: ['legacy_case'],
+        releaseId: 'release_1',
+    }),
+    'manual runs and release checks must not share idempotency identity',
+);
+assert.equal(
+    isAnswerlatticeAnswerTestRunCurrent({ suiteRevision: 3 }, exactSummary),
+    true,
+    'a run tied to the current suite revision must remain current',
+);
+assert.equal(
+    isAnswerlatticeAnswerTestRunCurrent({ suiteRevision: 2 }, exactSummary),
+    false,
+    'a case-definition edit must make older proof stale',
+);
 
 assert.deepEqual(
     extractAnswerTestReferenceIds([
@@ -421,23 +523,31 @@ const activationSourceVersions = {
     entityRelations: 1,
     releases: 6,
 };
-const activationCases = ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS.map(id => ({
+const activationCases = ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS.map((id, index) => ({
     id,
     active: true,
     updatedAt: '2026-07-17T09:00:00.000Z',
+    riskLevel: index === 0 ? 'critical' as const : 'standard' as const,
 }));
 const activationResults = ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS.map(caseId => ({
     caseId,
     passed: true,
     riskLevel: 'standard',
 }));
+const activationSummaryIdentity = {
+    id: getAnswerlatticeAnswerTestSummaryId(11, 22),
+    schemaVersion: ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
+    revision: 7,
+};
 assert.deepEqual(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             proofStatus: 'ready',
             criticalFailureCount: 0,
             completedAt: '2026-07-17T10:00:00.000Z',
@@ -457,11 +567,13 @@ assert.deepEqual(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             completedAt: '2026-07-17T10:00:00.000Z',
             sourceVersions: activationSourceVersions,
             results: activationResults.slice(0, 9),
@@ -472,11 +584,13 @@ assert.equal(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             proofStatus: 'ready',
             criticalFailureCount: 0,
             completedAt: '2026-07-17T10:00:00.000Z',
@@ -491,11 +605,72 @@ assert.equal(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases.map(testCase => ({ ...testCase, riskLevel: 'standard' as const })),
+        runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults.map((result, index) => index === 0
+                ? { ...result, passed: false, riskLevel: 'critical' }
+                : result),
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStatus,
+    'blocked',
+    'A retained critical result cannot be downgraded by contradictory current standard-risk metadata',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults.map((result, index) => index === 0
+                ? { caseId: result.caseId, passed: false }
+                : result),
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStatus,
+    null,
+    'A retained result without an explicit risk classification must not establish launch proof',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
+            proofStatus: 'review',
+            criticalFailureCount: 0,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults.map((result, index) => index === 0
+                ? { ...result, passed: false, riskLevel: 'standard' }
+                : result),
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStatus,
+    'blocked',
+    'Activation must derive criticality from the current case definition instead of stale retained result metadata',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             proofStatus: 'ready',
             criticalFailureCount: 0,
             completedAt: '2026-07-17T10:00:00.000Z',
@@ -508,6 +683,7 @@ assert.equal(
 );
 assert.deepEqual(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
@@ -515,6 +691,7 @@ assert.deepEqual(
             ? { ...testCase, updatedAt: '2026-07-17T11:00:00.000Z' }
             : testCase),
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             completedAt: '2026-07-17T10:00:00.000Z',
             sourceVersions: activationSourceVersions,
             results: activationResults,
@@ -532,11 +709,13 @@ assert.deepEqual(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             completedAt: '2026-07-17T10:00:00.000Z',
             sourceVersions: activationSourceVersions,
             results: activationResults,
@@ -547,11 +726,13 @@ assert.equal(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             completedAt: '2026-07-17T10:00:00.000Z',
             results: activationResults,
         }],
@@ -561,11 +742,13 @@ assert.equal(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 11,
         sId: 22,
         cases: activationCases,
         runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
             completedAt: '2026-07-17T10:00:00.000Z',
             sourceVersions: { ...activationSourceVersions, kb: null },
             results: activationResults,
@@ -576,6 +759,65 @@ assert.equal(
 );
 assert.equal(
     buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            suiteRevision: activationSummaryIdentity.revision - 1,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults,
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStale,
+    true,
+    'A run started from an older test-suite revision must remain historical proof',
+);
+assert.deepEqual(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases.map((testCase, index) => index === 0
+            ? { ...testCase, updatedAt: 'not-a-date' }
+            : testCase),
+        runs: [{
+            suiteRevision: activationSummaryIdentity.revision,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults,
+        }],
+    }, 11, 22, activationSourceVersions),
+    {
+        activeCaseCount: 9,
+        firstTenCount: 9,
+        latestProofStatus: null,
+        latestCriticalFailureCount: 0,
+        latestProofStale: false,
+        lastRunAt: null,
+    },
+    'A launch case without a valid server timestamp must not count toward First 10 proof',
+);
+const futureDatedProof = buildAnswerlatticeActivationAnswerTestSummary({
+    ...activationSummaryIdentity,
+    pId: 'AL',
+    tId: 11,
+    sId: 22,
+    cases: activationCases,
+    runs: [{
+        suiteRevision: activationSummaryIdentity.revision,
+        completedAt: '2999-01-01T00:00:00.000Z',
+        sourceVersions: activationSourceVersions,
+        results: activationResults,
+    }],
+}, 11, 22, activationSourceVersions);
+assert.equal(futureDatedProof.latestProofStatus, null, 'a future-dated run must never satisfy current launch proof');
+assert.equal(futureDatedProof.latestProofStale, true, 'a future-dated covered run must remain visibly stale');
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        ...activationSummaryIdentity,
         pId: 'AL',
         tId: 999,
         sId: 22,
@@ -584,6 +826,185 @@ assert.equal(
     }, 11, 22, activationSourceVersions).firstTenCount,
     0,
     'A cross-scope Answer Tests summary must fail closed',
+);
+
+const activationNowMillis = Date.parse('2026-07-19T12:00:00.000Z');
+const activationWidgetHash = 'a'.repeat(64);
+const buildActivationStore = (lastSeenAt: string) => ({
+    pId: 'AL',
+    tId: 11,
+    sId: 22,
+    storeId: 22,
+    tenantId: 11,
+    companyName: 'Example SaaS',
+    productName: 'Example Product',
+    productUrl: 'https://app.example.com',
+    supportEmail: 'support@example.com',
+    billingModel: 'subscription',
+    primarySurfaces: ['billing'],
+    answerlatticeSubscription: {
+        id: 'sub_123',
+        planId: 'answerlattice_starter',
+        planName: 'Starter',
+        status: 'active',
+        currency: 'USD',
+        amount: 49,
+    },
+    answerlatticeWidgetApi: {
+        keyHashes: [activationWidgetHash],
+        activeKeyHash: activationWidgetHash,
+        keysByHash: {
+            [activationWidgetHash]: {
+                id: 'key_123',
+                name: 'Production widget',
+                keyPrefix: 'al_live',
+                status: 'active',
+                productId: 'AL',
+                purpose: 'answerlattice_widget',
+                scopes: ['widget:config'],
+                createdAt: '2026-07-18T10:00:00.000Z',
+            },
+        },
+    },
+    widgetAllowedOrigins: ['https://app.example.com'],
+    widgetRuntimeStatus: {
+        lastSeenAt,
+        lastOrigin: 'https://app.example.com',
+        lastPath: '/settings/billing',
+        lastContextKey: 'settings_billing',
+        lastFeature: 'billing',
+        lastPage: 'settings',
+        userAgentFamily: 'chrome',
+        seenCount: 3,
+    },
+});
+const activationContextSummary = {
+    pId: 'AL',
+    tId: 11,
+    sId: 22,
+    generatedAt: '2026-07-19T10:00:00.000Z',
+    surfaceCount: 1,
+    articleCount: 1,
+    faqCount: 1,
+    changelogCount: 1,
+    ticketCount: 1,
+    surfaces: {
+        settings_billing: {
+            key: 'settings_billing',
+            label: 'Billing settings',
+            routePatterns: ['/settings/billing'],
+            feature: 'billing',
+            articles: [{ id: 'article_1', title: 'Manage billing' }],
+            faqs: [{ id: 'faq_1', question: 'How does billing work?' }],
+            changelogs: [{ id: 'release_1', pageId: 'page_1', title: 'Billing update' }],
+            tickets: { total: 1, open: 0, recentDisplayIds: [] },
+        },
+    },
+};
+const activationCoverage = {
+    coverage: { rate: 100, total: 10 },
+};
+const activationTrustMetrics = {
+    sourceCompleteness: { complete: true },
+    nonEscalation: { rate: 100 },
+    confirmedResolution: { explicitOutcomeTotal: 1, rate: 100 },
+    drift: { activeCount: 1, rate: 0 },
+    entityAnswerCoverage: { totalEntities: 1, rate: 100 },
+};
+const activationCompiledContext = {
+    status: 'ready',
+    bundleVersion: 1,
+    activeVersion: 1,
+    lastReadyVersion: 1,
+    publicBundleId: 'pb_activation123',
+    generatedAt: '2026-07-19T10:00:00.000Z',
+    lastBuildCompletedAt: '2026-07-19T10:00:00.000Z',
+    lastBuildError: null,
+    staleReason: null,
+    stats: { bytesTotal: 1024, routes: 1 },
+    publicBundlesReady: true,
+    privateBundlesReady: false,
+};
+const activationAnswerTests = {
+    activeCaseCount: 10,
+    firstTenCount: 10,
+    latestProofStatus: 'ready' as const,
+    latestCriticalFailureCount: 0,
+    latestProofStale: false,
+    lastRunAt: '2026-07-19T10:00:00.000Z',
+};
+const buildActivationSummaryForRuntime = (lastSeenAt: string) => buildAnswerlatticeActivationSummary({
+    tId: 11,
+    sId: 22,
+    storeData: buildActivationStore(lastSeenAt),
+    contextSummary: activationContextSummary as any,
+    coverage: activationCoverage as any,
+    trustMetrics: activationTrustMetrics as any,
+    compiledContext: activationCompiledContext as any,
+    answerTests: activationAnswerTests,
+    nowMillis: activationNowMillis,
+});
+const freshActivationSummary = buildActivationSummaryForRuntime(
+    new Date(activationNowMillis - ANSWERLATTICE_WIDGET_RUNTIME_PROOF_MAX_AGE_MS + 1).toISOString(),
+);
+assert.equal(freshActivationSummary.launchProof.ready, true, 'Current widget telemetry may complete launch proof');
+assert.equal(freshActivationSummary.stage, 'live', 'Only complete launch proof may select the live stage');
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({ summary: freshActivationSummary }),
+    true,
+    'The activation browser boundary must accept the normalized server summary',
+);
+
+const staleActivationSummary = buildActivationSummaryForRuntime(
+    new Date(activationNowMillis - ANSWERLATTICE_WIDGET_RUNTIME_PROOF_MAX_AGE_MS - 1).toISOString(),
+);
+assert.equal(staleActivationSummary.launchProof.ready, false, 'Stale widget telemetry must block launch proof');
+assert.equal(staleActivationSummary.stage, 'install', 'Stale widget proof must return the owner to install verification');
+assert.equal(
+    staleActivationSummary.steps.find(step => step.key === 'widget-install')?.status,
+    'attention',
+    'A previously seen but stale widget must require review',
+);
+assert.equal(
+    staleActivationSummary.steps.find(step => step.key === 'page-context')?.status,
+    'attention',
+    'Stale page context must not remain complete',
+);
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({
+        summary: { ...staleActivationSummary, stage: 'live' },
+    }),
+    false,
+    'The browser boundary must reject a live stage without complete launch proof',
+);
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({
+        summary: {
+            ...freshActivationSummary,
+            widget: {
+                ...freshActivationSummary.widget,
+                runtimeStatus: {
+                    ...freshActivationSummary.widget.runtimeStatus,
+                    lastSeenAt: 'not-a-timestamp',
+                },
+            },
+        },
+    }),
+    false,
+    'The browser boundary must reject malformed runtime timestamps',
+);
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({
+        summary: {
+            ...freshActivationSummary,
+            launchProof: {
+                ...freshActivationSummary.launchProof,
+                completeCount: 0,
+            },
+        },
+    }),
+    false,
+    'The browser boundary must reject contradictory launch proof counts',
 );
 
 console.log('Answerlattice founder support controls contract tests passed');

@@ -3,7 +3,7 @@
 import ChatHighlight from '@atoms/ChatHighlight';
 import ArticleViewModal from '@organisms/ArticleViewModal';
 import { helpCenterArticleRouting } from '@constant/navigations';
-import { Button, Card, Flex, Image, Typography, message as antMessage, theme } from 'antd';
+import { Button, Card, Flex, Image, Tag, Typography, message as antMessage, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { memo, useEffect, useState } from 'react';
 import { LuAlertCircle, LuBookOpen, LuCheckCircle, LuHelpCircle, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import MessageActions from './MessageActions';
+import MessageCitations from './MessageCitations';
 import styles from './MessageBubble.module.scss';
 import MessageReferences from './MessageReferences';
 import { ChatMessage } from './types';
@@ -297,6 +298,19 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                             )}
 
                             {/* References Section with Expandable Preview */}
+                            {!isUser && (
+                                <MessageCitations citations={message.citations || []} isMobile={isMobile} />
+                            )}
+
+                            {!isUser && message.clarification && (
+                                <Flex gap={6} wrap="wrap" align="center" style={{ marginTop: 10 }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Context needed:</Text>
+                                    {message.clarification.requiredContext.map(item => (
+                                        <Tag key={item}>{item}</Tag>
+                                    ))}
+                                </Flex>
+                            )}
+
                             {!isUser && (
                                 <MessageReferences
                                     references={message.references || []}

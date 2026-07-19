@@ -1,272 +1,101 @@
-# Product Friction Intelligence — Specification
+# Product Friction Evidence Specification
 
-> **Version:** 1.1.0
-> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-05-22
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
-> **Expansion Item:** #5 in `answerlattice-expansion-tracker.md`
+## Customer Job
 
----
+Show a founder which mapped product areas are generating the most support friction, what changed between two completed windows, and which evidence should be reviewed next without claiming that support volume proves a product defect.
 
-## §1 — Problem Statement
+## Inputs
 
-SaaS founders using Answerlattice receive support signals (tickets, negative chat feedback, escalations) but have **no way to see WHERE their product is failing users**. They can see individual tickets and mutation proposals, but cannot answer:
+- `answerlattice_signalEvents` for the current UTC day, scoped by `pId`, `tId`, and `sId`.
+- `aiSearchHistory` canonical misses for the current UTC day, rechecked for exact Answerlattice scope.
+- active `answerlattice_entities` documents for semantic names and types.
+- `answerlattice_frictionDailyStats` rows for the current completed seven days and previous completed seven days.
 
-1. Which product feature causes the most support load?
-2. What are users confused about most frequently?
-3. Is a new confusion pattern emerging?
-4. Did a recent product change increase support friction?
-5. Are things getting better or worse over time?
+Tickets, chats, feedback, and search misses are evidence signals. They do not become approved truth.
 
-**Original gap:** Answerlattice collected signals → clustered by entity → generated mutation proposals, but did not surface the meta-question: "fix this product area."
+## Window Contract
 
-**Current runtime:** This is implemented through capped Answerlattice nightly aggregation and summary-backed GovernanceHub friction UI.
+The daily ingest date uses UTC. The review snapshot never includes a partial current day.
 
----
+- current window: the seven completed UTC calendar days ending yesterday;
+- comparison window: the seven completed UTC calendar days immediately before the current window;
+- one snapshot must declare schema version 2, exact workspace scope, timestamps, date keys, complete status, source limit, and observed row count.
 
-## §2 — Solution: Support Signal Intelligence
+## Admission and Mapping
 
-Product Friction Intelligence extracts **product-level friction signals** from existing support interactions. It operates exclusively on support signals — NOT product analytics, NOT user telemetry, NOT session data.
+Only normalized entity IDs that resolve to exact-scope active entities produce ranked daily rows. Evidence for missing, inactive, malformed, or foreign entities increments `unmappedEvidenceCount` and is not assigned to a guessed entity.
 
-### What It Is
-- A nightly aggregation pipeline that computes friction metrics per entity
-- A weekly insight generator that produces a prioritized friction report
-- A simple "Friction" tab in GovernanceHub showing top friction signals
+## Calculations
 
-### What It Is NOT
-- An analytics dashboard (no charts, no filters, no queries)
-- A product analytics tool (no funnels, no retention, no adoption)
-- A real-time system (nightly batch, weekly insights)
+For one entity:
 
----
+`weightedLoad = evidenceCount * (1 + escalationCount/evidenceCount + canonicalMissCount/evidenceCount)`
 
-## §3 — ICP Alignment
+Trend thresholds:
 
-### Primary ICP: SaaS Founder / Head of Support
+- `new`: previous load is zero and current load is positive;
+- `rising`: current/previous is greater than 1.5;
+- `improving`: current/previous is below 0.7;
+- otherwise `stable`.
 
-**Pain points addressed:**
-1. "I see tickets but don't know which product area is broken"
-2. "I can't tell if things are getting better or worse"
-3. "New confusion patterns emerge silently"
-4. "I waste time investigating individual tickets instead of seeing patterns"
+Friction-level thresholds use total weighted load across all admitted entities:
 
-### How Founders Use This
+- `LOW`: 0 through 100;
+- `MODERATE`: above 100 through 500;
+- `HIGH`: above 500.
 
-```
-Every week, founder opens GovernanceHub → Friction tab
+These thresholds are operational triage labels. They are not accuracy, satisfaction, severity, defect, or product-health scores.
 
-Sees:
+## Outputs
 
-Top Frictions This Week
+### Daily rows
 
-1. Stripe Integration Setup
-   241 support questions  │  31% escalation  │  ↑ 42% vs last week
-   
-2. Webhook Configuration
-   198 support questions  │  27% escalation  │  → stable
+`answerlattice_frictionDailyStats/{tId}_{sId}_{entityId}_{date}` contains exact scope, schema version, entity identity, daily evidence counts, weighted load, and server timestamp.
 
-3. Team Permissions
-   141 support questions  │  24% escalation  │  ↓ 15% improving
+### Snapshot
 
-⚠️ Emerging: OAuth Redirect Configuration
-   New topic, 38 questions in 5 days, 45% escalation
-```
+`platformSummary/frictionSnapshot_{tId}_{sId}` contains:
 
-**Zero cognitive load.** No analysis required. Just read and act.
+- exact product and workspace scope;
+- complete window metadata;
+- top ten friction entities;
+- up to five emerging topics;
+- friction level and total weighted load;
+- all-entity evidence and escalation totals;
+- unmapped evidence count;
+- legacy daily-row count;
+- server last-updated timestamp.
 
----
+### Advisory insight
 
-## §4 — Feature Components
+`platformSummary/friction_{tId}_{sId}` may contain a bounded summary, allowlisted entity-specific suggested actions, emerging notes, source snapshot timestamp, friction level copied from the deterministic snapshot, and `advisory: true`.
 
-### 4.1 — Friction Daily Aggregation (Nightly)
+## Owner Experience
 
-**What:** Aggregate signal events into daily entity-level stats.
+- show an unavailable state when no valid snapshot exists;
+- distinguish no evidence from evidence needing entity mapping;
+- show the completed date range and stale state;
+- label weighted load and friction level precisely;
+- keep the weekly summary visibly advisory;
+- keep refresh manual and read-only.
 
-**Input:** `answerlattice_signalEvents` (existing)
-**Output:** `answerlattice_frictionDailyStats` (new collection)
+## Limits and Failure Rules
 
-**Per entity, per day:**
-- Query count (total signals for this entity today)
-- Escalation count
-- Low confidence count (canonical misses where entity matched but answer failed)
-- Ticket count, chat negative count
-- Weighted friction score
+- daily signals: 500 rows plus one saturation sentinel;
+- daily canonical misses: 500 rows plus one saturation sentinel;
+- 14-day friction history: 500 rows plus one saturation sentinel;
+- top owner list: 10 entities;
+- emerging list: 5 entities;
+- cleanup retention: 90 days.
 
-**Why daily:** Enables trend detection (compare day-over-day, week-over-week).
+Any saturated or invalid required source fails the tenant task. The prior valid summary remains preferable to a truncated replacement.
 
-### 4.2 — Friction Score Engine
+## Non-Goals
 
-**Formula:**
-```
-frictionScore = queryVolume × (1 + escalationRate + lowConfidenceRate)
-```
-
-**Components:**
-- `queryVolume`: Total signal count for entity in period
-- `escalationRate`: escalationCount / totalCount (0-1)
-- `lowConfidenceRate`: lowConfidenceCount / totalCount (0-1)
-
-**Entity type grouping:**
-- Entities of type `feature` → Feature Friction
-- Entities of type `workflow` → Workflow Friction
-- Entities of type `integration` → Integration Friction
-- Entities of type `error` → Error Pattern
-- Other types → General Friction
-
-### 4.3 — Trend Detection (Nightly)
-
-**Method:** Compare last 7 days vs previous 7 days for each entity.
-
-```
-trendScore = last7days / previous7days
-
-trendScore > 1.5 → ↑ RISING (emerging friction)
-trendScore > 1.0 → → STABLE  
-trendScore < 0.7 → ↓ IMPROVING
-trendScore = 0   → NEW (no previous data)
-```
-
-**Emerging topic detection:** If an entity has 10+ signals in last 7 days but <3 in previous 7 days → flag as "Emerging."
-
-### 4.4 — Weekly Friction Insight (Weekly Gemini Call)
-
-**What:** AI-generated summary of top friction entities for the week.
-
-**Input:** `answerlattice_frictionDailyStats` (last 7 days + previous 7 days)
-**Output:** `platformSummary/friction_{tId}_{sId}` (single document)
-
-**Generated content:**
-- Top 5 friction entities with severity ranking
-- Trend direction for each (rising/stable/improving)
-- Emerging topics (new friction signals)
-- Suggested actions (tied to entity type)
-- Overall friction health (one word: HIGH / MODERATE / LOW)
-
-**Cost:** 1 Gemini call per tenant per week. ~$0.001/tenant/week.
-
-### 4.5 — GovernanceHub Friction Tab (UI)
-
-**What:** New tab in existing GovernanceHub showing friction insights.
-
-**Data source:** `platformSummary/friction_{tId}_{sId}` (1 Firestore read)
-
-**Display:**
-1. Friction health badge (HIGH/MODERATE/LOW)
-2. Top 5 friction entities with counts, escalation %, trend arrow
-3. Emerging topics section (if any)
-4. AI-generated weekly summary
-5. Last updated timestamp
-
-**NOT included (per doctrine):**
-- No charts/graphs
-- No filters
-- No date range pickers
-- No export functionality
-
----
-
-## §5 — User Stories
-
-### US-1: View Top Friction Topics
-**As a** SaaS founder using Answerlattice,
-**I want to** see which product entities cause the most support friction,
-**So that** I know where to improve my product.
-
-**Acceptance criteria:**
-- Top 5 entities ranked by friction score
-- Each shows: entity name, signal count (7d), escalation rate, trend direction
-- Updated nightly
-
-### US-2: Detect Emerging Confusion
-**As a** SaaS founder,
-**I want to** be alerted when a new confusion pattern emerges,
-**So that** I can investigate before it becomes a major issue.
-
-**Acceptance criteria:**
-- Entities with 10+ signals in last 7 days but <3 in previous 7 days flagged as "Emerging"
-- Shown in dedicated "Emerging" section
-
-### US-3: Track Friction Trends
-**As a** SaaS founder,
-**I want to** see if friction is increasing or decreasing per entity,
-**So that** I know if my product improvements are working.
-
-**Acceptance criteria:**
-- Trend arrow (↑ rising, → stable, ↓ improving) per entity
-- Based on 7-day vs previous 7-day comparison
-
-### US-4: Read Weekly Friction Summary
-**As a** SaaS founder,
-**I want to** read an AI-generated summary of friction this week,
-**So that** I get the "what changed?" answer without manual analysis.
-
-**Acceptance criteria:**
-- AI summary covers top frictions, emerging topics, suggested actions
-- Generated weekly (follows weekly narrative pattern)
-- 1 Gemini call per tenant per week
-
----
-
-## §6 — Scope Boundaries
-
-### In Scope (v1)
-- Nightly friction aggregation per entity
-- Friction score calculation
-- 7-day trend detection
-- Emerging topic detection
-- Weekly AI insight generation
-- GovernanceHub "Friction" tab
-
-### Out of Scope (v1)
-- Workflow step-level failure detection (deferred to v2, needs more signal data)
-- Cross-tenant friction intelligence (v1 = per-workspace only)
-- Feature friction mapping beyond entity type grouping
-- Page context correlation (requires `ENABLE_ANSWERLATTICE_CONTEXT_AWARE` + sufficient data)
-- Notification/alerting for friction spikes
-- Historical friction trends beyond 90 days
-
-### Out of Scope (PERMANENT — per doctrine)
-- Product analytics dashboards
-- User session replay
-- Feature adoption funnels
-- Embedding-based topic clustering
-- External analytics services (BigQuery, Amplitude, etc.)
-
----
-
-## §7 — Tier Classification
-
-Per expansion tracker:
-
-| Component | Tier | Rationale |
-|-----------|------|-----------|
-| Friction daily aggregation | **A — Must Exist** | Foundation for all intelligence |
-| Friction score engine | **A — Must Exist** | Enables ranking and prioritization |
-| Trend detection | **A — Must Exist** | Answers "getting better or worse?" |
-| Emerging topic detection | **B — Strong Advantage** | Early warning system |
-| Weekly AI insight | **B — Strong Advantage** | Reduces cognitive load |
-| GovernanceHub friction tab | **A — Must Exist** | Visibility layer for all intelligence |
-| Workflow step failure | **C — Future Moat** | Deferred to v2 |
-| Cross-tenant intelligence | **C — Future Moat** | Deferred indefinitely |
-
----
-
-## §8 — Industry Research Summary
-
-### Intercom (Pioneer 2025 — Fin 3)
-- **Topics Explorer**: ML groups conversations into topics/subtopics
-- **Topic Trends**: Weekly snapshots compared against 12-week baseline
-- **Insight cards**: AI-generated "what changed and why" with real examples
-- **Key insight**: Weekly cadence, topic-level aggregation, anomaly detection
-
-### Zendesk (Intelligent Triage)
-- **Intent taxonomy**: ~150 prebuilt intents per industry
-- **Confidence levels**: High/Medium/Low per classification
-- **Dashboard**: Overview + Intent + Language + Sentiment tabs
-
-### Answerlattice's Advantage
-- **Entity graph IS the taxonomy** — no ML classification needed
-- **Deterministic scoring** — reproducible, auditable, no LLM required for ranking
-- **Nightly batch** — faster than Intercom's weekly, cheaper than real-time
-- **Zero external dependencies** — pure Firestore, no BigQuery/Vector DB
+- generic product analytics;
+- behavioral event instrumentation;
+- automatic root-cause diagnosis;
+- automatic answer or product changes;
+- a universal health score;
+- autonomous customer outreach;
+- treating every ticket or chat as verified truth.

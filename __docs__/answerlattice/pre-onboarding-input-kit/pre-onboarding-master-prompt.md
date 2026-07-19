@@ -14,7 +14,7 @@ This internal file exists so the prompt can be reviewed alongside the feature do
 
 The prompt asks the agent to:
 
-- collect explicit copy/paste fields for product name, website URL, app URL, source mode, product stage, approvals, and owner notes;
+- collect explicit copy/paste fields for product name, website URL, app URL, source mode, product stage, approvals, private-source tool permission, and owner notes;
 - inspect the client's available source bundle: repo, docs, website, owner notes, screenshots, routes, policies, and support flows;
 - handle multi-product repos by identifying the target product, documenting shared infrastructure, and excluding sister-product truth;
 - handle market-common source requests such as API specs, support exports, screenshots, recordings, FAQ seeds, website briefs, and demo walkthrough briefs;
@@ -22,6 +22,9 @@ The prompt asks the agent to:
 - generate a structured `*-answerlattice-pre-onboarding-inputs/` folder;
 - create 26 source families for Answerlattice Knowledge Intake, marking unavailable or not-applicable families instead of inventing content;
 - create source/payload/manifest parity;
+- keep JSONL aligned with the strict Knowledge Intake API: supported source types, singular `originUrl`, reviewed `contentText` for ready non-website sources, and authenticated tenant scope;
+- record source authority, approval status, access scope, citation eligibility, applicability, and conflicts;
+- keep support records as signals until authoritative facts are reviewed;
 - create support FAQ seeds and live support test questions;
 - map product surfaces and screenshot slots;
 - keep private data out;

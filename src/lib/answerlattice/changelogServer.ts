@@ -14,15 +14,27 @@ import {
     type AnswerlatticeChangelogEntryInput,
 } from './changelogContracts';
 import { getAnswerlatticeBundleManifestDocId, getAnswerlatticeSourceVersionsDocId } from './compiledContext';
+import {
+    AnswerlatticeStoredReleaseSchema,
+    getAnswerlatticeTimestampMillis,
+    normalizeAnswerlatticeVersionLabel,
+} from './releaseContracts';
 
 const CHANGELOG = DB_COLLECTIONS.CHANGELOG;
 const ENTRY_INDEX = DB_COLLECTIONS.ANSWERLATTICE_CHANGELOG_ENTRY_INDEX;
+const RELEASES = DB_COLLECTIONS.ANSWERLATTICE_RELEASES;
 const INDEX_TOMBSTONE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const entryIdForRequest = (tId: number, sId: number, requestId: string) => `change_${hash(`${tId}:${sId}:${requestId}`).slice(0, 40)}`;
 const pageIdForNumber = (pageNumber: number) => `page_${String(pageNumber).padStart(6, '0')}`;
 const entryFingerprint = (entry: AnswerlatticeChangelogEntryInput) => hash(JSON.stringify(entry));
+const sameStringSet = (left: readonly string[], right: readonly string[]) => {
+    if (left.length !== right.length) return false;
+    const leftSorted = [...left].sort();
+    const rightSorted = [...right].sort();
+    return leftSorted.every((value, index) => value === rightSorted[index]);
+};
 
 export type AnswerlatticeChangelogServerResult = {
     success: true;
@@ -120,6 +132,35 @@ const buildStoredEntry = (
 
 const serializedPageBytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value), 'utf8');
 
+const assertPublishedReleaseLink = async (
+    transaction: FirebaseFirestore.Transaction,
+    input: AnswerlatticeChangelogEntryInput,
+    access: AnswerlatticeAccessContext,
+) => {
+    if (!input.published || !input.version) return;
+    if (!input.releaseId) {
+        throw new AnswerlatticeChangelogError(400, 'A published versioned changelog entry requires an active release.');
+    }
+    const normalizedVersion = normalizeAnswerlatticeVersionLabel(input.version);
+    if (!normalizedVersion) {
+        throw new AnswerlatticeChangelogError(400, 'The changelog version is invalid.');
+    }
+    const releaseSnapshot = await transaction.get(getDb().collection(RELEASES).doc(input.releaseId));
+    const release = releaseSnapshot.exists
+        ? AnswerlatticeStoredReleaseSchema.safeParse(releaseSnapshot.data())
+        : null;
+    if (!release?.success
+        || release.data.tId !== access.scope.tenantId
+        || release.data.sId !== access.scope.storeId
+        || release.data.status !== 'active'
+        || release.data.versionLabel !== normalizedVersion.label
+        || release.data.versionNormalized !== normalizedVersion.normalized
+        || getAnswerlatticeTimestampMillis(release.data.releasedAt) !== new Date(input.releasedOn).getTime()
+        || !sameStringSet(release.data.entityChanges, input.entityChanges)) {
+        throw new AnswerlatticeChangelogError(409, 'The changelog entry does not match its active release.');
+    }
+};
+
 const markContextStale = (
     transaction: FirebaseFirestore.Transaction,
     access: AnswerlatticeAccessContext,
@@ -174,6 +215,7 @@ async function createEntry(
 
         const latestQuery = changelogCollection(access).orderBy('pageNumber', 'desc').limit(1);
         const latestSnapshot = await transaction.get(latestQuery);
+        await assertPublishedReleaseLink(transaction, action.entry, access);
         const latestDocument = latestSnapshot.docs[0];
         const storedEntry = buildStoredEntry(entryId, action.entry, actor);
 
@@ -272,6 +314,7 @@ async function updateEntry(
         const pageRef = changelogCollection(access).doc(index.pageId);
         const pageSnapshot = await transaction.get(pageRef);
         if (!pageSnapshot.exists) throw new AnswerlatticeChangelogError(409, 'Changelog entry page is missing.');
+        await assertPublishedReleaseLink(transaction, action.entry, access);
         const page = assertPage(pageSnapshot.data(), access, pageSnapshot.id);
         const entryPosition = page.entryIds.indexOf(action.entryId);
         if (entryPosition < 0) throw new AnswerlatticeChangelogError(409, 'Changelog entry index is stale.');

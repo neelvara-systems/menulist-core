@@ -29,7 +29,7 @@ If that material reaches Answerlattice as a loose upload pile, the first intake 
 
 ## Solution
 
-The Pre-Onboarding Kit gives the client's AI IDE a strict preparation workflow. The agent audits available product truth, separates live support facts from risky claims, creates upload-ready sources, and leaves clear activation gates before Answerlattice answers live users.
+The Pre-Onboarding Kit gives the client's AI IDE a strict preparation workflow. The agent audits available evidence, records source authority and conflicts, separates live support facts from risky claims, creates review-ready sources, and leaves clear activation gates before Answerlattice answers live users.
 
 ## Page Sections
 
@@ -65,6 +65,9 @@ The Pre-Onboarding Kit gives the client's AI IDE a strict preparation workflow. 
    - no private customer records;
    - no payment data;
    - no unapproved screenshots;
+   - no private-source processing without owner permission;
+   - no public citation of private source URLs or text;
+   - support tickets and repeated replies remain signals until reviewed;
    - no guarantee that every AI IDE can inspect every private repo, login-only app, website, recording, or file;
    - unavailable sources must be marked pending;
    - no automatic canonical publishing.

@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import {
     normalizeAnswerlatticeBillingScopeDocumentId,
@@ -127,6 +128,7 @@ const fetchAnswerlatticeSubscriptionRaw = async (
 
     const fallbackSnapshot = await getDocs(query(
         getSubscriptionCollectionRef(),
+        where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
         where('tenantId', '==', tenantId),
         where('storeId', '==', storeId),
         limit(10),
@@ -163,7 +165,7 @@ export const getAnswerlatticeActiveSubscriptionForStore = async (
                     tId: tenantScope.numericId,
                 }),
             });
-            return null;
+            throw error;
         })
         .finally(() => subscriptionRequests.delete(requestKey));
 
@@ -182,6 +184,7 @@ export const getAnswerlatticeBillingHistoryForStore = async (
         async () => {
             const historyQuery = query(
                 getPaymentTransactionCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tenantId', '==', tenantScope.numericId),
                 where('storeId', '==', storeScope.numericId),
                 where('event', 'in', ['subscription.charged', 'order.paid']),

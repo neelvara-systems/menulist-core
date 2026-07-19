@@ -1,11 +1,14 @@
 import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { Timestamp } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
-
-dayjs.extend(relativeTime);
+import React, { useEffect, useMemo, useState } from "react";
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLocale,
+    type PublicCustomerTranslator,
+} from "@lib/localization/publicCustomerMessages";
 
 interface LiveIndicatorProps {
+    activeLanguage?: string;
     modifiedOn?: Timestamp | Date | string | null;
     style?: React.CSSProperties;
     label?: string;
@@ -21,7 +24,11 @@ interface LiveIndicatorProps {
  * - 1-3 days: "updated X days ago"
  * - > 3 days: null (show only "Live" without time - scarcity creates meaning)
  */
-function formatUpdateTime(dateObj: Date): string | null {
+function formatUpdateTime(
+    dateObj: Date,
+    t: PublicCustomerTranslator,
+    activeLanguage?: string,
+): string | null {
     const now = dayjs();
     const updated = dayjs(dateObj);
     const diffMinutes = now.diff(updated, 'minute');
@@ -34,13 +41,22 @@ function formatUpdateTime(dateObj: Date): string | null {
     }
 
     if (diffMinutes < 1) {
-        return "updated just now";
+        return t('menu.updatedJustNow');
     } else if (diffMinutes < 60) {
-        return `updated ${diffMinutes} ${diffMinutes === 1 ? 'minute' : 'minutes'} ago`;
+        return diffMinutes === 1
+            ? t('menu.updatedMinuteAgo')
+            : t('menu.updatedMinutesAgo', { count: diffMinutes });
     } else if (diffHours < 24 && updated.isSame(now, 'day')) {
-        return `updated today at ${updated.format('h:mm A')}`;
+        return t('menu.updatedTodayAt', {
+            time: new Intl.DateTimeFormat(getPublicCustomerLocale(activeLanguage), {
+                hour: 'numeric',
+                minute: '2-digit',
+            }).format(dateObj),
+        });
     } else {
-        return `updated ${updated.fromNow()}`;
+        return diffDays === 1
+            ? t('menu.updatedDayAgo')
+            : t('menu.updatedDaysAgo', { count: diffDays });
     }
 }
 
@@ -68,7 +84,17 @@ function normalizeTimestamp(value: Timestamp | Date | string | null | undefined)
     return value as Date;
 }
 
-const LiveIndicator: React.FC<LiveIndicatorProps> = ({ modifiedOn, style, label = "Live" }) => {
+const LiveIndicator: React.FC<LiveIndicatorProps> = ({
+    activeLanguage,
+    modifiedOn,
+    style,
+    label,
+}) => {
+    const t = useMemo(
+        () => createPublicCustomerTranslator(activeLanguage),
+        [activeLanguage],
+    );
+    const resolvedLabel = label || t('menu.live');
     const [updateText, setUpdateText] = useState<string | null>("");
     const [hasValidDate, setHasValidDate] = useState(false);
 
@@ -83,15 +109,15 @@ const LiveIndicator: React.FC<LiveIndicatorProps> = ({ modifiedOn, style, label 
         setHasValidDate(true);
 
         // Initial update
-        setUpdateText(formatUpdateTime(dateObj));
+        setUpdateText(formatUpdateTime(dateObj, t, activeLanguage));
 
         // Update every 30 seconds to keep "just now" / "X minutes ago" fresh
         const interval = setInterval(() => {
-            setUpdateText(formatUpdateTime(dateObj));
+            setUpdateText(formatUpdateTime(dateObj, t, activeLanguage));
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [modifiedOn]);
+    }, [activeLanguage, modifiedOn, t]);
 
     // No valid date = don't show indicator at all
     if (!hasValidDate) return null;
@@ -117,7 +143,7 @@ const LiveIndicator: React.FC<LiveIndicatorProps> = ({ modifiedOn, style, label 
                     animation: 'livePulse 2s ease-in-out infinite',
                 }}
             />
-            <span style={{ fontWeight: 500, color: '#22c55e' }}>{label}</span>
+            <span style={{ fontWeight: 500, color: '#22c55e' }}>{resolvedLabel}</span>
             {/* Only show separator and time if updateText exists (< 3 days old) */}
             {updateText && (
                 <>

@@ -24,11 +24,15 @@ It composes existing Answer Tests, Knowledge Intake, canonical-answer Governance
 ## Runtime Boundaries
 
 - Priority questions are stored only in the existing Answer Tests summary document.
+- Launch proof uses one coherent ten-question identity: either the exact generic set or the exact product-generated set. It never combines the two.
+- Product-generated launch questions require the ten registered IDs, one common generation-input hash, unique draft-review provenance, and active cases before the dedicated First 10 run is available.
 - Product-specific proposed answers are draft Intake review items, not a second authoritative answer store.
-- Product-pack generation is owner-triggered, one-credit, generation-input-hash cached, and bounded to one model call plus ten drafts.
+- Product-pack generation is owner-triggered, SAFE_MODE-gated, one-credit, generation-input-hash cached, and bounded to one model call plus ten drafts.
+- Direct server calls require a bounded request ID, and cached packs are accepted only when all exact positions `1` through `10` and their deterministic review-item identities are intact.
 - Generic starter questions remain editable fallback prompts, not approved product facts.
 - Canonical answers still require human Governance approval.
 - Test results never publish or mutate live answers.
+- Browser responses omit run reservations, request fingerprints, and internal governed-source counters; the server retains those fields for concurrency and freshness checks.
 - Widget outcomes use explicit end-user confirmation.
 - Customer proof is public only after evidence and consent are recorded in source control.
 - Daily Brief shortcuts prepare existing Support Board forms; they do not auto-create work.

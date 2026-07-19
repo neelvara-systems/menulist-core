@@ -62,7 +62,7 @@ const DELIVERY_CARDS = [
     {
         icon: LuZap,
         title: 'Critical alerts',
-        description: 'Coverage drops and repeated answer failures can alert sooner when owner attention is needed.',
+        description: 'Coverage drops and repeated AI workflow failures can receive a separate higher-priority notification after the nightly run.',
     },
     {
         icon: LuCheckCircle,
@@ -79,7 +79,7 @@ const DELIVERY_CARDS = [
 const EVENT_ROWS = [
     ['Nightly digest', 'A compact summary of coverage, stale answers, gaps, and review movement.'],
     ['Coverage drop', 'A higher-priority alert when approved support coverage materially falls.'],
-    ['Repeated answer failure', 'A higher-priority alert when the same support path keeps failing users.'],
+    ['Repeated AI workflow failure', 'A higher-priority alert when the nightly run records repeated failures in governed AI operations such as draft generation.'],
     ['Test delivery', 'A controlled message for validating Slack or email setup before relying on it.'],
 ];
 
@@ -140,7 +140,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                         <span className="h-2.5 w-2.5 rounded-full bg-[#06d6a0]" />
                                     </div>
                                     <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                                        Delivery healthy
+                                        Illustrative state
                                     </span>
                                 </div>
                                 <div className="grid gap-4 p-5 sm:p-6">
@@ -150,7 +150,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                             Nightly support digest
                                         </div>
                                         <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                            Coverage changed, review items are waiting, repeated gaps were grouped, and Slack delivery succeeded.
+                                            Coverage changed, review proposals were created, and the configured Slack delivery succeeded.
                                         </p>
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
@@ -201,7 +201,7 @@ export default function AnswerlatticeIntegrationsPage() {
                         <SectionHeader
                             eyebrow="Owner controls"
                             title="Configure destination, filters, and confidence."
-                            description="Slack and email are self-service. Broader workflow adapters should remain controlled rollout until credential handling, tenant authorization, and delivery behavior are ready for every workspace."
+                            description="Slack and email are self-service. Jira, Linear, GitHub, Notion, and custom webhook destinations are not currently offered."
                         />
                         <div className="mx-auto max-w-3xl rounded-[1.75rem] border border-white/[0.08] bg-[#101028] p-5">
                             <div className="mb-5 flex items-center gap-2">
@@ -231,10 +231,10 @@ export default function AnswerlatticeIntegrationsPage() {
                             idPrefix="al-integrations-workflow"
                             splitAfter={3}
                             items={[
-                                { title: 'Connect Slack or email', detail: 'Add the destination in AnswerLattice settings.' },
+                                { title: 'Connect Slack or email', detail: 'Add the destination in Workflow Notifications.' },
                                 { title: 'Choose event filters', detail: 'Select the support review events that deserve notification.' },
                                 { title: 'Send a test', detail: 'Verify delivery before relying on the channel.' },
-                                { title: 'Deliver digest or alert', detail: 'Routine movement stays grouped; critical events can alert quickly.' },
+                                { title: 'Deliver digest or alert', detail: 'Routine movement stays grouped; coverage and repeated-failure events can alert after the nightly run.' },
                                 { title: 'Review health', detail: 'Use last success, last failure, and disabled state without opening raw logs.' },
                             ]}
                         />

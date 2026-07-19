@@ -15,6 +15,7 @@ The workflow is admitted on mobile because founders need to review launch readin
 - Reduced-motion users receive no new required animation.
 - Intake selection uses a full-width native Select control.
 - Product-pack generation and generic fallback actions remain separate 44px controls and stack on narrow screens.
+- **Run First 10 checks** remains a dedicated 44px action and runs the exact active launch set rather than the current table selection.
 - The launch screen shows source readiness, credit cost, cached state, and the review-drafts link without horizontal overflow.
 - Intake review cards show pack evidence and missing-evidence warnings as wrapping text, never hover-only UI.
 

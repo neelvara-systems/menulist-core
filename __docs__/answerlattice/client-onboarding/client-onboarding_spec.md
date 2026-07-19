@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Spec
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.5.1
+> **Last Updated:** 2026-07-19
 > **Audience:** CEO / PM
 
 ---
@@ -53,13 +53,35 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 - Auth: Google OAuth via existing NextAuth (same as MenuList)
 - Resumable: request fingerprint plus attempt ID makes an expired identical attempt recoverable and rejects changed details while an attempt is active
-- Provider idempotency: the attempt ID is written to Razorpay notes and used for bounded subscription recovery before any retry creates another provider object
+- Provider idempotency: the attempt ID and exact Answerlattice scope are written to Razorpay notes; only a `created` subscription with exact attempt, product, plan, tenant, and store notes is eligible for checkout recovery
+- Indeterminate provider outcome: preserve the exact scope in `provider_recovery_pending`, hold retries for 15 minutes, and perform bounded recovery before allowing same-attempt provider creation
+- Known provider identity: preserve a stored provider subscription ID across fetch failures rather than downgrading the attempt to unknown-provider recovery
+- Terminal checkout recovery: only an exact known provider subscription in a recognized terminal status may deactivate its owned provisional scope and return a retryable checkout-expired result
 - Atomic finalization: pending subscription, store summary, widget-key state, and tenant/store/user payment status commit together
-- Compensation: failed provider/finalization work cancels when possible and deactivates only the exact provisional scope owned by the attempt
+- Compensation: deactivate the exact provisional scope only when provider creation is proven not to have occurred or an exact known provider checkout is terminal; never infer cancellation from an unknown provider result
+- Finalization boundary: after local `payment_pending` truth commits, bridge/bootstrap failure is recoverable and must not cancel or compensate the provider/workspace
 - Rate limited: 3 onboarding attempts per user per hour
-- Validation: Company name required (min 2 chars)
-- Duplicate prevention: user with existing `productAccounts.AL` or Answerlattice-project user tenant/store is blocked from re-onboarding; a MenuList tenant alone does not block Answerlattice onboarding.
+- Validation: company name is required (min 2 chars); product URLs are HTTP(S)-only and cannot contain embedded credentials
+- Duplicate prevention: user with existing `productAccounts.AL` or Answerlattice-project user tenant/store is blocked from re-onboarding; duplicate normalized-email records fail closed rather than selecting one arbitrarily; a MenuList tenant alone does not block Answerlattice onboarding.
+- Retry hygiene: a new attempt after compensated failure clears stale provider ID, recovery time/reason, and cancellation fields before provider work starts
 - Widget key: Unique `al_*` key per generated credential, capped under the store-doc widget key manager
+- Response privacy: every route-owned onboarding response is private/no-store and `nosniff`; one-time plaintext widget keys are not persisted for later display
+- Entitlement boundary: `payment_pending` setup does not grant active paid AI or Knowledge Intake usage
+
+## Success Criteria
+
+- One authenticated founder can create one Answerlattice workspace and one provider subscription for one exact request.
+- Response loss, provider timeout, or bridge failure can be retried without silently duplicating provider state.
+- Changed request details cannot take over an active or recovery-pending attempt.
+- The browser cannot show success from malformed billing, plan, subscription, checkout, or widget-key data.
+- Unknown provider state remains visible and recoverable instead of being represented as failure or success.
+- A terminal exact checkout cannot hold the founder in recovery forever; only its exact provisional scope is retired so a clean retry can start.
+
+## Non-Goals
+
+- No free workspace, arbitrary plan interval, account-changing support agent, provider-agnostic billing abstraction, or automatic subscription cancellation.
+- No claim that provider checkout equals successful payment or product activation.
+- No requirement to connect every knowledge source before the founder sees the created workspace.
 
 ---
 
@@ -67,6 +89,8 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.5.1 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email admission, HTTP(S)-only product URLs, and route-wide private responses |
+| 2026-07-19 | 1.5.0 | Defined durable provider-recovery hold, created-only exact provider matching, post-finalization recovery, response privacy, entitlement, success, and non-goal boundaries |
 | 2026-07-11 | 1.4.0 | Added plan/INR/USD selection and the resumable provider-recovery, atomic-finalization, and scoped-compensation contract |
 | 2026-06-30 | 1.3.0 | Removed beta-era onboarding path; public onboarding uses paid Starter by default |
 | 2026-05-25 | 1.2.1 | Updated onboarding widget-key contract to the bounded store-doc key manager shape. |

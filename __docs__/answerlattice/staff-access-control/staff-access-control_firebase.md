@@ -1,7 +1,8 @@
 # Answerlattice Staff Access Control Firebase Notes
 
 > Status: Implemented
-> Last updated: 2026-07-13
+> Last updated: 2026-07-19
+> Feature audit: Feature 31 of 44
 
 ## Firestore Writes
 
@@ -19,6 +20,7 @@
 | Answerlattice `users` query by email | Access context, create dedupe | bounded uniqueness query with `limit(2)`; duplicate identity fails closed |
 | Answerlattice `users` query by tenant + workspace | Team list, last-owner, role-in-use, and custom-role claim refresh discovery | one bounded composite query; list reads a 501st overflow sentinel and safety scans accept at most 500 documents |
 | `stores/{sId}` inside staff access transaction | Create/update/remove role and workspace admission | 1 transaction read for access mutations |
+| Answerlattice `users/{uId}` + selected `stores/{sId}` after Auth claim write | Claim convergence check | 1 user point read plus 1 selected-store point read per claim-writing attempt; at most 3 attempts before explicit failure |
 
 The dedicated and shared index files include `users: tenantId ASC + storeIds ARRAY_CONTAINS`. Tenant filtering happens in Firestore before the cap.
 
@@ -32,17 +34,19 @@ Staff access hardening adds no collection, operation document, scheduler, queue,
 
 Platform-only account-wide deactivation may run one bounded last-owner query for each Owner membership on that identity. This is an exceptional recovery cost and prevents a global account action from orphaning another workspace.
 
-The Answerlattice user write is the durable authority. Default-auth and Auth-claim synchronization happen afterward and are replay-safe. Independent projection tasks use bounded `Promise.allSettled` execution so one provider failure does not prevent the others from being attempted. Claim synchronization retries a bounded number of times when `accessRevision` changes during provider work; exhausting that window or losing valid persisted state fails visibly instead of certifying stale claims. Repeating the same create/access update repairs missed projections; a committed removal has its own durable replay marker so retry repairs bridge, claim, and final revocation state without duplicating or restoring membership. Authentication provider work does not run inside a Firestore transaction.
+The Answerlattice user write is the durable authority. Default-auth and Auth-claim synchronization happen afterward and are replay-safe. Independent projection tasks use bounded `Promise.allSettled` execution so one provider failure does not prevent the others from being attempted. Claim synchronization retries when `accessRevision` or the selected store's complete role/permission signature changes during provider work; exhausting the three-attempt window or losing valid persisted state fails visibly instead of certifying stale claims. The extra selected-store reread occurs only after a claim write. Repeating the same create/access update repairs missed projections; a committed removal has its own durable replay marker so retry repairs bridge, claim, and final revocation state without duplicating or restoring membership. Authentication provider work does not run inside a Firestore transaction.
 
 ## Rules
 
 `firestore-answerlattice.rules` and shared `firestore.rules` enforce the same Answerlattice permission claims for direct client reads/writes. Same-tenant membership alone is not enough for managed collections.
 
-Permission claims are emitted by `/api/auth/set-claims`. Workspace IDs, current role, and access revision come from the active duplicate-free `stores[]` runtime contract, so inconsistent top-level `storeIds` cannot widen a token. Locked Owner, Manager, and Support Staff use the same constants as the compatibility fallbacks in both rulesets; raw store data cannot override those defaults. Custom roles come from the canonical `stores/{sId}` snapshot already read and authorized by the route, so custom-role claim minting adds no duplicate store read. Unknown, inactive, malformed, or duplicate custom roles grant no permission. Disabled accounts emit an inactive zero-access projection. Saving a custom role refreshes and revokes claims for retained assignees in groups of five; retrying the same save repairs an interrupted provider sync without another data model.
+Permission claims are emitted by `/api/auth/set-claims`. Selected workspace, current role, and access revision come from the active duplicate-free `stores[]` runtime contract, so inconsistent top-level `storeIds` cannot widen a token. Each Answerlattice token carries a singleton selected-workspace list; complete memberships remain in the user/account records and a workspace switch requests a fresh scoped token. This least-privilege projection remains safely below Firebase's 1,000-byte custom-claim limit under the existing 120-character role and 160-character user-ID bounds. Locked Owner, Manager, and Support Staff use the same constants as the compatibility fallbacks in both rulesets; raw store data cannot override those defaults. Custom roles come from the canonical `stores/{sId}` snapshot already read and authorized by the route, so custom-role claim minting adds no duplicate store read. Unknown, inactive, malformed, or duplicate custom roles grant no permission. Disabled accounts emit an inactive zero-access projection. Saving a custom role refreshes and revokes claims for retained assignees in groups of five; retrying the same save repairs an interrupted provider sync without another data model.
 
-Owner-triggered reset/sign-out operations revoke default Firebase refresh tokens and Answerlattice Firebase refresh tokens. Existing ID tokens can remain usable until their normal expiry window, so Answerlattice also records `sessionRevokedAt`, `authTokensRevokedAt`, and a revocation reason for server-side checks and audit trails.
+Owner-triggered reset/sign-out operations revoke default Firebase refresh tokens and Answerlattice Firebase refresh tokens. Firebase documents an approximately one-hour ID-token lifetime, so already-issued tokens can remain usable until normal expiry. Answerlattice records `sessionRevokedAt`, `authTokensRevokedAt`, and a revocation reason for audit/recovery, but these fields are not read by every direct Firestore/Storage request. Instant invalidation is not claimed.
 
 Staff client request/response validation adds no Firestore reads, writes, deletes, rules, indexes, Auth operations, or Cloud Function work. The browser caller uses no-store cache, same-origin credentials, manual redirect handling, and a 1 MiB team-response cap before rejecting malformed, oversized, rejected, or wrong-shape responses. The shared Answerlattice access provider retains its 64 KB bounded response guard for the smaller `/api/answerlattice/access` payload. Access-context role normalization is now read-only, removing the former first-access backfill write and its lost-update risk.
+
+The permission-dependency and response-header hardening add no Firestore read, write, delete, index, Storage, Auth, or Function operation. Existing custom roles that contain `canAssignRoles: true` without `canManageTeam: true` normalize to no role-assignment authority; no migration write is required. Access and staff routes now explicitly return private no-store plus `nosniff` headers, including one-time login-detail responses and failures.
 
 Staff setup email provider hardening adds no Firestore reads, writes, deletes, rules, indexes, Auth operations beyond the existing valid Firebase Auth setup-email request, Cloud Function work, or browser API calls. The provider call now has a timeout and bounded provider diagnostics, and failures continue to return the existing `password_reset_email_failed` marker while staff creation remains acknowledged.
 

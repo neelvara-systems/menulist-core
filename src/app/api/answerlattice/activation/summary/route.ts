@@ -14,6 +14,10 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import {
+    parseAnswerlatticeCoverageData,
+    parseAnswerlatticeTrustMetrics,
+} from '@lib/answerlattice/analyticsIntelligenceContracts';
+import {
     buildAnswerlatticeActivationSummary,
     getAnswerlatticeActivationSummaryDocId,
     shouldPersistActivationSummary,
@@ -25,15 +29,18 @@ import {
 } from '@lib/answerlattice/answerTestContracts';
 import {
     areAnswerlatticeCompiledSourceVersionsValid,
+    getAnswerlatticeBundleRefPath,
     getAnswerlatticeBundleManifestDocId,
     getAnswerlatticeSourceVersionsDocId,
+    isAnswerlatticeContextBundleManifestForScope,
     normalizeCompiledSourceVersions,
 } from '@lib/answerlattice/compiledContext';
+import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import {
     getContextContentSummaryDocId,
     normalizeAnswerlatticeSurfaceContentSummary,
 } from '@lib/answerlattice/productSurfaceContent';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import * as admin from 'firebase-admin';
@@ -41,8 +48,63 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
 
-const buildCompiledContextReadiness = (manifest: Record<string, any> | null) => {
-    if (!manifest) {
+const ANSWERLATTICE_ACTIVATION_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const withActivationResponseHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_ACTIVATION_RESPONSE_HEADERS).forEach(([key, value]) => {
+        response.headers.set(key, value);
+    });
+    return response;
+};
+
+const activationJson = (
+    body: Record<string, unknown>,
+    status = 200,
+): NextResponse => NextResponse.json(body, {
+    status,
+    headers: ANSWERLATTICE_ACTIVATION_RESPONSE_HEADERS,
+});
+
+const normalizeNonNegativeSafeInteger = (value: unknown): number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+        ? value
+        : 0
+);
+
+const normalizeTimestampIso = (value: unknown): string | null => {
+    if (!value) return null;
+    try {
+        if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+        if (typeof (value as any).toDate === 'function') {
+            const date = (value as any).toDate();
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date.toISOString() : null;
+        }
+        const seconds = typeof (value as any).seconds === 'number'
+            ? (value as any).seconds
+            : typeof (value as any)._seconds === 'number'
+                ? (value as any)._seconds
+                : null;
+        if (seconds !== null) {
+            const date = new Date(seconds * 1000);
+            return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+        }
+        if (typeof value !== 'string') return null;
+        const date = new Date(value);
+        return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+    } catch {
+        return null;
+    }
+};
+
+const buildCompiledContextReadiness = (
+    manifest: unknown,
+    tId: number,
+    sId: number,
+) => {
+    if (!isAnswerlatticeContextBundleManifestForScope(manifest, tId, sId)) {
         return {
             status: 'empty' as const,
             bundleVersion: 0,
@@ -56,21 +118,24 @@ const buildCompiledContextReadiness = (manifest: Record<string, any> | null) => 
         };
     }
 
-    const bundles = manifest.bundles && typeof manifest.bundles === 'object' ? manifest.bundles : {};
+    const bundleKeys = Object.keys(manifest.bundles);
+    const isValidBundle = (key: string) => Boolean(getAnswerlatticeBundleRefPath(manifest, key, tId, sId));
     return {
-        status: manifest.status || 'empty',
-        bundleVersion: Number(manifest.bundleVersion || 0),
-        activeVersion: Number(manifest.activeVersion || 0),
-        lastReadyVersion: Number(manifest.lastReadyVersion || 0),
-        publicBundleId: manifest.publicBundleId || null,
-        generatedAt: manifest.generatedAt || null,
-        lastBuildCompletedAt: manifest.lastBuildCompletedAt || null,
+        status: manifest.status,
+        bundleVersion: manifest.bundleVersion,
+        activeVersion: manifest.activeVersion,
+        lastReadyVersion: manifest.lastReadyVersion,
+        publicBundleId: manifest.publicBundleId,
+        generatedAt: normalizeTimestampIso(manifest.generatedAt),
+        lastBuildCompletedAt: normalizeTimestampIso(manifest.lastBuildCompletedAt),
         lastBuildError: manifest.lastBuildError ? 'Compiled context rebuild failed. Check platform logs.' : null,
-        staleReason: manifest.staleReason || null,
-        stats: manifest.stats || {},
-        limits: manifest.limits || {},
-        publicBundlesReady: Object.keys(bundles).some(key => key.startsWith('public:')),
-        privateBundlesReady: Object.keys(bundles).some(key => key.startsWith('private:')),
+        staleReason: manifest.staleReason ? 'Compiled context sources changed.' : null,
+        stats: {
+            bytesTotal: normalizeNonNegativeSafeInteger(manifest.stats?.bytesTotal),
+            routes: normalizeNonNegativeSafeInteger(manifest.stats?.routes),
+        },
+        publicBundlesReady: bundleKeys.some(key => key.startsWith('public:') && isValidBundle(key)),
+        privateBundlesReady: bundleKeys.some(key => key.startsWith('private:') && isValidBundle(key)),
     };
 };
 
@@ -94,34 +159,30 @@ const readLegacySubscription = async (db: any, tId: number, sId: number) => {
 
     const match = snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
-        .find((data: any) => {
-            const tenantMatches = normalizeAnswerlatticeScopeDocumentId(data.tenantId ?? data.tId) === tId;
-            const productMatches = !data.productId || data.productId === 'AL' || data.pId === 'AL' || data.onboardingSource === 'ANSWERLATTICE_ONBOARDING';
-            return tenantMatches && productMatches;
-        });
+        .find((data: any) => isAnswerlatticeSubscriptionInScope(data, { tId, sId }));
 
     return match || null;
 };
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER) {
-        return NextResponse.json({ error: 'Activation summary is not enabled.' }, { status: 403 });
+        return activationJson({ error: 'Activation summary is not enabled.' }, 403);
     }
 
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'activation-summary');
-    if (rateLimitResponse) return rateLimitResponse;
+    if (rateLimitResponse) return withActivationResponseHeaders(rateLimitResponse);
 
     const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
-    if (permission.response) return permission.response;
+    if (permission.response) return withActivationResponseHeaders(permission.response);
 
     const scope = resolveSessionScope(session);
     if (!scope) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return activationJson({ error: 'Not onboarded' }, 400);
     }
 
     const db = getAnswerlatticeDb();
     if (!db) {
-        return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        return activationJson({ error: 'Answerlattice Firebase is not configured' }, 503);
     }
 
     const { tenantId: tId, storeId: sId } = scope;
@@ -136,8 +197,17 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         const answerTestsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeAnswerTestSummaryId(tId, sId));
         const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tId, sId));
 
+        const storeSnap = await storeRef.get();
+        if (!storeSnap.exists) {
+            return activationJson({ error: 'Store not found' }, 404);
+        }
+
+        const storeData = storeSnap.data() || {};
+        if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
+            return activationJson({ error: 'Forbidden' }, 403);
+        }
+
         const [
-            storeSnap,
             existingSummarySnap,
             contextSnap,
             coverageSnap,
@@ -146,7 +216,6 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             answerTestsSnap,
             sourceVersionsSnap,
         ] = await Promise.all([
-            storeRef.get(),
             summaryRef.get(),
             contextRef.get(),
             coverageRef.get(),
@@ -156,16 +225,6 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             sourceVersionsRef.get(),
         ]);
 
-        if (!storeSnap.exists) {
-            return NextResponse.json({ error: 'Store not found' }, { status: 404 });
-        }
-
-        const storeData = storeSnap.data() || {};
-        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        if (storeTenantId !== tId) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
         const usedLegacySubscriptionFallback = !storeData.answerlatticeSubscription;
         const legacySubscription = usedLegacySubscriptionFallback
             ? await readLegacySubscription(db, tId, sId)
@@ -173,6 +232,8 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
 
         const compiledContext = buildCompiledContextReadiness(
             bundleManifestSnap.exists ? bundleManifestSnap.data() as any : null,
+            tId,
+            sId,
         );
         const rawSourceVersions = sourceVersionsSnap.exists ? sourceVersionsSnap.data() : null;
         const currentAnswerTestSourceVersions = !rawSourceVersions
@@ -191,8 +252,12 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             contextSummary: contextSnap.exists
                 ? normalizeAnswerlatticeSurfaceContentSummary({ ...contextSnap.data(), id: contextSnap.id }, { tId, sId }, contextSnap.id)
                 : null,
-            coverage: coverageSnap.exists ? coverageSnap.data() as any : null,
-            trustMetrics: trustSnap.exists ? trustSnap.data() as any : null,
+            coverage: coverageSnap.exists
+                ? parseAnswerlatticeCoverageData(coverageSnap.data(), { tenantId: tId, storeId: sId })
+                : null,
+            trustMetrics: trustSnap.exists
+                ? parseAnswerlatticeTrustMetrics(trustSnap.data(), { tenantId: tId, storeId: sId })
+                : null,
             compiledContext,
             answerTests: buildAnswerlatticeActivationAnswerTestSummary(
                 answerTestsSnap.exists ? answerTestsSnap.data() : null,
@@ -211,29 +276,22 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             }, { merge: true });
         }
 
-        return NextResponse.json(
-            {
-                summary: {
-                    ...summary,
-                    readModel: {
-                        ...summary.readModel,
-                        firestoreReads: summary.readModel.firestoreReads + (usedLegacySubscriptionFallback ? 5 : 0),
-                        legacySubscriptionFallbackUsed: usedLegacySubscriptionFallback,
-                        legacySubscriptionFallbackReadCap: usedLegacySubscriptionFallback ? 5 : 0,
-                    },
+        return activationJson({
+            summary: {
+                ...summary,
+                readModel: {
+                    ...summary.readModel,
+                    firestoreReads: summary.readModel.firestoreReads + (usedLegacySubscriptionFallback ? 5 : 0),
+                    legacySubscriptionFallbackUsed: usedLegacySubscriptionFallback,
+                    legacySubscriptionFallbackReadCap: usedLegacySubscriptionFallback ? 5 : 0,
                 },
             },
-            {
-                headers: {
-                    'Cache-Control': 'private, no-store',
-                },
-            },
-        );
+        });
     } catch (error) {
         logRuntimeFailure('answerlattice_activation_summary_route_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', tId),
             ...getBoundedRuntimeStringContext('storeId', sId),
         });
-        return NextResponse.json({ error: 'Failed to load activation summary' }, { status: 500 });
+        return activationJson({ error: 'Failed to load activation summary' }, 500);
     }
 });

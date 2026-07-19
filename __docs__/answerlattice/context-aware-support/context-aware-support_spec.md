@@ -93,12 +93,19 @@ None. All context fields are optional. The system degrades gracefully when any o
 | Field | Type | Purpose | Example |
 |-------|------|---------|---------|
 | `contextVersion` | `number` | Schema version for backwards compatibility | `1` |
+| `contextKey` | `string` | Exact approved Product Surface key | `"billing_invoices"` |
+| `path` | `string` | Transient route used to resolve an approved Product Surface | `"/settings/integrations/stripe"` |
+| `title` | `string` | Optional safe page title | `"Stripe settings"` |
 | `feature` | `string` | High-level product subsystem | `"integrations"` |
 | `page` | `string` | Exact UI location (stable identifier, NOT URL) | `"stripe_integration_page"` |
 | `workflow` | `string` | Current user action/process | `"connect_integration"` |
 | `entityHints` | `string[]` | Explicit entity references (max 5) | `["stripe"]` |
+| `role` | `string` | Public alias normalized into `userRole` | `"admin"` |
 | `userRole` | `string` | User's permission level | `"admin"` |
+| `locale` | `string` | Public locale label | `"en_us"` |
 | `plan` | `string` | User's subscription tier | `"pro"` |
+| `state` | `string` | Current product state for strict canonical applicability | `"connection_failed"` |
+| `version` | `string` | Numeric product version label | `"2.4.1"` |
 
 ### Design Constraints
 - Total payload < 2KB
@@ -107,6 +114,9 @@ None. All context fields are optional. The system degrades gracefully when any o
 - `contextVersion` defaults to 1 if not provided
 - No PII (email, name, IP) — context is product state only
 - No analytics data (session length, clicks) — context is product state only
+- `path` must be an exact route, not a wildcard; Product Surface definitions own wildcard patterns
+- `path` is never copied into `page` and is not persisted in widget search metadata
+- `version` must use a numeric `major`, `major.minor`, or `major.minor.patch` label
 
 ---
 

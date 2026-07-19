@@ -1,5 +1,5 @@
 const DEFAULT_SCRIPT_SRC = 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
-const CONTEXT_STRING_KEYS = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'];
+const CONTEXT_STRING_KEYS = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state'];
 const MAX_CONTEXT_STRING_LENGTH = 100;
 const MAX_ENTITY_HINTS = 5;
 const MAX_ENTITY_HINT_LENGTH = 64;
@@ -53,7 +53,20 @@ function normalizeContextPath(value) {
     route = route.replace(/\/{2,}/g, '/');
     if (route.length > 1 && route.endsWith('/'))
         route = route.slice(0, -1);
+    if (route.includes('*'))
+        return null;
     return route.slice(0, 180);
+}
+function sanitizeContextVersion(value) {
+    if (typeof value !== 'string')
+        return null;
+    const normalized = value.trim().replace(/^v/i, '');
+    if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(normalized))
+        return null;
+    const [major, minor = '0', patch = '0'] = normalized.split('.');
+    if (Number(major) <= 0 || Number(minor) > 999 || Number(patch) > 999)
+        return null;
+    return normalized;
 }
 function getPayloadByteLength(value) {
     const serialized = JSON.stringify(value);
@@ -77,8 +90,6 @@ export function validateAnswerlatticePageContext(input) {
     const path = normalizeContextPath(input.path);
     if (path) {
         context.path = path;
-        if (!context.page)
-            context.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home', MAX_CONTEXT_STRING_LENGTH) || undefined;
     }
     const title = sanitizeContextTitle(input.title);
     if (title)
@@ -92,6 +103,9 @@ export function validateAnswerlatticePageContext(input) {
     const locale = sanitizeContextString(input.locale, 24);
     if (locale)
         context.locale = locale;
+    const version = sanitizeContextVersion(input.version);
+    if (version)
+        context.version = version;
     if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
         context.contextVersion = Math.floor(input.contextVersion);
     }
@@ -107,7 +121,7 @@ export function validateAnswerlatticePageContext(input) {
             context.entityHints = entityHints;
     }
     const hasMeaningfulContext = CONTEXT_STRING_KEYS.some((key) => Boolean(context[key]))
-        || Boolean(context.path || context.title || context.role || context.locale)
+        || Boolean(context.path || context.title || context.role || context.locale || context.version)
         || Boolean((_a = context.entityHints) === null || _a === void 0 ? void 0 : _a.length);
     if (!hasMeaningfulContext) {
         errors.push('Context must include at least one safe page, feature, workflow, public role/plan label, or entity hint.');

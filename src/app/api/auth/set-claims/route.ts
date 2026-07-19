@@ -16,8 +16,8 @@ import {
 } from '@lib/answerlattice/accessControl';
 import {
     getAnswerlatticeStaffClaimMembership,
-    getAnswerlatticeStaffClaimStoreIds,
     hasAnswerlatticeTenantAdminClaim,
+    normalizeAnswerlatticeStaffClaimPlatformRole,
     readActiveAnswerlatticeStaffClaimState,
 } from '@lib/answerlattice/staffClaimsContracts';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
@@ -509,8 +509,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             roleId: userRole,
             storeScope: claimStoreScope,
             tenantId: claimTenantScope.numericId,
-            platformRole: dbUser.platformRole,
+            platformRole: productId === PRODUCT_IDS.ANSWERLATTICE
+                ? normalizeAnswerlatticeStaffClaimPlatformRole(dbUser.platformRole)
+                : dbUser.platformRole,
         });
+        const platformRole = productId === PRODUCT_IDS.ANSWERLATTICE
+            ? normalizeAnswerlatticeStaffClaimPlatformRole(dbUser.platformRole)
+            : dbUser.platformRole || 'USER';
 
         const customClaims = {
             ...(productId === PRODUCT_IDS.ANSWERLATTICE ? {
@@ -518,17 +523,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             } : {}),
             pId: productId,
             role: userRole,
-            platformRole: dbUser.platformRole || 'USER',
+            platformRole,
             tenantId: claimTenantScope.documentId,
             storeId: claimStoreScope.documentId,
             uId: dbUser.id,
             admin: hasAnswerlatticeTenantAdminClaim(userRole, dbUser.platformRole),
-            storeIds: Array.from(new Set([
-                ...(answerlatticeClaimState
-                    ? getAnswerlatticeStaffClaimStoreIds(answerlatticeClaimState)
-                    : getStoreIdsClaim(dbUser)),
-                claimStoreScope.documentId,
-            ])),
+            storeIds: productId === PRODUCT_IDS.ANSWERLATTICE
+                ? [claimStoreScope.documentId]
+                : Array.from(new Set([
+                    ...getStoreIdsClaim(dbUser),
+                    claimStoreScope.documentId,
+                ])),
             ...answerlatticePermissionClaims,
         };
         let validatedDefaultFirebaseUser: Awaited<ReturnType<typeof authAdmin.getUser>> | null = null;

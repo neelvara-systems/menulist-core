@@ -6,6 +6,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export const ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH = 1_000;
 export const ANSWERLATTICE_FEEDBACK_DOCUMENT_ID_MAX_LENGTH = 180;
+export const ANSWERLATTICE_FEEDBACK_REQUEST_ID_MAX_LENGTH = 180;
 
 export const ANSWERLATTICE_FEEDBACK_FEATURE_ISSUES = [
     'Account access',
@@ -40,6 +41,17 @@ export type AnswerlatticeFeedbackSubmission = {
     votedPopularRequests?: Array<{ feature: string; interested: boolean }>;
 };
 
+export type AnswerlatticeFeedbackSubmitRequest = {
+    requestId: string;
+    submission: AnswerlatticeFeedbackSubmission;
+};
+
+export type AnswerlatticeFeedbackSubmitResult = {
+    feedback: Feedback;
+    created: boolean;
+    replayed: boolean;
+};
+
 export const normalizeAnswerlatticeFeedbackDocumentId = (value: unknown): string | null => {
     const documentId = typeof value === 'string' ? value.trim() : '';
     if (!documentId || documentId.length > ANSWERLATTICE_FEEDBACK_DOCUMENT_ID_MAX_LENGTH) return null;
@@ -49,6 +61,15 @@ export const normalizeAnswerlatticeFeedbackDocumentId = (value: unknown): string
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
+
+const normalizeFeedbackRequestId = (value: unknown): string | null => {
+    const requestId = typeof value === 'string' ? value.trim() : '';
+    return requestId
+        && requestId.length <= ANSWERLATTICE_FEEDBACK_REQUEST_ID_MAX_LENGTH
+        && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(requestId)
+        ? requestId
+        : null;
+};
 
 const normalizeOptionalText = (value: unknown): string | null | undefined => {
     if (value === undefined || value === null || value === '') return undefined;
@@ -183,6 +204,18 @@ export const normalizeAnswerlatticeFeedbackSubmission = (
     };
 };
 
+export const parseAnswerlatticeFeedbackSubmitRequest = (
+    value: unknown,
+): AnswerlatticeFeedbackSubmitRequest | null => {
+    if (!isRecord(value)
+        || Object.keys(value).some(key => key !== 'requestId' && key !== 'submission')) {
+        return null;
+    }
+    const requestId = normalizeFeedbackRequestId(value.requestId);
+    const submission = normalizeAnswerlatticeFeedbackSubmission(value.submission);
+    return requestId && submission ? { requestId, submission } : null;
+};
+
 export const normalizeAnswerlatticeFeedbackRecord = (
     value: unknown,
     documentId: unknown,
@@ -245,4 +278,37 @@ export const normalizeAnswerlatticeFeedbackRecord = (
         ...(createdBy !== undefined ? { createdBy } : {}),
         createdOn: value.createdOn,
     };
+};
+
+export const normalizeAnswerlatticeFeedbackSubmitResult = (
+    value: unknown,
+): AnswerlatticeFeedbackSubmitResult | null => {
+    if (!isRecord(value)
+        || Object.keys(value).some(key => !['success', 'id', 'created', 'replayed', 'feedback'].includes(key))
+        || value.success !== true
+        || typeof value.created !== 'boolean'
+        || typeof value.replayed !== 'boolean'
+        || !isRecord(value.feedback)) {
+        return null;
+    }
+    const id = normalizeAnswerlatticeFeedbackDocumentId(value.id);
+    const createdOnMillis = Number(value.feedback.createdOnMillis);
+    const modifiedOnMillis = Number(value.feedback.modifiedOnMillis);
+    if (!id
+        || !Number.isSafeInteger(createdOnMillis)
+        || createdOnMillis <= 0
+        || !Number.isSafeInteger(modifiedOnMillis)
+        || modifiedOnMillis <= 0) {
+        return null;
+    }
+    const feedback = normalizeAnswerlatticeFeedbackRecord({
+        ...value.feedback,
+        createdOn: Timestamp.fromMillis(createdOnMillis),
+        modifiedOn: Timestamp.fromMillis(modifiedOnMillis),
+    }, id);
+    return feedback ? {
+        feedback,
+        created: value.created,
+        replayed: value.replayed,
+    } : null;
 };

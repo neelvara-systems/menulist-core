@@ -37,9 +37,9 @@ type CustomerFlowItem = {
 };
 
 const STATUS_META: Record<CustomerFlowStatus, { label: string; color: string }> = {
-    ready: { label: 'Ready', color: 'success' },
-    needs_review: { label: 'Needs review', color: 'warning' },
-    pending: { label: 'Pending', color: 'default' },
+    ready: { label: 'Ready to test', color: 'success' },
+    needs_review: { label: 'Needs setup', color: 'warning' },
+    pending: { label: 'Not ready', color: 'default' },
     optional: { label: 'Optional', color: 'processing' },
 };
 
@@ -51,12 +51,9 @@ export default function AnswerlatticeCustomerFlowChecklist({
     const { token } = theme.useToken();
     const hasPublicKnowledge = (summary.content.articleCount + (summary.content.faqCount || 0)) > 0;
     const hasWidgetInstall = summary.widget.hasWidgetKey && summary.widget.allowedOriginCount > 0;
-    const hasWidgetSeen = Boolean(summary.widget.runtimeStatus?.lastSeenAt);
-    const hasPageContext = Boolean(
-        summary.widget.runtimeStatus?.lastContextKey
-        || summary.widget.runtimeStatus?.lastFeature
-        || summary.widget.runtimeStatus?.lastPage
-    );
+    const getStepStatus = (key: string) => summary.steps.find(step => step.key === key)?.status;
+    const hasWidgetSeen = getStepStatus('widget-install') === 'complete';
+    const hasPageContext = getStepStatus('page-context') === 'complete';
     const hasTicketFallback = summary.notifications.enabled
         && summary.notifications.smtpConfigured
         && Boolean(summary.workspace.supportEmail);
@@ -68,18 +65,18 @@ export default function AnswerlatticeCustomerFlowChecklist({
             key: 'help-center',
             title: 'Review public help content',
             description: hasPublicKnowledge
-                ? 'Customers can browse approved articles and FAQs from the public help surface.'
+                ? 'Approved articles and FAQs are available. Open the public-facing docs preview and verify one real question manually.'
                 : 'Publish one approved article or FAQ before this becomes useful to customers.',
             status: hasPublicKnowledge ? 'ready' : 'pending',
-            actionLabel: hasPublicKnowledge ? 'Review Knowledge Base' : 'Import Content',
-            route: hasPublicKnowledge ? ANSWERLATTICE_ROUTES.KNOWLEDGE_BASE : ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
+            actionLabel: hasPublicKnowledge ? 'Preview Help Content' : 'Import Content',
+            route: hasPublicKnowledge ? ANSWERLATTICE_ROUTES.DOCS : ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
             icon: LuBookOpen,
         },
         {
             key: 'widget',
             title: 'Ask from the widget',
             description: hasWidgetSeen
-                ? `Widget was last seen on ${summary.widget.runtimeStatus?.lastPath || 'a product page'}.`
+                ? `Recent widget telemetry exists for ${summary.widget.runtimeStatus?.lastPath || 'a product page'}. Ask one real question in the installed product.`
                 : 'Install the widget and open your product once to confirm customers can ask in context.',
             status: hasWidgetSeen ? 'ready' : hasWidgetInstall ? 'needs_review' : 'pending',
             actionLabel: 'Open Widget Setup',
@@ -90,7 +87,7 @@ export default function AnswerlatticeCustomerFlowChecklist({
             key: 'page-context',
             title: 'Confirm page context',
             description: hasPageContext
-                ? `Latest context is ${summary.widget.runtimeStatus?.lastContextKey || summary.widget.runtimeStatus?.lastFeature || summary.widget.runtimeStatus?.lastPage}.`
+                ? `Recent context is ${summary.widget.runtimeStatus?.lastContextKey || summary.widget.runtimeStatus?.lastFeature || summary.widget.runtimeStatus?.lastPage}. Verify that the answer changes only when the approved scope should change.`
                 : 'Send a context key or page value after route changes so answers match the screen the customer is on.',
             status: hasPageContext ? 'ready' : hasWidgetInstall ? 'needs_review' : 'pending',
             actionLabel: 'Map Context',
@@ -101,7 +98,7 @@ export default function AnswerlatticeCustomerFlowChecklist({
             key: 'ticket-fallback',
             title: 'Review fallback tickets',
             description: hasTicketFallback
-                ? 'Ticket fallback has a support email and sender configuration.'
+                ? 'Fallback prerequisites are configured. Submit one unresolved question and verify that the resulting ticket contains enough context.'
                 : 'Set support email and sender configuration so unresolved questions do not get missed.',
             status: hasTicketFallback ? 'ready' : 'needs_review',
             actionLabel: hasTicketFallback ? 'Open Ticket Inbox' : 'Review Notifications',
@@ -135,11 +132,11 @@ export default function AnswerlatticeCustomerFlowChecklist({
     return (
         <Card
             title="Test as Customer"
-            extra={!isMobile ? <Tag color="green">Launch proof</Tag> : null}
+            extra={!isMobile ? <Tag color="blue">Manual checklist</Tag> : null}
         >
             <Flex vertical gap={12}>
                 <Paragraph type="secondary" style={{ margin: 0 }}>
-                    Run the customer path before launch: find an answer, ask in the widget, fall back to a ticket, and verify the knowledge loop.
+                    These statuses prove prerequisites, not customer resolution. Manually find an answer, ask in the installed widget, fall back to a ticket, and inspect the resulting knowledge signal before launch.
                 </Paragraph>
                 <List
                     grid={isMobile ? undefined : { gutter: 12, column: 2 }}
@@ -174,7 +171,10 @@ export default function AnswerlatticeCustomerFlowChecklist({
                                             <Text type="secondary">{item.description}</Text>
                                         </Flex>
                                     </Flex>
-                                    <Button onClick={() => onOpen(item.route)} style={{ minHeight: 44 }}>
+                                    <Button
+                                        onClick={() => onOpen(item.route)}
+                                        style={{ minHeight: 44, width: isMobile ? '100%' : undefined }}
+                                    >
                                         {item.actionLabel}
                                     </Button>
                                 </Flex>

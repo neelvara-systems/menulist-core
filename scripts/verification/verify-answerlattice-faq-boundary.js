@@ -19,10 +19,20 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertThrows(action, message) {
+  try {
+    action();
+  } catch {
+    return;
+  }
+  throw new Error(message);
+}
+
 const {
   normalizeAnswerlatticeRetrievalFaq,
   normalizeAnswerlatticePublicFaq,
   normalizeAnswerlatticePublicFaqList,
+  parseAnswerlatticeFaqSaveInput,
   projectAnswerlatticePublicFaq,
 } = require(path.join(ROOT, 'src/lib/answerlattice/faqContent.ts'));
 
@@ -76,11 +86,38 @@ assert(normalizeAnswerlatticeRetrievalFaq({ ...retrievalFaq, pId: 'ML' }, 'faq-1
 assert(normalizeAnswerlatticeRetrievalFaq({ ...retrievalFaq, tId: '1' }, 'faq-1', scope) === null, 'retrieval FAQ must reject coercible tenant scope');
 assert(normalizeAnswerlatticeRetrievalFaq({ ...retrievalFaq, tags: ['publishing', 'publishing'] }, 'faq-1', scope) === null, 'retrieval FAQ must reject normalized duplicate fields');
 
+const parsedSave = parseAnswerlatticeFaqSaveInput({
+  question: 'How do I publish?',
+  answer: 'Open the article and select Publish.',
+  status: 'draft',
+  articleId: null,
+  entityIds: [],
+  contextKeys: [],
+  tags: [],
+  sortOrder: 100,
+}, scope);
+assert(parsedSave.pId === 'AL' && parsedSave.status === 'draft', 'FAQ authoring input must normalize into exact scoped content');
+assert(!Object.prototype.hasOwnProperty.call(parsedSave, 'source'), 'FAQ authoring input must not own source provenance');
+assertThrows(() => parseAnswerlatticeFaqSaveInput({
+  question: 'How do I publish?',
+  answer: 'Open the article and select Publish.',
+  source: 'article',
+}, scope), 'FAQ authoring input must reject caller-provided source provenance');
+assertThrows(() => parseAnswerlatticeFaqSaveInput({
+  question: 'How do I publish?',
+  answer: 'Open the article and select Publish.',
+  likes: 10,
+}, scope), 'FAQ authoring input must reject caller-provided feedback counters');
+
 const cache = read('src/lib/answerlattice/publicContentCache.ts');
 const client = read('src/lib/answerlattice/publicContentClient.ts');
 const view = read('src/components/templates/main-app/helpCenter/FaqView.tsx');
 const route = read('src/app/api/answerlattice/public-content/route.ts');
 const retrieval = read('src/lib/answerlattice/faqRetrieval.ts');
+const faqDal = read('src/database/answerlattice/faqs.ts');
+const faqManagement = read('src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx');
+const faqGeneration = read('src/app/api/answerlattice/faqs/generate-from-article/route.ts');
+const rules = read('firestore-answerlattice.rules');
 const packageJson = JSON.parse(read('package.json'));
 
 assert(cache.includes('projectAnswerlatticePublicFaq(doc.data(), doc.id, scope)'), 'public FAQ Admin reads must project through the exact DTO boundary');
@@ -94,6 +131,24 @@ assert(retrieval.includes('normalizeAnswerlatticeRetrievalFaq(doc.data(), doc.id
 assert(retrieval.includes("const tId = typeof options.tId === 'number' ? normalizeAnswerlatticeScopeDocumentId(options.tId) : null;"), 'FAQ retrieval must require exact runtime tenant scope');
 assert(!retrieval.includes('const tId = Number(options.tId);'), 'FAQ retrieval must not coerce runtime tenant scope');
 assert(!retrieval.includes(".where('tId', '==', Number(tId))"), 'FAQ retrieval must not coerce tenant query scope');
+assert(retrieval.includes('const currentFaq = await loadPublishedFaqById('), 'related-surface FAQ summaries must be revalidated against current published truth');
+assert(retrieval.includes('if (!snap.exists) return [];'), 'missing linked articles must not produce phantom FAQ citations');
+assert(retrieval.includes("article.status !== 'published'"), 'FAQ citations must require a published linked article');
+assert(faqDal.includes('source: existingSource || ANSWERLATTICE_FAQ_SOURCE.MANUAL'), 'FAQ provenance must be system-derived and immutable during authoring');
+assert(faqDal.includes("throw new Error('Publish the linked article before publishing this FAQ.')"), 'linked FAQ publication must require active published article truth');
+assert(!faqDal.includes('export const updateFaqFeedback'), 'FAQ feedback must not retain a direct browser Firestore counter writer');
+assert(!faqManagement.includes('name="source"'), 'FAQ editor must expose source provenance as read-only');
+assert(faqManagement.includes("getContentFeedbackForEntry('faq', selectedFaq.id)"), 'FAQ review must expose bounded audited reaction details');
+assert(faqGeneration.includes('getArticleFaqSourceFingerprint'), 'article FAQ generation must fingerprint the source used by the provider');
+assert(faqGeneration.includes('await db.runTransaction(async (transaction) =>'), 'article FAQ generation must commit through a transaction');
+assert(faqGeneration.includes('const currentArticleSnapshot = await transaction.get(articleRef);'), 'article FAQ generation must re-read source truth after the model call');
+assert(faqGeneration.includes('const currentLinkedFaqs = await transaction.get(linkedFaqQuery);'), 'article FAQ generation must re-check current linked FAQ capacity and duplicates');
+assert(faqGeneration.includes('transaction.create('), 'article FAQ generation must create new candidates without merge semantics');
+assert(!faqGeneration.includes('batch.set(articleRef'), 'article FAQ generation must not recreate a deleted article through merge writes');
+assert(rules.includes('isValidAnswerlatticeManualFaqCreate(request.resource.data, docId)'), 'FAQ create rules must restrict browser writes to manual source truth');
+assert(rules.includes('after.source == before.source'), 'FAQ update rules must keep source provenance immutable');
+assert(rules.includes("'canonicalAnswerId', 'jobId', 'generatedFromArticleId', 'intakeJobId'"), 'FAQ create rules must reject system lineage fields');
+assert(rules.includes("'recentFeedbackOperations'"), 'FAQ create rules must reject server-owned feedback idempotency state');
 assert(packageJson.scripts['verify:answerlattice-faq-boundary'] === 'node scripts/verification/verify-answerlattice-faq-boundary.js', 'package must expose the FAQ boundary verifier');
 
 process.stdout.write('Answerlattice FAQ public boundary verification passed.\n');

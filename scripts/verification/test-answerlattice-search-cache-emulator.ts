@@ -68,13 +68,22 @@ async function run(): Promise<void> {
         tId: scope.tId,
         sId: scope.sId,
     };
+    const citationCandidate: any = {
+        id: 'citation-billing-failure',
+        title: 'Failed invoice documentation',
+        url: 'https://docs.example.com/billing/failed-invoice',
+        sourceId: 'source-private-billing',
+    };
     const history = await addAiSearchHistoryServer({
         query: 'Why did my invoice fail?',
         cacheKey: historyCacheKey,
         craftedAnswer: 'Open Billing, review the failed invoice, and retry with an active payment method.',
         references: [fullReference],
+        citations: [citationCandidate],
         answerSource: 'rag',
         canonical: false,
+        fallbackReason: 'canonical_scope_context_required',
+        clarification: { type: 'scope_context', requiredContext: ['plan', 'role', 'plan'] },
         mountContext: 'help_center',
         uId: 'owner-31',
         ...scope,
@@ -86,6 +95,7 @@ async function run(): Promise<void> {
     assert.equal(historyDoc.data()?.references?.[0]?.embedding, undefined);
     assert.equal(historyDoc.data()?.references?.[0]?.tId, undefined);
     assert.equal(historyDoc.data()?.references?.[0]?.sId, undefined);
+    assert.equal(historyDoc.data()?.citations?.[0]?.sourceId, undefined, 'public citation cache must remove internal source IDs');
 
     const cachedHistory = await findCachedSearchByCacheKeyServer(historyCacheKey, {
         tId: scope.tId,
@@ -95,6 +105,12 @@ async function run(): Promise<void> {
     assert.equal(cachedHistory?.id, history.id);
     assert.equal(cachedHistory?.references.length, 1);
     assert.equal(cachedHistory?.references[0]?.id, fullReference.id);
+    assert.deepEqual(cachedHistory?.citations, [{
+        id: 'citation-billing-failure',
+        title: 'Failed invoice documentation',
+        url: 'https://docs.example.com/billing/failed-invoice',
+    }]);
+    assert.deepEqual(cachedHistory?.clarification, { type: 'scope_context', requiredContext: ['plan', 'role'] });
     assert.equal(
         await findCachedSearchByCacheKeyServer(historyCacheKey, {
             tId: scope.tId,

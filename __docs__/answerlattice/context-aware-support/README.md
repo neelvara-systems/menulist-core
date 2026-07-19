@@ -1,9 +1,9 @@
 # Answerlattice — Context-Aware Support
 
 > **Status:** IMPLEMENTED
-> **Version:** 1.2.0
+> **Version:** 1.3.0
 > **Created:** 2026-03-08
-> **Last Updated:** 2026-07-11
+> **Last Updated:** 2026-07-18
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`
 > **Expansion Tracker:** Item #1 (Phase A — Foundation)
 > **Doctrine Check:** ✅ Allowed — improves deterministic retrieval performance (Non-Goals §VII)
@@ -14,7 +14,7 @@
 
 Transforms Answerlattice's retrieval from **query-only** matching to **product-state-aware** reasoning by accepting structured context from the client product alongside the user's query.
 
-Runtime note: Help Center surfaces pass context directly through Answerlattice-owned React state. External product widgets pass it through the v1 browser contract, `AnswerlatticeWidget.setContext()` / `page()`, or mount-time script attributes such as `data-page` and `data-workflow`. Context remains transient, sanitized, and capped at 2KB; it is not stored as chat history or customer profile data.
+Runtime note: Help Center surfaces pass context directly through Answerlattice-owned React state. External product widgets pass it through the v1 browser contract, `AnswerlatticeWidget.setContext()` / `page()`, or mount-time script attributes such as `data-path`, `data-page`, `data-workflow`, `data-state`, and `data-version`. Context remains transient, sanitized, and capped at 2KB; raw route paths are used only to resolve an approved Product Surface and are not copied into compact page identifiers or stored as widget search metadata.
 
 Canonical scope note: page, feature, workflow, and entity hints improve deterministic entity matching. Plan, role, and product state are different: when a canonical answer restricts one of those dimensions, the matching runtime value is required and must be allowed. Missing or mismatched scope returns a fixed governed fallback before FAQ or RAG.
 
@@ -99,5 +99,7 @@ We extend these existing systems. We do NOT build 8 new components.
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-18 | 1.3.0 | Added exact/wildcard Product Surface route matching, web SDK/loader/iframe parity for state and numeric version context, transient route-path handling, and canonical version applicability. |
+| 2026-07-11 | 1.2.0 | Made plan, role, and product state strict canonical eligibility constraints with governed fallback behavior. |
 | 2026-05-18 | 1.1.0 | Marked implemented and documented current browser/mount-time widget context flow, transient storage boundary, and 2KB payload cap |
 | 2026-03-08 | 1.0.0 | Initial documentation from ChatGPT conversation + Cascade codebase audit + external research |

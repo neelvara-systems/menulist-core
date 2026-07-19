@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { createHash } from 'node:crypto';
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { getUnitCost } from '@constant/AI/unitCosts';
@@ -8,8 +9,8 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
-import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
-import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { ANSWERLATTICE_CACHE_SOURCES, getAnswerlatticeCacheVersionDocId } from '@lib/answerlattice/cacheVersionManifest';
+import { getAnswerlatticeBundleManifestDocId, getAnswerlatticeSourceVersionsDocId } from '@lib/answerlattice/compiledContext';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
 import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { upsertAnswerlatticeExtractedEntityCandidate } from '@lib/answerlattice/ontologyServer';
@@ -27,7 +28,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { callGeminiChatWithMetadata } from '@lib/vectorEmbeddings';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type Transaction } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
@@ -41,6 +42,89 @@ const ArticleSchema = z.object({
 }).strict();
 const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;
 const ARTICLE_ENTITY_ID_LIMIT = 10;
+
+class ArticleEntityExtractionConflictError extends Error {}
+
+const stableSerialize = (value: unknown): string => {
+    if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+    if (value && typeof value === 'object') {
+        return `{${Object.entries(value as Record<string, unknown>)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([key, child]) => `${JSON.stringify(key)}:${stableSerialize(child)}`)
+            .join(',')}}`;
+    }
+    return JSON.stringify(value);
+};
+
+const buildArticleSourceFingerprint = (value: Record<string, unknown>): string => createHash('sha256')
+    .update(stableSerialize({
+        pId: value.pId,
+        tId: value.tId,
+        sId: value.sId,
+        title: value.title,
+        categoryTitle: value.categoryTitle,
+        sectionTitle: value.sectionTitle,
+        content: value.content,
+        active: value.active,
+        status: value.status,
+    }))
+    .digest('hex');
+
+const addArticleEntityLinkInvalidationWrites = (
+    transaction: Transaction,
+    scope: { tId: number; sId: number },
+    articleId: string,
+) => {
+    const now = FieldValue.serverTimestamp();
+    transaction.set(
+        answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
+            .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId)),
+        {
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: scope.tId,
+            sId: scope.sId,
+            source: ANSWERLATTICE_CACHE_SOURCES.KB,
+            version: FieldValue.increment(1),
+            modifiedOn: now,
+            lastReason: 'article_entity_links_updated',
+            lastSourceId: articleId,
+            lastSourceType: DB_COLLECTIONS.KB_ARTICLES,
+        },
+        { merge: true },
+    );
+    transaction.set(
+        answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(getAnswerlatticeSourceVersionsDocId(scope.tId, scope.sId)),
+        {
+            schemaVersion: 1,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: scope.tId,
+            sId: scope.sId,
+            kb: FieldValue.increment(1),
+            updatedAt: now,
+            lastReason: 'article_entity_links_updated',
+            lastSourceId: articleId,
+            lastSourceType: DB_COLLECTIONS.KB_ARTICLES,
+        },
+        { merge: true },
+    );
+    transaction.set(
+        answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(getAnswerlatticeBundleManifestDocId(scope.tId, scope.sId)),
+        {
+            schemaVersion: 1,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: scope.tId,
+            sId: scope.sId,
+            status: 'stale',
+            staleReason: 'article_entity_links_updated',
+            updatedAt: now,
+            lastReason: 'article_entity_links_updated',
+            lastSourceId: articleId,
+        },
+        { merge: true },
+    );
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
@@ -150,49 +234,77 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Article not found' }, { status: 404 });
         }
 
-        const sourceContent = persistedArticle.content ?? article.content;
+        const sourceFingerprint = buildArticleSourceFingerprint(persistedArticle);
+        const sourceContent = persistedArticle.content;
         const textContent = extractPlainTextFromTipTap(sourceContent);
         const syncArticleEntityIds = async (nextEntityIds: unknown): Promise<string[]> => {
             const normalizedNextEntityIds = normalizeAnswerlatticeResolvedEntityIds(
                 nextEntityIds,
                 ARTICLE_ENTITY_ID_LIMIT,
-            );
-            const storedEntityIdsValue = persistedArticle.entityIds;
-            const storedEntityIds = Array.isArray(storedEntityIdsValue)
-                ? storedEntityIdsValue
-                : [];
-            const normalizedStoredEntityIds = normalizeAnswerlatticeResolvedEntityIds(
-                storedEntityIds,
-                ARTICLE_ENTITY_ID_LIMIT,
-            );
-            const storedEntityIdsAreValid = (
-                storedEntityIdsValue === undefined
-                || Array.isArray(storedEntityIdsValue)
-            )
-                && normalizedStoredEntityIds.length === storedEntityIds.length
-                && normalizedStoredEntityIds.every((entityId, index) => entityId === storedEntityIds[index]);
-            const entityLinksChanged = !storedEntityIdsAreValid
-                || normalizedStoredEntityIds.length !== normalizedNextEntityIds.length
-                || normalizedStoredEntityIds.some((entityId, index) => entityId !== normalizedNextEntityIds[index]);
+            ).sort();
 
-            if (entityLinksChanged) {
-                await articleRef.set({
-                    entityIds: normalizedNextEntityIds,
-                    modifiedOn: FieldValue.serverTimestamp(),
-                }, { merge: true });
-                await bumpAnswerlatticeCacheVersionAdmin(
-                    ANSWERLATTICE_CACHE_SOURCES.KB,
-                    tenantId,
-                    storeId,
-                    {
-                        reason: 'article_entity_links_updated',
-                        sourceId: article.id,
-                        sourceType: 'kb_article',
-                    },
-                );
-            }
+            return answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+                const currentArticleSnapshot = await transaction.get(articleRef);
+                if (!currentArticleSnapshot.exists) {
+                    throw new ArticleEntityExtractionConflictError('article_deleted_during_entity_extraction');
+                }
+                const currentArticle = currentArticleSnapshot.data() || {};
+                const currentTenantId = normalizeAnswerlatticeScopeDocumentId(currentArticle.tId);
+                const currentStoreId = normalizeAnswerlatticeScopeDocumentId(currentArticle.sId);
+                if (
+                    currentArticle.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || currentTenantId !== tenantId
+                    || currentStoreId !== storeId
+                    || buildArticleSourceFingerprint(currentArticle) !== sourceFingerprint
+                ) {
+                    throw new ArticleEntityExtractionConflictError('article_changed_during_entity_extraction');
+                }
 
-            return normalizedNextEntityIds;
+                const entitySnapshots = await Promise.all(normalizedNextEntityIds.map((entityId) => (
+                    transaction.get(answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId))
+                )));
+                if (entitySnapshots.some((snapshot) => {
+                    const data = snapshot.data() || {};
+                    return !snapshot.exists
+                        || data.pId !== PRODUCT_IDS.ANSWERLATTICE
+                        || data.tId !== tenantId
+                        || data.sId !== storeId
+                        || data.status !== 'active';
+                })) {
+                    throw new ArticleEntityExtractionConflictError('matched_entity_changed_during_extraction');
+                }
+
+                const storedEntityIdsValue = currentArticle.entityIds;
+                const storedEntityIds = Array.isArray(storedEntityIdsValue) ? storedEntityIdsValue : [];
+                const sortedStoredEntityIds = [...storedEntityIds].sort();
+                const normalizedStoredEntityIds = normalizeAnswerlatticeResolvedEntityIds(
+                    storedEntityIds,
+                    ARTICLE_ENTITY_ID_LIMIT,
+                ).sort();
+                const storedEntityIdsAreValid = (
+                    storedEntityIdsValue === undefined
+                    || Array.isArray(storedEntityIdsValue)
+                )
+                    && normalizedStoredEntityIds.length === storedEntityIds.length
+                    && normalizedStoredEntityIds.every((entityId, index) => entityId === sortedStoredEntityIds[index]);
+                const entityLinksChanged = !storedEntityIdsAreValid
+                    || normalizedStoredEntityIds.length !== normalizedNextEntityIds.length
+                    || normalizedStoredEntityIds.some((entityId, index) => entityId !== normalizedNextEntityIds[index]);
+
+                if (entityLinksChanged) {
+                    transaction.update(articleRef, {
+                        entityIds: normalizedNextEntityIds,
+                        modifiedOn: FieldValue.serverTimestamp(),
+                    });
+                    addArticleEntityLinkInvalidationWrites(
+                        transaction,
+                        { tId: tenantId, sId: storeId },
+                        article.id,
+                    );
+                }
+
+                return normalizedNextEntityIds;
+            });
         };
 
         if (!textContent || textContent.length < 20) {
@@ -263,17 +375,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 return geminiResult.text;
             },
             existingEntities,
-            async (candidate) => {
-                await upsertAnswerlatticeExtractedEntityCandidate({
-                    scope: { tId: tenantId, sId: storeId },
-                    actorLabel: String(session.user?.email || session.user?.name || userId),
-                    candidate: {
-                        ...candidate,
-                        pId: PRODUCT_IDS.ANSWERLATTICE,
-                    },
-                    sourceArticleId: article.id,
-                });
-            },
+            async () => undefined,
+            { persistCandidates: false },
         );
 
         if (result.successfulBatchCount < 1 || result.failedBatchCount > 0) {
@@ -281,13 +384,48 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const matchedEntityIds = await syncArticleEntityIds(result?.matchedEntityIds);
+        let newCandidateCount = 0;
+        for (const candidate of result.candidateDrafts || []) {
+            try {
+                const storedCandidate = await upsertAnswerlatticeExtractedEntityCandidate({
+                    scope: { tId: tenantId, sId: storeId },
+                    actorLabel: String(session.user?.email || session.user?.name || userId),
+                    candidate: {
+                        tId: tenantId,
+                        sId: storeId,
+                        name: candidate.name,
+                        type: candidate.type,
+                        confidence: candidate.confidence,
+                        frequency: { articles: 1, tickets: 0, chat: 0 },
+                        description: candidate.description,
+                        status: 'pending',
+                        pId: PRODUCT_IDS.ANSWERLATTICE,
+                    },
+                    sourceArticleId: article.id,
+                });
+                if (storedCandidate.created) newCandidateCount += 1;
+            } catch (candidateError) {
+                logRuntimeFailure('answerlattice_article_entity_candidate_store_failed', candidateError, {
+                    ...getBoundedRuntimeStringContext('articleId', article.id),
+                    ...getBoundedRuntimeStringContext('entityName', candidate.name),
+                    ...getBoundedRuntimeStringContext('storeId', storeId),
+                    ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                });
+            }
+        }
 
         return NextResponse.json({
             ok: true,
             entityIds: matchedEntityIds,
-            newCandidateCount: result?.newCandidateCount || 0,
+            newCandidateCount,
         });
     } catch (error) {
+        if (error instanceof ArticleEntityExtractionConflictError) {
+            return NextResponse.json(
+                { error: 'The article changed while entity extraction was running. Retry from the latest article.' },
+                { status: 409 },
+            );
+        }
         logRuntimeFailure('answerlattice_article_entity_extraction_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', tenantIdForLog),
             ...getBoundedRuntimeStringContext('storeId', storeIdForLog),

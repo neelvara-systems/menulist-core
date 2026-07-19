@@ -27,6 +27,11 @@ import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getStoreStatus } from '@lib/hours';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLocale,
+    type PublicCustomerTranslator,
+} from '@lib/localization/publicCustomerMessages';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
 import {
@@ -158,7 +163,11 @@ function resolveMenuFooterDate(
  * Format a Firestore Timestamp or Date to a human-readable relative string.
  * Examples: "today", "yesterday", "3 days ago", "Jan 15"
  */
-function formatRelativeDate(timestamp: any): string {
+function formatRelativeDate(
+    timestamp: any,
+    language: string | undefined,
+    t: PublicCustomerTranslator,
+): string {
     const date = resolveMenuFooterDate(timestamp, 'relative');
     if (!date) return '';
 
@@ -167,12 +176,20 @@ function formatRelativeDate(timestamp: any): string {
         const diffMs = now.getTime() - date.getTime();
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-        if (diffDays === 0) return 'today';
-        if (diffDays === 1) return 'yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+        if (diffDays === 0) return t('menu.today');
+        if (diffDays === 1) return t('menu.yesterday');
+        if (diffDays < 7) return t('menu.daysAgo', { count: diffDays });
+        if (diffDays < 30) {
+            const weekCount = Math.floor(diffDays / 7);
+            return weekCount === 1
+                ? t('menu.weekAgo')
+                : t('menu.weeksAgo', { count: weekCount });
+        }
 
-        return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString(getPublicCustomerLocale(language), {
+            month: 'short',
+            day: 'numeric',
+        });
     } catch (error) {
         logMenuFooterFreshnessFailure('relative', error, timestamp);
         return '';
@@ -207,15 +224,16 @@ export default function MenuFooter({
     showFeedbackLink = true,
 }: MenuFooterProps) {
     const { isMobile } = useDeviceType();
+    const t = createPublicCustomerTranslator(activeLanguage);
     // Feedback visibility: Both store-level AND project-level must be enabled
     // Default: true if undefined (opt-out pattern)
     const showFeedback = showFeedbackLink && projectId &&
         storeDetails?.feedbackEnabled !== false &&
         feedbackEnabled !== false;
     // G09 ENFORCEMENT: Business name is required
-    // Legacy fallback: Show "Menu" if no store name provided
+    // Legacy fallback: show a localized neutral offering name if no store name exists.
     // This ensures footer ALWAYS renders with at least a neutral name
-    const businessName = getStoreContextName(storeDetails, 'Menu');
+    const businessName = getStoreContextName(storeDetails, t('menu.menuOffering'));
 
     // Build full address from components (handle undefined storeDetails)
     const addressParts = [
@@ -263,7 +281,9 @@ export default function MenuFooter({
     const homeHref = appendPublicLanguageParam('/', activeLanguage);
     const useSingleRowActions = visibleActionCount > 1 && visibleActionCount <= 3 && !showReservation && !showOrder;
     const useFullWidthActionGrid = isMobile && useSingleRowActions;
-    const relativeUpdatedAt = lastPublishedAt ? formatRelativeDate(lastPublishedAt) : '';
+    const relativeUpdatedAt = lastPublishedAt
+        ? formatRelativeDate(lastPublishedAt, activeLanguage, t)
+        : '';
     const lastUpdatedIso = lastPublishedAt ? getMenuFooterUpdatedAtIso(lastPublishedAt) : undefined;
     const showFreshnessText = Boolean(relativeUpdatedAt);
 
@@ -279,9 +299,9 @@ export default function MenuFooter({
         : [];
     const policyLinks = FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES
         ? [
-            publicPresence?.showPrivacyLink !== false ? { href: '/privacy', label: 'Privacy' } : null,
-            publicPresence?.showTermsLink !== false ? { href: '/terms', label: 'Terms' } : null,
-            publicPresence?.showRefundLink !== false ? { href: '/refund', label: 'Refund' } : null,
+            publicPresence?.showPrivacyLink !== false ? { href: appendPublicLanguageParam('/privacy', activeLanguage), label: t('menu.privacy') } : null,
+            publicPresence?.showTermsLink !== false ? { href: appendPublicLanguageParam('/terms', activeLanguage), label: t('menu.terms') } : null,
+            publicPresence?.showRefundLink !== false ? { href: appendPublicLanguageParam('/refund', activeLanguage), label: t('menu.refund') } : null,
         ].filter((link): link is { href: string; label: string } => Boolean(link))
         : [];
     const footerCardStyle: React.CSSProperties = {
@@ -367,7 +387,7 @@ export default function MenuFooter({
                 flexDirection: 'column',
                 gap: 12,
             }}
-            aria-label="Business information"
+            aria-label={t('menu.businessInformation')}
         >
             <div style={footerCardStyle}>
             {/*
@@ -378,7 +398,7 @@ export default function MenuFooter({
             */}
             <a
                 href={homeHref}
-                aria-label={`${businessName} — business home`}
+                aria-label={t('menu.businessHome', { businessName })}
                 style={{
                     color: moodConfig.headingColor,
                     fontWeight: 700,
@@ -418,10 +438,12 @@ export default function MenuFooter({
                                 track: () => handleMenuAction('call'),
                             })}
                             style={contactActionStyle}
-                            aria-label={displayPhone ? `Call ${displayPhone}` : 'Call'}
+                            aria-label={displayPhone
+                                ? t('menu.callPhone', { phone: displayPhone })
+                                : t('menu.call')}
                         >
                             <LuPhone size={16} aria-hidden="true" />
-                            <span>Call</span>
+                            <span>{t('menu.call')}</span>
                         </a>
                     )}
                     {showWhatsApp && whatsappHref && (
@@ -439,7 +461,7 @@ export default function MenuFooter({
                             style={contactActionStyle}
                         >
                             <LuMessageCircle size={16} aria-hidden="true" />
-                            <span>WhatsApp</span>
+                            <span>{t('menu.whatsApp')}</span>
                         </a>
                     )}
                     {showDirections && directionsHref && (
@@ -457,7 +479,7 @@ export default function MenuFooter({
                             style={contactActionStyle}
                         >
                             <LuMapPin size={16} aria-hidden="true" />
-                            <span>Directions</span>
+                            <span>{t('menu.directions')}</span>
                         </a>
                     )}
                     {showReservation && reservationHref && (
@@ -475,7 +497,7 @@ export default function MenuFooter({
                             style={contactActionStyle}
                         >
                             <LuCalendarCheck size={16} aria-hidden="true" />
-                            <span>Reserve</span>
+                            <span>{t('menu.reserve')}</span>
                         </a>
                     )}
                     {showOrder && orderHref && (
@@ -493,7 +515,7 @@ export default function MenuFooter({
                             style={contactActionStyle}
                         >
                             <LuShoppingBag size={16} aria-hidden="true" />
-                            <span>Order</span>
+                            <span>{t('menu.order')}</span>
                         </a>
                     )}
                 </div>
@@ -560,7 +582,7 @@ export default function MenuFooter({
                                     borderRadius: 999,
                                 }}
                                 className="hover:opacity-100"
-                                aria-label={`Visit our ${platform}`}
+                                aria-label={t('menu.visitSocial', { platform })}
                             >
                                 <Icon size={16} />
                             </a>
@@ -571,7 +593,7 @@ export default function MenuFooter({
 
             {policyLinks.length > 0 && (
                 <nav
-                    aria-label="Policy links"
+                    aria-label={t('menu.policyLinks')}
                     style={{
                         display: 'flex',
                         flexWrap: 'wrap',
@@ -603,7 +625,10 @@ export default function MenuFooter({
             {/* Shows only if both store and project have feedback enabled */}
             {showFeedback && (
                 <a
-                    href={`/feedback/${projectId}?source=menu_footer`}
+                    href={appendPublicLanguageParam(
+                        `/feedback/${projectId}?source=menu_footer`,
+                        activeLanguage,
+                    )}
                     style={{
                         display: 'inline-block',
                         color: moodConfig.bodyColor,
@@ -616,7 +641,7 @@ export default function MenuFooter({
                     }}
                     className="hover:opacity-100"
                 >
-                    Share Feedback
+                    {t('menu.shareFeedback')}
                 </a>
             )}
 
@@ -637,7 +662,7 @@ export default function MenuFooter({
                         width: '100%',
                         flexWrap: 'wrap',
                     }}
-                    aria-label="Change menu language"
+                    aria-label={t('menu.changeLanguage')}
                 >
                     {languages.map((lang, index) => (
                         <button
@@ -661,7 +686,7 @@ export default function MenuFooter({
                         >
                             {getLanguageDisplay(lang)}
                             {index < languages.length - 1 && (
-                                <span style={{ marginLeft: '8px', opacity: 0.3 }}>•</span>
+                                <span style={{ marginInlineStart: '8px', opacity: 0.3 }}>•</span>
                             )}
                         </button>
                     ))}
@@ -682,7 +707,7 @@ export default function MenuFooter({
                     data-menu-version={menuVersion}
                     data-last-updated={lastUpdatedIso}
                 >
-                    {showFreshnessText && `Updated ${relativeUpdatedAt}`}
+                    {showFreshnessText && t('menu.updated', { when: relativeUpdatedAt })}
                     {menuVersion && showFreshnessText && ' · '}
                     {menuVersion && `v${menuVersion}`}
                 </p>
@@ -693,8 +718,10 @@ export default function MenuFooter({
             <div style={{ ...footerCardStyle, padding: '13px 16px', textAlign: 'center' }}>
                 <PublicMenuListAttribution
                     activePlanType={(storeDetails as any)?.activePlanType}
+                    ariaLabel={t('common.createOfficialCustomerLink')}
                     mode="compact"
-                    rightsLabel="All rights reserved"
+                    rightsLabel={t('common.allRightsReserved')}
+                    surfaceLabel={t('common.poweredByMenuList')}
                     mutedColor={moodConfig.bodyColor}
                     accentColor={moodConfig.accentColor}
                     containerStyle={{ marginTop: 0, paddingBottom: 0 }}

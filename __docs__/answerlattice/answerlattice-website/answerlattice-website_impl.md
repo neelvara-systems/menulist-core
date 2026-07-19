@@ -1,10 +1,27 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.2
-> **Last Updated:** 2026-07-13
+> **Version:** 1.3.3
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers
 
 ---
+
+## July 19, 2026 Public-Flow Hardening
+
+- `get-started/OnboardingForm.tsx` now uses native form submission, bound labels, server-matching field limits, at least one selected product surface, linked Terms/Privacy routes, strict response admission, and allowlisted Razorpay checkout URLs.
+- `components/Header.tsx` gives the mobile drawer a trigger relationship, initial focus, Tab containment, Escape handling, and focus restoration while removing duplicate touch/click activation.
+- `components/StructuredData.tsx` derives the Starter monthly INR offer from `src/data/answerlattice/plans.ts`.
+- `sitemap.xml/route.ts` omits synthetic build-time `lastmod` values.
+- `contact/ContactForm.tsx` uses explicit telephone and URL input semantics while preserving strict API, Turnstile, rate-limit, retention, and bounded-response behavior.
+- `src/content/answerlatticePublic/guardrails.ts` rejects the unsupported `the first 24/7 support layer` superlative.
+- Public category metadata, Product proof, and Footer use `governed support layer` rather than an uptime-style category claim.
+- Pricing, FAQ, the support-credit resource, and the Billing top-up description match `AI_UNIT_COSTS`: provider fallback, full-runtime answer tests, starter-answer generation, OCR, and transcription are charged; approved/cached widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and help browsing are not.
+- Trust and Privacy render the shared `ANSWERLATTICE_RETENTION_DAYS` values and state that Gemini no-training or zero-retention status requires deployed billing-tier, feature, abuse-monitoring, and account-configuration evidence.
+- Terms identify the verified Neelvara Systems operating trade-name relationship, explain monthly cancellation/end-of-cycle behavior and scoped deletion review, and leave unverified governing-law, jurisdiction, warranty, liability, SLA, and customer-specific refund language pending founder/legal approval.
+- Root mail delivery uses the `nodemailer9` npm alias pinned to Nodemailer `9.0.3`, removing the direct high advisory without presenting the incompatible major as NextAuth 4's optional `nodemailer ^7.0.7` peer. The unused NextAuth mail peer remains absent; Answerlattice Functions keep their independent Nodemailer `9.0.3` pin.
+- `scripts/verification/verify-answerlattice-public-website.js` verifies plan/checkout/schema parity, operation-level credit costs and public wording, route coverage, claim boundaries, deterministic demo behavior, sitemap/robots, onboarding, contact, mobile focus, retention-source parity, trust/legal boundaries, and this complete dossier. It is included in `verify:answerlattice-runtime-truth`.
+
+No Firestore rule, index, Storage rule, Cloud Function, collection, listener, provider API, or deployment target changed in this pass. The only dependency change replaces vulnerable root Nodemailer `7.0.13` with the explicit `nodemailer9` runtime alias at `9.0.3`; existing root mail consumers use one typed wrapper and NextAuth's unused optional mail peer remains absent.
 
 ## Technical Stack
 
@@ -15,7 +32,7 @@
 | Routing | Middleware hostname-based rewrite (multi-product) |
 | Components | React Server Components by default; client islands only where interaction needs state |
 | Links | `AnswerlatticeLink` wrapper for public-site links; `src/constants/answerlattice/routes.ts` for dashboard route constants without sidebar icon bundle cost |
-| Dependencies | Zero new npm packages |
+| Dependencies | Existing root mail runtime moved from direct Nodemailer `7.0.13` to the `nodemailer9` alias at `9.0.3`; no website-only package or UI framework added |
 
 ## Public Brand and Domain Decision
 
@@ -230,7 +247,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - June 10 competitive cross-check pass added shared evaluation strips to product-area and product-feature templates so each page answers setup path, security boundary, and category-fit questions before the final CTA.
 - June 10 visual asset pass replaced generic dummy frames with 25 production-ready generated product-scene PNGs and matching internal SVG sources for homepage, Product, product-area, feature, widget, and demo slots while preserving stable filenames and dimensions.
 - June 10 concept illustration pass added reusable inline SVG explainers for source-to-answer flow, governance loop, install verification, safe-context boundary, and category positioning on Product, Install, Security, and Comparisons without adding homepage length.
-- homepage now leads with product-user support rather than SaaS-user-only wording, keeps the 24/7 claim in the eyebrow, and uses setup/demo CTAs plus capability chips
+- homepage now leads with product-user support rather than SaaS-user-only wording, uses the governed-support category instead of the former 24/7 eyebrow, and keeps setup/demo CTAs plus capability chips
 - homepage includes a support-surface story section in `page.tsx` that walks from owner inputs to in-app help, hosted help, fallback gaps, and the review loop using image-backed product assets and sticky desktop cards
 - homepage folds compact proof into the hero through `PageProofStrip` so page-aware answers, approved knowledge, hosted help, fallback, feedback gaps, widget install, and source preparation are not missed before the deeper story
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
@@ -494,6 +511,7 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.3.3 | Aligned public credit, retention, AI-provider, operating-trade-name, cancellation, deletion, and category claims with runtime sources; strengthened the public verifier; and moved root mail delivery to the compatible Nodemailer 9 runtime alias. |
 | 2026-07-11 | 1.3.1 | Closed the 390px governance-demo min-content overflow, normalized public action touch targets, and bounded the Trust page environment claim to current QA/deployment evidence. |
 | 2026-07-13 | 1.3.2 | Hardened the public Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the mobile drawer to full-width phone behavior with internal scroll containment, safe-area CTA padding, and high overlay stacking |
 | 2026-07-11 | 1.3.0 | Implemented the six-stage governance demo, plan/currency-accurate INR/USD setup path, factual Trust and Data Handling page, privacy disclosure sync, and public route registry/navigation updates |

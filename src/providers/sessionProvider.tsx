@@ -103,13 +103,13 @@ export default function SessionProvider({ children, session }: Props) {
         });
     }, [session?.user?.storeId, session?.user?.tenantId]);
 
-    const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp, kBCategories: KnowledgeBaseCategoriesType }>({ cachedOn: null, kBCategories: null })//this are knowledge base categories which used in changelog
+    const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp | null, kBCategories: KnowledgeBaseCategoriesType, scopeKey: string | null }>({ cachedOn: null, kBCategories: null, scopeKey: null })//this are knowledge base categories which used in changelog
 
-    const [cachedChangelog, setCachedChangelog] = useState<{ cachedOn: Timestamp, changelog: ChangelogPage }>({ cachedOn: null, changelog: null })
+    const [cachedChangelog, setCachedChangelog] = useState<{ cachedOn: Timestamp | null, changelog: ChangelogPage, scopeKey: string | null }>({ cachedOn: null, changelog: null, scopeKey: null })
 
-    const [cachedTickets, setCachedTickets] = useState<{ cachedOn: Timestamp, tickets: SupportTicketType[] }>({ cachedOn: null, tickets: [] })
+    const [cachedTickets, setCachedTickets] = useState<{ cachedOn: Timestamp | null, tickets: SupportTicketType[], scopeKey: string | null }>({ cachedOn: null, tickets: [], scopeKey: null })
 
-    const [cachedArticles, setCachedArticles] = useState<{ cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[] }>({ cachedOn: null, articles: [] })
+    const [cachedArticles, setCachedArticles] = useState<{ cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[], scopeKey: string | null }>({ cachedOn: null, articles: [], scopeKey: null })
 
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
@@ -380,10 +380,10 @@ export default function SessionProvider({ children, session }: Props) {
             setFontsList(null);
             setAssetsList({ images: [] });
             setActiveStoreContextRaw(null);
-            setCachedKBCategories({ cachedOn: null, kBCategories: null });
-            setCachedChangelog({ cachedOn: null, changelog: null });
-            setCachedTickets({ cachedOn: null, tickets: [] });
-            setCachedArticles({ cachedOn: null, articles: [] });
+            setCachedKBCategories({ cachedOn: null, kBCategories: null, scopeKey: null });
+            setCachedChangelog({ cachedOn: null, changelog: null, scopeKey: null });
+            setCachedTickets({ cachedOn: null, tickets: [], scopeKey: null });
+            setCachedArticles({ cachedOn: null, articles: [], scopeKey: null });
             setPlatformStoreSummaryOptions([]);
             setPlatformStoreSummaryLoadedAt(null);
             setPlatformStoreSummaryLoading(false);

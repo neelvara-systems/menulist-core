@@ -34,3 +34,10 @@ It does not add a new chatbot, helpdesk workflow, or autonomous AI operator. It 
 
 Founder Daily Brief is delivered inside the existing Support Assistant route and API family so owners do not need another destination.
 
+The browser admits only the strict brief response contract. Each of the six summaries is reported as available, missing, invalid, or stale; scheduled evidence older than 48 hours is stale, and future timestamps beyond the five-minute tolerance are invalid. Metrics remain unavailable instead of becoming zero when evidence is missing.
+
+Daily actions and launch/release controls are projected from the caller's current Answerlattice permissions. A support-only user cannot receive a governance, knowledge, readiness, billing, changelog, or other route link they cannot open.
+
+## Verification
+
+`npm run verify:answerlattice-founder-daily-brief` runs the static boundary verifier, owner-assistant contract tests, weekly analytics contract tests, and the scheduler emulator.

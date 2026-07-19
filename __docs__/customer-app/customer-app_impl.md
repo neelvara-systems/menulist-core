@@ -302,6 +302,10 @@ Prompt analytics:
 - iOS manual install is inferred on first standalone launch through `standaloneDetector.ts`.
 - If browser storage blocks standalone-open de-dupe or iOS prompt lookup, Customer App tracking remains non-blocking and records bounded diagnostics only.
 
+Install prompt headings, actions, browser instructions, platform labels, accessibility copy, and fallback states use the same owner-controlled public language resolved for the current store. The compact static public-customer bundle adds no Customer App read, write, listener, or runtime translation call.
+
+The per-store web app manifest uses the same normalized default public language for `lang`, `dir`, screenshot labels, fallback description, and shortcut labels. RTL manifests declare `dir: rtl`; shortcut URLs carry both their existing `entry_source` attribution and the normalized `lang` value. Manifest generation still reuses the already-resolved store and static bundle, so localization adds no read or provider call.
+
 ---
 
 ## Shortcuts Contract
@@ -310,16 +314,18 @@ Current shortcuts are app actions inside the same store app.
 
 | Shortcut | Condition | URL Strategy |
 | --- | --- | --- |
-| View Menu | Only when `/menu` has a scoped owner-claimed or explicit-default target | `/menu` with `entry_source=shortcut-menu` |
-| Call | Phone exists and public call action enabled | Same-origin `/pwa/call` handoff |
-| Directions | Maps URL exists and public directions enabled | Same-origin `/pwa/directions` handoff |
-| WhatsApp | WhatsApp number exists and public WhatsApp enabled | Same-origin `/pwa/whatsapp` handoff |
-| Reservation | Reservation URL exists | Same-origin `/pwa/reservation` handoff |
-| Order Online | Order URL exists | Same-origin `/pwa/order` handoff |
+| Menu | Only when `/menu` has a scoped owner-claimed or explicit-default target | `/menu` with `lang` and `entry_source=shortcut-menu` |
+| Call | Phone exists and public call action enabled | Same-origin `/pwa/call` handoff with `lang` and source attribution |
+| Directions | Maps URL exists and public directions enabled | Same-origin `/pwa/directions` handoff with `lang` and source attribution |
+| WhatsApp | WhatsApp number exists and public WhatsApp enabled | Same-origin `/pwa/whatsapp` handoff with `lang` and source attribution |
+| Reservation | Reservation URL exists | Same-origin `/pwa/reservation` handoff with `lang` and source attribution |
+| Order | Order URL exists | Same-origin `/pwa/order` handoff with `lang` and source attribution |
 
 Shortcut URLs include source attribution for analytics. They do not imply separate installed apps.
 
 Shortcut handoff URL boundary: server pages still normalize reservation/order as HTTPS URLs, directions as Google Maps HTTPS URLs, WhatsApp as `https://wa.me/{digits}`, and call as `tel:+{digits}` before rendering a handoff page. The client handoff layer now re-checks those targets through `shortcutHandoffUrl.ts` before firing shortcut analytics, calling `window.location.replace()`, or rendering the noscript fallback link. Malformed serialized props fail closed with the shortcut unavailable message and create no redirect or shortcut analytics write.
+
+Shortcut URLs preserve `?lang=`. Each handoff page resolves that value against the existing store public-language contract and localizes its progress, unavailable, continue, and noscript copy before redirecting. This does not add a store reread beyond the shortcut page's existing resolution path.
 
 ---
 

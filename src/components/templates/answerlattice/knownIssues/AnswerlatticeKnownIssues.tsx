@@ -3,6 +3,8 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { usePredictiveTriggers } from '@hook/answerlattice/usePredictiveTriggers';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getAnswerlatticePredictiveTimestampMillis } from '@lib/answerlattice/predictiveSupportContracts';
+import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import {
     ANSWERLATTICE_TRIGGER_ACTION_TYPES,
     ANSWERLATTICE_TRIGGER_SOURCE,
@@ -61,9 +63,14 @@ const normalizeCondition = (value?: string) => {
 
 const toDateTimeInput = (value: unknown) => {
     if (!value) return '';
-    const date = typeof (value as any)?.toDate === 'function'
-        ? (value as any).toDate()
-        : new Date(value as any);
+    let date: Date;
+    try {
+        date = typeof (value as any)?.toDate === 'function'
+            ? (value as any).toDate()
+            : new Date(value as any);
+    } catch {
+        return '';
+    }
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
     const offset = date.getTimezoneOffset() * 60_000;
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
@@ -77,8 +84,8 @@ const toTimestamp = (value?: string) => {
 
 const getIssueState = (issue: AnswerlatticePredictiveTrigger) => {
     if (issue.status !== 'active') return { label: 'Resolved', color: 'default' };
-    const startsAt = issue.knownIssue?.startsAt?.toMillis?.() || 0;
-    const endsAt = issue.knownIssue?.endsAt?.toMillis?.() || 0;
+    const startsAt = getAnswerlatticePredictiveTimestampMillis(issue.knownIssue?.startsAt) || 0;
+    const endsAt = getAnswerlatticePredictiveTimestampMillis(issue.knownIssue?.endsAt) || 0;
     if (startsAt > Date.now()) return { label: 'Scheduled', color: 'blue' };
     if (endsAt > 0 && endsAt <= Date.now()) return { label: 'Expired', color: 'default' };
     return { label: 'Visible', color: 'orange' };
@@ -158,6 +165,13 @@ export default function AnswerlatticeKnownIssues() {
         }
         setSaving(true);
         try {
+            const normalizedStatusPageUrl = values.statusPageUrl?.trim()
+                ? normalizeAnswerlatticePublicCitationUrl(values.statusPageUrl)
+                : null;
+            if (values.statusPageUrl?.trim() && (!normalizedStatusPageUrl || !normalizedStatusPageUrl.startsWith('https:'))) {
+                form.setFields([{ name: 'statusPageUrl', errors: ['Use a public HTTPS status page URL.'] }]);
+                return;
+            }
             const conditions = {
                 page,
                 ...(normalizeCondition(values.feature) ? { feature: normalizeCondition(values.feature) } : {}),
@@ -169,7 +183,7 @@ export default function AnswerlatticeKnownIssues() {
                 severity: values.severity,
                 startsAt,
                 endsAt,
-                ...(values.statusPageUrl?.trim() ? { statusPageUrl: values.statusPageUrl.trim() } : {}),
+                ...(normalizedStatusPageUrl ? { statusPageUrl: normalizedStatusPageUrl } : {}),
             };
             let saved = false;
             if (editing) {
@@ -204,7 +218,6 @@ export default function AnswerlatticeKnownIssues() {
                     knownIssue,
                     priority: values.severity === 'outage' ? 100 : values.severity === 'degraded' ? 95 : 90,
                     cooldownHours: 4,
-                    maxImpressionsPerUser: 12,
                     status: 'active',
                     source: ANSWERLATTICE_TRIGGER_SOURCE.MANUAL,
                     createdOn: Timestamp.now(),
@@ -367,10 +380,10 @@ export default function AnswerlatticeKnownIssues() {
                             validator: async (_, value) => {
                                 if (!value) return;
                                 try {
-                                    const parsed = new URL(value);
-                                    if (parsed.protocol !== 'https:') throw new Error('invalid');
+                                    const normalized = normalizeAnswerlatticePublicCitationUrl(value);
+                                    if (!normalized || !normalized.startsWith('https:')) throw new Error('invalid');
                                 } catch {
-                                    throw new Error('Use a valid HTTPS status page URL.');
+                                    throw new Error('Use a public HTTPS status page URL.');
                                 }
                             },
                         }]}

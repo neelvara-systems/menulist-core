@@ -16,6 +16,8 @@ export type AnswerlatticeWidgetScope = typeof ANSWERLATTICE_WIDGET_SCOPES[number
 
 const MAX_WIDGET_BLOCKED_ROUTES = 50;
 const MAX_WIDGET_BLOCKED_ROUTE_LENGTH = 180;
+const MAX_WIDGET_ALLOWED_ORIGINS = 25;
+const MAX_WIDGET_ALLOWED_ORIGIN_LENGTH = 300;
 
 export function normalizeWidgetBlockedRoute(value: string): string | null {
     const trimmed = value.trim();
@@ -40,7 +42,7 @@ export function normalizeWidgetBlockedRoute(value: string): string | null {
         route = route.slice(0, -1);
     }
     if (route.length > MAX_WIDGET_BLOCKED_ROUTE_LENGTH) return null;
-    if (route.includes('*') && !route.endsWith('*')) return null;
+    if (route.includes('*') && !route.endsWith('/*')) return null;
     return route;
 }
 
@@ -86,9 +88,37 @@ export type AnswerlatticeWidgetConfig = z.infer<typeof AnswerlatticeWidgetConfig
 
 export const DEFAULT_ANSWERLATTICE_WIDGET_CONFIG: AnswerlatticeWidgetConfig = AnswerlatticeWidgetConfigSchema.parse({});
 
+const StrictWidgetBlockedRoutesSaveSchema = z.array(
+    z.string().trim().min(1).max(500),
+).max(MAX_WIDGET_BLOCKED_ROUTES).superRefine((values, context) => {
+    values.forEach((value, index) => {
+        if (!normalizeWidgetBlockedRoute(value)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Use an exact route or a descendant pattern ending in /*.',
+                path: [index],
+            });
+        }
+    });
+});
+
+const StrictWidgetAllowedOriginsSaveSchema = z.array(
+    z.string().trim().min(1).max(MAX_WIDGET_ALLOWED_ORIGIN_LENGTH),
+).max(MAX_WIDGET_ALLOWED_ORIGINS).superRefine((values, context) => {
+    values.forEach((value, index) => {
+        if (!normalizeWidgetAllowedOrigin(value)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Use an exact HTTP or HTTPS origin without a path, query, credentials, or fragment.',
+                path: [index],
+            });
+        }
+    });
+});
+
 export const AnswerlatticeWidgetConfigSaveSchema = z.object({
-    config: PartialAnswerlatticeWidgetConfigSchema.strict().default({}),
-    allowedOrigins: z.array(z.string().trim().min(1).max(300)).max(25).default([]),
+    config: z.unknown().default({}),
+    allowedOrigins: StrictWidgetAllowedOriginsSaveSchema.default([]),
 }).strict();
 
 export type AnswerlatticeWidgetConfigSaveInput = z.infer<typeof AnswerlatticeWidgetConfigSaveSchema>;
@@ -100,9 +130,13 @@ export function normalizeWidgetConfig(value: unknown): AnswerlatticeWidgetConfig
 
 export function normalizeWidgetAllowedOrigin(value: string): string | null {
     try {
-        const parsed = new URL(value.trim());
+        const raw = value.trim();
+        if (!raw || raw.length > MAX_WIDGET_ALLOWED_ORIGIN_LENGTH) return null;
+        const parsed = new URL(raw);
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-        return parsed.origin;
+        if (parsed.username || parsed.password || parsed.search || parsed.hash) return null;
+        if (parsed.pathname && parsed.pathname !== '/') return null;
+        return parsed.origin.length <= MAX_WIDGET_ALLOWED_ORIGIN_LENGTH ? parsed.origin : null;
     } catch {
         return null;
     }
@@ -124,8 +158,20 @@ export function parseWidgetConfigSaveInput(value: unknown): {
     allowedOrigins: string[];
 } {
     const parsed = AnswerlatticeWidgetConfigSaveSchema.parse(value);
+    const configInput = parsed.config && typeof parsed.config === 'object' && !Array.isArray(parsed.config)
+        ? parsed.config as Record<string, unknown>
+        : parsed.config;
+    if (
+        configInput
+        && typeof configInput === 'object'
+        && !Array.isArray(configInput)
+        && 'blockedRoutes' in configInput
+    ) {
+        StrictWidgetBlockedRoutesSaveSchema.parse(configInput.blockedRoutes);
+    }
+    const rawConfig = PartialAnswerlatticeWidgetConfigSchema.strict().parse(parsed.config);
     return {
-        config: normalizeWidgetConfig(parsed.config),
+        config: normalizeWidgetConfig(rawConfig),
         allowedOrigins: normalizeWidgetAllowedOrigins(parsed.allowedOrigins),
     };
 }

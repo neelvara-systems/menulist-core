@@ -14,8 +14,10 @@ import type {
     AnswerlatticeSurfaceTicketStats,
 } from '@type/answerlattice';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { isAnswerlatticeChangelogEntryPublished } from '@lib/answerlattice/changelogContracts';
 import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import type { SupportTicketType } from '@type/supportTicket';
+import { getAnswerlatticeSupportTicketDisplayId } from '@lib/answerlattice/supportTicketLifecycle';
 import {
     ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
     buildPublicRelatedContent,
@@ -34,6 +36,16 @@ const MAX_ARTICLES_FOR_SUMMARY = 500;
 const MAX_FAQS_FOR_SUMMARY = 500;
 const MAX_CHANGELOG_PAGES_FOR_SUMMARY = 3;
 const MAX_TICKETS_FOR_SUMMARY = 300;
+
+const assertSummarySourceWithinLimit = (
+    snapshot: FirebaseFirestore.QuerySnapshot,
+    limit: number,
+    sourceLabel: string,
+) => {
+    if (snapshot.size > limit) {
+        throw new Error(`Answerlattice product surface summary ${sourceLabel} limit exceeded.`);
+    }
+};
 
 type SummaryCacheEntry = {
     summary: AnswerlatticeSurfaceContentSummary | null;
@@ -68,9 +80,9 @@ const getTimestampMillis = (value: any): number => {
 const compactArticle = (article: KnowledgeBaseArticleType): AnswerlatticeRelatedArticleRef => ({
     id: article.id,
     title: article.title,
-    categoryTitle: article.categoryTitle,
-    sectionTitle: article.sectionTitle,
-    url: article.url,
+    ...(article.categoryTitle ? { categoryTitle: article.categoryTitle } : {}),
+    ...(article.sectionTitle ? { sectionTitle: article.sectionTitle } : {}),
+    ...(article.url ? { url: article.url } : {}),
     tags: Array.isArray(article.tags) ? article.tags.slice(0, 8) : [],
 });
 
@@ -92,12 +104,10 @@ const compactFaq = (faq: AnswerlatticeFaq): AnswerlatticeRelatedFaqRef => ({
     tags: Array.isArray(faq.tags) ? faq.tags.slice(0, 8) : [],
 });
 
-const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase();
-
 const buildTicketStats = (tickets: SupportTicketType[]): AnswerlatticeSurfaceTicketStats => ({
     total: tickets.length,
     open: tickets.filter(ticket => !['Resolved', 'Closed'].includes(String(ticket.status || ''))).length,
-    recentDisplayIds: tickets.slice(0, 5).map(ticket => ticket.displayId || getDisplayId(ticket.id)),
+    recentDisplayIds: tickets.slice(0, 5).map(ticket => ticket.displayId || getAnswerlatticeSupportTicketDisplayId(ticket.id)),
 });
 
 async function loadActiveSurfaces(tId: number, sId: number): Promise<AnswerlatticeProductSurface[]> {
@@ -105,14 +115,17 @@ async function loadActiveSurfaces(tId: number, sId: number): Promise<Answerlatti
         .collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT)
+        .where('active', '==', true)
+        .orderBy('priority', 'desc')
+        .limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT + 1)
         .get();
+
+    assertSummarySourceWithinLimit(snapshot, ANSWERLATTICE_PRODUCT_SURFACE_LIMIT, 'active surface');
 
     return snapshot.docs
         .map(doc => normalizeStoredAnswerlatticeProductSurface({ ...doc.data(), id: doc.id }, { tId, sId }, doc.id))
         .filter((surface): surface is AnswerlatticeProductSurface => Boolean(surface))
-        .filter(surface => surface.active !== false)
-        .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
+        .filter(surface => surface.active !== false);
 }
 
 async function loadPublishedArticles(tId: number, sId: number): Promise<KnowledgeBaseArticleType[]> {
@@ -121,8 +134,10 @@ async function loadPublishedArticles(tId: number, sId: number): Promise<Knowledg
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'published')
-        .limit(MAX_ARTICLES_FOR_SUMMARY)
+        .limit(MAX_ARTICLES_FOR_SUMMARY + 1)
         .get();
+
+    assertSummarySourceWithinLimit(snapshot, MAX_ARTICLES_FOR_SUMMARY, 'published article');
 
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as KnowledgeBaseArticleType));
 }
@@ -136,8 +151,10 @@ async function loadPublishedFaqs(tId: number, sId: number): Promise<Answerlattic
         .where('active', '==', true)
         .orderBy('sortOrder', 'asc')
         .orderBy('modifiedOn', 'desc')
-        .limit(MAX_FAQS_FOR_SUMMARY)
+        .limit(MAX_FAQS_FOR_SUMMARY + 1)
         .get();
+
+    assertSummarySourceWithinLimit(snapshot, MAX_FAQS_FOR_SUMMARY, 'published FAQ');
 
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AnswerlatticeFaq));
 }
@@ -153,7 +170,7 @@ async function loadRecentChangelogEntries(tId: number, sId: number): Promise<Arr
     snapshot.docs.forEach(doc => {
         const page = { ...doc.data(), id: doc.id } as ChangelogPage;
         (page.entries || [])
-            .filter(entry => entry.published !== false)
+            .filter(isAnswerlatticeChangelogEntryPublished)
             .forEach(entry => entries.push({ ...entry, pageId: doc.id }));
     });
 
@@ -171,7 +188,11 @@ async function loadRecentTickets(tId: number, sId: number): Promise<SupportTicke
         .get();
 
     return snapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id, displayId: getDisplayId(doc.id) } as SupportTicketType))
+        .map(doc => ({
+            ...doc.data(),
+            id: doc.id,
+            displayId: getAnswerlatticeSupportTicketDisplayId(doc.id),
+        } as SupportTicketType))
         .sort((a, b) => getTimestampMillis(b.createdOn) - getTimestampMillis(a.createdOn));
 }
 
@@ -191,8 +212,14 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
     ]);
 
     const surfaceItems: Record<string, AnswerlatticeSurfaceContentItem> = {};
+    const activeSurfaceKeys = new Set<string>();
 
     for (const surface of surfaces) {
+        if (activeSurfaceKeys.has(surface.key)) {
+            throw new Error(`Duplicate active Answerlattice product surface key: ${surface.key}`);
+        }
+        activeSurfaceKeys.add(surface.key);
+
         const matchedArticles = articles
             .map(article => ({ article, score: scoreContentForSurface(article as any, surface) }))
             .filter(item => item.score > 0)
@@ -235,9 +262,9 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
             key: surface.key,
             label: surface.label,
             routePatterns: surface.routePatterns || [],
-            feature: surface.feature,
-            page: surface.page,
-            workflow: surface.workflow,
+            ...(surface.feature ? { feature: surface.feature } : {}),
+            ...(surface.page ? { page: surface.page } : {}),
+            ...(surface.workflow ? { workflow: surface.workflow } : {}),
             entityHints: surface.entityHints || [],
             entityIds: surface.entityIds || [],
             tags: surface.tags || [],
@@ -266,7 +293,7 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
     await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(docId)
-        .set(summary, { merge: true });
+        .set(summary);
 
     const persistedSummary = normalizeAnswerlatticeSurfaceContentSummary({ ...summary, id: docId }, { tId, sId }, docId);
     if (!persistedSummary) throw new Error('Generated Answerlattice product surface summary failed validation.');

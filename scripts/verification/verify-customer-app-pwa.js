@@ -86,6 +86,8 @@ function verifyManifestLink() {
 
 function verifyManifestRoute() {
   const route = read('src/app/manifest.webmanifest/route.ts');
+  const manifestGenerator = read('src/lib/pwa/manifestGenerator.ts');
+  const shortcutsBuilder = read('src/lib/pwa/shortcutsBuilder.ts');
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -114,6 +116,13 @@ function verifyManifestRoute() {
   assertNotIncludes(route, 'MANIFEST_START_URL_DEGRADED', 'manifest route');
   assertNotIncludes(route, 'resolveStartUrlWithFallback', 'manifest route');
   assertNotIncludes(executableRoute, 'console.error', 'manifest route executable code');
+  assertIncludes(route, 'const contentLanguage = resolveStorePublicLanguage(store);', 'manifest route owner-controlled public language');
+  assertIncludes(route, 'const t = createPublicCustomerTranslator(contentLanguage);', 'manifest route public translator');
+  assertIncludes(route, 'language: contentLanguage,', 'manifest route language pass-through');
+  assertIncludes(manifestGenerator, 'lang: activeLanguage,', 'manifest generator localized language');
+  assertIncludes(manifestGenerator, 'dir: getPublicCustomerLanguageDirection(activeLanguage)', 'manifest generator localized direction');
+  assertIncludes(shortcutsBuilder, 'appendPublicLanguageParam(url, activeLanguage)', 'manifest shortcut language preservation');
+  assertIncludes(shortcutsBuilder, 'const t = createPublicCustomerTranslator(activeLanguage);', 'manifest shortcut localized labels');
   assertIncludes(customerAppImpl, 'customer_app_manifest_start_url_lookup_failed', 'Customer App implementation manifest start-url diagnostics');
   assertIncludes(customerAppFirebase, 'Manifest start-url lookup diagnostics', 'Customer App Firebase manifest start-url diagnostics');
   assertIncludes(productionAudit, 'Customer App manifest start-url diagnostics checkpoint', 'production audit manifest start-url checkpoint');
@@ -144,28 +153,32 @@ function verifyCustomerAppShortcutHandoffBoundary() {
   assertIncludes(externalRedirectClient, 'const safeTargetUrl = getSafePwaExternalHttpsUrl(targetUrl);', 'Customer App reservation/order client safe URL');
   assertIncludes(externalRedirectClient, 'if (!safeTargetUrl) {', 'Customer App reservation/order client fail-closed guard');
   assertIncludes(externalRedirectClient, 'window.location.replace(safeTargetUrl);', 'Customer App reservation/order client safe redirect');
-  assertIncludes(externalRedirectClient, '<a href={safeTargetUrl}>Continue</a>', 'Customer App reservation/order client safe noscript link');
+  assertIncludes(externalRedirectClient, '<a href={safeTargetUrl}>{t(\'menu.continue\')}</a>', 'Customer App reservation/order client localized safe noscript link');
+  assertIncludes(externalRedirectClient, 'createPublicCustomerTranslator(activeLanguage)', 'Customer App reservation/order client localized copy');
   assertNotIncludes(externalRedirectClient, 'window.location.replace(targetUrl);', 'Customer App reservation/order client raw redirect');
   assertNotIncludes(externalRedirectClient, '<a href={targetUrl}>Continue</a>', 'Customer App reservation/order client raw noscript link');
 
   assertIncludes(callClient, 'const safeTelUrl = getSafePwaTelUrl(telUrl);', 'Customer App call client safe URL');
   assertIncludes(callClient, 'if (!safeTelUrl) {', 'Customer App call client fail-closed guard');
   assertIncludes(callClient, 'window.location.replace(safeTelUrl);', 'Customer App call client safe redirect');
-  assertIncludes(callClient, '<a href={safeTelUrl}>Tap to call</a>', 'Customer App call client safe noscript link');
+  assertIncludes(callClient, '<a href={safeTelUrl}>{t(\'menu.tapToCall\')}</a>', 'Customer App call client localized safe noscript link');
+  assertIncludes(callClient, 'createPublicCustomerTranslator(activeLanguage)', 'Customer App call client localized copy');
   assertNotIncludes(callClient, 'window.location.replace(telUrl);', 'Customer App call client raw redirect');
   assertNotIncludes(callClient, '<a href={telUrl}>Tap to call</a>', 'Customer App call client raw noscript link');
 
   assertIncludes(directionsClient, 'const safeMapsUrl = getSafePwaGoogleMapsUrl(mapsUrl);', 'Customer App directions client safe URL');
   assertIncludes(directionsClient, 'if (!safeMapsUrl) {', 'Customer App directions client fail-closed guard');
   assertIncludes(directionsClient, 'window.location.replace(safeMapsUrl);', 'Customer App directions client safe redirect');
-  assertIncludes(directionsClient, '<a href={safeMapsUrl}>Open in Maps</a>', 'Customer App directions client safe noscript link');
+  assertIncludes(directionsClient, '<a href={safeMapsUrl}>{t(\'menu.openInMaps\')}</a>', 'Customer App directions client localized safe noscript link');
+  assertIncludes(directionsClient, 'createPublicCustomerTranslator(activeLanguage)', 'Customer App directions client localized copy');
   assertNotIncludes(directionsClient, 'window.location.replace(mapsUrl);', 'Customer App directions client raw redirect');
   assertNotIncludes(directionsClient, '<a href={mapsUrl}>Open in Maps</a>', 'Customer App directions client raw noscript link');
 
   assertIncludes(whatsappClient, 'const safeWaUrl = getSafePwaWhatsAppUrl(waUrl);', 'Customer App WhatsApp client safe URL');
   assertIncludes(whatsappClient, 'if (!safeWaUrl) {', 'Customer App WhatsApp client fail-closed guard');
   assertIncludes(whatsappClient, 'window.location.replace(safeWaUrl);', 'Customer App WhatsApp client safe redirect');
-  assertIncludes(whatsappClient, '<a href={safeWaUrl}>Open in WhatsApp</a>', 'Customer App WhatsApp client safe noscript link');
+  assertIncludes(whatsappClient, '<a href={safeWaUrl}>{t(\'menu.openInWhatsApp\')}</a>', 'Customer App WhatsApp client localized safe noscript link');
+  assertIncludes(whatsappClient, 'createPublicCustomerTranslator(activeLanguage)', 'Customer App WhatsApp client localized copy');
   assertNotIncludes(whatsappClient, 'window.location.replace(waUrl);', 'Customer App WhatsApp client raw redirect');
   assertNotIncludes(whatsappClient, '<a href={waUrl}>Open in WhatsApp</a>', 'Customer App WhatsApp client raw noscript link');
 

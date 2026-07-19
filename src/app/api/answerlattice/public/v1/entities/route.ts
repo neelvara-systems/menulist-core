@@ -14,8 +14,16 @@ import {
     getAnswerlatticeContextBundleManifestServer,
     loadAnswerlatticeBundleObjectServer,
 } from '@lib/answerlattice/contextBundleBuilderServer';
-import { ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION, authenticateAnswerlatticePublicApi, toIsoTimestamp } from '@lib/answerlattice/publicApi';
-import { apiError, generateETag } from '@lib/publicApi/auth';
+import { getAnswerlatticeBundleRefPath } from '@lib/answerlattice/compiledContext';
+import {
+    ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,
+    answerlatticePublicApiError,
+    authenticateAnswerlatticePublicApi,
+    buildAnswerlatticePublicApiResponseHeaders,
+    toIsoTimestamp,
+} from '@lib/answerlattice/publicApi';
+import { ANSWERLATTICE_PUBLIC_ENTITY_STATUSES } from '@lib/answerlattice/publicApiContracts';
+import { generateETag } from '@lib/publicApi/auth';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { parseAnswerlatticeRetrievalEntity } from '@lib/answerlattice/retrievalContracts';
 import { ANSWERLATTICE_ENTITY_STATUS, ANSWERLATTICE_ENTITY_TYPES } from '@type/answerlattice';
@@ -24,7 +32,7 @@ import { z } from 'zod';
 
 const EntityQuerySchema = z.object({
     type: z.enum(Object.values(ANSWERLATTICE_ENTITY_TYPES) as [string, ...string[]]).optional(),
-    status: z.enum(Object.values(ANSWERLATTICE_ENTITY_STATUS) as [string, ...string[]]).optional(),
+    status: z.enum(ANSWERLATTICE_PUBLIC_ENTITY_STATUSES).optional(),
     limit: z.coerce.number().int().min(1).max(200).optional().default(100),
 }).strict();
 
@@ -60,6 +68,14 @@ const getEntityRegistryLogContext = (params: Pick<BundledEntitiesParams, 'tId' |
     ...getBoundedRuntimeStringContext('storeId', params.sId),
 });
 
+const sortPublicEntities = <T extends { id: string; slug: string; type: string }>(entities: T[]): T[] => (
+    [...entities].sort((left, right) => (
+        left.type.localeCompare(right.type)
+        || left.slug.localeCompare(right.slug)
+        || left.id.localeCompare(right.id)
+    ))
+);
+
 async function getEntityBundleManifest(params: BundledEntitiesParams) {
     try {
         return await getAnswerlatticeContextBundleManifestServer(params.tId, params.sId);
@@ -84,19 +100,23 @@ async function loadBundledEntities(params: BundledEntitiesParams) {
     }
     const manifest = await getEntityBundleManifest(params);
     if (!manifest || manifest.status !== 'ready') return null;
-    const ref = manifest.bundles?.['private:mcp/entity-index.json'];
-    if (!ref?.path) return null;
-    const bundle = await loadEntityBundleObject(ref.path, params);
+    const path = getAnswerlatticeBundleRefPath(
+        manifest,
+        'private:mcp/entity-index.json',
+        params.tId,
+        params.sId,
+    );
+    if (!path) return null;
+    const bundle = await loadEntityBundleObject(path, params);
     if (!bundle || !Array.isArray(bundle.entities)) return null;
 
     const visibleStatuses = params.status ? new Set([params.status]) : new Set(['active', 'beta']);
-    return bundle.entities
+    const matchingEntities = sortPublicEntities(bundle.entities
         .flatMap((entity) => {
             const parsed = CompiledEntitySchema.safeParse(entity);
             return parsed.success ? [parsed.data] : [];
         })
         .filter((entity) => (!params.type || entity.type === params.type) && visibleStatuses.has(entity.status))
-        .slice(0, params.limit)
         .map((entity) => ({
             id: entity.id,
             type: entity.type,
@@ -107,7 +127,11 @@ async function loadBundledEntities(params: BundledEntitiesParams) {
             aliases: Array.isArray(entity.aliases) ? entity.aliases.slice(0, 20) : [],
             currentVersion: entity.currentVersion ?? null,
             modifiedOn: entity.modifiedOn || null,
-        }));
+        })));
+    return {
+        entities: matchingEntities.slice(0, params.limit),
+        truncated: matchingEntities.length > params.limit,
+    };
 }
 
 export async function GET(request: NextRequest) {
@@ -118,7 +142,7 @@ export async function GET(request: NextRequest) {
         const params = Object.fromEntries(request.nextUrl.searchParams.entries());
         const validation = EntityQuerySchema.safeParse(params);
         if (!validation.success) {
-            return apiError('INVALID_INPUT', 'Invalid query parameters', 400);
+            return answerlatticePublicApiError('INVALID_INPUT', 'Invalid query parameters', 400);
         }
 
         const { type, status, limit } = validation.data;
@@ -129,17 +153,18 @@ export async function GET(request: NextRequest) {
             status,
             limit,
         });
-        const resolvedEntities = bundledEntities || (await (async () => {
+        const resolvedPage = bundledEntities || (await (async () => {
+            const scanLimit = Math.min(Math.max(limit * 2, limit + 1), 201);
             const snapshot = await getAnswerlatticeAdminDb()
                 .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
                 .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', auth.context.tId)
                 .where('sId', '==', auth.context.sId)
-                .limit(Math.min(limit * 2, 200))
+                .limit(scanLimit)
                 .get();
 
             const visibleStatuses = status ? new Set([status]) : new Set(['active', 'beta']);
-            return snapshot.docs
+            const matchingEntities = sortPublicEntities(snapshot.docs
                 .flatMap((doc) => {
                     try {
                         return [parseAnswerlatticeRetrievalEntity(
@@ -151,7 +176,6 @@ export async function GET(request: NextRequest) {
                     }
                 })
                 .filter((entity) => (!type || entity.type === type) && visibleStatuses.has(entity.status))
-                .slice(0, limit)
                 .map((entity) => ({
                     id: entity.id,
                     type: entity.type,
@@ -162,39 +186,47 @@ export async function GET(request: NextRequest) {
                     aliases: Array.isArray(entity.aliases) ? entity.aliases.slice(0, 20) : [],
                     currentVersion: entity.currentVersion ?? null,
                     modifiedOn: toIsoTimestamp(entity.modifiedOn),
-                }));
+                })));
+            return {
+                entities: matchingEntities.slice(0, limit),
+                truncated: matchingEntities.length > limit || snapshot.size === scanLimit,
+            };
         })());
 
         const response = {
             schemaVersion: ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
             source: bundledEntities ? 'compiled_bundle' : 'firestore_fallback',
-            count: resolvedEntities.length,
-            entities: resolvedEntities,
+            count: resolvedPage.entities.length,
+            truncated: resolvedPage.truncated,
+            entities: resolvedPage.entities,
         };
-        const etag = `"${generateETag(response)}"`;
+        const etag = `"${generateETag({
+            schemaVersion: response.schemaVersion,
+            source: response.source,
+            truncated: response.truncated,
+            entities: response.entities,
+        })}"`;
+        const responseHeaders = {
+            ...buildAnswerlatticePublicApiResponseHeaders('private, max-age=60'),
+            'ETag': etag,
+        };
 
         if (request.headers.get('if-none-match') === etag) {
             return new NextResponse(null, {
                 status: 304,
-                headers: {
-                    'ETag': etag,
-                    'Cache-Control': 'private, max-age=60',
-                },
+                headers: responseHeaders,
             });
         }
 
         return NextResponse.json(response, {
-            headers: {
-                'ETag': etag,
-                'Cache-Control': 'private, max-age=60',
-            },
+            headers: responseHeaders,
         });
     } catch (error) {
         logRuntimeFailure('answerlattice_public_entities_registry_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', auth.context.tId),
             ...getBoundedRuntimeStringContext('storeId', auth.context.sId),
         });
-        return apiError('INTERNAL_ERROR', 'Internal error', 500);
+        return answerlatticePublicApiError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

@@ -37,6 +37,11 @@ const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModa
         try {
             const opened = window.open(DASHBOARD_URL, '_blank', 'noopener,noreferrer');
             if (!opened) {
+                logPaymentFailure(
+                    'website_pricing_dashboard_open_failed',
+                    new Error('website_pricing_dashboard_popup_blocked'),
+                    diagnosticContext,
+                );
                 window.location.assign(DASHBOARD_URL);
                 return;
             }

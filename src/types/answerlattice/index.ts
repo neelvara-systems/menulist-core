@@ -119,6 +119,34 @@ export const ANSWERLATTICE_VALIDATION_SOURCE = {
 
 export type AnswerlatticeValidationSource = typeof ANSWERLATTICE_VALIDATION_SOURCE[keyof typeof ANSWERLATTICE_VALIDATION_SOURCE];
 
+export const ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS = {
+    MAX_SOURCE_IDS: 20,
+    MAX_PUBLIC_CITATIONS: 8,
+    MAX_CITATION_TITLE_LENGTH: 240,
+    MAX_CITATION_URL_LENGTH: 500,
+} as const;
+
+export interface AnswerlatticeCanonicalCitation {
+    id: string;
+    title: string;
+    url: string;
+    sourceId?: string;
+}
+
+export type AnswerlatticePublicCitation = Omit<AnswerlatticeCanonicalCitation, 'sourceId'>;
+
+export interface AnswerlatticeScopeClarification {
+    type: 'scope_context';
+    requiredContext: Array<'plan' | 'role' | 'state'>;
+}
+
+export interface AnswerlatticeCanonicalEvidence {
+    /** Internal workspace evidence pointers. These are never exposed to public answer surfaces. */
+    sourceIds: string[];
+    /** Reviewer-approved public links that may be shown with customer-facing answers. */
+    citations: AnswerlatticeCanonicalCitation[];
+}
+
 export interface AnswerlatticeCanonicalAnswer extends AnswerlatticeDocumentIdentity {
     id: string;
     tId: number;
@@ -154,6 +182,8 @@ export interface AnswerlatticeCanonicalAnswer extends AnswerlatticeDocumentIdent
         constraints?: string;               // Limits, restrictions, caveats
         procedure?: AnswerlatticeProcedure;       // Guided Workflows (Item #2) — required when answerType === 'procedure'
     };
+
+    evidence?: AnswerlatticeCanonicalEvidence;
 
     validation: {
         confidenceScore: number;             // 0-1 (derived, not manual)
@@ -202,6 +232,7 @@ export const ANSWERLATTICE_FAQ_SOURCE = {
     MANUAL: 'manual',
     TICKET_SIGNAL: 'ticket_signal',
     ARTICLE: 'article',
+    KNOWLEDGE_INTAKE: 'knowledge_intake',
 } as const;
 
 export type AnswerlatticeFaqSource = typeof ANSWERLATTICE_FAQ_SOURCE[keyof typeof ANSWERLATTICE_FAQ_SOURCE];
@@ -233,6 +264,9 @@ export interface AnswerlatticeFaq extends AnswerlatticeDocumentIdentity {
 
     jobId?: string | null;
     generatedFromArticleId?: string | null;
+    intakeJobId?: string | null;
+    intakeReviewItemId?: string | null;
+    intakeSourceIds?: string[];
 
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
@@ -385,6 +419,8 @@ export interface AnswerlatticeMutationProposal extends AnswerlatticeDocumentIden
         proposedProductBinding?: AnswerlatticeCanonicalAnswer['productBinding'];
         proposedStatus?: AnswerlatticeAnswerStatus;
         proposedAnswerType?: AnswerlatticeAnswerType;
+        proposedEvidence?: AnswerlatticeCanonicalEvidence;
+        baseAnswerFingerprint?: string;                                  // Approved answer snapshot this update was based on
 
         // Ticket → Knowledge Loop (Expansion Item #9) — additive fields, freeze-compliant
         // Tracks provenance from resolved tickets to canonical knowledge
@@ -430,6 +466,8 @@ export interface AnswerlatticeSignalEvent extends AnswerlatticeDocumentIdentity 
     expiresAt?: Timestamp;
     metadata?: Record<string, any>;
     dedupKey?: string;
+    /** Stable payload identity used to reject conflicting idempotent replays. */
+    identityFingerprint?: string;
     processingRun?: {
         id: string;
         status: 'processing' | 'completed' | 'failed';
@@ -562,32 +600,30 @@ export interface AnswerlatticeAuditLog extends AnswerlatticeDocumentIdentity {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PHASE 4 — WHITE-LABEL / CUSTOM BRANDING
+// ROLLOUT-GATED ADVANCED BRANDING PROFILE
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Per-tenant branding configuration.
- * Stored on the Answerlattice client/store document (no new collection).
- * Controls appearance of: help widget, KB pages, email notifications.
- * 
- * Phase 4 — Competitive differentiator for B2B SaaS clients.
+ * Private per-workspace branding profile.
+ * Stored at platformSummary/branding_{tId}_{sId}.
+ *
+ * No customer-facing runtime currently consumes this profile. The working
+ * widget branding contract remains the bounded stores/{sId}.widgetConfig.
  */
 export interface AnswerlatticeBrandingConfig {
     companyName: string;
-    logoUrl?: string;                // URL to company logo (max 200KB)
-    faviconUrl?: string;             // URL to favicon
-    primaryColor: string;            // Hex color for primary actions/links
-    accentColor?: string;            // Hex color for secondary elements
-    backgroundColor?: string;        // Hex color for page background
-    textColor?: string;              // Hex color for body text
-    headerBackground?: string;       // Hex color for header/nav background
-    headerTextColor?: string;        // Hex color for header text
-    fontFamily?: string;             // CSS font-family value
-    customCss?: string;              // Optional custom CSS snippet (≤2000 chars, sanitized)
-    poweredByVisible: boolean;       // Show "Powered by Answerlattice" badge (default true)
-    supportEmail?: string;           // Contact email shown in help center
-    privacyPolicyUrl?: string;       // Link to privacy policy
-    termsUrl?: string;               // Link to terms of service
+    logoUrl?: string;
+    faviconUrl?: string;
+    primaryColor: string;
+    accentColor?: string;
+    backgroundColor?: string;
+    textColor?: string;
+    headerBackground?: string;
+    headerTextColor?: string;
+    poweredByVisible: boolean;
+    supportEmail?: string;
+    privacyPolicyUrl?: string;
+    termsUrl?: string;
 }
 
 /**
@@ -606,16 +642,22 @@ export const ANSWERLATTICE_DEFAULT_BRANDING: AnswerlatticeBrandingConfig = {
 /**
  * Locale-specific content for a KB article translation.
  * Stored as a map on the article document: translations.{locale} = ArticleTranslation
- * 
- * Phase 4 — 75% of internet users non-English.
+ *
+ * Translation records are drafts unless an explicit review workflow marks them
+ * approved. The current rollout-gated generator writes drafts only.
  */
+export type AnswerlatticeArticleTranslationStatus = 'draft' | 'approved';
+
 export interface AnswerlatticeArticleTranslation {
     locale: string;                   // e.g., 'hi-IN', 'es-ES', 'ar-SA'
     title: string;                    // Translated title
     content: any;                     // Translated TipTap JSON content
+    status: AnswerlatticeArticleTranslationStatus;
+    sourceLocale: 'en-US';
+    sourceHash: string;                // SHA-256 of the source title/content used for this draft
     translatedBy: 'human' | 'ai';    // Who produced the translation
     translatedAt: Timestamp;
-    reviewedBy?: string;              // Human reviewer (if AI-translated)
+    reviewedBy?: string;              // Required with reviewedAt for approved status
     reviewedAt?: Timestamp;
 }
 
@@ -745,13 +787,18 @@ export const ANSWERLATTICE_PROCEDURE_CONSTRAINTS = {
 export interface AnswerlatticeContextPayload {
     contextVersion?: number;       // Schema version (default: 1)
     contextKey?: string;           // Optional Answerlattice product surface key (e.g., "billing_invoices")
+    path?: string;                 // Transient route path used only for deterministic surface matching
+    title?: string;                // Optional safe page title; never required for matching
     feature?: string;              // Product subsystem (e.g., "integrations")
     page?: string;                 // UI location identifier (e.g., "stripe_integration_page")
     workflow?: string;             // Current action (e.g., "connect_integration")
     entityHints?: string[];        // Explicit entity references (max 5)
+    role?: string;                 // Public client alias normalized into userRole
     userRole?: string;             // Permission level (e.g., "admin")
+    locale?: string;               // Public locale label only
     plan?: string;                 // Subscription tier (e.g., "pro")
     state?: string;                // Product state used by state-scoped canonical answers
+    version?: string;              // Product version label (for example "2.4.1")
     /**
      * Trusted runtime-only entity IDs resolved from Answerlattice-owned surface maps.
      * External client payloads cannot set this field because context validation
@@ -790,6 +837,10 @@ export interface AnswerlatticeProductSurface extends AnswerlatticeDocumentIdenti
     visibility: AnswerlatticeProductSurfaceVisibility;
     active: boolean;
     priority: number;
+
+    intakeJobId?: string | null;
+    intakeReviewItemId?: string | null;
+    intakeSourceIds?: string[];
 
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
@@ -987,7 +1038,12 @@ export interface AnswerlatticeActivationSummary {
     governance: {
         canonicalCoverageRate?: number | null;
         canonicalCoverageTotal?: number | null;
-        trustScore?: number | null;
+        noEscalationRate?: number | null;
+        confirmedResolutionRate?: number | null;
+        confirmedResolutionTotal?: number | null;
+        driftRate?: number | null;
+        entityAnswerCoverageRate?: number | null;
+        metricsComplete?: boolean;
     };
     answerTests: AnswerlatticeActivationAnswerTestSummary;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
@@ -1139,6 +1195,7 @@ export interface AnswerlatticeContextBundleStats {
 export interface AnswerlatticeContextBundleLimits {
     maxPublicBootstrapBytes: number;
     maxPublicRouteBytes: number;
+    maxPublicObjectBytes: number;
     maxPrivateObjectBytes: number;
     maxMcpResponseBytes: number;
     maxMcpToolCallsPerMinute: number;
@@ -1190,12 +1247,29 @@ export interface AnswerlatticeCompiledContextReadiness {
 // ═══════════════════════════════════════════════════════════════
 
 export type AnswerlatticeFrictionTrendDirection = 'rising' | 'stable' | 'improving' | 'new';
-export type AnswerlatticeFrictionHealth = 'HIGH' | 'MODERATE' | 'LOW';
+export type AnswerlatticeFrictionLevel = 'HIGH' | 'MODERATE' | 'LOW';
+/** @deprecated Use AnswerlatticeFrictionLevel. */
+export type AnswerlatticeFrictionHealth = AnswerlatticeFrictionLevel;
+
+export interface AnswerlatticeSupportMetricWindow {
+    kind: 'rolling_24_hours' | 'utc_calendar_7_days';
+    startAt: Timestamp;
+    endAt: Timestamp;
+    complete: boolean;
+    sourceLimit: number;
+    observedCount: number;
+    currentStartDate?: string;
+    currentEndDate?: string;
+    previousStartDate?: string;
+    previousEndDate?: string;
+}
 
 export interface AnswerlatticeFrictionDailyStat {
     id?: string;
+    pId: 'AL';
     tId: number;
     sId: number;
+    schemaVersion: number;
     entityId: string;
     entityName: string;
     entityType: string;
@@ -1240,20 +1314,41 @@ export interface AnswerlatticeFrictionEmergingTopic {
 }
 
 export interface AnswerlatticeFrictionSnapshot {
+    pId: 'AL';
+    tId: number;
+    sId: number;
+    schemaVersion: number;
     lastUpdated: Timestamp;
+    window: AnswerlatticeSupportMetricWindow;
     topFrictionEntities: AnswerlatticeFrictionEntitySummary[];
     emergingTopics: AnswerlatticeFrictionEmergingTopic[];
-    overallHealth: AnswerlatticeFrictionHealth;
+    frictionLevel: AnswerlatticeFrictionLevel;
+    totalWeightedLoad: number;
+    /** @deprecated Compatibility alias for frictionLevel. */
+    overallHealth?: AnswerlatticeFrictionHealth;
     totalSignals7d: number;
     totalEscalations7d: number;
+    unmappedEvidenceCount: number;
+    legacyDailyStatCount: number;
 }
 
 export interface AnswerlatticeFrictionInsight {
+    pId: 'AL';
+    tId: number;
+    sId: number;
+    schemaVersion: number;
     lastUpdated: Timestamp;
     weekStart: string;
     weekEnd: string;
     summary: string;
-    topFrictions: Array<{
+    advisory: true;
+    sourceSnapshotUpdatedAt: Timestamp;
+    suggestedActions: Array<{
+        entityId: string;
+        action: string;
+    }>;
+    /** @deprecated Deterministic top entities belong to the source snapshot. */
+    topFrictions?: Array<{
         entityName: string;
         entityType: string;
         signalCount: number;
@@ -1261,8 +1356,11 @@ export interface AnswerlatticeFrictionInsight {
         trend: string;
         suggestedAction: string;
     }>;
-    emergingTopics: string[];
-    overallHealth: AnswerlatticeFrictionHealth;
+    /** @deprecated Use advisory summary and suggestedActions. */
+    emergingTopics?: string[];
+    frictionLevel: AnswerlatticeFrictionLevel;
+    /** @deprecated Compatibility alias for frictionLevel. */
+    overallHealth?: AnswerlatticeFrictionHealth;
     promptVersion: string;
     generatedAt: Timestamp;
 }
@@ -1282,6 +1380,10 @@ export interface AnswerlatticeTrustMetricsTopEntity {
     escalationCount: number;
     reliabilityScore: number;    // 0-100
     failureScore: number;        // Weighted composite
+    evidenceCount: number;
+    negativeFeedbackCount: number;
+    canonicalMissCount: number;
+    weightedLoad: number;
 }
 
 export interface AnswerlatticeTrustMetricsEscalationBreakdown {
@@ -1294,8 +1396,20 @@ export interface AnswerlatticeTrustMetricsEscalationBreakdown {
 }
 
 export interface AnswerlatticeTrustMetrics {
+    pId: 'AL';
+    tId: number;
+    sId: number;
+    schemaVersion: number;
     lastUpdated: Timestamp;
     date: string;                    // YYYY-MM-DD
+    window: AnswerlatticeSupportMetricWindow;
+    sourceCompleteness: {
+        complete: boolean;
+        activeAnswers: number;
+        activeEntities: number;
+        signalEvents: number;
+        searchHistory: number;
+    };
 
     coverage: {
         rate: number;                // 0-100 (percentage)
@@ -1305,12 +1419,21 @@ export interface AnswerlatticeTrustMetrics {
         previousRate: number;        // Yesterday's rate (for trend)
     };
 
-    resolution: {
+    /** @deprecated Use nonEscalation; this is not verified customer resolution. */
+    resolution?: {
         rate: number;                // 0-100 (percentage without escalation)
         resolved: number;            // Queries without escalation, not explicit resolution proof
         escalated: number;           // Queries with escalation signal
         total: number;
         previousRate: number;        // Yesterday's rate (for trend)
+    };
+
+    nonEscalation: {
+        rate: number;
+        withoutEscalation: number;
+        escalated: number;
+        total: number;
+        previousRate: number;
     };
 
     confirmedResolution?: {
@@ -1331,13 +1454,23 @@ export interface AnswerlatticeTrustMetrics {
         previousRate: number;        // Yesterday's rate (for trend)
     };
 
-    entityHealth: {
+    /** @deprecated Use entityAnswerCoverage; no opaque entity health score is presented. */
+    entityHealth?: {
         avgScore: number;            // 0-100 (weighted average)
         healthyCount: number;        // Entities with score ≥ 80
         attentionCount: number;      // Entities with score 40-79
         criticalCount: number;       // Entities with score < 40
         totalEntities: number;
         previousAvgScore: number;    // Yesterday's score (for trend)
+    };
+
+    entityAnswerCoverage: {
+        rate: number;
+        coveredCount: number;
+        uncoveredCount: number;
+        driftedCoveredCount: number;
+        totalEntities: number;
+        previousRate: number;
     };
 
     topFailingEntities: AnswerlatticeTrustMetricsTopEntity[];
@@ -1562,8 +1695,6 @@ export const ANSWERLATTICE_PREDICTIVE_CONSTRAINTS = {
     MAX_NAME_LENGTH: 100,
     MAX_DESCRIPTION_LENGTH: 300,
     MAX_CUSTOM_SUMMARY_LENGTH: 200,
-    AUTO_DISABLE_SCORE_THRESHOLD: -0.3,
-    AUTO_DISABLE_MIN_IMPRESSIONS: 100,
     MIN_FRICTION_SCORE_FOR_SUGGESTION: 5,
 } as const;
 
@@ -1653,6 +1784,8 @@ export interface AnswerlatticeSupportBoardCard extends AnswerlatticeDocumentIden
     sourceOrigin?: string | null;
     sourcePath?: string | null;
     sourceSessionId?: string | null;
+    sourceIdentityRedactedAt?: Timestamp | null;
+    sourceIdentityRedactedBy?: string | null;
 
     assigneeId?: string | null;
     assigneeName?: string | null;
@@ -1688,10 +1821,23 @@ export const ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS = {
     MAX_SOURCE_SYNC_ITEMS: 50,
     MAX_NOTES_PER_CARD: 25,
     MAX_TAGS_PER_CARD: 8,
+    MAX_TAG_LENGTH: 48,
     MAX_TITLE_LENGTH: 140,
     MAX_DESCRIPTION_LENGTH: 1200,
     MAX_NOTE_LENGTH: 1000,
     MAX_STATUS_HISTORY_PER_CARD: 50,
+    MAX_REFERENCE_ID_LENGTH: 180,
+    MAX_DUE_DATE_LENGTH: 10,
+    MAX_ACTOR_ID_LENGTH: 100,
+    MAX_ACTOR_NAME_LENGTH: 100,
+    MAX_ACTOR_EMAIL_LENGTH: 160,
+    MAX_CUSTOMER_NAME_LENGTH: 160,
+    MAX_CUSTOMER_EMAIL_LENGTH: 180,
+    MAX_CUSTOMER_PHONE_LENGTH: 80,
+    MAX_SOURCE_USER_ID_LENGTH: 120,
+    MAX_SOURCE_LOCATION_LENGTH: 180,
+    MAX_SOURCE_SESSION_ID_LENGTH: 120,
+    MAX_STATUS_REMARK_LENGTH: 240,
 } as const;
 
 export interface AnswerlatticeSupportBoardSummary extends AnswerlatticeDocumentIdentity {
@@ -1714,8 +1860,13 @@ export interface AnswerlatticeSupportBoardSummary extends AnswerlatticeDocumentI
         cardsSkippedUnchanged: number;
         windowDays: number;
         maxCardsCreatedOrUpdatedPerRun: number;
+        sourceWindowsSaturated?: boolean;
     };
     lastUpdated?: Timestamp;
+    liveSummaryVersion?: number;
+    liveSummaryUpdatedAt?: Timestamp;
+    breakdownFresh?: boolean;
+    sourceWindowsSaturated?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1788,6 +1939,7 @@ export const ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS = {
     MAX_IMAGE_OCR_BYTES: 5 * 1024 * 1024,
     MAX_MEDIA_TRANSCRIPTION_BYTES: 8 * 1024 * 1024,
     MAX_REVIEW_BODY_CHARS: 12_000,
+    MAX_REVIEW_SOURCE_IDS: 5,
     MAX_LINK_DISCOVERY_RESULTS: 30,
     MAX_DISCOVERY_FETCH_BYTES: 180_000,
     MAX_TAGS: 20,
@@ -1898,6 +2050,7 @@ export interface AnswerlatticeIntakeReviewItem extends AnswerlatticeDocumentIden
     sId: number;
     jobId: string;
     sourceId?: string | null;
+    sourceIds?: string[];
     target: AnswerlatticeIntakeReviewTarget;
     status: AnswerlatticeIntakeReviewStatus;
     title: string;

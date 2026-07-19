@@ -26,6 +26,7 @@ interface ChatPanelProps {
     onRetry?: (query: string, image?: UserUploadedFileType) => void;
     isNewChat: boolean;
     sessionId?: string | null;
+    draftScope?: string | null;
     sessionTitle?: string;
     chatState?: ChatState;
     onSkipTyping?: () => void;
@@ -52,6 +53,7 @@ const ChatPanel = ({
     onRetry,
     isNewChat,
     sessionId,
+    draftScope,
     sessionTitle,
     chatState,
     onSkipTyping,
@@ -249,6 +251,7 @@ const ChatPanel = ({
                 mode={mode}
                 disabled={chatState?.status === 'loading' || chatState?.status === 'typing'}
                 sessionId={sessionId}
+                draftScope={draftScope}
                 searchQuery={searchQuery}
                 showQnAActions={showQnAActions}
                 onSendMessage={onSendMessage}

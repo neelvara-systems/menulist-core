@@ -111,7 +111,7 @@ export default function ProductPage() {
                 <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M756 180 H770" />
                 <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M756 254 H770" />
               </svg>
-              <svg className="ws-page-source-map__paths ws-page-source-map__paths--mobile" viewBox="0 0 350 491" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <svg className="ws-page-source-map__paths ws-page-source-map__paths--mobile ws-page-source-map__paths--mobile-tablet" viewBox="0 0 350 491" preserveAspectRatio="none" aria-hidden="true" focusable="false">
                 <path className="ws-page-source-map__path" d="M42 107.5 C74 131 103 148 137 162" />
                 <path className="ws-page-source-map__path" d="M131 107.5 C145 124 158 135 164 148.5" />
                 <path className="ws-page-source-map__path" d="M219 107.5 C205 124 192 135 186 148.5" />
@@ -132,6 +132,20 @@ export default function ProductPage() {
                 <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M125 251.5 C88 292 80 332 68.5 374" />
                 <path className="ws-map-pulse ws-map-pulse-output-4" pathLength={1} d="M175 251.5 C175 300 175 335 175 374" />
                 <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M225 251.5 C262 292 270 332 281.5 374" />
+              </svg>
+              <svg className="ws-page-source-map__paths ws-page-source-map__paths--mobile ws-page-source-map__paths--mobile-phone" viewBox="0 0 350 651" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <path className="ws-page-source-map__path" d="M169 61.5 H181 M169 154.5 H181 M175 61.5 V231" />
+                <path className="ws-page-source-map__path" d="M175 330 V589.5 M169 403.5 H181 M169 496.5 H181 M169 589.5 H181" />
+                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M169 61.5 H175 V231" />
+                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M181 61.5 H175 V231" />
+                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M169 154.5 H175 V231" />
+                <path className="ws-map-pulse ws-map-pulse-delay-3" pathLength={1} d="M181 154.5 H175 V231" />
+                <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M175 330 V403.5 H169" />
+                <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M175 330 V403.5 H181" />
+                <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M175 330 V496.5 H169" />
+                <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M175 330 V496.5 H181" />
+                <path className="ws-map-pulse ws-map-pulse-output-4" pathLength={1} d="M175 330 V589.5 H169" />
+                <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M175 330 V589.5 H181" />
               </svg>
 
               <div className="ws-page-source-map__stack">

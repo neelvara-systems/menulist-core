@@ -22,7 +22,7 @@ Answerlattice already has several strong controls:
 - signal-event cleanup after 12 months;
 - friction-daily-stat cleanup after 90 days;
 - AI operation accounting-only default with detailed payloads gated by feature flag;
-- public/widget config and hosted help paths that reuse cache and compiled bundles.
+- public/hosted-help paths that may reuse bounded cache and compiled bundles; the current widget remains server-mediated.
 
 The production work is focused, not architectural:
 
@@ -121,7 +121,7 @@ Targets:
 - processed owner-notification events/deliveries/rate counters without `expiresAt`;
 - old context bundle Storage versions beyond active/last-ready plus previous two versions.
 
-The scheduler cleanup uses per-task limits and diagnostics. Attachment cleanup is handled in hard-delete paths for chat sessions and support tickets rather than a broad orphan scan.
+The scheduler cleanup uses per-task limits and diagnostics. Support-ticket attachment cleanup is handled by the ticket hard-delete path rather than a broad orphan scan. Persisted chat-image cleanup remains deferred because one chat session cannot prove that a shared URL is no longer referenced by search history or another durable evidence object.
 
 ### P0.4 Compact or expire raw `aiSearchHistory`
 
@@ -199,9 +199,9 @@ Do not compact audit logs, published KB articles, canonical proposals, or billin
 
 ### P1.2 Support tickets and chat archival
 
-Support records are workflow truth, so do not blindly delete active history. The implemented safe piece is attachment parity on hard delete:
+Support records are workflow truth, so do not blindly delete active history. The implemented safe pieces preserve each storage ownership boundary:
 
-- chat session hard delete reads and deletes persisted session truth transactionally, then removes only its captured owned image URLs as best-effort cleanup;
+- chat session hard delete reads and deletes persisted session truth transactionally, records zero storage deletions, and leaves shared persisted image cleanup deferred until reference-safe retention exists;
 - support ticket hard delete reads the persisted ticket and removes top-level documents plus message attachments before deleting Firestore.
 
 Archive/compaction for old closed tickets and old chat sessions remains deferred until there is a product-defined support retention window and unresolved-case linking check.
@@ -264,7 +264,7 @@ MenuList's P3 public payload/CDN move was skipped because public screens already
 - hosted help domain registry uses cached registry docs;
 - compiled context bundles already write public/private JSON objects to Storage;
 - public bundle proxy has in-memory cache and path validation;
-- widget config returns public bundle refs.
+- widget config can return validated public bundle refs only behind the currently disabled widget-bootstrap flag.
 
 So P3 is not a broad rewrite. The production task is bundle retention and manifest hygiene, already covered in P0.6.
 

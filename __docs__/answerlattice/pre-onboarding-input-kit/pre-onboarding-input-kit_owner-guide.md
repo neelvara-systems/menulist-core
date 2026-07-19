@@ -26,7 +26,9 @@ Before running the prompt, gather:
 - known app pages and user roles;
 - plan/entitlement notes;
 - existing support FAQs, macros, changelogs, or onboarding notes;
-- screenshot/marketing approval status.
+- screenshot/marketing approval status;
+- permission to process any private sources in the selected AI tool;
+- source owners, authority, visibility, applicability, and known conflicts.
 
 ## Prompt Fields
 
@@ -50,6 +52,7 @@ The public prompt includes explicit copy/paste placeholders:
 | `PRODUCT_STAGE` | `public_live`, `private_beta`, `pre_launch`, or `docs_only`. |
 | `SOURCE_MODE` | `repo_and_website`, `multi_product_repo`, `website_only`, `docs_only`, `owner_notes_only`, or `mixed`. |
 | `APPROVAL_STATUS`, `SCREENSHOT_MARKETING_PERMISSION`, `ANSWERLATTICE_WORKSPACE_STATUS` | Approval and workspace status. |
+| `AI_TOOL_PRIVATE_SOURCE_PERMISSION` | `approved`, `pending_owner_approval`, or `not_allowed`. |
 | `OWNER_NOTES` | Short product summary/support notes or `NOT_AVAILABLE`. |
 
 ## Run Modes
@@ -73,6 +76,8 @@ The AI IDE can only cover what it can inspect. Private repositories, login-only 
 
 If the agent cannot access a source, it must mark that source as pending or unavailable instead of claiming coverage. This process is not a universal guarantee across every AI IDE, product, private app, or source shape.
 
+Do not give private repo, ticket, chat, or policy material to an AI tool until your organization permits that tool to process it. The package task should update only the generated folder; product code and source documentation stay unchanged unless you request and review a separate change.
+
 ## Review Before Upload
 
 The owner must remove:
@@ -83,7 +88,10 @@ The owner must remove:
 - payment details;
 - private support messages;
 - unapproved screenshots;
-- unsupported legal, refund, privacy, security, or billing claims.
+- unsupported legal, refund, privacy, security, or billing claims;
+- private source links marked for public citation;
+- ticket, chat, macro, or repeated-reply facts treated as approved truth;
+- unresolved conflicts between sources.
 
 ## Live Support Gate
 

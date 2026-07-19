@@ -1,7 +1,7 @@
 # MenuList Help Center — Product Specification
 
-> **Version:** 1.2.0
-> **Last Updated:** 2026-07-16
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-18
 > **Audience:** CEO, PM, Clients, Strategy
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -21,6 +21,8 @@ It is not a standalone helpdesk. MenuList owns the owner-facing route and shell;
 - Search failure leaves documentation, tickets, feedback, FAQ, contact and changelog paths available.
 - Ticket messages/statuses are append-only in DAL transactions and Firestore rules; satisfaction can be added once after resolution/closure.
 - Initial ticket attachments share a four-file, 10 MB and supported-type boundary. Opening additionally verifies the configured Answerlattice bucket and selected ticket scope.
+- Client category, article, changelog and ticket caches are admitted only for their exact Answerlattice workspace; platform ticket cache is a separate audience.
+- Help Chat text drafts are versioned, capped at 2,000 characters, retained for at most 24 hours, scoped to workspace and authenticated user, and cleared when another scope becomes active. Screenshots are never retained as drafts.
 - Source gates do not prove deployment, provider availability, email delivery or browser/device certification.
 
 ---
@@ -219,7 +221,7 @@ Owners interact with the support search through the search modal or Help Chat pa
 ### 3.11 FAQ
 
 **Purpose:** Public short-answer page and owner-approved custom answer layer for repeated customer questions.
-**Implementation:** `FaqView.tsx` reads published Answerlattice FAQs through `getPublishedFaqsForSession()` with a hard cap and falls back to static legacy copy if Answerlattice FAQ data is unavailable.
+**Implementation:** `FaqView.tsx` reads published Answerlattice FAQs through the protected bounded public-content route. Static MenuList FAQ copy is used only when FAQ management is deliberately disabled. A managed-FAQ request failure is shown as unavailable with Knowledge Base and ticket recovery actions; failure does not silently substitute static truth.
 
 **Owner management:** `/answerlattice/faqs`
 

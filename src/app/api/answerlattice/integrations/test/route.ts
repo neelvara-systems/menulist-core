@@ -10,13 +10,17 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import {
     buildAnswerlatticeIntegrationConfigIdentity,
     classifyAnswerlatticeIntegrationConfigOwnership,
 } from '@lib/answerlattice/integrationConfigOwnership';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { AnswerlatticeWorkflowIntegrationTestResponseSchema } from '@lib/answerlattice/workflowIntegrationContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -26,6 +30,10 @@ import { withAuth } from '../../../../../middleware/auth';
 
 const EVENT_TTL_DAYS = 90;
 const TEST_EVENT_TYPE = 'nightly_summary' as const;
+const integrationTestJsonResponse = (body: unknown, status = 200) => NextResponse.json(body, {
+    status,
+    headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+});
 
 class IntegrationTestConfigOwnershipError extends Error {}
 
@@ -42,26 +50,38 @@ const getAnswerlatticeDb = () => answerlatticeFirestoreAdmin
 
 export const POST = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) {
-        return NextResponse.json({ error: 'Answerlattice integrations are not enabled.' }, { status: 403 });
+        return integrationTestJsonResponse({ error: 'Answerlattice integrations are not enabled.' }, 403);
     }
     const scope = resolveSessionScope(session);
-    if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+    if (!scope) return integrationTestJsonResponse({ error: 'Not onboarded' }, 400);
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-integrations-test', scope.storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-integrations-test',
+                session?.uId || session?.user?.id || session?.user?.email || 'unknown',
+                scope.tenantId,
+                scope.storeId,
+            ),
             limit: 3,
             window: 300,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many test notifications. Please wait before trying again.' }, { status: 429 });
+            return integrationTestJsonResponse(
+                { error: 'Too many test notifications. Please wait before trying again.' },
+                429,
+            );
         }
 
-        const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS);
+        const permission = await requireAnswerlatticePermission(
+            _request,
+            session,
+            ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS,
+        );
         if (permission.response) return permission.response;
 
         const db = getAnswerlatticeDb();
-        if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        if (!db) return integrationTestJsonResponse({ error: 'Answerlattice Firebase is not configured' }, 503);
 
         const configRef = db
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -90,12 +110,12 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
                 ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
                 ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             });
-            return NextResponse.json({ error: 'Integration settings require support review.' }, { status: 409 });
+            return integrationTestJsonResponse({ error: 'Integration settings require support review.' }, 409);
         }
         const hasSlack = Boolean(config.slack?.enabled && config.slack?.webhookUrl);
         const hasEmail = Boolean(config.email?.enabled && Array.isArray(config.email?.recipients) && config.email.recipients.length > 0);
         if (!hasSlack && !hasEmail) {
-            return NextResponse.json({ error: 'Enable Slack or email before sending a test.' }, { status: 400 });
+            return integrationTestJsonResponse({ error: 'Enable Slack or email before sending a test.' }, 400);
         }
 
         const now = Timestamp.now();
@@ -133,15 +153,15 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             emailEnabled: hasEmail,
         });
 
-        return NextResponse.json({
+        return integrationTestJsonResponse(AnswerlatticeWorkflowIntegrationTestResponseSchema.parse({
             eventId: eventRef.id,
             message: 'Test notification queued. Delivery status will update shortly.',
-        });
+        }));
     } catch (error) {
         logRuntimeFailure('answerlattice_integration_test_queue_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to queue test notification' }, { status: 500 });
+        return integrationTestJsonResponse({ error: 'Failed to queue test notification' }, 500);
     }
 });

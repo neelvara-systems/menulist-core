@@ -12,6 +12,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry } from '@type/changelog';
@@ -41,6 +42,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     const [isSaving, setIsSaving] = useState(false);
     const [attachments, setAttachments] = useState<any[]>([]);
     const isFormActive = useRef(false);
+    const saveRequestSeedRef = useRef('');
     const { cachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     const kbLookup = useMemo(() => {
@@ -75,7 +77,8 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
 
     useEffect(() => {
         isFormActive.current = open;
-    }, [open]);
+        saveRequestSeedRef.current = open ? createRuntimeId('changelog_editor') : '';
+    }, [initialData?.id, open]);
 
     useEffect(() => {
         if (!open) return;
@@ -185,6 +188,11 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
 
     const handleSave = async (values: any) => {
         const { title, description, tags, releaseDate, releaseTime, published, version, contextKeys, entityChanges } = values;
+        const normalizedVersion = version ? normalizeAnswerlatticeVersionLabel(version) : null;
+        if (version && !normalizedVersion) {
+            message.error('Use a numeric version such as 1.0.0.');
+            return;
+        }
 
         const combinedDateTime = releaseDate
             .hour(releaseTime.hour())
@@ -208,62 +216,75 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             tags: tags || [],
             releasedOn: Timestamp.fromDate(combinedDateTime.toDate()),
             published: published || false,
-            version: version || null,
+            version: normalizedVersion?.label || null,
             contextKeys: contextKeys || [],
             entityChanges: entityChanges || [],
             kbSources: kbSources,
             youtubeLinks: youtubeLinks,
+            releaseId: initialData?.releaseId || null,
         };
 
         dispatch(startLoader('Saving Changelog...'));
         setIsSaving(true);
+        let stagedEntryId = '';
+        let stagedEntryPayload: typeof entryPayload | null = null;
         try {
-            let result;
+            const requestSeed = saveRequestSeedRef.current || createRuntimeId('changelog_editor');
             let savedEntryId = initialData?.id || '';
-            if (initialData) {
-                result = await updateChangelogEntry(initialData.id, entryPayload);
-                const updatedEntry = { ...initialData, ...entryPayload };
-                // Convert timestamp back to a plain object for state update if needed
-                if (updatedEntry.releasedOn) {
-                    updatedEntry.releasedOn = Timestamp.fromDate(updatedEntry.releasedOn.toDate());
+            let persistedPayload = entryPayload;
+            const requiresReleaseLink = Boolean(entryPayload.published && normalizedVersion);
+            const releaseScope = {
+                tId: Number(session?.tId || 0),
+                sId: Number(session?.sId || 0),
+            };
+            if (requiresReleaseLink && (!releaseScope.tId || !releaseScope.sId)) {
+                throw new Error('Answerlattice workspace scope is required for release publication');
+            }
+
+            if (requiresReleaseLink && !entryPayload.releaseId) {
+                stagedEntryPayload = { ...entryPayload, published: false, releaseId: null };
+                const stagedResult = initialData
+                    ? await updateChangelogEntry(initialData.id, { ...stagedEntryPayload, requestId: `${requestSeed}:stage` })
+                    : await addChangelogEntry({ ...stagedEntryPayload, requestId: `${requestSeed}:stage` });
+                savedEntryId = initialData?.id || stagedResult?.entryId || '';
+                stagedEntryId = savedEntryId;
+                if (!savedEntryId) throw new Error('Changelog draft did not return an entry ID');
+
+                const releaseRequestId = `changelog:${savedEntryId}:${normalizedVersion!.normalized}`;
+                const release = await addRelease({
+                    ...releaseScope,
+                    versionLabel: normalizedVersion!.label,
+                    versionNormalized: normalizedVersion!.normalized,
+                    releasedAt: entryPayload.releasedOn,
+                    entityChanges: entryPayload.entityChanges,
+                    status: 'pending',
+                    requestId: releaseRequestId,
+                });
+                if (release?.action !== 'create') throw new Error('Release registration failed');
+                if (release.status !== 'active') {
+                    await activateRelease(release.releaseId, `${releaseRequestId}:activate`);
                 }
-                savedEntryId = initialData.id;
-                onSave(updatedEntry);
+                persistedPayload = { ...entryPayload, releaseId: release.releaseId };
+                await updateChangelogEntry(savedEntryId, { ...persistedPayload, requestId: `${requestSeed}:publish` });
             } else {
-                result = await addChangelogEntry(entryPayload);
-                savedEntryId = result?.entryId || result?.id || '';
-                onSave(result);
+                const result = initialData
+                    ? await updateChangelogEntry(initialData.id, { ...entryPayload, requestId: `${requestSeed}:save` })
+                    : await addChangelogEntry({ ...entryPayload, requestId: `${requestSeed}:save` });
+                savedEntryId = initialData?.id || result?.entryId || '';
+                if (!savedEntryId) throw new Error('Changelog save did not return an entry ID');
             }
-            let releaseSyncSucceeded = true;
-            const normalizedVersion = version ? normalizeAnswerlatticeVersionLabel(version) : null;
-            if (published && normalizedVersion) {
-                const tId = Number(session?.tId || 0);
-                const sId = Number(session?.sId || 0);
-                if (!tId || !sId || !savedEntryId) {
-                    releaseSyncSucceeded = false;
-                } else {
-                    try {
-                        const release = await addRelease({
-                            tId,
-                            sId,
-                            versionLabel: normalizedVersion.label,
-                            versionNormalized: normalizedVersion.normalized,
-                            releasedAt: entryPayload.releasedOn,
-                            entityChanges: entryPayload.entityChanges,
-                            status: 'pending',
-                            requestId: `changelog:${savedEntryId}:${normalizedVersion.normalized}`,
-                        });
-                        if (release?.action !== 'create') throw new Error('Release registration failed');
-                        if (release.status !== 'active') await activateRelease(release.releaseId);
-                    } catch (error) {
-                        releaseSyncSucceeded = false;
-                        logAnswerlatticeFailure('answerlattice_changelog_release_sync_failed', error, {
-                            ...getBoundedAnswerlatticeStringContext('changelogEntryId', savedEntryId),
-                            ...getBoundedAnswerlatticeStringContext('changelogVersion', normalizedVersion.label),
-                        });
-                    }
-                }
+
+            if (initialData) {
+                onSave({
+                    ...initialData,
+                    ...persistedPayload,
+                    id: savedEntryId,
+                    releasedOn: Timestamp.fromDate(persistedPayload.releasedOn.toDate()),
+                });
+            } else {
+                onSave(null);
             }
+
             let summaryRefreshSucceeded = true;
             if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                 summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
@@ -273,13 +294,11 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                     context: {
                         ...getBoundedAnswerlatticeStringContext('changelogEntryId', savedEntryId),
                         ...getBoundedAnswerlatticeStringContext('changelogTitle', title),
-                        ...getBoundedAnswerlatticeStringContext('changelogVersion', version),
+                        ...getBoundedAnswerlatticeStringContext('changelogVersion', persistedPayload.version),
                     },
                 });
             }
-            if (!releaseSyncSucceeded) {
-                message.warning('Release note saved, but release drift review did not finish. Reopen the entry and save again to retry.');
-            } else if (summaryRefreshSucceeded) {
+            if (summaryRefreshSucceeded) {
                 message.success(initialData ? 'Changelog entry updated successfully!' : 'Changelog entry saved successfully!');
             } else {
                 message.warning('Changelog saved, but contextual help refresh failed. Try Refresh after checking product surfaces.');
@@ -287,9 +306,42 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             form.resetFields();
             setAttachments([]);
             setKbSources([]);
+            setYoutubeLinks([]);
             onClose();
         } catch (error) {
-            message.error('Failed to save changelog entry. Please try again.');
+            logAnswerlatticeFailure('answerlattice_changelog_save_failed', error, {
+                ...getBoundedAnswerlatticeStringContext('changelogEntryId', stagedEntryId || initialData?.id),
+                ...getBoundedAnswerlatticeStringContext('changelogVersion', normalizedVersion?.label),
+            });
+            if (stagedEntryId && stagedEntryPayload) {
+                if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                    await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                        failureCode: 'answerlattice_changelog_summary_refresh_after_release_failure_failed',
+                        context: {
+                            ...getBoundedAnswerlatticeStringContext('changelogEntryId', stagedEntryId),
+                            ...getBoundedAnswerlatticeStringContext('changelogVersion', normalizedVersion?.label),
+                        },
+                    });
+                }
+                if (initialData) {
+                    onSave({
+                        ...initialData,
+                        ...stagedEntryPayload,
+                        id: stagedEntryId,
+                        releasedOn: Timestamp.fromDate(stagedEntryPayload.releasedOn.toDate()),
+                    });
+                } else {
+                    onSave(null);
+                }
+                message.warning('The entry was saved as a draft because release propagation did not finish. Reopen it to retry publication.');
+                form.resetFields();
+                setAttachments([]);
+                setKbSources([]);
+                setYoutubeLinks([]);
+                onClose();
+            } else {
+                message.error('Failed to save changelog entry. Please try again.');
+            }
         } finally {
             dispatch(stopLoader('Saving Changelog...'));
             setIsSaving(false);
@@ -304,8 +356,8 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             open={open}
             footer={
                 <Flex justify='flex-end' gap={16} style={{ width: '100%' }}>
-                    <Button onClick={onClose}>Cancel</Button>
-                    <Button onClick={() => form.submit()} type="primary" loading={isSaving}>Save</Button>
+                    <Button onClick={onClose} style={{ minHeight: 44 }}>Cancel</Button>
+                    <Button onClick={() => form.submit()} type="primary" loading={isSaving} style={{ minHeight: 44 }}>Save</Button>
                 </Flex>
             }
         >

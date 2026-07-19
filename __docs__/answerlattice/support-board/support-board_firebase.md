@@ -1,5 +1,7 @@
 # Support Board Firebase Notes
 
+> **Last verified:** July 19, 2026
+
 ## Collection
 
 `answerlattice_supportBoardCards`
@@ -22,14 +24,18 @@ Source cards may also store compact requester/source metadata copied from the so
 
 These fields are internal owner/staff review metadata only. They avoid a second read against tickets, conversations, feedback, or signal events when rendering the board.
 
+`sourceIdentityRedactedAt` and `sourceIdentityRedactedBy` record the one-way clearing of copied identity/location fields. The source ID remains for operational deduplication and traceability.
+
 ## Rules
 
 Firestore rules allow:
 
 - read: authenticated Answerlattice support-control users
-- create: authenticated Answerlattice support-control users
-- update: authenticated Answerlattice support-control users with stable `tId`/`sId`
+- create: authenticated Answerlattice support-control users, allowed document shape, self actor, one initial status, no notes/resolution/scheduler fields, and not already resolved
+- update: authenticated Answerlattice support-control users with an allowed mutation set, stable ownership/source fields, prepend-only notes/history, status-resolution coupling, and one-way source-detail redaction
 - delete: denied
+
+`relatedProposalId` changes additionally require `canManageGovernance` or platform-admin authority. Clients cannot forge `syncManaged` or other scheduler-owned fields.
 
 Support-control permission is `canManageSupport`. Default support staff can use the board without gaining governance, billing, team, or workspace access.
 
@@ -45,6 +51,7 @@ Required indexes:
 
 - `tId asc, sId asc, modifiedOn desc`
 - `tId asc, sId asc, status asc, modifiedOn desc`
+- `tId asc, sId asc, priority asc`
 - `aiSearchHistory`: `tId asc, sId asc, canonical asc, createdOn desc` for nightly recurring fallback scan
 
 ## Cost Model
@@ -54,14 +61,16 @@ Required indexes:
 | Board load | up to 120 | 0 | No realtime listener |
 | Nightly summary read | 0 by default / 1 when enabled | 0 | `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY=false` skips this read |
 | Create manual card | 0 | 1 | One board document with initial `statuses[]` entry |
+| Create sourced card | 1 | 0-1 | Deterministic transaction reads the source-card document and creates only when absent |
 | Update card without status change | 0 | 1 | One board document |
 | Update card status | 1 | 1 | Transaction reads card, appends capped status history, and updates top-level `status` |
 | Add note | 1 | 1 | Transaction reads card, writes capped notes array |
-| Sync tickets | up to 50 | up to 20 | Feature-flagged explicit action only |
-| Sync signals | up to 50 | up to 20 | Feature-flagged explicit action only |
+| Sync tickets | up to 50 source reads + up to 20 card reads | up to 20 | Feature-flagged explicit action; deterministic transaction prevents duplicates beyond the loaded board window |
+| Sync signals | up to 50 source reads + up to 20 card reads | up to 20 | Feature-flagged explicit action; deterministic transaction prevents duplicates |
+| Live summary refresh | 4 aggregate count queries + 1 summary read | up to 1 | Runs only on create/status/priority changes; aggregate query billing follows Firestore count semantics |
 | Nightly source scan | up to 1,250 + entity lookups | 0 | Disabled by default; search history, signal events, drifted answers, recent releases; capped per tenant |
 | Nightly card upsert | up to 20 reads | up to 20 | Disabled by default; deterministic card docs; skips resolved and unchanged cards |
-| Nightly summary | up to 121 | 0-1 | Disabled by default; reads recent cards plus existing summary; skips unchanged summary writes |
+| Nightly summary | up to 121 card reads + 4 aggregate count queries + 1 summary read | 0-1 | Disabled by default; exact core counts plus bounded breakdown; skips unchanged summary writes |
 | Create answer proposal | 0-1 | 3 | Proposal write, card update, note transaction |
 
 Nightly sync diagnostics add no Firestore operations. Success and failure logs use scope booleans, fixed failure codes, and source error name/code/status only.
@@ -82,9 +91,12 @@ Nightly sync diagnostics add no Firestore operations. Success and failure logs u
 - Status history is embedded and capped at 50 entries per card.
 - Cards are never public.
 - Delete is denied for now; resolved cards can be retained for operational context.
+- Exact core counts are not inferred from the 120-card UI window.
+- Cap-plus-one nightly scans expose saturation/freshness state instead of implying complete analysis.
 
 ## Future Cost Improvements
 
 - Use cursor-based scan reduction if tenant signal volume grows beyond current caps.
 - Feed Weekly Digest from `supportBoardSummary_{tId}_{sId}` instead of scanning board cards.
+- Define whole-workspace Support Board erasure/retention before claiming customer-controlled card deletion.
 - Follow the Answerlattice-wide [Cost Read-Model Guardrails](../cost-read-model-guardrails/README.md) before adding any new Support Board source sync or realtime behavior.

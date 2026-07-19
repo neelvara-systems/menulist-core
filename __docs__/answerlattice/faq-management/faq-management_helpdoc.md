@@ -15,9 +15,11 @@ Publish a FAQ when:
 - the linked article proves the answer,
 - the product surface is correct.
 
+If you link an article, publish that article first. Answerlattice will not publish the short answer while its supporting article is still draft, inactive, or missing.
+
 ## When To Review
 
-Review a FAQ when its linked article changes or when customers mark it not helpful.
+Review a FAQ when its linked article changes or when customers mark it not helpful. The Review tab shows recent helpful/not-helpful events and comments. Treat those reactions as evidence to investigate, not as automatic truth.
 
 ## How To Connect A FAQ
 
@@ -28,3 +30,5 @@ Review a FAQ when its linked article changes or when customers mark it not helpf
 5. Add product surfaces or tags.
 6. Set status to Published.
 7. Save.
+
+The FAQ origin is read-only. Imported, article-generated, ticket-signal, and Knowledge Intake lineage cannot be changed into a manual origin from the editor.

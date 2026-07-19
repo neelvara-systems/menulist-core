@@ -1,53 +1,25 @@
-# Changelog System — Mobile Support Assessment
+# Releases and Changelog Mobile Support
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Mobile team, Product
+## Assessment
 
----
+The public/help-center timeline is responsive and useful on narrow screens. Full release authoring remains an occasional owner workflow, but it must stay usable on tablet and mobile browser without creating a second mobile data path.
 
-## 1. Feature Admission Test (4 Gates)
+## Current contract
 
-| Gate | Question | Answer | Pass? |
-|------|----------|--------|:-----:|
-| **Frequency** | Used daily/multiple times per day? | No — owners check changelog occasionally (weekly/monthly) | ❌ |
-| **Speed** | Completes in <5 seconds? | Yes — page load is instant (1 read), scrolling is smooth | ✅ |
-| **Touch** | Works with thumb-only? | Yes — scroll, tap entries, like/dislike are thumb-friendly | ✅ |
-| **Value** | Needed away from desk? | Occasionally — owner might want to check what changed | ⚠️ Partial |
+- The same server routes, contracts, permissions, and publication lifecycle apply at every viewport.
+- Drawer save and cancel controls use at least 44 px height.
+- Date, time, version, changed-entity, KB, surface, and media fields reuse the desktop form state.
+- Draft recovery copy is identical across viewport sizes.
+- Public pagination skips draft-only pages server-side; mobile does not implement its own filter.
 
-**Result: 2 PASS + 1 PARTIAL + 1 FAIL → Mobile UI is OPTIONAL (P2 priority)**
+## Risks to verify in hosted smoke
 
-The changelog is a read-only browsing experience. The desktop timeline view works reasonably on mobile already (responsive layout). A dedicated mobile screen would be nice but not critical.
+- The 720 px drawer collapses without horizontal overflow.
+- Date and time controls remain reachable above the software keyboard.
+- Multi-select chips wrap without covering later fields.
+- YouTube and attachment previews do not exceed the viewport.
+- Save remains disabled/loading during the complete draft, activation, and publication sequence.
 
----
+## Non-goal
 
-## 2. Current Mobile State
-
-- No dedicated mobile changelog screen
-- Desktop `DisplayChangelog` uses sidebar (280px) which would need to be hidden/collapsed on mobile
-- Timeline left column (120px) + axis + content would need single-column mobile layout
-- Infinite scroll works on any viewport
-
----
-
-## 3. Mobile Screen (If Built)
-
-| Screen | Priority | Complexity | Description |
-|--------|:--------:|:----------:|-------------|
-| **Changelog List** | P2 | Low | Simple card list of entries with tags, date, title. No timeline axis needed on mobile. |
-
----
-
-## 4. Platform Admin on Mobile
-
-**Updated 2026-05-19:** Changelog CRUD is exposed to `PLATFORM` users from MenuList Mobile More -> Answerlattice -> Changelog.
-
-The mobile route mounts the same platform Changelog template through `MobilePlatformInternalScreen`. It is a real product workflow with create, edit, delete, preview, related KB references, and pagination. Desktop remains better for long rich-text edits, but mobile must support emergency review and small operational changes.
-
-Mobile expectations:
-
-- list/search/preview must be usable on narrow screens;
-- Add/Edit modal must fit the viewport;
-- related article reference controls may scroll inside their own container;
-- Back returns to More -> Answerlattice.
-- The `I shipped a change` deep link opens the same responsive Add/Edit flow and clears the one-time `create` query after opening so refresh does not duplicate the action.
+Do not add a separate mobile release editor, direct Firestore mutation, or reduced publication safety path.

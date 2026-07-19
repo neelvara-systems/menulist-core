@@ -1,7 +1,8 @@
 # Answerlattice Staff Access Control Spec
 
 > Status: Implemented
-> Last updated: 2026-07-13
+> Last updated: 2026-07-19
+> Feature audit: Feature 31 of 44
 
 ## Owner Outcome
 
@@ -12,6 +13,7 @@ An Answerlattice workspace owner can add team members, assign roles, create cust
 - Answerlattice remains a separate product using `pId: AL`, `tId`, and `sId`.
 - MenuList staff management, mobile screens, and owner dashboard are not modified.
 - Support staff can only see and use support-signal surfaces by default.
+- Role assignment is a dependent authority, not a standalone route capability. A custom role receives `canAssignRoles` only when it also receives `canManageTeam`; stored combinations that omit team access lose role-assignment authority on normalization.
 - Owner, Manager, and Support Staff are immutable. This keeps server authorization, custom claims, and both Firestore rulesets on one permission contract. Different permissions require a custom role.
 - The last active Owner for a workspace cannot be removed or demoted.
 - Account-wide deactivation checks every Owner membership on the identity, not only the workspace open in the platform administrator's session.
@@ -25,7 +27,9 @@ An Answerlattice workspace owner can add team members, assign roles, create cust
 - Adding a workspace never reactivates an identity that is inactive while another workspace mapping remains.
 - Persisted tenant IDs, workspace IDs, role IDs, nested membership objects, and duplicate workspace mappings fail closed before authorization or mutation.
 - A present `pId` or `productId` must be `AL`; legacy omission remains readable, but a conflicting product identity is never treated as Answerlattice staff access.
-- Answerlattice custom tokens derive workspace IDs, selected role, and access revision from that same validated active membership state. Conflicting top-level `storeIds` cannot widen claims.
+- Answerlattice custom tokens derive selected workspace, selected role, and access revision from that same validated active membership state. Conflicting top-level `storeIds` cannot widen claims.
+- A token authorizes only its selected workspace. Complete multi-workspace membership remains in the governed user record and default-auth account projection; switching workspace requires a fresh scoped token.
+- Claim repair retains the Auth user's current workspace when it is still a valid membership, otherwise prefers the affected workspace and then the canonical primary membership.
 - Public email input cannot use reserved internal login domains; leaving email blank is the supported owner-passcode path.
 - A deterministic managed-login identity already owned by another create request is an identity conflict, never a reason to merge two intended people.
 - Staff create, access update, removal, last-owner checks, and role-in-use checks are transaction-backed. A concurrent pair of mutations cannot remove every Owner or leave an active member assigned to a disabled role.
@@ -38,9 +42,12 @@ An Answerlattice workspace owner can add team members, assign roles, create cust
 - Team list overflow is explicit. The server reads one sentinel row beyond the 500-member safety cap and rejects the response instead of silently hiding a member.
 - Initial password-setup email is a one-time create side effect. An exact create replay does not resend it; the owner uses the explicit Login reset action when recovery is needed.
 - Saving a custom role transactionally captures every retained assignment, including inactive accounts, then refreshes and revokes Answerlattice Auth claims. A role cannot be disabled or removed while any membership still references it.
+- After writing Auth claims, repair rereads the selected store and user and compares the complete account, workspace, role, and permission projection. A concurrent role edit that changes that projection retries instead of certifying stale permissions.
 - Product, tenant, store, and membership aliases are compatibility inputs only when they agree exactly. Contradictory aliases, duplicate workspace mappings, malformed IDs, and a Firestore document ID that disagrees with embedded scope all fail closed.
 - Disabled accounts project an `inactive` role, an empty claim workspace list, no admin claim, and no role permissions. Reactivation increments the access revision and restores current membership claims.
 - Post-commit bridge, claim, and token-revocation work is attempted independently. A failed removal projection returns a retryable error, and replay repairs those projections without recreating the removed membership.
+- Firebase refresh-token revocation prevents future token refresh, but an already-issued ID token may remain valid until its normal expiry window. Answerlattice therefore does not claim instant session invalidation and does not add a billed Firestore lookup to every request solely to simulate it.
+- Authenticated access, member, role, and temporary-login-detail responses are explicitly private, non-cacheable, and `nosniff`; route failures use the same response policy.
 
 ## Permission Requirements
 
@@ -49,7 +56,7 @@ An Answerlattice workspace owner can add team members, assign roles, create cust
 | Activation, readiness, weekly digest | `canViewReadiness` |
 | Product details | `canManageWorkspace` |
 | Team member CRUD | `canManageTeam` |
-| Role creation and role assignment | `canAssignRoles` |
+| Role creation and role assignment | `canAssignRoles` plus its required `canManageTeam` prerequisite |
 | Billing and transactions | `canManageBilling` |
 | KB, FAQs, changelog, product surfaces | `canManageKnowledge` |
 | Governance and signal queue | `canManageGovernance` |

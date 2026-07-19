@@ -22,7 +22,10 @@ import { normalizeAnswerlatticeEntityId, normalizeAnswerlatticeResolvedEntityId,
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
-import { buildAnswerlatticeSignalDocumentId } from '@lib/answerlattice/signalIdentity';
+import {
+    buildAnswerlatticeSignalDocumentId,
+    buildAnswerlatticeSignalPayloadFingerprint,
+} from '@lib/answerlattice/signalIdentity';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { ANSWERLATTICE_SIGNAL_TYPE, AnswerlatticeSignalEvent } from "@type/answerlattice";
 import { getAnswerlatticeRetentionExpiryMillis } from '@data/shared/answerlatticeRetention';
@@ -75,6 +78,10 @@ const parseSignalEvent = (
         || !value.timestamp
         || typeof value.timestamp !== 'object'
         || (value.dedupKey !== undefined && (typeof value.dedupKey !== 'string' || value.dedupKey.length > 260))
+        || (value.identityFingerprint !== undefined && (
+            typeof value.identityFingerprint !== 'string'
+            || !/^sigfp_[a-z0-9]+$/.test(value.identityFingerprint)
+        ))
     ) return null;
     return { ...value, id, entityId, tId: scope.tId, sId: scope.sId } as AnswerlatticeSignalEvent;
 };
@@ -86,11 +93,23 @@ export const addSignalEvent = async (data: Omit<AnswerlatticeSignalEvent, 'id'>)
     return await apiCallComposer(
         async () => {
             const scope = await requireSignalScope(data.tId, data.sId);
+            const entityId = normalizeAnswerlatticeEntityId(data.entityId);
+            if (!entityId) throw new Error('answerlattice_signal_entity_invalid');
+            const identityFingerprint = data.dedupKey
+                ? buildAnswerlatticeSignalPayloadFingerprint({
+                    type: data.type,
+                    entityId,
+                    deduplicationKey: data.dedupKey,
+                    metadata: data.metadata,
+                })
+                : undefined;
             const submitData = await answerlatticeRequestBodyComposer({
                 ...data,
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: scope.tId,
                 sId: scope.sId,
+                entityId,
+                ...(identityFingerprint ? { identityFingerprint } : {}),
                 expiresAt: Timestamp.fromMillis(getAnswerlatticeRetentionExpiryMillis('signalEvents')),
             }, { isNew: true });
             const deterministicId = data.dedupKey
@@ -116,7 +135,17 @@ export const addSignalEvent = async (data: Omit<AnswerlatticeSignalEvent, 'id'>)
                     existing
                     && existing.type === data.type
                     && existing.dedupKey === data.dedupKey
+                    && (
+                        existing.identityFingerprint
+                        || buildAnswerlatticeSignalPayloadFingerprint({
+                            type: existing.type,
+                            entityId: existing.entityId,
+                            deduplicationKey: existing.dedupKey,
+                            metadata: existing.metadata,
+                        })
+                    ) === identityFingerprint
                 ) return existing;
+                if (existing) throw new Error('answerlattice_signal_replay_conflict');
                 throw writeError;
             }
             return { ...submitData, id: deterministicId } as AnswerlatticeSignalEvent;

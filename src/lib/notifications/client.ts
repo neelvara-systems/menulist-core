@@ -24,6 +24,8 @@ interface TriggerNotificationParams {
     eventType: 'TICKET_CREATED' | 'TICKET_REPLY' | 'TICKET_STATUS_CHANGED';
     ticketId: string;
     messageId?: string;
+    tId: number;
+    sId: number;
 }
 
 const createNotificationTriggerResponseError = (

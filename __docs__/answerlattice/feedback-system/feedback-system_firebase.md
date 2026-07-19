@@ -1,7 +1,7 @@
 # Feedback System — Firebase Cost & Operations Tracking
 
-> **Version:** 1.7.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.9.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -15,8 +15,8 @@
 |----------|-------|
 | **Collection** | `feedback` |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.FEEDBACK` |
-| **Doc ID** | Auto-generated |
-| **Scoping** | `pId='AL' + tId + sId + uId` fields via `answerlatticeRequestBodyComposer` |
+| **Doc ID** | Deterministic `feedback_{48-char hash}` from exact workspace, actor and request ID |
+| **Scoping** | Server-derived `pId='AL' + tId + sId + uId`; caller scope/identity is not accepted |
 | **Surface fields** | Optional `contextKey`, `surfaceId`, `surfaceLabel`, `surfaceAssignedBy`, `surfaceAssignedAt` for owner sorting |
 | **Avg Doc Size** | 0.5-2 KB |
 | **Growth Rate** | Per-submission (infrequent) |
@@ -27,10 +27,10 @@
 |----------|-------|
 | **Collection** | `answerlattice_signalEvents` |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS` |
-| **Doc ID** | Auto-generated |
+| **Doc ID** | Deterministic from `metadata.feedbackId` through the signal identity boundary |
 | **Scoping** | `pId='AL' + tId + sId`; metadata links `feedbackId` |
 | **Avg Doc Size** | 0.5-2 KB |
-| **Growth Rate** | One non-blocking signal per exact-owned Help Center feedback submission when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION=true`; malformed/coercive scope is skipped with a bounded diagnostic and dispatch-loader failures are observable |
+| **Growth Rate** | At most one signal per deterministic feedback document when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION=true`; exact submission replays retry the same signal identity without duplication |
 
 ### 1.3 article_feedback (Content Feedback)
 
@@ -41,6 +41,7 @@
 | **Doc ID** | `doc1_{entryId}` |
 | **Scoping** | Subcollection under `{tId}/{sId}` |
 | **Avg Doc Size** | 0.5-5 KB (feedback list array) |
+| **Internal actor state** | One sibling `state1_{40-char hash}` document stores up to 5,000 active actor-hash -> sentiment entries; client reads/writes denied |
 
 ### 1.4 changelog_feedback (Content Feedback)
 
@@ -51,6 +52,18 @@
 | **Doc ID** | `doc1_{entryId}` |
 | **Scoping** | Subcollection under `{tId}/{sId}` |
 | **Avg Doc Size** | 0.5-5 KB (feedback list array) |
+| **Internal actor state** | One sibling `state1_{40-char hash}` document stores up to 5,000 active actor-hash -> sentiment entries; client reads/writes denied |
+
+### 1.5 faq_feedback (Content Feedback)
+
+| Property | Value |
+|----------|-------|
+| **Path** | `faq_feedback/{tId}/{sId}/doc1_{entryId}` |
+| **DB_COLLECTIONS constant** | `DB_COLLECTIONS.FAQ_FEEDBACK` |
+| **Doc ID** | `doc1_{entryId}` |
+| **Scoping** | Subcollection under `{tId}/{sId}` |
+| **Avg Doc Size** | 0.5-5 KB (feedback list array, capped at 200 items) |
+| **Internal actor state** | One sibling `state1_{40-char hash}` document stores up to 5,000 active actor-hash -> sentiment entries; client reads/writes denied |
 
 ---
 
@@ -60,10 +73,11 @@
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| `addFeedback(data)` | 0 | 1 |
-| Optional `feedback` signal event | 0 | 0-1 |
+| Server transaction reads deterministic feedback ID | 1 | 0 |
+| Create feedback when request is new | 0 | 0-1 |
+| Optional deterministic `feedback` signal event | 0-1 on replay verification | 0-1 |
 | Use returned `addFeedback()` payload for UI | 0 | 0 |
-| **Total** | **0** | **1-2** |
+| **Total** | **1-2** | **0-2** |
 
 Widget negative-feedback signals dedupe by `searchHistoryId` within the active runtime process to avoid duplicate signal writes from repeated clicks on the same answer. Widget feedback validates `searchHistoryId` through the shared Firestore document-ID boundary before updating `aiSearchHistory`.
 
@@ -101,17 +115,17 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Transaction reads article and actor audit row | 2 | 0 |
-| Update likes/dislikes and create/append audit row | 0 | 2 (1 when audit is capped) |
-| **Total** | **2** | **1-2** |
+| Transaction reads article, actor audit row, and active-actor state | 3 | 0 |
+| Update likes/dislikes, actor state, and create/append audit row | 0 | 2-3 (2 when audit is capped) |
+| **Total** | **3** | **2-3** |
 
 ### 2.7 Changelog Entry Like/Dislike
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Transaction reads page and actor audit row | 2 | 0 |
-| Update entry and create/append audit row | 0 | 2 (1 when audit is capped) |
-| **Total** | **2** | **1-2** |
+| Transaction reads page, actor audit row, and active-actor state | 3 | 0 |
+| Update entry, actor state, and create/append audit row | 0 | 2-3 (2 when audit is capped) |
+| **Total** | **3** | **2-3** |
 
 ### 2.8 Add Content Comment Feedback
 
@@ -120,11 +134,22 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 | Comment is sanitized and included in the same reaction transaction | Included above | Included above |
 | **Total** | **0 additional** | **0 additional** |
 
+### 2.9 FAQ Like/Dislike
+
+| Step | Reads | Writes |
+|------|:-----:|:------:|
+| Server transaction reads published FAQ, actor audit row, and active-actor state | 3 | 0 |
+| Update counters/idempotency, actor state, and create/append audit row | 0 | 2-3 (2 when audit is capped) |
+| Added dislike creates deterministic feedback signal | 0 | 1 |
+| **Total** | **3** | **2-4** |
+
+The same optional dislike-signal write applies to article and changelog reactions. It is transactionally coupled and idempotent.
+
 ---
 
 ## 3. Cost Estimates
 
-### Scenario: 10 stores, 5 feedback submissions/month, 30 likes/month, 10 comments/month
+### Illustrative Scenario: 10 stores, 5 feedback submissions/month, 30 non-negative reactions/month, 10 comments/month
 
 | Operation | Reads/mo | Writes/mo |
 |-----------|:--------:|:---------:|
@@ -137,6 +162,8 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 | Add selected feedback to Support Board | 0 | 2 |
 | Article likes/dislikes + capped reaction audit log | 60 | 60 |
 | Changelog likes/dislikes + capped reaction audit log | 60 | 60 |
+| FAQ likes/dislikes + capped reaction audit log | Not included in this example | Not included in this example |
+| Added-dislike signal writes | 0 | One per idempotent added dislike; not included in this example |
 | Owner opens reaction details | 10 bounded document reads | 0 |
 | Content comments | Included in reaction audit log | Included in reaction audit log |
 | **Total** | **~250 bounded reads** | **147** |
@@ -149,11 +176,11 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 | Firestore writes | ~147 | ~$0.00018 |
 | **Total** | | **~$0.0003/month** |
 
-Reaction activity is capped at 200 events per article/changelog entry document. Below the cap, rules allow only an exact one-item append; at the cap the audit row becomes immutable and later reactions update only the source counter. Owner reaction details load only when a specific entry preview is opened. Normal changelog/article browsing still uses existing aggregate counters and does not read the reaction activity log.
+Reaction activity is capped at 200 visible events per article/changelog/FAQ item document. At the cap, later valid reactions update the source counter and active-actor state without expanding visible audit history. Owner reaction details load only `doc1_*` when a specific item preview is opened. Normal customer browsing uses existing aggregate counters and does not read reaction audit or actor state.
 
-The browser reaction marker adds no Firebase operation. It is a versioned local acknowledgement keyed and envelope-checked by `tId+sId+uId+contentType`, capped at 500 exact entries, and discarded on legacy/malformed/cross-scope input. Firestore counters and actor audit rows remain authoritative.
+The browser reaction marker adds no Firebase operation. It is a versioned local acknowledgement keyed and envelope-checked by `tId+sId+uId+contentType`, capped at 500 exact entries, and discarded on legacy/malformed/cross-scope input. Firestore counters plus the internal active-actor state are authoritative; the visible actor audit is bounded review history.
 
-Essentially free at any reasonable scale.
+This example is a scale illustration, not a billing promise. Actual cost depends on reaction mix, negative-signal writes, owner audit reads, and regional Firestore pricing.
 
 ---
 
@@ -174,18 +201,17 @@ Feedback review reads are capped in the DAL at 200 rows even if a caller passes 
 
 | Collection | Read | Create | Update/Delete |
 |------------|------|--------|---------------|
-| `feedback` | Platform admin, support-control users in same `tId+sId`, or the submitting user reading their own row | Exact admitted payload only; platform admin/support-control users, or an authenticated tenant user creating their own scoped/actor-bound row | Support-control users may change only Product Surface assignment fields plus modification metadata; content, actor and scope changes are denied; delete denied |
-| `answerlattice_signalEvents` | Support-control users in same `tId+sId` | Support-control users, plus self-scoped `type='feedback'` events from Help Center feedback | Append-only; client update/delete denied. Answerlattice nightly/admin TTL owns archival. |
-| `article_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Same-scope permitted user; exactly one valid actor item and `pId='AL'` metadata | Exact one-item append plus modification metadata while below 200; capped history replacement and delete denied |
-| `changelog_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Same-scope permitted user; exactly one valid actor item and `pId='AL'` metadata | Exact one-item append plus modification metadata while below 200; capped history replacement and delete denied |
+| `feedback` | Platform support/admin, exact `canManageSupport` users in same `tId+sId`, or the submitting user reading their own row | Denied; authenticated server route/Admin SDK only | Exact support managers may change only Product Surface assignment fields plus modification metadata; content, actor and scope changes are denied; delete denied |
+| `answerlattice_signalEvents` | Support-control users in same `tId+sId` | Exact support-control users only; Help Center/customer feedback signals are server-owned | Append-only; client update/delete denied. Answerlattice nightly/admin TTL owns archival. |
+| `article_feedback/{tId}/{sId}/{docId}` | Exact-workspace knowledge or support operator may read only `doc1_*`; `state1_*` is hidden | Denied; server-owned | Denied; server-owned |
+| `changelog_feedback/{tId}/{sId}/{docId}` | Exact-workspace knowledge or support operator may read only `doc1_*`; `state1_*` is hidden | Denied; server-owned | Denied; server-owned |
+| `faq_feedback/{tId}/{sId}/{docId}` | Exact-workspace knowledge or support operator may read only `doc1_*`; `state1_*` is hidden | Denied; server-owned | Denied; server-owned |
 
-This allows end users to submit and view their own latest feedback without granting them access to owner review surfaces. Content reaction logs are separate because the current client transaction must read the entry-specific feedback document before appending the next capped reaction event.
+This allows end users to view their own latest private feedback without granting unrelated workspace members or widget-only managers access to owner review data. Submissions and published-content reactions use authenticated APIs and Admin SDK; customer clients never receive write access to feedback documents, source counters, audit paths, or active-actor state.
 
-The `feedback` create contract requires the canonical category type, its relevant fields only, `pId='AL'`, bounded scope/actor/trace metadata, valid timestamps, a null or exact-key source context, canonical issue/request values, and no duplicate votes. The application performs the same admission before `answerlatticeRequestBodyComposer`; rules are the independent enforcement layer. Legacy rows are not rewritten by reads, and surface-only updates remain compatible because rules constrain changed keys instead of requiring old documents to satisfy the new complete create schema.
+The feedback request contract requires a bounded request ID and one canonical category payload. The server derives scope, actor, timestamps and deterministic identity, persists an exact submission fingerprint, and rejects changed replays. Legacy rows are not rewritten by reads, and surface-only updates remain compatible because rules constrain changed keys.
 
-**Deployment status (2026-07-11):** the local rules emulator and 102/102 aggregate source gate pass. The Node 22 rules-only `answerlattice-qa` deploy stopped at the Firebase Rules API test request with HTTP 403 caller permission before upload, so QA does not yet enforce this stricter contract.
-
-The updated content-reaction append/item rules passed the same local emulator and 102/102 aggregate. A required post-update retry returned the identical Rules API HTTP 403 before upload. Do not retry the unchanged command until QA IAM changes.
+**Deployment status (2026-07-19):** dedicated/shared local feedback rule emulators, content-feedback server emulator, content contracts, and focused source gates pass. The current remote deployment state requires authenticated QA deployment and readback. The latest attempted QA deploys stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule change was confirmed.
 
 ---
 
@@ -193,11 +219,24 @@ The updated content-reaction append/item rules passed the same local emulator an
 
 | DAL Function | Collection | Operation |
 |-------------|-----------|-----------|
-| `addFeedback` | `feedback` + `answerlattice_signalEvents` | addDoc + optional non-blocking signal addDoc |
+| `addFeedback` | Protected submission API client | Validate request/response and preserve bounded retry request ID; no direct Firestore mutation |
+| `executeAnswerlatticeFeedbackSubmission` | `feedback` + optional `answerlattice_signalEvents` | Admin transaction for deterministic create/replay, followed by deterministic signal acknowledgement |
 | `updateFeedbackSurfaceForWorkspace` | `feedback` | updateDoc surface assignment fields |
 | `getFeedbackForWorkspace` | `feedback` | getDocs bounded query |
 | `getProductSurfacesForSession` | `answerlattice_productSurfaces` | getDocs bounded query for assignment options |
 | `createAnswerlatticeSupportBoardCard` from feedback review | `answerlattice_supportBoardCards` | addDoc |
 | `getLatestFeedbackForUser` | `feedback` | getDocs (query, limit 1) |
-| `updateContentFeedbackWithAudit` | `kb_articles` or `changelog/{tId}/{sId}` plus `{type}_feedback/{tId}/{sId}` | One transaction: read both, update source, create/exact-append audit below cap |
+| `updateContentFeedbackWithAudit` | Protected API client | Validate request/response and preserve bounded retry request ID; no direct Firestore mutation |
+| `executeAnswerlatticeContentFeedback` | `kb_articles`, `answerlattice_faqs`, or `changelog/{tId}/{sId}` plus `{type}_feedback/{tId}/{sId}` and optional `answerlattice_signalEvents` | One Admin transaction: read source/audit/actor state, enforce actor transition, update source/state, create/exact-append audit below cap, and create deterministic signal for an added dislike |
 | `updateContentFeedback` | Router | Routes to above handlers |
+
+---
+
+## 7. Retention And Deletion
+
+- Private Help Center `feedback` rows are durable operational records. There is no client delete and no feature-local automated cleanup.
+- Article/changelog/FAQ `doc1_*` actor-audit documents carry a refreshed 365-day `expiresAt`; Answerlattice nightly cleanup deletes expired rows per exact tenant/workspace in bounded batches.
+- Internal `state1_*` active-reaction documents remain durable while the source content remains addressable; removing the final active reaction deletes the state document. They contain only actor hashes, not names, email, phone or comments.
+- Source counters remain on the published content object when an audit row expires.
+- Signal retention follows the shared signal-event policy.
+- Full workspace deletion and verified cascading erasure are cross-cutting account-lifecycle requirements; they are not claimed by this feature.

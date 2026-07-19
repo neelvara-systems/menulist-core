@@ -64,11 +64,19 @@ assert.match(
     /current plan, role, or product state/,
 );
 
-assert.equal(
-    buildCacheKey(11, 22, 'entity_billing', 25, 'growth', 'owner', 'past_due'),
-    'canon:v2:11:22:e:entity_billing:v25:p:growth:r:owner:s:past_due',
-    'instant canonical cache keys must isolate state context and bypass legacy cache entries',
+const instantCacheKey = buildCacheKey(11, 22, 'entity_billing', 25, 'growth', 'owner', 'past_due');
+assert.match(
+    instantCacheKey,
+    /^canon:v4:11:22:e:[A-Za-z0-9_-]{22}:v25:p:[A-Za-z0-9_-]{22}:r:[A-Za-z0-9_-]{22}:s:[A-Za-z0-9_-]{22}$/,
+    'instant canonical cache keys must isolate applicability context and bypass legacy cache entries',
 );
+['entity_billing', 'growth', 'owner', 'past_due'].forEach((rawSegment) => {
+    assert.equal(
+        instantCacheKey.includes(rawSegment),
+        false,
+        `instant canonical cache keys must not expose raw ${rawSegment} context`,
+    );
+});
 
 const workspace = { tenantId: 11, storeId: 22 };
 assert.equal(

@@ -1,225 +1,100 @@
-# Predictive Support — Firebase & Cost Analysis
+# Predictive Support Firebase And Cost
 
-> **Version:** 1.1.2
-> **Last Updated:** 2026-07-06
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`
+**Status:** Current implementation truth
+**Last verified:** July 18, 2026
 
----
+## Storage
 
-## §1 — Firestore Collections
+| Location | Purpose | Access |
+| --- | --- | --- |
+| `answerlattice_predictiveTriggers/{triggerId}` | Governed trigger source records | Authorized owner/admin read and mutation; strict workspace rules |
+| `platformSummary/predictiveTriggers_{tId}_{sId}` | Bounded runtime projection | Server/runtime read model; client mutation path writes through controlled DAL |
+| `answerlattice_signalEvents/{signalId}` | Optional shown/opened/dismissed evidence | Server-emitted when signal mutation is enabled |
+| `answerlattice_auditLogs/{logId}` | Owner mutation history | Existing audit flow |
 
-### 1.1 — New Collection
+No new collection, Storage path, listener, or index is required for the hardened flow.
 
-| Collection | Purpose | Doc Size | Growth Rate |
-|-----------|---------|----------|-------------|
-| `answerlattice_predictiveTriggers` | Individual trigger rules for CRUD | ~500 bytes | ~10-50 per tenant (static after setup) |
+## Rule contract
 
-### 1.2 — Existing Collections Used
+Both `firestore-answerlattice.rules` and the shared `firestore.rules` enforce the predictive trigger shape.
 
-| Collection | Usage | Additional Impact |
-|-----------|-------|-------------------|
-| `platformSummary` | Cache doc: `predictiveTriggers_{tId}_{sId}` | +1 doc per tenant (~100KB max), includes `activeTriggerCount`, `sourceHash`, and pre-resolved suggestion snippets |
-| `answerlattice_signalEvents` | suggestion_shown/clicked/dismissed signals | +3 signal types (same collection) |
-| `answerlattice_auditLogs` | Trigger create/update/delete/auto-disable events | Negligible additional writes |
+Client mutation rules require:
 
----
+- exact `pId='AL'`, `tId`, and `sId` ownership;
+- positive safe workspace scope;
+- allowed top-level, condition, action, and known-issue fields;
+- valid status, source, kind/action pairing, priority, cooldown, and lengths;
+- `source: manual` on create;
+- exact page when status is active;
+- immutable scope and source;
+- immutable kind, except one missing-kind legacy migration to the action-derived kind;
+- no client-supplied resolved suggestion, friction evidence, or engagement/effectiveness fields.
 
-## §2 — Firestore Operations Per Action
+Cross-workspace reads and writes are rejected.
 
-### 2.1 — Widget Config / Capability Check
+## Answerlattice App Predictive Trigger ID Boundary
 
-| Operation | Count | Type | Description |
-|-----------|-------|------|-------------|
-| Load trigger summary | 0-1 | READ | `platformSummary/predictiveTriggers_{tId}_{sId}` on widget config cache miss only |
-| Return capability | 0 | — | `capabilities.predictiveSupport` is true only when active triggers exist |
-| **Total** | **0-1** | **READ** | Prevents predictive API calls for tenants with no active triggers |
+All document IDs pass the shared valid-Firestore-ID boundary before a reference is constructed or a rule mutation is attempted. The app does not use caller-supplied raw IDs directly.
 
-### 2.2 — Predictive Help API Call (Only When Capability Is Enabled)
+## Read and write model
 
-| Operation | Count | Type | Description |
-|-----------|-------|------|-------------|
-| Load trigger rules | 1 | READ | platformSummary/predictiveTriggers_{tId}_{sId} |
-| Resolve canonical answer | 0-1 | READ | Usually 0 because nightly cache stores `resolvedSuggestion`; fallback only for stale/legacy summary docs |
-| Log suggestion signal | 0-1 | WRITE | Only if suggestion shown (fire-and-forget) |
-| **Total per predictive request** | **1-2** | **Mixed** | The widget does not call this endpoint unless config says active triggers exist |
+### Widget configuration
 
-Predictive help diagnostics use fixed runtime failure codes with bounded store metadata and source error name/code/status only; diagnostics do not add Firestore operations or expose raw workspace identifiers.
+The widget config route checks the compact predictive summary to determine whether predictive support is available. Existing widget remote-config caching applies.
 
-### 2.3 — Trigger CRUD (Admin Action)
+### Predictive request
 
-Answerlattice App Predictive Trigger ID Boundary: app-side update/activate/disable/delete refs and audit-log entity IDs normalize trigger document IDs through the shared Firestore document-ID guard before touching `answerlattice_predictiveTriggers/{triggerId}`. Malformed IDs fail before Firestore access and do not add reads or writes.
+The predictive engine reads one summary document on a cache miss:
 
-Answerlattice Predictive Trigger Scope and Public Summary Boundary: browser queries and mutations require positive safe-integer scope, and every returned or summarized trigger requires exact `pId='AL'` plus the requested tenant/store. Update, activation and disable writes preserve the validated stored scope rather than trusting caller/session fallback. Partial updates start from an empty patch and copy only validated owner-editable fields, so caller metadata and server-owned effectiveness/source fields cannot ride through the generic composer. Summary rebuild still costs one bounded trigger query plus one summary write, but it writes only the predictive runtime allowlist; `sourceContext`, `uId`, role, actor, trace/request IDs, creation metadata and arbitrary top-level fields are excluded. The server parser repeats the same product/scope/ID/status/source/action/numeric checks before caching or rendering suggestions.
+- active summary cache: 60 seconds;
+- empty summary cache: 5 minutes.
 
-| Operation | Count | Type | Description |
-|-----------|-------|------|-------------|
-| Create trigger | 1 | WRITE | answerlattice_predictiveTriggers/{triggerId} |
-| Audit log | 1 | WRITE | answerlattice_auditLogs |
-| **Total per CRUD** | **2** | **WRITE** | |
+No trigger-collection fanout occurs on the public request path.
 
-### 2.4 — Nightly Batch (Step 16)
+### Owner mutation
 
-| Operation | Count | Type | Description |
-|-----------|-------|------|-------------|
-| Load friction snapshot | 1 | READ | platformSummary/frictionSnapshot_{tId}_{sId} |
-| Load existing triggers | 1 | READ | Query answerlattice_predictiveTriggers |
-| Auto-gen suggestions | 0-5 | WRITE | New suggested triggers |
-| Load answer snippets for active trigger entities | 0-N | READ | Bounded `array-contains-any` chunks, only for active entity-bound triggers |
-| Load suggestion signals | 1 | READ | Batched signal counts (existing function) |
-| Update effectiveness scores | 0-50 | WRITE | Update trigger effectiveness |
-| Rebuild cache doc | 0-1 | WRITE | Skips write when `sourceHash` is unchanged |
-| Audit log entries | 0-5 | WRITE | For auto-disabled triggers |
-| **Total per tenant per night** | **~4-65** | **Mixed** | Higher only when active trigger/entity coverage is large |
+A successful trigger create/update/status/delete operation includes:
 
----
+1. the trigger write or delete;
+2. one bounded collection query, capped at 201 rows to detect overflow;
+3. one summary write;
+4. the existing compiled-context source invalidation write path;
+5. existing audit behavior where invoked by the owner hook.
 
-## §3 — Cost Estimates
+The 200-trigger workspace cap is enforced before create and during summary rebuild. Overflow fails without replacing the last valid summary.
 
-### 3.1 — Assumptions
+### Interaction evidence
 
-| Parameter | Value |
-|-----------|-------|
-| Tenants | 10 (early) / 100 (growth) / 1,000 (scale) |
-| Page visits per tenant per day | 500 |
-| Widget config cache misses per tenant per day | 100 |
-| Trigger match rate | 20% (100 suggestions/day/tenant) |
-| Suggestion shown rate | 80% of matches (after cooldown) |
-| Nightly batch frequency | Once daily |
+When `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` is enabled, one admitted interaction can emit at most one deduplicated signal through the existing signal collection. When disabled, the endpoint returns `recorded: false` and writes nothing.
 
-### 3.2 — Monthly Cost at Scale
+### Nightly task
 
-| Scale | Reads/Month | Writes/Month | Estimated Cost |
-|-------|-------------|--------------|----------------|
-| 10 tenants | ~150K | ~30K | ~$0.15 |
-| 100 tenants | ~1.5M | ~300K | ~$1.50 |
-| 1,000 tenants | ~15M | ~3M | ~$15.00 |
+The existing Answerlattice nightly task can read friction evidence, create at most five review-only suggestions, rebuild summaries, and aggregate interaction evidence. It does not auto-disable or auto-activate triggers.
 
-### 3.3 — Cost Breakdown
+## Cost risks and controls
 
-```
-Per tenant per day:
-  Reads:  100 config cache misses × 1 summary read = 100 reads
-          + 100 predictive requests × 1 summary read = 100 reads
-          + answer fallback reads are usually 0 because summary stores resolvedSuggestion
-          = ~200 reads/day/tenant
+| Risk | Control |
+| --- | --- |
+| Collection scan on every page | Public path reads the compact summary only |
+| Unbounded summary | Hard cap of 200 triggers; overflow fails closed |
+| Repeated prompt traffic | 60-second loader cache, server cache, debounce, and Redis cooldown |
+| Interaction write amplification | Three bounded event types, dedupe identity, rate limits, optional signal flag |
+| Invalid trigger repeatedly evaluated | Strict summary parser omits malformed rows |
+| Nightly record growth | Existing signal retention and task bounds apply; no new event collection |
+| Large public payload | 32 KiB response cap and public projection |
 
-  Writes: 80 suggestion signals × 1 write = 80 writes
-          + nightly batch ~0-50 writes = 50 writes worst case
-          = ~80-130 writes/day/tenant
+## Indexes
 
-Per tenant per month:
-  Reads:  200 × 30 = 6,000 reads
-  Writes: 130 × 30 = 3,900 writes
+Current predictive queries use scoped equality filters and bounded limits. No Feature 18 index change was added. Any future query shape must be proven against both dedicated and shared index files before implementation.
 
-At 1,000 tenants per month:
-  Reads:  6M × $0.036/100K = $2.16
-  Writes: 3.9M × $0.108/100K = $4.21
-  Total:  ~$10.69/month
+## Deletion and retention
 
-Upstash Redis (cooldowns):
-  Commands: 500 page visits × 2 commands × 1,000 tenants × 30 days = 30M commands
-  Free tier: 10K/day = won't cover
-  Paid: $0.20/100K = $60/month at scale
+- Deleting a trigger rebuilds the summary so the runtime copy is removed.
+- Archived or disabled triggers remain source records until explicitly deleted but are not eligible for delivery.
+- Interaction evidence follows the existing Answerlattice signal-retention policy.
+- Audit history follows the existing audit-retention policy.
+- Redis cooldown entries expire through their TTL.
 
-  OPTIMIZATION: Only call Redis if trigger matches (20% rate)
-  Actual: 100 matches × 2 × 1,000 × 30 = 6M commands = $12/month
-```
+## Deployment requirement
 
-### 3.4 — Total Monthly Cost
-
-| Scale | Firestore | Redis | Total |
-|-------|-----------|-------|-------|
-| 10 tenants | $0.15 | $0.01 | **$0.16** |
-| 100 tenants | $1.50 | $1.20 | **$2.70** |
-| 1,000 tenants | ~$6.37 worst case | $12.00 | **~$18.37** |
-
----
-
-## §4 — Firestore Indexes Required
-
-```json
-{
-  "collectionGroup": "answerlattice_predictiveTriggers",
-  "queryScope": "COLLECTION",
-  "fields": [
-    { "fieldPath": "tId", "order": "ASCENDING" },
-    { "fieldPath": "sId", "order": "ASCENDING" },
-    { "fieldPath": "status", "order": "ASCENDING" },
-    { "fieldPath": "createdOn", "order": "DESCENDING" }
-  ]
-}
-```
-
-```json
-{
-  "collectionGroup": "answerlattice_predictiveTriggers",
-  "queryScope": "COLLECTION",
-  "fields": [
-    { "fieldPath": "tId", "order": "ASCENDING" },
-    { "fieldPath": "sId", "order": "ASCENDING" },
-    { "fieldPath": "source", "order": "ASCENDING" },
-    { "fieldPath": "createdOn", "order": "DESCENDING" }
-  ]
-}
-```
-
----
-
-## §5 — DAL Functions
-
-### 5.1 — New DAL: `src/database/answerlattice/predictiveTriggers.ts`
-
-| Function | Reads | Writes | Description |
-|----------|-------|--------|-------------|
-| `getPredictiveTriggers(tId, sId)` | 1 | 0 | Get all triggers for tenant |
-| `getSuggestedTriggers(tId, sId)` | 1 | 0 | Get pending suggestions |
-| `addPredictiveTrigger(data)` | 0 | 1 | Create new trigger |
-| `updatePredictiveTrigger(data)` | 0 | 1 | Update existing trigger |
-| `activateTrigger(triggerId)` | 1 | 1 | Validate + activate |
-| `disableTrigger(triggerId)` | 0 | 1 | Set status = disabled |
-| `deleteTrigger(triggerId)` | 0 | 1 | Hard delete |
-
-### 5.2 — New Lib: `src/lib/answerlattice/predictiveEngine.ts`
-
-| Function | Reads | Writes | Description |
-|----------|-------|--------|-------------|
-| `loadTriggerIndex(tId, sId)` | 1 | 0 | Load platformSummary cache |
-| `evaluateTriggers(context, tId, sId, userId)` | 1-2 | 0-1 | Full evaluation pipeline |
-| `resolveSuggestion(trigger, tId, sId)` | 0-1 | 0 | Resolve canonical answer |
-
----
-
-## §6 — Optimization Strategies
-
-### 6.1 — Read Optimization
-- **platformSummary cache:** 1 read loads ALL triggers (vs N reads from collection)
-- **Remote capability gate:** widget only calls predictive API when the config endpoint confirms active triggers
-- **Negative trigger cache:** empty/no-active trigger summaries are cached for 5 minutes per warm server instance
-- **Pre-resolved suggestions:** nightly stores canonical answer snippets in the trigger summary, removing the usual runtime answer read
-- **Targeted answer lookup:** nightly loads answers only for active trigger entity IDs, not every active answer in the workspace
-- **Unchanged-write skip:** cache write is skipped when `sourceHash` is unchanged
-- **Bounded diagnostics:** nightly sync failures log fixed `ANSWERLATTICE_PREDICTIVE_TRIGGER_*` codes with source error metadata and scope booleans, not raw exception text or raw tenant/store IDs
-- **Cooldown-first check:** Only resolve canonical answer if cooldown passes
-- **Short-circuit evaluation:** Stop at first matching trigger (priority-sorted)
-
-### 6.2 — Write Optimization
-- **Fire-and-forget signals:** Non-blocking, never retry
-- **Batch nightly updates:** Effectiveness scores updated in bulk, not per-impression
-- **Redis TTL auto-cleanup:** No Firestore writes for cooldown expiry
-
-### 6.3 — Cost Guard Rails
-- **Max 500 triggers per tenant:** Bounds platformSummary doc size
-- **Max 5 auto-generated suggestions per nightly run:** Prevents suggestion explosion
-- **12-month TTL on suggestion signals:** the shared signal writer sets `expiresAt`, and Firestore TTL deletes expired rows without a per-workspace scheduler scan.
-- **Cooldown minimum 1 hour:** Prevents excessive Redis commands
-- **Fail closed when Redis missing:** avoids repeated proactive prompts if cooldown storage is not configured
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-05-24 | 1.1.1 | Added 5-minute negative trigger-index cache for tenants with no active triggers. |
-| 2026-05-24 | 1.1.0 | Added widget capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and updated cost model. |
-| 2026-03-10 | 1.0.0 | Initial Firebase and cost analysis. |
+Feature 18 changes both dedicated and shared Firestore rules and Answerlattice Cloud Function logic. After local verification, deploy the smallest scoped QA targets. A successful source check does not prove the remote deployment or production behavior.

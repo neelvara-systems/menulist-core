@@ -1,4 +1,5 @@
 import { getStoresTickets, getSupportTickets } from '@database/tickets';
+import { type AnswerlatticeCacheAudience, useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { SupportTicketType } from '@type/supportTicket';
@@ -29,15 +30,17 @@ import { useCallback, useContext } from 'react';
  * const tickets = cachedItems;
  * ```
  */
-export const useTicketCache = () => {
+export const useTicketCache = (options?: { audience?: AnswerlatticeCacheAudience }) => {
     const { cachedTickets, setCachedTickets } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const scopeKey = useAnswerlatticeCacheScope(options?.audience);
+    const scopedTickets = cachedTickets.scopeKey === scopeKey ? cachedTickets.tickets : [];
 
     /**
      * Clear entire cache
      * Useful for logout or manual refresh
      */
     const clearCache = useCallback(() => {
-        setCachedTickets({ cachedOn: null, tickets: [] });
+        setCachedTickets({ cachedOn: null, tickets: [], scopeKey: null });
     }, [setCachedTickets]);
 
     /**
@@ -63,6 +66,7 @@ export const useTicketCache = () => {
             onCacheMiss?: () => void;
         }
     ): Promise<SupportTicketType[]> => {
+        if (!scopeKey) return [];
         const maxAge = options?.maxAge ?? 5 * 60 * 1000; // 5 minutes default
 
         // ============================================
@@ -78,7 +82,8 @@ export const useTicketCache = () => {
 
                 setCachedTickets({
                     cachedOn: Timestamp.now(),
-                    tickets
+                    tickets,
+                    scopeKey,
                 });
 
                 return tickets;
@@ -87,11 +92,11 @@ export const useTicketCache = () => {
                     forceRefresh: true,
                     includeDeleted: Boolean(options.includeDeleted),
                     maxAge,
-                    cachedTicketCount: cachedTickets?.tickets?.length || 0,
+                    cachedTicketCount: scopedTickets.length,
                 });
                 // Preserve last-known ticket truth instead of presenting a
                 // failed refresh as a confirmed empty inbox.
-                return cachedTickets?.tickets || [];
+                return scopedTickets;
             }
         }
 
@@ -104,9 +109,9 @@ export const useTicketCache = () => {
 
         const isCacheFresh = cacheAge < maxAge;
 
-        if (isCacheFresh && cachedTickets?.tickets && cachedTickets.tickets.length > 0) {
+        if (isCacheFresh && scopedTickets.length > 0) {
             options?.onCacheHit?.();
-            return cachedTickets.tickets;
+            return scopedTickets;
         }
 
         // ============================================
@@ -121,7 +126,8 @@ export const useTicketCache = () => {
 
             setCachedTickets({
                 cachedOn: Timestamp.now(),
-                tickets
+                tickets,
+                scopeKey,
             });
 
             return tickets;
@@ -131,12 +137,12 @@ export const useTicketCache = () => {
                 includeDeleted: Boolean(options?.includeDeleted),
                 maxAge,
                 cacheAge: Number.isFinite(cacheAge) ? Math.round(cacheAge) : -1,
-                cachedTicketCount: cachedTickets?.tickets?.length || 0,
+                cachedTicketCount: scopedTickets.length,
             });
             // Return cached tickets even if stale (fallback)
-            return cachedTickets?.tickets || [];
+            return scopedTickets;
         }
-    }, [cachedTickets, setCachedTickets]);
+    }, [cachedTickets?.cachedOn, scopeKey, scopedTickets, setCachedTickets]);
 
     /**
      * Set all tickets directly (for realtime updates)
@@ -152,11 +158,13 @@ export const useTicketCache = () => {
      * ```
      */
     const setAllItems = useCallback((tickets: SupportTicketType[]) => {
+        if (!scopeKey) return;
         setCachedTickets({
             cachedOn: Timestamp.now(),
-            tickets
+            tickets,
+            scopeKey,
         });
-    }, [setCachedTickets]);
+    }, [scopeKey, setCachedTickets]);
 
     /**
      * Update a single ticket in the cache using updateList utility
@@ -177,18 +185,20 @@ export const useTicketCache = () => {
         position: 'first' | 'last' = 'first',
         matchKey: keyof SupportTicketType = 'displayId'
     ) => {
+        if (!scopeKey) return;
         setCachedTickets(prev => ({
             cachedOn: Timestamp.now(),
-            tickets: updateList(prev?.tickets || [], ticket, position, matchKey)
+            tickets: updateList(prev.scopeKey === scopeKey ? prev.tickets : [], ticket, position, matchKey),
+            scopeKey,
         }));
-    }, [setCachedTickets]);
+    }, [scopeKey, setCachedTickets]);
 
     return {
         // Primary methods (used in production)
         getAllItems,       // Get all tickets - Used in 3 components
         setAllItems,       // Set tickets from realtime - Used in 3 components  
         updateItem,        // Update single ticket - Used in 3 components
-        cachedItems: cachedTickets.tickets, // Direct cache access - Used in 2 components
+        cachedItems: scopedTickets, // Direct cache access - Used in 2 components
         clearCache,        // Clear cache on logout/refresh
     };
 };

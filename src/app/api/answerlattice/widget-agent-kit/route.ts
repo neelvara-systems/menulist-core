@@ -24,6 +24,24 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
 
+const ANSWERLATTICE_AGENT_KIT_MAX_BYTES = 2 * 1024 * 1024;
+const PRIVATE_NO_STORE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+};
+const kitJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse.json(body, {
+    ...init,
+    headers: {
+        ...PRIVATE_NO_STORE_HEADERS,
+        ...(init.headers || {}),
+    },
+});
+const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
+    response.headers.set('X-Content-Type-Options', PRIVATE_NO_STORE_HEADERS['X-Content-Type-Options']);
+    return response;
+};
+
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
@@ -31,40 +49,46 @@ const getAnswerlatticeDb = () => {
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AGENT_INSTALL) {
-        return NextResponse.json({ error: 'Answerlattice agent install is not enabled.' }, { status: 403 });
+        return kitJsonResponse({ error: 'Answerlattice agent install is not enabled.' }, { status: 403 });
     }
 
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope?.tenantId || !scope?.storeId) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return kitJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
+    const userId = String(session.uId || session.user?.id || 'unknown');
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-widget-agent-kit', scope.storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-widget-agent-kit',
+                userId,
+                scope.tenantId,
+                scope.storeId,
+            ),
             limit: 10,
             window: 60,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+            return kitJsonResponse({ error: 'Too many requests' }, { status: 429 });
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateNoStore(permission.response);
 
         const db = getAnswerlatticeDb();
         if (!db) {
-            return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+            return kitJsonResponse({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
         }
 
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get();
         if (!storeSnap.exists) {
-            return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+            return kitJsonResponse({ error: 'Store not found' }, { status: 404 });
         }
 
         const storeData = storeSnap.data() || {};
         if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return kitJsonResponse({ error: 'Forbidden' }, { status: 403 });
         }
 
         const widgetState = normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi);
@@ -80,12 +104,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             zip.file(`answerlattice-agent-kit/${filePath}`, content);
         });
         const buffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+        if (buffer.byteLength === 0 || buffer.byteLength > ANSWERLATTICE_AGENT_KIT_MAX_BYTES) {
+            throw new Error('answerlattice_widget_agent_kit_size_invalid');
+        }
 
         return new NextResponse(new Uint8Array(buffer), {
             headers: {
                 'Content-Type': 'application/zip',
                 'Content-Disposition': 'attachment; filename="answerlattice-agent-kit.zip"',
-                'Cache-Control': 'private, max-age=60',
+                ...PRIVATE_NO_STORE_HEADERS,
             },
         });
     } catch (error) {
@@ -93,6 +120,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to build agent kit' }, { status: 500 });
+        return kitJsonResponse({ error: 'Failed to build agent kit' }, { status: 500 });
     }
 });

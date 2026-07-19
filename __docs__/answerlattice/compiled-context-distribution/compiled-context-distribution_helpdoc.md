@@ -1,9 +1,7 @@
-# Compiled Context Distribution Helpdoc Notes
+# Compiled Context Distribution Helpdoc
 
-No end-user helpdoc is required because this is infrastructure, not an end-user workflow.
+Owner-facing wording should remain operational:
 
-Owner-facing help text, if required, should say:
+> Compiled context prepares approved product knowledge for supported read surfaces. If the status is stale or failed, rebuild it after reviewing the underlying knowledge change. The previous ready version remains available when a rebuild fails.
 
-"Compiled context prepares approved product knowledge for the widget and API. Rebuild it after changing important knowledge if the status shows stale."
-
-Do not mention Firestore, Storage, MCP internals, hashes, or token design in owner-facing help.
+Do not expose Storage paths, hashes, source counters, tenant identifiers, raw errors, or unsupported speed/cost claims. Do not tell owners the widget is bundle-backed while `ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP` is disabled.

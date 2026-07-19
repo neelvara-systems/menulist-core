@@ -1,7 +1,9 @@
 import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute } from '@constant/answerlattice/navigations';
 import { PRODUCT_IDS } from '@constant/product';
 import { EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY } from '@lib/answerlattice/activationAnswerTestSummary';
+import { normalizeWidgetAllowedOrigins } from '@lib/answerlattice/widgetConfig';
 import { buildAnswerlatticeWidgetKeySummaries, normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
+import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRuntimeStatus';
 import { getNotificationReadiness } from '@lib/notifications';
 import type {
     AnswerlatticeActivationStage,
@@ -24,19 +26,69 @@ import { createHash } from 'crypto';
 export const getAnswerlatticeActivationSummaryDocId = (tId: number, sId: number) =>
     `activation_${Number(tId)}_${Number(sId)}`;
 
+export const ANSWERLATTICE_WIDGET_RUNTIME_PROOF_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const ANSWERLATTICE_WIDGET_RUNTIME_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
 const getTimestampMillis = (value: any): number => {
     if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    const parsed = Date.parse(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
+    try {
+        if (typeof value.toMillis === 'function') return value.toMillis();
+        if (typeof value.seconds === 'number') return value.seconds * 1000;
+        if (typeof value._seconds === 'number') return value._seconds * 1000;
+        const parsed = Date.parse(String(value));
+        return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+        return 0;
+    }
 };
 
-const getReadinessStage = (score: number, steps: AnswerlatticeActivationStep[]): AnswerlatticeActivationStage => {
-    if (score >= 85) return 'live';
-    if (steps.some(step => step.key === 'widget-install' && step.status !== 'complete')) return 'install';
-    if (steps.some(step => ['knowledge', 'help-center', 'entities', 'canonical-answers', 'answer-tests', 'product-surfaces', 'page-context'].includes(step.key) && step.status !== 'complete')) return 'knowledge';
-    return 'setup';
+const normalizeBoundedString = (value: unknown, maxLength: number): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+    return normalized ? normalized.slice(0, maxLength) : null;
+};
+
+const normalizeNonNegativeSafeInteger = (value: unknown, max = 1_000_000): number => {
+    const normalized = Number(value);
+    return Number.isSafeInteger(normalized) && normalized >= 0 && normalized <= max
+        ? normalized
+        : 0;
+};
+
+const normalizeWidgetRuntimeStatusForActivation = (
+    storeData: Record<string, any>,
+): AnswerlatticeWidgetRuntimeStatus | null => {
+    const value = getWidgetRuntimeStatusFromStoreData(storeData);
+    if (!value) return null;
+    const lastSeenMillis = getTimestampMillis(value.lastSeenAt);
+
+    return {
+        lastSeenAt: lastSeenMillis > 0 ? new Date(lastSeenMillis).toISOString() : null,
+        lastOrigin: normalizeBoundedString(value.lastOrigin, 180),
+        lastPath: normalizeBoundedString(value.lastPath, 180),
+        lastContextKey: normalizeBoundedString(value.lastContextKey, 120),
+        lastFeature: normalizeBoundedString(value.lastFeature, 120),
+        lastPage: normalizeBoundedString(value.lastPage, 120),
+        userAgentFamily: normalizeBoundedString(value.userAgentFamily, 40),
+        seenCount: normalizeNonNegativeSafeInteger(value.seenCount, 1_000_000_000),
+    };
+};
+
+const isWidgetRuntimeProofCurrent = (lastSeenMillis: number, nowMillis: number): boolean => (
+    lastSeenMillis > 0
+    && lastSeenMillis <= nowMillis + ANSWERLATTICE_WIDGET_RUNTIME_CLOCK_SKEW_MS
+    && nowMillis - lastSeenMillis <= ANSWERLATTICE_WIDGET_RUNTIME_PROOF_MAX_AGE_MS
+);
+
+const getReadinessStage = (
+    launchProofReady: boolean,
+    steps: AnswerlatticeActivationStep[],
+): AnswerlatticeActivationStage => {
+    if (launchProofReady) return 'live';
+    if (steps.some(step => ['workspace', 'product-profile', 'license'].includes(step.key) && step.status !== 'complete')) return 'setup';
+    if (steps.some(step => ['knowledge', 'help-center', 'entities', 'canonical-answers', 'answer-tests', 'product-surfaces'].includes(step.key) && step.status !== 'complete')) return 'knowledge';
+    if (steps.some(step => ['widget-key', 'allowed-origins', 'widget-install', 'page-context'].includes(step.key) && step.status !== 'complete')) return 'install';
+    return 'knowledge';
 };
 
 const buildStep = (input: {
@@ -81,29 +133,19 @@ const buildLaunchProof = (items: AnswerlatticeLaunchProofItem[]): AnswerlatticeL
 
 const normalizeSubscription = (value: Record<string, any> | null | undefined): AnswerlatticeActivationSubscriptionSummary | null => {
     if (!value || typeof value !== 'object') return null;
+    const subscriptionEndMillis = getTimestampMillis(value.subscriptionEndDate || value.cycleEndDate);
+    const amount = Number(value.amount);
 
     return {
-        id: value.id || value.providerSubscriptionId || null,
-        planId: value.planId || null,
-        planName: value.planName || null,
-        status: value.status || null,
-        currency: value.currency || null,
-        amount: Number.isFinite(Number(value.amount)) ? Number(value.amount) : null,
+        id: normalizeBoundedString(value.id || value.providerSubscriptionId, 200),
+        planId: normalizeBoundedString(value.planId, 80),
+        planName: normalizeBoundedString(value.planName, 120),
+        status: normalizeBoundedString(value.status, 40),
+        currency: normalizeBoundedString(value.currency, 8),
+        amount: Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000_000 ? amount : null,
         isBeta: false,
-        subscriptionEndDate: value.subscriptionEndDate || value.cycleEndDate || null,
+        subscriptionEndDate: subscriptionEndMillis > 0 ? new Date(subscriptionEndMillis).toISOString() : null,
     };
-};
-
-const getTrustScore = (trust: AnswerlatticeTrustMetrics | null | undefined): number | null => {
-    if (!trust) return null;
-    const parts = [
-        Number(trust.coverage?.rate),
-        Number(trust.resolution?.rate),
-        100 - Number(trust.drift?.rate),
-        Number(trust.entityHealth?.avgScore),
-    ].filter(value => Number.isFinite(value));
-    if (!parts.length) return null;
-    return Math.round(parts.reduce((sum, value) => sum + value, 0) / parts.length);
 };
 
 const getSurfaceReadinessPriority = (item: AnswerlatticeSurfaceReadinessItem): number => {
@@ -208,35 +250,67 @@ export function buildAnswerlatticeActivationSummary(params: {
     trustMetrics?: AnswerlatticeTrustMetrics | null;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
     answerTests?: AnswerlatticeActivationAnswerTestSummary | null;
+    nowMillis?: number;
 }): AnswerlatticeActivationSummary {
     const storeData = params.storeData || {};
+    const nowMillis = typeof params.nowMillis === 'number' && Number.isFinite(params.nowMillis) && params.nowMillis >= 0
+        ? params.nowMillis
+        : Date.now();
     const subscription = normalizeSubscription(storeData.answerlatticeSubscription || params.subscription);
-    const runtimeStatus = (storeData.widgetRuntimeStatus || null) as AnswerlatticeWidgetRuntimeStatus | null;
+    const runtimeStatus = normalizeWidgetRuntimeStatusForActivation(storeData);
     const content = params.contextSummary || null;
     const widgetKeyState = normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi);
     const widgetKeySummaries = buildAnswerlatticeWidgetKeySummaries(widgetKeyState);
     const hasWidgetKey = widgetKeySummaries.length > 0;
-    const allowedOrigins = Array.isArray(storeData.widgetAllowedOrigins) ? storeData.widgetAllowedOrigins : [];
+    const allowedOrigins = normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins);
     const subscriptionStatus = String(subscription?.status || '').toLowerCase();
     const licenseStatus: AnswerlatticeActivationStepStatus = subscriptionStatus === 'active'
         ? 'complete'
         : subscriptionStatus === 'pending'
             ? 'attention'
             : 'pending';
-    const hasRuntimeContext = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
-    const hasWidgetSeenRecently = Boolean(runtimeStatus?.lastSeenAt && getTimestampMillis(runtimeStatus.lastSeenAt));
-    const entityCount = Number(params.trustMetrics?.entityHealth?.totalEntities || 0);
+    const runtimeLastSeenMillis = getTimestampMillis(runtimeStatus?.lastSeenAt);
+    const hasWidgetEverBeenSeen = runtimeLastSeenMillis > 0;
+    const hasWidgetSeenRecently = isWidgetRuntimeProofCurrent(runtimeLastSeenMillis, nowMillis);
+    const hasRuntimeContextMarker = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
+    const hasRuntimeContext = hasWidgetSeenRecently && hasRuntimeContextMarker;
+    const entityCount = Number(
+        params.trustMetrics?.entityAnswerCoverage?.totalEntities
+        || params.trustMetrics?.entityHealth?.totalEntities
+        || 0
+    );
     const activeCanonicalAnswerCount = Number(params.trustMetrics?.drift?.activeCount || 0);
     const primarySurfaces = Array.isArray(storeData.primarySurfaces)
-        ? storeData.primarySurfaces.filter(Boolean)
+        ? storeData.primarySurfaces
+            .filter((value: unknown): value is string => typeof value === 'string')
+            .map((value: string) => normalizeBoundedString(value, 80))
+            .filter((value: string | null): value is string => Boolean(value))
+            .slice(0, 8)
         : [];
-    const hasProductProfile = Boolean(storeData.productUrl && storeData.supportEmail);
+    const workspaceProductUrl = normalizeBoundedString(storeData.productUrl, 500);
+    const workspaceSupportEmail = normalizeBoundedString(storeData.supportEmail, 320);
+    const hasProductProfile = Boolean(workspaceProductUrl && workspaceSupportEmail);
     const notificationReadiness = getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE);
     const notificationsReady = notificationReadiness.enabled && notificationReadiness.smtpConfigured && hasProductProfile;
     const surfaceReadiness = buildSurfaceReadiness(content);
     const canonicalCoverageRate = Number.isFinite(Number(params.coverage?.coverage?.rate)) ? Number(params.coverage?.coverage?.rate) : null;
     const canonicalCoverageTotal = Number.isFinite(Number(params.coverage?.coverage?.total)) ? Number(params.coverage?.coverage?.total) : null;
-    const trustScore = getTrustScore(params.trustMetrics);
+    const metricsComplete = params.trustMetrics?.sourceCompleteness?.complete === true;
+    const noEscalationRate = metricsComplete && Number.isFinite(Number(params.trustMetrics?.nonEscalation?.rate))
+        ? Number(params.trustMetrics?.nonEscalation?.rate)
+        : null;
+    const confirmedResolutionTotal = metricsComplete
+        ? Number(params.trustMetrics?.confirmedResolution?.explicitOutcomeTotal || 0)
+        : null;
+    const confirmedResolutionRate = metricsComplete && confirmedResolutionTotal && confirmedResolutionTotal > 0
+        ? Number(params.trustMetrics?.confirmedResolution?.rate || 0)
+        : null;
+    const driftRate = metricsComplete && Number.isFinite(Number(params.trustMetrics?.drift?.rate))
+        ? Number(params.trustMetrics?.drift?.rate)
+        : null;
+    const entityAnswerCoverageRate = metricsComplete && Number.isFinite(Number(params.trustMetrics?.entityAnswerCoverage?.rate))
+        ? Number(params.trustMetrics?.entityAnswerCoverage?.rate)
+        : null;
     const compiledContextReady = params.compiledContext?.status === 'ready' && (
         params.compiledContext?.publicBundlesReady === true
         || params.compiledContext?.privateBundlesReady === true
@@ -375,11 +449,13 @@ export function buildAnswerlatticeActivationSummary(params: {
             key: 'widget-install',
             title: 'Widget seen in product',
             description: hasWidgetSeenRecently
-                ? `Last seen on ${runtimeStatus?.lastPath || 'a product page'}.`
-                : 'Install the script and open your product once so Answerlattice can verify the widget loads.',
-            status: hasWidgetSeenRecently ? 'complete' : 'pending',
+                ? `Seen within the last 7 days on ${runtimeStatus?.lastPath || 'a product page'}.`
+                : hasWidgetEverBeenSeen
+                    ? 'Widget telemetry is older than 7 days. Open the installed product again before relying on launch proof.'
+                    : 'Install the script and open your product once so Answerlattice can verify the widget loads.',
+            status: hasWidgetSeenRecently ? 'complete' : hasWidgetEverBeenSeen ? 'attention' : 'pending',
             route: ANSWERLATTICE_ROUTES.WIDGET,
-            actionLabel: 'Install Widget',
+            actionLabel: hasWidgetEverBeenSeen ? 'Verify Widget' : 'Install Widget',
             costNote: 'Runtime writes are throttled and stored on the existing store document.',
         }),
         buildStep({
@@ -387,8 +463,10 @@ export function buildAnswerlatticeActivationSummary(params: {
             title: 'Page context received',
             description: hasRuntimeContext
                 ? `Latest context: ${runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage}.`
+                : hasRuntimeContextMarker
+                    ? 'A context marker exists, but its widget telemetry is stale. Open the product and confirm the current route context again.'
                 : 'Send path, title, feature, workflow, role, or locale after route changes so answers match the user screen.',
-            status: hasRuntimeContext ? 'complete' : 'pending',
+            status: hasRuntimeContext ? 'complete' : hasRuntimeContextMarker ? 'attention' : 'pending',
             route: ANSWERLATTICE_ROUTES.PRODUCT_SURFACES,
             actionLabel: 'Set Context',
             costNote: 'Context is transient at runtime; only a sanitized last-seen marker is stored.',
@@ -433,9 +511,9 @@ export function buildAnswerlatticeActivationSummary(params: {
     const readinessScore = requiredSteps.length > 0
         ? Math.round((completeRequired / requiredSteps.length) * 100)
         : 0;
-    const governanceSummaryStatus: AnswerlatticeActivationStepStatus = canonicalCoverageTotal !== null && trustScore !== null && compiledContextReady
+    const governanceSummaryStatus: AnswerlatticeActivationStepStatus = canonicalCoverageTotal !== null && metricsComplete && compiledContextReady
         ? 'complete'
-        : canonicalCoverageTotal !== null || trustScore !== null || compiledContextReady || entityCount > 0 || activeCanonicalAnswerCount > 0
+        : canonicalCoverageTotal !== null || metricsComplete || compiledContextReady || entityCount > 0 || activeCanonicalAnswerCount > 0
             ? 'attention'
             : 'pending';
     const signalLoopStatus: AnswerlatticeActivationStepStatus = (content?.ticketCount || 0) > 0
@@ -508,13 +586,15 @@ export function buildAnswerlatticeActivationSummary(params: {
         subscriptionStatus,
         hasWidgetKey,
         allowedOriginCount: allowedOrigins.length,
+        widgetLastSeenAt: runtimeStatus?.lastSeenAt || null,
+        widgetRuntimeProofCurrent: hasWidgetSeenRecently,
         widgetPath: runtimeStatus?.lastPath || null,
         widgetContext: runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage || null,
         notificationsEnabled: notificationReadiness.enabled,
         smtpConfigured: notificationReadiness.smtpConfigured,
-        productUrl: storeData.productUrl || null,
-        supportEmail: storeData.supportEmail || null,
-        billingModel: storeData.billingModel || null,
+        productUrl: workspaceProductUrl,
+        supportEmail: workspaceSupportEmail,
+        billingModel: normalizeBoundedString(storeData.billingModel, 40),
         primarySurfaceCount: primarySurfaces.length,
         articleCount: content?.articleCount || 0,
         faqCount: content?.faqCount || 0,
@@ -545,30 +625,30 @@ export function buildAnswerlatticeActivationSummary(params: {
         tId: params.tId,
         sId: params.sId,
         readinessScore,
-        stage: getReadinessStage(readinessScore, steps),
-        computedAtIso: new Date().toISOString(),
+        stage: getReadinessStage(launchProof.ready, steps),
+        computedAtIso: new Date(nowMillis).toISOString(),
         signature: createHash('sha256').update(JSON.stringify(signaturePayload)).digest('hex').slice(0, 24),
         workspace: {
-            companyName: storeData.companyName || storeData.businessName || storeData.tenantName || null,
-            productName: storeData.productName || storeData.name || null,
-            productUrl: storeData.productUrl || null,
-            supportEmail: storeData.supportEmail || null,
-            billingModel: storeData.billingModel || null,
+            companyName: normalizeBoundedString(storeData.companyName || storeData.businessName || storeData.tenantName, 160),
+            productName: normalizeBoundedString(storeData.productName || storeData.name, 160),
+            productUrl: workspaceProductUrl,
+            supportEmail: workspaceSupportEmail,
+            billingModel: normalizeBoundedString(storeData.billingModel, 40),
             primarySurfaceCount: primarySurfaces.length,
         },
         subscription,
         widget: {
             hasWidgetKey,
-            keyPrefix: widgetKeyState.keyPrefix || null,
+            keyPrefix: normalizeBoundedString(widgetKeyState.keyPrefix, 32),
             allowedOriginCount: allowedOrigins.length,
-            configVersion: Number(storeData.widgetConfigVersion || 0),
+            configVersion: normalizeNonNegativeSafeInteger(storeData.widgetConfigVersion, Number.MAX_SAFE_INTEGER),
             runtimeStatus,
         },
         notifications: {
             enabled: notificationReadiness.enabled,
             smtpConfigured: notificationReadiness.smtpConfigured,
-            fromAddress: notificationReadiness.fromAddress,
-            logTarget: notificationReadiness.logTarget,
+            fromAddress: normalizeBoundedString(notificationReadiness.fromAddress, 320),
+            logTarget: normalizeBoundedString(notificationReadiness.logTarget, 160),
         },
         content: {
             surfaceCount: content?.surfaceCount || 0,
@@ -576,13 +656,20 @@ export function buildAnswerlatticeActivationSummary(params: {
             faqCount: content?.faqCount || 0,
             changelogCount: content?.changelogCount || 0,
             ticketCount: content?.ticketCount || 0,
-            summaryGeneratedAt: content?.generatedAt || null,
+            summaryGeneratedAt: getTimestampMillis(content?.generatedAt) > 0
+                ? new Date(getTimestampMillis(content?.generatedAt)).toISOString()
+                : null,
             surfaceReadiness,
         },
         governance: {
             canonicalCoverageRate,
             canonicalCoverageTotal,
-            trustScore,
+            noEscalationRate,
+            confirmedResolutionRate,
+            confirmedResolutionTotal,
+            driftRate,
+            entityAnswerCoverageRate,
+            metricsComplete,
         },
         answerTests,
         compiledContext: params.compiledContext || null,

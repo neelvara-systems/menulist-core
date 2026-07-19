@@ -1,24 +1,22 @@
-# Compiled Context Distribution Marketing Notes
+# Compiled Context Distribution Marketing Boundary
 
-This is internal infrastructure. Do not market MCP or downloadable compiled bundles as a public customer promise until rollout flags are enabled and production monitoring is live.
+## Safe claim
 
-Because compiled context bundles are now enabled for runtime paths, public website copy may mention the outcome as reliability/cost-control infrastructure:
+Answerlattice can prepare approved support context as immutable, versioned bundles for controlled read surfaces. Failed rebuilds keep the previous ready version, and consumers validate exact bundle references before use.
 
-- approved context is prepared before runtime needs it
-- widget/runtime paths can use cache-first compiled context when ready
-- public bundles contain only public-safe approved context
-- private server bundles stay behind authenticated Answerlattice APIs
+## Evidence required before numerical claims
 
-Approved internal positioning if this appears in controlled product collateral:
+- configured Storage/CDN latency;
+- bundle fallback rate;
+- source-change-to-ready duration;
+- object download and Firestore-read cost;
+- real workload scale and source-limit saturation.
 
-- "Fast approved support context for widgets and APIs."
-- "Governed product knowledge distributed safely to runtime surfaces."
-- "Approved answers and product context served without exposing internal support data."
+## Do not claim
 
-Avoid:
-
-- Claims that Answerlattice reads every customer ticket in real time.
-- Claims that agents can write or approve knowledge directly.
-- Claims that every workspace has public MCP access.
-- Claims that compiled bundles are a customer data export.
-- "AI-powered", "Smart", or broad autonomous publishing language.
+- zero Firestore reads;
+- zero staleness or immediate global propagation;
+- guaranteed latency or cost savings;
+- active bundle-backed widget behavior;
+- public MCP availability;
+- that every source/config change already increments a compiled source version.

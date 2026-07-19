@@ -17,6 +17,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
+import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
@@ -242,6 +243,7 @@ export async function POST(request: NextRequest) {
             .doc(searchHistoryId);
         let historyData: Record<string, any> | null = null;
         let feedbackCreated = false;
+        let authoritativeOutcome: 'resolved' | 'not_resolved' | null = null;
         await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
             const historyDoc = await transaction.get(historyRef);
             const current = historyDoc.exists ? historyDoc.data() : null;
@@ -251,15 +253,24 @@ export async function POST(request: NextRequest) {
                 || normalizeAnswerlatticeScopeDocumentId(current.tId) !== tId
                 || normalizeAnswerlatticeScopeDocumentId(current.sId) !== sId
                 || !isWidgetSearchHistoryRow(current)
+                || !isAnswerlatticeSearchHistoryAvailableForInteraction(current)
             ) return;
             historyData = current;
             const alreadySubmitted = typeof current.submittedAt !== 'undefined'
                 || typeof current.isGood === 'boolean';
-            if (alreadySubmitted) return;
+            if (alreadySubmitted) {
+                authoritativeOutcome = current.resolutionOutcome === 'resolved' || current.resolutionOutcome === 'not_resolved'
+                    ? current.resolutionOutcome
+                    : typeof current.isGood === 'boolean'
+                        ? current.isGood ? 'resolved' : 'not_resolved'
+                        : null;
+                return;
+            }
             const now = admin.firestore.Timestamp.now();
+            authoritativeOutcome = resolutionOutcome || (isGood ? 'resolved' : 'not_resolved');
             transaction.set(historyRef, {
                 isGood,
-                ...(resolutionOutcome ? { resolutionOutcome } : {}),
+                resolutionOutcome: authoritativeOutcome,
                 reasonsToImprove: [],
                 comments: '',
                 submittedAt: now,
@@ -269,6 +280,9 @@ export async function POST(request: NextRequest) {
         });
         if (!historyData) {
             return jsonResponse(request, { error: 'Search record not found' }, { status: 404 });
+        }
+        if (!authoritativeOutcome) {
+            return jsonResponse(request, { error: 'Feedback record is invalid' }, { status: 409 });
         }
 
         // Emit Answerlattice signal for negative feedback (feeds mutation pipeline)
@@ -300,7 +314,12 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        return jsonResponse(request, { success: true });
+        return jsonResponse(request, {
+            success: true,
+            resolutionOutcome: authoritativeOutcome,
+            isGood: authoritativeOutcome === 'resolved',
+            created: feedbackCreated,
+        });
 
     } catch (err: any) {
         logRuntimeFailure('answerlattice_widget_feedback_failed', err);

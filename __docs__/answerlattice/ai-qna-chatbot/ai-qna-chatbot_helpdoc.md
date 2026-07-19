@@ -57,3 +57,11 @@ This is intentional. The system should not invent product behavior, pricing, per
 ## Feedback
 
 Use positive feedback when the answer resolved the question. Use negative feedback when the answer was incorrect, incomplete, stale, or not useful, and add a short reason when the surface requests it. Feedback is a quality signal; it does not automatically rewrite approved knowledge.
+
+## Request Support From The Widget
+
+If the embedded widget answer did not resolve the question, select **Still need help**. Enter a reply email and optionally add your name or more detail. The server attaches the original question and bounded stored product context to one asynchronous support ticket.
+
+The widget confirms that the request was created. It does not promise that a support person is online, a response time, or automatic notification. Automatic low-confidence suggestions may remain disabled even though the explicit support-request option is available.
+
+If the widget says a screenshot could not be used, the answer was based on the text question only.

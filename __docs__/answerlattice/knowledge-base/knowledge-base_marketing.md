@@ -1,16 +1,16 @@
 # Knowledge Base — Marketing & Sales Collateral
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 2.0.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Sales, Marketing (Internal)
 
 ---
 
 ## 1. Elevator Pitch
 
-**One-liner:** "Organized documentation that powers AI answers — categories, sections, and articles your owners can browse and your AI can search."
+**One-liner:** "Keep published support articles organized, searchable, and connected to the answers customers actually receive."
 
-**30 seconds:** MenuList's Knowledge Base is the foundation of the Help Center. Platform teams organize help articles into categories and sections. Owners browse and read them directly. The AI chatbot uses the same articles to generate answers with source citations. One content source. Two access methods. Zero duplication.
+**30 seconds:** Answerlattice gives a SaaS founder one governed article workflow for browsing, support retrieval, and feedback. Live edits update navigation and freshness state together, stale vectors are removed before regeneration, and unanswered or disliked content remains reviewable evidence rather than becoming automatic truth.
 
 ---
 
@@ -18,26 +18,17 @@
 
 | Point | Evidence |
 |-------|---------|
-| **Single source of truth** | Same articles serve both browsing and AI search |
+| **Governed support source** | Published articles can support browsing, retrieval, citations, FAQs, and product context |
 | **1-read navigation** | Entire KB structure loads in a single Firestore read |
 | **Rich content** | TipTap editor — formatting, lists, images, code blocks |
-| **AI-ready** | Every article auto-embedded with 768-dim vectors for semantic search |
-| **3-pane management** | Drag-and-drop style CRUD for categories, sections, articles |
+| **Search readiness is explicit** | Current `embeddingStatus` and the active vector must agree before publish/search-ready claims |
+| **Safe management** | Article and navigation changes commit together; non-empty containers cannot be deleted accidentally |
 | **Source provenance** | Track which uploaded file generated each article |
-| **Feedback built in** | Likes/dislikes on every article |
+| **Feedback built in** | Published-content reactions use one server transaction, bounded audit history, and retention |
 | **Status lifecycle** | Draft → Review → Published → Archived |
 
 ---
 
-## 3. Competitive Comparison
+## 3. Claim boundary
 
-| Feature | MenuList KB | Zendesk Guide | Freshdesk KB | Intercom Articles |
-|---------|:----------:|:-------------:|:------------:|:-----------------:|
-| Built into product | ✅ | ❌ External | ❌ External | ❌ External |
-| Powers AI chatbot | ✅ | ⚠️ Separate | ⚠️ Separate | ✅ |
-| 1-read navigation load | ✅ | ❌ | ❌ | ❌ |
-| Rich text editor | ✅ TipTap | ✅ | ✅ | ✅ |
-| Vector embeddings | ✅ Built-in | ❌ | ❌ | ⚠️ |
-| AI article generation | ✅ | ❌ | ❌ | ⚠️ |
-| Source provenance | ✅ | ❌ | ❌ | ❌ |
-| Cost | $0.008/mo | $15-115/agent | $15-79/agent | $39-139/seat |
+Do not sell the Knowledge Base as a generic CMS, a full help desk, or proof that generated answers are correct. The defensible value is the controlled article lifecycle behind Answerlattice's governed answer and retrieval surfaces. Pricing, competitor feature, accuracy, and cost comparisons require current external verification before publication.

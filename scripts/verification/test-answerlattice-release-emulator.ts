@@ -20,8 +20,8 @@ const access: AnswerlatticeAccessContext = {
 const createAction = (requestId: string, versionNormalized: number, entityChanges = ['billing']) => ({
     action: 'create' as const,
     requestId,
-    versionLabel: `v${versionNormalized}`,
-    versionNormalized,
+    versionLabel: String(versionNormalized),
+    versionNormalized: versionNormalized * 1_000_000,
     releasedAt: '2026-07-11T10:00:00.000Z',
     entityChanges,
 });
@@ -34,6 +34,7 @@ async function run(): Promise<void> {
         'answerlattice_canonicalAnswers',
         'answerlattice_releases',
         'answerlattice_auditLogs',
+        'answerlattice_cacheVersions',
         'platformSummary',
     ]) {
         await db.recursiveDelete(db.collection(name));
@@ -48,7 +49,7 @@ async function run(): Promise<void> {
         sId: 101,
         status: 'active',
         scope: { entityIds: ['billing'] },
-        productBinding: { lastValidatedInVersion: 1 },
+        productBinding: { lastValidatedInVersion: 1_000_000 },
         governance: { driftFlag: false, driftReason: null },
     });
     await db.collection('answerlattice_canonicalAnswers').doc('other-product').set({
@@ -57,7 +58,7 @@ async function run(): Promise<void> {
         sId: 101,
         status: 'active',
         scope: { entityIds: ['billing'] },
-        productBinding: { lastValidatedInVersion: 1 },
+        productBinding: { lastValidatedInVersion: 1_000_000 },
         governance: { driftFlag: false, driftReason: null },
     });
 
@@ -91,12 +92,18 @@ async function run(): Promise<void> {
     assert.equal(activation.driftedAnswers, 1);
     const answer = (await db.collection('answerlattice_canonicalAnswers').doc('answer-billing').get()).data();
     assert.equal(answer?.governance?.driftFlag, true);
+    assert.equal(answer?.governance?.reviewRequired, true);
     assert.match(answer?.governance?.driftReason || '', /version_mismatch/);
     const release = (await db.collection('answerlattice_releases').doc(created.releaseId).get()).data();
     assert.equal(release?.status, 'active');
     assert.equal(release?.driftEvaluation?.status, 'completed');
     const sourceVersions = (await db.collection('platformSummary').doc('sourceVersions_1_101').get()).data();
     assert.equal(sourceVersions?.releases, 1);
+    assert.equal(sourceVersions?.canonical, 1);
+    const cacheVersion = (await db.collection('answerlattice_cacheVersions').doc('canonical_1_101').get()).data();
+    assert.equal(cacheVersion?.version, 1, 'release drift must invalidate cached canonical answers atomically');
+    const bundleManifest = (await db.collection('platformSummary').doc('bundleManifest_1_101').get()).data();
+    assert.equal(bundleManifest?.status, 'stale');
     const activeReplay = await executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_replay',
@@ -119,10 +126,10 @@ async function run(): Promise<void> {
     assert.equal(failed?.status, 'pending', 'failed activation must be retryable, not stranded processing');
     assert.equal(failed?.driftEvaluation?.status, 'failed');
     await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
-        productBinding: { lastValidatedInVersion: 2 },
+        productBinding: { lastValidatedInVersion: 2_000_000 },
     });
     await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
-        productBinding: { lastValidatedInVersion: '2' },
+        productBinding: { lastValidatedInVersion: '2000000' },
     });
     await assert.rejects(executeAnswerlatticeReleaseAction({
         action: 'activate',
@@ -130,7 +137,7 @@ async function run(): Promise<void> {
         releaseId: second.releaseId,
     }, access));
     await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
-        productBinding: { lastValidatedInVersion: 2 },
+        productBinding: { lastValidatedInVersion: 2_000_000 },
     });
     const retried = await executeAnswerlatticeReleaseAction({
         action: 'activate',

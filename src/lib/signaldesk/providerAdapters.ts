@@ -1,8 +1,8 @@
 import { SIGNALDESK_INTEGRATION_ENV, SIGNALDESK_META_GRAPH_VERSION } from "@constant/signaldesk/integrations";
+import nodemailer from "@lib/email/nodemailerRuntime";
 import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import type { SignalDeskOutboundChannel } from "@type/signaldesk";
-import nodemailer from "nodemailer";
 
 type ProviderSendInput = {
     body: string;

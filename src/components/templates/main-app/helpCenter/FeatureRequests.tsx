@@ -4,7 +4,6 @@ import {
   ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH,
 } from '@lib/answerlattice/feedbackBoundary';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
 import { LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -19,23 +18,25 @@ const toVotedRequests = (nextVotes: { [key: string]: boolean | null }) => (
 
 const FeatureRequests = () => {
   const t = useTranslations('HelpCenter');
-  const [votes, setVotes] = useState<{ [key: string]: boolean | null }>({});
   const form = Form.useFormInstance();
+  const watchedVotes = Form.useWatch('votedPopularRequests', form);
+  const votes = (Array.isArray(watchedVotes) ? watchedVotes : []).reduce<Record<string, boolean>>(
+    (result, vote) => {
+      if (vote && typeof vote === 'object' && typeof vote.feature === 'string' && typeof vote.interested === 'boolean') {
+        result[vote.feature] = vote.interested;
+      }
+      return result;
+    },
+    {},
+  );
 
   const handleVote = (feature: string, interested: boolean | null) => {
-    setVotes(prev => {
-      const next = {
-        ...prev,
-        [feature]: prev[feature] === interested ? null : interested,
-      };
-      form.setFieldsValue({ votedPopularRequests: toVotedRequests(next) });
-      return next;
-    });
+    const next = {
+      ...votes,
+      [feature]: votes[feature] === interested ? null : interested,
+    };
+    form.setFieldsValue({ votedPopularRequests: toVotedRequests(next) });
   };
-
-  useEffect(() => {
-    form.setFieldsValue({ votedPopularRequests: toVotedRequests(votes) });
-  }, [votes, form]);
 
   return (
     <>
@@ -78,6 +79,9 @@ const FeatureRequests = () => {
                   ghost={votes[item] === false}
                   icon={<LuThumbsDown />}
                   onClick={() => handleVote(item, false)}
+                  aria-label={`Not interested: ${item}`}
+                  title={`Not interested: ${item}`}
+                  style={{ minWidth: 44, width: 44, height: 44 }}
                 />,
                 <Button
                   key={`interested-${item}`}
@@ -86,6 +90,9 @@ const FeatureRequests = () => {
                   shape="circle"
                   icon={<LuThumbsUp />}
                   onClick={() => handleVote(item, true)}
+                  aria-label={`Interested: ${item}`}
+                  title={`Interested: ${item}`}
+                  style={{ minWidth: 44, width: 44, height: 44 }}
                 />,
               ]}
             >

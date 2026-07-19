@@ -1,6 +1,12 @@
 'use client';
 
-import { calculateSLAStatus, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import {
+    calculateSupportTicketSLAStatus,
+    getFirstSupportTicketResponse,
+    SUPPORT_TICKET_PRIORITY,
+    SUPPORT_TICKET_STATUS,
+    SupportTicketType,
+} from '@type/supportTicket';
 import { Badge, Card, Col, Flex, Progress, Row, Space, Statistic, Tag, theme, Tooltip, Typography } from 'antd';
 import { useMemo } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
@@ -76,9 +82,7 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
             tickets.forEach(ticket => {
                 if (ticket.messages && ticket.messages.length > 0) {
                     // Find first message that's not from the ticket creator
-                    const firstAdminMessage = ticket.messages.find(
-                        msg => msg.sender.id !== ticket.uId
-                    );
+                    const firstAdminMessage = getFirstSupportTicketResponse(ticket);
                     if (firstAdminMessage && ticket.createdOn) {
                         const responseTime = firstAdminMessage.timestamp.toMillis() - ticket.createdOn.toMillis();
                         firstResponseTimes.push(responseTime);
@@ -117,20 +121,15 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
 
             tickets.forEach(ticket => {
                 if (!ticket.createdOn) return;
-                const hasResponse = ticket.messages && ticket.messages.length > 1;
                 const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
-
-                if (isResolved) {
-                    slaMetrics.onTime++;
+                const sla = calculateSupportTicketSLAStatus(ticket);
+                if (!sla) return;
+                if (sla.resolutionStatus === 'breached') {
+                    slaMetrics.breached++;
+                } else if (sla.resolutionStatus === 'at_risk' && !isResolved) {
+                    slaMetrics.atRisk++;
                 } else {
-                    const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-                    if (sla.resolutionStatus === 'breached') {
-                        slaMetrics.breached++;
-                    } else if (sla.resolutionStatus === 'at_risk') {
-                        slaMetrics.atRisk++;
-                    } else {
-                        slaMetrics.onTime++;
-                    }
+                    slaMetrics.onTime++;
                 }
             });
 

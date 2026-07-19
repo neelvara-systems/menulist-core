@@ -1,7 +1,7 @@
 # Feedback System — Customer Help Documentation
 
-> **Version:** 1.7.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.8.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Answerlattice Help Center users
 > **Tone:** Zero jargon, step-by-step, calm
 
@@ -52,6 +52,9 @@ Your product team can review feedback in Answerlattice, group it by product area
 You can also give quick feedback on individual items:
 - **Knowledge Base articles** — Click thumbs up or thumbs down on any article
 - **What's New entries** — Click thumbs up or thumbs down on any changelog entry
+- **FAQs** — Click thumbs up or thumbs down on a published FAQ
+
+If a detailed “not helpful” comment cannot be saved, the form keeps your text so you can try again. A reaction is not used to rewrite or publish an answer automatically.
 
 ---
 
@@ -60,4 +63,4 @@ You can also give quick feedback on individual items:
 - **Be specific** — The more detail you provide, the more useful your feedback is
 - **Keep it focused** — Each comment or request can contain up to 1,000 characters
 - **Vote on requests** — Common requests help the team spot repeated support needs
-- **Check back** — Your previous feedback is always visible so you can see what you shared
+- **Check back** — Your latest submitted feedback remains visible on the feedback page

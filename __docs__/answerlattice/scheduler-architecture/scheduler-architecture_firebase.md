@@ -49,3 +49,4 @@ The shared app and Functions shard calculators use FNV-1a over the canonical `tI
 - Use compact summaries before collection scans.
 - Use source-version checks before compiled context rebuilds.
 - Preserve registry lifecycle on profile-only updates; only onboarding/entity lifecycle producers may explicitly set `active` or `hasEntities`.
+- Commit profile timing, the one-shard registry patch, source-version increment, and compiled-bundle stale marker atomically; do not acknowledge a partial settings save.

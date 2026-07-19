@@ -22,6 +22,7 @@ import { LuLayers, LuLightbulb, LuMessageSquare, LuStar } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 const { Content } = Layout;
+const FEEDBACK_REVIEW_WINDOW = 200;
 
 const TYPE_COLORS: Record<string, string> = { general: 'blue', feature_usage: 'orange', feature_request: 'purple', feature_requests: 'purple' };
 const TYPE_LABELS: Record<string, string> = { general: 'General', feature_usage: 'Feature Usage', feature_request: 'Feature Request', feature_requests: 'Feature Request' };
@@ -132,8 +133,8 @@ function FeedbackAdminTemplate({
             try {
                 const [result, surfaceResult] = await Promise.all([
                     scope
-                        ? getFeedbackForWorkspace(scope.tId, scope.sId, 200)
-                        : getAllFeedback(200),
+                        ? getFeedbackForWorkspace(scope.tId, scope.sId, FEEDBACK_REVIEW_WINDOW)
+                        : getAllFeedback(FEEDBACK_REVIEW_WINDOW),
                     scope
                         ? getProductSurfacesForSession(scope).catch(() => [])
                         : Promise.resolve([]),
@@ -245,11 +246,14 @@ function FeedbackAdminTemplate({
             <Content>
                 <Title level={3}>{title}</Title>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 20 }}>{description}</Text>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                    Metrics reflect the latest {FEEDBACK_REVIEW_WINDOW} submissions loaded for this view.
+                </Text>
                 <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                    <Col xs={12} md={6}><Card><Statistic title="Total Feedback" value={stats.total} prefix={<LuMessageSquare />} /></Card></Col>
-                    <Col xs={12} md={6}><Card><Statistic title="Avg Rating" value={stats.avgRating} precision={1} suffix="/ 5" prefix={<LuStar />} /></Card></Col>
-                    <Col xs={12} md={6}><Card><Statistic title="Surfaces" value={stats.linkedSurfaces} prefix={<LuLayers />} /></Card></Col>
-                    <Col xs={12} md={6}><Card><Statistic title="Requests" value={stats.featureRequests} prefix={<LuLightbulb />} /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title="Loaded feedback" value={stats.total} prefix={<LuMessageSquare />} /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title="Loaded avg rating" value={stats.avgRating} precision={1} suffix="/ 5" prefix={<LuStar />} /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title="Loaded surfaces" value={stats.linkedSurfaces} prefix={<LuLayers />} /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title="Loaded requests" value={stats.featureRequests} prefix={<LuLightbulb />} /></Card></Col>
                 </Row>
                 {scope ? (
                     <Flex justify="space-between" align="center" gap={12} style={{ marginBottom: 12, flexWrap: 'wrap' }}>

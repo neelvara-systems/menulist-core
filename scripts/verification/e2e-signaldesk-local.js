@@ -20,7 +20,7 @@ require("tsconfig-paths/register");
 
 const crypto = require("crypto");
 const fs = require("fs");
-const nodemailer = require("nodemailer");
+const nodemailer = require("nodemailer9");
 const path = require("path");
 const { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } = require("@constant/signaldesk/database");
 const { SIGNALDESK_OUTCOME_ROUTE_SCOPE } = require("@constant/signaldesk/integrations");

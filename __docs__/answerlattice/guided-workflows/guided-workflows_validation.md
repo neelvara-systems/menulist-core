@@ -1,7 +1,7 @@
 # Answerlattice Guided Workflows Validation
 
 > **Date:** 2026-07-18
-> **Verdict:** Reference-client source-ready; deployed-client smoke pending
+> **Verdict:** Hardened local source-ready; deployed-client smoke pending
 
 ## Verified
 
@@ -15,6 +15,8 @@
 - Widget/host messaging checks source and origin.
 - Public outcomes use validated widget credentials and exact stored workspace scope.
 - Outcomes require a canonical widget search-history proof.
+- Search history retains the exact validated served procedure snapshot, and terminal evidence must match its procedure/session/context fields.
+- Expired history is rejected even before TTL deletion completes.
 - Outcome writes are rate-limited, byte-bounded, strict-schema validated, and deduplicated.
 - No new collection, listener, scheduler, AI call, Firestore rule, index, Storage path, or Cloud Function was added.
 - MenuList desktop and mobile equivalents use one typed semantic registry.
@@ -23,6 +25,8 @@
 - Generated target/event IDs are retained only when the exact values occur in cited owner source material.
 - Canonical governance rejects mismatched answer-type/procedure pairs and removes stale procedure data when a reviewed proposal changes back to explanation or navigation.
 - The host selects only visible semantic targets, hides the overlay if a selected target becomes invisible, and prevents event-gated steps from being manually marked complete.
+- Target lookup allows a bounded 800 ms for asynchronous rendering and cancels on step/session reset.
+- **Still stuck** opens the explicit support form; guide escalation is recorded only after the ticket request succeeds.
 
 ## Commands
 

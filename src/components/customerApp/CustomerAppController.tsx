@@ -39,6 +39,7 @@ import { useEffect, useState } from 'react';
 import InstallPrompt from './InstallPrompt';
 
 interface Props {
+    activeLanguage?: string;
     storeId: string | number;
     tenantId: string | number;
     storeName: string;
@@ -53,6 +54,7 @@ interface Props {
 }
 
 export default function CustomerAppController({
+    activeLanguage,
     storeId,
     tenantId,
     storeName,
@@ -129,6 +131,7 @@ export default function CustomerAppController({
 
     return (
         <InstallPrompt
+            activeLanguage={activeLanguage}
             storeId={storeId}
             tenantId={tenantId}
             storeName={storeName}

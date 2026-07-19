@@ -25,18 +25,25 @@ import { getOwnerRoleId } from '@data/defaultRoles';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { requireAnswerlatticeOnboardingUserId } from '@lib/answerlattice/onboardingUserIdBoundary';
 import {
+    ANSWERLATTICE_ONBOARDING_PROVIDER_RECOVERY_HOLD_MS,
     ANSWERLATTICE_ONBOARDING_STATUS,
+    answerlatticeProviderSubscriptionMatchesAttempt,
     buildAnswerlatticeOnboardingRequestFingerprint,
     findAnswerlatticeProviderSubscriptionForAttempt,
     getAnswerlatticeOnboardingTimestampMillis,
+    isAnswerlatticeTerminalProviderSubscriptionStatus,
+    shouldHoldAnswerlatticeOnboardingProviderRecovery,
     type AnswerlatticeProviderSubscriptionCandidate,
 } from '@lib/answerlattice/onboardingProvisioning';
 import {
     AnswerlatticeOnboardingConflictError,
+    answerlatticeProvisioningOwnershipMatches,
     compensateAnswerlatticeOnboardingProvisioning,
+    markAnswerlatticeOnboardingProviderRecoveryPending,
     persistAnswerlatticePendingSubscription,
     type AnswerlatticeProvisioningScope,
 } from '@lib/answerlattice/onboardingProvisioningServer';
+import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { ANSWERLATTICE_PRODUCT_ACCOUNT_KEY, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
 import {
@@ -70,9 +77,18 @@ import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const LOG_FILE = 'answerlattice-onboarding.log';
-const OptionalUrlSchema = z.preprocess(
+const OptionalHttpUrlSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
-    z.string().trim().url().max(300).optional(),
+    z.string().trim().url().max(300).refine((value) => {
+        try {
+            const parsed = new URL(value);
+            return ['http:', 'https:'].includes(parsed.protocol)
+                && !parsed.username
+                && !parsed.password;
+        } catch {
+            return false;
+        }
+    }).optional(),
 );
 const OptionalEmailSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
@@ -82,7 +98,7 @@ const BillingModelSchema = z.enum(['subscription', 'usage', 'one_time', 'not_sur
 const OnboardRequestSchema = z.object({
     companyName: z.string().trim().min(2).max(120),
     productName: z.string().trim().max(120).optional(),
-    productUrl: OptionalUrlSchema,
+    productUrl: OptionalHttpUrlSchema,
     supportEmail: OptionalEmailSchema,
     billingModel: BillingModelSchema.optional().default('subscription'),
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).optional().default([]),
@@ -97,6 +113,62 @@ const ANSWERLATTICE_ONBOARDING_ACTIVE_ATTEMPT_MS = 2 * 60 * 1000;
 const ANSWERLATTICE_PROVIDER_RECOVERY_WINDOW_MS = 15 * 60 * 1000;
 const ANSWERLATTICE_PROVIDER_RECOVERY_PAGE_SIZE = 100;
 const ANSWERLATTICE_PROVIDER_RECOVERY_MAX_PAGES = 3;
+const PRIVATE_NO_STORE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+};
+
+const answerlatticeOnboardingJson = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(PRIVATE_NO_STORE_HEADERS).forEach(([name, value]) => headers.set(name, value));
+    return NextResponse.json(body, { ...init, headers });
+};
+
+type AnswerlatticeOnboardingResumeScope = AnswerlatticeProvisioningScope & {
+    providerSubscriptionId: string | null;
+    recoveryAvailableAt: unknown;
+    startedAtMillis: number;
+    storeName: string;
+};
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const parseAnswerlatticePendingOnboardingSummary = (
+    raw: unknown,
+    scope: AnswerlatticeProvisioningScope,
+) => {
+    if (!isPlainRecord(raw)) throw new Error('answerlattice_onboarding_pending_summary_invalid');
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(raw.id);
+    const providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(raw.providerSubscriptionId);
+    const currency = raw.currency === 'INR' || raw.currency === 'USD' ? raw.currency : null;
+    const amount = Number(raw.amount);
+    const planId = typeof raw.planId === 'string' ? raw.planId.trim() : '';
+    const plan = getAnswerlatticePlanById(planId, 'MONTH');
+    if (
+        !subscriptionId
+        || providerSubscriptionId !== subscriptionId
+        || !currency
+        || !Number.isSafeInteger(amount)
+        || amount <= 0
+        || !plan
+        || raw.status !== 'pending'
+        || raw.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || normalizeAnswerlatticeScopeDocumentId(raw.tId) !== scope.tenantId
+        || normalizeAnswerlatticeScopeDocumentId(raw.sId) !== scope.storeId
+    ) {
+        throw new Error('answerlattice_onboarding_pending_summary_invalid');
+    }
+
+    return {
+        amount,
+        currency,
+        plan,
+        shortUrl: normalizeRazorpaySubscriptionCheckoutUrl(raw.shortUrl),
+        subscriptionId,
+    };
+};
 
 const ONBOARDING_SURFACE_TEMPLATES: Record<string, {
     label: string;
@@ -285,10 +357,13 @@ const getAnswerlatticeUserForOnboarding = async (
 
     const snapshot = await db.collection(DB_COLLECTIONS.USERS)
         .where('email', '==', normalizedEmail)
-        .limit(1)
+        .limit(2)
         .get();
 
     if (snapshot.empty) return null;
+    if (snapshot.size !== 1) {
+        throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');
+    }
     const doc = snapshot.docs[0];
     return { id: doc.id, ...doc.data() } as Record<string, any>;
 };
@@ -296,19 +371,17 @@ const getAnswerlatticeUserForOnboarding = async (
 const getProvisioningScopeFromUser = (
     user: Record<string, any>,
     userId: string,
-): (AnswerlatticeProvisioningScope & { startedAtMillis: number; storeName: string }) | null => {
-    const tenantId = Number(user.tenantId ?? user.tId);
-    const storeId = Number(user.storeId ?? user.sId);
+): AnswerlatticeOnboardingResumeScope | null => {
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(user.tenantId ?? user.tId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(user.storeId ?? user.sId);
     const attemptId = String(user.onboardingAttemptId || '').trim();
     const requestFingerprint = String(user.onboardingRequestFingerprint || '').trim();
     const productId = user.pId ?? user.productId;
     if (
         user.id !== userId
         || productId !== PRODUCT_IDS.ANSWERLATTICE
-        || !Number.isSafeInteger(tenantId)
-        || tenantId <= 0
-        || !Number.isSafeInteger(storeId)
-        || storeId <= 0
+        || !tenantId
+        || !storeId
         || !attemptId
         || !requestFingerprint
     ) {
@@ -320,6 +393,8 @@ const getProvisioningScopeFromUser = (
         : '';
     return {
         attemptId,
+        providerSubscriptionId: normalizeAnswerlatticeSubscriptionId(user.onboardingProviderSubscriptionId),
+        recoveryAvailableAt: user.onboardingProviderRecoveryAvailableAt,
         requestFingerprint,
         startedAtMillis: getAnswerlatticeOnboardingTimestampMillis(user.onboardingStartedAt),
         storeId,
@@ -362,19 +437,6 @@ const recoverAnswerlatticeProviderSubscription = async (params: {
     }
 
     return null;
-};
-
-const cancelAnswerlatticeProviderSubscription = async (providerSubscriptionId: string): Promise<boolean> => {
-    try {
-        const { razorpayClient } = await import('@lib/razorpay/razorpay');
-        await razorpayClient.subscriptions.cancel(providerSubscriptionId, false);
-        return true;
-    } catch (error) {
-        logRuntimeFailure('answerlattice_onboard_provider_cancellation_failed', error, {
-            ...getBoundedRuntimeStringContext('providerSubscriptionId', providerSubscriptionId),
-        });
-        return false;
-    }
 };
 
 const writeAnswerlatticeOnboardingLog = async (
@@ -443,8 +505,10 @@ const syncDefaultAuthProductAccount = async (params: {
 export const POST = withAuth(async (request: NextRequest, session) => {
     const rawUserId = session.user.id;
     let db: FirebaseFirestore.Firestore | null = null;
-    let onboardingComplete = false;
+    let localFinalizationComplete = false;
     let providerCreateAttempted = false;
+    let providerOutcomeMayExist = false;
+    let recoveryAvailableAtForRetry: unknown = null;
     let providerSubscriptionId: string | null = null;
     let provisioningScope: AnswerlatticeProvisioningScope | null = null;
     let tenantIdForLog: number | string | undefined;
@@ -456,7 +520,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         userIdForLog = userId;
 
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-            return NextResponse.json(
+            return answerlatticeOnboardingJson(
                 { code: 'ANSWERLATTICE_ONBOARDING_UNAVAILABLE', error: 'Answerlattice onboarding is not available yet.' },
                 { status: 403 },
             );
@@ -468,11 +532,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...rateLimitConfig,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({
+            const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+            return answerlatticeOnboardingJson({
                 code: 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED',
                 error: 'Too many attempts. Please try again later.',
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+            }, { status: 429, headers: { 'Retry-After': String(retryAfter) } });
         }
 
         const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES, {
@@ -480,7 +545,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json({
+            return answerlatticeOnboardingJson({
                 code: bodyResult.response.status === 413
                     ? 'ANSWERLATTICE_ONBOARDING_BODY_TOO_LARGE'
                     : 'ANSWERLATTICE_ONBOARDING_INPUT_INVALID',
@@ -492,7 +557,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const validation = OnboardRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
-            return NextResponse.json({
+            return answerlatticeOnboardingJson({
                 code: 'ANSWERLATTICE_ONBOARDING_INPUT_INVALID',
                 error: 'Company name is required (min 2 chars).',
             }, { status: 400 });
@@ -512,16 +577,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         } = validation.data;
         const plan = getAnswerlatticePlanById(planId, interval);
         if (!plan) {
-            return NextResponse.json({ code: 'ANSWERLATTICE_PLAN_NOT_FOUND', error: 'Plan not found.' }, { status: 404 });
+            return answerlatticeOnboardingJson({ code: 'ANSWERLATTICE_PLAN_NOT_FOUND', error: 'Plan not found.' }, { status: 404 });
         }
         const selectedPrice = currency === 'USD' ? plan.priceUSD.price : plan.priceINR.price;
         if (!Number.isFinite(selectedPrice) || selectedPrice <= 0) {
-            return NextResponse.json({ code: 'ANSWERLATTICE_PAID_PLAN_REQUIRED', error: 'Paid plan is required.' }, { status: 400 });
+            return answerlatticeOnboardingJson({ code: 'ANSWERLATTICE_PAID_PLAN_REQUIRED', error: 'Paid plan is required.' }, { status: 400 });
         }
 
         db = getAnswerlatticeDb();
         if (!db) {
-            return NextResponse.json(
+            return answerlatticeOnboardingJson(
                 { code: 'ANSWERLATTICE_FIREBASE_UNAVAILABLE', error: 'Answerlattice Firebase is not configured.' },
                 { status: 503 },
             );
@@ -555,6 +620,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (
             sessionHasAnswerlatticeAccount
             && existingStatus !== ANSWERLATTICE_ONBOARDING_STATUS.PAYMENT_PENDING
+            && existingStatus !== ANSWERLATTICE_ONBOARDING_STATUS.PROVIDER_RECOVERY_PENDING
             && existingStatus !== ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING
         ) {
             throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');
@@ -565,12 +631,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const storeData = storeSnapshot.data() || {};
             if (
                 !storeSnapshot.exists
-                || normalizeAnswerlatticeScopeDocumentId(storeData.tId ?? storeData.tenantId) !== existingScope.tenantId
-                || (storeData.pId ?? storeData.productId) !== PRODUCT_IDS.ANSWERLATTICE
+                || !answerlatticeProvisioningOwnershipMatches(storeData, existingScope)
+                || storeData.onboardingStatus !== ANSWERLATTICE_ONBOARDING_STATUS.PAYMENT_PENDING
                 || storeData.active === false
             ) {
                 throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');
             }
+            const summary = parseAnswerlatticePendingOnboardingSummary(
+                storeData.answerlatticeSubscription,
+                existingScope,
+            );
             await syncDefaultAuthProductAccount({
                 userId,
                 session,
@@ -578,25 +648,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 storeId: existingScope.storeId,
                 storeName: String(storeData.productName || storeData.name || existingScope.storeName || 'Answerlattice'),
             });
-            const summary = storeData.answerlatticeSubscription || {};
-            return NextResponse.json({
+            return answerlatticeOnboardingJson({
                 apiKey: null,
                 billing: {
-                    amount: Number(summary.amount || selectedPrice),
-                    currency: summary.currency === 'USD' ? 'USD' : currency,
+                    amount: summary.amount,
+                    currency: summary.currency,
                     interval: 'MONTH',
                 },
                 plan: {
-                    id: String(summary.planId || plan.planId),
+                    id: summary.plan.planId,
                     isBeta: false,
-                    name: String(summary.planName || plan.name),
+                    name: summary.plan.name,
                 },
                 recovered: true,
-                subscription: summary.id ? {
-                    id: String(summary.id),
-                    shortUrl: normalizeRazorpaySubscriptionCheckoutUrl(summary.shortUrl),
-                    status: typeof summary.status === 'string' ? summary.status : 'pending',
-                } : null,
+                subscription: {
+                    id: summary.subscriptionId,
+                    shortUrl: summary.shortUrl,
+                    status: 'pending',
+                },
                 widgetKeyNeedsRotation: true,
                 workspaceCreated: true,
             });
@@ -605,26 +674,50 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let result: { storeId: number; storeName: string; tenantId: number };
         let attemptStartedAtMillis: number;
         let resumedProvisioning = false;
-        if (existingStatus === ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING && existingScope) {
+        let storedProviderSubscriptionId: string | null = null;
+        const isProviderRecovery = (
+            existingStatus === ANSWERLATTICE_ONBOARDING_STATUS.PROVIDER_RECOVERY_PENDING
+        );
+        if (
+            (
+                existingStatus === ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING
+                || isProviderRecovery
+            )
+            && existingScope
+        ) {
             if (existingScope.requestFingerprint !== requestFingerprint) {
                 throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_SETUP_REQUEST_CHANGED');
             }
+            recoveryAvailableAtForRetry = existingScope.recoveryAvailableAt;
             const attemptAge = Date.now() - existingScope.startedAtMillis;
-            if (!existingScope.startedAtMillis || attemptAge < ANSWERLATTICE_ONBOARDING_ACTIVE_ATTEMPT_MS) {
+            if (
+                existingStatus === ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING
+                && (!existingScope.startedAtMillis || attemptAge < ANSWERLATTICE_ONBOARDING_ACTIVE_ATTEMPT_MS)
+            ) {
                 throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_SETUP_IN_PROGRESS');
+            }
+            if (
+                isProviderRecovery
+                && shouldHoldAnswerlatticeOnboardingProviderRecovery({
+                    providerSubscriptionId: existingScope.providerSubscriptionId,
+                    recoveryAvailableAt: existingScope.recoveryAvailableAt,
+                })
+            ) {
+                throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_PROVIDER_RECOVERY_PENDING');
             }
             const storeSnapshot = await db.collection(DB_COLLECTIONS.STORES).doc(String(existingScope.storeId)).get();
             const storeData = storeSnapshot.data() || {};
             if (
                 !storeSnapshot.exists
-                || normalizeAnswerlatticeScopeDocumentId(storeData.tId ?? storeData.tenantId) !== existingScope.tenantId
-                || (storeData.pId ?? storeData.productId) !== PRODUCT_IDS.ANSWERLATTICE
-                || String(storeData.onboardingAttemptId || '') !== existingScope.attemptId
+                || !answerlatticeProvisioningOwnershipMatches(storeData, existingScope)
+                || storeData.onboardingStatus !== existingStatus
             ) {
                 throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_ACCOUNT_EXISTS');
             }
             provisioningScope = existingScope;
             attemptStartedAtMillis = existingScope.startedAtMillis;
+            storedProviderSubscriptionId = existingScope.providerSubscriptionId;
+            providerOutcomeMayExist = true;
             result = {
                 storeId: existingScope.storeId,
                 storeName: String(storeData.productName || storeData.name || existingScope.storeName || productName || companyName),
@@ -670,6 +763,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         active: true,
                         billingModel,
                         onboardingAttemptId: attemptId,
+                        onboardingProviderCancellationPending: false,
+                        onboardingProviderRecoveryAvailableAt: null,
+                        onboardingProviderRecoveryReason: null,
+                        onboardingProviderSubscriptionId: null,
                         onboardingRequestFingerprint: requestFingerprint,
                         onboardingStartedAt: attemptStartedAt,
                         onboardingStatus: ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING,
@@ -681,6 +778,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     },
                     storeExtra: {
                         active: true,
+                        answerlatticeWorkspaceProfileRevision: 0,
                         answerlatticeLaunchProfile: {
                             billingModel,
                             businessDayEndTime: schedulerBusinessDayEndTime,
@@ -693,6 +791,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         billingModel,
                         businessDayEndTime: schedulerBusinessDayEndTime,
                         onboardingAttemptId: attemptId,
+                        onboardingProviderCancellationPending: false,
+                        onboardingProviderRecoveryAvailableAt: null,
+                        onboardingProviderRecoveryReason: null,
+                        onboardingProviderSubscriptionId: null,
                         onboardingRequestFingerprint: requestFingerprint,
                         onboardingStartedAt: attemptStartedAt,
                         onboardingStatus: ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING,
@@ -716,6 +818,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     modifiedOn: core.now,
                     name: session.user.name || session.user.email || 'Answerlattice user',
                     onboardingAttemptId: attemptId,
+                    onboardingProviderCancellationPending: false,
+                    onboardingProviderRecoveryAvailableAt: null,
+                    onboardingProviderRecoveryReason: null,
+                    onboardingProviderSubscriptionId: null,
                     onboardingRequestFingerprint: requestFingerprint,
                     onboardingSource: 'ANSWERLATTICE_ONBOARDING',
                     onboardingStartedAt: attemptStartedAt,
@@ -769,19 +875,56 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             planId: plan.planId,
         });
         const totalCount = 36;
-        let razorpaySubscription: AnswerlatticeProviderSubscriptionCandidate | null = resumedProvisioning
-            ? await recoverAnswerlatticeProviderSubscription({
+        let razorpaySubscription: AnswerlatticeProviderSubscriptionCandidate | null = null;
+        if (storedProviderSubscriptionId) {
+            providerSubscriptionId = storedProviderSubscriptionId;
+            const providerCandidate = await razorpayClient.subscriptions.fetch(storedProviderSubscriptionId);
+            if (!answerlatticeProviderSubscriptionMatchesAttempt({
+                attemptId: provisioningScope.attemptId,
+                candidate: providerCandidate,
+                planId: plan.planId,
+                providerPlanId: razorpayPlanId,
+                storeId: result.storeId,
+                tenantId: result.tenantId,
+            })) {
+                throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_PROVIDER_RECOVERY_PENDING');
+            }
+            if (isAnswerlatticeTerminalProviderSubscriptionStatus(providerCandidate.status)) {
+                await compensateAnswerlatticeOnboardingProvisioning({
+                    cancellationPending: false,
+                    db,
+                    providerSubscriptionId: storedProviderSubscriptionId,
+                    reason: 'answerlattice_onboarding_provider_checkout_terminal',
+                    scope: provisioningScope,
+                });
+                throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED');
+            }
+            razorpaySubscription = findAnswerlatticeProviderSubscriptionForAttempt({
+                attemptId: provisioningScope.attemptId,
+                candidates: [providerCandidate],
+                planId: plan.planId,
+                providerPlanId: razorpayPlanId,
+                storeId: result.storeId,
+                tenantId: result.tenantId,
+            });
+            if (!razorpaySubscription) {
+                throw new AnswerlatticeOnboardingConflictError('ANSWERLATTICE_PROVIDER_RECOVERY_PENDING');
+            }
+        } else if (resumedProvisioning) {
+            razorpaySubscription = await recoverAnswerlatticeProviderSubscription({
                 attemptId: provisioningScope.attemptId,
                 planId: plan.planId,
                 providerPlanId: razorpayPlanId,
                 startedAtMillis: attemptStartedAtMillis,
                 storeId: result.storeId,
                 tenantId: result.tenantId,
-            })
-            : null;
+            });
+            if (!razorpaySubscription) providerOutcomeMayExist = false;
+        }
 
         if (!razorpaySubscription) {
             providerCreateAttempted = true;
+            providerOutcomeMayExist = true;
             try {
                 razorpaySubscription = await razorpayClient.subscriptions.create({
                     plan_id: razorpayPlanId,
@@ -815,8 +958,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         }
 
-        providerSubscriptionId = String(razorpaySubscription.id || '').trim();
+        providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(razorpaySubscription.id);
         if (!providerSubscriptionId) throw new Error('answerlattice_onboarding_provider_subscription_id_missing');
+        const admittedProviderSubscription = findAnswerlatticeProviderSubscriptionForAttempt({
+            attemptId: provisioningScope.attemptId,
+            candidates: [razorpaySubscription],
+            planId: plan.planId,
+            providerPlanId: razorpayPlanId,
+            storeId: result.storeId,
+            tenantId: result.tenantId,
+        });
+        if (!admittedProviderSubscription) {
+            throw new Error('answerlattice_onboarding_provider_subscription_invalid');
+        }
+        razorpaySubscription = admittedProviderSubscription;
         const shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || '';
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
             paymentProvider: 'razorpay',
@@ -900,6 +1055,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             subscriptionPayload,
             widgetApiState: widgetKeyState.state,
         });
+        localFinalizationComplete = true;
         await syncDefaultAuthProductAccount({
             userId,
             session,
@@ -907,8 +1063,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storeId: result.storeId,
             storeName: result.storeName,
         });
-        onboardingComplete = true;
-
         let initialSurfaceCount = 0;
         await bootstrapInitialProductSurfaces({
             db,
@@ -966,7 +1120,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             userId,
         });
 
-        return NextResponse.json({
+        return answerlatticeOnboardingJson({
             apiKey,
             billing: {
                 amount: price,
@@ -988,24 +1142,49 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (error instanceof AnswerlatticeOnboardingConflictError) {
             const messages = {
                 ANSWERLATTICE_ACCOUNT_EXISTS: 'You already have an account. Go to your dashboard.',
+                ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED: 'The previous payment checkout is no longer usable. Retry setup with the same details.',
+                ANSWERLATTICE_PROVIDER_RECOVERY_PENDING: 'Payment setup is still being verified. Wait a few minutes, then retry with the same details.',
                 ANSWERLATTICE_SETUP_IN_PROGRESS: 'Workspace setup is already running. Please wait a moment and try again.',
                 ANSWERLATTICE_SETUP_REQUEST_CHANGED: 'Workspace setup is already running with different details.',
             } as const;
-            return NextResponse.json({ code: error.code, error: messages[error.code] }, { status: 409 });
+            const recoveryAvailableAtMillis = getAnswerlatticeOnboardingTimestampMillis(recoveryAvailableAtForRetry);
+            const retryAfter = error.code === 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING'
+                ? Math.max(1, Math.ceil(((recoveryAvailableAtMillis || Date.now() + 60_000) - Date.now()) / 1000))
+                : null;
+            return answerlatticeOnboardingJson(
+                { code: error.code, error: messages[error.code] },
+                {
+                    status: 409,
+                    ...(retryAfter ? { headers: { 'Retry-After': String(retryAfter) } } : {}),
+                },
+            );
         }
 
-        if (db && provisioningScope && !onboardingComplete) {
-            const providerCancelled = providerSubscriptionId
-                ? await cancelAnswerlatticeProviderSubscription(providerSubscriptionId)
-                : false;
-            await compensateAnswerlatticeOnboardingProvisioning({
-                cancellationPending: providerCreateAttempted && (!providerSubscriptionId || !providerCancelled),
-                db,
-                providerSubscriptionId,
-                reason: 'answerlattice_onboarding_failed',
-                scope: provisioningScope,
-            }).catch((compensationError) => {
-                logRuntimeFailure('answerlattice_onboard_compensation_failed', compensationError, {
+        if (db && provisioningScope && !localFinalizationComplete) {
+            const recoveryRequired = providerOutcomeMayExist || providerCreateAttempted || Boolean(providerSubscriptionId);
+            const recoveryAvailableAtMillis = providerSubscriptionId
+                ? Date.now()
+                : (
+                    getAnswerlatticeOnboardingTimestampMillis(recoveryAvailableAtForRetry)
+                    || Date.now() + ANSWERLATTICE_ONBOARDING_PROVIDER_RECOVERY_HOLD_MS
+                );
+            const cleanup = recoveryRequired
+                ? markAnswerlatticeOnboardingProviderRecoveryPending({
+                    db,
+                    providerSubscriptionId,
+                    reason: 'answerlattice_onboarding_provider_result_unconfirmed',
+                    recoveryAvailableAtMillis,
+                    scope: provisioningScope,
+                })
+                : compensateAnswerlatticeOnboardingProvisioning({
+                    cancellationPending: false,
+                    db,
+                    providerSubscriptionId: null,
+                    reason: 'answerlattice_onboarding_failed_before_provider',
+                    scope: provisioningScope,
+                });
+            await cleanup.catch((cleanupError) => {
+                logRuntimeFailure('answerlattice_onboard_cleanup_failed', cleanupError, {
                     ...getBoundedRuntimeStringContext('tenantId', provisioningScope?.tenantId),
                     ...getBoundedRuntimeStringContext('storeId', provisioningScope?.storeId),
                     ...getBoundedRuntimeStringContext('userId', provisioningScope?.userId),
@@ -1024,7 +1203,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('storeId', storeIdForLog),
             ...getBoundedRuntimeStringContext('userId', userIdForLog),
         });
-        return NextResponse.json(
+        return answerlatticeOnboardingJson(
             { code: 'ANSWERLATTICE_ONBOARDING_FAILED', error: 'Failed to create account. Please try again.' },
             { status: 500 },
         );

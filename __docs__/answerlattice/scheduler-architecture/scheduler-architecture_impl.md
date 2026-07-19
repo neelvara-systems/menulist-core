@@ -7,7 +7,8 @@
 - `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` owns the governance batch and accepts a pre-filtered `tenantScope`.
 - `functions-answerlattice/src/answerlattice/schedulerTime.ts` mirrors the MenuList runtime-timezone settlement pattern for Answerlattice.
 - `functions-answerlattice/src/answerlattice/tenantSummary.ts` reads the legacy `platformSummary/answerlatticeTenantsSummary` document and up to 64 deterministic `answerlatticeTenantsSummaryShard_*` documents. New writes use shards; the root is read-only migration input.
-- `src/app/api/answerlattice/workspace-profile/route.ts` persists timezone/EOD settings behind Answerlattice management scope, returns no-store owner responses, and syncs the scheduler registry.
+- `src/app/api/answerlattice/workspace-profile/route.ts` validates revisioned timezone/EOD settings behind Answerlattice management scope and returns private no-store owner responses.
+- `src/lib/answerlattice/workspaceProfileServer.ts` commits the store profile, scheduler registry, compiled source version, and stale bundle marker in one transaction.
 - `src/app/api/answerlattice/operations/status/route.ts` exposes owner-safe scheduler status from one store doc, two platformSummary docs, and five capped run logs.
 - `src/components/templates/answerlattice/AnswerlatticeSettings.tsx` lets owners set workspace timezone and support-day end time.
 - `src/components/templates/answerlattice/activation/AnswerlatticeOperationsPanel.tsx` shows Daily Governance status inside Activation without giving owners manual scheduler controls.
@@ -51,7 +52,7 @@ Tenant-summary selection is an exact persisted contract. The legacy root is merg
 
 The manual trigger accepts POST JSON only, requires the Answerlattice-specific bearer secret, and requires either an exact `tId/sId` pair or explicit `forceAllTenants: true`. Empty bodies and unknown fields fail closed. Every acquired tenant lease is settled independently with `Promise.allSettled`; a missing tenant result or thrown nightly batch marks that tenant failed rather than falsely completed.
 
-Registry writers no longer default every merge to active. Onboarding and entity-created/entity-scan paths explicitly set `active: true`; onboarding keeps `hasEntities: false` until entity creation/promotion explicitly changes it to true. Workspace-profile updates omit lifecycle fields, preserving the current active/entity state while updating timezone/EOD metadata. Optional fields are omitted rather than writing `undefined`.
+Registry writers no longer default every merge to active. Onboarding and entity-created/entity-scan paths explicitly set `active: true`; onboarding keeps `hasEntities: false` until entity creation/promotion explicitly changes it to true. Workspace-profile updates omit lifecycle fields, preserving the current active/entity state while updating timezone/EOD metadata in the same transaction as profile truth and compiled-context invalidation. Optional fields are omitted rather than writing `undefined`.
 
 AI provider health diagnostics use fixed codes. `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` still runs the daily Gemini smoke check and writes `platformSummary/answerlatticeAiProviderHealth`, but failed checks store `ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED` or `ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE` plus source error name/code/status metadata. The thrown scheduler error is the same fixed code, not provider/runtime exception text.
 

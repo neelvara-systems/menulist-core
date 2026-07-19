@@ -23,11 +23,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
 const PRODUCT_STARTER_PACK_MAX_BODY_BYTES = 2 * 1024;
+const PRIVATE_NO_STORE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+};
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
+    response.headers.set('X-Content-Type-Options', PRIVATE_NO_STORE_HEADERS['X-Content-Type-Options']);
+    return response;
+};
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     if (!jobId) {
-        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+        return NextResponse.json(
+            { error: 'Invalid knowledge intake job.' },
+            { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+        );
     }
 
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -36,20 +49,23 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         rateWindow: 60,
         requireActiveLicense: true,
     });
-    if (access.response) return access.response;
+    if (access.response) return withPrivateHeaders(access.response);
 
     const governancePermission = await requireAnswerlatticePermission(
         request,
         session,
         ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
     );
-    if (governancePermission.response) return governancePermission.response;
+    if (governancePermission.response) return withPrivateHeaders(governancePermission.response);
     if (
         !governancePermission.access
         || governancePermission.access.scope.tenantId !== access.context.scope.tId
         || governancePermission.access.scope.storeId !== access.context.scope.sId
     ) {
-        return NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 403 });
+        return NextResponse.json(
+            { error: 'Answerlattice workspace is not available.' },
+            { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+        );
     }
 
     try {
@@ -57,11 +73,17 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             invalidJsonMessage: 'Invalid product starter pack request.',
             tooLargeMessage: 'Product starter pack request is too large.',
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withPrivateHeaders(bodyResult.response);
         const parsed = AnswerlatticeProductStarterPackRequestSchema.safeParse(bodyResult.data);
         if (!parsed.success) {
-            return NextResponse.json({ error: 'Invalid product starter pack request.' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Invalid product starter pack request.' },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
+        const { checkSafeMode } = await import('@lib/ops/safeMode');
+        const safeModeResponse = await checkSafeMode();
+        if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
 
         const pack = await generateAnswerlatticeProductStarterPack(
             access.context.scope,
@@ -75,7 +97,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             scope: access.context.scope,
         }));
         return NextResponse.json({ pack: serializeIntakeValue(pack) }, {
-            headers: { 'Cache-Control': 'private, no-store' },
+            headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
@@ -89,6 +111,6 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         }
         return NextResponse.json({
             error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Could not generate the product-specific starter pack.'),
-        }, { status });
+        }, { status, headers: PRIVATE_NO_STORE_HEADERS });
     }
 });

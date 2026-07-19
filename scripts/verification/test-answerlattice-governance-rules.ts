@@ -13,6 +13,7 @@ import {
     setDoc,
     Timestamp,
     updateDoc,
+    writeBatch,
 } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-governance-rules';
@@ -158,6 +159,22 @@ async function run(): Promise<void> {
             doc(ownerDb, 'answerlattice_mutationProposals', 'proposal_pending'),
             pendingProposal(),
         ));
+        await assertSucceeds((async () => {
+            const batch = writeBatch(ownerDb);
+            batch.set(
+                doc(ownerDb, 'answerlattice_mutationProposals', 'almp_manual_test'),
+                pendingProposal({ requestId: 'support_board_card_1' }),
+            );
+            batch.set(
+                doc(ownerDb, 'answerlattice_auditLogs', 'manual_created_almp_manual_test'),
+                auditLog('mutation_proposal_created_manual', {
+                    entityId: 'almp_manual_test',
+                    previousState: null,
+                    newState: { mutationType: 'new_answer_required' },
+                }),
+            );
+            return batch.commit();
+        })());
         await assertFails(setDoc(
             doc(ownerDb, 'answerlattice_mutationProposals', 'proposal_preapproved'),
             pendingProposal({ status: 'approved' }),
@@ -198,6 +215,22 @@ async function run(): Promise<void> {
         await assertFails(setDoc(
             doc(ownerDb, 'answerlattice_auditLogs', 'forged_canonical_update'),
             auditLog('canonical_answer_updated'),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'forged_ticket_merge'),
+            auditLog('ticket_knowledge_evidence_merged'),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'forged_public_api_rotation'),
+            auditLog('public_api_key_rotated'),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'forged_public_api_revocation'),
+            auditLog('public_api_key_revoked'),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'forged_support_truth_export'),
+            auditLog('support_truth_export_generated'),
         ));
         await assertFails(setDoc(
             doc(ownerDb, 'answerlattice_auditLogs', 'missing_action'),

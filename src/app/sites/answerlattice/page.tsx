@@ -426,7 +426,7 @@ const SETUP_STEPS = [
     },
     {
         title: 'Install the widget',
-        detail: 'Add one script, set allowed domains, block sensitive routes, and verify the support path.',
+        detail: 'Add one script, set exact allowed origins, hide the launcher on selected routes, and verify the support path.',
         meta: 'Widget',
     },
     {

@@ -13,12 +13,18 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getStoreStatus } from '@lib/hours';
-import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLocale,
+} from '@lib/localization/publicCustomerMessages';
+import { localizePublicHoursText } from '@lib/localization/publicHoursText';
 import { getTrustSignalFreshnessText } from '@lib/menu/trustSignalFreshness';
 import { resolveHoursOutput } from '@lib/outputControl';
 
 interface TrustSignalsProps {
+    activeLanguage?: string;
     businessType: string;
     businessCategory?: string | null;
     lastPublishedAt: any; // Date | Timestamp | { seconds: number } | string | null
@@ -77,6 +83,7 @@ const META_ROW_STYLE: React.CSSProperties = {
 };
 
 export default function TrustSignals({
+    activeLanguage,
     businessType,
     businessCategory,
     lastPublishedAt,
@@ -89,9 +96,23 @@ export default function TrustSignals({
     showBorder = true,
     showContextLine = true,
 }: TrustSignalsProps) {
-    const labels = getOfferingLabels(businessType, businessCategory || undefined);
-    const offeringLabel = labels.offeringTitle;
-    const freshnessText = getTrustSignalFreshnessText(lastPublishedAt);
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const businessCategoryKey = resolveBusinessCategory(
+        businessType,
+        businessCategory || undefined,
+    );
+    const offeringLabel = businessCategoryKey === 'food'
+        ? t('menu.menuOffering')
+        : businessCategoryKey === 'retail'
+            ? t('menu.catalogOffering')
+            : businessCategoryKey
+                ? t('menu.servicesOffering')
+                : t('menu.offeringsOffering');
+    const freshnessText = getTrustSignalFreshnessText(lastPublishedAt, new Date(), {
+        locale: getPublicCustomerLocale(activeLanguage),
+        updatedOn: (date) => t('menu.updatedOn', { date }),
+        updatedToday: t('menu.updatedToday'),
+    });
     const locationText = getLocationText(locationArea, city);
 
     // Compute operational status — confidence-gated when output control is enabled
@@ -106,15 +127,15 @@ export default function TrustSignals({
                 hoursLastUpdatedAt: hoursLastUpdatedAt,
                 timeZone,
             });
-            statusText = hoursOutput.statusText;
-            statusSecondary = hoursOutput.secondaryText || null;
+            statusText = localizePublicHoursText(hoursOutput.statusText, t);
+            statusSecondary = localizePublicHoursText(hoursOutput.secondaryText, t);
             statusColor = hoursOutput.styleHint === 'open' ? '#16a34a'
                 : hoursOutput.styleHint === 'closed' ? '#dc2626'
                     : '#94a3b8'; // cautious/muted
         } else {
             const status = getStoreStatus(workingHours, timeZone);
-            statusText = status.statusText;
-            statusSecondary = status.nextChange || null;
+            statusText = localizePublicHoursText(status.statusText, t);
+            statusSecondary = localizePublicHoursText(status.nextChange, t);
             statusColor = status.isOpen ? '#16a34a' : '#dc2626';
         }
     }

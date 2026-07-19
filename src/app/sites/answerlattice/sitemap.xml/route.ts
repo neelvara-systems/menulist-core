@@ -12,10 +12,8 @@ function escapeXml(value: string): string {
 }
 
 export function GET() {
-    const lastModified = new Date().toISOString();
     const urls = ANSWERLATTICE_PUBLIC_PAGES.map((page) => `  <url>
     <loc>${escapeXml(buildAnswerlatticeUrl(page.path))}</loc>
-    <lastmod>${lastModified}</lastmod>
     <changefreq>${page.changeFrequency}</changefreq>
     <priority>${page.priority.toFixed(2)}</priority>
   </url>`).join('\n');

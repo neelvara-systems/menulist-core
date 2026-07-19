@@ -44,16 +44,16 @@ export type PlatformGlobalDataProviderType = {
     activeStoreContext: number | null;  // Which store user is viewing (null = own store)
     setActiveStoreContext: (storeId: number | null) => void;
 
-    cachedKBCategories: { cachedOn: Timestamp, kBCategories: KnowledgeBaseCategoriesType };
+    cachedKBCategories: { cachedOn: Timestamp | null, kBCategories: KnowledgeBaseCategoriesType, scopeKey: string | null };
     setCachedKBCategories: any;
 
-    cachedChangelog: { cachedOn: Timestamp, changelog: ChangelogPage };
+    cachedChangelog: { cachedOn: Timestamp | null, changelog: ChangelogPage, scopeKey: string | null };
     setCachedChangelog: any;
 
-    cachedTickets: { cachedOn: Timestamp, tickets: SupportTicketType[] };
+    cachedTickets: { cachedOn: Timestamp | null, tickets: SupportTicketType[], scopeKey: string | null };
     setCachedTickets: any;
 
-    cachedArticles: { cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[] };
+    cachedArticles: { cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[], scopeKey: string | null };
     setCachedArticles: any;
 
     platformStoreSummaryOptions: PlatformStoreSummaryOption[];
@@ -93,16 +93,16 @@ const InititalState: PlatformGlobalDataProviderType = {
     activeStoreContext: null,
     setActiveStoreContext: () => { },
 
-    cachedKBCategories: { cachedOn: null, kBCategories: null },
+    cachedKBCategories: { cachedOn: null, kBCategories: null, scopeKey: null },
     setCachedKBCategories: () => { },
 
-    cachedChangelog: { cachedOn: null, changelog: null },
+    cachedChangelog: { cachedOn: null, changelog: null, scopeKey: null },
     setCachedChangelog: () => { },
 
-    cachedTickets: { cachedOn: null, tickets: [] },
+    cachedTickets: { cachedOn: null, tickets: [], scopeKey: null },
     setCachedTickets: () => { },
 
-    cachedArticles: { cachedOn: null, articles: [] },
+    cachedArticles: { cachedOn: null, articles: [], scopeKey: null },
     setCachedArticles: () => { },
 
     platformStoreSummaryOptions: [],

@@ -1,8 +1,8 @@
 # KB Generation Pipeline — Product Specification
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-05-24
-> **Audience:** CEO, PM, Clients
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
+> **Audience:** CEO, PM, Internal Platform Operations
 > **Source:** Codebase forensic audit (code is truth)
 
 ---
@@ -39,10 +39,10 @@ Enable platform administrators to generate structured knowledge base articles fr
 ### Stage 1: Upload
 
 - Platform admin uploads source files via drag-and-drop or paste
-- Supported types: PDF, Image, Video, Audio, Document, Website URL, YouTube URL, Google Drive, Copied Text
+- Supported uploads: bounded documents/text plus image, audio, and video MIME types. Pasted URLs are stored as text evidence; this tool does not crawl or authenticate to them.
 - Files uploaded to Firebase Storage: `ingestion_source_files/{tId}/{sId}/{uuid}-{filename}`
 - Upload progress tracked per file with visual indicators
-- No file count limit (multiple files per job)
+- Per job: 1-8 source objects, at most 10 MiB each and 40 MiB total
 - Source uploads preserve file fidelity for generation and are tagged with Storage metadata for purpose and retention. Images and screenshots may contain hidden file metadata, so admins are warned at upload time to remove private customer data before adding them.
 
 ### Stage 2: Job Creation
@@ -57,7 +57,7 @@ Enable platform administrators to generate structured knowledge base articles fr
 - Cloud Function processes source files
 - AI generates: categories, sections, articles with TipTap JSON content
 - Categories stored as `IngestionJobCategoriesMap` on the job document
-- Articles include source provenance (which file, which page)
+- Articles include a bounded list of the job source files; page-level fact attribution is not derived by this runtime
 - Job status: `processing`
 
 ### Stage 4: Review
@@ -79,15 +79,17 @@ Enable platform administrators to generate structured knowledge base articles fr
 ### Stage 6: Publish
 
 - Job status: `publishing`
-- Articles written to `kb_articles` collection
-- Article metadata synced to `kb_categories` parent document
-- Embedding generation triggered per article
+- Final structure and reconciliation choices are validated transactionally
+- New articles and generated FAQs are staged inactive in `kb_articles` and `answerlattice_faqs`
+- Existing navigation and approved replacement articles remain live while required embeddings run
+- Embedding generation is triggered only for articles whose current vector/version/source hash cannot be reused
 - Job stores bounded `embeddingPendingArticleIds`, `embeddingCompletedArticleIds`, and `embeddingFailedArticleIds` sets plus display counters derived from those sets
-- Job status becomes `published` only when every exact pending ID is completed for the current embedding run and the failed set is empty
+- The job also stores bounded `replacementArticleIds`; replacements are not deleted during staging
+- Job status becomes `published` only when every exact pending ID is completed for the current embedding run, the failed set is empty, and one final transaction activates articles/FAQs, switches `kb_categories`, deletes approved replacements, and writes freshness invalidation
 
 ### Stage 7: Embedding
 
-- Each published article gets a 768-dimension vector embedding
+- Every final article must hold a valid current 768-dimension vector; unchanged valid vectors are reused
 - Embedding input: `Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}`
 - Cloud Function `embedArticleWorker` processes embedding queue
 - Uses `genrateEmbedding()` utility from Cloud Functions
@@ -139,15 +141,16 @@ Active jobs use Firestore `onSnapshot` listener via `useIngestionJobsListener` h
 
 ---
 
-## 6. Job Deletion (Shared-Reference-Safe Retention)
+## 6. Job Deletion (Reference-Aware Cleanup)
 
 When a job is deleted (`deleteIngestionJob()`):
 
 1. The caller must be a platform administrator and the job must be `needs_review`, `failed`, or `cancelled`. Published/active jobs and embedding-failed jobs are refused.
 2. The job, every related article query, and every compatibility read are checked against exact positive-integer `pId`/`tId`/`sId` scope. Coercible or malformed legacy scope does not match.
 3. A transaction rechecks job status and `modifiedOn`, refuses active deletion ownership, deletes only unpublished/inactive article drafts, and writes a bounded `deletionRun` lease to the retained job.
-4. Persisted source objects are retained because a second job may legally reference another valid path inside the same workspace. A bounded diagnostic records the deferred lifecycle without logging paths or URLs.
-5. A final transaction proves the same deletion-run ownership before deleting the job. Immediate Storage cleanup remains limited to attempt-owned uploads that fail before any job persistence attempt.
+4. A bounded exact-workspace job inventory (maximum 100 rows) computes which current source paths are still referenced by another job. If the inventory is too large or malformed, deletion fails closed before claiming the job.
+5. Unreferenced source objects are deleted idempotently; referenced objects are preserved with a bounded count-only diagnostic. Any acknowledged or thrown Storage failure leaves the job in a retryable failed `deletionRun` state.
+6. A final transaction proves the same deletion-run ownership before deleting the job.
 
 Published jobs and any job with a published/active article remain durable so `jobId` provenance cannot be orphaned. Category documents are not deleted by this DAL path; article publication owns category placement.
 
@@ -160,11 +163,12 @@ Published jobs and any job with a published/active article remain durable so `jo
 | 1   | Deprecated `getIngestionJobs()` compatibility helper could read globally                              | ✅ RESOLVED — non-platform reads are tenant/store scoped; platform admins keep the administrative list path. |
 | 2   | No retry mechanism for failed jobs                                                                     | ✅ RESOLVED — `retryJob()` DAL + UI button implemented                              |
 | 3   | No job timeout (stuck in processing forever)                                                           | ✅ RESOLVED — Watchdog in hourly scheduler auto-fails after 30 min                  |
-| 4   | Source files not cleaned up on job failure, cancellation, or deletion                                | By design — preserves files for retry, audit, review, and other jobs that may share the path. Reclamation requires a bounded workspace-wide non-reference inventory. |
+| 4   | Source files not cleaned up on job failure or cancellation                                            | By design — retry/audit evidence is retained. Explicit job deletion now reclaims only paths proven unreferenced by the bounded workspace inventory. |
 | 5   | No progress granularity during processing stage                                                        | Status is binary (processing or not)                                                |
 | 6   | Dev/prod behavior difference: dev manually triggers CF, prod uses Firestore trigger                    | By design — documented in code                                                      |
 | 7   | Failed or stale embedding tasks could previously satisfy a counter-only finalizer                       | ✅ RESOLVED — durable pending/completed/failed ID sets, exact run identity, and set-based finalization prevent incomplete publication. |
 | 8   | ReviewModal delete handlers are empty stubs (`onDeleteCategory`, `onDeleteSection`, `onDeleteArticle`) | ✅ RESOLVED — All three delete handlers implemented with confirmation dialogs       |
+| 9   | New FAQs/navigation or replacement deletion could become visible before all required embeddings completed | ✅ RESOLVED — publish staging stays inactive and the finalizer performs one atomic visibility/navigation/replacement/freshness switch. |
 
 ---
 
@@ -190,4 +194,4 @@ Published jobs and any job with a published/active article remain durable so `jo
 ### Remaining Future Items
 
 - **Answerlattice entity extraction:** Connect `extractEntitiesFromArticles` on publish when `ENABLE_ANSWERLATTICE_ONTOLOGY` is ON
-- **Source file cleanup:** Not on failure or cancellation. Failed jobs preserve source files for retry, and cancelled jobs preserve source files for audit/review. Source files are removed on explicit job delete.
+- **Source file cleanup:** Failure and cancellation continue to retain sources. Explicit job deletion removes only source paths not referenced by another bounded exact-workspace job; shared references remain.

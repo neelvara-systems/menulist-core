@@ -4,9 +4,12 @@ import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebase
 import { FieldValue, type WriteBatch } from 'firebase-admin/firestore';
 import type { AnswerlatticeCompiledSourceVersions, AnswerlatticeContextSourceKey } from '@type/answerlattice';
 import {
+    ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
+    EMPTY_BUNDLE_STATS,
     areAnswerlatticeCompiledSourceVersionsValid,
     getAnswerlatticeBundleManifestDocId,
     getAnswerlatticeSourceVersionsDocId,
+    isAnswerlatticeContextBundleManifestForScope,
     normalizeCompiledSourceVersions,
 } from './compiledContext';
 
@@ -63,63 +66,74 @@ export const initializeAnswerlatticeCompiledContextControlPlaneAdmin = async (
     const { tenantId, storeId } = assertScope(tId, sId);
     const db = getDb();
     const now = FieldValue.serverTimestamp();
-    const sourceVersions = normalizeCompiledSourceVersions({});
     const metadataFields = sanitizeMetadata(metadata);
+    const sourceRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId));
+    const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
 
-    const batch = db.batch();
-    batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId)), {
-        schemaVersion: 1,
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: tenantId,
-        sId: storeId,
-        ...sourceVersions,
-        workspaceProfile: 1,
-        widgetConfig: 1,
-        surfaces: Number(sourceVersions.surfaces || 0),
-        updatedAt: now,
-        ...metadataFields,
-    }, { merge: true });
-    batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId)), {
-        schemaVersion: 1,
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: tenantId,
-        sId: storeId,
-        publicBundleId: '',
-        bundleVersion: 0,
-        activeVersion: 0,
-        lastReadyVersion: 0,
-        status: 'empty',
-        sourceVersions: {
-            ...sourceVersions,
-            workspaceProfile: 1,
-            widgetConfig: 1,
-        },
-        bundles: {},
-        stats: {
-            entities: 0,
-            entityRelations: 0,
-            canonicalAnswers: 0,
-            surfaces: 0,
-            routes: 0,
-            articles: 0,
-            faqs: 0,
-            releases: 0,
-            bytesTotal: 0,
-            publicBytesTotal: 0,
-            privateBytesTotal: 0,
-        },
-        limits: {
-            maxPublicBootstrapBytes: 50_000,
-            maxPublicRouteBytes: 50_000,
-            maxMcpResponseBytes: 24_000,
-            maxMcpToolCallsPerMinute: 60,
-        },
-        generatedAt: null,
-        lastBuildError: null,
-        updatedAt: now,
-        ...metadataFields,
-    }, { merge: true });
-    await batch.commit();
+    await db.runTransaction(async (transaction) => {
+        const [sourceSnap, manifestSnap] = await Promise.all([
+            transaction.get(sourceRef),
+            transaction.get(manifestRef),
+        ]);
+        const existingSource = sourceSnap.exists ? sourceSnap.data() : null;
+        const existingManifest = manifestSnap.exists ? manifestSnap.data() : null;
+        if (existingSource && (
+            existingSource.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || existingSource.tId !== tenantId
+            || existingSource.sId !== storeId
+            || !areAnswerlatticeCompiledSourceVersionsValid(existingSource)
+        )) {
+            throw new Error('Answerlattice compiled source versions are invalid for this workspace.');
+        }
+        if (existingManifest && !isAnswerlatticeContextBundleManifestForScope(existingManifest, tenantId, storeId)) {
+            throw new Error('Answerlattice compiled context manifest is invalid for this workspace.');
+        }
+
+        const initialSourceVersions = existingSource
+            ? normalizeCompiledSourceVersions(existingSource)
+            : existingManifest
+                ? normalizeCompiledSourceVersions(existingManifest.sourceVersions)
+                : {
+                    ...normalizeCompiledSourceVersions({}),
+                    workspaceProfile: 1,
+                    widgetConfig: 1,
+                };
+
+        if (!sourceSnap.exists) {
+            transaction.create(sourceRef, {
+                schemaVersion: 1,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: tenantId,
+                sId: storeId,
+                ...initialSourceVersions,
+                updatedAt: now,
+                ...metadataFields,
+            });
+        }
+        if (!manifestSnap.exists) {
+            transaction.create(manifestRef, {
+                schemaVersion: 1,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: tenantId,
+                sId: storeId,
+                publicBundleId: '',
+                bundleVersion: 0,
+                activeVersion: 0,
+                lastReadyVersion: 0,
+                status: 'empty',
+                sourceVersions: initialSourceVersions,
+                bundles: {},
+                stats: EMPTY_BUNDLE_STATS,
+                limits: ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
+                generatedAt: null,
+                lastBuildError: null,
+                updatedAt: now,
+                ...metadataFields,
+            });
+        }
+    });
 };
 
 export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
@@ -133,7 +147,11 @@ export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
     const db = getDb();
     const now = FieldValue.serverTimestamp();
     const metadataFields = sanitizeMetadata(metadata);
-    batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId)), {
+    const sourceRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId));
+    const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
+    const sourceData = {
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: tenantId,
@@ -141,8 +159,8 @@ export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
         [source]: FieldValue.increment(1),
         updatedAt: now,
         ...metadataFields,
-    }, { merge: true });
-    batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId)), {
+    };
+    const manifestData = {
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: tenantId,
@@ -151,7 +169,10 @@ export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
         staleReason: metadata?.reason || `${source}_changed`,
         updatedAt: now,
         ...metadataFields,
-    }, { merge: true });
+    };
+
+    batch.set(sourceRef, sourceData, { merge: true });
+    batch.set(manifestRef, manifestData, { merge: true });
 };
 
 export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (

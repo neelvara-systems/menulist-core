@@ -1,7 +1,7 @@
 # Answerlattice Staff Access Control Mobile Support
 
 > Status: Implemented
-> Last updated: 2026-07-13
+> Last updated: 2026-07-19
 
 Answerlattice does not use the MenuList mobile owner app. The Team Access page is part of the Answerlattice dashboard shell and inherits the Answerlattice responsive layout, safe-area handling, mobile drawer navigation, touch target sizing, and App Appearance sheet.
 
@@ -16,6 +16,7 @@ Answerlattice does not use the MenuList mobile owner app. The Team Access page i
 - A member mapped to multiple workspaces keeps the workspace-scoped Remove action. The account-global Activate/Deactivate action is disabled for workspace actors with guidance to remove current-workspace access instead; platform administrators retain the recovery control.
 - Login reset and force sign-out are also disabled for multi-workspace identities unless the actor is a platform administrator because those actions affect the shared account across workspaces.
 - Owner, Manager, and Support Staff are visibly locked on compact and desktop layouts; custom roles remain editable.
+- Custom-role permission toggles preserve the role-assignment/team-access dependency on compact and desktop layouts so the mobile editor cannot save unreachable authority.
 
 ## Verification Notes
 

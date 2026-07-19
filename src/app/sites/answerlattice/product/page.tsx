@@ -177,7 +177,7 @@ const FOUNDER_CONTROL_CARDS = [
     {
         eyebrow: 'Before release',
         title: 'Run saved answer tests',
-        description: 'Keep up to 100 priority questions and check the expected approved answer, FAQ/owner answer, provider fallback, escalation, no-answer path, required wording, and supporting references. Critical failures mark release proof blocked; deterministic checks do not call the fallback model or change a release.',
+        description: 'Keep up to 100 priority questions and check the expected approved answer, FAQ/owner answer, provider fallback, escalation, no-answer path, required wording, and supporting references. Critical failures mark release proof blocked; deterministic checks are regression evidence, not an independent correctness guarantee, and never change a release.',
         href: '/product/knowledge-governance',
         cta: 'Review answer controls',
     },
@@ -731,7 +731,7 @@ export default function AnswerlatticeProductPage() {
                         },
                     ]}
                     proofItems={[
-                        { label: 'What it is', value: '24/7 support layer for founder-led SaaS' },
+                        { label: 'What it is', value: 'Governed support layer for founder-led SaaS' },
                         { label: 'What it turns into', value: 'Widget help, hosted help, FAQs, fallback, feedback, releases, and review' },
                         { label: 'What stays safe', value: 'Safe context, owner approval, and scoped workspace access' },
                     ]}

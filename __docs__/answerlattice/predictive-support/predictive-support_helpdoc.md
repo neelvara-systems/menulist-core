@@ -1,83 +1,74 @@
-# Predictive Support — Help Documentation
+# Use Predictive Support And Known Issues
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-10
-> **Audience:** SaaS founders using Answerlattice
+Predictive support shows a relevant support cue in the Answerlattice widget when a user reaches an exact product page. Known issues show a current incident notice through the same runtime.
 
----
+## Create a predictive trigger
 
-## What is Predictive Support?
+1. Open Governance.
+2. Open Advanced -> Predictive Triggers.
+3. Create a trigger or review a suggested trigger.
+4. Enter an exact page identifier used by your widget context.
+5. Optionally narrow it by feature, workflow, plan, or user role.
+6. Choose the approved content or action type.
+7. Set priority and cooldown.
+8. Save and activate.
 
-Predictive Support shows your users contextual help before they ask a question. Instead of waiting for confusion to turn into a support ticket, the system detects known friction points and surfaces help at the right moment.
+Suggested triggers cannot activate until you review them and assign an exact page.
 
----
+## Create a known issue
 
-## How does it work?
+1. Open Known Issues.
+2. Add the affected exact page.
+3. Add a short title and bounded summary.
+4. Choose `info`, `degraded`, or `outage` severity.
+5. Set the active start/end window when needed.
+6. Optionally add a public HTTPS status-page URL.
+7. Activate the notice.
 
-1. Your product's Answerlattice widget reports which page the user is viewing
-2. Answerlattice checks if there are known issues or common questions for that page
-3. If a match is found, a small help card appears with the relevant answer
-4. The user can click to read more, or dismiss the card
+Do not use a private dashboard, signed URL, internal hostname, or URL containing credentials as the public status link.
 
-The system uses your actual support data (tickets, chat conversations, escalations) to learn which pages cause confusion and suggest new proactive help automatically.
+## What the user sees
 
----
+The cue appears through the existing widget experience. Opening it shows the approved suggestion, related content, governed procedure, or known-issue notice available for that page. Moving to a different page clears the old suggestion.
 
-## Setting up trigger rules
+Predictive support does not click product controls or change customer data.
 
-### Creating a trigger manually
+## Engagement evidence
 
-1. Open the Answerlattice Dashboard → Governance → Trigger Rules tab
-2. Click "Create Trigger"
-3. Set the conditions:
-   - **Page:** Which page in your product (e.g., "billing_settings")
-   - **Plan:** Optional — target specific plans (e.g., "free")
-   - **Role:** Optional — target specific roles (e.g., "admin")
-4. Set the action:
-   - **Entity:** Link to a product entity with a canonical answer
-   - **Article:** Or link directly to a KB article
-5. Set behavior:
-   - **Priority:** 0-100 (higher = shown first if multiple triggers match)
-   - **Cooldown:** How many hours before showing again to the same user
-6. Save → trigger is immediately active
+The management view can show:
 
-### Reviewing auto-generated suggestions
+- times shown;
+- times the widget was opened from the cue;
+- times dismissed.
 
-Answerlattice analyzes your support patterns nightly and may suggest new triggers for pages with high friction. These appear in the Trigger Rules tab with status "Suggested."
+These numbers help you review relevance. They do not by themselves prove that the user resolved the issue, completed a task, or avoided a ticket. Answerlattice does not automatically disable a trigger from these counts.
 
-To review a suggestion:
-1. Open the suggested trigger
-2. Set the page condition (the system suggests the entity but needs you to confirm which page)
-3. Approve → becomes active
-4. Or reject → archived
+## Troubleshooting
 
----
+### No cue appears
 
-## Trigger effectiveness
+Check that:
 
-Each trigger tracks:
-- **Impressions** — How many times it was shown
-- **Clicks** — How many users engaged
-- **Dismissals** — How many users closed without engaging
-- **Effectiveness score** — (clicks - dismissals) / impressions
+- the trigger is active;
+- an exact page is present and matches the widget context;
+- optional plan, role, feature, and workflow conditions match;
+- the widget key and allowed origin are current;
+- the known-issue time window is active;
+- the ordinary predictive prompt is not in cooldown;
+- predictive support is enabled in the deployed environment.
 
-Triggers with consistently poor effectiveness (score below -0.3 after 100+ impressions) are automatically disabled to prevent annoying users.
+### A stale cue remains after navigation
 
----
+Confirm the client calls the Answerlattice context API on route/workflow changes. The loader clears the prior suggestion when context changes, but it cannot infer a single-page-app navigation that the host never reports.
 
-## FAQ
+### Engagement is not recorded
 
-**Q: Will this annoy my users?**
-A: No. Each trigger has a cooldown period (minimum 1 hour, you set the duration). Once shown, it won't appear again until the cooldown expires. Users can dismiss it instantly.
+Interaction signals require `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`. Delivery can continue when this flag is off, but the endpoint returns `recorded: false` and writes no signal.
 
-**Q: Can I control what shows on each page?**
-A: Yes. You create the rules. Auto-generated suggestions require your approval before they become active.
+### A known-issue URL is rejected
 
-**Q: Does this use AI?**
-A: The trigger evaluation is purely rule-based — no AI. However, the auto-suggestion feature uses your existing friction intelligence data to identify where help is needed.
+Use a public HTTPS URL. Internal, local, credential-bearing, or otherwise non-public URLs are rejected by the shared public URL boundary.
 
-**Q: What if I don't have friction data yet?**
-A: You can create manual triggers right away. Auto-suggestions will appear once enough support data has accumulated (typically after a few weeks of Answerlattice usage).
+## Privacy
 
-**Q: How do I integrate this with my product?**
-A: Call `window.AnswerlatticeWidget.page({ path, feature, workflow })` from product navigation after the v1 widget script is installed. See the Widget Contract v1 install documentation for details.
+The predictive request uses allowlisted page/workflow context and a non-PII per-tab session identifier. Do not put email addresses, account IDs, secrets, form values, or raw application state into context fields.

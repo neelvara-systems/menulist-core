@@ -32,7 +32,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
             ticket: 'submit_ticket',
             feedback: 'submit_feedback',
             faq: 'read_faq',
-            contact: 'contact_support',
+            'contact-us': 'contact_support',
             changelog: 'view_changelog',
         };
 
@@ -181,7 +181,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                 className="help-center-search-control"
                                 size="large"
                                 placeholder={t('searchPlaceholder')}
-                                aria-label="Search help center"
+                                aria-label={t('search')}
                                 prefix={<LuSearch className="help-center-search-icon" size={18} color={token.colorTextPlaceholder} aria-hidden="true" />}
                                 suffix={(
                                     <span
@@ -295,7 +295,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                                     color: token.colorText,
                                                     fontWeight: 600
                                                 }}>
-                                                    {currentTab.title}
+                                                    {t(currentTab.titleKey as any)}
                                                 </span>
                                             ),
                                         },

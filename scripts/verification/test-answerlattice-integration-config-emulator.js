@@ -24,6 +24,7 @@ const {
 const {
     claimIntegrationEvent,
     logDeliveryAttempt,
+    updateIntegrationHealth,
     updateEventStatus,
 } = require('../../functions-answerlattice/lib/integrations/deliveryLogger');
 const {
@@ -40,6 +41,9 @@ const configRef = firestoreAdmin
 const deliveryConfigRef = firestoreAdmin
     .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
     .doc(`integrationConfig_${DELIVERY_SCOPE.tId}_${DELIVERY_SCOPE.sId}`);
+const deliveryHealthRef = firestoreAdmin
+    .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+    .doc(`integrationHealth_${DELIVERY_SCOPE.tId}_${DELIVERY_SCOPE.sId}`);
 
 async function run() {
     for (const collection of [
@@ -49,6 +53,7 @@ async function run() {
     ]) {
         await firestoreAdmin.recursiveDelete(firestoreAdmin.collection(collection));
     }
+    await deliveryHealthRef.delete();
 
     await configRef.set({
         slack: {
@@ -140,6 +145,51 @@ async function run() {
     assert.equal(await updateEventStatus(eventSnapshot.id, 'delivered', event), true);
     assert.equal((await eventSnapshot.ref.get()).data().status, 'delivered');
 
+    await deliveryHealthRef.set({ legacyHealth: true });
+    await updateIntegrationHealth({
+        eventId: eventSnapshot.id,
+        eventType: event.eventType,
+        ...DELIVERY_SCOPE,
+        adapter: 'slack',
+        status: 'success',
+        result: { success: true, statusCode: 200, durationMs: 3 },
+    });
+    const claimedHealth = (await deliveryHealthRef.get()).data();
+    assert.equal(claimedHealth.pId, 'AL');
+    assert.equal(claimedHealth.tId, DELIVERY_SCOPE.tId);
+    assert.equal(claimedHealth.sId, DELIVERY_SCOPE.sId);
+    assert.equal(claimedHealth.adapters.slack.lastStatus, 'success');
+    assert.equal(claimedHealth['adapters.slack.lastStatus'], undefined);
+    await updateIntegrationHealth({
+        eventId: eventSnapshot.id,
+        eventType: event.eventType,
+        ...DELIVERY_SCOPE,
+        adapter: 'email',
+        status: 'success',
+        result: { success: true, statusCode: 202, durationMs: 4 },
+    });
+    const mergedHealth = (await deliveryHealthRef.get()).data();
+    assert.equal(mergedHealth.adapters.slack.lastStatus, 'success');
+    assert.equal(mergedHealth.adapters.email.lastStatus, 'success');
+
+    await deliveryHealthRef.set({
+        pId: 'ML',
+        ...DELIVERY_SCOPE,
+        poisoned: true,
+    });
+    await updateIntegrationHealth({
+        eventId: eventSnapshot.id,
+        eventType: event.eventType,
+        ...DELIVERY_SCOPE,
+        adapter: 'email',
+        status: 'failed',
+        result: { success: false, error: 'Expected test failure', durationMs: 2 },
+    });
+    const rejectedHealth = (await deliveryHealthRef.get()).data();
+    assert.equal(rejectedHealth.pId, 'ML');
+    assert.equal(rejectedHealth.poisoned, true);
+    assert.equal(rejectedHealth.adapters, undefined, 'conflicting health ownership must not be repaired or overwritten');
+
     const firstDeliveryResult = {
         success: false,
         retryable: false,
@@ -182,6 +232,44 @@ async function run() {
         ),
         ['owner@example.com'],
         'case variants must consume one recipient slot',
+    );
+    for (let index = 1; index < INTEGRATION_LIMITS.MAX_EMAIL_PER_DAY_PER_RECIPIENT; index += 1) {
+        assert.deepEqual(
+            await filterEmailRecipientsByDailyLimit(
+                DELIVERY_SCOPE.tId,
+                DELIVERY_SCOPE.sId,
+                ['owner@example.com'],
+            ),
+            ['owner@example.com'],
+        );
+    }
+    assert.deepEqual(
+        await filterEmailRecipientsByDailyLimit(
+            DELIVERY_SCOPE.tId,
+            DELIVERY_SCOPE.sId,
+            ['owner@example.com', 'fresh@example.com'],
+        ),
+        [],
+        'one capped recipient must reject the complete email delivery',
+    );
+    for (let index = 0; index < INTEGRATION_LIMITS.MAX_EMAIL_PER_DAY_PER_RECIPIENT; index += 1) {
+        assert.deepEqual(
+            await filterEmailRecipientsByDailyLimit(
+                DELIVERY_SCOPE.tId,
+                DELIVERY_SCOPE.sId,
+                ['fresh@example.com'],
+            ),
+            ['fresh@example.com'],
+            'rejected multi-recipient delivery must not consume another recipient slot',
+        );
+    }
+    assert.deepEqual(
+        await filterEmailRecipientsByDailyLimit(
+            DELIVERY_SCOPE.tId,
+            DELIVERY_SCOPE.sId,
+            ['fresh@example.com'],
+        ),
+        [],
     );
     await assert.rejects(
         consumeAdapterMinuteSlot(0, DELIVERY_SCOPE.sId, 'slack'),

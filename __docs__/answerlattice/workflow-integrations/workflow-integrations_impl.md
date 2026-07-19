@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Implementation
 
-> **Version:** 1.2.0
-> **Last Updated:** 2026-07-13
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS` (client + CF)
 
@@ -67,12 +67,14 @@ src/
 ├── database/answerlattice/
 ├── app/api/answerlattice/integrations/route.ts          # Slack/email settings API
 ├── app/api/answerlattice/integrations/test/route.ts     # Queues one controlled test event
-├── components/templates/answerlattice/
-│   └── AnswerlatticeSettings.tsx        # Settings UI (enable/disable, config, health, test)
+├── app/(answerlattice)/answerlattice/workflow-notifications/page.tsx # Dedicated dashboard route
+├── components/templates/answerlattice/settings/
+│   └── AnswerlatticeWorkflowNotifications.tsx # Responsive owner UI
+├── lib/answerlattice/workflowIntegrationContracts.ts # Shared strict browser/server response contract
 └── config/features.ts              # + ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS
 ```
 
-`AnswerlatticeSettings.tsx` validates workflow-integration route responses through a 64 KB bounded JSON reader before updating local form state, health state, or success copy. `GET/PUT /api/answerlattice/integrations` responses must contain the safe Slack/email config, event type arrays, default filters, and health object. `POST /api/answerlattice/integrations/test` must return a non-empty `eventId`. Malformed, oversized, rejected, or wrong-shape responses log fixed `answerlattice_settings_response_*` diagnostics and keep fixed owner-facing failure copy.
+`AnswerlatticeWorkflowNotifications.tsx` is a dedicated `MANAGE_INTEGRATIONS` surface. It validates workflow-integration responses through a 64 KB bounded JSON reader and the shared strict Zod contracts before updating form, health, or success state. Save responses preserve the currently visible health until the next server refresh. The UI validates Slack webhook shape, safe disconnect order, email recipient count/shape, save-before-test behavior, and enables testing only when a saved adapter is active. Malformed, oversized, rejected, or wrong-shape responses log fixed diagnostics and keep fixed owner-facing failure copy.
 
 ---
 
@@ -164,15 +166,17 @@ The processor reads/writes these docs by direct ID inside transactions. No colle
 
 **Ownership and legacy behavior:** The settings producer writes `pId/tId/sId` on every save. The settings GET/test routes and Functions consumer compare embedded ownership with the session/event-derived document path before using adapter secrets. Documents with no ownership fields at all are the bounded legacy shape: the derived scope is claimed by writing the three fields inside a Firestore transaction. Partial, wrong-product, or conflicting scope is rejected; the owner API returns support-review status and Functions return an all-disabled config. The owner route re-reads ownership in the same transaction that merges only Slack/email fields, so it cannot overwrite a concurrently changed identity and never rewrites controlled Linear/GitHub or transaction-owned circuit-breaker maps from an earlier read. Circuit-breaker success/failure changes also re-read ownership inside a Firestore transaction.
 
+**Secret client boundary:** Both dedicated and shared Firestore rules deny client reads, creates, and updates for `integrationConfig_*`, including platform-admin browser clients. Configuration is reachable only through Admin SDK routes/Functions. The API returns `webhookConfigured`, never the raw webhook. Firestore provider encryption at rest is inherited infrastructure; application-level per-tenant encryption is not implemented or claimed.
+
 **Why platformSummary?** Follows existing Answerlattice pattern (branding, coverage KPI). No new collection. Config is small (<2KB). Read once per event dispatch, plus a transaction read when circuit-breaker state must be reconciled.
 
 ### 3.4 — Delivery Health Summary
 
 **Storage:** `platformSummary/integrationHealth_{tId}_{sId}`
 
-This doc stores sanitized last attempt/success/failure state per adapter. The owner settings UI reads this through the server API, so it never queries raw delivery logs. The API keeps stored delivery error text server-side and returns a fixed `Delivery needs review.` marker when an adapter has a last error, preserving the dashboard status signal without exposing provider/runtime text.
+This doc stores sanitized last attempt/success/failure state per adapter. Functions write the nested `adapters.{adapter}` map inside an ownership-validating transaction; this preserves the other adapter's health and makes the fields visible to the owner API. A fully unowned legacy health row can be claimed; a partial or conflicting identity is not repaired or overwritten. The owner UI reads this through the server API, so it never queries raw delivery logs. The API keeps stored delivery error text server-side and returns a fixed `Delivery needs review.` marker when an adapter has a last error.
 
-The settings GET route applies the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. It independently verifies or transactionally claims the embedded config and health ownership before serialization. The save route validates ownership and writes owner-controlled fields in one transaction. Load/save route failures use fixed runtime diagnostic codes with bounded tenant/store metadata. The controlled test-event route applies its workspace limiter before permission, verifies or claims config ownership in a transaction, and only then writes an event; unexpected failures use fixed-code bounded tenant/store diagnostics.
+The settings GET route applies the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. It independently verifies or transactionally claims the embedded config and health ownership before serialization. Save/test use an actor plus workspace rate-limit key before permission and data work, so one actor cannot consume another actor's quota while permission admission remains abuse-protected. Both routes then validate ownership before writing.
 
 ---
 
@@ -271,7 +275,7 @@ The settings GET route applies the shared Answerlattice dashboard `DATA_READ` li
     entityType: string,
     failureCount: number,
     windowDays: number,
-    commonQueries: string[],  // Up to 3 (anonymized)
+    failurePhases: string[],  // Bounded internal workflow phase names, not customer queries
   }
 }
 ```
@@ -324,7 +328,7 @@ export async function emitIntegrationEvent(params: {
 
 **Wiring points (nightly batch):**
 - Step 13 reads whether a tenant has any enabled adapter. A config-read failure is recorded as `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED`, marks that tenant's workflow integration task failed, and keeps event delivery fail-closed for that tenant instead of reporting a normal no-adapter skip.
-- It emits `coverage_drop` immediately only when coverage is below threshold.
+- It emits `coverage_drop` as a separate higher-priority nightly-run event only when coverage is below threshold.
 - It emits `ai_failure_recurring` only when the bounded nightly AI-failure threshold is reached.
 - It emits one tenant `nightly_summary` digest when the tenant has governance/support activity.
 - It does not emit per-drift/per-proposal/per-gap fan-out by default; those event types remain available for explicit flows and controlled rollout.
@@ -332,6 +336,7 @@ export async function emitIntegrationEvent(params: {
 **Other entry point:**
 - The authenticated owner test route writes one controlled `nightly_summary` event after permission, config-ownership, and rate-limit checks. Its exact `test: true` plus `runLogId: 'manual-test'` marker bypasses ordinary event filters only for enabled self-service Slack/email adapters so the single global test action verifies both saved connections; controlled Linear/GitHub filters are unchanged.
 - No direct real-time governance producer is currently wired. `drift_detected`, `mutation_proposed`, `knowledge_gap_detected`, and `article_approved` remain supported adapter/filter schemas, not active emission claims.
+- The owner response contract exposes only `coverage_drop`, `ai_failure_recurring`, and `nightly_summary`; reserved formatter schemas cannot be selected from self-service settings.
 
 ### 5.2 — Event Processor (`functions-answerlattice/src/integrations/eventProcessor.ts`)
 
@@ -344,7 +349,7 @@ export async function emitIntegrationEvent(params: {
 4. For each enabled adapter where event type matches filter:
    a. Consume per-adapter minute counter
    b. Consume per-adapter daily counter
-   c. For email, consume per-recipient daily counters
+   c. For email, transactionally admit the complete normalized recipient set; if any recipient is capped, reject the complete email delivery without consuming any recipient slot
    d. Format payload via adapter
    e. Attempt delivery with bounded retry
    f. Log result to `answerlattice_integrationDeliveryLogs`
@@ -355,7 +360,9 @@ export async function emitIntegrationEvent(params: {
 - Attempt 1: immediate
 - Attempt 2: 1 second delay
 - Attempt 3: 4 seconds delay
-- Attempts 2 and 3 run only when the adapter returns an explicit retryable HTTP 429/5xx result
+- Attempts 2 and 3 run only when the adapter returns an explicit retryable result
+- Slack marks `5xx` retryable. Slack `429` retains its numeric provider status but does not enter the fixed 1s/4s retry loop because Slack's contract uses `Retry-After`.
+- GitHub and Linear remain controlled rollout; their current classifications must be revalidated with OAuth/API error contracts before self-service activation.
 - Network/timeout/SMTP exceptions use fixed local failures and are not blindly replayed because provider acceptance can be ambiguous
 - The Firestore trigger has platform retry enabled for pre-claim infrastructure failures. The transactional pending-event claim prevents a second invocation from replaying an already claimed provider delivery.
 - After the third total attempt: mark as failed, log, move on
@@ -398,13 +405,15 @@ export interface DeliveryResult {
 
 All HTTP adapters reject redirects. Slack therefore cannot follow a redirect away from its validated `hooks.slack.com` target, and the fixed Linear/GitHub provider origins remain fixed for the entire request.
 
+Slack detail values pass through `safeSlackMrkdwnText()`, which bounds/redacts text and encodes Slack's `&`, `<`, and `>` control characters. The detail text object also sets `verbatim: true`, so source-derived text cannot create mentions or injected angle-bracket links. The formatter keeps only Answerlattice-owned bold labels as markup.
+
 **Message template per event type:**
 - `drift_detected` → 🔴 emoji, red severity bar, entity name, drift reason
 - `mutation_proposed` → 🟡 emoji, proposal details, signal count
 - `knowledge_gap_detected` → 🟠 emoji, entity, fallback count, sample queries
 - `coverage_drop` → 🚨 emoji, current vs previous rate, threshold
 - `article_approved` → ✅ emoji, answer title, approved by
-- `ai_failure_recurring` → ⚠️ emoji, entity, failure count
+- `ai_failure_recurring` → ⚠️ emoji, entity, failure count, bounded failed workflow phases
 - `nightly_summary` → 📊 emoji, summary stats, error count
 
 ### 5.5 — Email Adapter
@@ -413,6 +422,8 @@ All HTTP adapters reject redirects. Slack therefore cannot follow a redirect awa
 **Auth:** Answerlattice project secrets only: `ANSWERLATTICE_SMTP_HOST`, `ANSWERLATTICE_SMTP_PORT`, `ANSWERLATTICE_SMTP_USER`, `ANSWERLATTICE_SMTP_PASS`
 **Template:** HTML email with inline styles, calm infrastructure tone
 **Rate limit:** 20 emails/day per recipient (same as existing notification system)
+
+The email formatter has an explicit repeated-AI-workflow-failure row set. It renders bounded internal phase names and a count, not customer questions or raw scheduler/provider errors. HTML values are secret-redacted before entity encoding.
 
 Before deploying the processor to an Answerlattice Firebase project, provision all four secret versions in that same project:
 
@@ -507,8 +518,10 @@ Repeat against `answerlattice` for production with production values. Generic `S
 
 **Current production behavior:**
 - Slack webhook URL is stored server-side in Answerlattice Firestore and is never returned to the browser after save.
+- Server-only storage is the verified application boundary. Firebase/provider encryption at rest may apply, but Answerlattice does not claim separate application-layer encryption for the webhook document.
 - Email uses only Answerlattice-scoped `ANSWERLATTICE_SMTP_*` Function secrets; it does not inherit generic SMTP variables from another product runtime.
 - Linear/GitHub credentials are not configurable from the owner dashboard.
+- Provider delivery copies the bounded event content into Slack, email, Linear, or GitHub; provider-side retention, access, deletion, and audit remain governed by the customer's provider workspace and policy.
 
 **Why?**
 - Slack incoming webhooks are the fastest self-service path and already scoped by Slack.
@@ -544,10 +557,10 @@ Step 13: Integration Event Emission
 | Constraint | Value | Rationale |
 |-----------|-------|-----------|
 | Max events per nightly run per tenant | 50 | Prevents noisy tenants from flooding |
-| Max delivery attempts per event | 3 | Industry standard (Stripe, GitHub) |
+| Max delivery attempts per event | 3 | Bounds provider retries and prevents indefinite fan-out |
 | Max events per minute per adapter | 20 | Prevents external API rate limit hits |
 | Max events per day per adapter | 50 | Prevents noisy tenants from turning integrations into a notification/cost fan-out |
-| Circuit breaker threshold | 10 consecutive failures | Auto-disables broken integrations |
+| Circuit breaker threshold | 10 consecutive failures | Opens the adapter circuit and exposes owner-safe health; it does not rewrite the owner enable toggle |
 | Circuit breaker cooldown | 24 hours | Reasonable recovery window |
 | Event TTL | 90 days | Auto-cleanup, prevents unbounded growth |
 | Delivery log TTL | 90 days | Same as events |
@@ -596,9 +609,11 @@ Step 13: Integration Event Emission
 **Frontend (config UI):**
 8. `src/app/api/answerlattice/integrations/route.ts` — Slack/email settings API
 9. `src/app/api/answerlattice/integrations/test/route.ts` — controlled test event API
-10. `src/components/templates/answerlattice/AnswerlatticeSettings.tsx` — settings UI
+10. `src/app/(answerlattice)/answerlattice/workflow-notifications/page.tsx` — dedicated route
+11. `src/components/templates/answerlattice/settings/AnswerlatticeWorkflowNotifications.tsx` — responsive owner UI
+12. `src/lib/answerlattice/workflowIntegrationContracts.ts` — shared strict response schemas
 
-The browser response validation adds no Firestore reads/writes. It only refuses malformed or oversized route responses before the Settings UI treats integration settings or test notifications as saved/queued.
+The browser response validation adds no Firestore reads/writes. It only refuses malformed or oversized route responses before the Workflow Notifications UI treats integration settings or test notifications as saved/queued.
 
 ### Controlled-Rollout Adapters
 
@@ -611,7 +626,7 @@ These adapters are not exposed in owner settings until the per-tenant secret lif
 
 Workflow delivery runs inside the separate Answerlattice Functions codebase. The Slack adapter now resolves stored Incoming Webhook URLs through `functions-answerlattice/src/utils/networkTarget.ts` before delivery. Valid Slack targets must keep the fixed `https://hooks.slack.com/services/` shape and pass public DNS validation before the adapter fetches the normalized URL. Rejected targets fail only that delivery attempt and flow through the existing delivery log, health summary, and circuit-breaker behavior.
 
-The GitHub adapter keeps the fixed `https://api.github.com` provider host and now URL-encodes the normalized owner and repo path segments before creating issues. GitHub and Linear success logs keep provider ID/URL presence and length metadata instead of raw provider URLs or IDs. Slack, email, Linear, and GitHub payload shapes, event filtering, rate caps, retry counts, circuit breakers, and tenant config storage are unchanged.
+The GitHub adapter keeps the fixed `https://api.github.com` provider host and URL-encodes normalized owner/repo path segments before creating issues. GitHub and Linear success logs keep provider ID/URL presence and length metadata instead of raw provider URLs or IDs. Slack `429` is deliberately non-retryable in the fixed-delay processor; Slack `5xx` remains retryable.
 
 ### Delivery Logger Diagnostics
 
@@ -653,6 +668,17 @@ Slack, email, GitHub, and Linear adapters still return local configuration error
 
 An event is `delivered` only when all attempted adapters succeed; partial success is `failed`. Delivery attempts use deterministic create-only log IDs so a repeated acknowledgement cannot overwrite the first audit row. Circuit-breaker failure increments and success resets derive from transaction snapshots. After cooldown, only one transaction can acquire the 2-minute probe lease; success resets the breaker and failure clears the lease while reopening the cooldown.
 
+Email recipient caps are admitted atomically across the complete normalized recipient set. This prevents a provider-accepted email to only a subset from being reported as adapter success. If one recipient is capped, the attempt is recorded as `rate_limited`, nobody is sent, and no recipient counter advances.
+
+### External Provider Contracts
+
+Official contracts were checked on 2026-07-19:
+
+- Slack Incoming Webhooks: webhook URLs are secrets and leaked URLs may be revoked; incoming webhook rate behavior is approximately one message per second, and HTTP `429` carries `Retry-After`. Sources: [Sending messages using incoming webhooks](https://api.slack.com/messaging/webhooks) and [Rate limits](https://docs.slack.dev/apis/web-api/rate-limits/).
+- GitHub issue creation: a fine-grained token requires Issues write permission. API version `2022-11-28` remains supported, but the controlled adapter must be revalidated before its documented 2028 retirement. Sources: [REST issues](https://docs.github.com/en/rest/issues/issues#create-an-issue) and [API versions](https://docs.github.com/en/rest/about-the-rest-api/api-versions).
+- Linear: apps for third parties should use OAuth; the 2026 refresh-token contract and GraphQL `RATELIMITED` error behavior are activation blockers for the current raw-key adapter. Sources: [OAuth authentication](https://linear.app/developers/oauth-2-0-authentication) and [Rate limiting](https://linear.app/developers/rate-limiting).
+- Firestore triggers are at-least-once and ordering is not guaranteed, which is why exact event claims and idempotent attempt identities remain mandatory. Source: [Firestore events](https://firebase.google.com/docs/functions/firestore-events).
+
 ---
 
 ## §11 — Backwards Compatibility
@@ -661,7 +687,7 @@ An event is `delivered` only when all attempted adapters succeed; partial succes
 |---------|--------|
 | Existing nightly batch | Zero change to Steps 1-12. Step 13 is additive, feature-flagged. |
 | Existing Answerlattice types | Additive types only. No modification to frozen interfaces. |
-| Existing collections | Zero changes. 2 new collections added. |
+| Existing collections | No unrelated collection schema changed. The feature owns integration events/delivery logs plus scoped `platformSummary` config, health, and rate-limit documents. |
 | Existing feature flags | No changes. New flag added. |
 | Existing email notifications | Completely separate system. Integration email adapter is for governance events, notification system is for ticket events. |
 
@@ -671,6 +697,7 @@ An event is `delivered` only when all attempted adapters succeed; partial succes
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.3.0 | Added the dedicated permission-gated owner route, strict response contract, browser-denied secret config, nested transactional health, atomic all-recipient email admission, provider-specific Slack retries, active-producer-only filters, and exact external-evidence boundaries. |
 | 2026-07-13 | 1.2.0 | Added exact event claims, payload-bound emission idempotency, create-only attempt logs, all-adapter completion semantics, transactional circuit probes, malformed payload normalization, platform retry guardrails, and Answerlattice-scoped SMTP secret binding. |
 | 2026-06-30 | 1.1.12 | Added bounded Settings response validation for integration load/save/test results before UI state or success copy advances. |
 | 2026-06-29 | 1.1.11 | Recorded nightly adapter-config read failures as bounded failed scheduler tasks instead of silent no-adapter skips. |

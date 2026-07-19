@@ -22,6 +22,17 @@ import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 const MAX_ACTIVITY_ITEMS = 12;
 const FALLBACK_SCAN_LIMIT = 80;
 const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const activityJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse.json(body, {
+    ...init,
+    headers: {
+        'Cache-Control': 'private, no-store',
+        ...(init.headers || {}),
+    },
+});
+const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+};
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
@@ -148,23 +159,23 @@ const fetchFallbackWidgetActivity = async (
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-        return NextResponse.json({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
+        return activityJsonResponse({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
     }
 
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'widget-activity');
-    if (rateLimitResponse) return rateLimitResponse;
+    if (rateLimitResponse) return withPrivateNoStore(rateLimitResponse);
 
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateNoStore(permission.response);
 
     const scope = resolveSessionScope(session);
     if (!scope) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return activityJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
 
     const db = getAnswerlatticeDb();
     if (!db) {
-        return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        return activityJsonResponse({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
     }
 
     try {
@@ -176,7 +187,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             docs = await fetchFallbackWidgetActivity(db, scope.tenantId, scope.storeId);
         }
 
-        return NextResponse.json({
+        return activityJsonResponse({
             items: docs.map(serializeActivityItem),
         });
     } catch (error) {
@@ -184,6 +195,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to load widget activity' }, { status: 500 });
+        return activityJsonResponse({ error: 'Failed to load widget activity' }, { status: 500 });
     }
 });

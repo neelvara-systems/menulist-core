@@ -1,142 +1,70 @@
-# Answerlattice — AI Failure Escalation
+# Answerlattice - AI Failure Escalation
 
-> **Status:** COMPLETE — All 6 capability blocks implemented. Flag OFF by default.
-> **Version:** 1.0.0
+> **Status:** PARTIALLY ACTIVE - explicit widget support requests are implemented; automatic evaluator-driven suggestions remain disabled by default
+> **Version:** 2.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_AI_ESCALATION`
-> **Expansion Item:** #8 in `answerlattice-expansion-tracker.md`
-> **Tier:** A — Must exist for ICP adoption
+> **Last Updated:** 2026-07-18
+> **Feature Flag:** `ENABLE_ANSWERLATTICE_AI_ESCALATION` controls automatic failure evaluation only
 
----
+## Current Product Truth
 
-## What This Is
+Answerlattice has two distinct escalation paths:
 
-A controlled AI failure capture pipeline that detects when AI cannot reliably answer a user query, offers a structured escalation path to human support, and captures rich debugging context (retrieval logs, entity resolution trace, conversation transcript) to make the ticket immediately actionable.
+1. **Explicit widget support request - active when the widget is enabled.** A user can mark an answer as unresolved, provide a reply email, and create one idempotent support ticket from the stored widget search record.
+2. **Automatic AI-failure suggestion - implemented but rollout-gated.** `coreSearch()` can evaluate low-confidence, missing-evidence, repeated-failure, and explicit-intent signals, but the evaluator and its Help Chat UI remain off while `ENABLE_ANSWERLATTICE_AI_ESCALATION` is `false`.
 
-**This is NOT:**
+Feature 16 audits the active widget answer, feedback, and explicit fallback path. Feature 40 retains the separate audit of automatic evaluator behavior and rollout readiness.
 
-- A live chat handoff system (no real-time agent routing)
-- A generic ticketing system (that already exists)
-- A sentiment analysis engine (out of scope for v1)
+## Active Widget Flow
 
-**This IS:**
-
-- An escalation detection layer inside the search pipeline
-- A context-enriched ticket creation flow (AI failure → pre-filled ticket)
-- A debugging capture system for AI retrieval failures
-- A signal emitter that feeds the mutation engine (ticket → knowledge loop)
-
----
-
-## Position Inside Answerlattice
-
-```
-User Query
-    ↓
-coreSearch() — src/lib/search/searchCore.ts
-    ↓
-┌──────────────────────────────────────────┐
-│ Stage 4: Canonical Retrieval             │
-│ Stage 5: RAG Fallback                    │
-│ Stage 7: Answer Generation               │
-│                                          │
-│   → NEW: Escalation Detection Layer      │
-│     (confidence check, entity failure,   │
-│      repeated failure, explicit request) │
-│                                          │
-│   → Returns escalation metadata in       │
-│     CoreSearchResult                     │
-└──────────────────────────────────────────┘
-    ↓
-Frontend (help chat / widget)
-    ↓
-┌──────────────────────────────────────────┐
-│ Escalation UI                            │
-│ - "Still need help?" button              │
-│ - Pre-filled ticket modal                │
-│ - Context auto-attached                  │
-└──────────────────────────────────────────┘
-    ↓
-Ticket Created (existing ticket DAL)
-    ↓
-┌──────────────────────────────────────────┐
-│ Enrichments:                             │
-│ - escalationContext (retrieval debug,    │
-│   entity debug, product context)         │
-│ - knowledgeCandidate: true               │
-│ - source: 'ai_escalation'               │
-│ - ESCALATION signal emitted              │
-└──────────────────────────────────────────┘
-    ↓
-Mutation Engine (nightly batch)
-    ↓
-Knowledge Improvement
+```text
+Widget question
+-> authenticated and origin-authorized search
+-> canonical / FAQ / RAG answer or safe fallback
+-> bounded aiSearchHistory record
+-> user selects Solved or Still need help
+-> authoritative feedback acknowledgement
+-> user explicitly submits reply email and optional details
+-> deterministic support ticket transaction
+-> search-history linkage and unresolved outcome
+-> best-effort deterministic ESCALATION signal
 ```
 
----
+The active path:
 
-## Capability Blocks (6)
+- creates a normal asynchronous support ticket with `source: 'ai_escalation'` and `knowledgeCandidate: true`;
+- derives query, answer evidence, scope, and product context from the persisted widget search record rather than client-supplied debug fields;
+- rejects records outside the exact `AL + tId + sId + mountContext: widget` scope;
+- refuses escalation after the answer has been marked solved;
+- returns the existing deterministic ticket on a replay instead of creating duplicates;
+- does not auto-publish knowledge, promise a response time, send a notification, or provide live-agent routing.
 
-| #   | Capability                | Status     | Codebase Reality                                                                      |
-| --- | ------------------------- | ---------- | ------------------------------------------------------------------------------------- |
-| 43  | Escalation Trigger Logic  | 🟡 PARTIAL | `ESCALATION` signal type exists but is NEVER emitted. No triggers in search pipeline. |
-| 44  | Ticket Creation Interface | 🟡 PARTIAL | Full ticket CRUD exists. No AI-to-ticket flow.                                        |
-| 45  | Contextual Ticket Payload | 🔴 MISSING | `AnswerlatticeContextPayload` exists but not attached to tickets.                          |
-| 46  | Transcript Capture        | 🟡 PARTIAL | Conversations in `chatSessions`. Not linked to escalation tickets.                    |
-| 47  | Retrieval Log Capture     | 🔴 MISSING | Performance logs exist but no structured retrieval debug on tickets.                  |
-| 48  | Entity Match Debug Info   | 🔴 MISSING | Entity scoring is internal to retrieval. Not exposed for debugging.                   |
+## Automatic Evaluator Boundary
 
----
+The repository contains `escalationEvaluator.ts`, `escalationTypes.ts`, Help Center response projection, Help Chat ticket creation, and enriched ticket display. These paths require `ENABLE_ANSWERLATTICE_AI_ESCALATION` and are not a current public product promise while the flag is off.
 
-## Documents in This Folder
+## Privacy And Authority
 
-| File                                      | Audience        | Purpose                                        |
-| ----------------------------------------- | --------------- | ---------------------------------------------- |
-| `README.md`                               | Everyone        | Index, architecture overview, status           |
-| `ai-failure-escalation_spec.md`           | CEO/PM          | Business requirements, user stories            |
-| `ai-failure-escalation_impl.md`           | Developers      | Technical blueprint, data model, API contracts |
-| `ai-failure-escalation_firebase.md`       | Developers      | Firestore operations, cost analysis            |
-| `ai-failure-escalation_marketing.md`      | Sales/Marketing | Pitch deck, competitive positioning            |
-| `ai-failure-escalation_website.md`        | Public          | Landing page content                           |
-| `ai-failure-escalation_helpdoc.md`        | Customers       | Help documentation                             |
-| `ai-failure-escalation_mobile-support.md` | Developers      | Mobile admission test + assessment             |
+- Public widget callers cannot submit retrieval logs, entity traces, tenant IDs, source URLs, or arbitrary ticket fields.
+- The server reads bounded evidence already stored by the widget search runtime.
+- Public citations are projected through the public citation boundary; unsafe or private URLs are omitted.
+- Historical tickets and escalation signals are evidence for review, not approved truth.
+- Signal creation is non-blocking and cannot make ticket creation appear to fail after the ticket is persisted.
 
----
+## Non-Goals
 
-## Key Architecture Decisions
+- live chat or workforce routing;
+- automatic account actions;
+- auto-approval or auto-publication of answers;
+- guaranteed response or resolution time;
+- unrestricted transcript, DOM, screenshot, or private-source capture;
+- using escalation volume or lack of escalation as proof of resolution.
 
-1. **Inline storage, not Cloud Storage** — At Answerlattice's scale, escalation debug data (~800 bytes) fits inline on the ticket document. No Cloud Storage buckets needed.
-2. **Reuse existing ticket system** — No new collection for escalation tickets. Enriched `SupportTicketType` with `escalationContext` field.
-3. **Fire-and-forget signal emission** — Same pattern as ticket creation signals. Non-blocking.
-4. **No Pub/Sub** — Answerlattice uses direct Firestore writes. No GCP message queue infrastructure.
-5. **No live agent routing** — Answerlattice is async-first. Tickets go to founder inbox.
-6. **Retrieval debug only on escalation** — Do NOT log retrieval debug for every query. Only when escalation triggers.
-7. **14-day debug data lifecycle** — Retrieval logs and entity debug are useful for debugging, not permanent records.
+## Verification
 
----
+- `npm run test:answerlattice-widget-answer-contracts`
+- `npm run test:answerlattice-widget-escalation:emulator`
+- `npm run verify:answerlattice-feedback-boundary`
+- `npm run verify:answerlattice-runtime-truth`
 
-## Dependencies
-
-- Existing: `coreSearch()` pipeline, ticket DAL, `emitAnswerlatticeSignal()`, `AnswerlatticeContextPayload`
-- Requires: `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS` (for canonical confidence)
-- Feeds: System 9 (Ticket → Knowledge Loop) via `knowledgeCandidate` tag
-
----
-
-## ChatGPT Accuracy Assessment
-
-| Claim                            | Accuracy | Notes                                                           |
-| -------------------------------- | -------- | --------------------------------------------------------------- |
-| Multi-signal escalation triggers | ✅ 90%   | Valid. 5 trigger types confirmed by industry research.          |
-| Pub/Sub event architecture       | ❌ 20%   | Wrong for Answerlattice. We use fire-and-forget Firestore writes.    |
-| Cloud Storage for transcripts    | ❌ 30%   | Overkill. Conversations already in chatSessions.                |
-| Cloud Storage for retrieval logs | ❌ 30%   | Overkill at Answerlattice scale. Inline on ticket is sufficient.     |
-| Pre-filled structured tickets    | ✅ 95%   | Core insight. This is exactly what developers need.             |
-| "< 2 seconds" latency target     | ❌ 10%   | Not applicable. Answerlattice is async, not live handoff.            |
-| `knowledgeCandidate` tagging     | ✅ 100%  | Excellent. Direct feed to System 9 (Ticket → Knowledge).        |
-| Entity debug info inline         | ✅ 85%   | Correct decision to store inline (small payload).               |
-| 100K convos/day scale model      | ❌ 15%   | Answerlattice is orders of magnitude smaller. Cost model irrelevant. |
-
-**Overall ChatGPT accuracy for System 8: ~55%**
-Core concepts valid. Infrastructure suggestions wrong for Answerlattice's architecture and scale.
+Hosted allowed-origin, denied-origin, real inbox handling, and measured customer-resolution evidence remain external validation work.

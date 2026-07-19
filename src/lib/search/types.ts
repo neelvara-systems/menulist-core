@@ -12,7 +12,9 @@ import type { ValidatedContextPayload } from '@lib/validation/contextSchema';
 import type {
     AnswerlatticeCanonicalAnswer,
     AnswerlatticeEntitySearchIndex,
+    AnswerlatticePublicCitation,
     AnswerlatticeRelease,
+    AnswerlatticeScopeClarification,
 } from '@type/answerlattice';
 
 // ===== MOUNT CONTEXT =====
@@ -93,8 +95,6 @@ export interface CoreSearchInput {
         evidenceLinks?: Array<{ url: string; label?: string }>;
     };
 
-    /** Number of previous low-confidence results in this chat session (for S3 repeated failure trigger) */
-    sessionFailureCount?: number;
 }
 
 // ===== CORE SEARCH OUTPUT =====
@@ -105,6 +105,9 @@ export interface CoreSearchResult {
 
     /** KB article references (full objects with similarityScore) */
     references: any[];
+
+    /** Reviewer-approved public citations attached to a canonical answer. */
+    citations?: AnswerlatticePublicCitation[];
 
     /** Context-aware related content resolved from Answerlattice Product Surfaces */
     relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem;
@@ -143,6 +146,12 @@ export interface CoreSearchResult {
 
     /** Confidence level (canonical hits only) */
     confidence?: 'high' | 'medium' | 'low' | 'none';
+
+    /** Safe deterministic reason when the final result abstains. */
+    fallbackReason?: string;
+
+    /** Structured context request when a scoped answer cannot be selected safely. */
+    clarification?: AnswerlatticeScopeClarification;
 
     /** Answer type: explanation, procedure, etc. */
     answerType?: string;

@@ -31,13 +31,13 @@ import { PRODUCT_IDS, ProductId } from '@constant/product';
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { isOwnerNotificationTrigger } from '@data/shared/ownerNotificationRegistry';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
+import nodemailer, { type Transporter } from '@lib/email/nodemailerRuntime';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureLog } from '@lib/security/secureLogger';
 import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
-import * as nodemailer from 'nodemailer';
 import { claimNotificationDelivery, finalizeNotificationDelivery } from './deliveryClaim';
 import { getSmtpConfigFromEnv, isSmtpConfigured } from './smtpConfig';
 import {
@@ -81,7 +81,7 @@ type NotificationLogTarget = {
 // SMTP TRANSPORT (reuses same pattern as lifecycle messaging)
 // ================================================================
 
-let cachedTransporter: nodemailer.Transporter | null = null;
+let cachedTransporter: Transporter | null = null;
 
 export function isNotificationSmtpConfigured(): boolean {
     return isSmtpConfigured();
@@ -130,7 +130,7 @@ function getSafeLogId(eventType: string, referenceId: string): string {
     return `${eventKey}_${hash}`;
 }
 
-function getTransporter(): nodemailer.Transporter | null {
+function getTransporter(): Transporter | null {
     if (cachedTransporter) return cachedTransporter;
     const smtpConfig = getSmtpConfigFromEnv();
     if (!smtpConfig) return null;

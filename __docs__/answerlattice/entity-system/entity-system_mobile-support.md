@@ -1,6 +1,6 @@
 # Entity System — Mobile Support Assessment
 
-> **Version:** 2.0.0
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Engineering
 
@@ -31,7 +31,7 @@ The **end-user side** uses the same server retrieval contract on mobile and desk
 
 ## Mobile Impact: NONE
 
-No mobile screens needed. No mobile components affected. All 6 enhancements are:
+No mobile-shell screen is needed. The desktop governance route retains narrow-width modal/table safeguards, but merge and relation review remain deliberate desktop work. The audited capabilities are:
 - Backend logic changes (extraction, retrieval)
 - Type additions (additive fields)
 - Admin governance UI (desktop-only)

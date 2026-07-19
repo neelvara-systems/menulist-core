@@ -1,6 +1,6 @@
 # Maps Place Check - Firebase Cost Tracking
 
-**Status:** Backend prototype
+**Status:** Guarded backend and embedded confirmation contract complete
 **Default flag:** Off
 
 ## Current Runtime Cost
@@ -14,7 +14,19 @@
 | Storage operations | 0 | None |
 | Upstash rate-limit operations | 1 sliding-window pipeline | Existing Functions rate limiter |
 | Gemini provider calls | 1 | Uses Google Maps grounding tool |
-| Google Maps grounded prompts | 0 or 1 billable grounded result | Charged only when provider returns a Maps-grounded result under current provider rules |
+| Google Maps grounded searches | 0 to multiple per prompt | [Current Gemini Maps-grounding billing](https://ai.google.dev/gemini-api/docs/maps-grounding) is per search query the model executes; one prompt can invoke multiple searches. |
+
+## Confirmation Cost
+
+| Owner action | Additional reads | Writes | Notes |
+| --- | ---: | ---: | --- |
+| Save/remove existing Official Page Google Maps link | 0 | 0 additional | The internal URI binding is mirrored inside the existing store write. |
+| Explicitly confirm a grounded Place-ID candidate | 1 transaction read | 1 | Rechecks exact tenant/store identity plus active, deleted, and block state before writing one nested Google Maps binding. |
+| Remove a confirmed provider binding | 1 transaction read | 1 | Rechecks the same store boundary and deletes only that provider binding. |
+
+No collection, index, Storage object, summary document, scheduled job, or
+provider-history document was added. Identity-only confirmation does not change
+public output and therefore does not trigger a public cache refill.
 
 ## Cost Guardrails
 
@@ -31,12 +43,25 @@
 
 ## Storage Policy
 
-The prototype writes nothing. A future confirmation flow may store only:
+The provider check writes nothing. The separate owner-confirmation flow may
+store only:
 
-- `googleMapsPlaceId`
-- normalized Google Maps URI
-- `lastMapsPlaceCheckAt`
-- owner/admin confirmation status
+- schema version
+- provider name
+- provider location ID when a stable ID was returned
+- normalized provider URI
+- owner-confirmed status, source, and confirmation time
+
+There is no migration or bulk backfill. Existing Google Maps links remain
+unchanged and gain the internal URI binding only on their next explicit owner
+save. A URI-only binding does not claim a resolved Google Place ID.
+
+Valid Place IDs are stored without truncation up to a 2,048-character
+application safety ceiling. [Google documents that Place IDs have no maximum
+length, can change, and should be refreshed when older than 12
+months](https://developers.google.com/maps/documentation/places/web-service/place-id).
+MenuList derives that future freshness decision from `confirmedAt`; it does not
+add a scheduled refresh while the provider path remains disabled.
 
 Owner-confirmed canonical fields require a separate write path and public cache invalidation.
 

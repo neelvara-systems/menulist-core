@@ -29,6 +29,8 @@ const EVIDENCE_PATH = path.resolve(readArgument('--evidence=') || DEFAULT_EVIDEN
 const WRITE = process.argv.includes('--write');
 const MAX_TRANSLATION_LENGTH_RATIO = 2.5;
 const MIN_TRANSLATION_LENGTH_RATIO = 0.18;
+const SENTENCE_BOUNDARY_PATTERN = /(?:[.!?。！？؟]+|…+)(?:\s+|$)/gu;
+const LEAKED_PROVIDER_PLACEHOLDER_PATTERN = /(?:%\s*\d+\s*\$\s*[sS]|\$\s*%\s*\d+\s*\$?\s*[sS]?)/u;
 
 const INDICTRANS_TARGETS = Object.freeze({
   'as-IN': 'asm_Beng',
@@ -135,6 +137,81 @@ const QUALITY_MANUAL_OVERRIDES = Object.freeze({
   'fil-PH:BusinessSettings.addCustomBusinessAttribute': 'Magdagdag ng custom na katangian',
   'fil-PH:Billing.cancellationReasons.missing_functionality': 'Kulang ang kakayahang kailangan ko',
   'fil-PH:MobileUsers.staffCreated': 'Nalikha ang miyembro ng staff',
+  'fr-FR:BusinessSettings.publicCustomer.menu.messageBusiness': 'Envoyer un message à {businessName}',
+  'fr-FR:BusinessSettings.publicCustomer.menu.expressMinutes': 'Service express en {minutes} min',
+  'fr-FR:BusinessSettings.publicCustomer.menu.expressMinutesSession': 'Séance express de {minutes} min',
+  'fr-FR:BusinessSettings.publicCustomer.menu.manySections': '{count} sections',
+  'de-DE:BusinessSettings.publicCustomer.menu.protein': 'Eiweiß {value} g',
+  'id-ID:BusinessSettings.publicCustomer.menu.metadataMenuTitle': 'Menu {businessName}',
+  'id-ID:BusinessSettings.publicCustomer.menu.protein': 'Protein: {value} g',
+  'vi-VN:BusinessSettings.publicCustomer.menu.metadataMenuTitle': 'Thực đơn {businessName}',
+  'vi-VN:BusinessSettings.publicCustomer.menu.protein': 'Chất đạm {value} g',
+  'tr-TR:BusinessSettings.publicCustomer.menu.businessInformation': 'İşletme bilgileri',
+  'tr-TR:BusinessSettings.publicCustomer.menu.protein': 'Protein miktarı: {value} g',
+  'ms-MY:BusinessSettings.publicCustomer.menu.metadataMenuTitle': 'Menu {businessName}',
+  'ms-MY:BusinessSettings.publicCustomer.menu.protein': 'Protein: {value} g',
+  'cs-CZ:BusinessSettings.publicCustomer.menu.protein': 'Bílkoviny {value} g',
+  'cs-CZ:BusinessSettings.publicCustomer.menu.expressMinutes': 'Expresně za {minutes} min',
+  'sv-SE:BusinessSettings.publicCustomer.menu.updatedMinuteAgo': 'uppdaterad för 1 minut sedan',
+  'sv-SE:BusinessSettings.publicCustomer.menu.protein': 'Proteininnehåll {value} g',
+  'sv-SE:BusinessSettings.publicCustomer.menu.expressMinutesSession': 'Expressession på {minutes} min',
+  'da-DK:BusinessSettings.publicCustomer.menu.protein': 'Proteinindhold {value} g',
+  'fi-FI:BusinessSettings.publicCustomer.menu.expressMinutes': 'Pikapalvelu {minutes} min',
+  'sw-KE:BusinessSettings.publicCustomer.feedback.addOptionalNote': 'Ongeza ujumbe ukitaka',
+  'ar-SA:BusinessSettings.publicCustomer.menu.spice': 'درجة التوابل: {value}',
+  'mr-IN:BusinessSettings.publicCustomer.feedback.taglineAndNote': '{tagline} तुमची नोंद थेट {team} कडे जाते.',
+  'id-ID:BusinessSettings.publicCustomer.menu.expressMinutesSession': 'Sesi ekspres {minutes} menit',
+  'el-GR:BusinessSettings.publicCustomer.menu.redirectingIn': 'Ανακατεύθυνση σε {count} δευτ.…',
+  'el-GR:BusinessSettings.publicCustomer.menu.metadataMenuDescription': 'Δείτε το ψηφιακό μενού του {businessName}.',
+  'el-GR:BusinessSettings.publicCustomer.menu.termsConditionsDescription': 'Όροι και προϋποθέσεις για το {businessName}.',
+  'el-GR:BusinessSettings.publicCustomer.menu.refundCancellationPolicyDescription': 'Πολιτική επιστροφών χρημάτων και ακυρώσεων για το {businessName}.',
+  'el-GR:BusinessSettings.publicCustomer.feedback.noteToTeam': 'Η σημείωσή σας πηγαίνει απευθείας στην ομάδα {team}.',
+  'fil-PH:BusinessSettings.publicCustomer.menu.businessHome': 'Pangunahing pahina ng {businessName}',
+  'he-IL:BusinessSettings.publicCustomer.menu.termsConditionsDescription': 'תנאים והגבלות עבור {businessName}.',
+  'brx-IN:BusinessSettings.publicCustomer.menu.nonVeg': 'नन-भेजिटेरियान',
+  'brx-IN:BusinessSettings.publicCustomer.menu.followSafariSteps': 'Safari आव बे 3 आगानफोरखौ फालिनः',
+  'brx-IN:BusinessSettings.publicCustomer.menu.safariShareStep': 'Safari नि गाहायाव थानाय शेयर बटनखौ टेप खालाम।',
+  'ks-IN:BusinessSettings.publicCustomer.menu.itemInCategoryAt': '{categoryName} منز {itemName}، {businessName} پؠٹھ دستیاب۔',
+  'ks-IN:BusinessSettings.publicCustomer.menu.followSafariSteps': 'Safari منز کٔرو یم ترٛیٚن مرحلہٕ اختیار:',
+  'ks-IN:BusinessSettings.publicCustomer.menu.safariShareStep': 'Safari کس بۄنس حصس منٛز چھو شیئر بٹن پؠٹھ ٹیپ کٔرو۔',
+  'mni-IN:BusinessSettings.publicCustomer.common.team': 'ꯇꯤꯝ',
+  'mni-IN:BusinessSettings.publicCustomer.menu.today': 'ꯉꯁꯤ',
+  'hu-HU:BusinessSettings.publicCustomer.menu.mostBooked': 'Gyakran foglalják',
+  'sw-KE:BusinessSettings.publicCustomer.menu.mostBooked': 'Huwekwa nafasi mara kwa mara',
+  'sw-KE:BusinessSettings.publicCustomer.menu.expressMinutesSession': 'Kipindi cha haraka cha dakika {minutes}',
+  'sw-KE:BusinessSettings.publicCustomer.menu.tempOpeningLate': 'Inafunguliwa baadaye kuliko kawaida leo',
+  'sw-KE:BusinessSettings.publicCustomer.feedback.privateFeedback': 'Maoni ya faragha ambayo biashara pekee inaweza kuona',
+  'sw-KE:BusinessSettings.publicCustomer.feedback.leaveGoogleReview': 'Andika maoni kwenye Google',
+  'as-IN:BusinessSettings.publicCustomer.menu.searchProductsPlaceholder': 'সামগ্ৰী বিচাৰক...',
+  'da-DK:BusinessSettings.publicCustomer.menu.reserve': 'Reservér',
+  'da-DK:BusinessSettings.publicCustomer.menu.live': 'Live',
+  'da-DK:BusinessSettings.publicCustomer.menu.spiceMedium': 'Mellemstærk',
+  'da-DK:BusinessSettings.publicCustomer.menu.expressMinutes': 'Ekspres {minutes} min',
+  'de-DE:BusinessSettings.publicCustomer.menu.spiceMild': 'Mild',
+  'el-GR:BusinessSettings.publicCustomer.menu.bestSeller': 'Κορυφαίο σε πωλήσεις',
+  'el-GR:BusinessSettings.publicCustomer.menu.expressMinutes': 'Express {minutes} λεπτά',
+  'fi-FI:BusinessSettings.publicCustomer.common.business': 'Yritys',
+  'fil-PH:BusinessSettings.publicCustomer.menu.reserve': 'Magpareserba',
+  'fil-PH:BusinessSettings.publicCustomer.menu.refund': 'Pagsasauli ng bayad',
+  'fil-PH:BusinessSettings.publicCustomer.menu.soldOut': 'Ubos na',
+  'fil-PH:BusinessSettings.publicCustomer.menu.outOfStock': 'Wala nang stock',
+  'fil-PH:BusinessSettings.publicCustomer.menu.carbs': 'Carbohydrate {value}g',
+  'fil-PH:BusinessSettings.publicCustomer.menu.warranty': 'Garantiya: {value}',
+  'fil-PH:BusinessSettings.publicCustomer.feedback.starRating': '{count}-star na rating',
+  'id-ID:BusinessSettings.publicCustomer.menu.nonVeg': 'Bukan vegetarian',
+  'it-IT:BusinessSettings.publicCustomer.menu.calories': '{count} cal',
+  'ja-JP:BusinessSettings.publicCustomer.menu.serving': '1食分: {value}',
+  'mni-IN:BusinessSettings.publicCustomer.menu.hoursShort': '{count} ꯄꯨꯡ',
+  'ms-MY:BusinessSettings.publicCustomer.menu.bestSeller': 'Paling laris',
+  'sv-SE:BusinessSettings.publicCustomer.common.business': 'Företag',
+  'sv-SE:BusinessSettings.publicCustomer.common.feedback': 'Feedback',
+  'sv-SE:BusinessSettings.publicCustomer.menu.policy': 'Policy',
+  'sv-SE:BusinessSettings.publicCustomer.menu.live': 'Live',
+  'sv-SE:BusinessSettings.publicCustomer.feedback.pageTitle': 'Feedback',
+  'sw-KE:BusinessSettings.publicCustomer.menu.calories': 'Kalori {count}',
+  'sw-KE:BusinessSettings.publicCustomer.menu.expressMinutes': 'Huduma ya haraka ya dakika {minutes}',
+  'or-IN:BusinessSettings.publicCustomer.feedback.privateFeedbackHelp': 'କୌଣସି କାର୍ଯ୍ୟ ଆବଶ୍ୟକ ନାହିଁ। ଆପଣଙ୍କ ବାର୍ତ୍ତା କେବଳ ବ୍ୟବସାୟ ପାଖରେ ରହିବ।',
+  'ks-IN:BusinessSettings.publicCustomer.common.poweredByMenuList': 'MenuList ذریعہٕ چلن والہٕ',
 });
 const QUALITY_MANUAL_SOURCE_OVERRIDES = Object.freeze({
   'es-ES::Saving...': 'Guardando...',
@@ -202,6 +279,71 @@ const QUALITY_MANUAL_SOURCE_OVERRIDES = Object.freeze({
   'sw-KE::Google Maps Link': 'Kiungo cha Google Maps',
   'sw-KE::Saving...': 'Inahifadhi...',
   'sw-KE::Yesterday · {count} {scans}': 'Jana · {count} {scans}',
+  'cs-CZ::{businessName} | Menu': '{businessName} | Menu',
+  'cs-CZ::{count} min': '{count} min',
+  'cs-CZ::Menu': 'Menu',
+  'da-DK::Feedback': 'Feedback',
+  'da-DK::{businessName} | Menu': '{businessName} | Menu',
+  'da-DK::Mild': 'Mild',
+  'da-DK::{count} min': '{count} min',
+  'da-DK::Protein {value}g': 'Protein {value}g',
+  'da-DK::Menu': 'Menu',
+  'de-DE::Option': 'Option',
+  'de-DE::{count} min': '{count} min',
+  'de-DE::Protein {value}g': 'Protein {value}g',
+  'de-DE::Express {minutes} min': 'Express {minutes} min',
+  'de-DE::Name': 'Name',
+  'fi-FI::{count} min': '{count} min',
+  'fil-PH::Feedback': 'Feedback',
+  'fil-PH::Rating': 'Rating',
+  'fil-PH::{businessName} | Menu': '{businessName} | Menu',
+  'fil-PH::Vegetarian': 'Vegetarian',
+  'fil-PH::{count} min': '{count} min',
+  'fil-PH::{count} cal': '{count} cal',
+  'fil-PH::Menu': 'Menu',
+  'fil-PH::Catalog': 'Catalog',
+  'fil-PH::Email address': 'Email address',
+  'fr-FR::Sections': 'Sections',
+  'fr-FR::Excellent': 'Excellent',
+  'hu-HU::{count} min': '{count} min',
+  'id-ID::Protein {value}g': 'Protein {value}g',
+  'it-IT::Feedback': 'Feedback',
+  'it-IT::Privacy': 'Privacy',
+  'it-IT::{count} min': '{count} min',
+  'ms-MY::{businessName} | Menu': '{businessName} | Menu',
+  'ms-MY::Popular': 'Popular',
+  'ms-MY::Vegetarian': 'Vegetarian',
+  'ms-MY::item': 'item',
+  'ms-MY::{count} min': '{count} min',
+  'ms-MY::Protein {value}g': 'Protein {value}g',
+  'ms-MY::Menu': 'Menu',
+  'nl-NL::Feedback': 'Feedback',
+  'nl-NL::Privacy': 'Privacy',
+  'nl-NL::Mild': 'Mild',
+  'nl-NL::{count} min': '{count} min',
+  'nl-NL::{count} cal': '{count} cal',
+  'nl-NL::Express {minutes} min': 'Express {minutes} min',
+  'pl-PL::{businessName} | Menu': '{businessName} | Menu',
+  'pl-PL::Menu': 'Menu',
+  'pt-BR::{businessName} | Menu': '{businessName} | Menu',
+  'pt-BR::Popular': 'Popular',
+  'pt-BR::item': 'item',
+  'pt-BR::{count} cal': '{count} cal',
+  'pt-BR::Menu': 'Menu',
+  'ro-RO::Feedback': 'Feedback',
+  'ro-RO::Popular': 'Popular',
+  'ro-RO::Vegetarian': 'Vegetarian',
+  'ro-RO::Non-vegetarian': 'Non-vegetarian',
+  'ro-RO::{count} min': '{count} min',
+  'ro-RO::{count} cal': '{count} cal',
+  'ro-RO::Catalog': 'Catalog',
+  'sv-SE::Mild': 'Mild',
+  'sv-SE::Medium': 'Medium',
+  'sv-SE::{count} min': '{count} min',
+  'sv-SE::Protein {value}g': 'Protein {value}g',
+  'sv-SE::Express {minutes} min': 'Express {minutes} min',
+  'tr-TR::{count} cal': '{count} cal',
+  'tr-TR::Protein {value}g': 'Protein {value}g',
 });
 
 function readArgument(prefix) {
@@ -589,6 +731,19 @@ function translationLengthRatio(source, translated) {
   return [...translated].length / Math.max(1, [...source].length);
 }
 
+function sentenceBoundaryCount(value) {
+  return (value.match(SENTENCE_BOUNDARY_PATTERN) || []).length;
+}
+
+function hasUnexpectedSentenceExpansion(sourceValue, translatedValue) {
+  return sentenceBoundaryCount(sourceValue) <= 1
+    && sentenceBoundaryCount(translatedValue) >= 2;
+}
+
+function hasLeakedProviderPlaceholder(value) {
+  return LEAKED_PROVIDER_PLACEHOLDER_PATTERN.test(value);
+}
+
 function buildQualityPayload(locales, sourceOwner) {
   const units = new Map();
   const plans = new Map();
@@ -611,6 +766,7 @@ function buildQualityPayload(locales, sourceOwner) {
 
     for (const [key, sourceValue] of sourceOwner) {
       const currentValue = getByPath(messages, key);
+      const isPublicCustomerKey = key.startsWith('BusinessSettings.publicCustomer.');
       const lengthRatio = typeof currentValue === 'string'
         ? translationLengthRatio(sourceValue, currentValue)
         : 1;
@@ -618,11 +774,24 @@ function buildQualityPayload(locales, sourceOwner) {
         && /[A-Za-z]/.test(sourceValue)
         && !isProtectedInvariant(sourceValue)
         && !isReviewedExactOverride(locale, key, sourceValue);
+      const unexpectedSentenceExpansion = isPublicCustomerKey
+        && typeof currentValue === 'string'
+        && hasUnexpectedSentenceExpansion(sourceValue, currentValue);
+      const leakedProviderPlaceholder = isPublicCustomerKey
+        && typeof currentValue === 'string'
+        && hasLeakedProviderPlaceholder(currentValue);
       if (
         typeof currentValue !== 'string'
-        || (!untranslatedResidue && [...sourceValue].length < 20)
         || (
           !untranslatedResidue
+          && !unexpectedSentenceExpansion
+          && !leakedProviderPlaceholder
+          && [...sourceValue].length < 20
+        )
+        || (
+          !untranslatedResidue
+          && !unexpectedSentenceExpansion
+          && !leakedProviderPlaceholder
           &&
           lengthRatio >= MIN_TRANSLATION_LENGTH_RATIO
           && lengthRatio <= MAX_TRANSLATION_LENGTH_RATIO
@@ -664,7 +833,7 @@ function buildQualityPayload(locales, sourceOwner) {
     sourceOwnerSha256: mapDigest(sourceOwner),
     providers: providerMetadata(),
     qualityPolicy: {
-      trigger: `translated/source Unicode length ratio outside ${MIN_TRANSLATION_LENGTH_RATIO}-${MAX_TRANSLATION_LENGTH_RATIO} or exact non-invariant English residue`,
+      trigger: `translated/source Unicode length ratio outside ${MIN_TRANSLATION_LENGTH_RATIO}-${MAX_TRANSLATION_LENGTH_RATIO}, exact non-invariant English residue, unexpected extra sentence, or leaked provider placeholder`,
       generation: 'beam search plus token-preserving segment fallback',
     },
     locales: localePayloads,
@@ -742,6 +911,8 @@ function isValidQualityCandidate(sourceValue, candidate) {
     typeof candidate !== 'string'
     || !candidate.trim()
     || candidate.includes('\uFFFD')
+    || hasUnexpectedSentenceExpansion(sourceValue, candidate)
+    || hasLeakedProviderPlaceholder(candidate)
     || (candidate === sourceValue && !isProtectedInvariant(sourceValue))
   ) {
     return false;
@@ -907,7 +1078,7 @@ function applyQualityResults(locales, sourceOwner, results) {
     manualOverridesApplied:
       (previousQualityRepair.manualOverridesApplied || 0) + manualOverridesApplied,
     lastPassRepairedValues: repairedValues,
-    trigger: `translated/source Unicode length ratio outside ${MIN_TRANSLATION_LENGTH_RATIO}-${MAX_TRANSLATION_LENGTH_RATIO} or exact non-invariant English residue`,
+    trigger: `translated/source Unicode length ratio outside ${MIN_TRANSLATION_LENGTH_RATIO}-${MAX_TRANSLATION_LENGTH_RATIO}, exact non-invariant English residue, unexpected extra sentence, or leaked provider placeholder`,
     generation: 'provider beam search with token-preserving segment fallback; bounded first-complete-message fallback',
   };
   evidence.qualityGates = [
@@ -916,6 +1087,8 @@ function applyQualityResults(locales, sourceOwner, results) {
       `Translated/source Unicode length ratio at most ${MAX_TRANSLATION_LENGTH_RATIO} for source messages of 20 or more characters`,
       `Translated/source Unicode length ratio at least ${MIN_TRANSLATION_LENGTH_RATIO} for source messages of 20 or more characters`,
       'Exact English source values are limited to approved protected invariants',
+      'Single-sentence source messages do not gain unrelated extra sentences',
+      'Provider placeholders cannot leak into rendered locale values',
     ]),
   ];
 

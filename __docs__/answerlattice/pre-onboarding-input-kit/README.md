@@ -24,6 +24,8 @@ The MenuList onboarding package is the reference coverage example. It is not the
 - Not a legal/security approval process.
 - Not a requirement that customers expose private production data.
 - Not a guarantee that every AI IDE can inspect every private repo, login-only app, website, recording, or local file.
+- Not permission to process private sources in an unapproved AI tool.
+- Not a path for tickets or repeated replies to become approved truth automatically.
 
 ## Why This Matters
 
@@ -87,6 +89,8 @@ The output quality depends on:
 - whether the owner reviews and corrects the generated package before upload.
 
 If a source cannot be inspected, the agent must mark it as pending or unavailable. It must not claim full coverage for blocked sources.
+
+For each source, the package records authority, approval status, access scope, citation eligibility, applicability, and conflicts. Private sources require owner permission for the selected AI tool and cannot be marked for public citation. Support records remain signals until their facts are verified against an authoritative source or approved by the owner.
 
 ## Public Surfaces
 
@@ -162,3 +166,4 @@ Expected flow:
 | 2026-05-31 | Added explicit source-access, AI IDE capability, and no-guarantee safety boundaries. |
 | 2026-05-31 | Added in-page prompt modal with copy-to-clipboard and Markdown download actions. |
 | 2026-05-31 | Promoted `/pre-onboarding` as the main public entry across header, homepage, resources, get-started, mobile navigation, and footer. |
+| 2026-07-19 | Aligned generated payloads with the strict Knowledge Intake API, added source authority/conflict and private-source permission contracts, and hardened Markdown responses plus dialog focus behavior. |

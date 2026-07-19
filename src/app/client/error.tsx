@@ -12,8 +12,13 @@
  */
 
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from "@lib/localization/publicCustomerMessages";
 import { secureError } from "@lib/security/secureLogger";
 import { useEffect, useState } from "react";
+import { LuTriangle } from "react-icons/lu";
 
 const buildClientMenuErrorLogContext = (error: Error & { digest?: string }) => {
     const digest = String(error.digest ?? "").trim();
@@ -33,6 +38,7 @@ export default function ClientMenuError({
     reset: () => void;
 }) {
     const [isRetrying, setIsRetrying] = useState(false);
+    const [activeLanguage, setActiveLanguage] = useState('en');
 
     useEffect(() => {
         secureError(
@@ -41,6 +47,19 @@ export default function ClientMenuError({
             buildClientMenuErrorLogContext(error),
         );
     }, [error]);
+
+    useEffect(() => {
+        const requestedLanguage = new URLSearchParams(window.location.search).get('lang');
+        if (requestedLanguage) setActiveLanguage(requestedLanguage);
+    }, []);
+
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
+    const pageTitle = t('menu.temporarilyUnavailable');
+
+    useEffect(() => {
+        document.title = pageTitle;
+    }, [pageTitle]);
 
     const handleRetry = () => {
         setIsRetrying(true);
@@ -53,6 +72,8 @@ export default function ClientMenuError({
 
     return (
         <div
+            dir={direction}
+            lang={activeLanguage}
             style={{
                 minHeight: "100vh",
                 display: "flex",
@@ -77,10 +98,11 @@ export default function ClientMenuError({
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "20px",
-                    fontSize: "28px",
+                    color: "#e65100",
                 }}
+                aria-hidden="true"
             >
-                ⚠️
+                <LuTriangle size={28} />
             </div>
 
             <h1
@@ -91,7 +113,7 @@ export default function ClientMenuError({
                     color: "#1a1a1a",
                 }}
             >
-                Menu temporarily unavailable
+                {pageTitle}
             </h1>
 
             <p
@@ -103,8 +125,7 @@ export default function ClientMenuError({
                     lineHeight: 1.5,
                 }}
             >
-                We&apos;re having trouble loading this menu right now. Please try
-                again — it usually works on the next attempt.
+                {t('menu.loadingTrouble')}
             </p>
 
             <button
@@ -123,12 +144,12 @@ export default function ClientMenuError({
                     transition: "background 0.2s",
                 }}
             >
-                {isRetrying ? "Retrying..." : "Try Again"}
+                {isRetrying ? t('menu.retrying') : t('menu.tryAgain')}
             </button>
 
             <ErrorReportButton
                 error={error}
-                label="Report this issue"
+                label={t('menu.reportThisIssue')}
                 source="client-menu-error-boundary"
                 style={{
                     color: "#333",
@@ -143,7 +164,7 @@ export default function ClientMenuError({
                     margin: 0,
                 }}
             >
-                If this keeps happening, please ask your server for assistance.
+                {t('menu.askServerAssistance')}
             </p>
         </div>
     );

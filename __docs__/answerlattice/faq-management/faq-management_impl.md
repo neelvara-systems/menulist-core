@@ -26,9 +26,9 @@ When an existing KB article title/content changes, `src/database/knowledgeBase/a
 
 FAQ save/archive and KB article create/update/delete/bulk-status also append the KB cache-version, compiled source-version, and bundle-stale writes to that same transaction. No cache entry can be stamped with a new source version before old content changes, and no acknowledged content mutation can omit its durable invalidation markers.
 
-Answerlattice FAQ article reference ID boundary: `src/lib/answerlattice/faqRetrieval.ts` normalizes linked `faq.articleId` values through the KB article ID boundary before returning a related article reference or reading the full article document. Malformed linked article IDs are skipped before Firestore refs are built.
+Answerlattice FAQ article reference ID boundary: `src/lib/answerlattice/faqRetrieval.ts` normalizes linked `faq.articleId` values through the KB article ID boundary before reading the article document. A reference is returned only when the article still exists, belongs to the exact Answerlattice workspace, and is active/published. Malformed, missing, draft, inactive, or cross-scope article links produce no citation.
 
-Answerlattice App FAQ ID Boundary: `src/lib/answerlattice/faqContent.ts` validates optional saved/generated FAQ IDs, linked article IDs, generated-from article IDs, and canonical answer links before durable FAQ save payloads are composed. `src/database/answerlattice/faqs.ts` rechecks FAQ IDs and KB article IDs before FAQ document refs, linked article mirror refs, article-scoped FAQ queries, archive action refs, feedback transactions, and FAQ cache-version source IDs. Malformed FAQ or article IDs fail or return zero maintenance updates before Firestore document access.
+Answerlattice App FAQ ID Boundary: `src/lib/answerlattice/faqContent.ts` validates optional saved/generated FAQ IDs and linked article IDs before durable authoring payloads are composed. The strict authoring schema does not admit source, counters, canonical linkage, generation jobs, or intake lineage. `src/database/answerlattice/faqs.ts` rechecks FAQ and article IDs before FAQ refs, mirror refs, article-scoped queries, archive actions, and cache-version source IDs. The content-feedback DAL independently normalizes FAQ IDs before the authenticated server route.
 
 The shared `functions/src/logic/publishApprovedJob.ts` mirrors the FAQ publishing behavior for shared/local function use.
 
@@ -38,17 +38,19 @@ The shared `functions/src/logic/publishApprovedJob.ts` mirrors the FAQ publishin
 
 Tabs:
 
-- Answer: question, answer, status, source, display order.
+- Answer: question, answer, status, display order.
 - Connections: article, product surfaces, entities, tags.
-- Review: likes, dislikes, last reviewed.
+- Review: likes, dislikes, last reviewed, review requested, read-only origin, and the newest bounded reaction details.
 
-Saving a FAQ validates the stored FAQ scope and every previous/next linked article, then updates the FAQ and existing article `faqIds` mirrors in one transaction. Missing or cross-workspace article links fail; the DAL never creates a skeletal article from a FAQ mirror update. The owner screen updates locally only after the acknowledged transaction.
+Saving a FAQ validates the stored FAQ scope and every previous/next linked article, then updates the FAQ and existing article `faqIds` mirrors in one transaction. Missing or cross-workspace article links fail; linked publication also requires an active published article. `source` is preserved for existing records or assigned `manual` on create, `articleTitle` is derived from current article truth, and `active` is derived from status. The DAL never creates a skeletal article from a FAQ mirror update. The owner screen updates locally only after the acknowledged transaction.
+
+Dedicated and shared Firestore rules mirror that boundary. Browser creates must be manual, zero-counter records without system lineage. Browser updates may change only authoring/review metadata, must preserve source and lineage, cannot mutate feedback counters/idempotency state, and must keep any linked article title/workspace/publication state consistent.
 
 FAQ save/archive now return explicit acknowledgement envelopes from `src/database/answerlattice/faqs.ts`. `AnswerlatticeFaqManagement` must call `assertAnswerlatticeFaqWriteSucceeded()` or `assertAnswerlatticeFaqArchiveSucceeded()` before updating local FAQ state, rebuilding product-surface summaries, or showing success copy. This prevents `apiCallComposer` fallback results from being treated as completed owner-reviewed answer changes.
 
 Publishing or republishing a FAQ updates `lastReviewedOn` and clears `reviewRequestedOn`. If a linked article changes, the FAQ moves to `needs_review` and records `reviewRequestedOn` without rewriting `lastReviewedOn`; the review timestamp remains the last actual owner validation.
 
-Article edit modal now has an explicit `Refresh FAQ suggestions` action. It reads the saved article, generates up to 5 source-backed FAQ suggestions, skips duplicate questions already linked to that article, writes new FAQs as `needs_review`, and mirrors their IDs onto the article. It does not publish or replace owner-reviewed FAQs automatically.
+Article edit modal now has an explicit `Refresh FAQ suggestions` action. It reads the saved article and current linked-FAQ cap before the provider call. After up to 5 source-backed suggestions return, a Firestore transaction re-reads the article, verifies a fingerprint of every field used by the prompt, re-queries current active links, recomputes duplicate/capacity admission, creates new `needs_review` FAQ documents, and updates the existing article mirror. A changed/deleted/moved article returns conflict; merge semantics cannot recreate a deleted article. It does not publish or replace owner-reviewed FAQs automatically.
 
 The article modal validates the FAQ refresh response through a 64 KB bounded response reader before adding generated FAQ options, linking generated FAQ IDs, or showing FAQ refresh success/info copy. Malformed, oversized, rejected, or wrong-shape responses log fixed `answerlattice_article_modal_response_*` diagnostics and keep `Failed to refresh FAQ suggestions.` as the owner-facing failure copy.
 
@@ -73,6 +75,8 @@ Each FAQ can show:
 - link to full article,
 - helpful/not-helpful feedback.
 
+FAQ reactions use the authenticated content-feedback route. One server transaction updates the published FAQ counter and bounded idempotency state, appends the `faq_feedback` audit row with 365-day retention, and emits one deterministic signal for a newly added dislike. Direct browser counter/audit writes are denied. The owner Review tab reads the scoped audit document and shows at most 20 recent normalized events.
+
 ## Contextual UI
 
-Product Surface summary rebuild now includes matched FAQs. Widget and Help Chat can display FAQ suggestions without doing per-request FAQ collection reads.
+Product Surface summary rebuild includes matched FAQs. Widget and Help Chat can start from that compact candidate set, but `attemptFaqAnswerRetrieval()` re-reads and rescores the exact current FAQ before answering. Stale archived/edited summary rows fall through to the normal published FAQ collection path.

@@ -36,7 +36,7 @@ const normalizePreOnboardingPromptMimeType = (value: string | null) => {
 
 const readPreOnboardingPromptText = async (response: Response) => {
     const mimeType = normalizePreOnboardingPromptMimeType(response.headers.get('content-type'));
-    if (mimeType && !PRE_ONBOARDING_PROMPT_ALLOWED_MIME_TYPES.has(mimeType)) {
+    if (!PRE_ONBOARDING_PROMPT_ALLOWED_MIME_TYPES.has(mimeType)) {
         throw new Error(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
     }
 
@@ -108,6 +108,8 @@ export default function AnswerlatticePreOnboardingPromptModal({
     const [errorMessage, setErrorMessage] = useState(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
     const dialogTitleId = useId();
     const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+    const dialogRef = useRef<HTMLElement | null>(null);
+    const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
 
     const promptUrl = `${basePath}/pre-onboarding.md`;
 
@@ -137,10 +139,8 @@ export default function AnswerlatticePreOnboardingPromptModal({
 
     const closeModal = useCallback(() => {
         setOpen(false);
-        if (status === 'copied' || status === 'downloaded') {
-            setStatus('idle');
-        }
-    }, [status]);
+        setStatus(current => current === 'copied' || current === 'downloaded' ? 'idle' : current);
+    }, []);
 
     const copyPrompt = async () => {
         if (!promptText) return;
@@ -177,18 +177,39 @@ export default function AnswerlatticePreOnboardingPromptModal({
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') closeModal();
+            if (event.key !== 'Tab') return;
+
+            const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), a[href], textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ) || []).filter(element => !element.hasAttribute('aria-hidden'));
+            if (!focusable.length) {
+                event.preventDefault();
+                closeButtonRef.current?.focus();
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => {
             document.body.style.overflow = originalOverflow;
             window.removeEventListener('keydown', handleKeyDown);
+            triggerButtonRef.current?.focus();
         };
     }, [closeModal, open]);
 
     return (
         <>
-            <button className={buttonClassName} onClick={openModal} type="button">
+            <button className={buttonClassName} onClick={openModal} ref={triggerButtonRef} type="button">
                 <span className="inline-flex items-center justify-center gap-2">
                     <LuFileText aria-hidden size={16} />
                     {buttonLabel}
@@ -198,15 +219,18 @@ export default function AnswerlatticePreOnboardingPromptModal({
             {open ? (
                 <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 px-3 py-4 backdrop-blur-md sm:items-center sm:px-6" role="presentation">
                     <button
+                        aria-hidden="true"
                         aria-label="Close prompt preview"
                         className="absolute inset-0 h-full w-full cursor-default"
                         onClick={closeModal}
+                        tabIndex={-1}
                         type="button"
                     />
                     <section
                         aria-labelledby={dialogTitleId}
                         aria-modal="true"
                         className="relative flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[#09091a] text-white shadow-2xl shadow-black/60"
+                        ref={dialogRef}
                         role="dialog"
                     >
                         <div className="flex flex-col gap-4 border-b border-white/[0.08] bg-white/[0.025] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -225,6 +249,7 @@ export default function AnswerlatticePreOnboardingPromptModal({
                             </div>
                             <button
                                 aria-label="Close prompt preview"
+                                autoFocus
                                 className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-lg text-[#a0a0c0] transition hover:bg-white/[0.06] hover:text-white sm:static"
                                 onClick={closeModal}
                                 ref={closeButtonRef}

@@ -5,10 +5,10 @@ import { ANSWERLATTICE_PLAN_TIER_ORDER, getBillingPlansForProduct, getCreditPack
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import { getAnswerlatticeActiveSubscriptionForStore, getAnswerlatticeBillingHistoryForStore } from '@database/answerlattice/billing';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
-import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import type { Plan } from '@data/common';
 import type { BillingHistoryItem, Currency, FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -39,6 +39,7 @@ export default function AnswerlatticeBilling() {
     const [activeSubscription, setActiveSubscription] = useState<FirestoreSubscriptionDoc | null>(null);
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasBillingLoadError, setHasBillingLoadError] = useState(false);
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<{ action: 'upgrade' | 'new'; active: boolean }>({ action: 'upgrade', active: false });
     const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
     const plans = useMemo(() => getBillingPlansForProduct(PRODUCT_IDS.ANSWERLATTICE, 'B2B'), []);
@@ -50,25 +51,42 @@ export default function AnswerlatticeBilling() {
         subscriptionCheckoutName: 'Answerlattice Subscription',
         topupCheckoutName: 'Answerlattice Support Credit Pack',
     });
+    const getBillingFailureContext = useCallback((flow: string) => ({
+        surface: 'answerlattice_billing',
+        flow,
+        ...getBoundedPaymentStringContext('tenantId', scope?.tenantId),
+        ...getBoundedPaymentStringContext('storeId', scope?.storeId),
+    }), [scope?.tenantId, scope?.storeId]);
 
     const refetchActiveSubscription = useCallback(async () => {
         if (!scope?.tenantId || !scope?.storeId) {
+            setActiveSubscription(null);
+            setBillingHistory([]);
+            setHasBillingLoadError(false);
             setIsLoading(false);
             return;
         }
 
         setIsLoading(true);
+        setHasBillingLoadError(false);
         try {
             const subscription = await getAnswerlatticeActiveSubscriptionForStore(scope.tenantId, scope.storeId);
             setActiveSubscription(subscription);
             setBillingHistory([]);
         } catch (error) {
-            logger.error('Failed to load Answerlattice subscription', error);
+            setActiveSubscription(null);
+            setBillingHistory([]);
+            setHasBillingLoadError(true);
+            logPaymentFailure(
+                'answerlattice_billing_subscription_load_failed',
+                error,
+                getBillingFailureContext('load_subscription'),
+            );
             message.error('Could not load Answerlattice billing.');
         } finally {
             setIsLoading(false);
         }
-    }, [scope?.tenantId, scope?.storeId]);
+    }, [getBillingFailureContext, scope?.tenantId, scope?.storeId]);
 
     useEffect(() => {
         if (status === 'loading') return;
@@ -88,7 +106,11 @@ export default function AnswerlatticeBilling() {
                 },
             }));
         } catch (error) {
-            logger.error('Failed to load Answerlattice billing history', error);
+            logPaymentFailure(
+                'answerlattice_billing_history_load_failed',
+                error,
+                getBillingFailureContext('load_billing_history'),
+            );
             message.error('Could not load billing history.');
         }
     };
@@ -104,7 +126,11 @@ export default function AnswerlatticeBilling() {
             return paymentResponse;
         } catch (error) {
             if (isPaymentCheckoutDismissedError(error)) return;
-            logger.error('Answerlattice payment flow failed', error);
+            logPaymentFailure(
+                'answerlattice_billing_payment_flow_failed',
+                error,
+                getBillingFailureContext(activeSubscription ? 'change_plan' : 'choose_plan'),
+            );
             message.error('Payment failed. Please try again.');
         } finally {
             setIsPricingModalOpen({ action: 'upgrade', active: false });
@@ -128,7 +154,11 @@ export default function AnswerlatticeBilling() {
             message.success('Support credits added.');
         } catch (error) {
             if (isPaymentCheckoutDismissedError(error)) return;
-            logger.error('Answerlattice credit pack purchase failed', error);
+            logPaymentFailure(
+                'answerlattice_billing_credit_purchase_failed',
+                error,
+                getBillingFailureContext('support_credit_purchase'),
+            );
             message.error('Credit purchase failed.');
         } finally {
             setIsCreditsModalOpen(false);
@@ -149,7 +179,12 @@ export default function AnswerlatticeBilling() {
                     <Button icon={<LuReceipt />} onClick={() => router.push(toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.TRANSACTIONS, currentHostname))}>
                         Transactions
                     </Button>
-                    <Button type="primary" icon={<LuCreditCard />} onClick={() => setIsPricingModalOpen({ action: activeSubscription ? 'upgrade' : 'new', active: true })}>
+                    <Button
+                        type="primary"
+                        icon={<LuCreditCard />}
+                        disabled={isLoading || hasBillingLoadError || !scope}
+                        onClick={() => setIsPricingModalOpen({ action: activeSubscription ? 'upgrade' : 'new', active: true })}
+                    >
                         {activeSubscription ? 'Change plan' : 'Choose plan'}
                     </Button>
                 </Space>
@@ -177,6 +212,14 @@ export default function AnswerlatticeBilling() {
                         <Text type="secondary">Loading Answerlattice billing...</Text>
                     </Flex>
                 </Card>
+            ) : hasBillingLoadError ? (
+                <Alert
+                    type="error"
+                    showIcon
+                    message="Billing could not be loaded"
+                    description="No subscription changes are available until the current billing state is confirmed."
+                    action={<Button onClick={() => void refetchActiveSubscription()}>Retry</Button>}
+                />
             ) : activeSubscription ? (
                 <>
                     <ActiveSubscriptionCard

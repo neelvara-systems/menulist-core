@@ -88,7 +88,7 @@ async function run(): Promise<void> {
     });
     state = normalizeAnswerlatticeWidgetApiState((await storeRef().get()).data()?.answerlatticeWidgetApi);
     assert.equal(state.keyHashes.length, 0);
-    assert.equal(state.keysByHash[hashApiKey(secondRawKey)], undefined);
+    assert.equal(state.keysByHash[hashApiKey(secondRawKey)]?.status, 'revoked');
 
     const malformed = normalizeAnswerlatticeWidgetApiState({
         keyHashes: ['not-a-hash'],

@@ -1416,7 +1416,9 @@ function verifyPublicMenuExternalLinksAreNormalized() {
   [
     'normalizeOBPReviewUrl(reviewUrl)',
     'const safeReviewUrl = normalizeOBPReviewUrl(reviewUrl);',
-    'href={safeReviewUrl || `/feedback/${projectId}?source=menu_footer`}',
+    'href={safeReviewUrl || appendPublicLanguageParam(',
+    '`/feedback/${projectId}?source=menu_footer`,',
+    'activeLanguage,',
     "target={safeReviewUrl ? '_blank' : '_self'}",
   ].forEach((token) => assertIncludes(feedbackNudge, token, 'Public menu feedback review link normalization'));
 
@@ -1455,7 +1457,7 @@ function verifyPublicMenuFooterFreshnessLoggingIsBounded() {
     'getMenuFooterUpdatedAtIso',
     "getBoundedRuntimeStringContext('timestampType', timestampType)",
     "throw new Error('invalid_last_published_at')",
-    'const relativeUpdatedAt = lastPublishedAt ? formatRelativeDate(lastPublishedAt) : \'\';',
+    'formatRelativeDate(lastPublishedAt, activeLanguage, t)',
     'const lastUpdatedIso = lastPublishedAt ? getMenuFooterUpdatedAtIso(lastPublishedAt) : undefined;',
     'const showFreshnessText = Boolean(relativeUpdatedAt);',
     'data-last-updated={lastUpdatedIso}',

@@ -1,14 +1,31 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.3.2
+> **Last Updated:** 2026-07-19
 > **Audience:** CEO / PM / Marketing
 
 ---
 
+## July 19, 2026 Feature-Flow Audit Addendum
+
+The public acquisition flow is admitted only when all of these remain coherent:
+
+`public claim -> deterministic proof -> plan source -> semantic signup -> authenticated provisioning -> provider-confirmed payment -> Activation proof`
+
+- Public pricing, Get Started, Billing projection, and homepage offer schema use `src/data/answerlattice/plans.ts`.
+- The public demo is a disclosed seeded state machine and must not call Firebase or an AI provider.
+- Get Started requires one or more selected main product pages and mirrors server field limits before the existing authenticated onboarding boundary.
+- The mobile navigation behaves as a modal dialog with initial focus, focus containment, Escape close, and trigger restoration.
+- Sitemap freshness must use real page-specific timestamps or omit `lastmod`; build time is not page modification evidence.
+- The public category is `governed support layer`. Do not use uptime-style language as the category or imply uninterrupted service; the unsupported `the first 24/7 support layer` superlative remains prohibited.
+- Support-credit copy must match operation-level runtime accounting and must not imply that approved widget answers, draft review, or ordinary browsing are charged.
+- Trust and Privacy must render shared retention constants where they exist and must not claim Gemini no-training or zero retention without deployed provider-account evidence.
+- Terms may state the verified Neelvara Systems operating trade-name relationship. Registered-entity identity, jurisdiction, warranty, liability, SLA, customer-specific refund, and governing-law clauses remain pending founder/legal approval and must not be invented from runtime behavior.
+- Local source completion excludes hosted routing, consent analytics, search indexing, real identity/provider checkout, legal-counsel approval, and buyer outcome evidence.
+
 ## Purpose
 
-Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as their first 24/7 support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
+Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as a governed support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
 
 ---
 
@@ -83,7 +100,7 @@ Prism-glass card hover effects must feel attached to the user's pointer on deskt
   - Title + description
   - 5 capability bullet points
 - Product page should frame custom help domains as buyer-visible value, owner answers as a fast reviewed shortcut for repeated questions, and ticket debugging context as support reliability, not as raw console logging.
-- Product page should include runtime readiness as a core reliability section: Firestore source of truth, approved public widget context, private server context, cache-first delivery, owner-visible bundle readiness, workspace-local review, and controlled agent-context rollout. Do not create a standalone MCP page while MCP remains rollout-gated.
+- Product page should include runtime readiness as a core reliability section: Firestore source of truth, approved public-safe context, private server context, bounded cache/bundle delivery for enabled readers, owner-visible bundle readiness, workspace-local review, and controlled agent-context rollout. The current widget remains server-mediated. Do not create a standalone MCP page while MCP remains rollout-gated.
 - Bottom CTA
 
 Product-area subpages:
@@ -141,7 +158,7 @@ Rules:
 
 ### Positioning Guardrail
 
-The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "24/7", "support pressure", and "product users need trusted support", but it must not say AnswerLattice "handles all support" or imply human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice gives founders a 24/7 support layer through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
+The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "support pressure", and "product users need trusted support", but it must not say AnswerLattice "handles all support" or imply uninterrupted availability, human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice gives founders a governed support layer through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
 
 ### Non-Home Page Conversion Pattern
 
@@ -329,8 +346,9 @@ Rules:
 - Starter, Growth, and Studio monthly INR and USD packaging
 - Predictable limits, no public per-resolution pricing
 - Plain-language support-credit definition:
-  - Support credits are plan capacity for reviewed answers, chat assistance, and support review work
-  - Static hosted help pages, docs/FAQ/changelog browsing, and widget loading do not consume support credits
+  - One credit: provider-backed fallback answer, full-runtime answer test, source-backed first-ten starter-answer run, or screenshot OCR
+  - Two credits: short recording transcription
+  - Zero credits: approved/cached widget answer, deterministic answer test, draft review, selected text import, translation, FAQ generation, KB embedding, publishing infrastructure, or static help browsing
 - Plan guidance:
   - Starter: solo founder launching one SaaS product
   - Growth: active SaaS product with recurring support questions
@@ -346,7 +364,7 @@ Rules:
 - Security-at-a-glance facts for data boundary, runtime database, widget key storage, widget placement, answer approval, expensive request limits, scheduler output, and product boundary
 - Animated security-boundary diagram for allowed origins, safe page context, blocked routes, workspace scope, hosted help boundary, compiled context boundary, and owner-approved answers
 - Status snapshots for workspace scope, safe context, origin/route controls, hosted help boundary, ticket context, owner approval, bounded logging, and product separation
-- Runtime context safety: public widget bundles contain only approved public-safe context; drafts, tickets, audit logs, API keys, raw signals, and billing internals stay out.
+- Runtime context safety: public bundle objects contain only approved public-safe context; drafts, tickets, audit logs, API keys, raw signals, and billing internals stay out. Do not claim the widget consumes bundle objects while its bootstrap flag is disabled.
 - Tenant-scoped data and workspace isolation
 - Safe widget context that is bounded to support relevance and never treated as trusted identity
 - User-initiated screenshot attachments only; no automatic host-app capture or DOM scraping
@@ -365,7 +383,8 @@ Rules:
 - Last-reviewed date and source-state/certification boundary
 - Current provider categories and their product/data boundary: Vercel, Google Firebase/Cloud, Google Gemini, Razorpay, configured SMTP, Upstash when configured, and consent-gated Plausible/Google Analytics
 - Implemented retention windows for query embeddings, raw search history, operational logs, notification counters, contact enquiries, signal events, friction stats, and raw Knowledge Intake media
-- Explicit current status for SOC/ISO claims, public DPA, contractual subprocessor schedule, residency commitment, and full-workspace deletion
+- Shared retention constants are rendered directly for query embeddings, search history, notification logs/counters, contact enquiries, and signals; separately enforced friction/raw-media lifecycle statements remain source-evidenced
+- Explicit current status for SOC/ISO claims, public DPA, contractual subprocessor schedule, residency commitment, Gemini no-training/zero-retention status, and full-workspace deletion
 - Security-review contact plus links to the full Security page, one-pager, and Privacy Policy
 
 **Claim rule:** The page may describe current runtime and implemented retention facts. It must not claim certification, legal agreement, geographic commitment, or one-click deletion unless a separately approved contractual/technical source exists.
@@ -539,7 +558,7 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | AnswerLattice - 24/7 Support Layer for Founder-Led SaaS | AnswerLattice helps founder-led SaaS products manage support 24/7 with an in-app widget, hosted help center, FAQs, changelog, ticket fallback, feedback review, approved answers, and a weekly support review loop. |
+| `/` | AnswerLattice - Governed Support Layer for Founder-Led SaaS | AnswerLattice turns scattered support knowledge into approved answers for an in-app widget, hosted help, fallback, feedback, and a human review loop. |
 | `/product` | Product \| AnswerLattice | One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review. |
 | `/product/launch-setup` | Set Up Support \| AnswerLattice | Create an AnswerLattice workspace, add team access, import starter knowledge, map product pages, and verify the widget before launch. |
 | `/product/team-access` | Team Access \| AnswerLattice | Manage AnswerLattice workspace members, roles, custom permissions, owner reset, and force sign-out with workspace-scoped access. |
@@ -619,6 +638,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.3.2 | Required the governed-support category, operation-level support-credit parity, shared retention wording, explicit AI-provider no-training/zero-retention non-claims, and source-bounded operating/legal terms. |
 | 2026-07-11 | 1.3.0 | Required full governance-event demo proof, INR/USD plan-accurate onboarding, and factual trust/provider/retention disclosures with explicit non-claim boundaries |
 | 2026-07-05 | 1.2.96 | Required Answerlattice website analytics URL minimization for GA4 page-location, click-link, resource target, referrer, and entry-page fields while preserving consent-gated client-only analytics |
 | 2026-06-29 | 1.2.95 | Required a compact homepage support-suite switch cue that compares AnswerLattice by official answer source while keeping full category comparison detail on `/comparisons` and avoiding unsupported competitor claims |

@@ -1,10 +1,6 @@
-const RAZORPAY_SUBSCRIPTION_CHECKOUT_HOST = 'rzp.io';
+const RAZORPAY_HOSTED_PAYMENT_HOST = 'rzp.io';
 
-/**
- * Razorpay subscription APIs return an HTTPS `rzp.io` authorisation URL.
- * Treat the provider value as untrusted at both the server and browser boundary.
- */
-export function normalizeRazorpaySubscriptionCheckoutUrl(value: unknown): string | null {
+function normalizeRazorpayHostedPaymentUrl(value: unknown): string | null {
     const raw = typeof value === 'string' ? value.trim() : '';
     if (!raw || raw.length > 500) return null;
 
@@ -12,7 +8,7 @@ export function normalizeRazorpaySubscriptionCheckoutUrl(value: unknown): string
         const url = new URL(raw);
         if (
             url.protocol !== 'https:'
-            || url.hostname.toLowerCase() !== RAZORPAY_SUBSCRIPTION_CHECKOUT_HOST
+            || url.hostname.toLowerCase() !== RAZORPAY_HOSTED_PAYMENT_HOST
             || Boolean(url.username)
             || Boolean(url.password)
             || (url.port && url.port !== '443')
@@ -24,4 +20,20 @@ export function normalizeRazorpaySubscriptionCheckoutUrl(value: unknown): string
     } catch {
         return null;
     }
+}
+
+/**
+ * Razorpay subscription APIs return an HTTPS `rzp.io` authorisation URL.
+ * Treat the provider value as untrusted at both the server and browser boundary.
+ */
+export function normalizeRazorpaySubscriptionCheckoutUrl(value: unknown): string | null {
+    return normalizeRazorpayHostedPaymentUrl(value);
+}
+
+/**
+ * Razorpay invoice entities use the same HTTPS `rzp.io` hosted-payment domain.
+ * Legacy or malformed persisted values remain hidden from billing history.
+ */
+export function normalizeRazorpayInvoiceUrl(value: unknown): string | null {
+    return normalizeRazorpayHostedPaymentUrl(value);
 }

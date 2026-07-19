@@ -9,7 +9,7 @@
  * 
  * RULES:
  * - Gated by ENABLE_ANSWERLATTICE_SIGNAL_MUTATION feature flag
- * - Non-blocking: errors are logged, never thrown
+ * - Non-blocking by default; trusted request boundaries may opt into typed failure propagation
  * - Uses dynamic import to avoid bundling Answerlattice DAL when flag is off
  * - entityId defaults to 'unresolved' (mutation engine resolves later)
  * 
@@ -19,6 +19,8 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { getAnswerlatticeRetentionExpiryMillis } from '@data/shared/answerlatticeRetention';
+import { redactAnswerlatticeSupportEvidenceText } from '@data/shared/answerlatticeSupportEvidencePrivacy';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import {
     getAnswerlatticeScopeLogContext,
@@ -28,13 +30,13 @@ import {
 import { normalizeAnswerlatticeEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import {
     buildAnswerlatticeSignalDocumentId,
+    buildAnswerlatticeSignalPayloadFingerprint,
     normalizeExactAnswerlatticeSignalScopeId,
 } from '@lib/answerlattice/signalIdentity';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { AnswerlatticeSignalType } from '@type/answerlattice';
 import { TicketMessage } from '@type/supportTicket';
 import { Timestamp } from 'firebase/firestore';
-import { getAnswerlatticeRetentionExpiryMillis } from '@data/shared/answerlatticeRetention';
 
 interface EmitSignalParams {
     type: AnswerlatticeSignalType;
@@ -42,12 +44,20 @@ interface EmitSignalParams {
     tId?: number;
     sId?: number;
     metadata?: Record<string, any>;
+    failureMode?: 'return_false' | 'throw';
+}
+
+export class AnswerlatticeSignalReplayConflictError extends Error {
+    constructor() {
+        super('answerlattice_signal_replay_conflict');
+        this.name = 'AnswerlatticeSignalReplayConflictError';
+    }
 }
 
 // Deduplication: prevent same signal from being emitted twice in the same page session.
 // Key format: "{type}_{sessionId}_{messageId}" or "{type}_{ticketId}"
 // Cleared on page reload (in-memory only — no persistence needed).
-const emittedSignals = new Set<string>();
+const emittedSignals = new Map<string, string>();
 
 const createTraceId = () => createRuntimeId('al');
 const SIGNAL_UNRESOLVED_ENTITY_ID = 'unresolved';
@@ -57,11 +67,7 @@ const normalizeSignalEntityId = (value: unknown): string => (
 );
 
 const cleanSignalText = (value: unknown, maxLength = 500): string => (
-    String(value || '')
-        .replace(/[\u0000-\u001f\u007f]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, maxLength)
+    redactAnswerlatticeSupportEvidenceText(value, maxLength)
 );
 
 const stringifySignalValue = (value: unknown): string => {
@@ -104,7 +110,12 @@ const sanitizeSignalMetadata = (metadata: unknown): Record<string, any> => {
         .filter(([key]) => Boolean(key)));
 };
 
-const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; sId: number }) => {
+const emitServerSignalEvent = async (params: EmitSignalParams & {
+    tId: number;
+    sId: number;
+    metadata: Record<string, any>;
+    identityFingerprint?: string;
+}) => {
     const { answerlatticeFirestoreAdmin } = await import('@lib/firebase/answerlatticeFirebaseAdmin');
     if (!answerlatticeFirestoreAdmin || typeof answerlatticeFirestoreAdmin.collection !== 'function') {
         throw new Error('Answerlattice Firestore Admin is not configured');
@@ -123,7 +134,7 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         type: params.type,
         timestamp: now,
         expiresAt: new Date(getAnswerlatticeRetentionExpiryMillis('signalEvents', now.getTime())),
-        metadata: sanitizeSignalMetadata(params.metadata),
+        metadata: params.metadata,
         createdOn: now,
         modifiedOn: now,
         createdBy,
@@ -131,7 +142,10 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         uId,
         traceId,
         requestId: persistentDedupKey || traceId,
-        ...(persistentDedupKey ? { dedupKey: cleanSignalText(persistentDedupKey, 260) } : {}),
+        ...(persistentDedupKey ? {
+            dedupKey: cleanSignalText(persistentDedupKey, 260),
+            identityFingerprint: params.identityFingerprint,
+        } : {}),
     });
 
     const collectionRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS);
@@ -145,7 +159,27 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         try {
             await collectionRef.doc(docId).create(payload);
         } catch (error) {
-            if (isAlreadyExistsError(error)) return;
+            if (isAlreadyExistsError(error)) {
+                const existingSnapshot = await collectionRef.doc(docId).get();
+                const existing = existingSnapshot.data() || {};
+                const existingFingerprint = typeof existing.identityFingerprint === 'string'
+                    ? existing.identityFingerprint
+                    : buildAnswerlatticeSignalPayloadFingerprint({
+                        type: existing.type,
+                        entityId: existing.entityId,
+                        deduplicationKey: existing.dedupKey,
+                        metadata: existing.metadata,
+                    });
+                if (
+                    existing.pId === PRODUCT_IDS.ANSWERLATTICE
+                    && existing.tId === params.tId
+                    && existing.sId === params.sId
+                    && existing.type === params.type
+                    && existing.dedupKey === persistentDedupKey
+                    && existingFingerprint === params.identityFingerprint
+                ) return;
+                throw new AnswerlatticeSignalReplayConflictError();
+            }
             throw error;
         }
         return;
@@ -166,7 +200,8 @@ function getDeduplicationKey(params: EmitSignalParams): string | null {
     }
     if (params.type === 'ticket' && meta.ticketId) {
         if (meta.signalPurpose === 'ticket_resolution' || Array.isArray(meta.resolutionMessages)) {
-            return `ticket_resolution_${meta.ticketId}`;
+            const resolutionEventId = cleanSignalText(meta.resolutionEventId, 80);
+            return `ticket_resolution_${meta.ticketId}${resolutionEventId ? `_${resolutionEventId}` : ''}`;
         }
         return `ticket_${meta.ticketId}`;
     }
@@ -208,7 +243,7 @@ export const emitTicketResolutionSignal = async (params: {
     entityId?: string;
     tId: number;
     sId: number;
-    resolvedBy: string;
+    resolutionEventId: string;
 }): Promise<void> => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE) return;
 
@@ -216,7 +251,8 @@ export const emitTicketResolutionSignal = async (params: {
     const resolutionMessages = params.messages
         .filter(m => m.type !== 'system')
         .slice(-5)
-        .map(m => m.text);
+        .map(m => redactAnswerlatticeSupportEvidenceText(m.text, 500))
+        .filter(Boolean);
 
     // Skip if resolution is too short (not substantive)
     const totalResolutionLength = resolutionMessages.join(' ').length;
@@ -230,11 +266,11 @@ export const emitTicketResolutionSignal = async (params: {
         metadata: {
             signalPurpose: 'ticket_resolution',
             ticketId: params.ticketId,
-            subject: params.subject,
+            resolutionEventId: params.resolutionEventId,
+            subject: redactAnswerlatticeSupportEvidenceText(params.subject, 200),
             resolutionMessages,
             conversationLength: params.messages.length,
             category: params.category,
-            resolvedBy: params.resolvedBy,
             resolutionTimestamp: new Date().toISOString(),
         },
     });
@@ -252,21 +288,36 @@ export const emitSuggestionSignal = async (params: {
     type: 'suggestion_shown' | 'suggestion_clicked' | 'suggestion_dismissed';
     triggerId: string;
     page: string;
+    interactionId: string;
+    sessionId: string;
+    contextKey?: string;
+    actionType: string;
+    triggerKind: 'predictive_help' | 'known_issue';
     entityId?: string;
     tId: number;
     sId: number;
-}): Promise<void> => {
-    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return;
+}): Promise<boolean> => {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return false;
 
-    await emitAnswerlatticeSignal({
+    const idempotencyKey = `predictive:${params.triggerId}:${params.interactionId}:${params.type}`;
+
+    return emitAnswerlatticeSignal({
         type: params.type,
         entityId: params.entityId,
         tId: params.tId,
         sId: params.sId,
         metadata: {
+            source: 'widget:predictive_support',
+            signalPurpose: 'predictive_support_interaction',
+            requestId: idempotencyKey,
+            idempotencyKey,
             triggerId: params.triggerId,
             page: params.page,
-            actionType: 'predictive_support',
+            interactionId: params.interactionId,
+            sessionId: params.sessionId,
+            contextKey: params.contextKey || null,
+            actionType: params.actionType,
+            triggerKind: params.triggerKind,
         },
     });
 };
@@ -289,41 +340,76 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
         return false;
     }
 
+    const sanitizedMetadata = sanitizeSignalMetadata(params.metadata);
+    const persistentDedupKey = getPersistentDeduplicationKey({
+        ...params,
+        metadata: sanitizedMetadata,
+    });
+    const identityFingerprint = persistentDedupKey
+        ? buildAnswerlatticeSignalPayloadFingerprint({
+            type: params.type,
+            entityId: normalizedEntityId,
+            deduplicationKey: persistentDedupKey,
+            metadata: sanitizedMetadata,
+        })
+        : undefined;
+
     // Deduplication check
     const dedupKey = getDeduplicationKey(params);
     if (dedupKey) {
-        if (emittedSignals.has(dedupKey)) return true; // Already emitted
-        emittedSignals.add(dedupKey);
+        const existingFingerprint = emittedSignals.get(dedupKey);
+        if (existingFingerprint) {
+            if (existingFingerprint === identityFingerprint) return true;
+            logAnswerlatticeDiagnostic('answerlattice_signal_replay_conflict_skipped', {
+                ...getAnswerlatticeScopeLogContext({
+                    entityId: normalizedEntityId,
+                    sId,
+                    signalType: params.type,
+                    tId,
+                }),
+            });
+            return false;
+        }
+        emittedSignals.set(dedupKey, identityFingerprint || dedupKey);
         // Cap set size to prevent memory leak in long-lived sessions
-        if (emittedSignals.size > 1000) emittedSignals.clear();
+        if (emittedSignals.size > 1000) {
+            const oldest = emittedSignals.keys().next().value;
+            if (oldest) emittedSignals.delete(oldest);
+        }
     }
 
     try {
         if (typeof window === 'undefined') {
-            await emitServerSignalEvent({ ...params, tId, sId });
+            await emitServerSignalEvent({
+                ...params,
+                entityId: normalizedEntityId,
+                tId,
+                sId,
+                metadata: sanitizedMetadata,
+                identityFingerprint,
+            });
             return true;
         }
 
         const { addSignalEvent } = await import('@database/answerlattice/signalEvents');
 
-        const persistentDedupKey = getPersistentDeduplicationKey(params);
         await addSignalEvent({
             tId,
             sId,
             entityId: normalizedEntityId,
             type: params.type,
             timestamp: Timestamp.now(),
-            metadata: sanitizeSignalMetadata(params.metadata),
+            metadata: sanitizedMetadata,
             ...(persistentDedupKey ? {
                 requestId: persistentDedupKey,
                 dedupKey: persistentDedupKey,
+                identityFingerprint,
             } : {}),
         });
         return true;
     } catch (error) {
         if (dedupKey) emittedSignals.delete(dedupKey);
-        // Fire-and-forget: log but never throw
-        logAnswerlatticeFailure('answerlattice_signal_emit_failed', error, {
+        const logContext = {
             ...getAnswerlatticeScopeLogContext({
                 entityId: normalizedEntityId,
                 sId,
@@ -334,7 +420,13 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
             metadataKeyCount: params.metadata && typeof params.metadata === 'object'
                 ? Object.keys(params.metadata).length
                 : 0,
-        });
+        };
+        if (error instanceof AnswerlatticeSignalReplayConflictError) {
+            logAnswerlatticeDiagnostic('answerlattice_signal_replay_conflict_skipped', logContext);
+        } else {
+            logAnswerlatticeFailure('answerlattice_signal_emit_failed', error, logContext);
+        }
+        if (params.failureMode === 'throw') throw error;
         return false;
     }
 };

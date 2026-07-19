@@ -9,10 +9,13 @@ import {
     isDeletableIngestionJobStatus,
     isExactAnswerlatticeProductId,
     normalizeIngestionJobQueryLimit,
+    planIngestionJobSourceCleanup,
 } from '@lib/answerlattice/ingestionJobDeletionBoundary';
-import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { triggerFinalizePublish, triggerStartGeneration } from "@lib/firebase/functions";
 import { createRuntimeId } from "@lib/runtime/randomId";
+import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { ARTICLE_RECONCILIATION_STATUS, INGESTION_JOB_STATUS, IngestionJob, IngestionJobCategoriesMap } from "@type/knowledgeBase";
 
 const COLLECTION = DB_COLLECTIONS.KB_GENERATION_JOBS;
@@ -557,6 +560,28 @@ export const deleteIngestionJob = async (jobId: string) => {
                 throw new Error('This knowledge generation job has invalid source-file cleanup data.');
             }
 
+            const workspaceJobsSnapshot = await getDocs(query(
+                collection(db, DB_COLLECTIONS.KB_GENERATION_JOBS),
+                where('pId', '==', PRODUCT_ID),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
+                limit(ALL_JOB_LIMIT + 1),
+            ));
+            if (workspaceJobsSnapshot.size > ALL_JOB_LIMIT) {
+                throw new Error('This workspace has too many knowledge generation jobs to prove source-file cleanup safely.');
+            }
+            const expectedSourcePrefix = `ingestion_source_files/${scope.tId}/${scope.sId}/`;
+            const sourceCleanupPlan = planIngestionJobSourceCleanup(
+                jobData.sourceFiles,
+                workspaceJobsSnapshot.docs
+                    .filter(snapshot => snapshot.id !== safeJobId)
+                    .map(snapshot => snapshot.data().sourceFiles),
+                expectedSourcePrefix,
+            );
+            if (!answerlatticeStorage && sourceCleanupPlan.cleanupCandidates.length > 0) {
+                throw new Error('Answerlattice source-file storage is not available.');
+            }
+
             const articlesSnapshot = await getDocs(query(
                 collection(db, DB_COLLECTIONS.KB_ARTICLES),
                 where('pId', '==', PRODUCT_ID),
@@ -619,12 +644,49 @@ export const deleteIngestionJob = async (jobId: string) => {
                 });
             });
 
-            const retainedSourceFileCount = new Set(jobData.sourceFiles.map((file) => file.storagePath)).size;
-            if (retainedSourceFileCount > 0) {
+            if (sourceCleanupPlan.preservedStoragePaths.length > 0) {
                 logAnswerlatticeDiagnostic(
-                    'answerlattice_kb_source_cleanup_deferred_shared_reference',
-                    { retainedSourceFileCount },
+                    'answerlattice_kb_source_cleanup_preserved_shared_reference',
+                    { preservedSourceFileCount: sourceCleanupPlan.preservedStoragePaths.length },
                 );
+            }
+
+            const storageCleanupResults = await Promise.allSettled(
+                sourceCleanupPlan.cleanupCandidates.map(sourceFile => (
+                    deleteFileByUrl(sourceFile.downloadURL, answerlatticeStorage)
+                )),
+            );
+            const storageCleanupSummary = summarizeStorageCleanupResults(storageCleanupResults);
+            if (storageCleanupSummary.failed > 0) {
+                const failedAt = Timestamp.now();
+                await runTransaction(db, async (transaction) => {
+                    const currentJob = await transaction.get(jobRef);
+                    if (!currentJob.exists()) return;
+                    const currentData = currentJob.data() as Record<string, unknown>;
+                    assertAnswerlatticeJob(safeJobId, currentData);
+                    const currentDeletionRun = isRecord(currentData.deletionRun) ? currentData.deletionRun : null;
+                    if (currentDeletionRun?.id !== deletionRunId || currentDeletionRun.status !== 'processing') {
+                        throw new Error('Knowledge generation job deletion ownership changed.');
+                    }
+                    transaction.update(jobRef, {
+                        deletionRun: {
+                            ...currentDeletionRun,
+                            status: 'failed',
+                            completedAt: failedAt,
+                            failedCount: storageCleanupSummary.failed,
+                        },
+                        modifiedOn: failedAt,
+                    });
+                });
+                logAnswerlatticeFailure(
+                    'answerlattice_kb_source_cleanup_failed',
+                    new Error('answerlattice_kb_source_cleanup_failed'),
+                    {
+                        attemptedSourceFileCount: storageCleanupSummary.attempted,
+                        failedSourceFileCount: storageCleanupSummary.failed,
+                    },
+                );
+                throw new Error('One or more knowledge source files could not be deleted. Retry job deletion.');
             }
 
             await runTransaction(db, async (transaction) => {
@@ -645,7 +707,7 @@ export const deleteIngestionJob = async (jobId: string) => {
                 deleted: true,
                 deletedDraftArticles: draftArticleDocs.length,
                 preservedPublishedArticles,
-                storageCleanupFailedCount: 0,
+                storageCleanupFailedCount: storageCleanupSummary.failed,
             } satisfies IngestionJobDeleteResult;
         },
         jobId,

@@ -120,7 +120,7 @@ Functions use bounded instance, timeout, memory, concurrency, and retry settings
 - Trusted platform sessions avoid the unnecessary user query.
 - Canonical publication, release activation, governance decisions, and derived summaries remain server-owned.
 
-`PLATFORM_SUPPORT` is accepted by server management/callable authorization. Direct client rules retain the narrower `PLATFORM` bypass; support operators use protected server workflows or explicit tenant permission claims instead of unrestricted client database access.
+`PLATFORM_SUPPORT` is accepted by server management/callable authorization. Direct client rules retain the narrower `PLATFORM` bypass for general management data, with one explicit exception: the dedicated Answerlattice `supportTickets`, `chatSessions`, and support-media paths admit `PLATFORM_SUPPORT` so the support shell can operate across workspaces. Hard ticket deletion and unrelated platform data remain full-`PLATFORM` only.
 
 ## Public Credentials
 

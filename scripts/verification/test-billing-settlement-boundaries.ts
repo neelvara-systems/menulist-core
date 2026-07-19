@@ -16,6 +16,7 @@ import {
     normalizeAnswerlatticeSubscriptionId,
 } from '../../src/lib/answerlattice/billingDocumentIdBoundary';
 import {
+    getAnswerlatticeBillingRecordScope,
     isAnswerlatticePaymentHistoryItemInScope,
     isAnswerlatticeSubscriptionInScope,
 } from '../../src/lib/answerlattice/billingScopeBoundary';
@@ -405,6 +406,33 @@ assert.equal(isAnswerlatticeIntakeLedgerInScope({ pId: 'AL', tId: 101, sId: 999 
 assert.equal(isAnswerlatticeIntakeLedgerInScope({ pId: ' al ', tId: 101, sId: 202 }, { tId: 101, sId: 202 }), false);
 assert.equal(isAnswerlatticeIntakeLedgerInScope({ pId: 'AL', tId: ' 101 ', sId: 202 }, { tId: 101, sId: 202 }), false);
 assert.equal(isAnswerlatticeIntakeLedgerInScope(null, { tId: 101, sId: 202 }), false);
+assert.deepEqual(
+    getAnswerlatticeBillingRecordScope({
+        pId: 'AL',
+        productId: 'AL',
+        tId: 101,
+        tenantId: 101,
+        sId: 202,
+        storeId: 202,
+    }),
+    { tId: 101, sId: 202 },
+    'exact Answerlattice billing aliases must resolve to one authoritative scope',
+);
+assert.equal(
+    getAnswerlatticeBillingRecordScope({ pId: 'AL', tId: 101, tenantId: 999, sId: 202 }),
+    null,
+    'conflicting Answerlattice billing tenant aliases must not resolve',
+);
+assert.equal(
+    getAnswerlatticeBillingRecordScope({ pId: 'AL', tId: '101', sId: 202 }),
+    null,
+    'coercible Answerlattice billing scope must not resolve',
+);
+assert.equal(
+    getAnswerlatticeBillingRecordScope({ tId: 101, sId: 202 }),
+    null,
+    'Answerlattice billing records must carry explicit product identity',
+);
 assert.equal(
     isAnswerlatticeSubscriptionInScope({ pId: 'AL', tId: 101, sId: 202 }, { tId: 101, sId: 202 }),
     true,

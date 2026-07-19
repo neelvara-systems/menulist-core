@@ -5,6 +5,7 @@
 > **Method:** Full codebase read of every Answerlattice file + doc parity verification + flow tracing
 > **TypeScript Check:** PASS — 0 errors (dashboard + functions)
 > **Scope:** All 5 pillars, all 4 phases, all distribution components, all integration points
+> **Historical status:** Point-in-time evidence only. Current runtime truth is maintained in the feature dossiers and `system-inventory/answerlattice-feature-flow-audit-tracker.md`; later hardening supersedes implementation claims below where they differ.
 
 ---
 
@@ -276,7 +277,7 @@ runAnswerlatticeNightly() → discoverActiveTenants()
 
 **Verdict:** Code is correct and comprehensive. **BUT** the function is not called by any scheduler (BUG-1/BUG-3). Must be re-wired before activation.
 
-### Flow F: Release → Drift Evaluation ✅
+### Flow F: Release → Drift Evaluation (historical March 7 snapshot)
 
 ```
 activateRelease() → evaluateDriftForTenant() (fire-and-forget)
@@ -287,6 +288,8 @@ activateRelease() → evaluateDriftForTenant() (fire-and-forget)
 ```
 
 **Verdict:** Complete. Advisory only. Never blocks releases.
+
+**Current July 18 contract:** Release activation now derives Class A drift inside the authenticated server transaction, sets `reviewRequired`, writes deterministic audits, invalidates canonical cache/source state, marks the compiled bundle stale, and fails closed on malformed, cross-scope, or over-cap affected-answer input. See `drift-governance/README.md`.
 
 ### Flow G: Mutation Proposal → Human Approval ✅
 

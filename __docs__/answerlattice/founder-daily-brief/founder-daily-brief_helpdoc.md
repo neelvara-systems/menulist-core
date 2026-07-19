@@ -32,3 +32,7 @@ After launch verification is ready, Daily Brief becomes the normal management ho
 4. Approve, edit, or reject work inside the linked governed screen.
 5. Use `I shipped a change` to record affected entities and surfaces before running the existing release checks.
 6. Return to Daily Brief after the next summary refresh.
+
+## Evidence Health
+
+Daily Brief identifies missing, invalid, or stale summaries. A missing metric is shown as unavailable, not zero. Use the linked source workflow only when your role is permitted to open it.

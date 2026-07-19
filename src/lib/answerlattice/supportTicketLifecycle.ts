@@ -9,11 +9,15 @@ import {
     type SupportTicketType,
     type TicketMessage,
 } from '@type/supportTicket';
+import {
+    ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT,
+    ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES,
+} from '@lib/answerlattice/supportTicketAttachmentBoundary';
 import { z } from 'zod';
 
-export const ANSWERLATTICE_TICKET_MESSAGE_LIMIT = 500;
-export const ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT = 200;
-export const ANSWERLATTICE_TICKET_DOCUMENT_LIMIT = 20;
+export const ANSWERLATTICE_TICKET_MESSAGE_LIMIT = 50;
+export const ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT = 25;
+export const ANSWERLATTICE_TICKET_DOCUMENT_LIMIT = ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT;
 
 const TicketStatusSchema = z.enum([
     SUPPORT_TICKET_STATUS.OPEN,
@@ -84,6 +88,21 @@ export const normalizeAnswerlatticeSupportTicketId = (value: unknown): string | 
         : null;
 };
 
+const ANSWERLATTICE_WIDGET_ESCALATION_TICKET_PREFIX = 'alwe_';
+
+export const getAnswerlatticeSupportTicketDisplayId = (value: unknown): string => {
+    const id = normalizeAnswerlatticeSupportTicketId(value);
+    if (!id) return '';
+    if (id.startsWith(ANSWERLATTICE_WIDGET_ESCALATION_TICKET_PREFIX)) {
+        const hashReference = id.slice(
+            ANSWERLATTICE_WIDGET_ESCALATION_TICKET_PREFIX.length,
+            ANSWERLATTICE_WIDGET_ESCALATION_TICKET_PREFIX.length + 8,
+        );
+        if (hashReference.length === 8) return `WE-${hashReference.toUpperCase()}`;
+    }
+    return id.slice(0, 6).toUpperCase();
+};
+
 export const parseAnswerlatticeTicketMutation = (value: unknown): z.infer<typeof TicketMutableFieldsSchema> => {
     const input = isRecord(value) ? value : {};
     const projected: Record<string, unknown> = {};
@@ -131,14 +150,18 @@ const isTicketMessage = (value: unknown): value is TicketMessage => {
         if (!value.attachments.every((attachment: unknown) => (
             isRecord(attachment)
             && typeof attachment.url === 'string'
+            && attachment.url.length > 0
             && attachment.url.length <= 2000
             && typeof attachment.name === 'string'
+            && attachment.name.length > 0
             && attachment.name.length <= 300
             && typeof attachment.type === 'string'
+            && attachment.type.length > 0
             && attachment.type.length <= 120
             && typeof attachment.size === 'number'
-            && Number.isFinite(attachment.size)
+            && Number.isSafeInteger(attachment.size)
             && attachment.size >= 0
+            && attachment.size <= ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES
         ))) return false;
     }
     return true;
@@ -162,14 +185,22 @@ const isTicketStatusEntry = (value: unknown): value is SupportTicketType['status
 const isTicketDocument = (value: unknown): boolean => (
     isRecord(value)
     && typeof value.url === 'string'
+    && value.url.length > 0
     && value.url.length <= 2000
     && typeof value.name === 'string'
+    && value.name.length > 0
     && value.name.length <= 300
     && typeof value.type === 'string'
+    && value.type.length > 0
     && value.type.length <= 120
     && typeof value.size === 'number'
-    && Number.isFinite(value.size)
+    && Number.isSafeInteger(value.size)
     && value.size >= 0
+    && value.size <= ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES
+    && (
+        value.uid === undefined
+        || (typeof value.uid === 'string' && value.uid.length > 0 && value.uid.length <= 180)
+    )
 );
 
 export const parseAnswerlatticeTicketMessage = (value: unknown): TicketMessage => {
@@ -213,7 +244,7 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
     return {
         ...params.value,
         id,
-        displayId: id.slice(0, 6).toUpperCase(),
+        displayId: getAnswerlatticeSupportTicketDisplayId(id),
         tId,
         sId,
         messages,

@@ -2,6 +2,8 @@ import { Timestamp } from 'firebase/firestore';
 import { UserUploadedFileType } from './common';
 import { KnowledgeBaseArticleType } from './knowledgeBase';
 import type { SourceContext } from './multiProduct';
+import type { AnswerlatticePublicCitation, AnswerlatticeScopeClarification } from './answerlattice';
+import type { AnswerlatticePublicFallbackReason } from '@lib/answerlattice/publicAnswerContracts';
 
 export interface ChatMessage {
     id: string;
@@ -12,7 +14,11 @@ export interface ChatMessage {
     createdOn?: Timestamp; // Firestore Timestamp
     searchHistoryId?: string; // Links to aiSearchHistory for analytics
     references?: ChatReference[]; // Compact persisted references; full article content is loaded on demand.
+    citations?: AnswerlatticePublicCitation[];
     answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string;
+    confidence?: 'high' | 'medium' | 'low' | 'none';
+    fallbackReason?: AnswerlatticePublicFallbackReason;
+    clarification?: AnswerlatticeScopeClarification;
     relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem;
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)
     image?: UserUploadedFileType;

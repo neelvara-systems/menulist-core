@@ -79,11 +79,11 @@ const supportCreditPack = ANSWERLATTICE_CREDIT_PACKS_LIST[0];
 const CREDIT_EXAMPLES = [
     {
         title: 'Starter setup month',
-        description: 'Use credits for first answer drafts, support-gap review, and selected screenshot or recording extraction while normal widget loading and help browsing stay outside credit usage.',
+        description: 'Use credits for the source-backed first-ten starter-answer run, full-runtime answer tests, and selected screenshot or recording extraction. Draft review, normal widget loading, and help browsing stay outside credit usage.',
     },
     {
         title: 'Launch week spike',
-        description: 'When onboarding, billing, and setup questions arrive together, credits keep fallback handling and review work bounded without changing the plan immediately.',
+        description: 'When onboarding, billing, and setup questions arrive together, credits keep provider-backed fallback answers bounded without changing the plan immediately.',
     },
     {
         title: 'Media-heavy intake',
@@ -110,8 +110,8 @@ export default function AnswerlatticePricingPage() {
                         items={[
                             { label: 'Setup path', value: 'Create the workspace and verify the first support layer' },
                             { label: 'Paid capacity', value: 'Plans add monthly support credits and higher support volume' },
-                            { label: 'Credit use', value: 'AI-assisted answers, fallback, review work, and media extraction stay bounded' },
-                            { label: 'Not charged for', value: 'Normal widget loading, selected text import, and public help browsing' },
+                            { label: 'Credit use', value: 'Provider fallback, full-runtime tests, starter generation, OCR, and transcription' },
+                            { label: 'Not charged for', value: 'Approved widget answers, draft review, selected text import, and help browsing' },
                         ]}
                     />
                 </section>
@@ -200,7 +200,7 @@ export default function AnswerlatticePricingPage() {
                         <SectionHeader
                             eyebrow="Support credits"
                             title="Credits keep support capacity predictable."
-                            description="Support credits cover AI-assisted answers, fallback handling, review work, and paid knowledge-intake media extraction such as screenshot OCR or short recording transcription. Public help pages, selected text import, and normal widget loading do not use credits."
+                            description="Provider-backed fallback answers, full-runtime answer tests, the source-backed first-ten starter-answer run, screenshot OCR, and short recording transcription use support credits. Approved or cached widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and public help browsing do not use credits."
                         >
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
                                 Top-ups are for launch spikes, media-heavy intake, or heavy review periods without forcing a plan change.

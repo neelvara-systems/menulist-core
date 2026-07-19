@@ -70,14 +70,23 @@ Add to `src/types/answerlattice/index.ts`:
  */
 export interface AnswerlatticeContextPayload {
   contextVersion?: number; // Schema version (default: 1)
+  contextKey?: string; // Exact approved Product Surface key
+  path?: string; // Transient route path used only for Product Surface matching
+  title?: string; // Optional safe page title
   feature?: string; // Product subsystem (e.g., "integrations")
   page?: string; // UI location identifier (e.g., "stripe_integration_page")
   workflow?: string; // Current action (e.g., "connect_integration")
   entityHints?: string[]; // Explicit entity references (max 5)
+  role?: string; // Public alias normalized into userRole
   userRole?: string; // Permission level (e.g., "admin")
+  locale?: string; // Public locale label only
   plan?: string; // Subscription tier (e.g., "pro")
+  state?: string; // Product state for strict canonical applicability
+  version?: string; // Numeric product version label, e.g. "2.4.1"
 }
 ```
+
+The browser SDK source, built SDK output, public widget loader, iframe runtime, and server Zod schema use the same bounded field set. `path` rejects wildcard input and remains transient; route definitions own wildcard matching. `state` and `version` survive every browser boundary, and `version` is normalized into `RetrievalContext.currentVersion` before canonical retrieval.
 
 ### Extended: RetrievalContext
 

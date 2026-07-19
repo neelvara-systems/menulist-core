@@ -28,6 +28,9 @@ export const DB_COLLECTIONS = {
     KB_GENERATION_JOBS: 'kb_generation_jobs',
     MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
     CHANGELOG: 'changelog',
+    CHANGELOG_FEEDBACK: 'changelog_feedback',
+    ARTICLE_FEEDBACK: 'article_feedback',
+    FAQ_FEEDBACK: 'faq_feedback',
 
     // Answerlattice — Governed Answer Infrastructure
     // These collections live in ANSWERLATTICE Firestore (separate project)

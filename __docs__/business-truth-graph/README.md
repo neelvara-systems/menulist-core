@@ -47,7 +47,7 @@ The Business Truth Graph (BTG) is a **conceptual vocabulary** for describing Men
 | Public Status          | ✅ Implemented            | 90%      |
 | Location               | ✅ Implemented            | 85%      |
 | Contact                | ✅ Implemented            | 95%      |
-| Identity               | ✅ Implemented            | 80%      |
+| Identity               | ✅ Embedded binding foundation | 85% |
 | Hours & Availability   | ✅ Core done              | 70%      |
 | Reputation             | ⏳ Blocked (GBP)          | 60%      |
 | Surface Drift (GBP)    | ⚠️ Partial                | 60%      |
@@ -64,6 +64,17 @@ The Business Truth Graph (BTG) is a **conceptual vocabulary** for describing Men
 
 **REJECTED:** Collection-per-layer Firestore storage (12x cost increase).  
 **VALIDATED:** Current embedded-document approach on StoreDataType is correct and cost-optimal.
+
+External location identity follows that same decision: the exact store/outlet
+may carry an optional provider-neutral, owner-confirmed binding inside the store
+document. URI-only owner links do not claim a resolved Place ID; stable Maps
+identity requires attributable source evidence and separate confirmation. The
+binding is internal and reversible. Alias history, confidence scoring,
+collision workflows, automatic merging, and a separate registry remain out of
+scope until observed provider-resolution evidence justifies them. Place IDs are
+preserved rather than truncated, and their confirmation time is retained so a
+future provider-enabled workflow can revalidate IDs that have aged beyond the
+provider's recommended freshness window.
 
 ---
 
@@ -83,4 +94,4 @@ The Business Truth Graph (BTG) is a **conceptual vocabulary** for describing Men
 
 ---
 
-**Last Updated:** March 8, 2026
+**Last Updated:** July 19, 2026

@@ -13,6 +13,10 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 import { getSafePwaExternalHttpsUrl } from './shortcutHandoffUrl';
 
 interface Props {
@@ -23,6 +27,7 @@ interface Props {
     message: string;
     trackingEnabled: boolean;
     locationTrackingEnabled?: boolean;
+    activeLanguage?: string | null;
 }
 
 export default function PwaExternalRedirectClient({
@@ -33,7 +38,10 @@ export default function PwaExternalRedirectClient({
     message,
     trackingEnabled,
     locationTrackingEnabled = true,
+    activeLanguage,
 }: Props) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
     const [ready, setReady] = useState(false);
     const safeTargetUrl = getSafePwaExternalHttpsUrl(targetUrl);
 
@@ -57,6 +65,8 @@ export default function PwaExternalRedirectClient({
 
     return (
         <div
+            dir={direction}
+            lang={activeLanguage || 'en'}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -72,12 +82,14 @@ export default function PwaExternalRedirectClient({
         >
             <h1 style={{ fontSize: 20, margin: '0 0 12px', fontWeight: 600 }}>{title}</h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? (safeTargetUrl ? message : 'This shortcut is unavailable.') : 'Preparing…'}
+                {ready
+                    ? (safeTargetUrl ? message : t('menu.shortcutUnavailable'))
+                    : t('menu.preparing')}
             </p>
             {safeTargetUrl ? (
                 <noscript>
                     <p style={{ marginTop: 16 }}>
-                        <a href={safeTargetUrl}>Continue</a>
+                        <a href={safeTargetUrl}>{t('menu.continue')}</a>
                     </p>
                 </noscript>
             ) : null}

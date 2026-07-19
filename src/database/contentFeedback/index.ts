@@ -5,6 +5,7 @@ import {
     parseAnswerlatticeContentFeedbackRequest,
 } from '@lib/answerlattice/contentFeedbackContracts';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
@@ -38,7 +39,7 @@ export type ContentFeedbackItem = {
 };
 
 export type ContentFeedbackMutationInput = {
-    type: 'changelog' | 'article';
+    type: 'changelog' | 'article' | 'faq';
     contentId: string;
     pageId?: string;
     sentiment: 'like' | 'dislike';
@@ -162,17 +163,17 @@ export const normalizeContentFeedbackItem = (value: unknown): ContentFeedbackIte
 };
 
 const getCollectionName = (type: ContentType) => {
-    if (type !== 'changelog' && type !== 'article') {
-        throw new Error('Content feedback comments are supported for articles and changelog entries only.');
-    }
-    return type === 'changelog' ? DB_COLLECTIONS.CHANGELOG_FEEDBACK : DB_COLLECTIONS.ARTICLE_FEEDBACK;
+    if (type === 'changelog') return DB_COLLECTIONS.CHANGELOG_FEEDBACK;
+    if (type === 'article') return DB_COLLECTIONS.ARTICLE_FEEDBACK;
+    if (type === 'faq') return DB_COLLECTIONS.FAQ_FEEDBACK;
+    throw new Error('Content feedback comments are not supported for this content type.');
 };
 
-/** Updates an article/changelog counter and bounded audit history atomically on the server. */
+/** Updates an article/changelog/FAQ counter and bounded audit history atomically on the server. */
 export const updateContentFeedbackWithAudit = async (
     input: ContentFeedbackMutationInput,
 ) => {
-    if ((input.type !== 'article' && input.type !== 'changelog')
+    if ((input.type !== 'article' && input.type !== 'changelog' && input.type !== 'faq')
         || (input.sentiment !== 'like' && input.sentiment !== 'dislike')
         || (input.increment !== undefined && typeof input.increment !== 'boolean')
         || (input.comment !== undefined && typeof input.comment !== 'string')
@@ -183,7 +184,9 @@ export const updateContentFeedbackWithAudit = async (
     const scope = resolveAnswerlatticeSessionScope(session);
     const contentId = input.type === 'article'
         ? normalizeAnswerlatticeKbArticleId(input.contentId)
-        : normalizeContentFeedbackDocumentId(input.contentId);
+        : input.type === 'faq'
+            ? normalizeAnswerlatticeFaqId(input.contentId)
+            : normalizeContentFeedbackDocumentId(input.contentId);
     const pageId = input.type === 'changelog'
         ? normalizeContentFeedbackDocumentId(input.pageId)
         : null;
@@ -242,8 +245,10 @@ export const getContentFeedbackForEntry = async (
             const scope = resolveAnswerlatticeSessionScope(session);
             const normalizedEntryId = type === 'article'
                 ? normalizeAnswerlatticeKbArticleId(entryId)
-                : normalizeContentFeedbackDocumentId(entryId);
-            if (!scope || !normalizedEntryId || (type !== 'article' && type !== 'changelog')) return [];
+                : type === 'faq'
+                    ? normalizeAnswerlatticeFaqId(entryId)
+                    : normalizeContentFeedbackDocumentId(entryId);
+            if (!scope || !normalizedEntryId || (type !== 'article' && type !== 'changelog' && type !== 'faq')) return [];
 
             const feedbackDocRef = doc(
                 db,

@@ -17,6 +17,7 @@ import {
     shouldUpdateWidgetRuntimeStatus,
 } from '@lib/answerlattice/widgetRuntimeStatus';
 import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
+import { getAnswerlatticeBundleRefPath } from '@lib/answerlattice/compiledContext';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
@@ -81,6 +82,19 @@ const buildResponse = (
     }), request);
 };
 
+const buildErrorResponse = (
+    request: NextRequest,
+    body: Record<string, unknown>,
+    status: number,
+    headers: Record<string, string> = {},
+): NextResponse => withPublicApiCors(NextResponse.json(body, {
+    status,
+    headers: {
+        'Cache-Control': 'no-store',
+        ...headers,
+    },
+}), request);
+
 const rememberRuntimeConfig = (
     cacheKey: string,
     body: Record<string, any>,
@@ -133,6 +147,18 @@ const getReadyPublicBundleConfig = async (tId: number, sId: number) => {
     const manifest = await getAnswerlatticeContextBundleManifestServer(tId, sId);
     if (!manifest) return null;
     if (manifest.status !== 'ready' || !manifest.publicBundleId || !manifest.activeVersion) return null;
+    const requiredFiles = [
+        'widget-bootstrap.json',
+        'context-index.json',
+        'docs-nav.json',
+        'canonical-lite.json',
+    ];
+    if (requiredFiles.some((filePath) => !getAnswerlatticeBundleRefPath(
+        manifest,
+        `public:${filePath}`,
+        tId,
+        sId,
+    ))) return null;
     const basePath = `/api/answerlattice/bundles/public/${manifest.publicBundleId}/v${manifest.activeVersion}`;
     return {
         status: manifest.status,
@@ -186,13 +212,13 @@ export function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-        return withPublicApiCors(NextResponse.json({ error: 'Widget not enabled' }, { status: 404 }), request);
+        return buildErrorResponse(request, { error: 'Widget not enabled' }, 404);
     }
 
     try {
         const apiKey = request.headers.get('x-api-key')?.trim();
         if (!apiKey || !apiKey.startsWith('al_')) {
-            return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
+            return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
 
         const rateLimitConfig = getRateLimitForFeature('PUBLIC_API');
@@ -205,13 +231,12 @@ export async function GET(request: NextRequest) {
         if (!preAuthRateLimit.allowed) {
             const providerUnavailable = preAuthRateLimit.reason === 'provider_unavailable';
             const retryAfter = Math.max(Math.ceil((preAuthRateLimit.resetAt - Date.now()) / 1000), 1);
-            return withPublicApiCors(NextResponse.json(
+            return buildErrorResponse(
+                request,
                 { error: providerUnavailable ? 'Widget config temporarily unavailable' : 'Rate limit exceeded' },
-                {
-                    status: providerUnavailable ? 503 : 429,
-                    headers: { 'Cache-Control': 'no-store', 'Retry-After': String(retryAfter) },
-                },
-            ), request);
+                providerUnavailable ? 503 : 429,
+                { 'Retry-After': String(retryAfter) },
+            );
         }
 
         const requestOrigin = request.headers.get('origin') || request.nextUrl.origin;
@@ -234,16 +259,12 @@ export async function GET(request: NextRequest) {
         if (!rateLimitResult.allowed) {
             const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
             const retryAfter = Math.max(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000), 1);
-            return withPublicApiCors(NextResponse.json(
+            return buildErrorResponse(
+                request,
                 { error: providerUnavailable ? 'Widget config temporarily unavailable' : 'Rate limit exceeded' },
-                {
-                    status: providerUnavailable ? 503 : 429,
-                    headers: {
-                        'Cache-Control': 'no-store',
-                        'Retry-After': String(retryAfter),
-                    },
-                }
-            ), request);
+                providerUnavailable ? 503 : 429,
+                { 'Retry-After': String(retryAfter) },
+            );
         }
 
         const authResult = await validatePublicApiKey(apiKey, {
@@ -254,18 +275,18 @@ export async function GET(request: NextRequest) {
             preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
-            return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
+            return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
 
         const credential = authResult.credential || {};
         if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
-            return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
+            return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
         if (credential.purpose && credential.purpose !== 'answerlattice_widget') {
-            return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
+            return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:config')) {
-            return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
+            return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
 
         const { storeData, storeId } = authResult;
@@ -281,11 +302,11 @@ export async function GET(request: NextRequest) {
             logRuntimeFailure('answerlattice_widget_config_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });
-            return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
+            return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
 
         if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
-            return withPublicApiCors(NextResponse.json({ error: 'Origin not allowed' }, { status: 403 }), request);
+            return buildErrorResponse(request, { error: 'Origin not allowed' }, 403);
         }
 
         const runtimeAuthorizationRequired = Array.isArray(storeData.widgetAllowedOrigins)
@@ -308,10 +329,11 @@ export async function GET(request: NextRequest) {
                     ...getBoundedRuntimeStringContext('tenantId', tId),
                     ...getBoundedRuntimeStringContext('storeId', sId),
                 });
-                return withPublicApiCors(NextResponse.json(
+                return buildErrorResponse(
+                    request,
                     { error: 'Widget config temporarily unavailable' },
-                    { status: 503, headers: { 'Cache-Control': 'no-store' } },
-                ), request);
+                    503,
+                );
             }
         }
 
@@ -371,6 +393,6 @@ export async function GET(request: NextRequest) {
         return buildResponse(request, body, etag);
     } catch (error) {
         logRuntimeFailure('answerlattice_widget_config_failed', error);
-        return withPublicApiCors(NextResponse.json({ error: 'Something went wrong' }, { status: 500 }), request);
+        return buildErrorResponse(request, { error: 'Something went wrong' }, 500);
     }
 }

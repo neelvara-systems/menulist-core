@@ -1,7 +1,7 @@
 'use client';
 
-import { assertKnowledgeBaseArticleDeleteSucceeded, deleteArticle, getArticleById, getArticlesByCategoryId, getArticlesBySectionId } from "@database/knowledgeBase/articles";
-import { assertKnowledgeBaseCategoriesMutationSucceeded, deleteArticleFromParent, deleteCategory, deleteSectionFromCategory, getCategories, updateArticleInParent } from "@database/knowledgeBase/categories";
+import { assertKnowledgeBaseArticleDeleteSucceeded, deleteArticle, getArticleById, getArticlesByCategoryId, getArticlesBySectionId, type KnowledgeBaseArticleWriteResult } from "@database/knowledgeBase/articles";
+import { assertKnowledgeBaseCategoriesMutationSucceeded, deleteCategory, deleteSectionFromCategory, getCategories } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import AISearchModal from "@organisms/AISearchModal";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -131,31 +131,22 @@ function PlatformKnowledgeBase() {
     const handleArticleSuccess = async (article: KnowledgeBaseArticleType) => {
         dispatch(startLoader('Updating article metadata'));
         try {
-            if (categoriesData) {
-                const updatedCategoriesData = await updateArticleInParent(categoriesData, article.categoryId, article, article.sectionId);
-                assertKnowledgeBaseCategoriesMutationSucceeded(
-                    updatedCategoriesData,
-                    'updateArticleInParent',
-                    'platform_kb_article_parent_update_rejected',
-                );
-                if (updatedCategoriesData) {
-                    setCategoriesData(updatedCategoriesData);
-
-                    // Refresh selected category/section to reflect the change
-                    if (selectedCategory?.id === article.categoryId) {
-                        setSelectedCategory(updatedCategoriesData.categories[article.categoryId]);
-                    }
-                    if (selectedSection?.id === article.sectionId) {
-                        const cat = updatedCategoriesData.categories[article.categoryId];
-                        const sec = cat.sections.find(s => s.id === article.sectionId);
-                        if (sec) setSelectedSection(sec);
-                    }
-                    setSelectedArticle(article);
-                    message.success('Article saved successfully!');
+            const navigationCategories = (article as KnowledgeBaseArticleWriteResult).navigationCategories;
+            if (navigationCategories) {
+                const updatedCategoriesData = { categories: navigationCategories };
+                setCategoriesData(updatedCategoriesData);
+                const updatedCategory = navigationCategories[article.categoryId];
+                setSelectedCategory(updatedCategory || null);
+                if (article.sectionId && updatedCategory) {
+                    setSelectedSection(updatedCategory.sections?.find(section => section.id === article.sectionId) || null);
+                } else {
+                    setSelectedSection(null);
                 }
             }
+            setSelectedArticle(article);
+            message.success('Article saved successfully!');
         } catch (error) {
-            message.error('Failed to update article metadata in parent.');
+            message.error('Failed to refresh article navigation.');
         } finally {
             dispatch(stopLoader('Updating article metadata'));
             setIsArticleModalVisible(false);
@@ -207,17 +198,12 @@ function PlatformKnowledgeBase() {
                             id,
                             'platform_kb_article_delete_rejected',
                         );
-                        const updatedCategoriesData = await deleteArticleFromParent(categoriesData, selectedCategory.id, id, selectedSection?.id);
-                        assertKnowledgeBaseCategoriesMutationSucceeded(
-                            updatedCategoriesData,
-                            'deleteArticleFromParent',
-                            'platform_kb_article_parent_delete_rejected',
-                        );
-                        if (updatedCategoriesData) {
+                        const updatedCategoriesData = { categories: deleteResult.navigationCategories };
+                        if (updatedCategoriesData.categories) {
                             setCategoriesData(updatedCategoriesData);
                             const updatedCategory = updatedCategoriesData.categories[selectedCategory.id];
                             setSelectedCategory(updatedCategory);
-                            if (selectedSection) {
+                            if (selectedSection && updatedCategory) {
                                 const updatedSection = updatedCategory.sections?.find((section) => section.id === selectedSection.id);
                                 setSelectedSection(updatedSection || null);
                             }
@@ -226,15 +212,9 @@ function PlatformKnowledgeBase() {
                         if (selectedArticle?.id === id) setSelectedArticle(null);
                     } else if (type === 'section' && selectedCategory && categoriesData) {
                         const articlesToDelete = await getArticlesBySectionId(id);
-                        if (articlesToDelete) {
-                            await Promise.all(articlesToDelete.map(async (article) => {
-                                const deleteResult = await deleteArticle(article.id);
-                                assertKnowledgeBaseArticleDeleteSucceeded(
-                                    deleteResult,
-                                    article.id,
-                                    'platform_kb_section_article_delete_rejected',
-                                );
-                            }));
+                        if (articlesToDelete?.length) {
+                            message.warning('Move or delete the articles in this section before deleting it.');
+                            return;
                         }
                         const categoryUpdateResult = await deleteSectionFromCategory(selectedCategory.id, id);
                         assertKnowledgeBaseCategoriesMutationSucceeded(
@@ -252,15 +232,9 @@ function PlatformKnowledgeBase() {
                         }
                     } else if (type === 'category' && categoriesData) {
                         const articlesToDelete = await getArticlesByCategoryId(id);
-                        if (articlesToDelete) {
-                            await Promise.all(articlesToDelete.map(async (article) => {
-                                const deleteResult = await deleteArticle(article.id);
-                                assertKnowledgeBaseArticleDeleteSucceeded(
-                                    deleteResult,
-                                    article.id,
-                                    'platform_kb_category_article_delete_rejected',
-                                );
-                            }));
+                        if (articlesToDelete?.length) {
+                            message.warning('Move or delete the articles in this category before deleting it.');
+                            return;
                         }
                         const categoryDeleteResult = await deleteCategory({ categoryId: id });
                         assertKnowledgeBaseCategoriesMutationSucceeded(
@@ -344,6 +318,16 @@ function PlatformKnowledgeBase() {
             onEditArticle={handleArticleSelect}
             onDeleteArticle={(id) => handleDelete('article', id)}
             isArticleLoading={isArticleLoading}
+            onNavigationChange={(navigationCategories) => {
+                setCategoriesData({ categories: navigationCategories });
+                if (selectedCategory) {
+                    const updatedCategory = navigationCategories[selectedCategory.id];
+                    setSelectedCategory(updatedCategory || null);
+                    if (selectedSection && updatedCategory) {
+                        setSelectedSection(updatedCategory.sections?.find(section => section.id === selectedSection.id) || null);
+                    }
+                }
+            }}
         />
     );
 

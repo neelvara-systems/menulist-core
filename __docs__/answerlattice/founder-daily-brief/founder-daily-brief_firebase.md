@@ -21,6 +21,8 @@ Worst case: 6 reads per uncached brief request.
 
 Cache hit: 0 Firestore reads for 60 seconds inside the server process.
 
+Source-health classification, deterministic ranking, permission filtering, and strict browser validation are CPU-only. They add no Firestore operation.
+
 ## Writes
 
 No writes from the brief or prepared-card preview. When the optional action flag is enabled and the owner submits the prefilled Support Board form, the existing one-card write path applies.
@@ -52,4 +54,6 @@ Dashboard, Activation, and Support Control navigation links use the existing rou
 
 ## Cost Impact
 
-The daily brief adds one compact activation-summary read to the existing five-document Support Assistant packet on a cache miss. It adds CPU-only deterministic ranking and no raw collection query. Cache hits remain zero reads. The release deep link and prepared-card handoff add zero reads and zero writes before owner confirmation and create no assistant action collection.
+The daily brief uses the existing six-document Support Assistant packet, including Activation proof, on a cache miss. It adds CPU-only deterministic ranking and no raw collection query. Cache hits remain zero reads. The release deep link and prepared-card handoff add zero reads and zero writes before owner confirmation and create no assistant action collection.
+
+Scheduled summary timestamps older than 48 hours are exposed as stale. A five-minute future tolerance avoids small clock skew while rejecting implausible future evidence. These checks do not refresh or rewrite a source.

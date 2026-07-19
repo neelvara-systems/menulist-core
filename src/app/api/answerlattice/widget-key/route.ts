@@ -81,6 +81,10 @@ const keyJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse
         ...(init.headers || {}),
     },
 });
+const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
@@ -130,7 +134,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateNoStore(permission.response);
 
         const db = getAnswerlatticeDb();
         if (!db) {
@@ -214,7 +218,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (error instanceof AnswerlatticeWidgetKeyStoreError) {
             return keyJsonResponse({
                 error: error.code === 'key_limit'
-                    ? 'Widget key limit reached. Delete an old key before creating another.'
+                    ? 'Widget key limit reached. Revoke an old key before creating another.'
                     : error.message,
                 ...(error.code === 'key_limit' ? { limit: ANSWERLATTICE_WIDGET_KEY_LIMIT } : {}),
             }, { status: error.status });

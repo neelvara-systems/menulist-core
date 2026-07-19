@@ -25,6 +25,7 @@ const {
   normalizeAnswerlatticeFeedbackDocumentId,
   normalizeAnswerlatticeFeedbackRecord,
   normalizeAnswerlatticeFeedbackSubmission,
+  parseAnswerlatticeFeedbackSubmitRequest,
 } = require(path.join(ROOT, 'src/lib/answerlattice/feedbackBoundary.ts'));
 const { Timestamp } = require('firebase/firestore');
 const {
@@ -75,6 +76,15 @@ assert(normalizeAnswerlatticeFeedbackSubmission({
 assert(normalizeAnswerlatticeFeedbackDocumentId(' feedback-1 ') === 'feedback-1', 'feedback IDs must trim safely');
 assert(normalizeAnswerlatticeFeedbackDocumentId('tenant/feedback') === null, 'feedback IDs containing a path separator must fail closed');
 assert(normalizeAnswerlatticeFeedbackDocumentId('__reserved__') === null, 'reserved feedback IDs must fail closed');
+assert(parseAnswerlatticeFeedbackSubmitRequest({
+  requestId: 'feedback_request_1',
+  submission: general,
+})?.submission?.type === 'general', 'feedback submission requests must admit normalized feedback');
+assert(parseAnswerlatticeFeedbackSubmitRequest({
+  requestId: 'feedback_request_1',
+  submission: general,
+  forgedScope: { tId: 2, sId: 202 },
+}) === null, 'feedback submission requests must reject caller-controlled scope fields');
 
 const persisted = normalizeAnswerlatticeFeedbackRecord({
   ...general,
@@ -149,8 +159,11 @@ const contentFeedbackDal = read('src/database/contentFeedback/index.ts');
 const contentFeedbackContracts = read('src/lib/answerlattice/contentFeedbackContracts.ts');
 const contentFeedbackServer = read('src/lib/answerlattice/contentFeedbackServer.ts');
 const contentFeedbackRoute = read('src/app/api/answerlattice/content-feedback/route.ts');
+const feedbackSubmissionServer = read('src/lib/answerlattice/feedbackSubmissionServer.ts');
+const feedbackSubmissionRoute = read('src/app/api/answerlattice/feedback/route.ts');
 const genericFeedbackDal = read('src/database/feedback/genericFeedback.ts');
 const feedbackHook = read('src/hooks/useFeedback.ts');
+const feedbackSection = read('src/components/molecules/FeedbackSection/index.tsx');
 const articleView = read('src/components/organisms/ArticleView/index.tsx');
 const changelogPreview = read('src/components/templates/platform/changelog/ChangelogPreview.tsx');
 const articleDal = read('src/database/knowledgeBase/articles.ts');
@@ -159,25 +172,39 @@ const customerIdentity = read('src/lib/answerlattice/customerIdentity.ts');
 const contentFeedbackStorage = read('src/lib/contentFeedbackStorage/index.ts');
 const packageJson = JSON.parse(read('package.json'));
 const widgetFeedbackRoute = read('src/app/api/widget/feedback/route.ts');
+const widgetEscalationRoute = read('src/app/api/widget/escalation/route.ts');
+const widgetEscalationServer = read('src/lib/answerlattice/widgetEscalationServer.ts');
 const widgetClient = read('src/app/widget/[apiKey]/WidgetClient.tsx');
 const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
+const dataRetention = read('functions-answerlattice/src/answerlattice/dataRetention.ts');
+const faqView = read('src/components/templates/main-app/helpCenter/FaqView.tsx');
+const faqDal = read('src/database/answerlattice/faqs.ts');
 
 const feedbackValidationIndex = dal.indexOf('normalizeAnswerlatticeFeedbackSubmission(data)');
-const feedbackComposerIndex = dal.indexOf('answerlatticeRequestBodyComposer(normalized');
+const feedbackRouteIndex = dal.indexOf("fetch('/api/answerlattice/feedback'");
 assert(feedbackValidationIndex >= 0, 'feedback DAL must validate before composing a write');
-assert(feedbackComposerIndex >= 0, 'feedback DAL must compose normalized feedback through the Answerlattice request-body composer');
-assert(feedbackValidationIndex < feedbackComposerIndex, 'feedback validation must occur before metadata composition');
+assert(feedbackRouteIndex >= 0, 'feedback DAL must use the authenticated server submission route');
+assert(feedbackValidationIndex < feedbackRouteIndex, 'feedback validation must occur before the server request');
+assert(dal.includes('normalizeAnswerlatticeFeedbackSubmitResult(payload)'), 'feedback DAL must validate the server response');
+assert(!dal.includes('addDoc(getCollectionRef()'), 'feedback DAL must not write feedback documents directly');
 assert(dal.includes('normalizeAnswerlatticeFeedbackDocumentId(feedbackId)'), 'feedback surface updates must validate the document ID');
 assert(dal.includes('normalizeAnswerlatticeFeedbackRecord(document.data(), document.id)'), 'feedback reads must normalize persisted records before returning them');
-assert(dal.includes('normalizeExactAnswerlatticeSignalScopeId(feedback.tId)'), 'feedback signal dispatch must require exact tenant scope');
-assert(dal.includes('feedback.pId !== PRODUCT_IDS.ANSWERLATTICE'), 'feedback signal dispatch must require exact product ownership');
-assert(dal.includes('answerlattice_feedback_signal_dispatch_failed'), 'feedback signal dispatch failures must be observable');
-assert(!dal.includes('.catch(() => undefined)'), 'feedback signal dispatch failures must not be silently discarded');
+assert(feedbackSubmissionRoute.includes('readBoundedJsonBody(request, FEEDBACK_MAX_BODY_BYTES)'), 'feedback submissions must have a body cap');
+assert(feedbackSubmissionRoute.includes("buildAnswerlatticeRateLimitKey('answerlattice-feedback'"), 'feedback submissions must be rate limited per scoped actor');
+assert(feedbackSubmissionRoute.includes('failClosedOnProviderError: true'), 'feedback submission cost controls must fail closed when the limiter is unavailable');
+assert(feedbackSubmissionServer.includes('await db.runTransaction(async (transaction) =>'), 'feedback submission identity and replay checks must be transactional');
+assert(feedbackSubmissionServer.includes('submissionFingerprint'), 'feedback submissions must persist an exact replay fingerprint');
+assert(feedbackSubmissionServer.includes('emitAnswerlatticeSignal({'), 'feedback submissions must emit the governed support signal on the server');
+assert(!feedbackSubmissionServer.includes('sourceContext: feedback.sourceContext'), 'derived feedback signals must not duplicate customer source context');
+assert(!feedbackSubmissionServer.includes('userId: feedback.uId'), 'derived feedback signals must not duplicate customer user identity');
+assert(!rules.includes('isAnswerlatticeFeedbackSignalCreate()'), 'dedicated rules must not retain a browser-owned feedback-signal bypass');
 assert(generalFeedback.includes('ANSWERLATTICE_FEEDBACK_TEXT_MAX_LENGTH'), 'general feedback UI must share the text limit');
 assert(featureUsageSource.includes("form.getFieldValue('featureIssues')"), 'feature usage UI must require an issue or comment before submission');
 assert(featureUsageSource.includes('ANSWERLATTICE_FEEDBACK_FEATURE_ISSUES'), 'feature usage UI must share the canonical issue list');
 assert(featureRequestsSource.includes('ANSWERLATTICE_FEEDBACK_POPULAR_REQUESTS'), 'feature request UI must share the canonical vote list');
-assert(contentFeedbackDal.includes('updateContentFeedbackWithAudit'), 'article/changelog feedback must expose one coupled mutation');
+assert(featureRequestsSource.includes("Form.useWatch('votedPopularRequests', form)"), 'feature request controls must derive vote state from the resettable form authority');
+assert(!featureRequestsSource.includes('useState<{ [key: string]: boolean | null }>'), 'feature request controls must not retain vote state outside form reset');
+assert(contentFeedbackDal.includes('updateContentFeedbackWithAudit'), 'article/changelog/FAQ feedback must expose one coupled mutation');
 assert(contentFeedbackDal.includes("fetch('/api/answerlattice/content-feedback'"), 'content feedback mutations must use the authenticated server route');
 assert(contentFeedbackDal.includes('AnswerlatticeContentFeedbackResultSchema.safeParse(payload)'), 'content feedback clients must validate server responses');
 assert(!contentFeedbackDal.includes('runTransaction'), 'content feedback clients must not write counters or audit rows directly');
@@ -187,19 +214,35 @@ assert(contentFeedbackServer.includes('transaction.update(contentRef'), 'the ser
 assert(contentFeedbackServer.includes('transaction.create(feedbackRef'), 'the server transaction must create the audit row atomically');
 assert(contentFeedbackServer.includes('currentList.length < MAX_AUDIT_EVENTS'), 'content feedback audit rows must stop mutating at their cap');
 assert(contentFeedbackServer.includes('recentFeedbackOperations'), 'content feedback mutations must retain bounded idempotency state');
+assert(contentFeedbackServer.includes('MAX_ACTIVE_FEEDBACK_ACTORS = 5_000'), 'content feedback actor state must be bounded');
+assert(contentFeedbackServer.includes('currentSentiment === input.sentiment'), 'fresh request IDs must not duplicate an actor reaction');
+assert(contentFeedbackServer.includes('transaction.set(stateRef'), 'content feedback must persist server-authoritative actor state');
+assert(contentFeedbackServer.includes("content.active !== true"), 'article and FAQ feedback must reject inactive content');
+assert(contentFeedbackServer.includes("content.status !== 'published'"), 'article and FAQ feedback must reject unpublished content');
+assert(contentFeedbackContracts.includes("z.enum(['article', 'changelog', 'faq'])"), 'content feedback contracts must admit FAQ feedback explicitly');
+assert(contentFeedbackServer.includes("getAnswerlatticeRetentionFields('contentFeedback')"), 'content feedback audit rows must carry explicit retention');
 assert(contentFeedbackServer.includes("doc(`content_feedback_${operationId}`)"), 'negative feedback signals must use a deterministic id');
 assert(!contentFeedbackServer.includes('modifiedBy: actor.id'), 'reactions must not change content-author freshness metadata');
 assert(contentFeedbackRoute.includes('readBoundedJsonBody(request, CONTENT_FEEDBACK_MAX_BODY_BYTES)'), 'content feedback requests must have a body cap');
 assert(contentFeedbackRoute.includes("buildAnswerlatticeRateLimitKey('answerlattice-content-feedback'"), 'content feedback requests must be rate limited per scoped actor');
 assert(contentFeedbackDal.includes('.map(normalizeContentFeedbackItem)'), 'content feedback reads must normalize persisted audit items');
 assert(!contentFeedbackDal.includes('export const addContentFeedback'), 'the split audit-only writer must stay removed');
-assert(genericFeedbackDal.includes('updateContentFeedbackWithAudit'), 'generic article/changelog helpers must use the coupled transaction');
+assert(genericFeedbackDal.includes('updateContentFeedbackWithAudit'), 'generic article/changelog/FAQ helpers must use the coupled transaction');
+assert(genericFeedbackDal.includes("type: 'faq'"), 'generic FAQ reactions must use the authenticated feedback route');
+assert(faqView.includes('updateFaqFeedbackGeneric'), 'FAQ UI must use the generic audited feedback boundary');
+assert(!faqDal.includes('export const updateFaqFeedback'), 'FAQ DAL must not retain a direct counter transaction');
+assert(read('src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx').includes("getContentFeedbackForEntry('faq', selectedFaq.id)"), 'FAQ owner review must read the scoped audit trail');
 assert(articleView.includes('updateContentFeedbackWithAudit({'), 'article UI must use the coupled transaction');
 assert(changelogPreview.includes('updateContentFeedbackWithAudit({'), 'changelog UI must use the coupled transaction');
 assert(!feedbackHook.includes('Promise.all('), 'feedback UI must not launch coupled side effects independently');
 assert(!feedbackHook.includes('submitComment'), 'feedback hook must expose one acknowledged mutation instead of a split comment writer');
 assert(feedbackHook.includes('mutationInFlightRef.current'), 'feedback hook must reject concurrent duplicate mutations');
 assert(feedbackHook.includes('isSubmitting'), 'feedback hook must expose visible in-flight state');
+assert(feedbackHook.includes('applyAuthoritativeFeedbackCounts(result)'), 'feedback UI must reconcile optimistic counters to the authoritative server response');
+assert(feedbackHook.includes('Math.max(0, previousLikes - 1)'), 'feedback UI must never render a negative optimistic like count');
+assert(feedbackHook.includes('Math.max(0, previousDislikes - 1)'), 'feedback UI must never render a negative optimistic dislike count');
+assert(feedbackSection.includes('if (saved) form.resetFields()'), 'failed negative-feedback submissions must retain the customer comment for retry');
+assert(feedbackSection.includes('minWidth: 44, minHeight: 44'), 'content reaction controls must retain the mobile touch target contract');
 assert(!articleDal.includes('export const updateArticleFeedback'), 'the split article-counter writer must stay removed');
 assert(!changelogDal.includes('export const updateChangelogFeedback'), 'the split changelog-counter writer must stay removed');
 assert(!customerIdentity.includes('...((session?.sourceContext'), 'actor snapshots must not spread arbitrary session source-context fields');
@@ -208,26 +251,38 @@ assert(contentFeedbackStorage.includes('normalizeEnvelope(JSON.parse(stored) as 
 assert(contentFeedbackStorage.includes('localStorage.removeItem(key)'), 'invalid reaction caches must be evicted');
 assert(contentFeedbackStorage.includes('CONTENT_FEEDBACK_STORAGE_MAX_ENTRIES = 500'), 'reaction cache growth must be bounded');
 assert(feedbackHook.includes('setFeedbackGiven(feedbackStatus)'), 'workspace/content changes must clear stale reaction acknowledgement when no scoped entry exists');
-assert(rules.includes('isValidAnswerlatticeFeedbackPayload(request.resource.data)'), 'feedback create rules must enforce the payload contract');
+assert(rules.includes('match /feedback/{docId} {\n      allow read: if isAnswerlatticeScopedReadWithSupportBoardControl()'), 'feedback review must require exact support permission while preserving self-read');
+assert(rules.includes('allow create: if false;\n      allow update: if isAnswerlatticeScopedUpdateWithSupportBoardControl()'), 'feedback creation must be server-owned and review updates support-only');
 assert(rules.includes("affectedKeys().hasOnly([\n          'contextKey', 'surfaceId', 'surfaceLabel', 'surfaceAssignedBy', 'surfaceAssignedAt', 'modifiedBy', 'modifiedOn'"), 'feedback update rules must allow only review-surface assignment fields');
 assert(!rules.includes('allow update: if isAnswerlatticeScopedUpdateWithSupportControl();\n      allow delete: if false;\n    }\n\n    match /supportTickets'), 'feedback updates must not retain the generic support-control mutation rule');
-assert(rules.includes('match /changelog_feedback/{tId}/{sId}/{docId} {\n      allow read: if isAnswerlatticeContentFeedbackRead(tId, sId);\n      allow write: if false;'), 'changelog feedback mutations must be server-owned');
-assert(rules.includes('match /article_feedback/{tId}/{sId}/{docId} {\n      allow read: if isAnswerlatticeContentFeedbackRead(tId, sId);\n      allow write: if false;'), 'article feedback mutations must be server-owned');
+assert(rules.includes("allow read: if docId.matches('^doc1_.*$')\n        && isAnswerlatticeContentFeedbackRead(tId, sId);"), 'content feedback reads must hide internal actor-state documents');
+assert(dataRetention.includes('DB_COLLECTIONS.FAQ_FEEDBACK'), 'FAQ feedback audit history must participate in operational retention cleanup');
 assert(rules.includes('match /changelog/{tId}/{sId}/{pageId} {'), 'scoped changelog pages must remain explicit in rules');
 assert(rules.includes('// Changelog page mutations and reactions are server-owned'), 'dedicated changelog writes must document the server-owned boundary');
 assert(packageJson.scripts['verify:answerlattice-feedback-boundary'] === 'node scripts/verification/verify-answerlattice-feedback-boundary.js', 'package must expose the feedback boundary verifier');
 assert(packageJson.scripts['test:answerlattice-feedback:rules']?.includes('test-answerlattice-feedback-rules.ts'), 'package must expose the feedback rules emulator test');
+assert(packageJson.scripts['test:answerlattice-feedback-submission:emulator']?.includes('test-answerlattice-feedback-submission-emulator.ts'), 'package must expose feedback-submission server emulator tests');
 assert(packageJson.scripts['test:answerlattice-content-feedback-contracts']?.includes('test-answerlattice-content-feedback-contracts.ts'), 'package must expose content-feedback contract tests');
 assert(packageJson.scripts['test:answerlattice-content-feedback:emulator']?.includes('test-answerlattice-content-feedback-emulator.ts'), 'package must expose content-feedback server emulator tests');
+assert(packageJson.scripts['verify:answerlattice-feedback']?.includes('test:answerlattice-feedback-submission:emulator'), 'package must expose one focused feedback feature gate');
 assert(widgetFeedbackRoute.includes("resolutionOutcome: z.enum(['resolved', 'not_resolved']).optional()"), 'widget feedback must admit only explicit resolved/not-resolved outcomes');
 assert(widgetFeedbackRoute.includes("resolutionOutcome === 'resolved' && value.isGood !== true"), 'widget feedback must reject inconsistent positive outcome payloads');
-assert(widgetFeedbackRoute.includes('...(resolutionOutcome ? { resolutionOutcome } : {})'), 'widget feedback must persist explicit outcome on the existing search-history record');
+assert(widgetFeedbackRoute.includes('resolutionOutcome: authoritativeOutcome'), 'widget feedback must persist an authoritative outcome on the existing search-history record');
+assert(widgetFeedbackRoute.includes('created: feedbackCreated'), 'widget feedback replay must return whether the stored outcome was newly created');
 assert(widgetClient.includes('Did this solve your issue?'), 'widget feedback must ask an explicit resolution question');
 assert(widgetClient.includes("handleFeedback(msg.id, 'resolved')"), 'widget must submit explicit resolved outcomes');
 assert(widgetClient.includes("handleFeedback(msg.id, 'not_resolved')"), 'widget must submit explicit not-resolved outcomes');
+assert(widgetEscalationRoute.includes("hasPublicApiCredentialScope(credential, 'widget:feedback')"), 'widget escalation must require the bounded feedback credential scope');
+assert(widgetEscalationRoute.includes('isAnswerlatticeWidgetRuntimeRequestAuthorized'), 'widget escalation must require host/runtime-token authorization');
+assert(widgetEscalationServer.includes('transaction.create(ticketRef, ticket)'), 'widget escalation must create an idempotent server-owned ticket');
+assert(widgetEscalationServer.includes('transaction.set(historyRef, historyUpdate, { merge: true })'), 'widget escalation must link the ticket to search history transactionally');
+assert(widgetClient.includes("fetch('/api/widget/escalation'"), 'widget unresolved feedback must expose a real support handoff');
+assert(packageJson.scripts['test:answerlattice-widget-answer-contracts']?.includes('test-answerlattice-widget-answer-contracts.ts'), 'package must expose widget answer contract tests');
+assert(packageJson.scripts['test:answerlattice-widget-escalation:emulator']?.includes('test-answerlattice-widget-escalation-emulator.ts'), 'package must expose widget escalation emulator tests');
 assert(nightly.includes('calculateConfirmedResolutionMetrics(coverageResult.historyRows, 24)'), 'nightly trust aggregation must reuse the existing bounded coverage rows with an explicit observation window');
+assert(nightly.includes('retentionContentFeedbackDeleted'), 'nightly retention accounting must include content feedback cleanup');
 assert(nightly.includes(".where('pId', '==', 'AL')"), 'nightly outcome history must remain Answerlattice product scoped');
-assert(nightly.includes(".orderBy('createdOn', 'desc')\n            .limit(500)"), 'nightly outcome history must select the newest bounded 500-row sample');
+assert(nightly.includes(".orderBy('createdOn', 'desc')\n            .limit(sourceLimit + 1)"), 'nightly outcome history must select the newest bounded complete-window sample');
 assert(!nightly.includes("collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)\n                .where('resolutionOutcome'"), 'confirmed resolution must not add a second search-history query');
 
 process.stdout.write('Answerlattice feedback boundary verification passed.\n');

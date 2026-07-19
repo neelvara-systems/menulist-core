@@ -9,7 +9,10 @@ import {
     ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES,
     ANSWERLATTICE_ANSWER_TEST_MAX_CASES,
     ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES,
+    AnswerlatticeAnswerTestRunClientSchema,
     createEmptyAnswerlatticeAnswerTestSummary,
+    isAnswerlatticeAnswerTestRunCurrent,
+    parseAnswerlatticeAnswerTestSummaryForClient,
     type AnswerlatticeAnswerTestCase,
     type AnswerlatticeAnswerTestCaseResult,
     type AnswerlatticeAnswerTestCitationPolicy,
@@ -23,6 +26,7 @@ import {
     ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS,
     countAnswerlatticeFirstTrustedAnswerCases,
     createAnswerlatticeFirstTrustedAnswerCases,
+    getAnswerlatticeFirstTrustedAnswerCases,
     replaceAnswerlatticeFirstTrustedAnswerCases,
 } from '@lib/answerlattice/answerTestStarterPack';
 import {
@@ -188,9 +192,15 @@ const normalizeLaunchProof = (value: unknown): AnswerlatticeActivationAnswerTest
         || Number(latestCriticalFailureCount) > 10
         || typeof candidate.latestProofStale !== 'boolean'
         || ![null, 'ready', 'review', 'blocked'].includes(latestProofStatus as null | string)
+        || Number(activeCaseCount) < Number(firstTenCount)
+        || (Number(firstTenCount) < 10 && latestProofStatus !== null)
+        || (candidate.latestProofStale === true && latestProofStatus !== null)
+        || (latestProofStatus === 'blocked' && Number(latestCriticalFailureCount) === 0)
+        || (latestProofStatus !== 'blocked' && Number(latestCriticalFailureCount) > 0)
         || (lastRunAt !== null && (
             typeof lastRunAt !== 'string'
             || !Number.isFinite(Date.parse(lastRunAt))
+            || new Date(lastRunAt).toISOString() !== lastRunAt
         ))
     ) {
         return null;
@@ -294,8 +304,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 redirect: 'manual',
             });
             const payload = await readResponse(response);
-            if (!response.ok || !payload?.summary) throw new Error(getErrorMessage(payload, 'Could not load answer tests.'));
-            setSummary(payload.summary);
+            const parsedSummary = parseAnswerlatticeAnswerTestSummaryForClient(
+                payload?.summary,
+                { tId, sId },
+            );
+            if (!response.ok || !parsedSummary) throw new Error(getErrorMessage(payload, 'Could not load answer tests.'));
+            setSummary(parsedSummary);
             setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not load answer tests.');
@@ -327,7 +341,14 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             if (!response.ok || !Array.isArray(payload?.jobs)) {
                 throw new Error(typeof payload?.error === 'string' ? payload.error : 'Could not load product sources.');
             }
-            const jobs = payload.jobs.filter(job => AnswerlatticeKnowledgeIntakeJobSchema.safeParse(job).success);
+            const jobs = payload.jobs.flatMap((job) => {
+                const parsed = AnswerlatticeKnowledgeIntakeJobSchema.safeParse(job);
+                return parsed.success
+                    && parsed.data.tId === tId
+                    && parsed.data.sId === sId
+                    ? [parsed.data as AnswerlatticeKnowledgeIntakeJob]
+                    : [];
+            });
             setIntakeJobs(jobs);
             setSelectedIntakeJobId(current => (
                 current && jobs.some(job => (
@@ -364,8 +385,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 body: JSON.stringify({ revision: summary.revision, cases }),
             });
             const payload = await readResponse(response);
-            if (!response.ok || !payload?.summary) throw new Error(getErrorMessage(payload, 'Could not save answer tests.'));
-            setSummary(payload.summary);
+            const parsedSummary = parseAnswerlatticeAnswerTestSummaryForClient(
+                payload?.summary,
+                { tId, sId },
+            );
+            if (!response.ok || !parsedSummary) throw new Error(getErrorMessage(payload, 'Could not save answer tests.'));
+            setSummary(parsedSummary);
             setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
             return true;
         } catch (error) {
@@ -374,7 +399,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
         } finally {
             setSaving(false);
         }
-    }, [launchProofQuery, summary.revision]);
+    }, [launchProofQuery, sId, summary.revision, tId]);
 
     const openCreate = useCallback(() => {
         setEditingCase(null);
@@ -536,9 +561,10 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
 
     const executeRun = useCallback(async (
         mode: AnswerlatticeAnswerTestMode,
-        options?: { releaseId?: string },
+        options?: { releaseId?: string; caseIds?: string[] },
     ) => {
-        const selectedCount = selectedIds.length || summary.cases.filter(testCase => testCase.active).length;
+        const requestedCaseIds = options?.caseIds ?? selectedIds;
+        const selectedCount = requestedCaseIds.length || summary.cases.filter(testCase => testCase.active).length;
         if (!options?.releaseId && selectedCount > ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES) {
             message.warning(`Select no more than ${ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES} tests for one run.`);
             return;
@@ -551,7 +577,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             const endpoint = `${endpointPath}${launchProofQuery}`;
             const body = options?.releaseId
                 ? { requestId: createRuntimeId('release_check'), releaseId: options.releaseId, mode }
-                : { requestId: createRuntimeId('answer_test'), caseIds: selectedIds, mode };
+                : { requestId: createRuntimeId('answer_test'), caseIds: requestedCaseIds, mode };
             const response = await fetch(endpoint, {
                 method: 'POST',
                 cache: 'no-store',
@@ -561,25 +587,43 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 body: JSON.stringify(body),
             });
             const payload = await readResponse(response);
-            if (!response.ok || !payload?.run || !payload.summary) {
+            const parsedSummary = parseAnswerlatticeAnswerTestSummaryForClient(
+                payload?.summary,
+                { tId, sId },
+            );
+            const parsedRun = AnswerlatticeAnswerTestRunClientSchema.safeParse(payload?.run);
+            if (!response.ok || !parsedRun.success || !parsedSummary) {
                 throw new Error(getErrorMessage(payload, 'Could not complete the answer test run.'));
             }
-            setSummary(payload.summary);
+            setSummary(parsedSummary);
             setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
             setReleaseModalOpen(false);
-            message[payload.run.proofStatus === 'ready' ? 'success' : 'warning'](
-                payload.run.proofStatus === 'ready'
-                    ? `${payload.run.passedCount} answer tests passed. The latest run proof is ready.`
-                    : payload.run.proofStatus === 'blocked'
-                        ? `${payload.run.criticalFailureCount} release-blocking answer tests failed in the latest run.`
-                        : `${payload.run.failedCount} answer tests need review in the latest run.`,
+            const run = parsedRun.data as AnswerlatticeAnswerTestRun;
+            const runIsCurrent = isAnswerlatticeAnswerTestRunCurrent(run, parsedSummary);
+            message[runIsCurrent && run.proofStatus === 'ready' ? 'success' : 'warning'](
+                !runIsCurrent
+                    ? 'The test suite changed while this run was in progress. Review the result, then rerun the current suite.'
+                    : run.proofStatus === 'ready'
+                    ? `${run.passedCount} answer tests passed. The latest run proof is ready.`
+                    : run.proofStatus === 'blocked'
+                        ? `${run.criticalFailureCount} critical answer tests failed; the latest proof is blocked.`
+                        : `${run.failedCount} answer tests need review in the latest run.`,
             );
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not complete the answer test run.');
         } finally {
             setRunningMode(null);
         }
-    }, [launchProofQuery, selectedIds, summary.cases]);
+    }, [launchProofQuery, sId, selectedIds, summary.cases, tId]);
+
+    const runFirstTrustedAnswers = useCallback(() => {
+        const launchCases = getAnswerlatticeFirstTrustedAnswerCases(summary.cases, { activeOnly: true });
+        if (launchCases.length !== 10) {
+            message.warning('Complete and activate one valid ten-question launch set before running launch proof.');
+            return;
+        }
+        void executeRun('canonical_only', { caseIds: launchCases.map(testCase => testCase.id) });
+    }, [executeRun, summary.cases]);
 
     const updateSelectedIds = useCallback((nextIds: string[]) => {
         const uniqueActiveIds = Array.from(new Set(nextIds)).filter(id => (
@@ -627,7 +671,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             ...target,
             expected: {
                 source: result.source,
-                ...(target.expected.minimumConfidence ? { minimumConfidence: target.expected.minimumConfidence } : {}),
+                ...(result.confidence ? { minimumConfidence: result.confidence } : {}),
                 mustInclude: target.expected.mustInclude,
                 mustNotInclude: target.expected.mustNotInclude,
                 citationPolicy: result.referenceIds.length > 0 ? 'specific_sources' : 'not_required',
@@ -639,7 +683,13 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             updatedAt: new Date().toISOString(),
         };
         if (await saveCases(summary.cases.map(testCase => testCase.id === target.id ? next : testCase))) {
-            message.success('Current result saved as the expected behavior.');
+            const unresolvedClaimCheck = result.failures.some(failure => (
+                failure.startsWith('Answer did not include required phrase:')
+                || failure.startsWith('Answer included blocked phrase:')
+            ));
+            message[unresolvedClaimCheck ? 'warning' : 'success'](unresolvedClaimCheck
+                ? 'Current route, answer IDs, confidence, and evidence were saved. Required and blocked phrase checks still need review.'
+                : 'Current route, answer IDs, confidence, and evidence were saved as the expected contract.');
         }
     }, [saveCases, summary.cases]);
 
@@ -691,8 +741,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
 
     const activeCount = summary.cases.filter(testCase => testCase.active).length;
     const latestRun = summary.runs[0];
+    const latestRunStale = Boolean(latestRun && !isAnswerlatticeAnswerTestRunCurrent(latestRun, summary));
     const selectedActiveCount = selectedIds.filter(id => summary.cases.some(testCase => testCase.id === id && testCase.active)).length;
-    const starterCaseCount = Math.min(10, countAnswerlatticeFirstTrustedAnswerCases(summary.cases));
+    const starterCaseCount = Math.min(10, countAnswerlatticeFirstTrustedAnswerCases(
+        summary.cases,
+        { activeOnly: true },
+    ));
     const hasProductStarterPack = summary.cases.some(testCase => isAnswerlatticeProductStarterPackCaseId(testCase.id));
     const selectedIntakeJob = intakeJobs.find(job => job.id === selectedIntakeJobId);
     const productPackEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_STARTER_PACK
@@ -765,7 +819,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             render: (_, testCase) => (
                 <Space size={[4, 4]} wrap>
                     <Tag color={SOURCE_COLORS[testCase.expected.source]}>{SOURCE_LABELS[testCase.expected.source]}</Tag>
-                    {testCase.riskLevel === 'critical' && <Tag color="red">Release blocking</Tag>}
+                    {testCase.riskLevel === 'critical' && <Tag color="red">Critical</Tag>}
                     {testCase.expected.citationPolicy !== 'not_required' && <Tag color="geekblue">Evidence checked</Tag>}
                 </Space>
             ),
@@ -928,7 +982,14 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                             <Button onClick={() => router.push(ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE)} style={ACTION_BUTTON_STYLE}>1. Teach Answerlattice</Button>
                             <Button onClick={() => router.push(ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE)} style={ACTION_BUTTON_STYLE}>2. Review answer drafts</Button>
                             <Button onClick={() => router.push(getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))} style={ACTION_BUTTON_STYLE}>3. Approve support truth</Button>
-                            <Button onClick={() => executeRun('canonical_only')} disabled={activeCount === 0} loading={runningMode === 'canonical_only'} style={ACTION_BUTTON_STYLE}>4. Run free checks</Button>
+                            <Button
+                                onClick={runFirstTrustedAnswers}
+                                disabled={starterCaseCount !== 10}
+                                loading={runningMode === 'canonical_only'}
+                                style={ACTION_BUTTON_STYLE}
+                            >
+                                4. Run First 10 checks
+                            </Button>
                             <Button onClick={() => router.push(ANSWERLATTICE_ROUTES.INSTALL_CENTER)} style={ACTION_BUTTON_STYLE}>5. Verify install</Button>
                         </Flex>
                         <Text type="secondary" style={{ fontSize: 12 }}>
@@ -951,7 +1012,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 type="info"
                 showIcon
                 message="Deterministic checks are free"
-                description="Canonical-only runs verify approved answers, FAQs, abstention, and evidence references. Full-runtime runs continue into knowledge fallback and use one support credit only when an AI provider is reached. Proof status is advisory and never publishes content or changes a deployment."
+                description="Canonical-only runs check the source, answer ID, configured phrases, confidence, abstention, and evidence rules you define. They are regression evidence, not an independent factual-correctness guarantee. Full-runtime runs continue into knowledge fallback and use one support credit only when an AI provider is reached. Proof status is advisory and never publishes content or changes a deployment."
             />
 
             <Flex gap={12} wrap="wrap">
@@ -961,9 +1022,11 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 <Card size="small" style={{ flex: '1 1 180px' }}>
                     <Statistic
                         title="Latest run proof"
-                        value={latestRun ? PROOF_STATUS_LABELS[latestRun.proofStatus] : 'Not run'}
+                        value={latestRunStale ? 'Stale' : latestRun ? PROOF_STATUS_LABELS[latestRun.proofStatus] : 'Not run'}
                         valueStyle={{
-                            color: latestRun?.proofStatus === 'blocked'
+                            color: latestRunStale
+                                ? token.colorWarning
+                                : latestRun?.proofStatus === 'blocked'
                                 ? token.colorError
                                 : latestRun?.proofStatus === 'review'
                                     ? token.colorWarning
@@ -1031,7 +1094,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                     <Text type="secondary">{testCase.query}</Text>
                                     <Space wrap>
                                         <Tag color={SOURCE_COLORS[testCase.expected.source]}>{SOURCE_LABELS[testCase.expected.source]}</Tag>
-                                        {testCase.riskLevel === 'critical' && <Tag color="red">Release blocking</Tag>}
+                                        {testCase.riskLevel === 'critical' && <Tag color="red">Critical</Tag>}
                                         {testCase.expected.citationPolicy !== 'not_required' && <Tag color="geekblue">Evidence checked</Tag>}
                                         {testCase.relatedEntityIds.length > 0 && <Tag>{testCase.relatedEntityIds.length} entities</Tag>}
                                     </Space>
@@ -1078,10 +1141,20 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                 {latestRun.status === 'passed' ? 'Passed' : latestRun.status === 'failed' ? 'Failed' : 'Needs review'}
                             </Tag>
                             <Tag>{latestRun.mode === 'full_runtime' ? 'Full runtime' : 'Canonical only'}</Tag>
-                            <Tag color={PROOF_STATUS_COLORS[latestRun.proofStatus]}>Latest run proof: {PROOF_STATUS_LABELS[latestRun.proofStatus]}</Tag>
+                            <Tag color={latestRunStale ? 'orange' : PROOF_STATUS_COLORS[latestRun.proofStatus]}>
+                                Latest run proof: {latestRunStale ? 'Stale' : PROOF_STATUS_LABELS[latestRun.proofStatus]}
+                            </Tag>
                             {latestRun.releaseVersion && <Tag color="purple">Release {latestRun.releaseVersion}</Tag>}
                             <Text type="secondary">{latestRun.passedCount}/{latestRun.caseCount} passed · {latestRun.providerCaseCount} provider-backed</Text>
                         </Flex>
+                        {latestRunStale && (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message="This result no longer matches the current test suite"
+                                description="One or more test definitions changed before or after this run. Keep the historical result for review, then rerun the current suite before relying on its proof status."
+                            />
+                        )}
                         <List
                             dataSource={latestRun.results}
                             renderItem={result => (
@@ -1094,7 +1167,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                             </Space>
                                             <Space wrap>
                                                 <Tag color={SOURCE_COLORS[result.source]}>{SOURCE_LABELS[result.source]}</Tag>
-                                                {result.riskLevel === 'critical' && <Tag color="red">Release blocking</Tag>}
+                                                {result.riskLevel === 'critical' && <Tag color="red">Critical</Tag>}
                                                 {result.citationPolicy !== 'not_required' && (
                                                     <Tag color={result.citationPassed ? 'green' : 'red'}>
                                                         Evidence {result.citationPassed ? 'passed' : 'failed'}
@@ -1111,13 +1184,13 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                         <Space wrap>
                                             {!result.passed && (
                                                 <Popconfirm
-                                                    title="Replace the expected result?"
-                                                    description="Use this only after confirming the current answer is correct. It changes the regression test, not the live answer."
+                                                    title="Adopt the current route and evidence?"
+                                                    description="Use this only after confirming the current answer is correct. It updates source, answer IDs, confidence, and evidence; required and blocked phrase checks stay unchanged. The live answer is not changed."
                                                     onConfirm={() => applyResultAsExpectation(result)}
-                                                    okText="Replace expectation"
+                                                    okText="Adopt contract"
                                                 >
                                                     <Button style={ACTION_BUTTON_STYLE}>
-                                                        Use current result as expected
+                                                        Adopt current route and evidence
                                                     </Button>
                                                 </Popconfirm>
                                             )}

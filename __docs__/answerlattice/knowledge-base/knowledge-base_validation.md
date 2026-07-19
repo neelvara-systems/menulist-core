@@ -1,8 +1,8 @@
 # Knowledge Base Pre-Launch Embedding Validation
 
-> **Date:** 2026-07-17
-> **Scope:** Answerlattice RAG embedding contract
-> **Status:** Source gates passed; Firebase deployment is pending a clean source archive and project access
+> **Date:** 2026-07-18
+> **Scope:** Answerlattice Knowledge Base Feature 5 lifecycle and embedding contract
+> **Status:** Local source gates passed; authenticated QA deployment remains externally blocked
 
 ## Required invariants
 
@@ -12,6 +12,10 @@
 4. Search uses one scoped `embedding` vector index. The response projection rejects vector fields and allowlists reference data.
 5. The source tree contains no retired embedding model, alternate vector field, dual-write helper, migration task, migration-state document, or corpus backfill.
 6. Because Answerlattice has no live client corpus, launch uses the normal publish/re-embed lifecycle and requires no one-time data operation.
+7. Live article writes and navigation metadata commit atomically; generated-review edits cannot mutate live navigation.
+8. Live truth edits remove the old vector before regeneration; search-ready UI requires both embedded status and the active vector.
+9. Non-empty categories and sections cannot cascade-delete articles.
+10. Article feedback is accepted only for active published content and its audit rows expire after 365 days.
 
 ## Source evidence
 
@@ -46,26 +50,31 @@
 | `npm run docs:check-links` | Answerlattice links passed; global scan remains red only for an unrelated missing Owner Ease v1.16 MP4 |
 | `git diff --check` | Passed |
 
+## Feature 5 focused verification
+
+| Gate | Result |
+| --- | --- |
+| `npm run test:answerlattice-kb-category-mutations` | Passed |
+| `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-content-feedback:emulator` | Passed, including unpublished rejection and expired-feedback cleanup |
+| `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-feedback:rules` | Passed |
+| `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-feedback:shared-rules` | Passed |
+| `npm run typecheck:answerlattice` | Passed |
+| `npm --prefix functions-answerlattice run build` | Passed |
+| `npm --prefix functions run build` | Passed |
+
 ## Firebase release boundary
 
-No Firebase mutation was attempted from this worktree:
-
-- the current `functions-answerlattice` source archive and Answerlattice index/rule manifests contain unrelated in-progress changes;
-- a filtered Functions deploy still uploads and builds the current package archive and its top-level imports;
-- the active Firebase CLI account does not expose `answerlattice-qa` or `answerlattice`.
-
-After the embedding patch is isolated in a clean worktree and project access is restored, deploy and smoke QA before production. No migration or backfill command follows deployment.
+Feature 5 changes dedicated Firestore rules, shared compatibility rules, and the existing dedicated nightly retention function. Narrow QA deploys were attempted after local verification:
 
 ```bash
-firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:indexes --non-interactive
-firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only functions:answerlattice:startGeneration,functions:answerlattice:retryGeneration,functions:answerlattice:embedArticleWorker,functions:answerlattice:regenerateEmbedding,functions:answerlattice:answerlatticeNightly,functions:answerlattice:triggerAnswerlatticeNightly --non-interactive
+firebase deploy --only firestore:rules,functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive
 ```
 
-Production uses the same targets with `--project answerlattice` only after QA succeeds.
+Both commands stopped before upload with `Error: Failed to authenticate, have you run firebase login?`. After Firebase authentication is restored, rerun those exact QA targets, read back the deployed rules/function revision, smoke the hosted article/category lifecycle, and verify one expired feedback row is removed by the existing nightly retention path. Production remains gated on successful QA evidence. No embedding migration or backfill is required.
 
 ## Stop rules
 
-- Do not deploy from a source archive containing unrelated Answerlattice Functions changes.
 - Do not claim the Firebase contract is live without authorized QA deploy and a provider-backed publish/search smoke.
 - Do not add a backfill or migration task while no legacy corpus exists.
 - Vercel deployment is not implied by Firebase deployment and requires explicit authorization in the active session.

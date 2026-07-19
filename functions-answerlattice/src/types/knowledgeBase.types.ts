@@ -132,6 +132,7 @@ export interface IngestionJob {
     embeddingFailedArticleIds?: string[];
     embeddingEnqueueStatus?: 'pending' | 'queued' | 'failed';
     embeddingRunId?: string;
+    replacementArticleIds?: string[];
     generationRun?: {
         id: string;
         status: 'processing' | 'completed' | 'failed';

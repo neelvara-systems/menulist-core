@@ -1,5 +1,346 @@
 # MenuList — Changelog
 
+## July 20, 2026 - Answerlattice Advanced Branding Boundary Hardening
+
+- **The stored form is no longer called delivered white label** - code search confirmed that widget, hosted help, knowledge-base, email, public-site, and compiled-context runtimes do not consume `platformSummary/branding_{tId}_{sId}`. The flag and owner copy now describe a disabled private profile prototype.
+- **Profile input fails closed** - exact scope, strict known fields, bounded company/email values, six-digit colors, and HTTPS asset/legal links without credentials or fragments are validated before write. Malformed stored profiles use safe defaults.
+- **Arbitrary style injection is removed** - custom CSS and free-form font declarations were deleted from the active type and owner UI, and dedicated/shared Firestore rules reject those and all other unknown fields.
+- **Write success is truthful** - the branding DAL no longer falls back to the submitted profile when the Firestore call fails; an acknowledged write is required before success state.
+- **Working widget branding stays separate** - the existing bounded widget title, greeting, accent, launcher, placement, and powered-by controls remain authoritative at `stores/{sId}.widgetConfig`. No duplicate propagation or public cache write was added.
+- **Verification is executable** - pure contract tests and dedicated/shared rule emulator suites cover valid profiles, updates, unsafe fields/URLs/colors, unknown metadata, document-scope mismatch, and cross-tenant denial. The complete dossier records cost, retention, mobile, claims, and activation blockers.
+- **The rollout remains off** - customer delivery, asset lifecycle, accessibility, cache propagation, real-client demand, QA deployment, and production release evidence are absent. Advanced cross-surface white label is not currently available.
+
+## July 20, 2026 - Answerlattice Multi-Language Draft Boundary Hardening
+
+- **Translation records are drafts, not customer truth** - the disabled workflow now writes explicit `draft` status, `en-US` source locale, and a SHA-256 source fingerprint. The Governance surface reports private drafts and approved records separately instead of presenting draft existence as multilingual coverage.
+- **Provider output fails closed** - malformed, partial, extra-field, empty, truncated, or oversized JSON writes nothing. Raw model text and English fallback content are never stored as translations.
+- **Concurrent changes cannot be overwritten** - the route re-reads the article in a transaction after the model call and rejects a changed source or existing locale record. A direct request cannot replace a prior draft or approval.
+- **Drafts do not propagate** - private translation preparation no longer bumps public KB/context versions. Public content excludes all translations, and Support Truth Export includes only explicitly approved, reviewed translation records.
+- **Admission and accounting are explicit** - the route retains exact workspace and knowledge permission checks, 4 KiB request and 8,000-character source caps, private/no-store responses, and now fails closed when the limiter provider is unavailable. Provider-completed attempts are recorded even when output or the final draft write is rejected.
+- **The product remains English-only for customers** - no review/publish action, locale configuration, fallback, translated search/index, widget delivery, hosted-help delivery, or compiled translation bundle exists. The feature flag remains false pending customer demand and a separate governed publication implementation.
+- **Verification is executable** - strict provider parsing, source fingerprints, overwrite/source-race rejection, approval classification, public draft exclusion, and approved-export behavior are covered by focused tests plus lint, strict TypeScript, and Answerlattice runtime truth.
+
+## July 20, 2026 - Answerlattice Support Truth Export Hardening
+
+- **Approved evidence now survives projection** - canonical export rows include their bounded approved source IDs and citations because the Firestore projection explicitly reads `evidence`; private source context, tenant identity, embeddings, actor fields, tickets, chats, and unrestricted records remain excluded.
+- **Rate enforcement fails closed** - the two-per-hour user/workspace limiter now blocks export when its provider is unavailable and returns a temporary-unavailable response rather than silently bypassing a sensitive bulk-read control.
+- **Successful generation is accountable** - the server appends one metadata-only `support_truth_export_generated` audit event containing actor, exact workspace, schema, generated time, counts, completeness, and byte size. It never duplicates exported knowledge, and audit-write failure prevents delivery.
+- **Completeness stays explicit** - each collection remains cap-plus-one bounded, exactly-at-cap data is allowed, overflow returns `409`, and responses above 8 MiB fail instead of silently truncating authoritative support truth.
+- **Verification is executable** - the focused contract suite exercises projected reads, recursive redaction, deterministic ordering, exactly-at-cap and overflow behavior, response-size rejection, and metadata-only audit output. Runtime source assertions, strict TypeScript, focused ESLint, dependency freeze, docs links, and diff checks cover the wider contract.
+- **The boundary remains narrow** - this is a private portability/review package, not a full legal data export, backup/restore system, account-erasure workflow, conversation export, connector, scheduler, or autonomous action surface. It adds one existing audit-log write per successful export and no collection, index, Storage object, Function, or model call.
+
+## July 20, 2026 - Answerlattice MCP Protocol And Private-Context Hardening
+
+- **Private context requires its own authority** - ordinary `public:read` credentials cannot bootstrap MCP. Session exchange accepts only a server-owned Answerlattice credential with explicit `mcp:read`, exact product/purpose/workspace identity, active status, and a ready private compiled bundle; `signals:write` only adds governed missing-context reporting.
+- **Sessions are short and audience-bound** - signed claims require the `answerlattice_mcp` audience, exact allowed keys/scopes, a configured secret of at least 32 characters, and a five-minute issued lifetime. Rotation or revocation stops new sessions immediately; an already issued token may remain valid only until that short expiry.
+- **The transport follows a bounded MCP contract** - the POST endpoint validates Origin, dual JSON/SSE Accept media types, strict JSON-RPC objects with non-null string/integer request IDs, initialize negotiation, post-initialize protocol headers, notifications, ping, tool discovery, and tool calls. GET explicitly returns `405`; SSE is not implemented.
+- **Tools are closed and evidence-focused** - seven read/signal tools expose exact JSON schemas, annotations, stable `answerlattice.mcp.tool.v1` structured output, current bundle version/time evidence, strict IDs and arguments, and a fail-closed 24 KB result ceiling. No tool approves answers, publishes knowledge, reads arbitrary storage, or changes customer accounts.
+- **Missing context enters governance, not truth** - the reporting tool emits a redacted, retained, hourly-idempotent `answerlattice_signalEvents` record. The former `platformSummary/mcpSignal_*` aggregate is no longer an active writer/reader contract and historical rows are not silently deleted.
+- **Compatibility claims remain narrow** - the current server credential exchange is not MCP OAuth 2.1, the private bundle is workspace-wide rather than per-user/per-source filtered, and real-client/deployed compatibility is still external evidence. MCP remains disabled by default and is not a primary product-acquisition promise.
+- **Local verification is durable** - focused MCP session/protocol/tool and Public API scope tests, strict TypeScript, focused ESLint, runtime source verification, dependency freeze, documentation links, and diff checks cover local source truth. No Firestore rule, index, Storage rule, Cloud Function, or Firebase deploy changed; hosted proof still requires an explicit Vercel deployment.
+
+## July 20, 2026 - Answerlattice Public API Credential And Truth-Boundary Hardening
+
+- **Public credentials are server-owned** - the dedicated owner surface requires integration-management authority, exact Answerlattice scope, same-origin management, and rate admission. Raw keys are shown once, only hashes are stored, rotation and revocation invalidate prior credentials, and transactional audit rows exclude raw and hashed secrets.
+- **Public answers remain approved truth** - the v1 answer endpoint exposes canonical answers, safe citations, clarification, and bounded fallback behavior without projecting knowledge-graph interaction explanations or related suggestions as approved customer truth.
+- **Entity completeness is explicit** - bounded entity lists return `truncated` when the no-cursor v1 response may be partial, and that state participates in ETag identity.
+- **Signal retries are deterministic** - header/body idempotency disagreement and same-key/different-payload replays return distinct conflicts. Public signals use only supported governed types, cannot overwrite reserved source or tenant metadata, and trusted persistence can propagate typed replay conflicts while existing nonblocking callers retain boolean behavior.
+- **Browser credential mutation and audit forgery are denied** - dedicated and shared Firestore rules protect both Public API and widget credentials, including platform-admin browser paths, and reserve key-rotation/revocation audit actions for server authority.
+- **Verification is durable** - strict contract tests, key-lifecycle emulator proof, dedicated/shared rules emulators, governance-rule tests, Answerlattice/root TypeScript, focused ESLint, runtime source verification, dependency freeze, documentation links, and diff checks pass on the current worktree.
+- **Release evidence remains separate** - dedicated and shared QA rules deploys were attempted after validation and both stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed. App/API/UI changes remain undeployed under the Vercel opt-in guard.
+- **The product boundary stays narrow** - no autonomous action, generic RAG endpoint, graph-explanation promise, connector family, scheduler, Function, Storage path, collection family, or owner toggle was added. The feature remains default-disabled until real external-consumer and hosted QA evidence exists.
+
+## July 19, 2026 - Answerlattice Workflow Notification And Provider-Safety Hardening
+
+- **Self-service configuration matches live production** - the dedicated Workflow Notifications surface exposes Slack and email with only coverage drops, repeated AI workflow failures, and nightly governance summaries. Reserved formatter-only event classes and controlled Linear/GitHub credentials are not presented as owner-ready functionality.
+- **Browser and API contracts fail closed** - owner responses are strict, bounded, private/no-store, and exclude raw Slack secrets and provider errors. Dedicated and shared rules deny direct integration-secret reads even through the broad platform-admin branch. Actor/workspace limiting runs before permission-backed data access, malformed config is rejected, and post-save delivery health is preserved until refresh.
+- **Slack event content is inert** - dynamic values encode Slack control characters, disable automatic parsing with `verbatim`, and retain secret-pattern redaction so event content cannot create mentions or injected links.
+- **Repeated AI failure means workflow failure** - the nightly producer emits failed phase names, and Slack, email, GitHub, and Linear formatters use the same explicit meaning. Email no longer falls through to a raw JSON representation for this event.
+- **Delivery integrity remains governed** - exact event identity, transactional claiming, partial-delivery failure, deterministic attempt logs, persistent rate counters, serialized circuit probes, TTL retention, nested ownership-checked health, all-or-none email recipient admission, test-event handling, and server-only destination state are covered by focused contracts and emulators.
+- **Public claims are narrower** - integrations, FAQ, product-feature, help, website, marketing, Firebase, and implementation docs distinguish nightly/high-priority scheduling, active producers, controlled adapters, provider retention, and the inability to promise exactly-once external delivery.
+- **Local proof is complete** - focused integration tests, dedicated/shared rules emulators, Functions build, Answerlattice/root TypeScript, focused ESLint, the clean full runtime aggregate, docs links, dependency freeze, and diff checks pass. Scoped Answerlattice Functions/dedicated-rules and MenuList QA shared-rules deploys were attempted and both stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+- **No broad connector expansion** - no OAuth flow, generic automation engine, autonomous support action, new provider family, Firestore collection, index, Storage path, or separate scheduler was added. Existing rule files were narrowed only to protect integration secrets. External SMTP/provider cost and real delivery evidence remain provider- and owner-controlled.
+
+## July 19, 2026 - Answerlattice Public Acquisition And Trust-Flow Hardening
+
+- **Pricing has one source of truth** - public pricing, Get Started, dashboard Billing projection, and the homepage software offer derive from the maintained Answerlattice plan catalog instead of duplicating the Starter INR amount in structured data.
+- **The demo remains disclosed and deterministic** - the six-stage product simulation is verified to avoid Firebase and model-provider calls, and its proposal state remains an explicit demonstration rather than a claim of persisted customer truth.
+- **Get Started is a real semantic form** - authenticated company details use bound labels, native input types, matching field limits, at least one selected product surface, legal links, and the existing strict onboarding/provider-checkout response boundary.
+- **Mobile navigation is keyboard-contained** - opening the drawer focuses Close, Tab and Shift+Tab wrap inside it, Escape closes it, body scrolling resets, and focus returns to the trigger without duplicate touch/click activation.
+- **Search metadata avoids invented freshness** - sitemap entries omit build-time `lastmod` values unless page-specific modification evidence exists; robots and sitemap output remain local-alias aware and preserve private route exclusions.
+- **Public claims stay bounded** - the unsupported category superlative `the first 24/7 support layer` is prohibited in favor of `governed support layer`. Support-credit wording now matches operation-level accounting, shared retention constants drive Trust and Privacy, Gemini no-training/zero-retention remains an explicit non-claim without deployed account evidence, and Terms state only the verified Neelvara Systems operating trade-name, cancellation, deletion-review, and counsel-pending facts.
+- **Root mail no longer carries the known direct advisory** - vulnerable direct Nodemailer `7.0.13` is replaced by the `nodemailer9` alias pinned to `9.0.3`. Existing root mail consumers use one typed wrapper, NextAuth 4's unused incompatible optional Nodemailer peer remains absent, and Answerlattice Functions retain their independent `9.0.3` pin.
+- **Verification is durable** - a dedicated public-website gate now checks plans, routes, onboarding, deterministic demo behavior, claim boundaries, contact, mobile focus, trust/legal boundaries, and the complete website dossier, and is included in the Answerlattice runtime aggregate.
+- **No new operational cost** - these changes add no Firestore/Storage operation, model call, support-credit debit, provider request, Function, rule, index, listener, or provider family. The one dependency replacement changes the existing SMTP runtime only. No Firebase deploy is required; public app changes remain undeployed under the Vercel opt-in guard.
+
+## July 19, 2026 - Answerlattice Weekly Digest And Founder Guidance Hardening
+
+- **Weekly evidence is deterministic** - the latest completed seven-day UTC summary is prepared from strict daily analytics inside the existing Answerlattice scheduler or a bounded support-manager route; no model call, AI operation, support-credit debit, or separate scheduler is involved.
+- **Incomplete comparisons stay unavailable everywhere** - current and previous source-day counts are persisted and validated, and volume/recorded-feedback changes remain hidden on both digest surfaces and in text exports until both seven-day windows are complete.
+- **Freshness and legacy rows fail visibly** - exact-scope weekly rows require deterministic mode and an exact seven-day window; missing completeness evidence is treated as partial, stale rows need refresh, and future timestamps are invalid.
+- **Founder guidance no longer trusts document presence** - coverage, trust, Support Board, friction, Knowledge Intake, and Activation summaries are strictly parsed as available, missing, invalid, or stale. Empty evidence remains insufficient and unavailable metrics do not become zero.
+- **Permissions apply to every destination** - Daily Brief actions, evidence, launch verification, changelog entry, and prepared Support Board handoff are projected from the caller's current permissions; a support-only role cannot receive governance, knowledge, readiness, or billing links it cannot open.
+- **Browser responses fail closed** - brief/query and manual-prepare payloads are bounded and shape-validated before rendering; fixed local recovery copy replaces raw server errors.
+- **Shared rules match the product route** - the shared Firebase recovery path now requires readiness authority for weekly insight reads, matching dedicated rules. Emulator coverage denies viewer and support-only roles, preserves exact-scope owner reads, and preserves platform-support access.
+- **Cost remains bounded** - a digest load is one existing insight read; manual prepare uses two seven-row queries plus one insight read and at most one changed write; scheduled intelligence uses one 14-row query plus existing insight reads and hash-skipped writes.
+- **Deployment boundary** - Answerlattice Functions and shared Firestore rules require QA deployment after local verification. App/API/UI changes remain undeployed under the Vercel opt-in guard.
+
+## July 19, 2026 - Answerlattice Team Permission And Sensitive-Response Cross-Check
+
+- **Role assignment has one coherent prerequisite** - custom-role normalization clears `canAssignRoles` unless `canManageTeam` is also true, matching the Team route and member-role mutation boundary instead of leaving an unreachable UI/API-only authority combination.
+- **The role editor preserves that dependency** - enabling role assignment also enables team access, while removing team access clears role assignment before save on desktop and compact layouts.
+- **Sensitive management responses are explicitly private** - access, staff success/failure, role, and one-time temporary-login-detail responses share `private, no-store, max-age=0` cache control and `nosniff`; browser callers retain same-origin, no-store, manual-redirect, and bounded-response admission.
+- **Concurrency proof is self-contained** - the Answerlattice staff emulator script clears inherited `GOOGLE_APPLICATION_CREDENTIALS` before emulator startup and inside the executed test, preventing stale local ADC paths from invalidating the documented command.
+- **No new infrastructure or cost** - the cross-check adds no collection, document, read, write, delete, index, Storage path, Auth operation, Cloud Function, scheduler, connector, or public promise. Existing malformed role combinations fail closed in memory without migration writes.
+- **Deployment boundary** - no Firestore rule, index, Storage rule, or Cloud Function changed, so no Firebase deploy is required. App/API changes remain undeployed under the Vercel opt-in guard.
+
+## July 19, 2026 - Answerlattice Billing Response, Query, And Rule Hardening
+
+- **Provider checkout entities stay server-side** - subscription and support-credit creation now return only strict `sub_...` or `order_...` identifiers. Browser parsers reject provider notes, status, amounts, URLs, customer details, and future unknown fields.
+- **Hosted payment links are admitted once** - subscription persistence, webhook invoice enrichment, and billing-history rendering accept only credential-free HTTPS links on exact `rzp.io`, remove fragments, and omit malformed or unsafe legacy values.
+- **Billing reads prove product and workspace scope** - Answerlattice subscription fallback and transaction history queries now include `pId == 'AL'` plus exact tenant/store filters. Both billing-history composite indexes include the product field.
+- **Dedicated and shared rules match the UI permission** - Answerlattice subscription and transaction reads require exact product identity, current workspace scope, and current `canManageBilling`; tenant browser reads of Answerlattice `topups` are denied. Shared rules preserve same-scope MenuList billing reads.
+- **Owner diagnostics are bounded** - the Billing screen uses fixed `answerlattice_billing_*` codes with tenant/store presence-length context and fixed recovery copy instead of raw exceptions or provider payloads.
+- **Unavailable billing truth no longer looks like an empty account** - active-subscription read failures propagate to a blocking retry state, clear unverified financial state, and disable plan mutation until the current subscription is confirmed.
+- **Server mutations require exact persisted identity** - direct subscription lookup plus payment, lifecycle, webhook, and upgrade paths reject malformed, coercible, or conflicting Answerlattice product/tenant/store aliases before a financial row is admitted or changed.
+- **Billing emulator commands are self-contained** - checkout-concurrency and coordination-rule scripts clear inherited `GOOGLE_APPLICATION_CREDENTIALS` before emulator and test execution, preventing stale local ADC paths from invalidating the documented proof command.
+- **The maintained dossier is complete** - spec, implementation, Firebase/cost, tests, help, marketing, website, mobile, inventory, data evidence, and strict Feature 30 tracker evidence distinguish local source truth from deployed QA and real Razorpay sandbox mutation proof.
+- **Cost and boundary** - response projection, URL normalization, rule checks, and diagnostics add no Firestore operation. Product filtering changes existing query/index admission without raising the 10-subscription fallback or 25-history-row cap. No payment provider, plan, price, entitlement arithmetic, autonomous action, Storage path, or Cloud Function was added.
+- **QA infrastructure is still pending** - dedicated `answerlattice-qa` and shared `menulist-qa` rules/index deploys were attempted and both stopped before upload because Firebase CLI is not authenticated. No remote revision changed; no Vercel deployment or live/sandbox payment mutation was run.
+
+## July 19, 2026 - Answerlattice Workspace Profile Consistency Hardening
+
+- **Profile writes are one operational transaction** - the store profile, scheduler tenant-summary shard, compiled source-version increment, and bundle stale marker now commit together, so Settings cannot acknowledge product details while timing or runtime support context remains stale.
+- **Concurrent edits fail visibly** - every profile response carries a revision, changed saves increment it, stale editors receive `409 ANSWERLATTICE_WORKSPACE_PROFILE_CONFLICT`, and the browser reloads current values instead of overwriting them.
+- **Stored and browser contracts are strict** - product URLs are limited to HTTP(S) without embedded credentials, timezone must be valid IANA data, support-day time is exact `HH:mm`, persisted malformed fields are sanitized, and browser success requires a bounded strict `{ profile, revision }` response.
+- **Scope and response privacy are fail-closed** - GET and PUT require `MANAGE_WORKSPACE` and exact `AL` product, tenant, store, and document identity. Route-owned responses are private/no-store with `nosniff`; write limiting returns `Retry-After`.
+- **Admission is cost-bounded before data work** - signed workspace scope, write limiting, and dedicated-database availability are resolved before permission reads, request-body parsing, and the transaction. The maintained Firebase notes distinguish permission-admission reads from profile-owned reads.
+- **Partial onboarding recovers safely** - a changed save can create complete missing source-version and context-manifest records, preserves the original launch timestamp, and rejects malformed or cross-workspace control-plane records without a partial write.
+- **The data model stays bounded** - no collection, index, rule, Storage object, Function, listener, connector, or owner toggle was added. Changed saves validate the store plus compiled source/manifest control plane with three transaction reads and four writes; unchanged and stale saves use one transaction read and zero writes.
+- **Verification and deployment boundary** - contract tests, Firestore emulator concurrency/atomicity proof, runtime source gate, full TypeScript, focused lint, docs links, dependency freeze, and diff checks cover local source truth. No Firebase infrastructure or Function changed, so no Firebase deploy is required; authenticated hosted desktop/mobile smoke remains external evidence.
+
+## July 19, 2026 - Answerlattice Self-Service Onboarding Recovery Hardening
+
+- **Unknown provider outcomes preserve one attempt** - a timeout or ambiguous Razorpay result now writes `provider_recovery_pending` across the exact tenant/store/user scope, holds retries for 15 minutes, and searches bounded exact provider notes before same-attempt creation can continue.
+- **Recovered subscriptions must be fresh and exact** - only provider status `created` with matching Answerlattice product, plan, attempt, tenant, and store identity can become a new checkout result; active, malformed, or cross-scope candidates fail closed.
+- **Compensation has a provable boundary** - provisional scope is deactivated only when provider creation is known not to have occurred or an exact known checkout is already terminal. Terminal checkout recovery has a separate fixed code; indeterminate provider state is preserved and never automatically cancelled.
+- **Local finalization is durable truth** - once subscription, widget-key state, and tenant/store/user `payment_pending` status commit, later product-account bridge or bootstrap failure is recovered from persisted state rather than rolling back the workspace or provider.
+- **Browser success is stricter and private** - persisted recovery summaries cannot borrow current form values, one-time key shape must agree with rotation state, plan/subscription state must be current, and successful responses are private/no-store with `nosniff`.
+- **Payment pending is not entitlement** - paid AI and Knowledge Intake remain gated until active/trialing subscription truth; workspace creation and checkout do not claim payment activation.
+- **Cost and verification truth are current** - maintained onboarding docs now reflect shared allocator/finalization reads rather than the obsolete two-read estimate. Focused contract and Firestore-emulator tests, the complete Answerlattice aggregate, runtime source gate, full TypeScript, focused lint, dependency freeze, documentation links, and diff checks cover local source truth.
+- **Deployment boundary** - no Firestore rule, index, Storage rule, or Cloud Function changed for Feature 28, so no Firebase deploy is required. App/API/public-route changes remain undeployed under the Vercel opt-in guard; hosted OAuth and Razorpay test-mode recovery remain external evidence.
+
+## July 19, 2026 - MenuList External Location Identity Foundation
+
+- **Location identity is explicit and reversible** - stores can retain optional provider-neutral, owner-confirmed location bindings without treating a provider as canonical business truth.
+- **The existing owner flow does the useful work** - saving or clearing the Official Page Google Maps link on desktop, mobile, or the embedded editor mirrors or removes the internal URI binding inside the same store write, with no extra owner setting, read, or write.
+- **Stable Place IDs require separate confirmation** - one attributable Maps source must contain the valid Place ID and Maps URI; the candidate must remain attribution-aware, pass active-store scope checks, and be explicitly confirmed before the internal binding is written.
+- **Public and outlet boundaries stay intact** - identity metadata is excluded from public client projections and Platform Pull, never propagates between master and outlet stores, and cannot overwrite address, hours, menu, availability, or other canonical fields.
+- **The storage model stays small** - no collection, index, rule, Storage object, summary, scheduler, history document, or bulk backfill was added; existing Maps links remain valid and gain a URI-only binding on their next explicit owner save.
+- **Verification and deployment boundary** - focused identity/runtime, nested-patch, owner desktop/mobile/embedded parity, Public Truth, Official Business Page, Platform Pull, type, lint, dependency-freeze, Functions build/preflight, and diff gates cover local source truth. The cross-check hardened the existing `mapsPlaceCheck` Function parser, so a scoped QA deploy was required and attempted; Firebase CLI authentication failed before upload, no remote revision changed, and the provider flag remains off.
+- **Cross-check corrected provider identity handling** - Maps grounding now takes Place IDs and URLs only from validated grounding sources, preserves long valid Place IDs instead of silently truncating them, rejects caller-supplied identity metadata on generic store updates, prevents browser-created GBP connection claims, and transactionally rechecks exact active-store scope before confirmation or removal.
+- **Current Gemini cost truth is explicit** - the configured Gemini 3.5 model can execute and bill multiple Maps search queries for one prompt; Place IDs older than 12 months require future revalidation rather than a speculative scheduled refresh.
+
+## July 19, 2026 - Answerlattice Ticket, Conversation, Attachment, Handoff, And Email Hardening
+
+- **Support access now follows support authority** - dedicated and shared ticket, conversation, analytics, and media rules require Answerlattice support-control permission rather than tenant membership alone; `PLATFORM_SUPPORT` can operate support flows while hard delete remains `PLATFORM` only.
+- **Ticket mutation limits are one enforced contract** - retained ticket history is capped at 50 messages and 25 status entries, append-only reply/status transitions remain transactional, and attachment writes use the bounded workspace-owned Storage paths.
+- **Notification requests cannot choose recipients or content** - the strict browser request carries only event and exact workspace/ticket identity; `MANAGE_SUPPORT` is checked before the Admin ticket read, and recipient, template evidence, product, and deterministic reference come from persisted ticket truth.
+- **Direct email delivery is claimed before SMTP** - deterministic rows use a 15-minute lease, recipient-day limiting fails closed, finalization is claim-bound, SMTP has finite deadlines and deterministic Message-ID, and template text/URLs are bounded and escaped. This is the ticket notification authority hardening boundary.
+- **Conversation evidence remains evidence** - conversation review, feedback, private notes, and support handoff do not automatically become canonical truth, and chat deletion does not claim to delete shared persisted images whose references cannot be proven from one session.
+- **Email boundaries are explicit** - browser triggering is best-effort after ticket persistence, SMTP acceptance does not prove inbox placement or resolution, and inbound email-to-ticket/reply threading is not implemented.
+- **Attachment metadata is fail-closed** - creation and reply uploads cap at four files and 10 MiB, persisted ticket parsing rejects malformed or oversized metadata, and ticket surfaces open only workspace-owned Firebase Storage URLs.
+- **SLA indicators use recorded evidence** - first response comes from the first non-requester support reply and resolution from the first Resolved/Closed status timestamp, so a late resolved ticket remains breached instead of being automatically marked on time.
+- **Verification and deployment boundary** - focused DAL, notification, Firestore-rule, Storage-rule, runtime-truth, type, lint, dependency-freeze, and diff gates cover local source truth. Dedicated/shared Firestore and Storage deploys were attempted for `answerlattice-qa` and `menulist-qa`; all four stopped before upload with `Error: Failed to authenticate, have you run firebase login?`, so no remote rule release changed.
+
+## July 18, 2026 - Answerlattice Hosted Help Ownership, Routing, And SEO Hardening
+
+- **Domain ownership is registry-proven** - configured domains must use the supported help labels, match exact Answerlattice product/tenant/workspace registry scope, and new assignments require successful provider addition; Vercel conflict is no longer treated as ownership evidence.
+- **Cross-product custom domains cannot collide** - Answerlattice reserves its service roots and MenuList rejects the same support-style hostnames during availability and add operations.
+- **DNS refresh fails closed before provider access** - every configured registry is ownership-checked first, and provider verification is reduced to bounded allowlisted records before persistence or browser delivery.
+- **Public routing exposes only intentional publication** - unknown, disabled, malformed, and unlisted article routes return 404; inactive section articles are omitted without collapsing otherwise valid navigation.
+- **SEO paths are one shared contract** - article links, metadata, canonical URLs, and sitemap entries use the same encoded path builder with article-specific titles and deduplication.
+- **Request-specific denial is not shared** - registry/content data retain scoped caches, while full hosted HTML is dynamic and does not receive a shared-public CDN cache header because rate-limit admission is per domain/IP.
+- **Verification and deployment boundary** - focused hosted-help/domain contract tests, typecheck, lint, runtime-truth, dependency-freeze, and diff checks cover local source truth. No Firebase rule, index, Storage rule, or Cloud Function changed, so no Firebase deploy is required; app deployment remains owner-approved only.
+
+## July 18, 2026 - Answerlattice Customer Help Center Scope And Recovery Hardening
+
+- **Customer context now follows the real tab** - Contact Us questions carry `contact_support`, and tab titles, breadcrumbs, feedback summaries, FAQ actions, ticket prompts, and the mobile header use maintained locale keys.
+- **Drafts cannot cross users or workspaces** - Help Chat text drafts require exact Answerlattice workspace plus consistent authenticated-user identity, use a strict 2,000-character/24-hour envelope, wait for hydration before autosave, and purge expired, malformed, legacy, screenshot, and foreign-scope state.
+- **In-memory caches are tenant and audience aware** - categories, articles, changelog, and tickets are accepted only for the exact active workspace; platform tickets use a separate audience; category/changelog request coalescing is keyed by scope instead of process-wide promises.
+- **FAQ outages no longer look like approved truth** - managed FAQ load failure is visible and preserves Knowledge Base/ticket recovery instead of silently substituting static answers. Static MenuList copy remains only behind the deliberate management-disable flag.
+- **Product boundaries remain explicit** - `/help-center` is the authenticated MenuList reference-client surface backed by Answerlattice scope; hosted public/custom-domain/SEO behavior remains a separate audit item.
+- **Verification and deployment boundary** - focused Help Center/runtime/attachment tests, typecheck, lint, runtime-truth, dependency-freeze, stale-label/claim scans, and diff checks cover local source truth. No Firebase rule, index, Storage rule, or Cloud Function changed, so no Firebase deploy is required; hosted app deployment remains owner-approved only.
+
+## July 18, 2026 - Answerlattice Predictive Support And Known-Issue Hardening
+
+- **Active help now requires exact context** - every active predictive or known-issue trigger needs an exact normalized page, while generated friction candidates remain review-only suggestions without a page until an owner edits and activates them.
+- **Public admission matches the widget security boundary** - predictive help and interaction requests use fail-closed pre-auth/key rate limits, scoped widget credentials, exact workspace derivation, allowed-origin/runtime-token authorization, strict 4 KiB bodies, and bounded anonymous session identity.
+- **Runtime truth is strictly projected** - shared contracts validate trigger shape, kind/action pairing, timestamps, public HTTPS incident links, applicability, and response procedures; summaries cap at 200 and preserve the previous valid version on overflow.
+- **Stale prompts are actively cleared** - the loader sends only allowlisted context, uses a non-PII per-tab cooldown identity, caps predictive responses at 32 KiB, clears cached/pending cues when context/config/runtime authorization changes, and normalizes the suggestion again in the iframe.
+- **Interaction evidence is not resolution** - shown, widget-opened, and dismissed events are revalidated against the current active matching trigger before optional signal emission. The management surface labels them as engagement evidence.
+- **Governance remains human-controlled** - nightly processing may create up to five suggestions, rebuild summaries, and aggregate advisory engagement counts, but it does not auto-activate, auto-disable, reprioritize, approve, or publish triggers.
+- **Rules and compatibility are explicit** - dedicated/shared Firestore rules reject forged scope/source/server evidence and kind changes while allowing one safe legacy migration from missing kind to the action-derived kind.
+- **Verification and deployment boundary** - focused predictive, dual-rule, widget, guided, signal, governance, type, Functions build, lint, aggregate runtime-truth, dependency-freeze, and diff gates pass. Dedicated/shared QA rules and the scoped `answerlatticeNightly` deploy were attempted but stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+
+## July 18, 2026 - Answerlattice Guided Resolution Evidence And Handoff Hardening
+
+- **Guidance outcomes are bound to the served procedure** - widget search history retains a validated canonical procedure snapshot, and terminal outcomes must match its exact procedure slug, step count, active step evidence, widget session, and context key before a signal can be recorded.
+- **Expired interaction records fail closed** - feedback, explicit support fallback, and guided outcomes reject expired search history, including bounded legacy records that predate an explicit expiry field.
+- **Semantic targets tolerate normal asynchronous rendering** - the host performs one immediate lookup plus four bounded retries over 800 milliseconds, cancels stale timers, and retains the existing 500-target scan ceiling without adding a DOM observer.
+- **Event-gated procedures remain deterministic** - a step that requires a client event cannot be manually marked complete, and the guide advances only after the instrumented host reports the expected event.
+- **Support escalation now means a real handoff** - **Still stuck** opens the existing explicit support form; the guide records `escalated` only after deterministic ticket creation succeeds, so analytics cannot claim a handoff that did not occur.
+- **The runtime remains guidance-only** - Answerlattice can explain, highlight, wait, branch, complete, or open support, but it does not click controls, execute arbitrary JavaScript, inspect unrestricted DOM state, or change the client product.
+- **Verification and deployment boundary** - focused guided-resolution, widget-answer, escalation-emulator, retrieval, reference-client, signal, type, lint, runtime-truth, dependency-freeze, and diff gates cover local source truth. No Firestore rule, index, Storage rule, or Cloud Function changed for Feature 17, so no Firebase deploy is required.
+
+## July 18, 2026 - Answerlattice Widget Answer And Explicit Support Fallback Hardening
+
+- **Public answer evidence is positively projected** - widget RAG links pass through the public citation URL boundary, unsafe/private URLs are omitted, and related article/FAQ/changelog items become bounded follow-up searches rather than exposing internal objects.
+- **Image fallback is visible** - when screenshot processing fails, the widget states that the answer used text only instead of silently implying visual evidence was considered.
+- **Feedback replay uses persisted truth** - the feedback route returns the authoritative resolution outcome and the client renders that result rather than a conflicting optimistic state.
+- **Unresolved users can preserve context** - an explicit required-email support form creates one deterministic asynchronous ticket from the exact stored widget search record, links the history, and emits a deterministic best-effort review signal.
+- **The public caller cannot manufacture debug evidence** - ticket scope, lifecycle fields, canonical/RAG summary, product context, and signal metadata are server-derived; solved, non-widget, missing, and cross-scope history fails closed.
+- **Ticket references are collision-resistant in operator views** - deterministic widget ticket IDs now use a shared hash-segment display formatter across widget confirmation, ticket lists, notifications, and product-surface summaries instead of truncating the constant `alwe_` prefix.
+- **Automatic escalation remains a separate rollout gate** - `ENABLE_ANSWERLATTICE_AI_ESCALATION` stays off; the active explicit support-request path does not imply automatic low-confidence detection, live support, notification, response SLA, or automatic knowledge publication.
+- **Verification and deployment boundary** - focused answer/projection contracts, Firestore transaction/replay emulator, feedback boundary, typecheck, lint, runtime-truth, dependency freeze, and diff checks cover local source truth. No rule, index, Storage rule, or Cloud Function changed for Feature 16, so no Firebase deploy is required.
+
+## July 18, 2026 - Answerlattice Widget Configuration And Credential Hardening
+
+- **Widget access policy now fails closed on save** - allowed origins must be exact HTTP/HTTPS origins without paths, queries, fragments, or credentials, and blocked routes accept only exact paths, descendant `/*`, or global `*` patterns.
+- **Credential lifecycle is consistently revocation-based** - the dashboard uses revoke wording, both the supported revoke action and legacy delete alias remove the hash from active lookup while retaining bounded audit metadata, and lost raw keys require replacement rather than recovery.
+- **The maintained iframe URL no longer contains the raw key** - the loader mounts `/widget/embed`, transfers the key through exact-origin postMessage after readiness, uses no-referrer policy, and keeps the legacy dynamic route only for compatibility.
+- **Terminal runtime denial stays denied** - invalid key, forbidden origin, disabled runtime, and missing workspace config responses are no-store; terminal `401/403/404` admission hides the launcher and public `show()` cannot bypass it.
+- **Private management evidence is not browser-cacheable** - widget configuration, key, and recent-activity responses are private/no-store, including rate-limit and permission failures. Recent activity also keeps strict timestamp and workspace-row validation before returning optional visitor/support context.
+- **Public wording matches the security boundary** - exact origins are described as runtime admission; blocked routes are described as launcher presentation controls rather than authorization.
+- **Verification and deployment boundary** - focused config/runtime-token contracts, transactional key emulator, typecheck, lint, runtime-truth source gate, full Answerlattice aggregate gate, dependency freeze, and diff checks pass. No Firestore rule, index, Storage rule, or Cloud Function changed for Feature 15, so no Firebase deploy is required.
+
+## July 18, 2026 - Answerlattice Compiled Context And Cache Freshness Hardening
+
+- **Bundle publication no longer leaks internal manifests** - public `manifest.json` is now a restricted projection, private manifest copies stay server-only, and manifest files are excluded from the Firestore ref map so their hashes cannot become stale or self-referential.
+- **Every bundle input and object is bounded** - source reads use cap-plus-one overflow detection, uploads enforce 50 KB public bootstrap/route, 512 KiB other public, and 2 MiB private ceilings, and public/private readers derive exact immutable paths from validated manifests before Storage access.
+- **Failure preserves the last ready version** - onboarding initialization creates only missing control documents, source changes during a build produce a superseded version, and failed builds keep the prior pointer while removing only the failed version prefixes best effort.
+- **Public and private data stay separate** - public product/surface objects exclude billing, timezone, ticket counts, and visibility internals; canonical citations use the public URL boundary; Functions and app builders now enforce matching scope and citation contracts.
+- **Redis is an optional untrusted fast path** - `canon:v4` hashes raw entity/plan/role/state segments, validates IDs/version/time/procedure/source versions/citations/UTF-8 bytes after read, admits only active reviewer-cleared truth, and falls through to live retrieval on timeout, invalidity, or staleness.
+- **Other cached search results fail closed** - non-canonical history requires valid source references and persisted history is rejected after `expiresAt`.
+- **Rollout truth is explicit** - Public API bundle preference remains behind the rollout-gated API, MCP remains disabled, and widget bundle bootstrap is disabled until the widget actually consumes the files. Public latency, hit-rate, cost, and zero-staleness claims were removed.
+- **Verification and deployment boundary** - focused bundle/cache tests, typecheck, lint, runtime truth, Functions build, dependency freeze, and diff checks cover local source truth. The changed `answerlatticeNightly` Function requires a narrow QA deploy; authenticated remote evidence remains separate.
+
+## July 18, 2026 - Answerlattice Support Metrics Evidence Hardening
+
+- **Metrics now declare complete windows** - coverage and answer-evidence summaries use one exact rolling 24-hour window, while friction compares two completed UTC seven-day windows and excludes the partial current day.
+- **Partial data fails closed** - coverage, answers, entities, signals, misses, and friction-history inputs use cap-plus-one saturation checks and exact workspace validation before any replacement summary is published.
+- **Opaque scores were removed from owner decisions** - dashboard, activation, weekly digest, governance, and founder-assistant surfaces now show canonical coverage, no escalation, explicit confirmed outcomes, drift, and entity answer coverage instead of a composite trust score.
+- **Zero denominators stay unavailable** - a window with no questions, active answers, active entities, or explicit outcomes no longer appears as a failing zero-percent metric.
+- **Friction is evidence, not product health** - weighted load, friction level, trends, all-entity totals, unmapped evidence, and completed date ranges are labeled explicitly; support volume is not presented as correctness, satisfaction, or verified resolution.
+- **AI insight is advisory and source-bound** - weekly summaries accept only bounded output for known entity IDs, cannot set deterministic metrics, and are discarded when the source snapshot changes during provider latency.
+- **Verification and deployment boundary** - focused metric contracts, strict parsers, type, lint, Functions-build, rule, runtime-truth, dependency-freeze, and diff gates cover local source truth. The changed nightly Function still requires an authenticated narrow QA deployment and hosted readback.
+
+## July 18, 2026 - Answerlattice Signal And Ticket-Knowledge Governance Hardening
+
+- **Signal retries now preserve identity** - deterministic signal writes carry a stable payload fingerprint, reject changed replays, and use persisted ticket lifecycle events rather than mutable actor identity for resolution deduplication.
+- **Support evidence has an explicit privacy boundary** - ticket and signal text passes through a shared best-effort credential/PII redactor, model prompts treat conversations as untrusted data, and generated procedures must pass bounded action and step validation before storage.
+- **Ticket evidence cannot silently redefine truth** - extraction chooses a new-answer path or one exact active canonical target, while ambiguous targets and unrelated pending proposals stop for owner review.
+- **Proposal merges are exact and review-safe** - only matching entity, mutation type, and target proposals absorb unique bounded evidence; new evidence invalidates stale generated drafts and commits deterministic lineage audit in the same transaction.
+- **Manual proposal retries are idempotent** - Support Board creation uses deterministic request identity and a same-batch audit, with changed replays rejected instead of creating duplicate governance work.
+- **Impact measurements fail closed** - proposal follow-up compares the same signal types across exact bounded 14-day windows and refuses to publish results when either window is saturated.
+- **Verification and deployment boundary** - focused signal, ticket-knowledge, dedicated/shared rule, type, lint, Functions-build, complete Answerlattice runtime-truth, dependency-freeze, and diff gates cover local source truth. Dedicated/shared rule and nightly Function deploys were attempted and stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; hosted readback remains external evidence.
+
+## July 18, 2026 - Answerlattice Release And Changelog Propagation Hardening
+
+- **Version identity now fails closed** - release labels must use canonical numeric form and agree exactly with their normalized ordering integer, preventing inconsistent version registry rows.
+- **Versioned publication is draft-first** - a new or legacy-unlinked release note is saved privately, its deterministic release is created and activated, and only then is the same entry published with the active release ID.
+- **Published dependencies are exact** - the changelog transaction requires matching Answerlattice workspace, active status, version, release time, and changed-entity set before accepting a versioned public entry.
+- **Partial propagation stays private** - activation or final-publication failure leaves a retryable draft, refreshes contextual summaries best-effort, and never presents the incomplete release as public.
+- **Every delivery path requires explicit publication** - product-surface summaries, app and Functions context bundles, and public projection exclude drafts, missing publication state, and legacy versioned entries without release linkage.
+- **Public pagination remains useful** - scoped public reads validate `AL` tenant/store ownership and scan a bounded 25 physical pages so draft-only pages do not hide older published notes.
+- **Verification and deployment boundary** - release/changelog contracts and emulators, public projection, type, lint, Functions build, runtime truth, dependency freeze, and diff checks cover local source truth. The changed dedicated context-bundle Function requires a narrow `answerlattice-qa` deploy and hosted readback.
+
+## July 18, 2026 - Answerlattice Drift Governance Hardening
+
+- **Automated drift is server-owned** - browsers can request evaluation but cannot submit authoritative reasons; manual and nightly paths derive the same frozen four-class policy from exact workspace answers, entities, and recent signals.
+- **Every bound entity participates** - negative feedback, repeated tickets, deprecation, and scope-conflict checks no longer stop at a primary entity, and conflict reasons are deterministic across query order.
+- **Evaluation is bounded and fail-closed** - cap-plus-one reads detect oversized answer, entity, or signal sets; malformed scope, timestamps, versions, bindings, or missing entities stop before partial publication.
+- **Automated evidence cannot erase review work** - evaluation only adds deduplicated reasons and `reviewRequired`; clearing drift requires an explicit reviewer attestation covering answer content, scope, product version, and supporting evidence.
+- **Release changes propagate consistently** - version drift, deterministic audits, canonical cache/source invalidation, bundle staleness, and release activation now commit through the governed server transaction.
+- **Cost stays controlled** - the dashboard derives its drifted subset from one canonical-answer query, manual/nightly evaluation uses three bounded input queries, and changed answers commit in capped batches without a new collection, listener, index, Storage path, or scheduler.
+- **Verification and deployment boundary** - policy, contract, governance/release emulator, type, lint, Functions-build, runtime-truth, dependency-freeze, and diff gates cover local source truth. The changed `answerlatticeNightly` Function requires a narrow `answerlattice-qa` deploy; authenticated deploy and scheduled-run readback remain external evidence.
+
+## July 18, 2026 - Answerlattice Answer Tests Integrity And Freshness Hardening
+
+- **Persisted test truth fails closed** - the summary now requires its exact deterministic ID, Answerlattice product identity, numeric tenant/store scope, supported schema, strict revision, valid cases, and unique case IDs; stored releases use the strict release schema.
+- **Idempotency is bound to the actual request** - SHA-256 fingerprints cover run kind, mode, suite revision, ordered selected cases, and optional release ID, so a reused request ID cannot return unrelated prior evidence.
+- **Historical proof cannot appear current** - retained runs record the suite revision they executed, run persistence no longer increments that revision, and Activation/UI proof becomes stale after any test-suite change.
+- **Rollback retries preserve pair integrity** - deterministic proposal and audit records are validated together, a valid missing half is repaired transactionally, and conflicting product, scope, target, mutation, or source-audit identity fails closed without modifying the live answer.
+- **Product claims match the evaluator** - Answer Tests are explicitly described as deterministic regression evidence for configured contracts, not an independent factual-correctness, completeness, or verified-resolution guarantee.
+- **Verification boundary** - focused runtime, contract, rule, type, lint, runtime-truth, dependency-freeze, and diff gates cover local source truth. No Firestore rule, index, Storage rule, or Cloud Function changed for this feature, so no new Firebase deploy is required.
+
+## July 18, 2026 - Answerlattice Product Ontology And Graph Hardening
+
+- **Extraction cannot apply stale product truth** - the protected article route uses persisted content only, fingerprints the source across model latency, revalidates every matched active entity, and rejects changed, deleted, inactive, or cross-scope state before updating links.
+- **Article links and freshness commit together** - changed `entityIds`, the KB cache version, compiled source version, and bundle-stale marker now share one transaction; new concepts remain review candidates and ambiguous aliases never silently select a Firestore row.
+- **Entity lifecycle preserves dependent support truth** - deprecation stops while approved answers, articles, FAQs, product surfaces, or relations still depend on the entity.
+- **Merge covers the complete governed dependency set** - bounded same-type merge rewrites canonical, article, FAQ, product-surface, relation, and search-index references, removes self/duplicate graph edges, rebuilds the survivor index, records exact transfer counts, and invalidates affected source families.
+- **Governance controls are operational** - the entity dashboard now exposes aliases, relationship creation/removal, duplicate merge, load recovery, and success-aware modal behavior without exposing raw server errors.
+- **Graph summaries fail closed** - nightly graph rebuild reads one beyond each configured cap, requires exact Answerlattice scope, and preserves the previous graph instead of publishing truncated or cross-scope input.
+- **Verification and release boundary** - focused extraction, ontology, governance, emulator, rule, type, lint, Functions-build, runtime-truth, dependency-freeze, and diff gates cover local source truth. The workspace relation dashboard remains capped at 500 rows without pagination and is documented as a monitored scale limit. The required narrow `answerlattice-qa` `answerlatticeNightly` deploy was attempted and stopped before upload with `Error: Failed to authenticate, have you run firebase login?`.
+
+## July 18, 2026 - Answerlattice FAQ Authority, Freshness, And Reaction Hardening
+
+- **FAQ provenance is no longer browser-authorable** - owners edit answer content, scope, and review state while source, generation lineage, counters, linked article title, and active state remain server- or system-owned.
+- **Published FAQs require live article truth** - a linked FAQ can publish only when its exact-workspace article is active and published; the stored article title is derived from that record rather than accepted from the client.
+- **Compact related answers are revalidated before use** - product-surface FAQ summaries trigger an exact FAQ reread and linked-article check, so archived, changed, cross-scope, or stale candidates cannot create an answer or citation.
+- **Article generation fails closed across provider latency** - the final transaction rechecks the article fingerprint, workspace, capacity, and duplicate questions after model output, preventing deleted or changed source truth from being published accidentally.
+- **Reactions are governed evidence** - FAQ likes and dislikes use the authenticated idempotent counter-plus-audit path, remain separate from approved truth, appear as bounded owner review evidence, and expire through the existing 365-day nightly retention process.
+- **Rules enforce the same authority boundary** - dedicated and shared Firestore rules reject forged FAQ source, lineage, counters, linked article metadata, and invalid publication while preserving generated or imported provenance during later owner edits.
+- **Verification and release boundary** - focused FAQ, feedback, contract, emulator, rule, lint, Functions-build, runtime-truth, dependency-freeze, and diff gates cover the local source change. Narrow `answerlattice-qa` nightly/rules and `menulist-qa` shared-rules deploys were attempted and are blocked before upload by `Error: Failed to authenticate, have you run firebase login?`.
+
+## July 18, 2026 - Answerlattice Knowledge Base Lifecycle And Feedback Hardening
+
+- **Article truth and navigation now commit together** - live article create, edit, publish, archive, and delete operations update the scoped article record, category navigation metadata, linked FAQ review state, and freshness invalidation in one transaction instead of relying on split client writes.
+- **Changed truth cannot retain a stale vector** - title, body, category, or section changes clear the active embedding and its run metadata before regeneration; the editor reports search readiness only when both embedded status and the canonical vector are present.
+- **Generated review stays isolated from live navigation** - KB Generation review edits use an explicit staging mode and cannot make an unpublished article appear in customer-facing category navigation.
+- **Category deletion is fail-closed** - non-empty categories and sections are rejected instead of cascading article deletion, and bounded rename propagation keeps article display metadata aligned with navigation labels.
+- **Content feedback is governed evidence** - feedback is accepted only for exact-workspace active published articles, remains separate from approved truth, carries server-owned 365-day expiry metadata, and is removed by the existing nightly retention path.
+- **Permissions match knowledge ownership** - dedicated feedback reads and shared Knowledge Base category mutations require knowledge or support-control authority rather than generic team membership.
+- **Verification and release boundary** - focused mutation, feedback, rule, type, lint, Functions-build, runtime-truth, dependency-freeze, and diff gates cover the source change. Narrow `answerlattice-qa` nightly/rules and `menulist-qa` shared-rules deploys were attempted and are blocked before upload by `Error: Failed to authenticate, have you run firebase login?`.
+
+## July 18, 2026 - Answerlattice KB Generation Atomic Publication And Source Cleanup
+
+- **Publication is now one controlled switch** - reviewed imports stage articles and generated FAQs as inactive; embedding workers settle vectors only; the finalizer atomically activates the complete set, switches navigation, removes approved replacements, publishes the job, and invalidates dependent caches.
+- **Existing answers stay available during embedding** - replacement articles and their navigation remain live until every staged article has a valid embedding and the final publication transaction succeeds.
+- **Explicit deletion reclaims safe source media** - deletion inventories at most 100 exact-workspace jobs, deletes only unreferenced source objects, preserves shared references, and records a retryable failed deletion state if Storage cleanup cannot be confirmed.
+- **Shared and dedicated runtimes stay aligned** - the Answerlattice Functions and MenuList compatibility Functions use the same publication lifecycle, source boundaries, and emulator regression coverage.
+- **Scope remains narrow** - this is an internal platform compatibility workflow; the owner-facing route remains Knowledge Intake. No new collection, rule, index, Storage rule, connector, dependency, public route, or Vercel deployment was introduced.
+- **Verification** - focused deletion-boundary tests, dedicated and shared publishing emulators, both Functions TypeScript builds, and the Answerlattice runtime-truth gate cover the lifecycle before QA deployment.
+
+## July 18, 2026 - Answerlattice Knowledge Intake Evidence And Privacy Hardening
+
+- **Corroborating sources survive review** - deduped or re-analyzed drafts retain a bounded union of source IDs without overwriting an owner's edited title, content, or review status.
+- **Published destinations retain native lineage** - KB articles, FAQs, product surfaces, and canonical mutation proposals store intake job, review item, and source ID evidence without treating private source IDs as public citation URLs.
+- **Intake FAQs remain answerable** - the declared `knowledge_intake` FAQ source is admitted by FAQ normalization, so an approved intake FAQ can participate in the normal canonical-miss retrieval layer.
+- **Metadata and URL admission fail closed** - nested intake metadata is recursively bounded and redacted; URL sources reject credentials, sensitive query keys, and local/private/reserved destinations even when text was supplied directly.
+- **Lifecycle claims match runtime** - discovered candidates are not persisted, raw media is not retained, and source deletion, cancellation, retained-artifact policies, intake-specific manifests, and automated per-record cleanup remain reserved rather than partially implemented.
+- **Cost and infrastructure stay bounded** - no collection, index, Firestore/Storage rule, listener, scheduler, provider family, dependency, or Answerlattice Cloud Function was added. Existing source/review/destination documents carry the bounded lineage fields.
+
+## July 18, 2026 - Answerlattice Governed Retrieval Evidence And Confidence
+
+- **Canonical evidence now survives the full review path** - Knowledge Intake carries private source IDs into mutation proposals, governance preserves them on the approved canonical answer, and Answer Tests use them as deterministic evidence without exposing them to customer surfaces.
+- **Public citations are explicitly reviewer-approved** - the canonical editor and proposal review accept bounded public documentation links, while the public API, widget, Help Center, Help Chat, AI Search, search history, and public bundle expose only `{ id, title, url }`.
+- **Unsafe source links fail closed** - public citation admission rejects credentials, sensitive query keys, local/private/link-local/multicast/reserved hosts, and IPv4-mapped private IPv6 forms without confusing normal DNS names that begin with `fc` or `fd`.
+- **Confidence is consistent across live and cached answers** - canonical confidence now combines validation score and entity-match strength. Redis moves to `canon:v3` so prior entries that hardcoded `high` cannot survive the migration; new entries retain evaluated confidence and approved citations.
+- **Missing context creates a structured safe outcome** - plan, role, or state requirements produce bounded clarification metadata and governed abstention instead of silently falling through to an unverified FAQ/RAG answer.
+- **Firebase cost and deployment stay unchanged** - no collection, query, index, rule, listener, scheduler, provider call, Storage path, dependency, or Cloud Function was added. Existing bounded documents carry the small evidence and response metadata.
+
+## July 18, 2026 - Public Customer Localization Boundary
+
+- **Owner language controls the complete public journey** - OBP, menu and item detail, Guest Feedback, temporary status defaults, Customer App install/manifest/shortcuts and handoffs, compliance chrome, metadata fallbacks, starter/error/not-found recovery, public attribution, and shared media controls now use one resolved public language and direction.
+- **Fixed public copy is compact and source-gated** - 337 public-customer messages are generated from all 52 application locale packs; locale/key parity, semantic hashes, placeholder/protected-term integrity, bundle freshness, surface wiring, query preservation, RTL behavior, and runtime purity are enforced by the localization source gate.
+- **Content and interface registries stay distinct** - owner-entered public content retains the existing 80-language contract. When a selected content language has no dedicated UI pack, owner content remains in that language and only fixed chrome falls back to `en-US`.
+- **Language survives every public transition** - admitted `?lang=` values are preserved between OBP, menu, item, feedback, compliance, recovery, and same-origin PWA handoff routes.
+- **Unavailable feedback links fail clearly** - invalid or inactive feedback projects now use a localized, customer-safe recovery screen instead of the generic English application 404.
+- **Legal and owner-authored truth is not invented** - custom temporary-status text stays verbatim; compliance chrome is localized while generated or owner-edited legal body text remains canonical English and is tagged accordingly for assistive technology.
+- **Scale and cost remain unchanged** - localization ships as static JSON with no additional Firebase read/write/listener, API route, runtime model/provider request, collection, rule, index, dependency, Function, or deploy.
+
 ## July 18, 2026 - Answerlattice Quality And Recovery Hardening
 
 - **Answerlattice now has one dedicated quality workflow** - the repository CI installs the pinned root and Answerlattice Functions environments, checks the dependency freeze, runs the production security policy, compiles Functions and the browser helper, type-checks the Answerlattice surface, and executes the canonical runtime/emulator readiness suite.
@@ -18,7 +359,7 @@
 
 ## July 18, 2026 - Full Owner Locale Key Boundary
 
-- **The source gate now follows the mounted owner app** - every MenuList owner namespace except separately governed `Website` and `CampaignCue` is covered: 3,119 strings across 49 namespaces and all 52 registered locale files.
+- **The source gate now follows the mounted owner app** - the owner-only expansion initially covered 3,119 strings; the public-customer extension above brings the current boundary to 3,456 strings across the same 49 namespaces and all 52 registered locale files.
 - **The remaining semantic values are complete** - existing translations were preserved and 122,117 exact-source values were populated with pinned local AI4Bharat IndicTrans2 and Google MADLAD-400 model revisions; Bodo and Kashmiri follow the same contract as every other owner locale.
 - **Generation is protected and reproducible** - ICU structures, variables, product names, URLs, emails, and technical terms are restored exactly; token loss uses segmented translation, provider revisions and hashes are recorded, and application is all-locale validated before any file is written.
 - **Quality anomalies are source-gated** - 826 overlong, under-translated, or exact-English values received bounded beam-search or reviewed corrections. Every locale owner subtree now matches checked-in semantic evidence, with exact English allowed only for approved invariants or reviewed same-spelling cognates.
@@ -27033,4 +27374,5 @@ TEMPLATE FOR NEW ENTRIES:
 
 ### Fixed
 
+- **Answerlattice Product Surface Context And Summary Boundary** — Product-surface creates, edits, and archives now use transaction-backed ownership checks with immutable deterministic context keys and specialized dedicated/shared Firestore rules. Exact and wildcard routes resolve before semantic hints, state/version context is preserved across the web SDK, widget loader, iframe, and canonical retrieval, raw paths are not copied into persisted page metadata, and summary rebuilds reject overflow/duplicate keys, omit undefined optional fields, and replace the complete nested surface map so archived mappings cannot survive indirectly.
 - **Owner Dashboard Locale Completeness** — Completed the mounted `Common`, `AppSettings`, `Settings`, `Dashboard`, and `MobileDashboard` message boundary across all 52 registered locale files, added the missing mobile app-settings language label and canonical settings entry summary, repaired stale ICU variables and Odia mixed-script provider artifacts, and aligned ambiguous app-settings and business-hours analytics copy with actual runtime behavior. The semantic pass covered 22,272 values in the 464-string boundary, including a focused 1,872-value recheck of ambiguity-prone copy. At that time Bodo and Kashmiri still used readable English fallback; the July 18, 2026 full-owner semantic-evidence pass superseded that limitation without adding a Firebase operation, owner data mutation, or public-menu behavior change.

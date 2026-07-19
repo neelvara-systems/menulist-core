@@ -1,7 +1,7 @@
 # Feedback System — Product Specification
 
-> **Version:** 1.7.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.9.0
+> **Last Updated:** 2026-07-19
 > **Audience:** CEO, PM, Clients
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -29,17 +29,17 @@ Collect structured Answerlattice help-center feedback from users about their pro
 - `/answerlattice/feedback` reviews feedback for the current Answerlattice `tId + sId`
 - `/platform/feedback-admin` remains the platform-wide admin review surface
 - Owners can assign, change, clear, and filter by Product Surface without requiring the end user to choose one
-- Each Help Center feedback submission emits one `feedback` signal when signal mutation is enabled
+- Each new Help Center feedback submission receives a deterministic server identity and emits at most one deterministic `feedback` signal when signal mutation is enabled; exact request replays retry the same identities without duplication
 - Owners can add a selected feedback row directly to Support Board; assigned Product Surface context carries into the card
 - Support Board signal sync can turn feedback signals into private support cards
 - Support Board cards can become owner-reviewed answer proposals after an entity is linked
 
 **Content Feedback System:**
 
-- Unified API for likes/dislikes on articles and changelog entries
+- Protected API for likes/dislikes on published articles, changelog entries, and FAQs
 - Detailed comment feedback with sentiment (like/dislike)
-- One transaction for each article/changelog counter plus its actor audit row
-- Extensible for future content types (FAQ, workflows)
+- One server transaction for each source counter, bounded visible actor audit row, authoritative active-actor state, request replay state, and negative-feedback signal
+- Fixed supported types; workflow feedback is rejected
 
 ### Out of Scope
 
@@ -125,13 +125,14 @@ Routes feedback operations to appropriate handlers by content type:
 | ------------ | --------------------------- | --------------------------------- |
 | `article`    | `updateContentFeedbackWithAudit()` | ✅ Implemented              |
 | `changelog`  | `updateContentFeedbackWithAudit()` | ✅ Implemented              |
-| `faq`        | —                           | ❌ Not implemented (throws error) |
-| `workflow`   | —                           | ❌ Not implemented (throws error) |
+| `faq`        | `updateContentFeedbackWithAudit()` | ✅ Implemented              |
+| `workflow`   | —                           | Deliberately unsupported          |
 
-### 3.2 Article Feedback
+### 3.2 Article And FAQ Feedback
 
-- **Storage:** Directly on article document (`likes`, `dislikes` fields)
-- **Operation:** Transactionally validate/update counters and append the actor audit item; either both effects commit or neither commits
+- **Storage:** Counters on the exact article or FAQ document, bounded recent request fingerprints on the source, one visible `doc1_*` actor-audit row, and one server-only `state1_*` active-actor map
+- **Operation:** Transactionally validate the actor transition, update counters/state, and append the visible audit item below its cap; either all effects commit or none commit
+- **Eligibility:** Exact `AL` tenant/workspace, active content, and `status='published'`
 - **Min value:** 0 (Math.max prevents negative)
 
 ### 3.3 Changelog Entry Feedback
@@ -139,15 +140,17 @@ Routes feedback operations to appropriate handlers by content type:
 - **Storage:** Within page document (likes/dislikes on entry within entries array)
 - **Operation:** Transaction-based (atomic read + update within page)
 
-For both source types, persisted counters must be non-negative safe integers. The client uses one in-flight mutation lock, so a rapid duplicate click cannot increment twice before local state settles. The audit list is exact-append only until 200 events; at the cap it becomes immutable while the aggregate counter remains available.
+For all three supported source types, persisted counters must be non-negative safe integers. The client uses one in-flight mutation lock and a bounded retry request ID, while the server retains 20 recent request fingerprints for exact replay acknowledgement. Fresh request IDs cannot repeat or remove an actor's existing sentiment because the server-only active-actor state is authoritative. Switching directly from like to dislike, or dislike to like, is rejected until the actor removes the existing reaction. The visible audit list is exact-append only until 200 events; at the cap it becomes immutable while aggregate counters and actor state remain correct.
 
-Browser-local reaction acknowledgement is not authoritative. Its versioned key and envelope include Answerlattice tenant, store and user identity plus content type; entries are runtime-validated, capped at 500, stored in a null-prototype map, and evicted on malformed/cross-scope data. Switching content or workspace resets optimistic state before the scoped acknowledgement is loaded.
+Browser-local reaction acknowledgement is not authoritative. Its versioned key and envelope include Answerlattice tenant, store and user identity plus content type; entries are runtime-validated, capped at 500, stored in a null-prototype map, and evicted on malformed/cross-scope data. Switching content or workspace resets optimistic state before the scoped acknowledgement is loaded. Firestore source counters plus the hidden active-actor state remain the authority when local browser state is missing, stale, or deliberately cleared.
 
 ### 3.4 Detailed Comment Feedback (`contentFeedback`)
 
 - **Storage:** Separate collection `{type}_feedback/{tId}/{sId}/doc1_{entryId}`
 - **Fields:** comment (sanitized, max 500 chars), sentiment (like/dislike), timestamp, userId
-- **Operation:** Part of the same source-counter transaction; create or exact append until the 200-event cap
+- **Operation:** Protected server transaction; create or exact append until the 200-event cap
+- **Retention:** Audit document expiry is refreshed to 365 days; nightly cleanup deletes expired article/changelog/FAQ audit rows
+- **Negative signal:** An added dislike writes one deterministic `feedback` signal in the same transaction; that signal is review evidence, not approved truth
 
 ---
 
@@ -173,7 +176,7 @@ Browser-local reaction acknowledgement is not authoritative. Its versioned key a
   surfaceLabel?: string | null;        // Owner-facing display label
   surfaceAssignedBy?: string | null;
   surfaceAssignedAt?: Timestamp | null;
-  // Auto-injected by answerlatticeRequestBodyComposer/requestBodyComposer:
+  // Server-derived and never accepted from the browser request:
   pId: 'AL';
   sId: string | number;
   tId: string | number;
@@ -181,15 +184,15 @@ Browser-local reaction acknowledgement is not authoritative. Its versioned key a
   createdOn: Timestamp;
   sourceContext: AnswerlatticeSourceContext | null;
   traceId?: string;
-  requestId?: string;
+  requestId: string;
 }
 ```
 
-All three free-text inputs are capped at 1,000 normalized characters. Submission input is projected through `normalizeAnswerlatticeFeedbackSubmission()` before metadata composition, so caller-supplied scope, identity, timestamps, surface assignment, and unknown fields cannot reach the write. Reads pass through `normalizeAnswerlatticeFeedbackRecord()`; malformed rows are omitted rather than asserted into the UI type. Historical `feature_request` input is accepted only at the normalization boundary and canonicalized to `feature_requests`.
+All three free-text inputs are capped at 1,000 normalized characters. The authenticated submission route caps JSON at 16 KiB, admits at most 12 requests per scoped actor/workspace/hour, validates one bounded request ID and one canonical category payload, then derives scope, actor, timestamps, deterministic document identity, and an exact submission fingerprint on the server. Caller-supplied scope, identity, timestamps, Product Surface assignment, and unknown fields cannot reach the write. Exact request replays are acknowledged; changed replays return conflict. Reads pass through `normalizeAnswerlatticeFeedbackRecord()`; malformed rows are omitted rather than asserted into the UI type. Historical `feature_request` input is accepted only at the normalization boundary and canonicalized to `feature_requests`.
 
 ### Feedback Signal Event
 
-Each successful `addFeedback()` write triggers a non-blocking `answerlattice_signalEvents` write when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` is enabled.
+After the deterministic feedback transaction succeeds, the server emits the identity-minimized `answerlattice_signalEvents` row when `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` is enabled. Signal identity is deterministic from the feedback document, so an exact submission replay can retry a missed signal acknowledgement without duplicating evidence. A signal-emission failure does not invalidate the accepted private feedback row.
 
 ```typescript
 {
@@ -209,12 +212,11 @@ Each successful `addFeedback()` write triggers a non-blocking `answerlattice_sig
     surfaceId?: string | null;
     surfaceLabel?: string | null;
     relatedContextKeys?: string[];
-    userId?: string | null;
   };
 }
 ```
 
-Unresolved feedback signals are review inputs. They are not eligible for automatic mutation proposals until an owner links the Support Board card to a real Answerlattice entity.
+Derived Help Center feedback signals intentionally omit the submitter's `uId` and `sourceContext`; the original private feedback row remains the authorized identity source. Unresolved feedback signals are review inputs. They are not eligible for automatic mutation proposals until an owner links the Support Board card to a real Answerlattice entity.
 
 ### Product Surface Assignment
 
@@ -234,6 +236,7 @@ Unresolved feedback signals are review inputs. They are not eligible for automat
 | `answerlattice_signalEvents`          | `pId='AL' + tId + sId` with `type='feedback'` metadata |
 | `article_feedback/{tId}/{sId}`   | Subcollection under tenant+store          |
 | `changelog_feedback/{tId}/{sId}` | Subcollection under tenant+store          |
+| `faq_feedback/{tId}/{sId}`       | Subcollection under tenant+store          |
 
 ---
 
@@ -244,12 +247,20 @@ Unresolved feedback signals are review inputs. They are not eligible for automat
 | 1   | Feature usage checklist and popular requests were hardcoded with non-current feature names | ✅ RESOLVED — updated to generic SaaS support options           |
 | 2   | No owner view for reviewing submitted feedback                                             | ✅ RESOLVED — `/answerlattice/feedback` plus `/platform/feedback-admin` |
 | 3   | Feedback had no Product Surface sorting path                                              | ✅ RESOLVED — optional surface assignment/filtering in owner review |
-| 3   | Article feedback is not atomic (read-then-write)                                           | Known — low risk at current scale                               |
-| 4   | FAQ and workflow content types throw "not implemented" errors                              | Stubs exist in genericFeedback.ts                               |
-| 5   | Only latest feedback per user is displayed                                                 | `getLatestFeedbackForUser()` returns limit(1)                   |
-| 6   | Advanced feedback aggregation beyond current admin stats                                   | Not implemented                                                 |
-| 7   | Every Help Center submission previously saved as `feature_requests`                        | ✅ RESOLVED — submit now uses the selected category             |
-| 8   | Unresolved feedback signals could feed automatic mutation clustering                       | ✅ RESOLVED — mutation engines skip `entityId='unresolved'`     |
+| 4   | Article/changelog/FAQ counters, audit rows, and negative signals could diverge               | ✅ RESOLVED — one idempotent server transaction                 |
+| 5   | Workflow feedback is unavailable                                                            | Deliberate boundary; workflows use guided-outcome evidence      |
+| 6   | Only latest feedback per user is displayed                                                  | Deliberate customer acknowledgement; owner review reads 200     |
+| 7   | Advanced feedback aggregation beyond current admin stats                                    | Not implemented; do not add before a measured operator need     |
+| 8   | Every Help Center submission previously saved as `feature_requests`                         | ✅ RESOLVED — submit now uses the selected category             |
+| 9   | Unresolved feedback signals could feed automatic mutation clustering                        | ✅ RESOLVED — mutation engines skip `entityId='unresolved'`     |
+| 10  | Shared Firebase allowed unrelated workspace members to read private feedback                 | ✅ RESOLVED — exact support authority or exact submitter only    |
+| 11  | Form reset left stale feature-request votes visible                                         | ✅ RESOLVED — vote state derives from the resettable form        |
+| 12  | Failed reaction comments were cleared and optimistic counters could drift                    | ✅ RESOLVED — retry text retained and server counts reconcile    |
+| 13  | Direct client feedback creation bypassed HTTP body, rate, and deterministic replay controls  | ✅ RESOLVED — authenticated server-owned submission route        |
+| 14  | Fresh reaction request IDs could inflate counters for the same actor                          | ✅ RESOLVED — hidden authoritative actor-sentiment state          |
+| 15  | Widget-only managers could inherit private feedback/audit review through generic controls     | ✅ RESOLVED — exact `canManageSupport` or knowledge authority     |
+| 16  | Owner statistics over the latest 200 loaded rows appeared to be all-time totals                | ✅ RESOLVED — loaded-window labels and explicit review boundary  |
+| 17  | Dedicated rules retained a browser-owned self-feedback signal bypass after server migration    | ✅ RESOLVED — client signal creation now requires support authority |
 
 ---
 
@@ -273,7 +284,7 @@ Sources: Userpilot, Frill, Qualaroo, Usersnap
 | Feature requests with voting      | ✅ Popular requests with thumbs up/down | No                                     |
 | Multi-step wizard                 | ✅ 3-step with validation               | No                                     |
 | Display previous feedback         | ✅ Latest feedback shown                | No                                     |
-| Content feedback (likes/dislikes) | ✅ Articles + changelog                 | No                                     |
+| Content feedback (likes/dislikes) | ✅ Articles + changelog + FAQ           | No                                     |
 | Detailed comments on content      | ✅ Transaction-based                    | No                                     |
 | Feedback analytics/admin view     | ✅ Basic stats + list/detail admin view | No                                     |
 | Contextual micro-surveys          | ❌                                      | Over-engineering for SMB ICP           |
@@ -285,7 +296,7 @@ Sources: Userpilot, Frill, Qualaroo, Usersnap
 2. FeatureRequests now lists support-improvement suggestions rather than roadmap-style product promises.
 3. `/answerlattice/feedback` gives owners a tenant-scoped review surface with total, average rating, users, and request counts.
 4. `/platform/feedback-admin` remains available for platform-wide feedback review.
-5. Help Center feedback now emits `feedback` signal events for Signal Queue / Support Board review.
+5. Help Center feedback now uses deterministic server-owned submission and emits retry-safe `feedback` signal events for Signal Queue / Support Board review.
 
 ### Skipped (Validated)
 

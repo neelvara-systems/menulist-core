@@ -12,6 +12,10 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 import { getSafePwaTelUrl } from '../shortcutHandoffUrl';
 
 interface Props {
@@ -21,6 +25,7 @@ interface Props {
     storeName: string;
     trackingEnabled: boolean;
     locationTrackingEnabled?: boolean;
+    activeLanguage?: string | null;
 }
 
 export default function PwaCallHandoffClient({
@@ -30,7 +35,10 @@ export default function PwaCallHandoffClient({
     storeName,
     trackingEnabled,
     locationTrackingEnabled = true,
+    activeLanguage,
 }: Props) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
     const [ready, setReady] = useState(false);
     const safeTelUrl = getSafePwaTelUrl(telUrl);
 
@@ -54,6 +62,8 @@ export default function PwaCallHandoffClient({
 
     return (
         <div
+            dir={direction}
+            lang={activeLanguage || 'en'}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -68,15 +78,17 @@ export default function PwaCallHandoffClient({
             }}
         >
             <h1 style={{ fontSize: 20, margin: '0 0 12px', fontWeight: 600 }}>
-                Calling {storeName}…
+                {t('menu.callingBusiness', { businessName: storeName })}
             </h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? (safeTelUrl ? 'Opening your phone…' : 'This shortcut is unavailable.') : 'Preparing…'}
+                {ready
+                    ? (safeTelUrl ? t('menu.openingPhone') : t('menu.shortcutUnavailable'))
+                    : t('menu.preparing')}
             </p>
             {safeTelUrl ? (
                 <noscript>
                     <p style={{ marginTop: 16 }}>
-                        <a href={safeTelUrl}>Tap to call</a>
+                        <a href={safeTelUrl}>{t('menu.tapToCall')}</a>
                     </p>
                 </noscript>
             ) : null}

@@ -59,9 +59,11 @@
 | "Is support ready for more users?" | Uses coverage/resolution summaries and links to Dashboard. |
 | "What knowledge is waiting for review?" | Uses Knowledge Intake summary and links to Knowledge Intake. |
 | "Approve all answers" | `unsupported`; no write and no action-preview path. |
-| "Reply to this ticket" | `unsupported`; no ticket or conversation read and no write. |
-| Topic-specific question outside the six intents | `unsupported`; no detail read or provider call. |
+| "Reply to this ticket" | Read-only reply guidance from compact summaries and governed ticket/answer links; no ticket or conversation detail read and no write. |
+| Topic-specific question outside the ten intents | `unsupported`; no detail read or provider call. |
 | Missing summary docs | `insufficient_data` answer and source workflow link. |
+| Invalid or stale summary doc | Source health identifies the affected summary and the answer is marked partial through limits. |
+| Role cannot open an evidence route | Evidence and next action for that route are removed before the response reaches the browser. |
 | Repeated query within 60 seconds | Reuses the in-process packet and reports zero Firestore reads for the warm request. |
 
 ---
@@ -76,6 +78,7 @@
 | Any query | Creates no transcript, feedback, assistant summary, AI operation, action, or analytics record. A flagged form prefill still performs no write. |
 | Concurrent workspaces | Cache key includes exact tenant and store scope; one workspace cannot reuse another packet. |
 | Cache growth | Process cache remains capped at 300 workspace packets. |
+| Browser response contract | Unknown or oversized brief/query responses fail closed with fixed local copy. |
 
 ---
 
@@ -126,6 +129,7 @@ The live runtime requires the Answerlattice verifier and root TypeScript validat
 
 | Date | Change |
 | --- | --- |
+| 2026-07-19 | Added ten-intent, strict response, stale/invalid source, and permission-filtered evidence cases. |
 | 2026-06-07 | Added cases/actions catalogue verification to docs, query, and cost tests. |
 | 2026-06-07 | Added action-support tests for preview, execute, ticket reply/status actions, idempotency, and cross-product boundary. |
 | 2026-06-07 | Added planned test matrix for runtime implementation. |

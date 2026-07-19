@@ -2,8 +2,11 @@
 
 import assert from 'node:assert/strict';
 import {
+    ANSWERLATTICE_ALL_PERMISSIONS,
+    ANSWERLATTICE_PERMISSION_KEYS,
     createDefaultAnswerlatticeRoles,
     DEFAULT_ANSWERLATTICE_ROLE_IDS,
+    normalizeAnswerlatticeRolePermissions,
 } from '@constant/answerlattice/permissions';
 import { PRODUCT_IDS } from '@constant/product';
 import {
@@ -23,7 +26,13 @@ import {
     resolveAnswerlatticeStaffAuthLookup,
     shouldSendAnswerlatticeStaffSetupEmail,
 } from '@lib/answerlattice/staffAccessContracts';
-import { buildAnswerlatticeStaffClaimAccessProjection } from '@lib/answerlattice/staffClaimsContracts';
+import {
+    ANSWERLATTICE_FIREBASE_CUSTOM_CLAIMS_MAX_BYTES,
+    buildAnswerlatticeStaffClaimAccessProjection,
+    buildAnswerlatticeStaffClaimStateSignature,
+    normalizeAnswerlatticeStaffClaimPlatformRole,
+    selectAnswerlatticeStaffClaimMembership,
+} from '@lib/answerlattice/staffClaimsContracts';
 import {
     buildAnswerlatticeRoleCreationFingerprint,
     classifyAnswerlatticeRoleCreationReplay,
@@ -59,6 +68,22 @@ assert.equal(state.tenantId, 301);
 assert.equal(state.accessRevision, 7);
 assert.equal(state.primaryMembership?.storeId, 402);
 assert.equal(getAnswerlatticeStaffMembership(state, 401)?.role, DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER);
+assert.equal(selectAnswerlatticeStaffClaimMembership(state, {
+    currentClaimStoreId: 401,
+    preferredStoreId: 402,
+})?.storeId, 401);
+assert.equal(selectAnswerlatticeStaffClaimMembership(state, {
+    currentClaimStoreId: 999,
+    preferredStoreId: 401,
+})?.storeId, 401);
+assert.equal(selectAnswerlatticeStaffClaimMembership(state, {
+    currentClaimStoreId: '0401',
+    preferredStoreId: 999,
+})?.storeId, 402);
+assert.equal(normalizeAnswerlatticeStaffClaimPlatformRole('PLATFORM'), 'PLATFORM');
+assert.equal(normalizeAnswerlatticeStaffClaimPlatformRole('PLATFORM_SUPPORT'), 'PLATFORM_SUPPORT');
+assert.equal(normalizeAnswerlatticeStaffClaimPlatformRole(' platform '), 'USER');
+assert.equal(normalizeAnswerlatticeStaffClaimPlatformRole('UNSUPPORTED_ROLE'), 'USER');
 
 assert.equal(readAnswerlatticeStaffAccessState({ stores: memberships, tId: ' 301' }), null);
 assert.equal(readAnswerlatticeStaffAccessState({ stores: memberships, tenantId: 301, tId: 302 }), null);
@@ -156,6 +181,17 @@ assert.deepEqual(
 assert(defaultRoles.every(({ createdBy, createdOn }) => (
     createdBy === 'system' && createdOn === '1970-01-01T00:00:00.000Z'
 )));
+const roleAssignmentWithoutTeamAccess = normalizeAnswerlatticeRolePermissions({
+    [ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES]: true,
+});
+assert.equal(roleAssignmentWithoutTeamAccess[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM], false);
+assert.equal(roleAssignmentWithoutTeamAccess[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES], false);
+const roleAssignmentWithTeamAccess = normalizeAnswerlatticeRolePermissions({
+    [ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES]: true,
+    [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM]: true,
+});
+assert.equal(roleAssignmentWithTeamAccess[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM], true);
+assert.equal(roleAssignmentWithTeamAccess[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES], true);
 assert.equal(findAnswerlatticeRole(defaultRoles, 'unknown-role'), undefined);
 const malformedCustomRole = normalizeAnswerlatticeRolesForStore([{
     id: 'custom-malformed',
@@ -309,6 +345,52 @@ assert.deepEqual(buildAnswerlatticeStaffClaimAccessProjection({
     storeIds: ['401'],
     storeIsActive: false,
 }), { roleId: 'inactive', storeIds: ['401'] });
+const allPermissionClaims = ANSWERLATTICE_ALL_PERMISSIONS.reduce((claims, permission) => {
+    claims[permission] = true;
+    return claims;
+}, {} as Record<(typeof ANSWERLATTICE_ALL_PERMISSIONS)[number], boolean>);
+const claimStateSignature = buildAnswerlatticeStaffClaimStateSignature({
+    accountActive: true,
+    admin: true,
+    permissions: allPermissionClaims,
+    platformRole: 'PLATFORM_SUPPORT',
+    roleId: 'owner',
+    storeId: 401,
+    storeIds: ['401', '402'],
+    storeIsActive: true,
+    tenantId: 301,
+});
+assert.equal(
+    claimStateSignature,
+    buildAnswerlatticeStaffClaimStateSignature({
+        accountActive: true,
+        admin: true,
+        permissions: { ...allPermissionClaims },
+        platformRole: 'PLATFORM_SUPPORT',
+        roleId: 'owner',
+        storeId: 401,
+        storeIds: ['401', '402'],
+        storeIsActive: true,
+        tenantId: 301,
+    }),
+);
+const maximumClaimProjection = {
+    accessRevision: Number.MAX_SAFE_INTEGER,
+    admin: true,
+    pId: PRODUCT_IDS.ANSWERLATTICE,
+    platformRole: 'PLATFORM_SUPPORT',
+    role: 'r'.repeat(120),
+    storeId: String(Number.MAX_SAFE_INTEGER),
+    storeIds: [String(Number.MAX_SAFE_INTEGER)],
+    tenantId: String(Number.MAX_SAFE_INTEGER),
+    uId: 'u'.repeat(160),
+    ...allPermissionClaims,
+};
+assert(
+    new TextEncoder().encode(JSON.stringify(maximumClaimProjection)).byteLength
+        < ANSWERLATTICE_FIREBASE_CUSTOM_CLAIMS_MAX_BYTES,
+    'the bounded Answerlattice custom-claim projection must remain below Firebase Auth\'s 1000-byte limit',
+);
 
 assert.equal(isAnswerlatticeStaffRemovalReplay({
     state,

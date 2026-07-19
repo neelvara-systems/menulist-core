@@ -1,9 +1,10 @@
-import { ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS } from '@lib/answerlattice/answerTestStarterPack';
+import { getAnswerlatticeFirstTrustedAnswerCases } from '@lib/answerlattice/answerTestStarterPack';
 import {
+    ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     answerlatticeAnswerTestSourceVersionsEqual,
+    getAnswerlatticeAnswerTestSummaryId,
     normalizeAnswerlatticeAnswerTestSourceVersions,
 } from '@lib/answerlattice/answerTestContracts';
-import { isAnswerlatticeProductStarterPackCaseId } from '@lib/answerlattice/firstTrustedAnswerPackContracts';
 import type { AnswerlatticeActivationAnswerTestSummary } from '@type/answerlattice';
 
 export const EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY: AnswerlatticeActivationAnswerTestSummary = {
@@ -31,29 +32,59 @@ export const buildAnswerlatticeActivationAnswerTestSummary = (
     sId: number,
     currentSourceVersions: unknown,
 ): AnswerlatticeActivationAnswerTestSummary => {
-    if (!isRecord(value) || value.pId !== 'AL' || value.tId !== tId || value.sId !== sId) {
+    const revision = isRecord(value) && typeof value.revision === 'number'
+        && Number.isSafeInteger(value.revision) && value.revision >= 0
+        ? value.revision
+        : null;
+    const schemaVersion = isRecord(value) && typeof value.schemaVersion === 'number'
+        && Number.isSafeInteger(value.schemaVersion)
+        ? value.schemaVersion
+        : null;
+    if (
+        !isRecord(value)
+        || value.id !== getAnswerlatticeAnswerTestSummaryId(tId, sId)
+        || value.pId !== 'AL'
+        || value.tId !== tId
+        || value.sId !== sId
+        || revision === null
+        || schemaVersion === null
+        || schemaVersion < 1
+        || schemaVersion > ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION
+    ) {
         return { ...EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY };
     }
 
-    const genericStarterIds = new Set<string>(ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS);
     const activeCases = Array.isArray(value.cases)
-        ? Array.from(new Map(value.cases
+        ? value.cases
             .slice(0, 100)
             .flatMap((candidate) => {
                 if (!isRecord(candidate) || candidate.active !== true) return [];
                 const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
-                const updatedAt = typeof candidate.updatedAt === 'string'
-                    && Number.isFinite(Date.parse(candidate.updatedAt))
-                    ? candidate.updatedAt
-                    : '1970-01-01T00:00:00.000Z';
-                return /^[a-zA-Z0-9_-]{1,80}$/.test(id)
-                    ? [[id, { id, updatedAt }] as const]
+                const updatedAt = typeof candidate.updatedAt === 'string' ? candidate.updatedAt : '';
+                const launchPack = isRecord(candidate.launchPack)
+                    && candidate.launchPack.version === 1
+                    && typeof candidate.launchPack.sourceHash === 'string'
+                    && /^[a-f0-9]{64}$/.test(candidate.launchPack.sourceHash)
+                    && typeof candidate.launchPack.reviewItemId === 'string'
+                    && /^kii_[a-f0-9]{28}$/.test(candidate.launchPack.reviewItemId)
+                    ? {
+                        version: 1 as const,
+                        sourceHash: candidate.launchPack.sourceHash,
+                        reviewItemId: candidate.launchPack.reviewItemId,
+                    }
+                    : undefined;
+                return /^[a-zA-Z0-9_-]{1,80}$/.test(id) && Number.isFinite(Date.parse(updatedAt))
+                    ? [{
+                        id,
+                        active: true,
+                        updatedAt,
+                        riskLevel: candidate.riskLevel === 'critical' ? 'critical' as const : 'standard' as const,
+                        ...(launchPack ? { launchPack } : {}),
+                    }]
                     : [];
-            })).values())
+            })
         : [];
-    const firstTenCases = activeCases
-        .filter(testCase => genericStarterIds.has(testCase.id) || isAnswerlatticeProductStarterPackCaseId(testCase.id))
-        .slice(0, 10);
+    const firstTenCases = getAnswerlatticeFirstTrustedAnswerCases(activeCases, { activeOnly: true });
     const firstTenIds = firstTenCases.map(testCase => testCase.id);
     const normalizedCurrentSourceVersions = normalizeAnswerlatticeAnswerTestSourceVersions(currentSourceVersions);
 
@@ -66,6 +97,7 @@ export const buildAnswerlatticeActivationAnswerTestSummary = (
                     isRecord(result)
                     && typeof result.caseId === 'string'
                     && typeof result.passed === 'boolean'
+                    && (result.riskLevel === 'standard' || result.riskLevel === 'critical')
                         ? [[result.caseId, result] as const]
                         : []
                 ));
@@ -75,6 +107,7 @@ export const buildAnswerlatticeActivationAnswerTestSummary = (
                 ? Date.parse(candidate.completedAt)
                 : Number.NaN;
             const casesAreCurrent = Number.isFinite(completedAtMillis)
+                && completedAtMillis <= Date.now() + (5 * 60 * 1000)
                 && firstTenCases.every(testCase => Date.parse(testCase.updatedAt) <= completedAtMillis);
             const sourcesAreCurrent = Boolean(
                 normalizedCurrentSourceVersions
@@ -83,10 +116,13 @@ export const buildAnswerlatticeActivationAnswerTestSummary = (
                     normalizedCurrentSourceVersions,
                 )
             );
-            return [{ candidate, casesAreCurrent, sourcesAreCurrent }];
+            const suiteIsCurrent = candidate.suiteRevision === revision;
+            return [{ candidate, casesAreCurrent, sourcesAreCurrent, suiteIsCurrent }];
         })
         : [];
-    const matchingRun = coveredRuns.find(run => run.casesAreCurrent && run.sourcesAreCurrent)?.candidate;
+    const matchingRun = coveredRuns.find(run => (
+        run.casesAreCurrent && run.sourcesAreCurrent && run.suiteIsCurrent
+    ))?.candidate;
     const latestCoveredRun = coveredRuns[0]?.candidate;
 
     const rawMatchingResults: unknown[] = isRecord(matchingRun) && Array.isArray(matchingRun.results)
@@ -100,8 +136,14 @@ export const buildAnswerlatticeActivationAnswerTestSummary = (
             return isRecord(result) ? [result] : [];
         })
         : [];
+    const firstTenCasesById = new Map(firstTenCases.map(testCase => [testCase.id, testCase]));
     const criticalFailureCount = matchingResults.filter(result => (
-        result.passed === false && result.riskLevel === 'critical'
+        result.passed === false
+        && typeof result.caseId === 'string'
+        && (
+            result.riskLevel === 'critical'
+            || firstTenCasesById.get(result.caseId)?.riskLevel === 'critical'
+        )
     )).length;
     const proofStatus = matchingResults.length < 10
         ? null

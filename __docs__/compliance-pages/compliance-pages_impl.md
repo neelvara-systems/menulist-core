@@ -113,6 +113,8 @@ Server Component: src/app/client/compliance/CompliancePageContent.tsx
      └── Return minimal, text-first page
 ```
 
+Public compliance chrome resolves from the same owner-controlled language as OBP/menu: page title, back navigation, last-updated/effective labels, missing-data state, and attribution use the static public-customer bundle with matching `lang` and `dir`. The generated baseline and any owner override remain canonical English unless a future owner-managed localized legal source is explicitly introduced. On non-English chrome, the legal body is marked `lang="en"` and `dir="ltr"`; it is not machine-translated and no alternate legal-content schema is inferred.
+
 ---
 
 ## 2. Database Schema (Overrides-Only Model)
@@ -289,6 +291,7 @@ function generateComplianceContent(
 5. If custom text exists, render it before the non-removable baseline; otherwise render baseline only
 6. If missing store data (no contact) → show "Page not available" message
 7. Render minimal HTML page
+8. Preserve the admitted `?lang=` on the return link and localize page chrome without changing the canonical legal body
 
 ### Page Layout
 

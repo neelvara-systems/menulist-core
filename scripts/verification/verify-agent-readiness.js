@@ -2360,7 +2360,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(setClaimsRoute, 'authAdmin.createCustomToken(uid, customClaims)', 'Set claims custom token source gate');
   assertIncludes(setClaimsRoute, 'const canonicalWorkspace = canonicalStoreSnapshot.exists', 'Set claims canonical store workspace source gate');
   assertIncludes(setClaimsRoute, 'const claimTenantScope = canonicalWorkspace.tenantScope;', 'Set claims tenant claim derives from canonical workspace');
-  assertIncludes(setClaimsRoute, '? getAnswerlatticeStaffClaimStoreIds(answerlatticeClaimState)', 'Set claims uses strict Answerlattice memberships for Answerlattice tokens');
+  assertIncludes(setClaimsRoute, "storeIds: productId === PRODUCT_IDS.ANSWERLATTICE\n                ? [claimStoreScope.documentId]", 'Set claims scopes Answerlattice tokens to the selected canonical membership');
   assertIncludes(setClaimsRoute, ': getStoreIdsClaim(dbUser))', 'Set claims retains valid non-Answerlattice product-profile memberships');
   assertIncludes(setClaimsRoute, 'claimStoreScope.documentId,', 'Set claims includes the canonical selected store in membership claims');
   assertIncludes(paymentHandlerHook, 'const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {', 'Payment handler post-onboarding source gate');
@@ -3331,6 +3331,14 @@ function verifyAnswerlatticeInstallContract() {
   assertIncludes(llms, '/install/contracts.md', 'Answerlattice llms.txt');
   assertNotIncludes(llms, '/install/verify.md', 'Answerlattice llms.txt');
   assertNotIncludes(llms, '/install/security.md', 'Answerlattice llms.txt');
+
+  const escapedSnippet = contract.buildAnswerlatticeWidgetEmbedSnippet('al_"<&', {
+    blockedRoutes: ['/billing" data-unsafe="1', '/settings/<security>'],
+  });
+  assertIncludes(escapedSnippet, 'data-answerlattice-key="al_&quot;&lt;&amp;"', 'Answerlattice generated widget key HTML attribute escaping');
+  assertIncludes(escapedSnippet, '/billing&quot; data-unsafe=&quot;1', 'Answerlattice generated blocked-route quote escaping');
+  assertIncludes(escapedSnippet, '/settings/&lt;security&gt;', 'Answerlattice generated blocked-route angle-bracket escaping');
+  assertNotIncludes(escapedSnippet, 'data-unsafe="1"', 'Answerlattice generated widget snippet raw attribute injection');
 
   const secretKey = 'al_test_raw_secret_value_123456789';
   const kitFiles = contract.buildAnswerlatticeAgentKitFiles({

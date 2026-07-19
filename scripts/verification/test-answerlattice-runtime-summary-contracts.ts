@@ -8,7 +8,11 @@ import {
     normalizeAnswerlatticeSurfaceContentSummary,
     normalizeStoredAnswerlatticeProductSurface,
     parseProductSurfaceSaveInput,
+    resolveSurfaceContentForContext,
+    scoreSurfaceRouteForContextPath,
 } from '@lib/answerlattice/productSurfaceContent';
+import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
+import { validateAnswerlatticePageContext } from '../../packages/answerlattice-web/src';
 
 const scope = { tId: 7, sId: 9 };
 const trigger = {
@@ -16,6 +20,7 @@ const trigger = {
     ...scope,
     id: 'trigger-1',
     name: 'Billing help',
+    kind: 'predictive_help',
     conditions: { page: 'billing' },
     action: { type: 'help_card' },
     priority: 10,
@@ -137,5 +142,90 @@ assert.equal(surfaceSummary?.surfaces.billing.tickets.open, 2);
 assert.deepEqual(surfaceSummary?.surfaces.billing.tickets.recentDisplayIds, ['T1']);
 assert.equal(normalizeAnswerlatticeSurfaceContentSummary({ pId: 'ML', ...scope, surfaces: {}, surfaceCount: 0, articleCount: 0, changelogCount: 0, ticketCount: 0 }, scope), null);
 assert.equal(normalizeAnswerlatticeSurfaceContentSummary({ pId: 'AL', ...scope, tId: '7', surfaces: {}, surfaceCount: 0, articleCount: 0, changelogCount: 0, ticketCount: 0 }, scope), null);
+
+const routeSummary = normalizeAnswerlatticeSurfaceContentSummary({
+    pId: 'AL',
+    ...scope,
+    surfaceCount: 3,
+    articleCount: 0,
+    faqCount: 0,
+    changelogCount: 0,
+    ticketCount: 0,
+    surfaces: {
+        global: {
+            key: 'global',
+            label: 'Global',
+            routePatterns: ['*'],
+            visibility: { helpWidget: true, helpCenter: true, changelog: true },
+            articles: [],
+            faqs: [],
+            changelogs: [],
+            tickets: { total: 0, open: 0, recentDisplayIds: [] },
+        },
+        billing: {
+            key: 'billing',
+            label: 'Billing',
+            routePatterns: ['/billing/*'],
+            visibility: { helpWidget: true, helpCenter: true, changelog: true },
+            articles: [],
+            faqs: [],
+            changelogs: [],
+            tickets: { total: 0, open: 0, recentDisplayIds: [] },
+        },
+        billing_invoices: {
+            key: 'billing_invoices',
+            label: 'Billing invoices',
+            routePatterns: ['/billing/invoices'],
+            visibility: { helpWidget: true, helpCenter: false, changelog: true },
+            articles: [],
+            faqs: [],
+            changelogs: [],
+            tickets: { total: 0, open: 0, recentDisplayIds: [] },
+        },
+    },
+}, scope, 'contextContent_7_9');
+assert.ok(routeSummary);
+assert.ok(scoreSurfaceRouteForContextPath(['/billing/*'], '/billing') > 0);
+assert.ok(scoreSurfaceRouteForContextPath(['/billing/*'], '/billing/invoices') > 0);
+assert.equal(scoreSurfaceRouteForContextPath(['/billing/*'], '/settings'), 0);
+assert.equal(
+    resolveSurfaceContentForContext(routeSummary, { path: '/billing/invoices' }, 'helpWidget')?.key,
+    'billing_invoices',
+);
+assert.equal(
+    resolveSurfaceContentForContext(routeSummary, { path: '/billing/invoices' }, 'helpCenter')?.key,
+    'billing',
+);
+assert.equal(
+    resolveSurfaceContentForContext(routeSummary, { path: '/billing/payment-methods' }, 'helpWidget')?.key,
+    'billing',
+);
+
+const validatedServerContext = AnswerlatticeContextSchema.parse({
+    path: 'https://example.com/billing/invoices?customer=private',
+    state: 'Payment_Failed',
+    version: 'v2.4.1',
+});
+assert.equal(validatedServerContext.path, '/billing/invoices');
+assert.equal(validatedServerContext.page, undefined);
+assert.equal(validatedServerContext.state, 'payment_failed');
+assert.equal(validatedServerContext.version, '2.4.1');
+assert.equal(AnswerlatticeContextSchema.safeParse({ path: '/billing/*' }).success, false);
+assert.equal(AnswerlatticeContextSchema.safeParse({ version: 'latest' }).success, false);
+
+const validatedSdkContext = validateAnswerlatticePageContext({
+    path: 'https://example.com/billing/invoices?customer=private',
+    state: 'Payment_Failed',
+    version: 'v2.4.1',
+});
+assert.equal(validatedSdkContext.ok, true);
+if (validatedSdkContext.ok) {
+    assert.equal(validatedSdkContext.context.path, '/billing/invoices');
+    assert.equal(validatedSdkContext.context.page, undefined);
+    assert.equal(validatedSdkContext.context.state, 'payment_failed');
+    assert.equal(validatedSdkContext.context.version, '2.4.1');
+}
+assert.equal(validateAnswerlatticePageContext({ path: '/billing/*' }).ok, false);
+assert.equal(validateAnswerlatticePageContext({ version: 'latest' }).ok, false);
 
 console.log('Answerlattice predictive, graph, and surface summary contracts passed.');

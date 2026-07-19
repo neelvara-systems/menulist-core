@@ -59,12 +59,12 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Reset access from the workspace',
                 description:
-                    'Owners can create a new temporary passcode, share it once, revoke active sessions, and keep the member record intact.',
+                    'Owners can create a new temporary passcode, share it once, revoke refresh access, and keep the member record intact.',
             },
             {
                 title: 'Force sign-out when needed',
                 description:
-                    'Sensitive access changes can revoke sessions instead of waiting for a member to sign out on their own device.',
+                    'Sensitive access changes can revoke refresh access so new Firebase tokens require current permission state.',
             },
             {
                 title: 'Keep workspace controls scoped',
@@ -100,7 +100,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Can owners reset passwords and passcodes?',
                 description:
-                    'Yes. Owners can create a new temporary passcode and revoke active sessions. Email-backed members receive setup email when first created.',
+                    'Yes. Owners can create a new temporary passcode and revoke refresh access. Email-backed members receive setup email when first created.',
             },
             {
                 title: 'Where do team members use AnswerLattice?',
@@ -724,7 +724,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Workflow Notifications',
         title: 'Slack and email alerts for support review.',
         description:
-            'Send bounded Slack and email notifications for the support events owners should actually see: nightly digests, critical coverage drops, repeated AI failures, and controlled test messages.',
+            'Send bounded Slack and email notifications for the support events owners should actually see: nightly governance summaries, critical coverage drops, repeated AI workflow failures, and controlled test messages.',
         heroBullets: [
             'Slack webhook and email recipients',
             'Digest-first support review updates',
@@ -732,7 +732,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Notify owners without turning support into alert noise.',
         proofDescription:
-            'AnswerLattice keeps workflow notifications tied to support review. Routine stale-answer review, gaps, and proposal activity can roll into digest output, while critical failures can alert immediately.',
+            'AnswerLattice keeps workflow notifications tied to support review. Routine stale-answer review, gaps, and proposal activity can roll into digest output, while coverage and repeated-failure events can alert after the nightly run.',
         cards: [
             {
                 title: 'Configure Slack',
@@ -757,7 +757,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Track delivery health',
                 description:
-                    'Show recent success, failure, disabled adapter state, and consecutive failure count from a compact health summary.',
+                    'Show the latest sanitized success, failure, or rate-limited result without exposing raw provider responses or delivery logs.',
             },
             {
                 title: 'Cap delivery volume',
@@ -793,7 +793,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Are Slack and email self-service?',
                 description:
-                    'Yes. Slack webhook and email recipient configuration are owner-facing. Broader workflow adapters should stay controlled until their credential and delivery model is safe for self-service.',
+                    'Yes. Slack webhook and email recipient configuration are owner-facing. Jira, Linear, GitHub, Notion, and custom webhook destinations are not currently offered.',
             },
             {
                 title: 'Do notifications expose private workspace IDs?',

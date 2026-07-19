@@ -26,6 +26,12 @@
  */
 
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+    type PublicCustomerTranslator,
+} from '@lib/localization/publicCustomerMessages';
+import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { useEffect, useMemo, useState } from 'react';
 
 interface MenuNotFoundFallbackProps {
@@ -37,6 +43,7 @@ interface MenuNotFoundFallbackProps {
     storeName?: string | null;
     /** Brand name shown as the top-level home link. */
     brandName?: string | null;
+    activeLanguage?: string | null;
 }
 
 type LadderStep = {
@@ -49,24 +56,28 @@ function buildLadder({
     outletSlug,
     storeName,
     brandName,
-}: Pick<MenuNotFoundFallbackProps, 'requestedSlug' | 'outletSlug' | 'storeName' | 'brandName'>): LadderStep[] {
+    activeLanguage,
+    t,
+}: Pick<MenuNotFoundFallbackProps, 'requestedSlug' | 'outletSlug' | 'storeName' | 'brandName' | 'activeLanguage'> & {
+    t: PublicCustomerTranslator;
+}): LadderStep[] {
     const steps: LadderStep[] = [];
     const normalizedRequestedSlug = requestedSlug?.toLowerCase();
     if (normalizedRequestedSlug !== 'menu') {
         steps.push({
-            href: outletSlug ? `/${outletSlug}/menu` : '/menu',
-            label: 'Try the current menu',
+            href: appendPublicLanguageParam(outletSlug ? `/${outletSlug}/menu` : '/menu', activeLanguage),
+            label: t('menu.tryCurrentMenu'),
         });
     }
     if (outletSlug) {
         steps.push({
-            href: `/${outletSlug}`,
-            label: storeName ? `Go to ${storeName}` : `Go to this location`,
+            href: appendPublicLanguageParam(`/${outletSlug}`, activeLanguage),
+            label: storeName ? t('menu.goToName', { name: storeName }) : t('menu.goToThisLocation'),
         });
     }
     steps.push({
-        href: '/',
-        label: brandName ? `Go to ${brandName} home` : `Go to business home`,
+        href: appendPublicLanguageParam('/', activeLanguage),
+        label: brandName ? t('menu.goToNameHome', { name: brandName }) : t('menu.goToBusinessHome'),
     });
     return steps;
 }
@@ -76,10 +87,20 @@ export default function MenuNotFoundFallback({
     outletSlug,
     storeName,
     brandName,
+    activeLanguage,
 }: MenuNotFoundFallbackProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
     const ladder = useMemo(
-        () => buildLadder({ requestedSlug, outletSlug, storeName, brandName }),
-        [requestedSlug, outletSlug, storeName, brandName],
+        () => buildLadder({
+            requestedSlug,
+            outletSlug,
+            storeName,
+            brandName,
+            activeLanguage,
+            t,
+        }),
+        [requestedSlug, outletSlug, storeName, brandName, activeLanguage, t],
     );
 
     const [isStandalone, setIsStandalone] = useState(false);
@@ -110,11 +131,13 @@ export default function MenuNotFoundFallback({
     }, [isStandalone, ladder]);
 
     const notice = requestedSlug
-        ? `The menu at "/${requestedSlug}" is no longer available.`
-        : `This menu is no longer available.`;
+        ? t('menu.requestedMenuNoLongerAvailable', { requestedSlug })
+        : t('menu.menuNoLongerAvailable');
 
     return (
         <div
+            dir={direction}
+            lang={activeLanguage || 'en'}
             style={{
                 minHeight: '60vh',
                 display: 'flex',
@@ -134,7 +157,7 @@ export default function MenuNotFoundFallback({
                 }}
             >
                 <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                    Menu Not Available
+                    {t('menu.menuNotAvailable')}
                 </h1>
                 <p style={{ marginTop: 12, marginBottom: 20, color: 'rgba(0, 0, 0, 0.65)' }}>
                     {notice}
@@ -169,11 +192,16 @@ export default function MenuNotFoundFallback({
                         }}
                         aria-live="polite"
                     >
-                        Redirecting in {countdown}s…
+                        {t('menu.redirectingIn', { count: countdown })}
                     </p>
                 ) : null}
 
-                <PublicMenuListAttribution mode="compact" />
+                <PublicMenuListAttribution
+                    ariaLabel={t('common.createOfficialCustomerLink')}
+                    mode="compact"
+                    rightsLabel={t('common.allRightsReserved')}
+                    surfaceLabel={t('common.poweredByMenuList')}
+                />
             </div>
         </div>
     );

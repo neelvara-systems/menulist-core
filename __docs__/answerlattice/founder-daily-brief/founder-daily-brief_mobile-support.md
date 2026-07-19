@@ -16,6 +16,8 @@
 - Action buttons remain full-width or wrap naturally.
 - Metrics stay compact below the action plan.
 - The question box remains usable after the daily plan.
+- Partial-source and retry notices remain visible without horizontal overflow.
+- Actions that the current role cannot open are absent rather than disabled with leaked destination detail.
 - No mobile-only DAL is added.
 - `I shipped a change` opens the existing responsive changelog form and consumes the one-time query flag.
 

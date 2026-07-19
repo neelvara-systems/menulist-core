@@ -69,7 +69,7 @@ import {
 const { Title, Text, Paragraph } = Typography;
 
 type WidgetRuntimeStatus = {
-    lastSeenAt?: any;
+    lastSeenAt?: unknown;
     lastOrigin?: string | null;
     lastPath?: string | null;
     lastContextKey?: string | null;
@@ -122,6 +122,8 @@ const FRAMEWORK_ITEMS = [
 
 const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
 const ANSWERLATTICE_INSTALL_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const ANSWERLATTICE_AGENT_KIT_MAX_BYTES = 2 * 1024 * 1024;
+const ANSWERLATTICE_AGENT_KIT_CONTENT_TYPE = 'application/zip';
 const ANSWERLATTICE_INSTALL_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
     cache: 'no-store',
     credentials: 'same-origin',
@@ -129,8 +131,14 @@ const ANSWERLATTICE_INSTALL_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credent
 };
 const ANSWERLATTICE_INSTALL_SETUP_LOAD_FAILED = 'Could not load install setup';
 const ANSWERLATTICE_INSTALL_LINK_OPEN_FAILED = 'Could not open install link';
+const ANSWERLATTICE_INSTALL_KIT_DOWNLOAD_FAILED = 'Could not download install kit';
 const ANSWERLATTICE_INSTALL_COPY_CLIPBOARD_UNAVAILABLE = 'answerlattice_install_copy_clipboard_unavailable';
 const ANSWERLATTICE_INSTALL_COPY_FALLBACK_FAILED = 'answerlattice_install_copy_fallback_failed';
+const INSTALL_ACTION_STYLE = {
+    minHeight: 44,
+    height: 'auto',
+    whiteSpace: 'normal' as const,
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -140,15 +148,45 @@ const isStringArray = (value: unknown): value is string[] => (
     Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 );
 
+const isNullableBoundedString = (value: unknown, maxLength: number) => (
+    value === undefined
+    || value === null
+    || (typeof value === 'string' && value.length <= maxLength)
+);
+
+const isWidgetRuntimeTimestamp = (value: unknown) => {
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'string') return value.length <= 64 && Number.isFinite(Date.parse(value));
+    if (typeof value === 'number') return Number.isFinite(value) && value >= 0;
+    if (!isRecord(value)) return false;
+    const seconds = value.seconds ?? value._seconds;
+    const nanoseconds = value.nanoseconds ?? value._nanoseconds ?? 0;
+    return typeof seconds === 'number'
+        && Number.isFinite(seconds)
+        && seconds >= 0
+        && typeof nanoseconds === 'number'
+        && Number.isFinite(nanoseconds)
+        && nanoseconds >= 0
+        && nanoseconds < 1_000_000_000;
+};
+
 const isWidgetRuntimeStatus = (value: unknown): value is WidgetRuntimeStatus => {
     if (!isRecord(value)) return false;
     return (
-        (value.lastOrigin === undefined || value.lastOrigin === null || typeof value.lastOrigin === 'string')
-        && (value.lastPath === undefined || value.lastPath === null || typeof value.lastPath === 'string')
-        && (value.lastContextKey === undefined || value.lastContextKey === null || typeof value.lastContextKey === 'string')
-        && (value.lastFeature === undefined || value.lastFeature === null || typeof value.lastFeature === 'string')
-        && (value.lastPage === undefined || value.lastPage === null || typeof value.lastPage === 'string')
-        && (value.seenCount === undefined || typeof value.seenCount === 'number')
+        isWidgetRuntimeTimestamp(value.lastSeenAt)
+        && isNullableBoundedString(value.lastOrigin, 180)
+        && isNullableBoundedString(value.lastPath, 180)
+        && isNullableBoundedString(value.lastContextKey, 120)
+        && isNullableBoundedString(value.lastFeature, 120)
+        && isNullableBoundedString(value.lastPage, 120)
+        && (
+            value.seenCount === undefined
+            || (
+                typeof value.seenCount === 'number'
+                && Number.isSafeInteger(value.seenCount)
+                && value.seenCount >= 0
+            )
+        )
     );
 };
 
@@ -156,12 +194,32 @@ const isWidgetConfigResponse = (value: unknown): value is WidgetConfigResponse =
     if (!isRecord(value)) return false;
     const config = value.config;
     return (
-        (config === undefined || (isRecord(config) && (config.blockedRoutes === undefined || isStringArray(config.blockedRoutes))))
-        && (value.allowedOrigins === undefined || isStringArray(value.allowedOrigins))
-        && (value.keyPrefix === undefined || value.keyPrefix === null || typeof value.keyPrefix === 'string')
+        (
+            config === undefined
+            || (
+                isRecord(config)
+                && (
+                    config.blockedRoutes === undefined
+                    || (
+                        isStringArray(config.blockedRoutes)
+                        && config.blockedRoutes.length <= 50
+                        && config.blockedRoutes.every((route) => route.length <= 180)
+                    )
+                )
+            )
+        )
+        && (
+            value.allowedOrigins === undefined
+            || (
+                isStringArray(value.allowedOrigins)
+                && value.allowedOrigins.length <= 25
+                && value.allowedOrigins.every((origin) => origin.length <= 300)
+            )
+        )
+        && isNullableBoundedString(value.keyPrefix, 120)
         && (value.hasWidgetKey === undefined || typeof value.hasWidgetKey === 'boolean')
         && (value.runtimeStatus === undefined || value.runtimeStatus === null || isWidgetRuntimeStatus(value.runtimeStatus))
-        && (value.error === undefined || typeof value.error === 'string')
+        && isNullableBoundedString(value.error, 256)
     );
 };
 
@@ -209,13 +267,14 @@ const readInstallWidgetConfigResponse = async (response: Response): Promise<Widg
     return payload;
 };
 
-const formatDateTime = (value: any): string => {
+const formatDateTime = (value: unknown): string => {
     if (!value) return 'Not seen yet';
-    const date = typeof value?.toDate === 'function'
-        ? value.toDate()
-        : typeof value?.seconds === 'number'
-            ? new Date(value.seconds * 1000)
-            : new Date(value);
+    const timestamp = isRecord(value)
+        ? value.seconds ?? value._seconds
+        : null;
+    const date = typeof timestamp === 'number'
+        ? new Date(timestamp * 1000)
+        : new Date(value as string | number);
     if (Number.isNaN(date.getTime())) return 'Not seen yet';
     return date.toLocaleString(undefined, {
         month: 'short',
@@ -243,6 +302,7 @@ export default function AnswerlatticeInstallCenter() {
     const [activationSummary, setActivationSummary] = useState<ActivationSummaryResponse['summary'] | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [downloadingKit, setDownloadingKit] = useState(false);
 
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
@@ -344,6 +404,50 @@ export default function AnswerlatticeInstallCenter() {
         }
     }, []);
 
+    const downloadAgentKit = useCallback(async () => {
+        if (downloadingKit) return;
+        setDownloadingKit(true);
+        try {
+            const response = await fetch('/api/answerlattice/widget-agent-kit', {
+                ...ANSWERLATTICE_INSTALL_REQUEST_POLICY,
+                method: 'GET',
+            });
+            const contentType = response.headers.get('content-type') || '';
+            const declaredLength = Number(response.headers.get('content-length') || 0);
+            if (
+                !response.ok
+                || !contentType.toLowerCase().includes(ANSWERLATTICE_AGENT_KIT_CONTENT_TYPE)
+                || !Number.isFinite(declaredLength)
+                || declaredLength < 0
+                || declaredLength > ANSWERLATTICE_AGENT_KIT_MAX_BYTES
+            ) {
+                throw new Error('answerlattice_install_kit_response_invalid');
+            }
+
+            const blob = await response.blob();
+            if (blob.size === 0 || blob.size > ANSWERLATTICE_AGENT_KIT_MAX_BYTES) {
+                throw new Error('answerlattice_install_kit_size_invalid');
+            }
+
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = 'answerlattice-agent-kit.zip';
+            anchor.style.display = 'none';
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        } catch (error) {
+            logRuntimeFailure('answerlattice_install_kit_download_failed', error, {
+                surface: 'answerlattice_install_center',
+            });
+            message.error(ANSWERLATTICE_INSTALL_KIT_DOWNLOAD_FAILED);
+        } finally {
+            setDownloadingKit(false);
+        }
+    }, [downloadingKit]);
+
     const allowedOrigins = widgetConfig?.allowedOrigins || [];
     const savedBlockedRoutes = widgetConfig?.config?.blockedRoutes || [];
     const runtimeStatus = widgetConfig?.runtimeStatus || null;
@@ -421,7 +525,7 @@ export default function AnswerlatticeInstallCenter() {
                 showIcon
                 message="Install setup is unavailable"
                 description="Refresh after this Answerlattice workspace and widget access are fully connected."
-                action={<Button onClick={() => loadInstallState(true)}>Retry</Button>}
+                action={<Button style={INSTALL_ACTION_STYLE} onClick={() => loadInstallState(true)}>Retry</Button>}
             />
         );
     }
@@ -436,13 +540,13 @@ export default function AnswerlatticeInstallCenter() {
                     </Text>
                 </div>
                 <Space wrap>
-                    <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadInstallState(true)} style={{ minHeight: 44 }}>
+                    <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadInstallState(true)} style={INSTALL_ACTION_STYLE}>
                         Refresh
                     </Button>
-                    <Button icon={<LuExternalLink />} onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.ACCESS))} style={{ minHeight: 44 }}>
+                    <Button icon={<LuExternalLink />} onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.ACCESS))} style={INSTALL_ACTION_STYLE}>
                         Keys & Origins
                     </Button>
-                    <Button type="primary" icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'AI install packet copied')} style={{ minHeight: 44 }}>
+                    <Button type="primary" icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'AI install packet copied')} style={INSTALL_ACTION_STYLE}>
                         Copy AI Packet
                     </Button>
                 </Space>
@@ -491,22 +595,27 @@ export default function AnswerlatticeInstallCenter() {
                                 />
                             ) : null}
                             <Space wrap>
-                                <Button icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'AI install packet copied')}>
+                                <Button style={INSTALL_ACTION_STYLE} icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'AI install packet copied')}>
                                     Copy AI Packet
                                 </Button>
                                 {AGENT_COPY_BUTTONS.map((item) => (
-                                    <Button key={item.key} icon={<LuFileText />} onClick={() => copyText(item.render(), `${item.label} copied`)}>
+                                    <Button style={INSTALL_ACTION_STYLE} key={item.key} icon={<LuFileText />} onClick={() => copyText(item.render(), `${item.label} copied`)}>
                                         Copy {item.label}
                                     </Button>
                                 ))}
-                                <Button icon={<LuDownload />} onClick={() => openInstallLink('/api/answerlattice/widget-agent-kit', 'widget-agent-kit', 'Widget agent kit')}>
+                                <Button
+                                    style={INSTALL_ACTION_STYLE}
+                                    icon={<LuDownload />}
+                                    loading={downloadingKit}
+                                    onClick={downloadAgentKit}
+                                >
                                     Download Kit
                                 </Button>
                             </Space>
                             <Flex vertical gap={8}>
                                 <Flex align="center" justify="space-between" gap={12}>
                                     <Text strong>Agent prompt</Text>
-                                    <Button size="small" icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'Agent prompt copied')}>
+                                    <Button style={INSTALL_ACTION_STYLE} icon={<LuClipboard />} onClick={() => copyText(aiPacket, 'Agent prompt copied')}>
                                         Copy Prompt
                                     </Button>
                                 </Flex>
@@ -537,16 +646,16 @@ export default function AnswerlatticeInstallCenter() {
                             ) : null}
                         </Descriptions>
                         <Space wrap style={{ marginTop: 16 }}>
-                            <Button onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.UI))}>
+                            <Button style={INSTALL_ACTION_STYLE} onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.UI))}>
                                 Widget UI
                             </Button>
-                            <Button onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.ACCESS))}>
+                            <Button style={INSTALL_ACTION_STYLE} onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.ACCESS))}>
                                 Keys & Origins
                             </Button>
-                            <Button onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.HOSTED_HELP))}>
+                            <Button style={INSTALL_ACTION_STYLE} onClick={() => openDashboardRoute(getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.HOSTED_HELP))}>
                                 Hosted Help
                             </Button>
-                            <Button onClick={() => openDashboardRoute(ANSWERLATTICE_ROUTES.ACTIVATION)}>
+                            <Button style={INSTALL_ACTION_STYLE} onClick={() => openDashboardRoute(ANSWERLATTICE_ROUTES.ACTIVATION)}>
                                 Activation
                             </Button>
                         </Space>
@@ -572,7 +681,7 @@ export default function AnswerlatticeInstallCenter() {
                             rows={5}
                             style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                         />
-                        <Button style={{ marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(installSnippet, 'Script snippet copied')}>
+                        <Button style={{ ...INSTALL_ACTION_STYLE, marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(installSnippet, 'Script snippet copied')}>
                             Copy Snippet
                         </Button>
                     </Card>
@@ -585,7 +694,7 @@ export default function AnswerlatticeInstallCenter() {
                             rows={5}
                             style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                         />
-                        <Button style={{ marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(setupSnapshot, 'Setup snapshot copied')}>
+                        <Button style={{ ...INSTALL_ACTION_STYLE, marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(setupSnapshot, 'Setup snapshot copied')}>
                             Copy Snapshot
                         </Button>
                     </Card>
@@ -641,7 +750,7 @@ export default function AnswerlatticeInstallCenter() {
                                     actions={[
                                         <Button
                                             key="open"
-                                            size="small"
+                                            style={INSTALL_ACTION_STYLE}
                                             icon={<LuExternalLink />}
                                             onClick={() => openInstallLink(item.href, item.label, item.label)}
                                         >

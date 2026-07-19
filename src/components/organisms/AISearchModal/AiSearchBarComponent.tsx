@@ -78,6 +78,7 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
             const responseToDisplay: SearchDisplayResultDataType = {
                 craftedAnswer: data.craftedAnswer,
                 searchHistoryId: data.id,
+                citations: data.citations || [],
                 references: data.references.map((article: KnowledgeBaseArticleType): Partial<SearchDisplayResultReferenceType> => {
                     const category = categoriesData ? Object.values(categoriesData.categories).find(cat => cat.id === article.categoryId) : undefined;
                     const section = category ? category.sections.find(sec => sec.id === article.sectionId) : undefined;

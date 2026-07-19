@@ -13,15 +13,16 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { useMutationProposals } from '@hook/answerlattice/useMutationProposals';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import type { AnswerlatticeGovernanceEditedContent } from '@lib/answerlattice/governanceContracts';
 import type {
     AnswerlatticeProposalImpactComparison,
     AnswerlatticeProposalImpactResponse,
 } from '@lib/answerlattice/proposalImpactContracts';
-import { AnswerlatticeMutationProposal } from '@type/answerlattice';
+import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS, AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Space, Tag, Typography, theme } from 'antd';
 import { useCallback, useState } from 'react';
-import { LuCheck, LuFileCheck, LuGitCompare, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
+import { LuCheck, LuFileCheck, LuGitCompare, LuMinus, LuPlus, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -75,7 +76,8 @@ function ProposalItem({
         || Boolean(proposal.suggestedChange?.proposedScope)
         || Boolean(proposal.suggestedChange?.proposedProductBinding)
         || Boolean(proposal.suggestedChange?.proposedStatus)
-        || Boolean(proposal.suggestedChange?.proposedAnswerType);
+        || Boolean(proposal.suggestedChange?.proposedAnswerType)
+        || Boolean(proposal.suggestedChange?.proposedEvidence);
     const canApprove = hasGeneratedDraft || appliesAnswerChange;
     const actions = hasGeneratedDraft
         ? [
@@ -189,7 +191,7 @@ function ProposalItem({
                     <Flex vertical gap={4}>
                         <Text>
                             Signals: {proposal.signalSummary.ticketCount} tickets,{' '}
-                            {proposal.signalSummary.chatCount} chat negative
+                            {proposal.signalSummary.chatCount} negative chat signals
                         </Text>
                         {hasGeneratedDraft && (
                             <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, padding: 12, background: token.colorFillTertiary }}>
@@ -251,9 +253,22 @@ function ProposalItem({
                             </div>
                         )}
                         <Text type="secondary">
-                            Confidence: {Math.round(proposal.confidenceScore * 100)}% |
-                            Entity: {proposal.relatedEntityIds?.[0]?.slice(0, 12) || 'unknown'}
+                            {proposal.suggestedChange?.draftSource === 'ticket_resolution'
+                                ? 'Extractor score'
+                                : 'Signal strength'}: {Math.round(proposal.confidenceScore * 100)}% |{' '}
+                            {proposal.relatedEntityIds?.length || 0} linked product {(proposal.relatedEntityIds?.length || 0) === 1 ? 'entity' : 'entities'}
                         </Text>
+                        {proposal.suggestedChange?.sourceTicketCount !== undefined && (
+                            <Text type="secondary">
+                                Tracked ticket evidence: {proposal.suggestedChange.sourceTicketCount} resolved ticket{proposal.suggestedChange.sourceTicketCount === 1 ? '' : 's'}
+                            </Text>
+                        )}
+                        {proposal.suggestedChange?.proposedEvidence && (
+                            <Text type="secondary">
+                                Evidence: {proposal.suggestedChange.proposedEvidence.sourceIds.length} internal source{proposal.suggestedChange.proposedEvidence.sourceIds.length === 1 ? '' : 's'} |
+                                {' '}{proposal.suggestedChange.proposedEvidence.citations.length} public source{proposal.suggestedChange.proposedEvidence.citations.length === 1 ? '' : 's'}
+                            </Text>
+                        )}
                     </Flex>
                 }
             />
@@ -386,6 +401,10 @@ export default function MutationProposalReview() {
             detailedExplanation: proposal.suggestedChange?.detailedExplanation || '',
             edgeCases: proposal.suggestedChange?.edgeCases || '',
             constraints: proposal.suggestedChange?.constraints || '',
+            citations: (proposal.suggestedChange?.proposedEvidence?.citations || []).map(citation => ({
+                title: citation.title,
+                url: citation.url,
+            })),
         });
     }, [draftForm]);
 
@@ -556,6 +575,76 @@ export default function MutationProposalReview() {
                     <Form.Item name="constraints" label="Constraints">
                         <TextArea rows={2} maxLength={8_000} />
                     </Form.Item>
+                    <Form.List
+                        name="citations"
+                        rules={[{
+                            validator: async (_, citations) => {
+                                if ((citations || []).length > ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS) {
+                                    throw new Error(`Use at most ${ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS} public sources`);
+                                }
+                            },
+                        }]}
+                    >
+                        {(fields, { add, remove }, { errors }) => (
+                            <Flex vertical gap={10}>
+                                <Text strong>Approved Public Sources</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    Internal evidence remains private. Only these reviewed links can appear with the answer.
+                                </Text>
+                                {fields.map(field => (
+                                    <Flex key={field.key} gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'start'}>
+                                        <Form.Item
+                                            {...field}
+                                            name={[field.name, 'title']}
+                                            label="Source title"
+                                            style={{ flex: 1, marginBottom: 0 }}
+                                            rules={[{
+                                                required: true,
+                                                max: ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_TITLE_LENGTH,
+                                            }]}
+                                        >
+                                            <Input placeholder="Product documentation" />
+                                        </Form.Item>
+                                        <Form.Item
+                                            {...field}
+                                            name={[field.name, 'url']}
+                                            label="Public URL"
+                                            style={{ flex: 1.4, marginBottom: 0 }}
+                                            rules={[
+                                                { required: true },
+                                                {
+                                                    validator: (_, value) => normalizeAnswerlatticePublicCitationUrl(value)
+                                                        ? Promise.resolve()
+                                                        : Promise.reject(new Error('Use a public HTTP or HTTPS URL without credentials')),
+                                                },
+                                            ]}
+                                        >
+                                            <Input placeholder="https://docs.example.com/article" />
+                                        </Form.Item>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            icon={<LuMinus />}
+                                            onClick={() => remove(field.name)}
+                                            aria-label="Remove public source"
+                                            style={{ ...ACTION_BUTTON_STYLE, marginTop: isMobile ? 0 : 30 }}
+                                        />
+                                    </Flex>
+                                ))}
+                                <Button
+                                    type="dashed"
+                                    icon={<LuPlus />}
+                                    onClick={() => add({ title: '', url: '' })}
+                                    disabled={fields.length >= ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS}
+                                    block
+                                    style={ACTION_BUTTON_STYLE}
+                                >
+                                    Add public source
+                                </Button>
+                                <Form.ErrorList errors={errors} />
+                            </Flex>
+                        )}
+                    </Form.List>
                 </Form>
             </Modal>
             <Modal

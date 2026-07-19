@@ -1,72 +1,50 @@
-# Changelog System — Feature Documentation
+# Answerlattice Releases and Changelog
 
-> **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
-> **Parent Feature:** Help Center
-> **Audit Type:** Codebase-first, every file read
+**Status:** Feature 11 source-hardened on 2026-07-18. Authenticated QA deployment and hosted browser evidence remain external.
 
----
+This feature turns a versioned release note into a governed dependency event. A public versioned changelog entry is not merely text with a version label: it must point to an active Answerlattice release whose version, release time, workspace, and changed entities match exactly.
 
-## What Is This
+## Owned outcome
 
-The Changelog System is MenuList's **release notes infrastructure** — a paginated, tenant-scoped system where platform administrators create rich changelog entries (with TipTap content, tags, file attachments, YouTube embeds, and KB article references), and SMB owners browse them in a timeline view with search, tag filtering, infinite scroll, and feedback (likes/dislikes/comments).
+- Register releases in increasing version order.
+- Evaluate affected approved answers for version drift during activation.
+- Keep a versioned note private until release activation succeeds.
+- Publish only an exact release-linked entry.
+- Invalidate canonical cache, source versions, public cache, and compiled bundles.
+- Exclude drafts and legacy unlinked versioned notes from every delivery path.
+- Preserve owner retryability when activation fails.
 
----
+## Primary flow
 
-## Document Index
+`draft -> release activation -> linked publication -> surface/public propagation`
 
-| # | Document | Audience | Purpose |
-|---|----------|----------|---------|
-| 1 | **README.md** (this file) | Everyone | Master index |
-| 2 | `changelog-system_spec.md` | CEO/PM | Business requirements |
-| 3 | `changelog-system_impl.md` | Developers | Technical blueprint |
-| 4 | `changelog-system_firebase.md` | Developers/Ops | Firestore operations, cost |
-| 5 | `changelog-system_marketing.md` | Sales/Marketing | Pitch points |
-| 6 | `changelog-system_website.md` | Public | Landing page content |
-| 7 | `changelog-system_helpdoc.md` | End users | Customer help article |
-| 8 | `changelog-system_mobile-support.md` | Mobile team | Mobile assessment |
+Non-versioned announcements may publish without a release. Versioned public entries may not.
 
----
+## Main source files
 
-## Key Files
+- `src/lib/answerlattice/releaseContracts.ts`
+- `src/lib/answerlattice/releaseServer.ts`
+- `src/lib/answerlattice/changelogContracts.ts`
+- `src/lib/answerlattice/changelogServer.ts`
+- `src/components/templates/platform/changelog/addEditChangelog.tsx`
+- `src/lib/answerlattice/publicContentBoundary.ts`
+- `src/lib/answerlattice/publicContentCache.ts`
+- `src/lib/answerlattice/productSurfaceContentServer.ts`
+- `src/lib/answerlattice/contextBundleBuilderServer.ts`
+- `functions-answerlattice/src/answerlattice/contextBundleBuilder.ts`
 
-### Owner-Side
-- `src/components/templates/main-app/helpCenter/ChangelogView.tsx` — Owner wrapper (39 lines)
-- `src/components/templates/main-app/helpCenter/landing/WhatsNew.tsx` — Landing page widget
+## Verified boundaries
 
-### Platform Admin
-- `src/components/templates/platform/changelog/displayChangelog.tsx` — Timeline display (282 lines)
-- `src/components/templates/platform/changelog/addEditChangelog.tsx` — Create/edit drawer (333 lines)
-- `src/components/templates/platform/changelog/ChangelogPreview.tsx` — Entry preview renderer
-- `src/components/templates/platform/changelog/ChangelogTagRenderer.tsx` — Tag display component
+- Management mutations use authenticated server routes and `MANAGE_KNOWLEDGE` permission.
+- Release and changelog document IDs are server-owned or validated Firestore IDs.
+- A release label and its normalized integer must agree.
+- Activation is leased, retryable, audited, and fail-closed.
+- Public projection requires exact `AL`, tenant, and store ownership.
+- Public page reads scan past draft-only physical pages within a bounded 25-page window.
+- Browser reads re-enter runtime DTO validation.
 
-### Database Layer
-- `src/database/changelog/index.ts` — 6 DAL functions (317 lines)
-- `src/database/changelog/feedback.ts` — Changelog feedback
-- `src/database/contentFeedback/index.ts` — Content feedback (shared with articles)
+## External evidence still required
 
-### Types & Constants
-- `src/types/changelog.ts` — ChangelogEntry, ChangelogPage (35 lines)
-- `src/constants/changelog.ts` — Tag options, tag config with icons/colors
-
-### Hooks
-- `src/hooks/useChangelogCache.ts` — Cache management
-
----
-
-## Architecture: Paginated Document Model
-
-Changelog entries are stored in **page documents** within a tenant+store-scoped subcollection:
-- Path: `changelog/{tId}/{sId}/page_XXXXXX`
-- Each page holds multiple entries as an array
-- Pages have a ~900KB size limit with automatic rollover
-- Linked list: each page has `nextPageId` for older page navigation
-- All mutations use Firestore transactions for atomicity
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-03-02 | 1.0.0 | Initial forensic documentation — 8 component files, 6 DAL functions |
+- QA deployment of the changed Answerlattice context-bundle Function.
+- Hosted desktop and narrow-width create, failed activation, retry, publish, unpublish, and pagination smoke.
+- Real workspace verification that changed entities identify the intended answer dependencies.

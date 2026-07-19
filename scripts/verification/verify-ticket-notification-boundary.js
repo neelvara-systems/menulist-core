@@ -22,6 +22,8 @@ for (const token of [
   "rateLimitResult.reason === 'provider_unavailable'",
   'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT',
   'normalizeAnswerlatticeSupportTicketId(parsed.data.ticketId)',
+  'tenantId: parsed.data.tId',
+  'storeId: parsed.data.sId',
   '.collection(DB_COLLECTIONS.SUPPORT_TICKETS)',
   'parseAnswerlatticeSupportTicketDocument({',
   'scope: {',
@@ -32,10 +34,15 @@ for (const token of ['recipientEmail:', 'referenceId:', 'metadata:', 'skipDedup'
   forbidText(route.slice(route.indexOf('const NotificationRequestSchema'), route.indexOf('export const POST')), token, 'public request schema');
 }
 requireText(client, "eventType: 'TICKET_CREATED' | 'TICKET_REPLY' | 'TICKET_STATUS_CHANGED';", 'client trigger contract');
+requireText(client, 'tId: number;', 'client trigger tenant scope');
+requireText(client, 'sId: number;', 'client trigger store scope');
 for (const token of ['recipientEmail:', 'referenceId:', 'metadata?:', 'skipDedup?:']) forbidText(client, token, 'client trigger authority');
 requireText(ticketDal, "eventType: 'TICKET_CREATED',\n                    ticketId: docRef.id", 'ticket-created trigger');
+requireText(ticketDal, 'tId: submitData.tId', 'ticket-created trigger tenant scope');
 requireText(ticketDal, "eventType: 'TICKET_REPLY',\n                    ticketId,\n                    messageId: persistedMessage.id", 'ticket-reply trigger');
+requireText(ticketDal, 'tId: mutationContext.scope.tId', 'ticket-reply trigger tenant scope');
 requireText(ticketDal, "eventType: 'TICKET_STATUS_CHANGED'", 'ticket-status trigger');
+requireText(ticketDal, 'tId: transactionResult.ticket.tId', 'ticket-status trigger tenant scope');
 for (const token of [
   'recipientEmail: data.clientDetails.email',
   'recipientEmail: notifyEmail',

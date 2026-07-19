@@ -18,10 +18,18 @@ export const ANSWERLATTICE_CONTEXT_PRIVATE_ROOT = `${ANSWERLATTICE_CONTEXT_BUNDL
 export const ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS: AnswerlatticeContextBundleLimits = {
     maxPublicBootstrapBytes: 50_000,
     maxPublicRouteBytes: 50_000,
+    maxPublicObjectBytes: 512 * 1024,
     maxPrivateObjectBytes: 2 * 1024 * 1024,
     maxMcpResponseBytes: 24_000,
     maxMcpToolCallsPerMinute: 60,
 };
+
+const ANSWERLATTICE_BUNDLE_STATUS_SET = new Set([
+    'empty', 'building', 'ready', 'stale', 'failed', 'superseded',
+]);
+const ANSWERLATTICE_PUBLIC_BUNDLE_ID_PATTERN = /^pb_[A-Za-z0-9_-]{8,80}$/;
+const ANSWERLATTICE_BUNDLE_FILE_PATH_PATTERN = /^[A-Za-z0-9_.\/-]+\.json$/;
+const ANSWERLATTICE_BUNDLE_HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
 export const EMPTY_BUNDLE_STATS: AnswerlatticeContextBundleStats = {
     entities: 0,
@@ -123,6 +131,90 @@ export const getPublicBundlePath = (publicBundleId: string, bundleVersion: numbe
 
 export const getPrivateBundlePath = (tId: number, sId: number, bundleVersion: number, filePath: string) =>
     `${ANSWERLATTICE_CONTEXT_PRIVATE_ROOT}/${Number(tId)}/${Number(sId)}/v${Number(bundleVersion)}/${filePath.replace(/^\/+/, '')}`;
+
+export const getAnswerlatticeContextBundleObjectMaxBytes = (
+    visibility: 'public' | 'private',
+    filePath: string,
+): number => {
+    if (visibility === 'private') return ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS.maxPrivateObjectBytes;
+    if (filePath === 'widget-bootstrap.json') return ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS.maxPublicBootstrapBytes;
+    if (filePath.startsWith('routes/')) return ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS.maxPublicRouteBytes;
+    return ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS.maxPublicObjectBytes;
+};
+
+export const isAnswerlatticeContextBundleManifestForScope = (
+    value: unknown,
+    tId: number,
+    sId: number,
+): value is Record<string, any> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const manifest = value as Record<string, any>;
+    const bundleVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.bundleVersion);
+    const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion);
+    const lastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.lastReadyVersion);
+    if (
+        manifest.schemaVersion !== ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION
+        || manifest.pId !== 'AL'
+        || manifest.tId !== tId
+        || manifest.sId !== sId
+        || !ANSWERLATTICE_BUNDLE_STATUS_SET.has(manifest.status)
+        || bundleVersion === null
+        || activeVersion === null
+        || lastReadyVersion === null
+        || !areAnswerlatticeCompiledSourceVersionsValid(manifest.sourceVersions)
+        || !manifest.bundles
+        || typeof manifest.bundles !== 'object'
+        || Array.isArray(manifest.bundles)
+    ) return false;
+
+    const publicBundleId = typeof manifest.publicBundleId === 'string' ? manifest.publicBundleId : '';
+    if (publicBundleId && !ANSWERLATTICE_PUBLIC_BUNDLE_ID_PATTERN.test(publicBundleId)) return false;
+    if (
+        manifest.status === 'ready'
+        && (
+            !publicBundleId
+            || activeVersion <= 0
+            || bundleVersion !== activeVersion
+            || activeVersion !== lastReadyVersion
+        )
+    ) return false;
+    return true;
+};
+
+export const getAnswerlatticeBundleRefPath = (
+    manifest: unknown,
+    key: string,
+    tId: number,
+    sId: number,
+): string | null => {
+    if (!isAnswerlatticeContextBundleManifestForScope(manifest, tId, sId) || manifest.status !== 'ready') return null;
+    const separatorIndex = key.indexOf(':');
+    if (separatorIndex <= 0) return null;
+    const visibility = key.slice(0, separatorIndex);
+    const filePath = key.slice(separatorIndex + 1);
+    if (
+        (visibility !== 'public' && visibility !== 'private')
+        || !ANSWERLATTICE_BUNDLE_FILE_PATH_PATTERN.test(filePath)
+        || filePath.includes('..')
+    ) return null;
+
+    const ref = manifest.bundles[key];
+    if (!ref || typeof ref !== 'object' || Array.isArray(ref)) return null;
+    const expectedPath = visibility === 'public'
+        ? getPublicBundlePath(manifest.publicBundleId, manifest.activeVersion, filePath)
+        : getPrivateBundlePath(tId, sId, manifest.activeVersion, filePath);
+    const bytes = Number(ref.bytes);
+    const maxBytes = getAnswerlatticeContextBundleObjectMaxBytes(visibility, filePath);
+    if (
+        ref.path !== expectedPath
+        || !Number.isSafeInteger(bytes)
+        || bytes <= 0
+        || bytes > maxBytes
+        || typeof ref.hash !== 'string'
+        || !ANSWERLATTICE_BUNDLE_HASH_PATTERN.test(ref.hash)
+    ) return null;
+    return expectedPath;
+};
 
 const normalizeStoredSourceVersion = (value: unknown): number | null => {
     if (value === undefined || value === null) return 0;

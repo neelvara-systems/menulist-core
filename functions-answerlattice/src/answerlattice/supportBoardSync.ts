@@ -14,6 +14,8 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { classifySupportBoardSearchEvidence } from './supportBoardEvidence';
+import { loadAnswerlatticeSupportBoardCoreCounts } from './supportBoardSummary';
 
 const PRODUCT_ID = 'AL';
 const ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED = 'ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED';
@@ -45,8 +47,8 @@ const SUPPORT_BOARD_SYNC_LIMITS = {
     maxReleaseReads: 50,
     maxExistingBoardReads: 120,
     maxCardsCreatedOrUpdatedPerRun: 20,
-    minFallbackMissesForCard: 3,
-    minLowConfidenceMissesForCard: 3,
+    minUnresolvedForCard: 3,
+    minApprovedAnswerGapsForCard: 5,
     minNegativeSignalsForCard: 3,
     minEscalationSignalsForCard: 2,
 } as const;
@@ -77,6 +79,7 @@ interface SupportBoardSourceDocs {
     historyDocs: FirebaseFirestore.QueryDocumentSnapshot[];
     signalDocs: FirebaseFirestore.QueryDocumentSnapshot[];
     driftAnswerDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+    sourceWindowsSaturated: boolean;
 }
 
 interface SupportBoardSyncDiagnostic {
@@ -101,6 +104,8 @@ export interface SupportBoardSyncResult {
     needsAnswerCards: number;
     highPriorityCards: number;
     totalRecentCards: number;
+    sourceWindowsSaturated: boolean;
+    breakdownFresh: boolean;
     errors: SupportBoardSyncDiagnostic[];
 }
 
@@ -145,7 +150,7 @@ function hashPayload(value: any): string {
 
 function supportBoardDocId(tId: number, sId: number, sourceType: string, sourceId: string): string {
     const digest = hashPayload({ tId, sId, sourceType, sourceId }).slice(0, 24);
-    return `sb_${tId}_${sId}_${digest}`;
+    return `sb_source_${tId}_${sId}_${digest}`;
 }
 
 function truncateText(value: unknown, maxLength: number): string {
@@ -216,14 +221,18 @@ function buildFallbackCandidates(
     entities: Map<string, EntityInfo>,
 ): SupportBoardCandidate[] {
     const groups = new Map<string, {
-        missCount: number;
-        lowConfidenceCount: number;
+        unresolvedCount: number;
+        approvedAnswerGapCount: number;
+        negativeFeedbackCount: number;
+        escalationCount: number;
         exampleCount: number;
         contextKeys: Set<string>;
     }>();
 
     for (const doc of historyDocs) {
         const data = doc.data();
+        const evidence = classifySupportBoardSearchEvidence(data);
+        if (!evidence) continue;
         const entityIds: string[] = Array.isArray(data.matchedEntityIds) ? data.matchedEntityIds : [];
         const safeEntityIds = entityIds
             .map(entityId => normalizeAnswerlatticeResolvedFunctionEntityId(entityId))
@@ -232,13 +241,17 @@ function buildFallbackCandidates(
 
         for (const entityId of safeEntityIds) {
             const group = groups.get(entityId) || {
-                missCount: 0,
-                lowConfidenceCount: 0,
+                unresolvedCount: 0,
+                approvedAnswerGapCount: 0,
+                negativeFeedbackCount: 0,
+                escalationCount: 0,
                 exampleCount: 0,
                 contextKeys: new Set<string>(),
             };
-            group.missCount++;
-            if (data.confidence === 'low' || data.confidence === 'none') group.lowConfidenceCount++;
+            if (evidence.kind === 'unresolved') group.unresolvedCount++;
+            if (evidence.kind === 'approved_answer_gap') group.approvedAnswerGapCount++;
+            if (evidence.negativeFeedback) group.negativeFeedbackCount++;
+            if (evidence.escalated) group.escalationCount++;
             if (truncateText(data.query || data.searchQuery || data.prompt, 1)) group.exampleCount++;
             const contextKeys = Array.isArray(data.contextKeys) ? data.contextKeys : [];
             contextKeys.forEach((key: unknown) => {
@@ -251,31 +264,51 @@ function buildFallbackCandidates(
 
     return Array.from(groups.entries())
         .filter(([, group]) => (
-            group.missCount >= SUPPORT_BOARD_SYNC_LIMITS.minFallbackMissesForCard
-            || group.lowConfidenceCount >= SUPPORT_BOARD_SYNC_LIMITS.minLowConfidenceMissesForCard
+            group.unresolvedCount >= SUPPORT_BOARD_SYNC_LIMITS.minUnresolvedForCard
+            || group.approvedAnswerGapCount >= SUPPORT_BOARD_SYNC_LIMITS.minApprovedAnswerGapsForCard
         ))
-        .sort((a, b) => b[1].missCount - a[1].missCount)
+        .sort((a, b) => (
+            b[1].unresolvedCount + b[1].approvedAnswerGapCount
+        ) - (
+            a[1].unresolvedCount + a[1].approvedAnswerGapCount
+        ))
         .map(([entityId, group]) => {
             const entityName = getEntityLabel(entityId, entities);
-            const priority = group.missCount >= 5 || group.lowConfidenceCount >= 5
+            const totalSignals = group.unresolvedCount + group.approvedAnswerGapCount;
+            const unresolvedThresholdMet = group.unresolvedCount >= SUPPORT_BOARD_SYNC_LIMITS.minUnresolvedForCard;
+            const priority = group.unresolvedCount >= 5
+                || group.negativeFeedbackCount >= 3
+                || group.escalationCount > 0
                 ? SUPPORT_BOARD_PRIORITY.HIGH
                 : SUPPORT_BOARD_PRIORITY.MEDIUM;
             return {
                 sourceType: SUPPORT_BOARD_SOURCE_TYPE.SIGNAL,
                 sourceId: `fallback:${entityId}`,
-                title: `Repeated misses for ${entityName}`,
+                title: unresolvedThresholdMet
+                    ? `Repeated unresolved questions for ${entityName}`
+                    : `Approved-answer gap for ${entityName}`,
                 description: [
-                    `${group.missCount} non-canonical or low-confidence answer${group.missCount === 1 ? '' : 's'} were detected for ${entityName} in the last ${SUPPORT_BOARD_SYNC_LIMITS.windowDays} days.`,
+                    group.unresolvedCount > 0
+                        ? `${group.unresolvedCount} unresolved, negatively rated, clarified, or escalated result${group.unresolvedCount === 1 ? '' : 's'} were detected for ${entityName} in the last ${SUPPORT_BOARD_SYNC_LIMITS.windowDays} days.`
+                        : '',
+                    group.approvedAnswerGapCount > 0
+                        ? `${group.approvedAnswerGapCount} source-backed result${group.approvedAnswerGapCount === 1 ? '' : 's'} were served without an approved canonical answer.`
+                        : '',
                     group.exampleCount > 0 ? `${group.exampleCount} source example${group.exampleCount === 1 ? '' : 's'} remain in search history; this derived card stores counts and context only.` : '',
                     'Review whether this needs a canonical answer, FAQ, or article update.',
                 ].filter(Boolean).join(' '),
                 status: SUPPORT_BOARD_STATUS.NEEDS_ANSWER,
                 priority,
-                tags: cleanTags(['recurring-fallback', group.lowConfidenceCount > 0 ? 'low-confidence' : '', entities.get(entityId)?.type]),
+                tags: cleanTags([
+                    unresolvedThresholdMet ? 'unresolved-support' : 'approved-answer-gap',
+                    group.negativeFeedbackCount > 0 ? 'negative-feedback' : '',
+                    group.escalationCount > 0 ? 'escalation' : '',
+                    entities.get(entityId)?.type,
+                ]),
                 relatedEntityId: entityId,
                 relatedContextKeys: Array.from(group.contextKeys),
-                signalCount: group.missCount,
-                syncReason: 'recurring_fallback_or_low_confidence',
+                signalCount: totalSignals,
+                syncReason: 'recurring_unresolved_or_approved_answer_gap',
             };
         });
 }
@@ -431,24 +464,30 @@ async function loadSupportBoardSourceDocs(tId: number, sId: number): Promise<Sup
             .where('canonical', '==', false)
             .where('createdOn', '>=', windowStart)
             .orderBy('createdOn', 'desc')
-            .limit(SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads)
+            .limit(SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads + 1)
             .get(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('timestamp', '>=', windowStart)
             .orderBy('timestamp', 'desc')
-            .limit(SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads)
+            .limit(SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads + 1)
             .get(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('governance.driftFlag', '==', true)
-            .limit(SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads)
+            .limit(SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads + 1)
             .get(),
     ]);
+    const sourceWindowsSaturated = historySnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads
+        || signalSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads
+        || driftSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads;
+    const historyDocs = historySnap.docs.slice(0, SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads);
+    const signalDocs = signalSnap.docs.slice(0, SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads);
+    const driftAnswerDocs = driftSnap.docs.slice(0, SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads);
 
-    for (const doc of historySnap.docs) {
+    for (const doc of historyDocs) {
         const ids = Array.isArray(doc.data().matchedEntityIds) ? doc.data().matchedEntityIds : [];
         ids.forEach((id: unknown) => {
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(id);
@@ -456,12 +495,12 @@ async function loadSupportBoardSourceDocs(tId: number, sId: number): Promise<Sup
         });
     }
 
-    for (const doc of signalSnap.docs) {
+    for (const doc of signalDocs) {
         const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(doc.data().entityId);
         if (entityId) entityIds.add(entityId);
     }
 
-    for (const doc of driftSnap.docs) {
+    for (const doc of driftAnswerDocs) {
         const ids = Array.isArray(doc.data().scope?.entityIds) ? doc.data().scope.entityIds : [];
         ids.forEach((id: unknown) => {
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(id);
@@ -471,9 +510,10 @@ async function loadSupportBoardSourceDocs(tId: number, sId: number): Promise<Sup
 
     return {
         entityIds: Array.from(entityIds),
-        historyDocs: historySnap.docs,
-        signalDocs: signalSnap.docs,
-        driftAnswerDocs: driftSnap.docs,
+        historyDocs,
+        signalDocs,
+        driftAnswerDocs,
+        sourceWindowsSaturated,
     };
 }
 
@@ -501,6 +541,8 @@ function buildCardPayload(tId: number, sId: number, candidate: SupportBoardCandi
         priority: candidate.priority,
         sourceType: candidate.sourceType,
         sourceId: candidate.sourceId,
+        sourceIdentityRedactedAt: null,
+        sourceIdentityRedactedBy: null,
         assigneeId: null,
         assigneeName: null,
         dueDate: null,
@@ -596,30 +638,32 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
     cardsSkippedResolved: number;
     cardsSkippedUnchanged: number;
     candidatesAnalyzed: number;
+    sourceWindowsSaturated: boolean;
 }): Promise<{
     written: boolean;
     openCards: number;
     needsAnswerCards: number;
     highPriorityCards: number;
     totalRecentCards: number;
+    breakdownFresh: boolean;
 }> {
     const cardsSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .orderBy('modifiedOn', 'desc')
-        .limit(SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads)
+        .limit(SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads + 1)
         .get();
+    const breakdownFresh = cardsSnap.size <= SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads;
+    const breakdownDocs = cardsSnap.docs.slice(0, SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads);
+    const coreCounts = await loadAnswerlatticeSupportBoardCoreCounts(tId, sId);
 
     const statusCounts: Record<string, number> = {};
     const priorityCounts: Record<string, number> = {};
     const sourceCounts: Record<string, number> = {};
     const surfaceCounts: Record<string, number> = {};
-    let openCards = 0;
-    let needsAnswerCards = 0;
-    let highPriorityCards = 0;
 
-    for (const doc of cardsSnap.docs) {
+    for (const doc of breakdownDocs) {
         const data = doc.data();
         const status = String(data.status || 'unknown');
         const priority = String(data.priority || 'unknown');
@@ -627,9 +671,6 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
         statusCounts[status] = (statusCounts[status] || 0) + 1;
         priorityCounts[priority] = (priorityCounts[priority] || 0) + 1;
         sourceCounts[sourceType] = (sourceCounts[sourceType] || 0) + 1;
-        if (status !== SUPPORT_BOARD_STATUS.RESOLVED) openCards++;
-        if (status === SUPPORT_BOARD_STATUS.NEEDS_ANSWER) needsAnswerCards++;
-        if (priority === SUPPORT_BOARD_PRIORITY.HIGH) highPriorityCards++;
         if (data.relatedSurfaceId) {
             surfaceCounts[data.relatedSurfaceId] = (surfaceCounts[data.relatedSurfaceId] || 0) + 1;
         }
@@ -649,10 +690,9 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
         priorityCounts,
         sourceCounts,
         topSurfaces,
-        openCards,
-        needsAnswerCards,
-        highPriorityCards,
-        totalRecentCards: cardsSnap.size,
+        ...coreCounts,
+        breakdownFresh,
+        sourceWindowsSaturated: syncStats.sourceWindowsSaturated,
         lastSync: {
             ...syncStats,
             windowDays: SUPPORT_BOARD_SYNC_LIMITS.windowDays,
@@ -663,7 +703,7 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
     const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`supportBoardSummary_${tId}_${sId}`);
     const existing = await summaryRef.get();
     if (existing.exists && existing.data()?.sourceHash === sourceHash) {
-        return { written: false, openCards, needsAnswerCards, highPriorityCards, totalRecentCards: cardsSnap.size };
+        return { written: false, ...coreCounts, breakdownFresh };
     }
 
     await summaryRef.set({
@@ -672,7 +712,7 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
         lastUpdated: Timestamp.now(),
     }, { merge: true });
 
-    return { written: true, openCards, needsAnswerCards, highPriorityCards, totalRecentCards: cardsSnap.size };
+    return { written: true, ...coreCounts, breakdownFresh };
 }
 
 export async function syncSupportBoardNightly(tId: number, sId: number): Promise<SupportBoardSyncResult> {
@@ -688,6 +728,8 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
         needsAnswerCards: 0,
         highPriorityCards: 0,
         totalRecentCards: 0,
+        sourceWindowsSaturated: false,
+        breakdownFresh: true,
         errors: [],
     };
 
@@ -695,6 +737,7 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
 
     try {
         const sourceDocs = await loadSupportBoardSourceDocs(tId, sId);
+        result.sourceWindowsSaturated = sourceDocs.sourceWindowsSaturated;
         const entities = await loadEntityInfo(tId, sId, sourceDocs.entityIds);
         const driftCandidates = buildDriftCandidates(sourceDocs.driftAnswerDocs);
         const candidates = [
@@ -718,12 +761,14 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
             cardsSkippedResolved: result.cardsSkippedResolved,
             cardsSkippedUnchanged: result.cardsSkippedUnchanged,
             candidatesAnalyzed: result.candidatesAnalyzed,
+            sourceWindowsSaturated: result.sourceWindowsSaturated,
         });
         result.summaryWritten = summary.written;
         result.openCards = summary.openCards;
         result.needsAnswerCards = summary.needsAnswerCards;
         result.highPriorityCards = summary.highPriorityCards;
         result.totalRecentCards = summary.totalRecentCards;
+        result.breakdownFresh = summary.breakdownFresh;
 
         if (result.cardsCreated > 0 || result.cardsUpdated > 0 || result.summaryWritten) {
             logger.info('[Answerlattice SupportBoard] Nightly sync complete', {

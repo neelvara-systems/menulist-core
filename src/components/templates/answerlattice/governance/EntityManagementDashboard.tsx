@@ -15,12 +15,15 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import {
     ANSWERLATTICE_ENTITY_STATUS,
     ANSWERLATTICE_ENTITY_TYPES,
+    ANSWERLATTICE_RELATION_TYPES,
     AnswerlatticeEntity,
     AnswerlatticeEntityType,
+    AnswerlatticeRelationType,
     denormalizeVersion,
 } from '@type/answerlattice';
 import {
     Badge,
+    Alert,
     Button,
     Card,
     Descriptions,
@@ -43,11 +46,13 @@ import { useCallback, useMemo, useState } from 'react';
 import {
     LuArchive,
     LuEye,
+    LuGitMerge,
     LuLink,
     LuPencil,
     LuPlus,
     LuRefreshCw,
     LuSearch,
+    LuTrash2,
 } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -82,17 +87,20 @@ export default function EntityManagementDashboard() {
     const sId = session?.sId || 0;
 
     const {
-        entities, relations, searchIndex, loading, refresh,
+        entities, relations, searchIndex, loading, error, refresh,
         selectedEntity, setSelectedEntity,
-        create, update, deprecate,
+        create, update, deprecate, merge, addRelation, removeRelation,
     } = useEntities(tId, sId);
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [searchText, setSearchText] = useState('');
+    const [mergeEntityId, setMergeEntityId] = useState<string>();
     const [form] = Form.useForm();
     const [createForm] = Form.useForm();
+    const [relationForm] = Form.useForm();
 
     const filteredEntities = useMemo(() => {
         if (!searchText) return entities;
@@ -127,23 +135,32 @@ export default function EntityManagementDashboard() {
             name: entity.name,
             description: entity.description,
             status: entity.status,
+            aliases: entity.aliases || [],
         });
-    }, [form, setSelectedEntity]);
+        relationForm.resetFields();
+        setMergeEntityId(undefined);
+    }, [form, relationForm, setSelectedEntity]);
 
     const handleSave = useCallback(async () => {
         if (!selectedEntity) return;
         try {
             const values = await form.validateFields();
-            await update({
+            setSaving(true);
+            const updated = await update({
                 id: selectedEntity.id,
                 name: values.name,
                 description: values.description,
                 status: values.status,
+                aliases: values.aliases || [],
             });
-            setEditMode(false);
-            setDrawerOpen(false);
+            if (updated) {
+                setEditMode(false);
+                setDrawerOpen(false);
+            }
         } catch {
             // form validation
+        } finally {
+            setSaving(false);
         }
     }, [selectedEntity, form, update]);
 
@@ -151,21 +168,84 @@ export default function EntityManagementDashboard() {
         try {
             const values = await createForm.validateFields();
             const slug = values.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
-            await create({
+            setSaving(true);
+            const created = await create({
                 tId, sId,
                 name: values.name,
                 slug,
                 type: values.type as AnswerlatticeEntityType,
                 description: values.description,
                 status: ANSWERLATTICE_ENTITY_STATUS.ACTIVE,
+                aliases: values.aliases || [],
                 currentVersion: 1000000, // v1.0.0
             });
-            setCreateModalOpen(false);
-            createForm.resetFields();
+            if (created) {
+                setCreateModalOpen(false);
+                createForm.resetFields();
+            }
         } catch {
             // form validation
+        } finally {
+            setSaving(false);
         }
     }, [tId, sId, createForm, create]);
+
+    const handleDeprecate = useCallback(async (entityId: string) => {
+        setSaving(true);
+        try {
+            const deprecated = await deprecate(entityId);
+            if (deprecated && selectedEntity?.id === entityId) {
+                setDrawerOpen(false);
+                setEditMode(false);
+            }
+        } finally {
+            setSaving(false);
+        }
+    }, [deprecate, selectedEntity?.id]);
+
+    const handleAddRelation = useCallback(async () => {
+        if (!selectedEntity) return;
+        try {
+            const values = await relationForm.validateFields();
+            setSaving(true);
+            const added = await addRelation({
+                pId: 'AL',
+                tId,
+                sId,
+                fromEntityId: selectedEntity.id,
+                toEntityId: values.toEntityId,
+                relationType: values.relationType as AnswerlatticeRelationType,
+            });
+            if (added) relationForm.resetFields();
+        } catch {
+            // form validation
+        } finally {
+            setSaving(false);
+        }
+    }, [addRelation, relationForm, sId, selectedEntity, tId]);
+
+    const handleMerge = useCallback(async () => {
+        if (!selectedEntity || !mergeEntityId) return;
+        setSaving(true);
+        try {
+            const merged = await merge(selectedEntity.id, mergeEntityId);
+            if (merged) {
+                setMergeEntityId(undefined);
+                setDrawerOpen(false);
+            }
+        } finally {
+            setSaving(false);
+        }
+    }, [merge, mergeEntityId, selectedEntity]);
+
+    const handleRemoveRelation = useCallback(async (relationId: string) => {
+        setSaving(true);
+        try {
+            await removeRelation(relationId);
+        } finally {
+            setSaving(false);
+        }
+    }, [removeRelation]);
 
     const typeCounts = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -249,16 +329,18 @@ export default function EntityManagementDashboard() {
             render: (_: any, record: AnswerlatticeEntity) => (
                 <Space>
                     <Button type="text" icon={<LuEye />} onClick={() => openDetail(record)} size="small" />
-                    <Button type="text" icon={<LuPencil />} onClick={() => { openDetail(record); setEditMode(true); }} size="small" />
+                    {record.status !== 'deprecated' && (
+                        <Button type="text" icon={<LuPencil />} onClick={() => { openDetail(record); setEditMode(true); }} size="small" />
+                    )}
                     {record.status !== 'deprecated' && (
                         <Popconfirm
                             title="Deprecate entity?"
-                            description="Active canonical answers must be reassigned first."
-                            onConfirm={() => deprecate(record.id)}
+                            description="Approved answers, support content, product surfaces, and relations must be reassigned first."
+                            onConfirm={() => handleDeprecate(record.id)}
                             okText="Deprecate"
                             okButtonProps={{ danger: true }}
                         >
-                            <Button type="text" icon={<LuArchive />} danger size="small" />
+                            <Button type="text" icon={<LuArchive />} danger size="small" loading={saving} />
                         </Popconfirm>
                     )}
                 </Space>
@@ -269,6 +351,15 @@ export default function EntityManagementDashboard() {
     return (
         <>
             <Card>
+                {error && (
+                    <Alert
+                        type="error"
+                        showIcon
+                        message={error}
+                        action={<Button size="small" onClick={refresh}>Retry</Button>}
+                        style={{ marginBottom: 16 }}
+                    />
+                )}
                 <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                     <Space>
                         <Title level={5} style={{ margin: 0 }}>Product Ontology</Title>
@@ -327,10 +418,12 @@ export default function EntityManagementDashboard() {
                     editMode ? (
                         <Space>
                             <Button onClick={() => setEditMode(false)}>Cancel</Button>
-                            <Button type="primary" onClick={handleSave}>Save</Button>
+                            <Button type="primary" onClick={handleSave} loading={saving}>Save</Button>
                         </Space>
                     ) : (
-                        <Button icon={<LuPencil />} onClick={() => setEditMode(true)}>Edit</Button>
+                        selectedEntity?.status !== 'deprecated'
+                            ? <Button icon={<LuPencil />} onClick={() => setEditMode(true)}>Edit</Button>
+                            : null
                     )
                 }
             >
@@ -351,6 +444,11 @@ export default function EntityManagementDashboard() {
                             <Descriptions.Item label="Description">
                                 {selectedEntity.description}
                             </Descriptions.Item>
+                            <Descriptions.Item label="Aliases">
+                                {selectedEntity.aliases?.length
+                                    ? selectedEntity.aliases.map(alias => <Tag key={alias}>{alias}</Tag>)
+                                    : <Text type="secondary">None</Text>}
+                            </Descriptions.Item>
                         </Descriptions>
 
                         {/* Relations */}
@@ -361,14 +459,58 @@ export default function EntityManagementDashboard() {
                                     const isFrom = r.fromEntityId === selectedEntity.id;
                                     const otherEntity = entities.find(e => e.id === (isFrom ? r.toEntityId : r.fromEntityId));
                                     return (
-                                        <Tag key={r.id} style={{ marginBottom: 4 }}>
-                                            {isFrom ? '→' : '←'} {r.relationType} {otherEntity?.name || 'unknown'}
-                                        </Tag>
+                                        <Flex key={r.id} justify="space-between" align="center" gap={8} style={{ marginBottom: 8 }}>
+                                            <Tag style={{ margin: 0 }}>
+                                                {isFrom ? '→' : '←'} {r.relationType} {otherEntity?.name || 'unknown'}
+                                            </Tag>
+                                            <Popconfirm
+                                                title="Remove relation?"
+                                                onConfirm={() => handleRemoveRelation(r.id)}
+                                                okText="Remove"
+                                                okButtonProps={{ danger: true }}
+                                            >
+                                                <Button type="text" danger size="small" icon={<LuTrash2 />} loading={saving} />
+                                            </Popconfirm>
+                                        </Flex>
                                     );
                                 })
                             }
                             {(entityRelationCounts.get(selectedEntity.id) || 0) === 0 && (
                                 <Text type="secondary">No relations</Text>
+                            )}
+                            {selectedEntity.status !== 'deprecated' && (
+                                <Form form={relationForm} layout="vertical" style={{ marginTop: 12 }}>
+                                    <Form.Item
+                                        name="relationType"
+                                        label="Relation"
+                                        rules={[{ required: true, message: 'Select a relation type' }]}
+                                    >
+                                        <Select
+                                            options={Object.values(ANSWERLATTICE_RELATION_TYPES).map(value => ({
+                                                label: value.replaceAll('_', ' '),
+                                                value,
+                                            }))}
+                                            placeholder="Select relation"
+                                        />
+                                    </Form.Item>
+                                    <Form.Item
+                                        name="toEntityId"
+                                        label="Target entity"
+                                        rules={[{ required: true, message: 'Select a target entity' }]}
+                                    >
+                                        <Select
+                                            showSearch
+                                            optionFilterProp="label"
+                                            options={entities
+                                                .filter(entity => entity.id !== selectedEntity.id && entity.status !== 'deprecated')
+                                                .map(entity => ({ label: `${entity.name} (${entity.type})`, value: entity.id }))}
+                                            placeholder="Select target"
+                                        />
+                                    </Form.Item>
+                                    <Button icon={<LuPlus />} onClick={handleAddRelation} loading={saving}>
+                                        Add relation
+                                    </Button>
+                                </Form>
                             )}
                         </Card>
 
@@ -380,6 +522,39 @@ export default function EntityManagementDashboard() {
                                 <Tag color="default">Not indexed</Tag>
                             )}
                         </Card>
+
+                        {selectedEntity.status !== 'deprecated' && (
+                            <Card size="small" title={<Space><LuGitMerge /> Merge Duplicate</Space>}>
+                                <Flex vertical gap={8}>
+                                    <Select
+                                        showSearch
+                                        optionFilterProp="label"
+                                        value={mergeEntityId}
+                                        onChange={setMergeEntityId}
+                                        options={entities
+                                            .filter(entity => (
+                                                entity.id !== selectedEntity.id
+                                                && entity.type === selectedEntity.type
+                                                && entity.status !== 'deprecated'
+                                            ))
+                                            .map(entity => ({ label: entity.name, value: entity.id }))}
+                                        placeholder="Choose duplicate entity"
+                                    />
+                                    <Popconfirm
+                                        title="Merge this duplicate?"
+                                        description="References will move to the current entity and the duplicate will be deprecated."
+                                        onConfirm={handleMerge}
+                                        okText="Merge"
+                                        okButtonProps={{ danger: true }}
+                                        disabled={!mergeEntityId}
+                                    >
+                                        <Button danger icon={<LuGitMerge />} disabled={!mergeEntityId} loading={saving}>
+                                            Merge into {selectedEntity.name}
+                                        </Button>
+                                    </Popconfirm>
+                                </Flex>
+                            </Card>
+                        )}
                     </Flex>
                 )}
 
@@ -391,11 +566,18 @@ export default function EntityManagementDashboard() {
                         <Form.Item name="description" label="Description" rules={[{ required: true }]}>
                             <Input.TextArea rows={3} />
                         </Form.Item>
+                        <Form.Item name="aliases" label="Aliases">
+                            <Select
+                                mode="tags"
+                                tokenSeparators={[',']}
+                                maxCount={20}
+                                placeholder="Add alternate names"
+                            />
+                        </Form.Item>
                         <Form.Item name="status" label="Status" rules={[{ required: true }]}>
                             <Select options={[
                                 { label: 'Active', value: 'active' },
                                 { label: 'Beta', value: 'beta' },
-                                { label: 'Deprecated', value: 'deprecated' },
                             ]} />
                         </Form.Item>
                     </Form>
@@ -409,6 +591,7 @@ export default function EntityManagementDashboard() {
                 onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
                 onOk={handleCreate}
                 okText="Create"
+                confirmLoading={saving}
                 width={isMobile ? 'calc(100vw - 24px)' : 500}
             >
                 <Form form={createForm} layout="vertical">
@@ -420,6 +603,14 @@ export default function EntityManagementDashboard() {
                     </Form.Item>
                     <Form.Item name="description" label="Description" rules={[{ required: true }]}>
                         <Input.TextArea rows={3} placeholder="What this entity represents" />
+                    </Form.Item>
+                    <Form.Item name="aliases" label="Aliases">
+                        <Select
+                            mode="tags"
+                            tokenSeparators={[',']}
+                            maxCount={20}
+                            placeholder="Add alternate names"
+                        />
                     </Form.Item>
                 </Form>
             </Modal>

@@ -14,6 +14,7 @@ const obp = read('src/app/client/obp/OBPContent.tsx');
 const sitemap = read('src/app/client/sitemap.ts');
 const manifest = read('src/app/manifest.webmanifest/route.ts');
 const shortcuts = read('src/lib/pwa/shortcutsBuilder.ts');
+const manifestGenerator = read('src/lib/pwa/manifestGenerator.ts');
 const pullApi = read('src/app/api/public/v1/menu/route.ts');
 const projectProjection = read('src/lib/mce/utils.ts');
 const storeProjection = read('src/lib/publicTruth/clientStoreProjection.ts');
@@ -74,7 +75,14 @@ excludes(sitemap, "'projects-summary'", 'Tenant sitemap stale non-invalidated ca
 [
   'menuPath?: string | null;',
   'if (menuPath) {',
+  'createPublicCustomerTranslator(activeLanguage)',
+  'appendPublicLanguageParam(url, activeLanguage)',
 ].forEach((token) => includes(shortcuts, token, 'Customer App menu shortcut admission boundary'));
+[
+  'lang: activeLanguage,',
+  'dir: getPublicCustomerLanguageDirection(activeLanguage)',
+  "buildShortcuts(input.shortcutInfo, activeLanguage)",
+].forEach((token) => includes(manifestGenerator, token, 'Customer App localized manifest boundary'));
 
 [
   'projectScope?.tenantDocumentId === tenantDocumentId',

@@ -15,8 +15,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { validateCanonicalAnswerDrift } from '@database/answerlattice/canonicalAnswers';
-import { evaluateDriftForTenant } from '@lib/answerlattice/driftDetection';
+import {
+    evaluateCanonicalAnswerDrift,
+    validateCanonicalAnswerDrift,
+} from '@database/answerlattice/canonicalAnswers';
+import { AnswerlatticeGovernanceClientError } from '@lib/answerlattice/governanceClient';
 import {
     AnswerlatticeCanonicalAnswer,
     ANSWERLATTICE_DRIFT_CLASS,
@@ -25,6 +28,7 @@ import {
     Badge,
     Button,
     Card,
+    Checkbox,
     Descriptions,
     Empty,
     Flex,
@@ -95,12 +99,14 @@ export default function DriftDashboard() {
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
 
-    const { answers, driftedAnswers, loading, refresh } = useCanonicalAnswers(tId, sId);
+    const { answers, driftedAnswers, loading, error, refresh } = useCanonicalAnswers(tId, sId);
     const { entities } = useEntities(tId, sId);
 
     const [reEvalLoading, setReEvalLoading] = useState(false);
     const [selectedDrifted, setSelectedDrifted] = useState<AnswerlatticeCanonicalAnswer | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [reviewConfirmed, setReviewConfirmed] = useState(false);
+    const [resolveLoading, setResolveLoading] = useState(false);
 
     const entityMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -144,27 +150,39 @@ export default function DriftDashboard() {
     const handleReEvaluate = useCallback(async () => {
         setReEvalLoading(true);
         try {
-            const results = await evaluateDriftForTenant(tId, sId);
-            const changed = results.filter(r => r.changed).length;
-            message.success(`Drift re-evaluation complete. ${changed} answer(s) updated.`);
+            const result = await evaluateCanonicalAnswerDrift();
+            message.success(`Drift re-evaluation complete. ${result.updatedAnswers || 0} of ${result.evaluatedAnswers || 0} answer(s) updated.`);
             await refresh();
-        } catch (err) {
-            message.error('Drift re-evaluation failed');
+        } catch (evaluationError) {
+            message.error(
+                evaluationError instanceof AnswerlatticeGovernanceClientError
+                    ? evaluationError.message
+                    : 'Drift re-evaluation failed',
+            );
         } finally {
             setReEvalLoading(false);
         }
-    }, [tId, sId, refresh]);
+    }, [refresh]);
 
     const handleResolve = useCallback(async (answer: AnswerlatticeCanonicalAnswer) => {
+        if (!reviewConfirmed) return;
+        setResolveLoading(true);
         try {
             await validateCanonicalAnswerDrift(answer.id);
             message.success('Drift resolved and answer revalidated');
             setDetailModalOpen(false);
+            setReviewConfirmed(false);
             await refresh();
-        } catch (err) {
-            message.error('Failed to resolve drift');
+        } catch (validationError) {
+            message.error(
+                validationError instanceof AnswerlatticeGovernanceClientError
+                    ? validationError.message
+                    : 'Failed to resolve drift',
+            );
+        } finally {
+            setResolveLoading(false);
         }
-    }, [refresh]);
+    }, [refresh, reviewConfirmed]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI) return null;
 
@@ -178,10 +196,20 @@ export default function DriftDashboard() {
     return (
         <>
             <Card>
-                <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+                <Flex
+                    justify="space-between"
+                    align={isMobile ? 'stretch' : 'center'}
+                    vertical={isMobile}
+                    gap={isMobile ? 12 : 0}
+                    style={{ marginBottom: 16 }}
+                >
                     <Space>
                         <Title level={5} style={{ margin: 0 }}>Drift Governance</Title>
-                        {driftedCount > 0 ? (
+                        {error ? (
+                            <Tag color="warning" icon={<LuAlertTriangle style={{ verticalAlign: 'middle', marginRight: 2 }} />}>
+                                Status unavailable
+                            </Tag>
+                        ) : driftedCount > 0 ? (
                             <Badge count={`${driftedCount} drifted`} style={{ backgroundColor: token.colorWarning }} />
                         ) : (
                             <Tag color="green" icon={<LuShieldCheck style={{ verticalAlign: 'middle', marginRight: 2 }} />}>
@@ -189,22 +217,29 @@ export default function DriftDashboard() {
                             </Tag>
                         )}
                     </Space>
-                    <Space>
-                        <Tooltip title="Re-evaluate all drift classes for all answers">
+                    <Space wrap>
+                        <Tooltip title="Re-evaluate signal, scope-conflict, and deprecated-entity drift. Version drift is evaluated when a release is activated.">
                             <Button
                                 icon={<LuRefreshCw />}
                                 onClick={handleReEvaluate}
                                 loading={reEvalLoading || loading}
                                 type="text"
+                                style={{ minHeight: 44 }}
                             >
                                 Re-evaluate
                             </Button>
                         </Tooltip>
-                        <Button icon={<LuRefreshCw />} onClick={refresh} loading={loading} type="text">
+                        <Button icon={<LuRefreshCw />} onClick={refresh} loading={loading} type="text" style={{ minHeight: 44 }}>
                             Refresh
                         </Button>
                     </Space>
                 </Flex>
+
+                {error && (
+                    <Text type="danger" style={{ display: 'block', marginBottom: 16 }}>
+                        {error}. The counts below may be incomplete until refresh succeeds.
+                    </Text>
+                )}
 
                 {/* Summary Stats */}
                 <Flex gap={16} wrap="wrap" style={{ marginBottom: 24 }}>
@@ -275,7 +310,14 @@ export default function DriftDashboard() {
                 <List
                     dataSource={driftedAnswers}
                     loading={loading}
-                    locale={{ emptyText: <Empty description="No drifted answers — governance is clean" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+                    locale={{
+                        emptyText: (
+                            <Empty
+                                description={error ? 'Drift status is unavailable' : 'No drifted answers - governance is clean'}
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            />
+                        ),
+                    }}
                     renderItem={(answer: AnswerlatticeCanonicalAnswer) => (
                         <List.Item
                             actions={[
@@ -283,8 +325,12 @@ export default function DriftDashboard() {
                                     key="resolve"
                                     type="text"
                                     icon={<LuCheck />}
-                                    style={{ color: token.colorSuccess }}
-                                    onClick={() => { setSelectedDrifted(answer); setDetailModalOpen(true); }}
+                                    onClick={() => {
+                                        setSelectedDrifted(answer);
+                                        setReviewConfirmed(false);
+                                        setDetailModalOpen(true);
+                                    }}
+                                    style={{ color: token.colorSuccess, minHeight: 44 }}
                                 >
                                     Review
                                 </Button>,
@@ -315,16 +361,31 @@ export default function DriftDashboard() {
             <Modal
                 title="Review Drifted Answer"
                 open={detailModalOpen}
-                onCancel={() => setDetailModalOpen(false)}
+                onCancel={() => {
+                    setDetailModalOpen(false);
+                    setReviewConfirmed(false);
+                }}
                 footer={[
-                    <Button key="cancel" onClick={() => setDetailModalOpen(false)}>Close</Button>,
+                    <Button
+                        key="cancel"
+                        onClick={() => {
+                            setDetailModalOpen(false);
+                            setReviewConfirmed(false);
+                        }}
+                        style={{ minHeight: 44 }}
+                    >
+                        Close
+                    </Button>,
                     <Button
                         key="resolve"
                         type="primary"
                         icon={<LuCheck />}
                         onClick={() => selectedDrifted && handleResolve(selectedDrifted)}
+                        disabled={!reviewConfirmed}
+                        loading={resolveLoading}
+                        style={{ minHeight: 44 }}
                     >
-                        Resolve & Revalidate
+                        Confirm Review & Revalidate
                     </Button>,
                 ]}
                 width={isMobile ? 'calc(100vw - 24px)' : 600}
@@ -360,6 +421,12 @@ export default function DriftDashboard() {
                             Resolving will clear the drift flag, mark the answer as revalidated at the current timestamp,
                             and log an audit event. Only resolve after verifying the answer content is still accurate.
                         </Text>
+                        <Checkbox
+                            checked={reviewConfirmed}
+                            onChange={event => setReviewConfirmed(event.target.checked)}
+                        >
+                            I verified the current answer, scope, product version, and supporting evidence.
+                        </Checkbox>
                     </Flex>
                 )}
             </Modal>

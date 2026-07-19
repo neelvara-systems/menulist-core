@@ -70,6 +70,12 @@ Desktop Use MenuList and mobile Share build the local Feedback QR filename throu
 
 Only `projectPublicClientStore()` output enters the client component. Owner email, contact-person fields, roles, billing, credentials, integration secrets, and internal workflow metadata are outside the projection.
 
+The page resolves the owner-controlled public language from the admitted `?lang=` value and projected store language settings. Heading, field labels, validation, submission states, success/failure recovery, rating accessibility text, temporary-status defaults, and attribution use the shared static public-customer translator with matching `lang` and `dir`. The official-page return link preserves the active language. Custom owner temporary-status text remains verbatim.
+
+An invalid, disabled, deleted, or unavailable feedback project resolves to a lightweight route-local public recovery screen instead of the generic application 404. It reads only the existing `?lang=` query for fixed copy/direction and preserves that language on the homepage recovery link; it does not retry or disclose project/store state.
+
+This localization reuses the existing project/store resolution and adds no Firestore read/write, API request, runtime translation provider, listener, analytics event, or public preference document.
+
 ---
 
 ## Public Submit Contract

@@ -2,6 +2,11 @@ import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES } from '@lib/answerlattice/chatImagePolicy';
+import {
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticePublicFallbackReason,
+    normalizeAnswerlatticeScopeClarification,
+} from '@lib/answerlattice/publicAnswerContracts';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import type { ChatMessage, ChatReference, ChatSession } from '@type/chatSession';
 import { Timestamp } from 'firebase/firestore';
@@ -99,6 +104,12 @@ export const normalizeAnswerlatticeChatMessageForStorage = (value: unknown): Cha
     const references = Array.isArray(value.references)
         ? value.references.slice(0, 5).map(normalizeReference).filter((item): item is ChatReference => Boolean(item))
         : [];
+    const citations = normalizeAnswerlatticePublicCitations(value.citations);
+    const fallbackReason = normalizeAnswerlatticePublicFallbackReason(value.fallbackReason);
+    const clarification = normalizeAnswerlatticeScopeClarification(value.clarification);
+    const confidence = ['high', 'medium', 'low', 'none'].includes(String(value.confidence))
+        ? value.confidence as NonNullable<ChatMessage['confidence']>
+        : undefined;
     const suggestedQuestions = Array.isArray(value.suggestedQuestions)
         ? Array.from(new Set(value.suggestedQuestions
             .map((item: unknown) => cleanString(item, 300))
@@ -140,7 +151,11 @@ export const normalizeAnswerlatticeChatMessageForStorage = (value: unknown): Cha
         ...(createdOn ? { createdOn } : {}),
         ...(normalizeAnswerlatticeSearchHistoryId(value.searchHistoryId) ? { searchHistoryId: value.searchHistoryId } : {}),
         ...(references.length > 0 ? { references } : {}),
+        ...(citations.length > 0 ? { citations } : {}),
         ...(cleanString(value.answerSource, 80) ? { answerSource: cleanString(value.answerSource, 80) } : {}),
+        ...(confidence ? { confidence } : {}),
+        ...(fallbackReason ? { fallbackReason } : {}),
+        ...(clarification ? { clarification } : {}),
         ...(relatedContent ? { relatedContent } : {}),
         ...(suggestedQuestions.length > 0 ? { suggestedQuestions } : {}),
         ...(image?.url ? { image } : {}),

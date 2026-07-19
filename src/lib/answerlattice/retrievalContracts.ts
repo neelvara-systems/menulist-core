@@ -1,5 +1,7 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import {
     normalizeAnswerlatticeEntitySearchIndexId,
     normalizeAnswerlatticeResolvedEntityId,
@@ -12,6 +14,7 @@ import type {
     AnswerlatticeEntitySearchIndex,
     AnswerlatticeRelease,
 } from '@type/answerlattice';
+import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS } from '@type/answerlattice';
 import { z } from 'zod';
 
 const PositiveScopeIdSchema = z.number().int().positive();
@@ -21,11 +24,23 @@ const ProductScopeSchema = z.object({
     sId: PositiveScopeIdSchema,
 });
 const DocumentIdSchema = z.string().trim().min(1).max(180);
+const EvidenceDocumentIdSchema = DocumentIdSchema.refine(isValidFirestoreDocumentId, 'Invalid evidence document id');
 const EntityIdSchema = DocumentIdSchema.refine(
     value => normalizeAnswerlatticeResolvedEntityId(value) === value,
     'Invalid Answerlattice entity id',
 );
 const BoundedTokenSchema = z.string().trim().min(1).max(180);
+const CanonicalCitationSchema = z.object({
+    id: EvidenceDocumentIdSchema,
+    title: z.string().trim().min(1).max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_TITLE_LENGTH),
+    url: z.string()
+        .trim()
+        .min(1)
+        .max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_URL_LENGTH)
+        .url()
+        .refine(value => normalizeAnswerlatticePublicCitationUrl(value) !== null, 'Invalid public citation URL'),
+    sourceId: EvidenceDocumentIdSchema.optional(),
+}).strict();
 
 const EntitySearchIndexSchema = ProductScopeSchema.extend({
     id: DocumentIdSchema.refine(
@@ -92,6 +107,10 @@ const CanonicalAnswerSchema = ProductScopeSchema.extend({
         constraints: z.string().trim().max(8_000).optional(),
         procedure: z.unknown().optional(),
     }).passthrough(),
+    evidence: z.object({
+        sourceIds: z.array(EvidenceDocumentIdSchema).max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_SOURCE_IDS),
+        citations: z.array(CanonicalCitationSchema).max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS),
+    }).strict().optional(),
     validation: z.object({
         confidenceScore: z.number().finite().min(0).max(1),
         validationSource: z.enum(['manual', 'signal_cluster', 'release_review']),

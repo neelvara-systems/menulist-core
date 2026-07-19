@@ -8,11 +8,12 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - Primary action stacks below the title.
 - First-client launch proof card stacks status, progress, and proof actions vertically.
 - KPI cards collapse into one-column/two-column rows.
+- Readiness alert copy can wrap across mobile width and uses launch proof, not the setup percentage, for success state.
 - Content Control workbench stacks each owner action vertically with full-width action buttons.
-- Test-as-Customer checklist stacks each customer-path check with full-width action buttons.
+- Test-as-Customer checklist stacks each customer-path check with full-width 44px action buttons and labels prerequisites as ready to test rather than resolved.
 - Surface Readiness cards stack with count tags and route tags kept inside each card.
 - Ticket detail Knowledge Loop card appears above the conversation in the mobile drawer for operator view only.
-- Checklist actions use icon-only buttons on mobile with accessible labels.
+- Launch/checklist actions that collapse to icons retain accessible labels and a 44px square target; labelled customer-path and surface actions remain at least 44px high.
 - Bottom padding keeps content clear of mobile browser controls.
 
 ## Required Checks

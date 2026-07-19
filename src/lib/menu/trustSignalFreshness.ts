@@ -20,6 +20,11 @@ function normalizeTrustSignalDate(value: any): Date | null {
 export function getTrustSignalFreshnessText(
     lastPublishedAt: any,
     now: Date = new Date(),
+    options?: {
+        locale?: string;
+        updatedToday?: string;
+        updatedOn?: (date: string) => string;
+    },
 ): string | null {
     const date = normalizeTrustSignalDate(lastPublishedAt);
     if (!date || !Number.isFinite(now.getTime())) return null;
@@ -28,10 +33,15 @@ export function getTrustSignalFreshnessText(
     if (diffMs < -5 * 60 * 1000) return null;
 
     const diffDays = Math.floor(Math.max(0, diffMs) / (1000 * 60 * 60 * 24));
-    if (diffDays < 1) return 'Updated today';
+    if (diffDays < 1) return options?.updatedToday || 'Updated today';
     if (diffDays <= 30) {
-        const month = date.toLocaleDateString('en-US', { month: 'short' });
-        return `Updated ${month} ${date.getDate()}`;
+        const formattedDate = date.toLocaleDateString(options?.locale || 'en-US', {
+            day: 'numeric',
+            month: 'short',
+        });
+        return options?.updatedOn
+            ? options.updatedOn(formattedDate)
+            : `Updated ${formattedDate}`;
     }
     return null;
 }

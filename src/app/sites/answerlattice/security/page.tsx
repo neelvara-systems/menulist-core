@@ -68,7 +68,7 @@ const CONTROLS = [
     },
     {
         title: 'Origin and route controls',
-        body: 'Workspace owners can configure allowed origins and blocked routes so the widget appears only where the product owner wants it.',
+        body: 'Workspace owners can restrict runtime admission to exact origins and hide the launcher on selected routes. Route hiding is a presentation control, not an authorization boundary.',
     },
     {
         title: 'Hosted help domain registry',
@@ -84,7 +84,7 @@ const CONTROLS = [
     },
     {
         title: 'Compiled context boundary',
-        body: 'Ready runtime bundles contain approved public-safe context for the widget and server-only private context for authenticated paths. Drafts, tickets, audit logs, API keys, and raw signals stay out.',
+        body: 'Ready runtime bundles contain approved public-safe context for enabled readers and server-only private context for authenticated paths. The current widget remains server-mediated. Drafts, tickets, audit logs, API keys, and raw signals stay out.',
     },
     {
         title: 'Bounded logging',
@@ -137,7 +137,7 @@ const TRUST_AREAS = [
         points: [
             'Owner, Manager, Support Staff, and custom roles map to AnswerLattice permission keys.',
             'Dashboard routes and protected AnswerLattice APIs check the active role before exposing controls.',
-            'Password/passcode reset and force sign-out revoke active sessions for sensitive access changes.',
+            'Password/passcode reset and force sign-out revoke refresh access; already-issued Firebase ID tokens age out on their normal expiry.',
         ],
     },
     {
@@ -221,7 +221,7 @@ const TRUST_AREAS = [
         points: [
             'Public widget config, search, and feedback endpoints are rate limited.',
             'Repeated approved-answer hits can use cache with freshness checks.',
-            'Ready widget context can be served through versioned bundles and server cache instead of raw collection fanout.',
+            'Enabled runtime readers can use versioned bundles and bounded server caches instead of raw collection fanout.',
             'Dashboards prefer summary documents over broad collection scans.',
             'Hosted help content uses cached public payloads and compact display fields.',
         ],
@@ -231,7 +231,7 @@ const TRUST_AREAS = [
         body: 'AnswerLattice separates reviewed source data from runtime context so public and authenticated consumers receive only the approved fields they need.',
         points: [
             'Source records remain inside AnswerLattice for drafts, tickets, signals, proposals, and audit state.',
-            'Public widget bundles include only public-safe product and support context.',
+            'Public bundle objects include only public-safe product and support context.',
             'Private server bundles stay behind authenticated AnswerLattice APIs.',
             'A stale or failed build does not replace the last ready bundle.',
         ],
@@ -312,7 +312,7 @@ export default function AnswerlatticeSecurityPage() {
                     <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-teal-300/20 bg-teal-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
-                            Install the widget only on allowed domains and hide it from sensitive routes. Send safe page context instead of secrets. Keep screenshots user-initiated, use selected sources for Knowledge Intake, and approve support answers before they become official.
+                            Install the widget only on exact allowed origins and hide it from selected routes. Send safe page context instead of secrets. Keep screenshots user-initiated, use selected sources for Knowledge Intake, and approve support answers before they become official.
                         </p>
                         <AnswerlatticeLink
                             basePath={basePath}

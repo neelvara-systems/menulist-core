@@ -1,7 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-16
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -23,6 +23,8 @@ The Help Center is a **multi-layered feature** spanning frontend components, API
 The owner route is MenuList UI, but search/content/ticket work uses only an explicit active Answerlattice product-account scope. `getActiveSession()` maps `/help-center/*` to that scope on the browser; the protected search route independently resolves the same scope from the authenticated server session and does not trust `Referer`. Invalid scope fails closed.
 
 The July 16 item-28 pass adds no alternate support backend. Browser search response parsing now normalizes bounded related-content projections and related article buttons build internal `/help-center/kb/articles/{encodedId}` routes. Ticket attachment admission is centralized in `supportTicketAttachmentBoundary.ts`; signed download URLs must match the configured Answerlattice bucket plus selected ticket tenant/store path before opening and are never logged. Firestore rules preserve prior message/status arrays exactly, validate one appended entry, bind the actor to Firebase Auth, and make satisfaction write-once after resolution/closure.
+
+The July 18 feature-flow pass binds every Help Center context cache to an exact `workspace:{tId}:{sId}` key and gives platform ticket lists a separate `platform` audience. Category and changelog request coalescing use per-scope maps rather than process-wide promises. Help Chat draft keys include exact workspace and consistent authenticated user identity; text is stored in a strict 24-hour envelope, legacy/foreign-scope keys are purged, and image drafts are never persisted. Managed FAQ load failure stays visible instead of silently replacing approved data with static copy.
 
 ---
 
@@ -67,7 +69,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `MainSectionTabs.tsx`        | —     | Tab grid navigation cards                                                             |
 | `ChangelogView.tsx`          | —     | Changelog viewer (reads from DAL)                                                     |
 | `ContactUsView.tsx`          | —     | Escalation chooser: ticket, assistant, feedback, support email, partnership email      |
-| `FaqView.tsx`                | —     | Published Answerlattice FAQ display with article links and feedback; static fallback       |
+| `FaqView.tsx`                | —     | Published Answerlattice FAQ display with article links and feedback; static copy only when management is disabled, visible recovery on load failure |
 | `src/lib/answerlattice/faqRetrieval.ts` | — | Deterministic owner FAQ/custom-answer retrieval after canonical miss and before RAG fallback |
 | `ShareFeedbackView.tsx`      | 164   | 3-step feedback wizard (general → usage → requests)                                   |
 | `GeneralFeedback.tsx`        | 30    | Step 1: Star rating + comment                                                         |
@@ -658,8 +660,8 @@ Alerts on negative feedback patterns.
 
 | Hook                | File                             | Purpose                   |
 | ------------------- | -------------------------------- | ------------------------- |
-| `useTicketCache`    | `src/hooks/useTicketCache.ts`    | SWR cache for tickets     |
-| `useChangelogCache` | `src/hooks/useChangelogCache.ts` | SWR cache for changelog   |
+| `useTicketCache`    | `src/hooks/useTicketCache.ts`    | Workspace/platform-audience in-memory ticket cache |
+| `useChangelogCache` | `src/hooks/useChangelogCache.ts` | Workspace-scoped in-memory changelog cache |
 | `useFeedback`       | `src/hooks/useFeedback.ts`       | Feedback state management |
 
 These client hooks and browser storage helpers use `src/hooks/hookDiagnostics.ts` for bounded failure diagnostics. Normal cache hits, misses, clears, realtime updates, LRU evictions, recently-viewed writes, and content-feedback storage paths stay quiet. Failed fetch/update/localStorage paths log normalized `answerlattice_*`, `recently_viewed_*`, or `content_feedback_storage_*` failure codes with bounded content/page/cache counts, user/content length metadata, value lengths, counts, and source error metadata only; they do not log raw article IDs, ticket IDs, feedback comments, localStorage payloads, cache payloads, Firestore documents, or browser/provider error objects.
@@ -676,40 +678,43 @@ KB source generation and embedding helpers in `functions/src/logic/startGenerati
 
 ---
 
-## 8. Identified Issues & Observations
+## 8. Current Constraints & Observations
 
-### 8.1 Missing Tenant Isolation
+### 8.1 Compatibility reads remain bounded
 
-- `getArticles()` in `src/database/knowledgeBase/articles.ts` is deprecated but scoped: non-platform sessions require tenant/store scope, while platform admins can still use the global administrative read.
-- `getIngestionJobs()` in `src/database/kb-generation/jobs.ts` is also deprecated but scoped: non-platform callers require tenant/store scope, while platform admins can use the administrative list path.
-- KB article, category, and job compatibility reads log bounded session lookup failures and do not treat a thrown session lookup as platform/global scope.
+- `getArticles()` and `getIngestionJobs()` remain deprecated compatibility helpers. Non-platform callers require exact tenant/store scope; platform administrative reads remain explicit.
+- `getIngestionJobs()` in `src/database/kb-generation/jobs.ts` is also deprecated but scoped; it is not a customer Help Center source or a global fallback.
+- KB article, category and job compatibility reads treat session lookup failures as fail-closed errors, never as platform/global authority.
 
-### 8.2 Non-Atomic Feedback Update
+### 8.2 Client caches are scoped, not authoritative
 
-- `updateArticleFeedback()` does read-then-write (not a transaction). Under concurrent updates, feedback counts could drift.
+- `useKBCategoriesCache`, `useArticleCache`, `useChangelogCache` and `useTicketCache` accept cached data only when its exact scope key matches the active workspace or platform audience.
+- Category and changelog request coalescing are keyed by workspace. A response from another workspace cannot satisfy the current request.
+- Cache mismatches return a miss and use the existing authoritative reader/listener; they add no pre-emptive Firestore read.
 
-### 8.3 Ticket Session Caching
+### 8.3 Draft storage is bounded browser convenience
 
-- `src/database/tickets/index.ts` caches session in module-level variable (`let session: any = null`). This is a common pattern in the codebase but means session is cached for the lifetime of the module import.
+- Help Chat stores text only after exact workspace and consistent user identity are available.
+- The stored envelope is limited to 2,000 characters and 24 hours. Invalid, expired, legacy, screenshot and foreign-scope values are deleted rather than migrated.
+- Browser storage is not support truth and is never sent until the user explicitly submits the question.
 
-### 8.4 Dead Code / Commented Code
+### 8.4 Managed FAQ failure is visible
 
-- `GettingStarted` component is imported but commented out in `helpCenter/index.tsx:35`
-- Commented-out vector search code in `search-kb/route.ts:252-266`
+- Static MenuList FAQ copy remains an intentional rollout fallback only when `ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT` is off.
+- When the managed FAQ request fails, the screen shows a bounded failure state with Knowledge Base and ticket recovery actions. It does not present static copy as if the current approved FAQ source loaded successfully.
 
-### 8.5 Governance Boundary
+### 8.5 Governance boundary
 
-- Help Center tab configuration intentionally excludes Answerlattice `GovernanceHub`.
-- Help Center landing intentionally excludes Answerlattice Coverage KPI, Signal-to-Knowledge Queue, and Entity Candidates.
+- Help Center tab configuration intentionally excludes Answerlattice `GovernanceHub`, Coverage KPI, Signal-to-Knowledge Queue and Entity Candidates.
 - Owner/admin governance review stays in `/answerlattice/governance` and related Answerlattice dashboard routes.
 
-### 8.6 Hardcoded Popular Feature Requests
+### 8.6 Product-curated feedback prompts
 
-- `FeatureRequests.tsx` has 5 hardcoded popular requests. These are not configurable or fetched from Firestore.
+- `FeatureRequests.tsx` reads its small bounded prompt list from `ANSWERLATTICE_FEEDBACK_POPULAR_REQUESTS`. It is a product-curated feedback prompt, not customer truth and not an automatically learned feature list.
 
-### 8.7 Missing `withAuth()` on API Routes
+### 8.7 Protected APIs
 
-- None of the 3 helpCenter API routes use `withAuth()` middleware. They rely on `getActiveSession()` which returns null if not authenticated. The search routes handle this gracefully but there's no explicit 401 response for unauthenticated requests.
+- Help Center search, article embedding and Answerlattice public-content routes use authenticated server boundaries. Search independently resolves the Answerlattice product-account scope and does not trust browser `Referer` as authorization evidence.
 
 ---
 

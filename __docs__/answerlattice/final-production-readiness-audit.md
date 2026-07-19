@@ -40,7 +40,7 @@ The baseline compiler/build success did not prove release readiness. Independent
 | Dashboard | NextAuth, product account, active workspace, role permissions | Source and regression checks pass after fix |
 | Public widget | Hashed key, purpose/scope, allowed origin, runtime token, bounded body/rate limits | Emulator/static checks pass |
 | Public API v1 | `al_` credential, purpose/scope, rate limit, active workspace | Disabled by default; source boundary passes |
-| MCP session | Public API credential plus read/write scopes and signed short session | Disabled by default; active workspace fixed |
+| MCP session and tools | Explicit `mcp:read` server credential, optional `signals:write`, active workspace, ready private bundle, fail-closed limits, and five-minute audience-bound session | Disabled by default; strict local protocol/tool contracts pass. Custom credential exchange is not MCP OAuth, and deployed client/per-source-permission proof remains pending |
 | Knowledge Intake media | Auth, permission, active license, body cap, MIME/signature, credit ledger | Source/emulator checks pass after fix |
 | RAG search | Auth/widget key, scoped cache, canonical-first, vector filters, schema/reference validation | Static/emulator contracts pass; live adversarial provider run unavailable |
 | Billing | Server-owned provider evidence, scoped subscription, transactional credit accounting | Boundary and settlement tests pass |

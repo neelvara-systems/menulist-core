@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronDown, LuGlobe } from 'react-icons/lu';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { menuFadeTransition, menuPanelMotion, menuSpringTransition } from './menuMotion';
@@ -59,6 +63,8 @@ function MenuLanguageSwitcher({
     compact = false,
     style,
 }: MenuLanguageSwitcherProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const languageDirection = getPublicCustomerLanguageDirection(activeLanguage);
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [anchorPosition, setAnchorPosition] = useState({ top: 64, right: 12 });
@@ -169,6 +175,8 @@ function MenuLanguageSwitcher({
                         onClick={() => setShowLangDropdown(false)}
                     />
                     <motion.div
+                        dir={languageDirection}
+                        lang={activeLanguage}
                         className="py-1 rounded-lg shadow-lg"
                         initial={menuPanelMotion.initial}
                         animate={menuPanelMotion.animate}
@@ -215,7 +223,7 @@ function MenuLanguageSwitcher({
                                         background: isActive ? `${moodConfig.accentColor}10` : 'transparent',
                                         fontFamily: moodConfig.bodyFont,
                                         cursor: 'pointer',
-                                        textAlign: 'left',
+                                        textAlign: 'start',
                                     }}
                                     dir={langInfo?.direction || 'ltr'}
                                 >
@@ -267,7 +275,7 @@ function MenuLanguageSwitcher({
                     whiteSpace: 'nowrap',
                     WebkitTapHighlightColor: 'transparent',
                 }}
-                aria-label="Select language"
+                aria-label={t('menu.selectLanguage')}
                 aria-expanded={showLangDropdown}
             >
                 {!compact && <LuGlobe size={16} />}

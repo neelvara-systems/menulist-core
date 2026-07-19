@@ -16,6 +16,8 @@
 12. Install the widget.
 13. Verify key, script, origin, route, and context status.
 
+If the agent kit download fails, retry from Install Center after confirming the current session still has Widget Management permission. Do not use a downloaded HTML/error page as a ZIP and do not substitute the saved key identifier for the one-time full `al_*` widget key.
+
 ## Safe Context
 
 Send canonical v1 fields: path, title, feature, workflow, role, and locale.
@@ -25,3 +27,5 @@ Do not send passwords, tokens, card data, raw customer records, emails, phone nu
 ## Agent Install Rule
 
 Use `https://answerlattice.com/widget/v1/answerlattice-widget.js` for new installs. Allowed origins and blocked routes are configured in Answerlattice dashboard, not as separate product settings or manual variables.
+
+The supported browser SDK is the loader plus `window.AnswerlatticeWidget`. There is no supported npm package. Plan, account, billing, or other trusted customer claims must not be copied into unsigned page context.

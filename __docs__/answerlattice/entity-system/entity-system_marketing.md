@@ -1,6 +1,6 @@
 # Entity System — Marketing & Sales Collateral
 
-> **Version:** 2.0.0
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Sales, Marketing, Partnerships
 
@@ -22,6 +22,7 @@ Answerlattice combines a structured product ontology with approved canonical ans
 - **Knowledge gaps visible:** Answerlattice shows which product concepts lack documentation — based on real query demand.
 - **Governed improvement:** Support signals can produce review work; they do not silently rewrite entities or aliases.
 - **Assisted tagging:** When ontology is enabled, post-save extraction reuses known entities and proposes new concepts for review.
+- **Controlled lifecycle:** A product concept cannot be deprecated while approved answers, support content, product surfaces, or relationships still depend on it.
 
 ### For Support Teams
 
@@ -46,6 +47,7 @@ Answerlattice combines a structured product ontology with approved canonical ans
 | Answer consistency | Generated output may vary | Approved canonical answers remain authoritative |
 | Knowledge gaps | Invisible | Entity coverage metrics reveal gaps |
 | Alias handling | Varies | Owner-governed aliases with deterministic resolution |
+| Product-change propagation | Often manual | Bounded governed merge updates dependent answers, articles, FAQs, product surfaces, relationships, and search index together |
 | Version awareness | Varies | Explicit answer version windows |
 | Self-improvement | Manual retraining | Signal-driven mutation proposals |
 
@@ -75,6 +77,7 @@ Answerlattice combines a structured product ontology with approved canonical ans
 - Show the best-effort post-save extraction result
 - Review any new entity candidates in the governance queue
 - Show the linked entities after the protected route succeeds
+- Change the article during a test extraction and show that stale provider output is rejected rather than applied
 
 ---
 

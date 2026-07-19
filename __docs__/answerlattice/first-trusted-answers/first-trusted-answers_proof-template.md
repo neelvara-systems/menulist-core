@@ -20,6 +20,10 @@
 - Evaluation window:
 - Historical questions reviewed:
 - Priority questions selected:
+- Launch set type: generic / product-specific
+- Answer Test suite revision:
+- Current First 10 proof status and time:
+- Stale or unavailable reason:
 - Sources reviewed:
 - Time to first saved test set:
 - Owner review time:

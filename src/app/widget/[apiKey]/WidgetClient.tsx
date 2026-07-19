@@ -3,11 +3,22 @@
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createTimestampedRuntimeId } from '@lib/runtime/randomId';
+import {
+    normalizeAnswerlatticePublicCitation,
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticePublicCitationUrl,
+    normalizeAnswerlatticePublicFallbackReason,
+    normalizeAnswerlatticeScopeClarification,
+    type AnswerlatticePublicFallbackReason,
+} from '@lib/answerlattice/publicAnswerContracts';
+import type { AnswerlatticePublicCitation, AnswerlatticeScopeClarification } from '@type/answerlattice';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { normalizeAnswerlatticePredictiveSuggestion } from '@lib/answerlattice/predictiveSupportContracts';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import {
     LuAlertTriangle,
     LuBookOpen,
+    LuExternalLink,
     LuHelpCircle,
     LuCheckCircle,
     LuImage,
@@ -37,6 +48,8 @@ const WIDGET_ERROR_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 const WIDGET_RUNTIME_TOKEN_HEADER = 'X-Answerlattice-Widget-Runtime';
 const WIDGET_ANSWER_FAILED_MESSAGE = 'Could not answer that right now. Try again.';
 const WIDGET_FEEDBACK_FAILED_MESSAGE = 'Could not save feedback. Try again.';
+const WIDGET_ESCALATION_FAILED_MESSAGE = 'Could not send this to support. Try again.';
+const WIDGET_ESCALATION_EMAIL_MESSAGE = 'Enter a valid email so support can reply.';
 const WIDGET_LINK_OPEN_FAILED_MESSAGE = 'Could not open link. Try again.';
 const GUIDANCE_CONTRACT_VERSION = 'answerlattice.guidance.v1';
 const GUIDANCE_SEMANTIC_ID_PATTERN = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
@@ -59,6 +72,7 @@ const SENSITIVE_WIDGET_RESPONSE_KEYS = new Set([
     'pid',
     'secret',
     'sid',
+    'sourceid',
     'storeid',
     'tenantid',
     'tid',
@@ -103,6 +117,7 @@ interface WidgetMessage {
     confidence?: string;
     answerSource?: string;
     references?: { id: string; title: string; url?: string }[];
+    citations?: AnswerlatticePublicCitation[];
     relatedContent?: {
         key?: string;
         label?: string;
@@ -116,6 +131,11 @@ interface WidgetMessage {
     imageBase64?: string;
     imageMimeType?: string;
     procedure?: WidgetProcedure;
+    fallbackReason?: AnswerlatticePublicFallbackReason;
+    fallbackSuggested?: boolean;
+    imageProcessingFailed?: boolean;
+    escalationTicketDisplayId?: string;
+    clarification?: AnswerlatticeScopeClarification;
     knownIssue?: {
         severity: 'info' | 'degraded' | 'outage';
         statusPageUrl?: string;
@@ -132,13 +152,39 @@ type WidgetSearchResponse = {
     confidence?: string;
     answerSource?: string;
     references?: WidgetMessage['references'];
+    citations?: WidgetMessage['citations'];
     relatedContent?: WidgetMessage['relatedContent'];
     suggestedQuestions?: unknown[];
     searchHistoryId?: string;
     procedure?: WidgetProcedure;
+    fallbackReason?: AnswerlatticePublicFallbackReason | null;
+    fallbackSuggested?: boolean;
+    imageProcessed?: boolean;
+    clarification?: AnswerlatticeScopeClarification | null;
     graphExpansion?: {
         relatedSuggestions?: unknown[];
     };
+};
+
+type WidgetFeedbackResponse = {
+    success: true;
+    resolutionOutcome: 'resolved' | 'not_resolved';
+    isGood: boolean;
+    created: boolean;
+};
+
+type WidgetEscalationResponse = {
+    success: true;
+    ticketId: string;
+    displayId: string;
+    created: boolean;
+};
+
+type WidgetEscalationDraft = {
+    messageId: string;
+    email: string;
+    name: string;
+    details: string;
 };
 
 type WidgetResponseLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -165,16 +211,7 @@ const isOptionalNullableBoundedString = (value: unknown, maxLength: number): val
 
 const isSafeWidgetLink = (value: unknown): value is string | undefined => {
     if (value === undefined) return true;
-    if (!isBoundedString(value, 1000)) return false;
-    if (value.startsWith('/') && !value.startsWith('//')) return true;
-    try {
-        const parsed = new URL(value);
-        return (parsed.protocol === 'https:' || parsed.protocol === 'http:')
-            && !parsed.username
-            && !parsed.password;
-    } catch {
-        return false;
-    }
+    return normalizeAnswerlatticePublicCitationUrl(value) !== null;
 };
 
 const hasSensitiveOrExcessiveResponseShape = (value: unknown): boolean => {
@@ -197,21 +234,17 @@ const hasSensitiveOrExcessiveResponseShape = (value: unknown): boolean => {
     return false;
 };
 
-const normalizeKnownIssueUrl = (value: unknown): string | undefined => {
-    if (typeof value !== 'string' || value.length > 500) return undefined;
-    try {
-        const parsed = new URL(value);
-        return parsed.protocol === 'https:' ? parsed.toString() : undefined;
-    } catch {
-        return undefined;
-    }
-};
-
 const isWidgetReference = (value: unknown): value is NonNullable<WidgetMessage['references']>[number] => (
     isPlainRecord(value)
     && isBoundedString(value.id, 180)
     && isBoundedString(value.title, 300)
     && isSafeWidgetLink(value.url)
+);
+
+const isWidgetCitation = (value: unknown): value is AnswerlatticePublicCitation => (
+    isPlainRecord(value)
+    && Object.keys(value).every(key => ['id', 'title', 'url'].includes(key))
+    && normalizeAnswerlatticePublicCitation(value) !== null
 );
 
 const isWidgetProcedureStep = (value: unknown): value is WidgetProcedureStep => (
@@ -293,8 +326,13 @@ const isWidgetRelatedContent = (value: unknown): value is WidgetMessage['related
 const isWidgetSearchResponse = (value: unknown): value is WidgetSearchResponse => {
     if (!isPlainRecord(value) || hasSensitiveOrExcessiveResponseShape(value) || !isBoundedString(value.answer, 20_000)) return false;
     if (value.canonical !== undefined && typeof value.canonical !== 'boolean') return false;
+    if (value.imageProcessed !== undefined && typeof value.imageProcessed !== 'boolean') return false;
+    if (value.fallbackSuggested !== undefined && typeof value.fallbackSuggested !== 'boolean') return false;
     if (!isOptionalBoundedString(value.confidence, 40) || !isOptionalBoundedString(value.answerSource, 80) || !isOptionalBoundedString(value.searchHistoryId, 180)) return false;
     if (value.references !== undefined && (!Array.isArray(value.references) || value.references.length > 12 || !value.references.every(isWidgetReference))) return false;
+    if (value.citations !== undefined && (!Array.isArray(value.citations) || value.citations.length > 8 || !value.citations.every(isWidgetCitation))) return false;
+    if (value.fallbackReason !== undefined && value.fallbackReason !== null && !normalizeAnswerlatticePublicFallbackReason(value.fallbackReason)) return false;
+    if (value.clarification !== undefined && value.clarification !== null && !normalizeAnswerlatticeScopeClarification(value.clarification)) return false;
     if (value.relatedContent !== undefined && !isWidgetRelatedContent(value.relatedContent)) return false;
     if (value.suggestedQuestions !== undefined && (
         !Array.isArray(value.suggestedQuestions)
@@ -318,6 +356,23 @@ const isWidgetSearchResponse = (value: unknown): value is WidgetSearchResponse =
     }
     return true;
 };
+
+const isWidgetFeedbackResponse = (value: unknown): value is WidgetFeedbackResponse => (
+    isPlainRecord(value)
+    && value.success === true
+    && (value.resolutionOutcome === 'resolved' || value.resolutionOutcome === 'not_resolved')
+    && typeof value.isGood === 'boolean'
+    && value.isGood === (value.resolutionOutcome === 'resolved')
+    && typeof value.created === 'boolean'
+);
+
+const isWidgetEscalationResponse = (value: unknown): value is WidgetEscalationResponse => (
+    isPlainRecord(value)
+    && value.success === true
+    && isBoundedString(value.ticketId, 180)
+    && isBoundedString(value.displayId, 32)
+    && typeof value.created === 'boolean'
+);
 
 const readWidgetSearchResponse = async (
     response: Response,
@@ -345,6 +400,24 @@ const readWidgetSearchResponse = async (
     }
 
     return payload;
+};
+
+const readWidgetFeedbackResponse = async (response: Response): Promise<WidgetFeedbackResponse | null> => {
+    try {
+        const payload = await readJsonResponseWithLimit<unknown>(response, WIDGET_ERROR_RESPONSE_JSON_MAX_BYTES);
+        return isWidgetFeedbackResponse(payload) ? payload : null;
+    } catch {
+        return null;
+    }
+};
+
+const readWidgetEscalationResponse = async (response: Response): Promise<WidgetEscalationResponse | null> => {
+    try {
+        const payload = await readJsonResponseWithLimit<unknown>(response, WIDGET_ERROR_RESPONSE_JSON_MAX_BYTES);
+        return isWidgetEscalationResponse(payload) ? payload : null;
+    } catch {
+        return null;
+    }
 };
 
 const readWidgetSearchErrorMessage = async (response: Response): Promise<string> => {
@@ -392,21 +465,30 @@ const normalizeContextPath = (value: unknown): string | null => {
     if (!route.startsWith('/')) route = `/${route}`;
     route = route.replace(/\/{2,}/g, '/');
     if (route.length > 1 && route.endsWith('/')) route = route.slice(0, -1);
+    if (route.includes('*')) return null;
     return route.slice(0, 180);
+};
+
+const sanitizeContextVersion = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().replace(/^v/i, '');
+    if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(normalized)) return null;
+    const [major, minor = '0', patch = '0'] = normalized.split('.');
+    if (Number(major) <= 0 || Number(minor) > 999 || Number(patch) > 999) return null;
+    return normalized;
 };
 
 const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const input = value as Record<string, unknown>;
     const output: Record<string, any> = {};
-    ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].forEach((key) => {
+    ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state'].forEach((key) => {
         const current = sanitizeContextString(input[key]);
         if (current) output[key] = current;
     });
     const path = normalizeContextPath(input.path);
     if (path) {
         output.path = path;
-        if (!output.page) output.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home');
     }
     const title = sanitizeContextTitle(input.title);
     if (title) output.title = title;
@@ -417,6 +499,8 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
     }
     const locale = sanitizeContextString(input.locale, 24);
     if (locale) output.locale = locale;
+    const version = sanitizeContextVersion(input.version);
+    if (version) output.version = version;
     if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
         output.contextVersion = Math.floor(input.contextVersion);
     }
@@ -426,7 +510,7 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
             .map((hint) => sanitizeContextString(hint, 64))
             .filter((hint): hint is string => Boolean(hint));
     }
-    const hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'path', 'title', 'role', 'locale'].some((key) => Boolean(output[key]))
+    const hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state', 'version', 'path', 'title', 'role', 'locale'].some((key) => Boolean(output[key]))
         || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
     if (!hasMeaningfulContext) return null;
 
@@ -549,6 +633,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [accentColor, setAccentColor] = useState('#6366f1');
     const [poweredByVisible, setPoweredByVisible] = useState(true);
     const [guidedResolutionEnabled, setGuidedResolutionEnabled] = useState(false);
+    const [escalationDraft, setEscalationDraft] = useState<WidgetEscalationDraft | null>(null);
+    const [escalationSubmitting, setEscalationSubmitting] = useState(false);
+    const [escalationError, setEscalationError] = useState<string | null>(null);
     const [activeGuidance, setActiveGuidance] = useState<ActiveWidgetGuidance | null>(null);
     const [guidanceTargetStatus, setGuidanceTargetStatus] = useState<WidgetGuidanceTargetStatus>('locating');
     const [guidanceCompletedMessageId, setGuidanceCompletedMessageId] = useState<string | null>(null);
@@ -580,7 +667,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const sendGuidanceStepToHost = useCallback((guidance: ActiveWidgetGuidance) => {
         const step = guidance.procedure.steps[guidance.stepIndex];
         if (!step) return;
-        setGuidanceTargetStatus(step.expectedEvent ? 'waiting' : 'locating');
+        setGuidanceTargetStatus(step.target ? 'locating' : step.expectedEvent ? 'waiting' : 'found');
         window.parent?.postMessage({
             type: 'answerlattice-guidance-step',
             sessionId: guidance.procedureSessionId,
@@ -608,6 +695,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
@@ -702,6 +790,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         setLoading(false);
         setError(null);
         setSelectedImage(null);
+        setEscalationDraft(null);
+        setEscalationSubmitting(false);
+        setEscalationError(null);
         setGuidanceCompletedMessageId(null);
     }, [clearGuidanceWithoutOutcome]);
 
@@ -814,28 +905,17 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (e.data?.type === 'answerlattice-widget-clear-history') {
                 clearConversation();
             }
-            if (e.data?.type === 'answerlattice-predictive-suggestion' && e.data.suggestion) {
-                const suggestion = e.data.suggestion;
-                const title = typeof suggestion.title === 'string' ? suggestion.title.slice(0, 160) : '';
-                const summary = typeof suggestion.summary === 'string' ? suggestion.summary.slice(0, 600) : '';
-                const knownIssue = isPlainRecord(suggestion.knownIssue)
-                    ? {
-                        severity: suggestion.knownIssue.severity === 'outage'
-                            ? 'outage' as const
-                            : suggestion.knownIssue.severity === 'degraded'
-                                ? 'degraded' as const
-                                : 'info' as const,
-                        ...(normalizeKnownIssueUrl(suggestion.knownIssue.statusPageUrl)
-                            ? { statusPageUrl: normalizeKnownIssueUrl(suggestion.knownIssue.statusPageUrl) }
-                            : {}),
-                    }
-                    : undefined;
-                const content = [title, summary].filter(Boolean).join('\n\n');
-                if (!content) return;
+            if (e.data?.type === 'answerlattice-predictive-suggestion') {
+                if (!e.data.suggestion) {
+                    setMessages(prev => prev.filter(message => !message.id.startsWith('p-')));
+                    return;
+                }
+                const suggestion = normalizeAnswerlatticePredictiveSuggestion(e.data.suggestion);
+                if (!suggestion) return;
+                const content = [suggestion.title, suggestion.summary].filter(Boolean).join('\n\n');
 
                 setMessages(prev => {
-                    const triggerId = typeof suggestion.triggerId === 'string' ? suggestion.triggerId.slice(0, 120) : String(Date.now());
-                    const id = `p-${triggerId}`;
+                    const id = `p-${suggestion.triggerId}`;
                     if (prev.some(m => m.id === id)) return prev;
                     return [...prev, {
                         id,
@@ -848,7 +928,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 .slice(0, 3)
                             : [],
                         procedure: suggestion.procedure,
-                        ...(knownIssue ? { knownIssue } : {}),
+                        ...(suggestion.knownIssue ? { knownIssue: suggestion.knownIssue } : {}),
                     }];
                 });
             }
@@ -977,6 +1057,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
@@ -1009,6 +1090,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 confidence: data.confidence,
                 answerSource: data.answerSource,
                 references: data.references,
+                citations: normalizeAnswerlatticePublicCitations(data.citations),
+                fallbackReason: normalizeAnswerlatticePublicFallbackReason(data.fallbackReason) || undefined,
+                fallbackSuggested: data.fallbackSuggested === true,
+                imageProcessingFailed: Boolean(currentImage) && data.imageProcessed !== true,
+                clarification: normalizeAnswerlatticeScopeClarification(data.clarification) || undefined,
                 suggestedQuestions: normalizeSuggestions([
                     ...(Array.isArray(data.suggestedQuestions) ? data.suggestedQuestions : []),
                     ...relatedSuggestions,
@@ -1092,6 +1178,17 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         }
     };
 
+    const openEscalationForm = (msg: WidgetMessage) => {
+        if (!msg.searchHistoryId || msg.escalationTicketDisplayId) return;
+        setEscalationError(null);
+        setEscalationDraft({
+            messageId: msg.id,
+            email: sanitizeVisitorEmail(visitorContext?.email) || '',
+            name: sanitizeVisitorText(visitorContext?.name || visitorContext?.displayName, 160) || '',
+            details: '',
+        });
+    };
+
     // Feedback handler
     const handleFeedback = async (msgId: string, resolutionOutcome: 'resolved' | 'not_resolved') => {
         const msg = messages.find(m => m.id === msgId);
@@ -1108,6 +1205,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
@@ -1120,11 +1218,79 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (!response.ok) {
                 throw new Error(WIDGET_FEEDBACK_FAILED_MESSAGE);
             }
+            const feedbackResponse = await readWidgetFeedbackResponse(response);
+            if (!feedbackResponse) throw new Error(WIDGET_FEEDBACK_FAILED_MESSAGE);
+            setMessages(prev => prev.map(m => (
+                m.id === msgId ? { ...m, feedback: feedbackResponse.resolutionOutcome } : m
+            )));
+            if (feedbackResponse.resolutionOutcome === 'not_resolved') {
+                openEscalationForm(msg);
+            }
         } catch {
             setMessages(prev => prev.map(m =>
                 m.id === msgId ? { ...m, feedback: null } : m
             ));
             setError(WIDGET_FEEDBACK_FAILED_MESSAGE);
+        }
+    };
+
+    const handleEscalationSubmit = async () => {
+        if (!escalationDraft || escalationSubmitting) return;
+        const msg = messages.find(item => item.id === escalationDraft.messageId);
+        if (!msg?.searchHistoryId || msg.escalationTicketDisplayId) return;
+        const email = sanitizeVisitorEmail(escalationDraft.email);
+        if (!email) {
+            setEscalationError(WIDGET_ESCALATION_EMAIL_MESSAGE);
+            return;
+        }
+
+        setEscalationSubmitting(true);
+        setEscalationError(null);
+        try {
+            const response = await fetch('/api/widget/escalation', {
+                method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
+                referrerPolicy: 'no-referrer',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey,
+                    ...(runtimeAuthorizationToken
+                        ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
+                        : {}),
+                },
+                body: JSON.stringify({
+                    searchHistoryId: msg.searchHistoryId,
+                    email,
+                    ...(sanitizeVisitorText(escalationDraft.name, 160) ? {
+                        name: sanitizeVisitorText(escalationDraft.name, 160),
+                    } : {}),
+                    ...(escalationDraft.details.trim() ? {
+                        details: escalationDraft.details.trim().slice(0, 1000),
+                    } : {}),
+                }),
+            });
+            if (!response.ok) throw new Error(WIDGET_ESCALATION_FAILED_MESSAGE);
+            const escalationResponse = await readWidgetEscalationResponse(response);
+            if (!escalationResponse) throw new Error(WIDGET_ESCALATION_FAILED_MESSAGE);
+            setMessages(prev => prev.map(item => (
+                item.id === msg.id
+                    ? {
+                        ...item,
+                        feedback: 'not_resolved',
+                        escalationTicketDisplayId: escalationResponse.displayId,
+                    }
+                    : item
+            )));
+            setEscalationDraft(null);
+            if (activeGuidanceRef.current?.messageId === msg.id) {
+                endGuidance('escalated');
+            }
+        } catch {
+            setEscalationError(WIDGET_ESCALATION_FAILED_MESSAGE);
+        } finally {
+            setEscalationSubmitting(false);
         }
     };
 
@@ -1213,6 +1379,12 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 </div>
                             )}
                             <p style={styles.msgText}>{msg.content}</p>
+                            {msg.imageProcessingFailed && (
+                                <div style={styles.imageProcessingNotice} role="status">
+                                    <LuInfo size={13} aria-hidden />
+                                    The screenshot could not be used. This answer is based on your text only.
+                                </div>
+                            )}
                             {msg.knownIssue?.statusPageUrl && (
                                 <button
                                     type="button"
@@ -1319,7 +1491,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                                 <>
                                                     <div style={styles.guidanceStatus} role="status">
                                                         {guidanceTargetStatus === 'missing'
-                                                            ? 'The marked control is not available on this screen. You can continue with the written step.'
+                                                            ? 'The marked control is not available on this screen. Use the written step, report the missing target, or contact support.'
                                                             : guidanceTargetStatus === 'waiting'
                                                                 ? 'Waiting for the product to confirm this step.'
                                                                 : guidanceTargetStatus === 'locating'
@@ -1353,7 +1525,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                                         <button
                                                             type="button"
                                                             style={styles.guidanceSecondaryBtn}
-                                                            onClick={() => endGuidance('escalated')}
+                                                            onClick={() => openEscalationForm(msg)}
                                                         >
                                                             Still stuck
                                                         </button>
@@ -1406,6 +1578,35 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 </div>
                             )}
 
+                            {msg.citations && msg.citations.length > 0 && (
+                                <div style={styles.refsContainer}>
+                                    {msg.citations.map(citation => (
+                                        <button
+                                            key={citation.id}
+                                            type="button"
+                                            style={{ ...styles.refTag, ...styles.refTagButton }}
+                                            onClick={() => openWidgetLink(citation.url, {
+                                                linkId: citation.id,
+                                                linkTitle: citation.title,
+                                                linkSource: 'canonical_citation',
+                                            })}
+                                            title={citation.title}
+                                        >
+                                            <LuExternalLink size={12} aria-hidden />
+                                            {citation.title}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {msg.clarification && (
+                                <div style={styles.refsContainer}>
+                                    <span style={styles.refTag}>
+                                        Needs context: {msg.clarification.requiredContext.join(', ')}
+                                    </span>
+                                </div>
+                            )}
+
                             {msg.relatedContent && (
                                 <div style={styles.relatedContainer}>
                                     <div style={styles.relatedHeader}>
@@ -1415,12 +1616,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                         {(msg.relatedContent.articles || []).slice(0, 3).map((article) => (
                                             <button
                                                 key={`article-${article.id}`}
+                                                type="button"
                                                 style={styles.relatedBtn}
-                                                onClick={() => openWidgetLink(article.url, {
-                                                    linkId: article.id,
-                                                    linkTitle: article.title,
-                                                    linkSource: 'related_article',
-                                                })}
+                                                onClick={() => handleSearch(article.title)}
                                                 title={article.title}
                                             >
                                                 <LuBookOpen size={12} aria-hidden />
@@ -1430,7 +1628,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                         {(msg.relatedContent.faqs || []).slice(0, 3).map((faq) => (
                                             <button
                                                 key={`faq-${faq.id}`}
+                                                type="button"
                                                 style={styles.relatedBtn}
+                                                onClick={() => handleSearch(faq.question)}
                                                 title={faq.question}
                                             >
                                                 <LuHelpCircle size={12} aria-hidden />
@@ -1440,7 +1640,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                         {(msg.relatedContent.changelogs || []).slice(0, 2).map((entry) => (
                                             <button
                                                 key={`changelog-${entry.pageId || 'page'}-${entry.id}`}
+                                                type="button"
                                                 style={styles.relatedBtn}
+                                                onClick={() => handleSearch(entry.title)}
                                                 title={entry.title}
                                             >
                                                 <LuInfo size={12} aria-hidden />
@@ -1474,6 +1676,102 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                     )}
                                 </div>
                             )}
+
+                            {msg.role === 'assistant'
+                                && msg.searchHistoryId
+                                && msg.feedback !== 'resolved'
+                                && (
+                                    msg.fallbackSuggested
+                                    || msg.feedback === 'not_resolved'
+                                    || msg.escalationTicketDisplayId
+                                    || escalationDraft?.messageId === msg.id
+                                )
+                                && (
+                                    <div style={styles.escalationSection}>
+                                        {msg.escalationTicketDisplayId ? (
+                                            <div style={styles.escalationSuccess} role="status">
+                                                <LuCheckCircle size={14} aria-hidden />
+                                                Support request #{msg.escalationTicketDisplayId} was created.
+                                            </div>
+                                        ) : escalationDraft?.messageId === msg.id ? (
+                                            <form
+                                                style={styles.escalationForm}
+                                                onSubmit={(event) => {
+                                                    event.preventDefault();
+                                                    void handleEscalationSubmit();
+                                                }}
+                                            >
+                                                <div style={styles.escalationHeading}>Send this question to support</div>
+                                                <input
+                                                    type="email"
+                                                    value={escalationDraft.email}
+                                                    onChange={(event) => setEscalationDraft(current => current
+                                                        ? { ...current, email: event.target.value.slice(0, 254) }
+                                                        : current)}
+                                                    placeholder="Reply email"
+                                                    aria-label="Reply email"
+                                                    autoComplete="email"
+                                                    required
+                                                    style={styles.escalationInput}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={escalationDraft.name}
+                                                    onChange={(event) => setEscalationDraft(current => current
+                                                        ? { ...current, name: event.target.value.slice(0, 160) }
+                                                        : current)}
+                                                    placeholder="Name (optional)"
+                                                    aria-label="Name"
+                                                    autoComplete="name"
+                                                    style={styles.escalationInput}
+                                                />
+                                                <textarea
+                                                    value={escalationDraft.details}
+                                                    onChange={(event) => setEscalationDraft(current => current
+                                                        ? { ...current, details: event.target.value.slice(0, 1000) }
+                                                        : current)}
+                                                    placeholder="Add what happened or what you already tried (optional)"
+                                                    aria-label="Additional support details"
+                                                    rows={3}
+                                                    style={styles.escalationTextarea}
+                                                />
+                                                {escalationError && (
+                                                    <div style={styles.escalationError} role="alert">{escalationError}</div>
+                                                )}
+                                                <div style={styles.escalationActions}>
+                                                    <button
+                                                        type="submit"
+                                                        style={{ ...styles.escalationPrimaryBtn, background: accentColor }}
+                                                        disabled={escalationSubmitting}
+                                                    >
+                                                        <LuSend size={14} aria-hidden />
+                                                        {escalationSubmitting ? 'Sending...' : 'Send to support'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        style={styles.escalationSecondaryBtn}
+                                                        onClick={() => {
+                                                            setEscalationDraft(null);
+                                                            setEscalationError(null);
+                                                        }}
+                                                        disabled={escalationSubmitting}
+                                                    >
+                                                        Not now
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                style={styles.escalationOpenBtn}
+                                                onClick={() => openEscalationForm(msg)}
+                                            >
+                                                <LuMessageCircle size={14} aria-hidden />
+                                                Contact support
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                             {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
                                 <div style={styles.suggestionsContainer}>
@@ -1610,7 +1908,8 @@ const styles: Record<string, CSSProperties> = {
     knownIssueBubble: { maxWidth: '88%', padding: '11px 14px', borderRadius: '12px 12px 12px 4px', background: '#fff7ed', color: '#7c2d12', border: '1px solid #fed7aa' },
     knownIssueLabel: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: '#c2410c', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const },
     knownIssueLink: { minHeight: 36, marginTop: 8, padding: '6px 10px', borderRadius: 8, border: '1px solid #fdba74', background: '#ffffff', color: '#9a3412', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-    msgText: { margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontSize: 13 },
+    msgText: { margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13 },
+    imageProcessingNotice: { marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 6, color: '#92400e', fontSize: 11, lineHeight: 1.4 },
     canonicalBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#ecfdf5', color: '#059669', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
     ownerAnswerBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#eef2ff', color: '#4338ca', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
     procedureContainer: { marginTop: 10, padding: 10, borderRadius: 10, background: '#ffffff', border: '1px solid #e5e7eb' },
@@ -1641,12 +1940,23 @@ const styles: Record<string, CSSProperties> = {
     relatedContainer: { marginTop: 10, padding: 8, borderRadius: 10, background: '#ffffff', border: '1px solid #e5e7eb' },
     relatedHeader: { marginBottom: 6, color: '#374151', fontSize: 11, fontWeight: 700 },
     relatedList: { display: 'flex', flexDirection: 'column', gap: 5 },
-    relatedBtn: { minHeight: 34, width: '100%', padding: '5px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', color: '#374151', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left' as const },
+    relatedBtn: { minHeight: 44, width: '100%', padding: '7px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', color: '#374151', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left' as const },
     relatedBtnText: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     feedbackRow: { marginTop: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
     feedbackQuestion: { width: '100%', fontSize: 11, color: '#6b7280' },
     feedbackBtn: { minHeight: 44, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', background: '#ffffff', color: '#4b5563', fontSize: 11, cursor: 'pointer', lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 },
     feedbackDone: { fontSize: 11, color: '#9ca3af', display: 'inline-flex', alignItems: 'center', gap: 4 },
+    escalationSection: { marginTop: 10, paddingTop: 10, borderTop: '1px solid #e5e7eb' },
+    escalationForm: { display: 'flex', flexDirection: 'column', gap: 8 },
+    escalationHeading: { color: '#374151', fontSize: 12, fontWeight: 700 },
+    escalationInput: { width: '100%', minHeight: 44, boxSizing: 'border-box' as const, border: '1px solid #d1d5db', borderRadius: 8, padding: '9px 10px', background: '#ffffff', color: '#111827', fontSize: 12, outline: 'none' },
+    escalationTextarea: { width: '100%', minHeight: 78, boxSizing: 'border-box' as const, resize: 'vertical' as const, border: '1px solid #d1d5db', borderRadius: 8, padding: '9px 10px', background: '#ffffff', color: '#111827', fontSize: 12, lineHeight: 1.4, outline: 'none' },
+    escalationError: { color: '#b91c1c', fontSize: 11, lineHeight: 1.4 },
+    escalationActions: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+    escalationPrimaryBtn: { minHeight: 44, border: 'none', borderRadius: 8, padding: '0 12px', color: '#ffffff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    escalationSecondaryBtn: { minHeight: 44, border: '1px solid #d1d5db', borderRadius: 8, padding: '0 12px', background: '#ffffff', color: '#4b5563', fontSize: 11, cursor: 'pointer' },
+    escalationOpenBtn: { minHeight: 44, border: '1px solid #d1d5db', borderRadius: 8, padding: '0 12px', background: '#ffffff', color: '#374151', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    escalationSuccess: { minHeight: 44, display: 'flex', alignItems: 'center', gap: 6, color: '#15803d', fontSize: 11, fontWeight: 700 },
     suggestionsContainer: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 },
     suggestionBtn: { padding: '6px 10px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#ffffff', color: '#6366f1', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const },
     loadingDots: { display: 'flex', gap: 4, padding: '4px 0' },
@@ -1655,7 +1965,7 @@ const styles: Record<string, CSSProperties> = {
     errorText: { margin: '0 0 8px 0', fontSize: 13, color: '#dc2626' },
     retryBtn: { minHeight: 36, padding: '4px 12px', borderRadius: 6, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', fontSize: 12, cursor: 'pointer' },
     imagePreview: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderTop: '1px solid #f3f4f6', background: '#f9fafb', minWidth: 0 },
-    imageRemoveBtn: { width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    imageRemoveBtn: { width: 44, height: 44, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     inputArea: { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderTop: '1px solid #e5e7eb', background: '#ffffff', flexShrink: 0 },
     imageBtn: { width: 44, height: 44, borderRadius: '50%', border: '1px solid #d1d5db', background: '#ffffff', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     input: { flex: 1, minWidth: 0, padding: '12px 14px', borderRadius: 22, border: '1px solid #d1d5db', fontSize: 13, outline: 'none', background: '#f9fafb' },

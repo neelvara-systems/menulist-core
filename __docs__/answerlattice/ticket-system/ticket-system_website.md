@@ -1,44 +1,41 @@
-# Ticket System — Website Content
+# Answerlattice Website Claims for Support Handoff
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Public website visitors
+> **Last verified:** July 19, 2026
 
----
-
-## SEO Meta
-
-```
-Title: Built-In Support Tickets | MenuList
-Description: Submit and track support requests directly from your dashboard. SLA tracking, real-time updates, conversation threading. No external tools needed.
-Keywords: support tickets, SLA tracking, help desk, real-time support, ticket management
-OG Title: Support Requests That Track Themselves
-OG Description: Submit a ticket, track progress, get resolution — all without leaving your dashboard.
-```
-
----
-
-## Feature Block
+## Recommended copy
 
 ### Headline
-**Support requests, handled.**
 
-### Subheadline
-Submit a ticket, attach a screenshot, track progress. Real-time updates. SLA timers. No external tools.
+Preserve the question when the answer is not enough.
 
-### How It Works
+### Supporting copy
 
-**Step 1 — Describe the issue**
-Select a category, set priority, describe what's happening. Attach screenshots if it helps — paste directly from your clipboard.
+Answerlattice can turn an unresolved widget or guided-support question into a scoped support request with the question and safe product context attached. Your team follows up in one thread, while repeated issues return to the governed review loop.
 
-**Step 2 — Track progress**
-Your ticket appears in your dashboard with a live status indicator. See when it moves from Open to In Progress to Resolved — in real time.
+### Proof points
 
-**Step 3 — Continue the conversation**
-Reply directly inside the ticket. No email threads to track. Everything stays in one place until the issue is resolved.
+- Explicit customer handoff, never silent ticket creation
+- Workspace-scoped thread and attachments
+- Approved-answer context preserved for support review
+- Outbound status and reply notifications
+- Human-reviewed knowledge improvement
 
-### Trust Indicators
-- SLA timers ensure timely responses
-- Every status change is recorded
-- File attachments stored securely in your isolated storage
-- Browser context captured automatically for faster debugging
+## Comparison boundary
+
+| Generic chatbot fallback | Answerlattice |
+|---|---|
+| Shows “contact support” | Can create a scoped request after explicit submission |
+| Loses answer context | Links eligible stored question and product context |
+| Hides repeated misses | Emits governed support evidence |
+| Treats conversation as truth | Requires review before knowledge mutation |
+
+## Prohibited website language
+
+- “Live support”
+- “Guaranteed response”
+- “Full help desk”
+- “Reply by email”
+- “Automatically learns the correct answer from every ticket”
+- “Every unresolved question is resolved”
+
+This dossier governs claim accuracy. It does not require a standalone ticket feature page.

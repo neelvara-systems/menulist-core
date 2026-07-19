@@ -391,6 +391,18 @@ All variants include:
 | Cache hit                        | search-kb → findCachedSearchByCacheKey → return cached response                                                                |    ✅    |
 | Embedding cache                  | search-kb → getCachedEmbedding → return cached vector                                                                          |    ✅    |
 
+### 7.3 Feature 16 Widget Runtime Addendum
+
+The widget wrapper is not a raw serialization of `coreSearch()`:
+
+- `src/app/api/widget/search/route.ts` positively projects public citations and related-content labels, reports `imageProcessed`, and exposes only a bounded `fallbackSuggested` boolean.
+- `src/app/api/widget/feedback/route.ts` returns the authoritative persisted `resolutionOutcome`, `isGood`, and replay/new-write state.
+- `src/app/api/widget/escalation/route.ts` accepts only a stored widget search-history ID plus reply email and optional name/details after key, scope, origin/runtime-token, rate-limit, body-size, and schema admission.
+- `src/lib/answerlattice/widgetEscalationServer.ts` creates one deterministic support ticket and derives all internal evidence from the persisted history row.
+- `src/app/widget/[apiKey]/WidgetClient.tsx` turns related content into follow-up searches, discloses image-processing fallback, and confirms only ticket creation.
+
+This explicit fallback path does not require `ENABLE_ANSWERLATTICE_AI_ESCALATION`. The automatic evaluator and authenticated Help Chat suggestion path remain flag-gated.
+
 ---
 
 ## 8. Bounded Hybrid Evidence Retrieval

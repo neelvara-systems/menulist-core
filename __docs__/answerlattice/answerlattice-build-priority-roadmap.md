@@ -1,7 +1,7 @@
 # Answerlattice — Build Priority Roadmap
 
 > **Created:** 2026-03-07
-> **Last Updated:** 2026-06-06
+> **Last Updated:** 2026-07-20
 > **Sources:** Internal docs audit + codebase truth + Answerlattice doctrine + reviewed external expansion proposal
 > **Purpose:** Single consolidated priority list for Answerlattice activation, controlled rollout, and future expansion
 > **Rule:** Prove the governed answer loop before expanding integrations or distribution.
@@ -19,8 +19,8 @@ Answerlattice is no longer a backend-only system. The current codebase implement
 - Product ontology, entity candidates, canonical answers, drift governance, signal mutation, mutation proposal review, trust metrics, coverage KPI, weekly digest, and nightly scheduler.
 - Public API v1 routes for answers, entities, and signals, guarded by `ENABLE_ANSWERLATTICE_PUBLIC_API`.
 - Workflow integration infrastructure for governance events, with Slack/email self-service and Linear/GitHub controlled rollout.
-- Product friction intelligence, ticket-to-knowledge extraction, knowledge graph traversal, predictive support, compiled context bundles, and widget bundle bootstrap with caps/guards.
-- Advanced white-label branding, multi-language articles, guided workflows, MCP, and AI failure escalation code paths exist behind rollout flags.
+- Product friction intelligence, ticket-to-knowledge extraction, knowledge graph traversal, predictive support, and compiled context bundles with caps/guards. Widget bundle bootstrap stays disabled until the widget consumes and verifies those files.
+- A validated private advanced-branding profile, multi-language draft preparation, guided workflows, MCP, and AI failure escalation code paths exist behind rollout flags. The branding profile has no customer-facing consumer.
 
 Important distinction:
 
@@ -32,7 +32,7 @@ Important distinction:
 | Jira integration | No native Jira connector found in code/docs | New docs-first feature only after workflow-event loop is stable |
 | Helpdesk integrations | No native Zendesk/Intercom/Freshdesk/Help Scout connectors found | Start with export/import intake; native OAuth later |
 | Multi-channel distribution | Widget and hosted help are active | Expand only after source-of-truth quality is proven |
-| White-label / multi-language | Implemented but default off | Market expansion, not core activation |
+| White-label / multi-language | Advanced branding is only a private profile; translation is only draft preparation; customer delivery is absent for both | Market expansion only after repeated paying-client demand |
 
 ---
 
@@ -83,7 +83,7 @@ No roadmap item may bypass human approval, tenant isolation, summary-backed read
 | 17 | Content package generation | Not a standalone product surface yet | Generate drafts only from governed sources and review queues |
 | 18 | Team approval routing | Partially covered by staff access/governance roles | Add only when review volume requires routing by support/product/engineering/legal/billing |
 | 19 | Customer-facing distribution expansion | Widget/hosted help active; other channels not implemented | Expand only after answer source of truth is stable |
-| 20 | White-label and multi-language expansion | Implemented but default off | Enable after core workflow is selling and public surfaces consume the shared read model |
+| 20 | White-label and multi-language expansion | Gated prototypes; multilingual review/publish/delivery is not implemented | Validate demand after the core workflow is selling, then design the governed read model before enabling |
 
 ---
 

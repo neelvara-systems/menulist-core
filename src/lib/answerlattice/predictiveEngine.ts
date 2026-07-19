@@ -14,8 +14,8 @@
  * 
  * Design constraints:
  * - Deterministic (no ML, no probabilistic logic)
- * - Stateless (no session memory)
- * - <50ms evaluation target
+ * - No durable customer session state
+ * - Bounded workspace summary reads and deterministic evaluation
  * - Feature-flagged: ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT
  * 
  * @see __docs__/answerlattice/predictive-support/predictive-support_impl.md
@@ -24,6 +24,12 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import {
+    doesAnswerlatticePredictiveTriggerMatchContext,
+    isAnswerlatticePredictiveTriggerWithinWindow,
+    normalizeAnswerlatticePredictiveCondition,
+    normalizeAnswerlatticePredictiveSuggestion,
+} from '@lib/answerlattice/predictiveSupportContracts';
 import { parseAnswerlatticePredictiveTriggerIndex } from '@lib/answerlattice/runtimeSummaryContracts';
 import { parseAnswerlatticeRetrievalCanonicalAnswer } from '@lib/answerlattice/retrievalContracts';
 import { PRODUCT_IDS } from '@constant/product';
@@ -54,35 +60,10 @@ const triggerIndexCache = new Map<string, {
     value: AnswerlatticePredictiveTriggerIndex | null;
 }>();
 
-const normalizeConditionValue = (value: string | undefined): string | undefined => {
-    if (typeof value !== 'string') return undefined;
-    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 100);
-    return normalized || undefined;
-};
-
-const getTimestampMillis = (value: unknown): number | null => {
-    if (!value) return null;
-    if (typeof value === 'string') {
-        const parsed = Date.parse(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    if (value instanceof Date) return value.getTime();
-    if (typeof (value as any)?.toMillis === 'function') {
-        const millis = Number((value as any).toMillis());
-        return Number.isFinite(millis) ? millis : null;
-    }
-    const seconds = Number((value as any)?.seconds);
-    return Number.isFinite(seconds) ? seconds * 1000 : null;
-};
-
 const isTriggerWithinActiveWindow = (trigger: AnswerlatticePredictiveTrigger, now = Date.now()) => {
     if (trigger.kind !== 'known_issue') return true;
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWN_ISSUES) return false;
-    const startsAt = getTimestampMillis(trigger.knownIssue?.startsAt);
-    const endsAt = getTimestampMillis(trigger.knownIssue?.endsAt);
-    if (startsAt !== null && startsAt > now) return false;
-    if (endsAt !== null && endsAt <= now) return false;
-    return true;
+    return isAnswerlatticePredictiveTriggerWithinWindow(trigger, now);
 };
 
 /**
@@ -171,35 +152,14 @@ function filterByPage(
     triggers: Record<string, AnswerlatticePredictiveTrigger>,
     page: string | undefined
 ): AnswerlatticePredictiveTrigger[] {
-    const normalizedPage = normalizeConditionValue(page);
+    const normalizedPage = normalizeAnswerlatticePredictiveCondition(page);
     if (!normalizedPage) return [];
 
     return Object.values(triggers).filter(t => {
-        const triggerPage = normalizeConditionValue(t.conditions.page);
+        const triggerPage = normalizeAnswerlatticePredictiveCondition(t.conditions.page);
         if (!triggerPage) return false;
         return triggerPage === normalizedPage;
     });
-}
-
-/**
- * Evaluate ALL conditions of a trigger against context.
- * Uses AND logic — all specified conditions must match.
- * Unspecified conditions in the trigger are treated as wildcards (always pass).
- */
-function evaluateConditions(
-    conditions: AnswerlatticePredictiveTrigger['conditions'],
-    context: AnswerlatticeContextPayload
-): boolean {
-    const expectedFeature = normalizeConditionValue(conditions.feature);
-    const expectedWorkflow = normalizeConditionValue(conditions.workflow);
-    const expectedPlan = normalizeConditionValue(conditions.plan);
-    const expectedUserRole = normalizeConditionValue(conditions.userRole);
-
-    if (expectedFeature && normalizeConditionValue(context.feature) !== expectedFeature) return false;
-    if (expectedWorkflow && normalizeConditionValue(context.workflow) !== expectedWorkflow) return false;
-    if (expectedPlan && normalizeConditionValue(context.plan) !== expectedPlan) return false;
-    if (expectedUserRole && normalizeConditionValue(context.userRole) !== expectedUserRole) return false;
-    return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -269,7 +229,7 @@ async function resolveSuggestion(
     sId: number
 ): Promise<AnswerlatticePredictiveSuggestion | null> {
     if (trigger.resolvedSuggestion?.title) {
-        return {
+        return normalizeAnswerlatticePredictiveSuggestion({
             triggerId: trigger.id,
             type: trigger.action.type,
             title: trigger.action.customTitle || trigger.resolvedSuggestion.title,
@@ -282,7 +242,7 @@ async function resolveSuggestion(
                     ...(trigger.knownIssue?.statusPageUrl ? { statusPageUrl: trigger.knownIssue.statusPageUrl } : {}),
                 },
             } : {}),
-        };
+        });
     }
 
     let title = trigger.action.customTitle || trigger.name;
@@ -313,7 +273,7 @@ async function resolveSuggestion(
 
     if (!title) return null;
 
-    return {
+    return normalizeAnswerlatticePredictiveSuggestion({
         triggerId: trigger.id,
         type: trigger.action.type,
         title,
@@ -326,7 +286,7 @@ async function resolveSuggestion(
                 ...(trigger.knownIssue?.statusPageUrl ? { statusPageUrl: trigger.knownIssue.statusPageUrl } : {}),
             },
         } : {}),
-    };
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -366,8 +326,8 @@ export async function evaluateTriggers(
         const matchedTriggers = pageTriggers
             .filter(t => t.status === 'active')
             .filter(t => isTriggerWithinActiveWindow(t))
-            .filter(t => evaluateConditions(t.conditions, context))
-            .sort((a, b) => b.priority - a.priority);
+            .filter(t => doesAnswerlatticePredictiveTriggerMatchContext(t, context))
+            .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
 
         if (matchedTriggers.length === 0) return null;
 

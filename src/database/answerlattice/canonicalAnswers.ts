@@ -66,6 +66,7 @@ const toProposalAnswer = (
     scope: data.scope,
     productBinding: data.productBinding,
     content: data.content,
+    ...(data.evidence ? { evidence: data.evidence } : {}),
 });
 
 /**
@@ -211,26 +212,12 @@ export const proposeCanonicalAnswerUpdate = async (data: AnswerlatticeCanonicalA
     );
 };
 
-/**
- * Record a deterministic drift finding. This path can only set drift; clearing
- * drift requires the separate server-owned validation action below.
- */
-export const recordCanonicalAnswerDrift = async (
-    answerId: string,
-    driftReason: string,
-) => {
-    const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
+/** Run deterministic drift evaluation using server-owned workspace inputs. */
+export const evaluateCanonicalAnswerDrift = async () => {
     return await apiCallComposer(
-        () => {
-            if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
-            return runAnswerlatticeGovernanceAction({
-                action: 'record_drift',
-                answerId: normalizedAnswerId,
-                driftReason,
-            });
-        },
-        { answerId: normalizedAnswerId },
-        "recordCanonicalAnswerDrift"
+        () => runAnswerlatticeGovernanceAction({ action: 'evaluate_drift' }),
+        {},
+        "evaluateCanonicalAnswerDrift"
     );
 };
 

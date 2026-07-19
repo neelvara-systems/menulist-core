@@ -2,7 +2,7 @@
 
 > **Status:** READ-ONLY RUNTIME SOURCE-VERIFIED
 > **Created:** 2026-06-07
-> **Last verified:** 2026-07-11
+> **Last verified:** 2026-07-19
 > **Release boundary:** Source verification only; authenticated browser/device and deployed-host evidence remain pending.
 
 ---
@@ -19,15 +19,16 @@ The original docs freeze was reopened because the app flag, route, navigation, A
 | Route and navigation | `/answerlattice/support-assistant` is in the route registry, Support Control navigation, and route-permission map. | Management-only; `MANAGE_SUPPORT` required. |
 | Brief endpoint | `GET /api/answerlattice/support-assistant/brief` checks the flag, applies the dashboard read limiter, requires `MANAGE_SUPPORT`, and reads six compact summaries. | Read-only, private/no-store. |
 | Query endpoint | `POST /api/answerlattice/support-assistant/query` resolves exact session scope, applies a hashed 20/minute limiter before the permission read, requires `MANAGE_SUPPORT`, caps the body at 4 KiB, and validates a strict question. | Read-only, private/no-store. |
-| Answer engine | `src/lib/answerlattice/ownerSupportAssistant.ts` classifies six bounded intents and uses one five-document summary packet with a 60-second, 300-entry cache. | Deterministic; no AI provider. |
-| Client | The client bounds JSON responses at 128 KiB, uses no-store/same-origin/manual-redirect fetches, exposes the read-only limit, and gives owner actions 44px targets. | Responsive source contract. |
+| Answer engine | `src/lib/answerlattice/ownerSupportAssistant.ts` classifies ten bounded intents and uses one six-document summary packet with a 60-second, 300-entry cache. | Deterministic; no AI provider. |
+| Contracts | `ownerSupportAssistantContracts.ts` strictly parses all six summaries, source health, capabilities, brief responses, and query responses. | Missing, invalid, and stale evidence is explicit. |
+| Client | The client bounds JSON responses at 128 KiB, uses no-store/same-origin/manual-redirect fetches, exposes partial evidence, and gives owner actions 44px targets. | Responsive source contract. |
 | Persistence | No assistant transcript, message, feedback, action, analytics, attribution, plan, or event collection/path exists. | Zero assistant writes. |
 
 ## Live Cost Contract
 
-- Cold summary packet: five Firestore document reads through one `getAll()` call.
+- Cold summary packet: six Firestore document reads through one `getAll()` call.
 - Warm in-process packet within 60 seconds: zero Firestore reads.
-- Question: reuses the same packet when warm; otherwise five reads.
+- Question: reuses the same packet when warm; otherwise six reads.
 - No listener, list query, vector search, provider call, Storage operation, Cloud Function, scheduler task, or write.
 - Cache is tenant/store keyed and capped at 300 entries.
 
@@ -82,5 +83,6 @@ This review does not certify Firebase/Vercel deployment, real credentials, provi
 
 | Date | Change |
 | --- | --- |
+| 2026-07-19 | Aligned the review with six strict summary parsers, ten intents, source-health/staleness disclosure, capability filtering, and strict browser response contracts. |
 | 2026-07-11 | Reopened the docs-only freeze and recorded the enabled, deterministic, summary-only runtime plus the absent action/AI/feedback/analytics boundaries. |
 | 2026-06-07 | Added the original docs freeze after strategy validation. |

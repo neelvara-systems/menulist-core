@@ -34,6 +34,7 @@ async function run(): Promise<void> {
     for (const collection of [
         'answerlattice_entities', 'answerlattice_entitySlugIndex', 'answerlattice_entityRelations',
         'answerlattice_entitySearchIndex', 'answerlattice_entityCandidates', 'answerlattice_canonicalAnswers',
+        'answerlattice_faqs', 'answerlattice_productSurfaces', 'kb_articles',
         'answerlattice_auditLogs', 'platformSummary',
     ]) await db.recursiveDelete(db.collection(collection));
 
@@ -79,10 +80,44 @@ async function run(): Promise<void> {
         action: 'deprecate_entity', requestId: 'ontology_deprecate_answer_blocked', entityId,
     }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
     await db.collection('answerlattice_canonicalAnswers').doc('answer-1').delete();
+
+    await db.collection('kb_articles').doc('article-1').set({
+        pId: 'AL', tId: 1, sId: 101, entityIds: [entityId], active: true, status: 'published',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'deprecate_entity', requestId: 'ontology_deprecate_article_blocked', entityId,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    await db.collection('kb_articles').doc('article-1').delete();
+
+    await db.collection('answerlattice_faqs').doc('faq-1').set({
+        pId: 'AL', tId: 1, sId: 101, entityIds: [entityId], active: true, status: 'published',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'deprecate_entity', requestId: 'ontology_deprecate_faq_blocked', entityId,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    await db.collection('answerlattice_faqs').doc('faq-1').delete();
+
+    await db.collection('answerlattice_productSurfaces').doc('surface-1').set({
+        pId: 'AL', tId: 1, sId: 101, entityIds: [entityId], active: true,
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'deprecate_entity', requestId: 'ontology_deprecate_surface_blocked', entityId,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    await db.collection('answerlattice_productSurfaces').doc('surface-1').delete();
+
     const deprecated = await executeAnswerlatticeOntologyAction({
         action: 'deprecate_entity', requestId: 'ontology_deprecate_1', entityId,
     }, access);
     assert.equal(deprecated.entity?.status, 'deprecated');
+
+    await db.collection('answerlattice_entities').doc('legacy-without-product').set({
+        tId: 1, sId: 101, type: 'feature', name: 'Legacy Entity', slug: 'legacy-entity',
+        description: 'Legacy malformed entity.', status: 'active', currentVersion: 1_000_000,
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'update_entity', requestId: 'ontology_legacy_scope_rejected', entityId: 'legacy-without-product',
+        changes: { description: 'Must not be mutated without exact product identity.' },
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 404);
 
     const candidate = {
         pId: 'AL' as const,

@@ -20,8 +20,13 @@ const FeatureUsage = () => {
         <Checkbox.Group style={{ width: '100%' }}>
           <Row gutter={[16, 16]}>
             {features.map((feature) => (
-              <Col span={12} key={feature}>
-                <Checkbox value={feature}>{feature}</Checkbox>
+              <Col xs={24} sm={12} key={feature}>
+                <Checkbox
+                  value={feature}
+                  style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}
+                >
+                  {feature}
+                </Checkbox>
               </Col>
             ))}
           </Row>

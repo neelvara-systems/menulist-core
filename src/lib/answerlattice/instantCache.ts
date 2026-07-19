@@ -1,10 +1,10 @@
 /**
  * Answerlattice — Instant Response Cache (Upstash Redis)
  * 
- * Caches resolved canonical answers in Upstash Redis for sub-10ms responses.
+ * Caches resolved canonical answers in Upstash Redis as an optional fast path.
  * Only deterministic canonical answers are cached (not RAG responses).
  * 
- * Cache key: canon:v2:{tId}:{sId}:e:{entityId}:v{version}:p:{plan}:r:{role}:s:{state}
+ * Cache key: canon:v4:{tId}:{sId}:e:{entityHash}:v{version}:p:{planHash}:r:{roleHash}:s:{stateHash}
  * Invalidation: Version-based (automatic). TTL: 24 hours.
  * 
  * Reuses existing Upstash instance (same as rate limiting in src/lib/rateLimit.ts).
@@ -15,16 +15,28 @@
 
 import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
-import { AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
+import { ANSWERLATTICE_ANSWER_TYPES, AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
+import { normalizeAnswerlatticePublicCitations } from '@lib/answerlattice/publicAnswerContracts';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { createHash } from 'crypto';
 import { isCachedCanonicalAnswerFresh } from './cacheFreshness';
 import { CachedCanonicalAnswer, INSTANT_CACHE_DEFAULTS } from './instantCache.types';
-import type { AnswerlatticeCacheSourceVersions } from './cacheVersionManifest';
+import {
+    ANSWERLATTICE_CACHE_SOURCES,
+    type AnswerlatticeCacheSourceVersions,
+    normalizeCacheVersion,
+} from './cacheVersionManifest';
+import {
+    normalizeAnswerlatticeCanonicalAnswerId,
+    normalizeAnswerlatticeResolvedEntityId,
+} from './governanceIdBoundary';
+import { AnswerlatticeProcedureSchema } from './procedureValidation';
 
 const hasRedisConfig = Boolean(
     process.env.UPSTASH_REDIS_REST_URL &&
     process.env.UPSTASH_REDIS_REST_TOKEN,
 );
+const ANSWERLATTICE_ANSWER_TYPE_SET = new Set<string>(Object.values(ANSWERLATTICE_ANSWER_TYPES));
 
 // Reuse existing Upstash connection pattern from rateLimit.ts. Missing Redis
 // env must degrade to the live retrieval pipeline, never crash module import.
@@ -70,11 +82,93 @@ export function buildCacheKey(
     roleId?: string,
     stateId?: string,
 ): string {
-    const plan = planId || '_';
-    const role = roleId || '_';
-    const state = stateId || '_';
-    return `canon:v2:${tId}:${sId}:e:${topEntityId}:v${answerVersion}:p:${plan}:r:${role}:s:${state}`;
+    if (
+        !Number.isSafeInteger(tId)
+        || tId <= 0
+        || !Number.isSafeInteger(sId)
+        || sId <= 0
+        || !Number.isSafeInteger(answerVersion)
+        || answerVersion <= 0
+    ) throw new Error('Invalid Answerlattice instant-cache scope or version.');
+    const entityId = normalizeAnswerlatticeResolvedEntityId(topEntityId);
+    if (!entityId) throw new Error('Invalid Answerlattice instant-cache entity.');
+    const hashSegment = (value?: string) => value
+        ? createHash('sha256').update(value).digest('base64url').slice(0, 22)
+        : '_';
+    return `canon:v4:${tId}:${sId}:e:${hashSegment(entityId)}:v${answerVersion}:p:${hashSegment(planId)}:r:${hashSegment(roleId)}:s:${hashSegment(stateId)}`;
 }
+
+export const normalizeCachedCanonicalAnswer = (
+    value: unknown,
+    expected: { topEntityId: string; answerVersion: number },
+): CachedCanonicalAnswer | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const source = value as Record<string, any>;
+    const canonicalAnswerId = normalizeAnswerlatticeCanonicalAnswerId(source.canonicalAnswerId);
+    const topEntityId = normalizeAnswerlatticeResolvedEntityId(source.topEntityId);
+    const expectedEntityId = normalizeAnswerlatticeResolvedEntityId(expected.topEntityId);
+    const answerVersion = Number(source.answerVersion);
+    const cachedAt = Number(source.cachedAt);
+    if (
+        !canonicalAnswerId
+        || !topEntityId
+        || !expectedEntityId
+        || topEntityId !== expectedEntityId
+        || !Number.isSafeInteger(answerVersion)
+        || answerVersion <= 0
+        || answerVersion !== expected.answerVersion
+        || !Number.isSafeInteger(cachedAt)
+        || cachedAt <= 0
+        || cachedAt > Date.now() + 60_000
+        || typeof source.craftedAnswer !== 'string'
+        || !source.craftedAnswer.trim()
+        || typeof source.answerType !== 'string'
+        || !ANSWERLATTICE_ANSWER_TYPE_SET.has(source.answerType)
+        || !['high', 'medium', 'low'].includes(source.confidence)
+        || !Array.isArray(source.matchedEntityIds)
+        || source.matchedEntityIds.length > 50
+    ) return null;
+
+    const matchedEntityIds = Array.from(new Set(
+        source.matchedEntityIds.map(normalizeAnswerlatticeResolvedEntityId).filter(Boolean),
+    )) as string[];
+    if (matchedEntityIds.length !== source.matchedEntityIds.length || !matchedEntityIds.includes(topEntityId)) return null;
+
+    const procedure = source.answerType === ANSWERLATTICE_ANSWER_TYPES.PROCEDURE
+        ? AnswerlatticeProcedureSchema.safeParse(source.procedure)
+        : null;
+    if (source.answerType === ANSWERLATTICE_ANSWER_TYPES.PROCEDURE && !procedure?.success) return null;
+    if (source.answerType !== ANSWERLATTICE_ANSWER_TYPES.PROCEDURE && source.procedure != null) return null;
+
+    let sourceVersions: AnswerlatticeCacheSourceVersions | undefined;
+    if (source.sourceVersions !== undefined) {
+        if (!source.sourceVersions || typeof source.sourceVersions !== 'object' || Array.isArray(source.sourceVersions)) return null;
+        sourceVersions = {};
+        for (const sourceKey of Object.values(ANSWERLATTICE_CACHE_SOURCES)) {
+            if (source.sourceVersions[sourceKey] === undefined) continue;
+            const version = normalizeCacheVersion(source.sourceVersions[sourceKey]);
+            if (!version) return null;
+            sourceVersions[sourceKey] = version;
+        }
+    }
+
+    const normalized: CachedCanonicalAnswer = {
+        craftedAnswer: source.craftedAnswer,
+        canonicalAnswerId,
+        confidence: source.confidence,
+        answerType: source.answerType,
+        matchedEntityIds,
+        citations: normalizeAnswerlatticePublicCitations(source.citations),
+        procedure: procedure?.success ? procedure.data : null,
+        cachedAt,
+        answerVersion,
+        topEntityId,
+        sourceVersions,
+    };
+    return Buffer.byteLength(JSON.stringify(normalized), 'utf8') <= INSTANT_CACHE_DEFAULTS.maxPayloadBytes
+        ? normalized
+        : null;
+};
 
 // ═══════════════════════════════════════════════════════════
 // CACHE READ
@@ -104,21 +198,10 @@ export async function instantCacheLookup(
         ]);
 
         if (!result) return null;
-
-        const isFresh = await isCachedCanonicalAnswerFresh({
-            canonicalAnswerId: result.canonicalAnswerId,
-            tId,
-            sId,
-            cachedAtMs: result.cachedAt,
-            answerVersion: result.answerVersion,
-            sourceVersions: result.sourceVersions,
-            currentSourceVersions,
-        });
-
-        if (!isFresh) {
+        const normalizedResult = normalizeCachedCanonicalAnswer(result, { topEntityId, answerVersion });
+        if (!normalizedResult) {
             redis.del(key).catch((error) => {
-                logRuntimeFailure('answerlattice_instant_cache_stale_delete_failed', error, getInstantCacheLogContext({
-                    answerId: result.canonicalAnswerId,
+                logRuntimeFailure('answerlattice_instant_cache_invalid_delete_failed', error, getInstantCacheLogContext({
                     answerVersion,
                     planId,
                     roleId,
@@ -131,7 +214,33 @@ export async function instantCacheLookup(
             return null;
         }
 
-        return result;
+        const isFresh = await isCachedCanonicalAnswerFresh({
+            canonicalAnswerId: normalizedResult.canonicalAnswerId,
+            tId,
+            sId,
+            cachedAtMs: normalizedResult.cachedAt,
+            answerVersion: normalizedResult.answerVersion,
+            sourceVersions: normalizedResult.sourceVersions,
+            currentSourceVersions,
+        });
+
+        if (!isFresh) {
+            redis.del(key).catch((error) => {
+                logRuntimeFailure('answerlattice_instant_cache_stale_delete_failed', error, getInstantCacheLogContext({
+                    answerId: normalizedResult.canonicalAnswerId,
+                    answerVersion,
+                    planId,
+                    roleId,
+                    stateId,
+                    sId,
+                    tId,
+                    topEntityId,
+                }));
+            });
+            return null;
+        }
+
+        return normalizedResult;
     } catch (error) {
         logRuntimeFailure('answerlattice_instant_cache_lookup_failed', error, getInstantCacheLogContext({
             answerVersion,
@@ -157,6 +266,7 @@ export async function instantCacheWrite(
     topEntityId: string,
     answer: AnswerlatticeCanonicalAnswer,
     matchedEntityIds: string[],
+    confidence: 'high' | 'medium' | 'low',
     planId?: string,
     roleId?: string,
     stateId?: string,
@@ -164,29 +274,47 @@ export async function instantCacheWrite(
 ): Promise<void> {
     if (!redis || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE) return;
 
-    // INV-1: Never cache drifted answers
-    if (answer.governance.driftFlag) return;
+    // Only active, reviewer-cleared canonical truth may enter the fast path.
+    if (
+        answer.status !== 'active'
+        || answer.governance.driftFlag
+        || answer.governance.reviewRequired
+    ) return;
 
     try {
-        const answerVersion = answer.productBinding.lastValidatedInVersion;
-        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, planId, roleId, stateId);
+        const canonicalAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answer.id);
+        const normalizedTopEntityId = normalizeAnswerlatticeResolvedEntityId(topEntityId);
+        const answerVersion = Number(answer.productBinding.lastValidatedInVersion);
+        const normalizedMatchedEntityIds = Array.from(new Set(
+            matchedEntityIds.map(normalizeAnswerlatticeResolvedEntityId).filter(Boolean),
+        )) as string[];
+        if (
+            !canonicalAnswerId
+            || !normalizedTopEntityId
+            || !Number.isSafeInteger(answerVersion)
+            || answerVersion <= 0
+            || normalizedMatchedEntityIds.length !== matchedEntityIds.length
+            || !normalizedMatchedEntityIds.includes(normalizedTopEntityId)
+        ) return;
+        const key = buildCacheKey(tId, sId, normalizedTopEntityId, answerVersion, planId, roleId, stateId);
 
         const payload: CachedCanonicalAnswer = {
             craftedAnswer: answer.content.detailedExplanation || answer.content.structuredSummary,
-            canonicalAnswerId: answer.id,
-            confidence: 'high',
+            canonicalAnswerId,
+            confidence,
             answerType: answer.answerType || 'explanation',
-            matchedEntityIds,
+            matchedEntityIds: normalizedMatchedEntityIds,
+            citations: normalizeAnswerlatticePublicCitations(answer.evidence?.citations),
             procedure: answer.answerType === 'procedure' ? answer.content.procedure || null : null,
             cachedAt: Date.now(),
             answerVersion,
-            topEntityId,
+            topEntityId: normalizedTopEntityId,
             sourceVersions,
         };
 
         // Check payload size before writing
         const payloadStr = JSON.stringify(payload);
-        if (payloadStr.length > INSTANT_CACHE_DEFAULTS.maxPayloadBytes) return;
+        if (Buffer.byteLength(payloadStr, 'utf8') > INSTANT_CACHE_DEFAULTS.maxPayloadBytes) return;
 
         // Fire-and-forget — don't await in hot path
         redis.set(key, payload, { ex: INSTANT_CACHE_DEFAULTS.ttlSeconds }).catch((error) => {

@@ -175,7 +175,7 @@ requireOrder(claimRoute, [
 ].forEach((token) => requireToken(slugBoundary, token, 'Public Menu Entry project slug boundary'));
 
 [
-  'fileInputRef.current.value = \'\';',
+  'event.currentTarget.value = \'\';',
   'accept="image/jpeg,image/png,image/webp"',
 ].forEach((token) => requireToken(createClient, token, 'Public Menu Entry source chooser'));
 forbidToken(createClient, 'capture="environment"', 'Public Menu Entry source chooser');

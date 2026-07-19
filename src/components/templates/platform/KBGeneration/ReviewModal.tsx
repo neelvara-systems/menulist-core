@@ -326,7 +326,7 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
         dispatch(startLoader('Updating article...'));
         try {
             const isNewArticle = !activeModal.data;
-            const updatedArticle = await updateArticle(savedArticle);
+            const updatedArticle = await updateArticle(savedArticle, { mode: 'generation_review' });
             assertKnowledgeBaseArticleWriteSucceeded(
                 updatedArticle,
                 savedArticle.id,

@@ -263,15 +263,15 @@ INTEGRATION POINTS (existing system):
 
 1. Admin marks release as active → `activateRelease()` runs
 2. Release data fetched (entityChanges, versionNormalized)
-3. `evaluateDriftForTenant()` called with release context — **fire-and-forget**
-4. Drift evaluation runs Class A (version mismatch) for entities in `entityChanges`
-5. If drift detected → `driftFlag` set to `true` on affected canonical answers
-6. Release status set to `active` regardless of drift evaluation outcome
-7. Drift is **advisory** — it flags answers for review, never blocks releases
+3. The authenticated server activation transaction reads the bounded active answers linked to `entityChanges`
+4. Class A version drift is derived with the shared drift policy and exact stored scope/version checks
+5. Affected answers receive `driftFlag`, `reviewRequired`, a deterministic audit event, and canonical cache/source invalidation
+6. The release, drift evidence, source versions, and bundle-stale marker commit together
+7. Drift is **advisory** — finding drift does not reject the release or invent replacement content; malformed, cross-scope, or over-cap inputs fail the activation closed
 
 Answerlattice App Release ID Boundary: browser reads normalize the release document ID. Create/activate actions use the bounded authenticated release route; the Admin transaction/lease lifecycle validates exact persisted release, entity and affected-answer scope/version before drift-audit and compiled-context writes. Malformed IDs or coercive stored identity fail before governed mutation.
 
-**Files:** `src/database/answerlattice/releases.ts`, `src/lib/answerlattice/driftDetection.ts`
+**Files:** `src/database/answerlattice/releases.ts`, `src/lib/answerlattice/releaseServer.ts`, `src/data/shared/answerlatticeDrift.ts`
 
 ### 4.6 Mutation Proposal Review (Human-in-the-Loop)
 
@@ -514,7 +514,7 @@ Every integration point is designed to fail silently:
 | No hardcoded collections        | **PASS** — All use DB_COLLECTIONS constants                     |
 | Signal emitter integration      | **PASS** — Wired to addTicket + submitSearchFeedback            |
 | Canonical retrieval integration | **PASS** — Wired to search-kb API route                         |
-| Release-drift integration       | **PASS** — activateRelease calls evaluateDriftForTenant         |
+| Release-drift integration       | **PASS** — authenticated release activation derives Class A drift transactionally |
 
 ### Issues Found & Fixed
 

@@ -36,21 +36,30 @@ const categories = normalizeAnswerlatticePublicCategories({ categories: {
 assert(categories && !JSON.stringify(categories).includes('private'), 'category projection must strip category/article metadata outside its allowlist');
 assert(Object.getPrototypeOf(categories.categories) === null, 'category maps must not inherit an object prototype');
 
-const changelog = projectAnswerlatticePublicChangelogPage({ pageNumber: 1, nextPageId: null, createdBy: 'private-page-user', entries: [{
+const changelogScope = { tId: 1, sId: 101 };
+const changelog = projectAnswerlatticePublicChangelogPage({ pId: 'AL', ...changelogScope, pageNumber: 1, nextPageId: null, createdBy: 'private-page-user', entries: [{
   id: 'entry-1', title: 'Release', description: { type: 'doc', content: [] }, tags: ['fixed'],
   releasedOn: { seconds: 1_700_000_000, nanoseconds: 0 }, published: true, likes: 2, dislikes: 0,
   createdBy: 'private-entry-user', files: [{ name: 'image', url: 'https://example.com/image.png', preparedMedia: { private: true } }],
   kbSources: [{ categoryId: 'cat-1', articleId: 'article-1' }], youtubeLinks: [],
-}] }, 'page-1');
+}] }, 'page-1', changelogScope);
 assert(changelog && !JSON.stringify(changelog).includes('private'), 'changelog projection must strip page, entry and attachment internals');
 assert(changelog.entries[0].releasedOn === '2023-11-14T22:13:20.000Z', 'changelog timestamp must serialize deterministically');
 assert(normalizeAnswerlatticePublicChangelogPage({ ...changelog, createdBy: 'leak' }) === null, 'browser changelog page must reject unknown fields');
+assert(projectAnswerlatticePublicChangelogPage({ pId: 'AL', tId: 1, sId: 102, pageNumber: 1, entries: [] }, 'page-1', changelogScope) === null, 'cross-store changelog pages must fail projection');
+assert(projectAnswerlatticePublicChangelogPage({ pId: 'AL', ...changelogScope, pageNumber: 1, entries: [{
+  id: 'draft-1', title: 'Draft', description: { type: 'doc', content: [] }, tags: [], releasedOn: { seconds: 1_700_000_000, nanoseconds: 0 }, published: false,
+}] }, 'page-1', changelogScope)?.entries.length === 0, 'draft changelog entries must not enter public projection');
+assert(projectAnswerlatticePublicChangelogPage({ pId: 'AL', ...changelogScope, pageNumber: 1, entries: [{
+  id: 'unlinked-1', title: 'Unlinked', description: { type: 'doc', content: [] }, tags: [], releasedOn: { seconds: 1_700_000_000, nanoseconds: 0 }, published: true, version: '1.0.0',
+}] }, 'page-1', changelogScope)?.entries.length === 0, 'unlinked versioned changelog entries must not enter public projection');
 
 const cache = read('src/lib/answerlattice/publicContentCache.ts');
 const client = read('src/lib/answerlattice/publicContentClient.ts');
 const packageJson = JSON.parse(read('package.json'));
 assert(cache.includes('projectAnswerlatticePublicArticle(snapshot.data(), snapshot.id, scope)'), 'Admin article reads must use the exact public projection');
-assert(cache.includes('projectAnswerlatticePublicChangelogPage(doc.data(), doc.id)'), 'Admin changelog reads must use the exact public projection');
+assert(cache.includes('projectAnswerlatticePublicChangelogPage(doc.data(), doc.id, scope)'), 'Admin changelog reads must use the exact scoped public projection');
+assert(cache.includes('.limit(PUBLIC_CHANGELOG_PAGE_SCAN_LIMIT)'), 'Admin changelog reads must scan past draft-only physical pages');
 assert(cache.includes('normalizeAnswerlatticePublicCategories({ categories })'), 'Admin category reads must use the exact public projection');
 assert(!cache.includes('...snapshot.data()'), 'public-content cache must not spread raw Admin documents');
 assert(client.includes('normalizeAnswerlatticePublicArticle(data)'), 'browser article response must re-enter runtime validation');

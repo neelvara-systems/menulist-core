@@ -48,7 +48,7 @@ export default function AnswerlatticeSupportTruthExport() {
         try {
             const response = await fetch('/api/answerlattice/support-truth-export', {
                 ...EXPORT_REQUEST_POLICY,
-                method: 'GET',
+                method: 'POST',
             });
             if (!response.ok) {
                 const payload = await readJsonResponseWithLimit<unknown>(

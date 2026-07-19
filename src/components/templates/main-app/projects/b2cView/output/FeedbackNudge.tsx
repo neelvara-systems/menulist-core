@@ -17,6 +17,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { normalizeOBPReviewUrl } from '@lib/obp/publicLinks';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { MenuMoodConfig } from '../designSystem';
@@ -32,6 +34,8 @@ interface FeedbackNudgeProps {
     moodConfig: MenuMoodConfig;
     /** Scroll container ref for scroll depth tracking */
     scrollContainerRef?: React.RefObject<HTMLElement>;
+    /** Owner-enabled language currently selected by the customer */
+    activeLanguage?: string;
 }
 
 const SESSION_KEY_PREFIX = 'ml_feedback_nudge_';
@@ -63,11 +67,13 @@ function logFeedbackNudgeStorageFailure(
 }
 
 export default function FeedbackNudge({
+    activeLanguage,
     projectId,
     reviewUrl,
     moodConfig,
     scrollContainerRef,
 }: FeedbackNudgeProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
     const [visible, setVisible] = useState(false);
     const [dismissed, setDismissed] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -172,13 +178,16 @@ export default function FeedbackNudge({
                 color: moodConfig.headingColor,
                 fontFamily: moodConfig.headingFont,
             }}>
-                How was your experience?
+                {t('menu.howWasExperience')}
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
                 {/* Positive → Google review (if URL set) or feedback form */}
                 <a
-                    href={safeReviewUrl || `/feedback/${projectId}?source=menu_footer`}
+                    href={safeReviewUrl || appendPublicLanguageParam(
+                        `/feedback/${projectId}?source=menu_footer`,
+                        activeLanguage,
+                    )}
                     target={safeReviewUrl ? '_blank' : '_self'}
                     rel={safeReviewUrl ? 'noopener noreferrer' : undefined}
                     style={{
@@ -198,12 +207,15 @@ export default function FeedbackNudge({
                     className="hover:opacity-90"
                 >
                     <span style={{ fontSize: 18 }}>🙂</span>
-                    Loved it
+                    {t('menu.lovedIt')}
                 </a>
 
                 {/* Negative/Neutral → Internal feedback */}
                 <a
-                    href={`/feedback/${projectId}?source=menu_footer`}
+                    href={appendPublicLanguageParam(
+                        `/feedback/${projectId}?source=menu_footer`,
+                        activeLanguage,
+                    )}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -222,7 +234,7 @@ export default function FeedbackNudge({
                     className="hover:opacity-80"
                 >
                     <span style={{ fontSize: 18 }}>💬</span>
-                    Share feedback
+                    {t('menu.shareFeedback')}
                 </a>
             </div>
 
@@ -239,7 +251,7 @@ export default function FeedbackNudge({
                     padding: '4px 8px',
                 }}
             >
-                Not now
+                {t('menu.notNow')}
             </button>
         </div>
     );

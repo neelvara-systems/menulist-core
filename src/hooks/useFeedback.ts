@@ -37,9 +37,25 @@ interface UseFeedbackReturn {
     isFeedbackModalVisible: boolean;
     isSubmitting: boolean;
     handleFeedback: (type: FeedbackType) => Promise<void>;
-    handleFeedbackSubmit: (comment: string) => Promise<void>;
+    handleFeedbackSubmit: (comment: string) => Promise<boolean>;
     setIsFeedbackModalVisible: (visible: boolean) => void;
 }
+
+const normalizeFeedbackCount = (value: unknown): number => (
+    Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : 0
+);
+
+const getAuthoritativeFeedbackCounts = (value: unknown): { likes: number; dislikes: number } | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const result = value as Record<string, unknown>;
+    if (!Number.isSafeInteger(result.likes)
+        || Number(result.likes) < 0
+        || !Number.isSafeInteger(result.dislikes)
+        || Number(result.dislikes) < 0) {
+        return null;
+    }
+    return { likes: Number(result.likes), dislikes: Number(result.dislikes) };
+};
 
 /**
  * Generic feedback hook for any content type
@@ -73,8 +89,8 @@ export const useFeedback = (
         removeStoredFeedback,
     } = handlers;
 
-    const [likes, setLikes] = useState(initialLikes);
-    const [dislikes, setDislikes] = useState(initialDislikes);
+    const [likes, setLikes] = useState(normalizeFeedbackCount(initialLikes));
+    const [dislikes, setDislikes] = useState(normalizeFeedbackCount(initialDislikes));
     const [feedbackGiven, setFeedbackGiven] = useState<FeedbackType | null>(null);
     const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,8 +109,8 @@ export const useFeedback = (
     };
 
     useEffect(() => {
-        setLikes(initialLikes);
-        setDislikes(initialDislikes);
+        setLikes(normalizeFeedbackCount(initialLikes));
+        setDislikes(normalizeFeedbackCount(initialDislikes));
         setFeedbackGiven(null);
     }, [contentId, initialDislikes, initialLikes, storageScope?.tId, storageScope?.sId]);
 
@@ -104,6 +120,13 @@ export const useFeedback = (
         const feedbackStatus = getStoredFeedback(storageScope, user.id, contentId);
         setFeedbackGiven(feedbackStatus);
     }, [contentId, user?.id, storageScope?.tId, storageScope?.sId, getStoredFeedback]);
+
+    const applyAuthoritativeFeedbackCounts = (value: unknown) => {
+        const counts = getAuthoritativeFeedbackCounts(value);
+        if (!counts) return;
+        setLikes(counts.likes);
+        setDislikes(counts.dislikes);
+    };
 
     const handleFeedback = async (type: FeedbackType) => {
         // Check authentication
@@ -124,18 +147,21 @@ export const useFeedback = (
         // Allow undo if clicking the same button
         if (feedbackGiven === type) {
             if (!beginMutation()) return;
+            const previousLikes = likes;
+            const previousDislikes = dislikes;
             // Undo feedback
             if (type === 'like') {
-                setLikes(prev => prev - 1);
+                setLikes(Math.max(0, previousLikes - 1));
             } else {
-                setDislikes(prev => prev - 1);
+                setDislikes(Math.max(0, previousDislikes - 1));
             }
             setFeedbackGiven(null);
             removeStoredFeedback(storageScope, user.id, contentId);
 
             try {
                 // Decrement the count in database
-                await updateFeedback(contentId, type, false, pageId, '', 'removed');
+                const result = await updateFeedback(contentId, type, false, pageId, '', 'removed');
+                applyAuthoritativeFeedbackCounts(result);
                 message.success('Feedback removed.');
             } catch (error) {
                 logHookFailure('answerlattice_feedback_remove_failed', error, {
@@ -146,11 +172,8 @@ export const useFeedback = (
                 });
                 message.error('Failed to remove feedback. Please try again.');
                 // Rollback UI
-                if (type === 'like') {
-                    setLikes(prev => prev + 1);
-                } else {
-                    setDislikes(prev => prev + 1);
-                }
+                setLikes(previousLikes);
+                setDislikes(previousDislikes);
                 setFeedbackGiven(type);
                 storeFeedback(storageScope, user.id, contentId, type);
             } finally {
@@ -170,13 +193,15 @@ export const useFeedback = (
             setIsFeedbackModalVisible(true);
         } else {
             if (!beginMutation()) return;
+            const previousLikes = likes;
             // Handle like
-            setLikes(prev => prev + 1);
+            setLikes(previousLikes + 1);
             setFeedbackGiven(type);
             storeFeedback(storageScope, user.id, contentId, type);
 
             try {
-                await updateFeedback(contentId, type, true, pageId, '', 'added');
+                const result = await updateFeedback(contentId, type, true, pageId, '', 'added');
+                applyAuthoritativeFeedbackCounts(result);
             } catch (error) {
                 logHookFailure('answerlattice_feedback_submit_failed', error, {
                     contentType,
@@ -185,7 +210,7 @@ export const useFeedback = (
                     ...getBoundedHookStringContext('pageId', pageId),
                 });
                 message.error('Failed to submit feedback. Please try again.');
-                setLikes(prev => prev - 1);
+                setLikes(previousLikes);
                 setFeedbackGiven(null);
                 removeStoredFeedback(storageScope, user.id, contentId);
             } finally {
@@ -195,21 +220,23 @@ export const useFeedback = (
     };
 
     const handleFeedbackSubmit = async (comment: string) => {
-        setIsFeedbackModalVisible(false);
-
         if (!user?.id || !storageScope) {
             message.warning('Please log in to provide feedback.');
-            return;
+            return false;
         }
-        if (!beginMutation()) return;
+        if (!beginMutation()) return false;
 
-        setDislikes(prev => prev + 1);
+        const previousDislikes = dislikes;
+        setDislikes(previousDislikes + 1);
         setFeedbackGiven('dislike');
         storeFeedback(storageScope, user.id, contentId, 'dislike');
 
         try {
-            await updateFeedback(contentId, 'dislike', true, pageId, comment, 'added');
+            const result = await updateFeedback(contentId, 'dislike', true, pageId, comment, 'added');
+            applyAuthoritativeFeedbackCounts(result);
+            setIsFeedbackModalVisible(false);
             message.success('Thank you for your feedback!');
+            return true;
         } catch (error) {
             logHookFailure('answerlattice_feedback_comment_submit_failed', error, {
                 contentType,
@@ -219,9 +246,10 @@ export const useFeedback = (
                 ...getBoundedHookStringContext('pageId', pageId),
             });
             message.error('Failed to submit feedback. Please try again.');
-            setDislikes(prev => prev - 1);
+            setDislikes(previousDislikes);
             setFeedbackGiven(null);
             removeStoredFeedback(storageScope, user.id, contentId);
+            return false;
         } finally {
             endMutation();
         }

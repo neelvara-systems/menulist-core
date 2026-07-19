@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.115 (Website Truth and Owner Journey Audit)
+**Version:** 3.6.116 (How It Works Mobile Source Map Repair)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 18, 2026
+**Last Updated:** July 19, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,11 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.115** | **Website Truth and Owner Journey Audit** | **The owner journey now advertises only supported intake, explains the live seven-day starter URL accurately, uses accessible navigation/forms, and keeps public claims aligned with current pricing and runtime behavior.** | **ACTIVE** |
+| **3.6.116** | **How It Works Mobile Source Map Repair** | **The How It Works source-to-review-to-output diagram now keeps its connector story visible and correctly routed across phone, tablet, and desktop layouts.** | **ACTIVE** |
+
+Version 3.6.116 repairs the `/how-it-works` source-map connector network on narrow phones. The page now uses a dedicated phone SVG for its two-column source and output grids, routed through the empty center gutter so connector lines remain behind content and do not cross labels. The proven compact tablet network remains active from 521px through 768px, desktop keeps its existing geometry, and only one responsive connector network is visible at each supported layout. The static dotted path remains available when reduced motion disables the pulse overlay. This is component/CSS/docs work only; intake, extraction, review, publishing, customer surfaces, owner data, Firebase, Cloud Functions, pricing/payment, Vercel deployment, and production builds were not changed.
+
+Version 3.6.115 remains Website Truth and Owner Journey Audit and is preserved below as the previous website version note.
 
 Version 3.6.115 audits the website from first owner question through create-menu, pricing, contact, public proof, and owner-dashboard handoff. Homepage and How It Works no longer advertise direct typed-list or direct PDF upload through `/create-menu`; the supported public entry is a photo/image upload or an owned public menu/service-list/image/PDF link. The starter link and QR can be published and tried during the seven-day setup; a paid plan must be active before the deadline to keep the same URL live afterward. Pricing comparison entitlement values are preserved while unsupported accuracy, direct social-posting, search-appearance, virtual-try-on, and hype claims are removed. About and Contact remain discoverable from the footer, stale anchors and three public placeholder-proof blocks are removed, `/ml/create-menu` retains the alias through sign-in and preview, and private owner routes now use honest metadata with `noindex, nofollow, nocache`.
 
@@ -942,6 +946,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.116 | July 19, 2026 | Repaired the `/how-it-works` mobile source map with dedicated phone and tablet connector geometry so the source-to-review-to-output story remains visible without crossing card content or changing desktop behavior. |
 | 3.6.115 | July 18, 2026 | Audited the owner journey end to end; aligned supported intake and seven-day pricing truth, removed public placeholder/editorial copy, localized pricing comparison details, fixed alias/navigation/contact/accessibility gaps, and clarified truth-first doctrine without changing product or payment runtime. |
 | 3.6.114 | July 16, 2026 | Made canonical/`/ml` website links and resource-language switching alias-safe, corrected legal/retention/payment/output-rights claims, and aligned cancelled/paused paid-cycle plan mirrors with owner-visible access through a bounded hourly expiry task. |
 | 3.6.113 | July 13, 2026 | Reworked `/create-menu` into a desktop context/action split with an action-first single-column mobile order, removing repeated process copy from the sign-in card without changing auth or intake runtime. |

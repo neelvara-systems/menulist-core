@@ -128,7 +128,7 @@ function RunningTickets() {
             <Flex vertical gap="small">
                 <Flex justify="space-between" align="center">
                     <Typography.Title level={4} style={titleStyle}>{t('yourTickets')}</Typography.Title>
-                    <Tooltip title="View all your support tickets and submit new requests">
+                    <Tooltip title={t('submitTicketDesc')}>
                         <Button
                             type='text'
                             size='small'
@@ -139,7 +139,6 @@ function RunningTickets() {
                         </Button>
                     </Tooltip>
                 </Flex>
-                <Typography.Text type='secondary'>Here&apos;s a quick summary of your ongoing conversations with our support team.</Typography.Text>
                 {tickets?.length > 0 ?
                     <>
                         <Row gutter={[16, 16]}>

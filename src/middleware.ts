@@ -641,7 +641,8 @@ export async function middleware(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = getAnswerlatticeHostedHelpRewritePath(pathname);
         const response = rewriteHostedHelpResponse(request, url, { domain: domainInfo.hostname });
-        response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+        // Registry/content reads are cached internally. The HTML response stays
+        // request-specific because admission includes a per-IP rate limit.
         return applySecurityHeaders(request, response);
     }
 

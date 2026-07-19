@@ -144,6 +144,12 @@ const formatList = (values: readonly string[], fallback: readonly string[] = [])
 
 const normalizeLines = (value: string) => value.trim().replace(/\n{3,}/g, '\n\n');
 
+const escapeHtmlAttribute = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
 export function getAnswerlatticeWidgetKeyForPacket(input: AnswerlatticeAgentPacketInput = {}) {
     if (input.includeRawWidgetKey && input.widgetKey?.trim()) return input.widgetKey.trim();
     if (input.widgetKeyPrefix?.trim() || input.widgetKey?.trim()) return ANSWERLATTICE_FULL_WIDGET_KEY_PLACEHOLDER;
@@ -170,12 +176,12 @@ export function buildAnswerlatticeWidgetEmbedSnippet(
 ) {
     const lines = [
         '<script',
-        `  src="${ANSWERLATTICE_WIDGET_SCRIPT_URL}"`,
-        `  data-answerlattice-key="${widgetKey}"`,
+        `  src="${escapeHtmlAttribute(ANSWERLATTICE_WIDGET_SCRIPT_URL)}"`,
+        `  data-answerlattice-key="${escapeHtmlAttribute(widgetKey)}"`,
     ];
     const blockedRoutes = options.blockedRoutes?.filter(Boolean) || [];
     if (blockedRoutes.length > 0) {
-        lines.push(`  data-blocked-routes="${blockedRoutes.join(',')}"`);
+        lines.push(`  data-blocked-routes="${escapeHtmlAttribute(blockedRoutes.join(','))}"`);
     }
     lines.push('  async', '></script>');
     return lines.join('\n');

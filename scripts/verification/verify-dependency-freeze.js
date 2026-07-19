@@ -3,6 +3,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const EXACT_NPM_ALIAS = /^npm:(@[^/]+\/[^@]+|[^@]+)@(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$/;
 
 const PACKAGE_PAIRS = [
   {
@@ -72,6 +73,16 @@ function getDeclaredVersion(packageJson, name) {
   return packageJson.dependencies?.[name] || packageJson.devDependencies?.[name] || null;
 }
 
+function parseExactDependency(name, declaredVersion) {
+  if (EXACT_VERSION.test(declaredVersion)) {
+    return { packageName: name, version: declaredVersion };
+  }
+  const aliasMatch = declaredVersion.match(EXACT_NPM_ALIAS);
+  return aliasMatch
+    ? { packageName: aliasMatch[1], version: aliasMatch[2] }
+    : null;
+}
+
 function verifyPackagePair({ label, dir, expectedCoreVersions }) {
   const packageJson = readJson(packageRelPath(dir, 'package.json'));
   const lockJson = readJson(packageRelPath(dir, 'package-lock.json'));
@@ -83,8 +94,9 @@ function verifyPackagePair({ label, dir, expectedCoreVersions }) {
     const lockSection = rootLockPackage[sectionName] || {};
 
     for (const [name, declaredVersion] of Object.entries(packageSection)) {
+      const exactDependency = parseExactDependency(name, declaredVersion);
       assert(
-        EXACT_VERSION.test(declaredVersion),
+        exactDependency,
         `${label} ${sectionName}.${name} must be pinned to an exact resolved version, found ${declaredVersion}`,
       );
       assert(
@@ -92,11 +104,18 @@ function verifyPackagePair({ label, dir, expectedCoreVersions }) {
         `${label} package-lock root ${sectionName}.${name} must match package.json ${declaredVersion}, found ${lockSection[name] || 'missing'}`,
       );
 
-      const resolvedVersion = lockJson.packages?.[`node_modules/${name}`]?.version;
+      const resolvedPackage = lockJson.packages?.[`node_modules/${name}`];
+      const resolvedVersion = resolvedPackage?.version;
       assert(
-        resolvedVersion === declaredVersion,
-        `${label} lockfile resolved version for ${name} must match package.json ${declaredVersion}, found ${resolvedVersion || 'missing'}`,
+        resolvedVersion === exactDependency.version,
+        `${label} lockfile resolved version for ${name} must match package.json ${exactDependency.version}, found ${resolvedVersion || 'missing'}`,
       );
+      if (exactDependency.packageName !== name) {
+        assert(
+          resolvedPackage?.name === exactDependency.packageName,
+          `${label} lockfile alias ${name} must resolve package ${exactDependency.packageName}, found ${resolvedPackage?.name || 'missing'}`,
+        );
+      }
     }
   }
 

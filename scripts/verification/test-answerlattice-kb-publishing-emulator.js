@@ -110,6 +110,8 @@ const finalCategories = (articleId, reEmbedding = false) => ({
 async function run() {
     const jobs = firestoreAdmin.collection(DB_COLLECTIONS.KB_GENERATION_JOBS);
     const articles = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
+    const categories = firestoreAdmin.collection(DB_COLLECTIONS.KB_CATEGORIES);
+    const faqs = firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS);
 
     const jobId = 'publish-job-1';
     const articleId = 'publish-article-1';
@@ -137,6 +139,13 @@ async function run() {
     let job = (await jobs.doc(jobId).get()).data();
     assert.equal(job.status, 'publishing');
     assert.deepEqual(job.embeddingPendingArticleIds, []);
+    assert.equal((await categories.doc(`categories_${SCOPE.tId}_${SCOPE.sId}`).get()).exists, false);
+    const preFinalizeArticle = (await articles.doc(articleId).get()).data();
+    assert.equal(preFinalizeArticle.status, 'needs_review');
+    assert.equal(preFinalizeArticle.active, false);
+    const preFinalizeFaq = (await faqs.doc(`${articleId}_faq_1`).get()).data();
+    assert.equal(preFinalizeFaq.status, 'needs_review');
+    assert.equal(preFinalizeFaq.active, false);
 
     const dispatchResult = await dispatchPublishingEmbeddingTasks(jobId, job);
     assert.equal(dispatchResult.skipped, false);
@@ -159,7 +168,7 @@ async function run() {
     assert.equal(sourceVersions.kb, 1);
     assert.equal(sourceVersions.docsNav, 1);
     assert.equal(bundleManifest.status, 'stale');
-    const navigation = (await firestoreAdmin.collection(DB_COLLECTIONS.KB_CATEGORIES)
+    const navigation = (await categories
         .doc(`categories_${SCOPE.tId}_${SCOPE.sId}`)
         .get()).data().categories;
     assert.equal(navigation.billing.url, '/billing');
@@ -169,14 +178,14 @@ async function run() {
     assert.equal(article.status, 'published');
     assert.equal(article.active, true);
     assert.equal(article.generatedFaqs, undefined);
-    const faqSnap = await firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+    const faqSnap = await faqs
         .where('articleId', '==', articleId)
         .limit(2)
         .get();
     assert.equal(faqSnap.size, 1);
     assert.equal(faqSnap.docs[0].data().pId, 'AL');
-    assert.equal((await firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(staleFaqIds[1]).get()).exists, false);
-    assert.equal((await firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(staleFaqIds[2]).get()).exists, false);
+    assert.equal((await faqs.doc(staleFaqIds[1]).get()).exists, false);
+    assert.equal((await faqs.doc(staleFaqIds[2]).get()).exists, false);
 
     const duplicatePublish = await publishApprovedJobLogic(jobId, finalCategories(articleId));
     assert.equal(duplicatePublish.alreadyStarted, true);
@@ -184,9 +193,11 @@ async function run() {
     const workerJobId = 'publish-job-2';
     const workerArticleId = 'publish-article-2';
     const runId = 'publish_run_2';
+    const workerFaqId = `${workerArticleId}_faq_1`;
     await Promise.all([
         jobs.doc(workerJobId).set(jobData(workerJobId, workerArticleId, {
             status: 'publishing',
+            categories: finalCategories(workerArticleId),
             embeddingPendingArticleIds: [workerArticleId],
             embeddingCompletedArticleIds: [],
             embeddingFailedArticleIds: [],
@@ -195,7 +206,19 @@ async function run() {
             articlesToEmbedCount: 1,
             articlesEmbeddedCount: 0,
         })),
-        articles.doc(workerArticleId).set(articleData(workerArticleId, workerJobId)),
+        articles.doc(workerArticleId).set(articleData(workerArticleId, workerJobId, {
+            faqIds: [workerFaqId],
+        })),
+        faqs.doc(workerFaqId).set({
+            id: workerFaqId,
+            pId: 'AL',
+            ...SCOPE,
+            articleId: workerArticleId,
+            active: false,
+            status: 'needs_review',
+            question: 'Why did my invoice fail?',
+            answer: 'Update the payment method and retry.',
+        }),
     ]);
 
     const missingRunResult = await embedArticleWorkerLogic(
@@ -234,10 +257,16 @@ async function run() {
     job = (await jobs.doc(workerJobId).get()).data();
     assert.deepEqual(job.embeddingCompletedArticleIds, [workerArticleId]);
     assert.equal(job.articlesEmbeddedCount, 1);
-    assert.equal((await articles.doc(workerArticleId).get()).data().status, 'published');
+    assert.equal((await articles.doc(workerArticleId).get()).data().status, 'needs_review');
+    assert.equal((await articles.doc(workerArticleId).get()).data().active, false);
+    assert.equal((await faqs.doc(workerFaqId).get()).data().status, 'needs_review');
 
     assert.equal((await finalizePublishingJob(workerJobId)).published, true);
     assert.equal((await jobs.doc(workerJobId).get()).data().status, 'published');
+    assert.equal((await articles.doc(workerArticleId).get()).data().status, 'published');
+    assert.equal((await articles.doc(workerArticleId).get()).data().active, true);
+    assert.equal((await faqs.doc(workerFaqId).get()).data().status, 'published');
+    assert.equal((await faqs.doc(workerFaqId).get()).data().active, true);
     assert.equal((await firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
         .doc(`kb_${SCOPE.tId}_${SCOPE.sId}`)
         .get()).data().version, 2);
@@ -293,6 +322,76 @@ async function run() {
         [staleTitleArticleId],
         'Changing an article title must invalidate its existing embedding.',
     );
+    assert.equal((await articles.doc(staleTitleArticleId).get()).data().active, false);
+    assert.equal((await faqs.doc(`${staleTitleArticleId}_faq_1`).get()).data().status, 'needs_review');
+
+    const replacementJobId = 'publish-job-replacement';
+    const replacementArticleId = 'publish-article-replacement';
+    const replacedArticleId = 'published-article-being-replaced';
+    const replacedFaqId = `${replacedArticleId}_faq_1`;
+    await Promise.all([
+        jobs.doc(replacementJobId).set(jobData(replacementJobId, replacementArticleId, {
+            articlesToReview: [{
+                id: replacementArticleId,
+                title: 'Fix a failed invoice',
+                status: 'replace',
+                similarArticles: [{
+                    id: replacedArticleId,
+                    title: 'Old failed invoice guidance',
+                    categoryTitle: 'Billing',
+                    sectionTitle: '',
+                    status: 'published',
+                    active: true,
+                }],
+            }],
+        })),
+        articles.doc(replacementArticleId).set(articleData(replacementArticleId, replacementJobId)),
+        articles.doc(replacedArticleId).set({
+            ...articleData(replacedArticleId, 'old-job', {
+                active: true,
+                status: 'published',
+                faqIds: [replacedFaqId],
+            }),
+            jobId: 'old-job',
+        }),
+        faqs.doc(replacedFaqId).set({
+            id: replacedFaqId,
+            pId: 'AL',
+            ...SCOPE,
+            articleId: replacedArticleId,
+            active: true,
+            status: 'published',
+            question: 'Old question',
+            answer: 'Old answer',
+        }),
+        categories.doc(`categories_${SCOPE.tId}_${SCOPE.sId}`).set({
+            pId: 'AL',
+            ...SCOPE,
+            categories: {
+                old: {
+                    id: 'old',
+                    title: 'Old billing help',
+                    active: true,
+                    articles: [{ id: replacedArticleId, title: 'Old failed invoice guidance', active: true }],
+                },
+            },
+        }),
+    ]);
+    await publishApprovedJobLogic(replacementJobId, finalCategories(replacementArticleId));
+    assert.equal((await articles.doc(replacedArticleId).get()).exists, true, 'Replacement source stays live until atomic finalization.');
+    assert.equal(
+        (await categories.doc(`categories_${SCOPE.tId}_${SCOPE.sId}`).get()).data().categories.old.articles[0].id,
+        replacedArticleId,
+        'Existing navigation stays live until atomic finalization.',
+    );
+    const replacementJob = (await jobs.doc(replacementJobId).get()).data();
+    await dispatchPublishingEmbeddingTasks(replacementJobId, replacementJob);
+    assert.equal((await finalizePublishingJob(replacementJobId)).published, true);
+    assert.equal((await articles.doc(replacedArticleId).get()).exists, false);
+    assert.equal((await faqs.doc(replacedFaqId).get()).exists, false);
+    const replacementNavigation = (await categories.doc(`categories_${SCOPE.tId}_${SCOPE.sId}`).get()).data().categories;
+    assert.equal(replacementNavigation.old.articles.length, 0);
+    assert.equal(replacementNavigation.billing.articles[0].id, replacementArticleId);
 
     const invalidContentJobId = 'publish-job-invalid-content';
     const invalidContentArticleId = 'publish-article-invalid-content';

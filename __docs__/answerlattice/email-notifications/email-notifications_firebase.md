@@ -1,54 +1,32 @@
-# Answerlattice Email Notifications — Firebase Cost
+# Answerlattice Email Notifications Firebase Contract
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-06-28
-> **Audience:** Developers / Ops
+> **Last verified:** July 19, 2026
 
----
+## Direct ticket notification storage
 
-## New Collection
+| Collection | Purpose | Client access |
+|---|---|---|
+| `answerlattice_notificationLogs` | Deterministic delivery claim, outcome, rate-limit evidence, and retention metadata for direct Answerlattice ticket events | No client writes; platform-admin operational read |
 
-| Collection | Purpose | Scoping |
-|------------|---------|---------|
-| `answerlattice_notificationLogs` | Append-only log of Answerlattice notification send attempts | Answerlattice Firebase project, platform-admin read only |
-| `notificationLogs` | Legacy/non-Answerlattice notification attempts | Default Firebase project |
+The deterministic document ID is a bounded event prefix plus a SHA-256 digest of `eventType:referenceId`. Raw values are still stored in the Admin-owned document for diagnostics and rate limiting.
 
-## Reads/Writes Per Notification
+## Direct event cost
 
-Malformed or oversized generic send-route requests are rejected by the 16KB bounded JSON body before schema validation, idempotency reads, recipient rate-limit reads, SMTP work, or notification-log writes.
+| Stage | Reads | Writes |
+|---|---:|---:|
+| Current access-control resolution | Depends on access helper/session path | 0 |
+| Exact `supportTickets/{ticketId}` projection read | 1 | 0 |
+| Transactional delivery claim | 1 | 1 |
+| Recipient-day `sent` query | Up to 21 matching documents | 0 |
+| Claim-bound finalization | 1 | 1 |
 
-June 29 sender limiter-key hardening is Firebase-cost neutral. `/api/notifications/send` keeps the 120/hour authenticated-user throttle and existing request ordering, but hashes the sender key segment before storage in Upstash. This resets existing sender buckets once and changes no Firestore reads/writes/deletes, SMTP calls, notification log schema, Answerlattice collection targets, rules, indexes, Cloud Function logic, or owner/customer UI.
+Duplicate or in-flight requests stop after the claim transaction. A rate-limited request still finalizes its owned claim as `skipped`.
 
-Unexpected send-route diagnostics add no Firestore reads/writes. They log stable `notification_send_route_failed` metadata only, with bounded user/payload context and source error name/code/status.
+The ticket notification authority hardening intentionally adds the exact scoped ticket read before SMTP. That read prevents the browser from acting as recipient or content authority.
 
-| Operation | Collection | Count | Purpose |
-|-----------|-----------|-------|---------|
-| TRANSACTION READ | `answerlattice_notificationLogs` | 1 | Claim deterministic event/reference; sent or unexpired in-flight rows fail closed. |
-| READ | `answerlattice_notificationLogs` | 1 | Rate limit check (20/day per recipient) |
-| TRANSACTION WRITE | `answerlattice_notificationLogs` | 1 claim + 1 finalization | Lease the external effect before SMTP, then finalize only the matching claim as `sent`, `failed`, or `skipped`. |
+## Required index
 
-The ticket notification authority hardening adds one exact scoped `supportTickets/{ticketId}` Admin read after current `canManageSupport` admission. The browser no longer supplies recipient/template/reference/product/dedupe state. Claim rows may temporarily use `status: sending`, `claimId`, `claimExpiresAt`, and `modifiedAt`; they remain private Admin-written operational state and require no client rule or query-index change. Concurrent exact retries serialize to one active claim. A crashed pre-finalization sender is recoverable after the 15-minute lease; deterministic SMTP Message-ID reduces duplicate-provider ambiguity if delivery succeeds immediately before a finalization outage.
-
-**Retired pre-hardening estimate:** the former check/query/final-write path was documented as 2 reads + 1 write and no longer describes runtime truth.
-**Current ticket-send total:** current Answerlattice access reads plus one exact ticket read; one claim transaction read/write; one recipient-day rate query; and one claim-bound finalization transaction read/write. Duplicate/in-flight attempts stop after the claim transaction read. Notification tests use unique references and follow the same claim/rate/finalize contract. Cost is higher than the retired check-then-write path but prevents an authenticated email relay and concurrent duplicate SMTP effects.
-
-## Monthly Cost Projections
-
-Assumption for INR estimates: ₹85/USD placeholder.
-
-| Notifications/Month | Reads | Writes | Monthly Cost |
-|---------------------|-------|--------|-------------|
-| 100 | 100-200 | 100 | ~₹1 |
-| 1,000 | 1,000-2,000 | 1,000 | ~₹11 |
-| 10,000 | 10,000-20,000 | 10,000 | ~₹107 |
-
-## SMTP Cost
-
-**$0.00** — Uses existing SMTP infrastructure (nodemailer + SMTP_HOST env vars). No paid email API (SendGrid, Resend, etc.) needed.
-
-## Indexes Required
-
-Add to `firestore-answerlattice.indexes.json`:
+`answerlattice_notificationLogs` requires the collection index used by the recipient-day query:
 
 ```json
 {
@@ -62,16 +40,21 @@ Add to `firestore-answerlattice.indexes.json`:
 }
 ```
 
-Idempotency uses a deterministic document ID from `eventType + referenceId`, so it no longer needs the older composite query on `eventType/referenceId/status/createdAt`.
+## Retention and deletion
 
----
+Direct Answerlattice notification logs receive the central Answerlattice retention fields through `getAnswerlatticeRetentionFields('notificationLogs', ...)`. Cleanup follows the shared Answerlattice retention scheduler and must not delete active `sending` evidence before its lease and retention policy permit it.
 
-## Version History
+## Activation test storage
 
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-06-29 | 1.1.3 | Hashed `/api/notifications/send` authenticated sender rate-limit key segment; no cost or behavior change. |
-| 2026-06-28 | 1.1.2 | Bounded `/api/notifications/send` catch-path diagnostics with `notification_send_route_failed`; no cost or behavior change. |
-| 2026-06-27 | 1.1.1 | Added request-body cost note for 16KB notification send admission before reads/writes. |
-| 2026-05-22 | 1.1.0 | Answerlattice notification logs moved to `answerlattice_notificationLogs`, idempotency changed to deterministic doc reads, test/status paths skip dedupe reads, and INR cost estimates added. |
-| 2026-03-07 | 1.0.0 | Initial cost analysis |
+The current `ANSWERLATTICE_NOTIFICATION_TEST` event is registered in the owner-notification pipeline when the migration flags are enabled. Its event, delivery, and rate-limit documents therefore follow the owner-notification collections and retention contracts rather than the direct ticket `answerlattice_notificationLogs` path.
+
+## Security
+
+- The generic browser send route performs scoped authorization before the Admin ticket read.
+- Clients cannot create or mutate notification log rows.
+- Firestore rules do not authorize SMTP effects; only server code can claim and send.
+- Logs must not store SMTP credentials, raw provider exceptions, or arbitrary browser-supplied HTML.
+
+## Cost boundary
+
+No extra Firestore read is justified merely to report email status in the ticket UI. The ticket remains authoritative; notification logs are operational evidence. Exact monthly cost depends on access-control reads, event volume, duplicate rate, and retained recipient-day rows, so fixed currency projections are deliberately omitted.

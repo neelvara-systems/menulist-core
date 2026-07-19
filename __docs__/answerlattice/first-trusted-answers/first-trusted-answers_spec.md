@@ -1,7 +1,7 @@
 # First Trusted Answers Spec
 
 **Status:** Implemented workflow contract
-**Updated:** 2026-07-16
+**Updated:** 2026-07-19
 
 ## Goal
 
@@ -19,7 +19,7 @@ An early-stage SaaS founder or small product team that has product material but 
 4. Review source references, missing evidence, applicability, risk, and suggested answer text in Knowledge Intake. Generated text is never authoritative.
 5. Approve and publish accepted review items into the existing Governance proposal queue; canonical-answer authority still requires Governance approval.
 6. Adjust each test question, context, expected source, risk, and evidence requirement.
-7. Run canonical-only checks at no provider cost.
+7. Select **Run First 10 checks**. The launch action sends the exact active ten-question set to a canonical-only run at no provider cost.
 8. Use failures to fix the required canonical answer, FAQ, article, context, or safe escalation rule in its existing governed screen.
 9. Re-run until the saved questions have acceptable proof status, then verify the widget through the existing Install Center.
 10. Review explicit `Solved` and `Still need help` outcomes in Trust Metrics.
@@ -52,6 +52,11 @@ Every starter item is editable and starts as an expected canonical-answer route.
 - Each candidate becomes a draft `canonical_proposal` review item in the existing Intake review collection and an editable Answer Test case in the existing summary.
 - The same job and generation-input hash return the stored pack without another model request, credit charge, or draft write.
 - Product-pack test IDs replace the previous product pack rather than growing the Answer Tests summary on every refresh.
+- Product launch identity is fail-closed: only the ten registered `product_launch_01` through `product_launch_10` slots count. Arbitrary prefixed IDs do not.
+- One product launch set must share one valid generation-input hash and ten unique draft review-item references. Generic starter cases cannot be combined with product cases to reach ten.
+- Inactive or malformed launch cases do not count toward runnable First 10 proof.
+- Paid pack generation is blocked by the shared SAFE_MODE control before provider or credit work. The server also validates the request ID independently of the route schema.
+- Cached reuse requires all exact launch positions `1` through `10` and their deterministic review-item identities; a malformed cache fails closed instead of seeding partial or ambiguous proof.
 - One newly generated pack uses one Answerlattice support credit. Cached retrieval and canonical-only test runs use no provider credit.
 - A draft cannot be accepted as a canonical proposal without a related entity and non-empty answer evidence.
 
@@ -65,6 +70,8 @@ The public widget asks whether an answer solved the issue. The stored outcome is
 Legacy helpful/not-helpful feedback remains readable. Only explicit outcome responses count as confirmed resolution. A later query in the same widget session after a confirmed resolution is counted as a recontact signal, not silently treated as durable resolution.
 
 ## Proof Contract
+
+Current launch proof requires one exact active First 10 set, a run covering those exact IDs, the current suite revision, valid case timestamps, and a governed-source snapshot matching current truth. Future-dated runs, partial runs, duplicate results, changed cases, and changed source versions remain stale or unavailable. Criticality is evaluated conservatively from retained and current case evidence.
 
 Public proof entries are one of:
 

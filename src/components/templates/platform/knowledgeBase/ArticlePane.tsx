@@ -17,9 +17,10 @@ interface ArticlePaneProps {
     onDeleteArticle: (id: string) => void;
     onEditArticle: (article: KnowledgeBaseArticleType) => void;
     isArticleLoading: boolean;
+    onNavigationChange?: (categories: Record<string, KnowledgeBaseCategory>) => void;
 }
 
-function ArticlePane({ selectedContainer, articles, selectedArticle, onArticleSelect, onAddArticle, onDeleteArticle, onEditArticle, isArticleLoading }: ArticlePaneProps) {
+function ArticlePane({ selectedContainer, articles, selectedArticle, onArticleSelect, onAddArticle, onDeleteArticle, onEditArticle, isArticleLoading, onNavigationChange }: ArticlePaneProps) {
     const { token } = theme.useToken();
     const [searchValue, setSearchValue] = useState('');
     const [bulkMode, setBulkMode] = useState(false);
@@ -41,6 +42,7 @@ function ArticlePane({ selectedContainer, articles, selectedArticle, onArticleSe
                 status,
                 'platform_kb_bulk_article_status_update_rejected',
             );
+            onNavigationChange?.(result.navigationCategories);
             message.success(`${selectedIds.length} article(s) ${status === ARTICLE_STATUS.PUBLISHED ? 'published' : 'archived'}`);
             setSelectedIds([]);
             setBulkMode(false);

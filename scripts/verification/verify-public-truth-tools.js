@@ -310,6 +310,8 @@ function assertPublicToolInventoryBoundary() {
   ].sort();
   const actualSlugs = getActualToolRoutes();
   const expectedToolModules = [
+    'externalLocationIdentity.ts',
+    'mapsPlaceCheckClient.ts',
     'ownerPublicTruthReadiness.ts',
     'phoneValidation.ts',
     'publicTruthMonitorDiagnostics.ts',
@@ -363,11 +365,23 @@ function assertPublicToolInventoryBoundary() {
   const publicUrlValidation = read('src/lib/public-truth-tools/publicUrlValidation.ts');
   const phoneValidation = read('src/lib/public-truth-tools/phoneValidation.ts');
   const mapsPlaceCheck = read('functions/src/logic/mapsPlaceCheck.ts');
+  const mapsPlaceIdentityBoundary = read('functions/src/logic/mapsPlaceIdentityBoundary.ts');
   const mapsPlaceCheckSpec = read('__docs__/menulist-tools/maps-place-check/maps-place-check_spec.md');
   const mapsPlaceCheckImpl = read('__docs__/menulist-tools/maps-place-check/maps-place-check_impl.md');
   const mapsPlaceCheckFirebase = read('__docs__/menulist-tools/maps-place-check/maps-place-check_firebase.md');
   const mapsPlaceCheckTests = read('__docs__/menulist-tools/maps-place-check/maps-place-check_test-cases.md');
   const mapsPlaceCheckValidation = read('__docs__/menulist-tools/maps-place-check/maps-place-check_validation.md');
+  const externalLocationIdentity = read('src/lib/public-truth-tools/externalLocationIdentity.ts');
+  const mapsPlaceCheckClient = read('src/lib/public-truth-tools/mapsPlaceCheckClient.ts');
+  const storeTypes = read('src/types/platform/store.ts');
+  const storesDal = read('src/database/stores/index.tsx');
+  const storeNestedProjection = read('src/lib/store/storeNestedUpdateProjection.ts');
+  const mobileOfficialPage = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
+  const desktopBusinessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const embeddedOfficialPage = read('src/components/templates/main-app/projects/b2cView/index.tsx');
+  const brandPropagationBoundary = read('src/lib/multiOutlet/brandPropagationBoundary.ts');
+  const platformPullBusinessRoute = read('src/app/api/public/v1/business/route.ts');
+  const publicClientStoreProjection = read('src/lib/publicTruth/clientStoreProjection.ts');
   const masterInventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
   const masterReport = read('FEATURE_SWEEP_MASTER_REPORT.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -417,6 +431,12 @@ function assertPublicToolInventoryBoundary() {
   assertIncludes(mapsPlaceCheck, 'parsedResponse: Boolean(parsed)', 'Maps Place Check parse diagnostics');
   assertNotIncludes(mapsPlaceCheck, 'rawText', 'Maps Place Check callable output boundary');
   assertNotIncludes(mapsPlaceCheck, 'MAX_RAW_TEXT_LENGTH', 'Maps Place Check callable output boundary');
+  assertIncludes(mapsPlaceIdentityBoundary, 'MAX_MAPS_PLACE_ID_LENGTH = 2048', 'Maps Place Check bounded non-truncating Place ID contract');
+  assertIncludes(mapsPlaceIdentityBoundary, 'normalized.length > MAX_MAPS_PLACE_ID_LENGTH', 'Maps Place Check over-cap Place ID rejection');
+  assertIncludes(mapsPlaceIdentityBoundary, 'normalizeMapsGroundingSourceUri', 'Maps Place Check source URI validation');
+  assertNotIncludes(mapsPlaceCheck, 'cleanOptionalText(maps?.placeId', 'Maps Place Check must not truncate source Place IDs');
+  assertNotIncludes(mapsPlaceCheck, 'cleanOptionalText(parsed?.placeId', 'Maps Place Check must not trust model-parsed Place IDs');
+  assertNotIncludes(mapsPlaceCheck, 'cleanOptionalText(parsed?.uri', 'Maps Place Check must not trust model-parsed source URIs');
   assertNotIncludes(mapsPlaceCheckImpl, 'rawText?: string', 'Maps Place Check implementation output contract');
   assertIncludes(mapsPlaceCheckImpl, 'The response is returned to the caller without raw provider response text.', 'Maps Place Check implementation raw provider output boundary');
   assertIncludes(mapsPlaceCheckImpl, 'return raw provider response text', 'Maps Place Check implementation disallowed output boundary');
@@ -425,6 +445,151 @@ function assertPublicToolInventoryBoundary() {
   assertIncludes(mapsPlaceCheckFirebase, 'No raw provider response text is returned to the callable client.', 'Maps Place Check Firebase raw provider output boundary');
   assertIncludes(mapsPlaceCheckTests, 'No raw provider response text is returned', 'Maps Place Check tests raw provider output boundary');
   assertIncludes(mapsPlaceCheckValidation, 'No raw provider response in callable output', 'Maps Place Check validation raw provider output boundary');
+  assertIncludes(
+    storeTypes,
+    'externalLocationIdentity?: StoreExternalLocationIdentity;',
+    'Store external location identity contract',
+  );
+  assertIncludes(
+    externalLocationIdentity,
+    "EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION = 'menulist.external-location-identity.v1'",
+    'External location identity version',
+  );
+  assertIncludes(
+    externalLocationIdentity,
+    "confirmationStatus: 'owner_confirmed'",
+    'External location identity owner-confirmation boundary',
+  );
+  assertIncludes(
+    externalLocationIdentity,
+    'const attributableSource = sources.find',
+    'Maps Place Check stable identity attributable source boundary',
+  );
+  assertIncludes(
+    externalLocationIdentity,
+    'normalizeProviderLocationId(attributableSource?.placeId)',
+    'Maps Place Check stable identity must use grounding source Place ID',
+  );
+  assertIncludes(
+    externalLocationIdentity,
+    'normalizeOBPGoogleMapsUrl(attributableSource?.uri)',
+    'Maps Place Check stable identity must use grounding source URI',
+  );
+  assertIncludes(
+    storeNestedProjection,
+    "'externalLocationIdentity'",
+    'External location identity concurrent nested patch boundary',
+  );
+  assertIncludes(
+    storesDal,
+    'mirrorOwnerGoogleMapsLinkIdentity(data);',
+    'Existing owner Maps-link update identity mirror',
+  );
+  assertIncludes(
+    storesDal,
+    "throw new Error('store_external_location_identity_direct_update_forbidden');",
+    'Generic store updates must reject caller-supplied external identity metadata',
+  );
+  assertIncludes(
+    storesDal,
+    "new FieldPath('externalLocationIdentity', 'bindings', binding.provider)",
+    'Explicit confirmed external identity write path',
+  );
+  assertIncludes(
+    storesDal,
+    "new FieldPath('externalLocationIdentity', 'bindings', data.provider)",
+    'Reversible external identity removal path',
+  );
+  assertIncludes(
+    storesDal,
+    "'external_location_identity_store_scope_mismatch',",
+    'External location identity active-store scope guard',
+  );
+  assertIncludes(
+    storesDal,
+    "requestedBinding.provider !== 'google_maps'",
+    'Browser confirmation must not manufacture non-Maps provider connections',
+  );
+  assertIncludes(
+    storesDal,
+    'assertExternalLocationIdentityStoreAvailable(',
+    'External location identity transaction scope and availability guard',
+  );
+  assertIncludes(
+    mobileOfficialPage,
+    '...getStoreDeepDifference(payload, storeDetails)',
+    'Mobile Official Page must omit unchanged Maps links from unrelated writes',
+  );
+  assertIncludes(
+    mobileOfficialPage,
+    "'mobile_official_page_store_update_rejected'",
+    'Mobile Official Page store-write result guard',
+  );
+  assertIncludes(
+    desktopBusinessSettings,
+    'const updatedChanges: any = getStoreDeepDifference(',
+    'Desktop Business Settings must omit unchanged Maps links from unrelated writes',
+  );
+  assertIncludes(
+    desktopBusinessSettings,
+    "'desktop_business_settings_store_update_rejected'",
+    'Desktop Business Settings store-write result guard',
+  );
+  assertIncludes(
+    embeddedOfficialPage,
+    '...getStoreDeepDifference(storeUpdate, storeDetails || {})',
+    'Embedded Official Page must omit unchanged Maps links from unrelated writes',
+  );
+  assertIncludes(
+    embeddedOfficialPage,
+    "'projects_b2c_official_page_store_update_rejected'",
+    'Embedded Official Page store-write result guard',
+  );
+  assertIncludes(
+    mapsPlaceCheckClient,
+    "if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK)",
+    'Maps Place Check client feature gate',
+  );
+  assertIncludes(
+    mapsPlaceCheckClient,
+    "'mapsPlaceCheck'",
+    'Maps Place Check client callable',
+  );
+  assertIncludes(
+    mapsPlaceCheckClient,
+    'confirmMapsPlaceCheckIdentity',
+    'Maps Place Check explicit confirmation client path',
+  );
+  assertNotIncludes(
+    platformPullBusinessRoute,
+    'externalLocationIdentity',
+    'Platform Pull business response internal identity exclusion',
+  );
+  assertNotIncludes(
+    publicClientStoreProjection,
+    "'externalLocationIdentity'",
+    'Public client store projection internal identity exclusion',
+  );
+  assertNotIncludes(
+    brandPropagationBoundary,
+    "'externalLocationIdentity'",
+    'External location identity must remain location-scoped and non-propagating',
+  );
+  assertIncludes(
+    mapsPlaceCheckImpl,
+    'The confirmed binding stays internal and is not added to Platform Pull or public structured data.',
+    'Maps Place Check internal binding output boundary',
+  );
+  assertIncludes(
+    mapsPlaceCheckFirebase,
+    'The internal URI binding is mirrored inside the existing store write.',
+    'Maps Place Check zero-additional-write owner-link boundary',
+  );
+  assertIncludes(
+    mapsPlaceCheckTests,
+    'Removing one provider binding preserves every other provider binding',
+    'Maps Place Check reversible provider binding test boundary',
+  );
   assertIncludes(toolsReadme, '16 | Social Bio Link Consistency Check', 'MenuList Tools ranked tool count');
   assertIncludes(toolsReadme, '[public-truth-monitor-addon](./public-truth-monitor-addon/README.md)', 'MenuList Tools V2 paid add-on docs link');
   const ownerReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');

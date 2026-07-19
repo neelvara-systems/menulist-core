@@ -6,7 +6,6 @@
  */
 
 import { updateContentFeedbackWithAudit } from '@database/contentFeedback';
-import { updateFaqFeedback } from '@database/answerlattice/faqs';
 
 export type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
 
@@ -15,6 +14,8 @@ export interface FeedbackUpdateParams {
     contentId: string;
     feedbackType: 'like' | 'dislike';
     increment?: boolean;
+    comment?: string;
+    action?: 'added' | 'removed';
     // Additional params for specific content types
     pageId?: string; // Required for changelog (parent document ID)
 }
@@ -44,7 +45,7 @@ export interface FeedbackUpdateParams {
  * });
  */
 export const updateContentFeedback = async (params: FeedbackUpdateParams) => {
-    const { contentType, contentId, feedbackType, increment = true, pageId } = params;
+    const { contentType, contentId, feedbackType, increment = true, pageId, comment = '', action } = params;
 
     switch (contentType) {
         case 'article':
@@ -53,6 +54,8 @@ export const updateContentFeedback = async (params: FeedbackUpdateParams) => {
                 contentId,
                 sentiment: feedbackType,
                 increment,
+                comment,
+                action,
             });
 
         case 'changelog':
@@ -65,10 +68,19 @@ export const updateContentFeedback = async (params: FeedbackUpdateParams) => {
                 pageId,
                 sentiment: feedbackType,
                 increment,
+                comment,
+                action,
             });
 
         case 'faq':
-            return await updateFaqFeedback(contentId, feedbackType, increment);
+            return await updateContentFeedbackWithAudit({
+                type: 'faq',
+                contentId,
+                sentiment: feedbackType,
+                increment,
+                comment,
+                action,
+            });
 
         case 'workflow':
             throw new Error('Workflow feedback is not supported by this feedback DAL');
@@ -115,13 +127,17 @@ export const updateChangelogFeedbackGeneric = (
 export const updateFaqFeedbackGeneric = (
     faqId: string,
     feedbackType: 'like' | 'dislike',
-    increment?: boolean
+    increment?: boolean,
+    comment?: string,
+    action?: 'added' | 'removed',
 ) => {
     return updateContentFeedback({
         contentType: 'faq',
         contentId: faqId,
         feedbackType,
         increment,
+        comment,
+        action,
     });
 };
 

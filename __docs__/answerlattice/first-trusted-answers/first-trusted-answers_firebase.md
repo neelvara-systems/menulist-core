@@ -1,5 +1,7 @@
 # First Trusted Answers Firebase Contract
 
+**Updated:** 2026-07-19
+
 ## Read/Write Model
 
 | Operation | Reads | Writes | Notes |
@@ -9,7 +11,7 @@
 | Generate a new product pack | 1 job + up to 30 ready sources + 10 exact draft-ID checks + existing subscription/accounting reads | Up to 10 review drafts + job/summary/usage-ledger/AI-accounting writes | One model call and one support credit; output is draft-only |
 | Reopen unchanged product pack | Same bounded cache-check reads | 0 | Reuses review items for the current generation-input hash; no provider call or credit charge |
 | Add starter set | transaction read already used by save + 1 compact current source-version read | 1 | Replaces the existing bounded summary document with revision check and returns current proof |
-| Canonical-only run | Existing bounded retrieval + 2 compact current source-version reads | Existing reservation/finalization summary transactions | Pre-run snapshot plus post-run current proof; no provider call and no search-history write |
+| First 10 canonical-only run | Existing bounded retrieval + 2 compact current source-version reads | Existing reservation/finalization summary transactions | Exact active launch IDs; pre-run snapshot plus post-run current proof; no provider call and no search-history write |
 | Full-runtime run | Existing bounded retrieval + 2 compact current source-version reads + provider when needed | Existing reservation/finalization summary transactions plus existing AI ledger | Pre-run snapshot plus post-run current proof; capped at ten cases |
 | Load Activation proof | 8 compact reads total | 0-1 existing activation snapshot write | Includes Answer Tests and current source-version summaries; no source collection scan |
 | Submit widget outcome | 1 transaction read | 1 merge write | Existing search-history document only |
@@ -25,12 +27,15 @@
 - No new scheduler or scheduler query.
 - No unbounded scan.
 - Product-pack source text is compacted to at most 32,000 characters before the provider call.
+- Shared SAFE_MODE is checked after strict request parsing and before provider or usage work.
+- The server validates the bounded request ID even when generation is invoked outside the HTTP route.
 - The pack is exactly ten candidates and writes at most ten review documents.
 - Generation uses the maintained job counter for the 120-item cap and checks only the ten deterministic draft IDs; it does not scan the review collection.
 - The generation-input hash is computed from the exact prompt-bounded source packet, including the intake audience/product context, included excerpts, source metadata, and source identifiers. Unchanged retries are provider-free and write-free; changes outside the prompt budget do not create a needless paid refresh.
 - Answer Test cases store only the source hash and draft review-item ID needed to preserve owner edits on cached reuse; source text and proposed answers are not duplicated into the summary.
 - Each new Answer Test run stores six bounded numeric source-version counters from one pre-execution compact read. A second post-execution compact read derives the browser's current-proof response and detects source changes during execution. Activation uses one exact compact source-version read to reject stale retained proof without scanning canonical, KB, entity, relation, or release collections.
-- Internal source-version counters are used server-side only and are not returned in the Activation response.
+- Internal source-version counters are used server-side only and are not returned in Activation or Answer Tests browser responses.
+- Active run reservations and request fingerprints remain server-side concurrency evidence and are removed from browser summaries. This projection adds no Firestore operation.
 - The existing 120 review-item cap prevents repeated changed-source generations from growing a job without bound.
 - Existing 500-row nightly search-history cap remains unchanged.
 - Explicit ordering does not increase the read cap; it prevents high-volume tenants from receiving an arbitrary 500-row sample.
@@ -54,7 +59,9 @@ Cost impact of the index: one additional composite-index entry is maintained for
 - A failed Support Board prefill creates no record.
 - Concurrent Answer Test edits continue to fail with revision conflict.
 - A First 10 edit or governed source-version change invalidates the old launch proof until the owner reruns it; legacy runs without version evidence also require one rerun.
+- A mixed generic/product set, arbitrary `product_launch_*` ID, mismatched source hash, duplicate review reference, inactive case, malformed case timestamp, partial run, duplicate result, or future-dated run cannot satisfy launch proof.
 - Concurrent product-pack generation fails with a lease conflict.
+- A malformed request ID or cached pack without exact positions `1` through `10` fails before reuse or provider work.
 - Provider, parsing, or settlement failure marks the run failed and refunds the reserved support credit.
 - New usage reservations retain the exact charged subscription ID so a refund does not depend on that subscription still being active after provider work; legacy ledger rows retain the existing active-subscription fallback.
 - Unknown source IDs, entity IDs, and route paths returned by the model are discarded before persistence.

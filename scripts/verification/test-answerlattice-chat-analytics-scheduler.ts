@@ -145,7 +145,12 @@ async function run(): Promise<void> {
     assert.equal(weekly?.tId, 1);
     assert.equal(weekly?.sId, 101);
     assert.equal(weekly?.generationMode, 'deterministic');
+    assert.equal(weekly?.sourceCompleteness?.currentDays, 1);
+    assert.equal(weekly?.sourceCompleteness?.previousDays, 0);
+    assert.equal(weekly?.sourceCompleteness?.currentWeekComplete, false);
+    assert.equal(weekly?.sourceCompleteness?.comparisonComplete, false);
     assert.match(weekly?.narrative || '', /1 conversation for/);
+    assert.match(weekly?.narrative || '', /Recorded positive feedback was/);
 
     const replay = await syncAnswerlatticeChatIntelligence(1, 101, {
         generateWeekly: true,
@@ -153,6 +158,17 @@ async function run(): Promise<void> {
     });
     assert.equal(replay.feedbackWritten, false, 'identical feedback input must be a no-op');
     assert.equal(replay.weeklyWritten, false, 'identical weekly input must be a no-op');
+
+    await summaryRef.update({ sourceComplete: false });
+    await assert.rejects(
+        syncAnswerlatticeChatIntelligence(1, 101, {
+            generateWeekly: true,
+            now: intelligenceNow,
+        }),
+        /source_invalid/,
+        'partial or malformed daily evidence must not enter weekly intelligence',
+    );
+    await summaryRef.update({ sourceComplete: true });
 
     await firestoreAdmin.collection('chatSessions').doc('session-2').set({
         pId: 'AL', tId: 1, sId: 101, uId: 'owner-1', title: 'Checkout help', mode: 'qna',

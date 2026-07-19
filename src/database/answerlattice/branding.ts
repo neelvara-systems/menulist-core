@@ -1,45 +1,65 @@
 /**
- * Answerlattice — Branding Config DAL (White-Label)
- * 
- * Per-tenant branding configuration for help widget, KB pages, emails.
+ * Answerlattice — Advanced Branding Profile DAL
+ *
+ * Private rollout-gated profile. No customer-facing surface currently consumes it.
  * Stored in platformSummary collection using key: branding_{tId}_{sId}
- * 
- * Phase 4 — Competitive Differentiator (4.1)
- * Feature-flagged: ENABLE_ANSWERLATTICE_WHITE_LABEL
- * 
- * No new collection needed — reuses existing platformSummary pattern.
- * 
- * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
+ *
+ * @see __docs__/answerlattice/advanced-white-label/
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from "@constant/product";
 import { doc, getDoc, setDoc } from "@firebase/firestore";
+import {
+    normalizeStoredAnswerlatticeAdvancedBranding,
+    parseAnswerlatticeAdvancedBranding,
+} from '@lib/answerlattice/advancedBrandingContracts';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { ANSWERLATTICE_DEFAULT_BRANDING, AnswerlatticeBrandingConfig } from "@type/answerlattice";
 
 const COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
-const getBrandingDocRef = (tId: number, sId: number) =>
-    doc(answerlatticeFirebaseClient, COLLECTION, `branding_${tId}_${sId}`);
+const normalizeBrandingScope = (tId: unknown, sId: unknown) => {
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(tId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(sId);
+    if (!tenantId || !storeId) {
+        throw new Error('Answerlattice branding scope is not available.');
+    }
+    return { tId: tenantId, sId: storeId };
+};
+
+const getBrandingDocRef = (tId: number, sId: number) => {
+    const scope = normalizeBrandingScope(tId, sId);
+    return doc(answerlatticeFirebaseClient, COLLECTION, `branding_${scope.tId}_${scope.sId}`);
+};
 
 /**
  * Get branding config for a tenant+store.
  * Returns default branding if no config saved yet.
  */
 export const getBrandingConfig = async (tId: number, sId: number): Promise<AnswerlatticeBrandingConfig> => {
-    return await apiCallComposer(
+    const scope = normalizeBrandingScope(tId, sId);
+    return apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getBrandingDocRef(tId, sId));
+            const docSnap = await getDoc(getBrandingDocRef(scope.tId, scope.sId));
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                return (data.branding ?? ANSWERLATTICE_DEFAULT_BRANDING) as AnswerlatticeBrandingConfig;
+                if (
+                    data.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || normalizeAnswerlatticeScopeDocumentId(data.tId) !== scope.tId
+                    || normalizeAnswerlatticeScopeDocumentId(data.sId) !== scope.sId
+                ) {
+                    throw new Error('Answerlattice branding ownership is invalid.');
+                }
+                return normalizeStoredAnswerlatticeAdvancedBranding(data.branding);
             }
-            return ANSWERLATTICE_DEFAULT_BRANDING;
+            return { ...ANSWERLATTICE_DEFAULT_BRANDING };
         },
         "getBrandingConfig"
-    ) ?? ANSWERLATTICE_DEFAULT_BRANDING;
+    );
 };
 
 /**
@@ -51,17 +71,18 @@ export const saveBrandingConfig = async (
     sId: number,
     config: AnswerlatticeBrandingConfig
 ): Promise<AnswerlatticeBrandingConfig> => {
-    return await apiCallComposer(
+    const scope = normalizeBrandingScope(tId, sId);
+    const normalizedConfig = parseAnswerlatticeAdvancedBranding(config);
+    return apiCallComposer(
         async () => {
             const composedData = await answerlatticeRequestBodyComposer({
-                tId,
-                sId,
-                branding: config,
+                ...scope,
+                branding: normalizedConfig,
             }, { isNew: false });
-            await setDoc(getBrandingDocRef(tId, sId), composedData, { merge: true });
-            return config;
+            await setDoc(getBrandingDocRef(scope.tId, scope.sId), composedData, { merge: true });
+            return normalizedConfig;
         },
-        { tId, sId, config },
+        { ...scope, brandingKeys: Object.keys(normalizedConfig) },
         "saveBrandingConfig"
-    ) ?? config;
+    );
 };

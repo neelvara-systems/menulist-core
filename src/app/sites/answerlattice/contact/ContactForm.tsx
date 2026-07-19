@@ -216,6 +216,7 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
                         <label htmlFor="answerlattice-contact-phone" className={labelClass}>Phone</label>
                         <input
                             id="answerlattice-contact-phone"
+                            type="tel"
                             value={form.phoneNumber}
                             onChange={(event) => updateField('phoneNumber', event.target.value)}
                             className={fieldClass}
@@ -231,6 +232,7 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
                         <label htmlFor="answerlattice-contact-url" className={labelClass}>Product URL</label>
                         <input
                             id="answerlattice-contact-url"
+                            type="url"
                             value={form.productUrl}
                             onChange={(event) => updateField('productUrl', event.target.value)}
                             className={fieldClass}

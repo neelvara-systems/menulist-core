@@ -1,7 +1,7 @@
 # First Trusted Answers Distribution And Evidence Runbook
 
 **Status:** Repository assets ready; founder-led recruitment and evidence collection pending
-**Updated:** 2026-07-16
+**Updated:** 2026-07-19
 
 ## Distribution Wedge
 
@@ -28,7 +28,7 @@ For each founder:
 3. Prepare sources through the Pre-Onboarding Kit.
 4. Record time to first ten saved tests.
 5. Record owner review time for answer proposals.
-6. Run canonical-only and, when needed, capped full-runtime checks.
+6. Run the dedicated exact First 10 canonical check and, when needed, capped full-runtime checks.
 7. Verify two real product surfaces in the widget.
 8. Observe explicit solved/not-solved outcomes for seven days.
 9. Record recontact, correction, abstention, and escalation results.
@@ -65,6 +65,7 @@ Before adding a verified proof entry to `src/data/answerlattice/proofEvidence.ts
 - source set;
 - review time;
 - test results;
+- exact generic or product launch-set identity, suite revision, proof time, and any stale reason;
 - explicit outcome counts;
 - recontact counts;
 - corrections and failures;

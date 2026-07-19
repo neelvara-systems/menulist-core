@@ -9,7 +9,7 @@
 
 ## What Is This
 
-The AI QnA Chatbot is Answerlattice's shared support-answer runtime for the authenticated Help Center and embeddable widget. It checks approved canonical answers and published FAQs before using workspace-scoped knowledge-base retrieval and Gemini answer generation. The runtime supports QnA and conversational modes, bounded image context, response and embedding caches, feedback, safe empty results, and a default-off exact technical evidence lane.
+The AI QnA Chatbot is Answerlattice's shared support-answer runtime for the authenticated Help Center and embeddable widget. It checks approved canonical answers and published FAQs before using workspace-scoped knowledge-base retrieval and Gemini answer generation. The runtime supports QnA and conversational modes, bounded image context, response and embedding caches, authoritative feedback acknowledgement, safe empty results, explicit widget support fallback, and a default-off exact technical evidence lane.
 
 ---
 
@@ -54,6 +54,15 @@ The AI QnA Chatbot is Answerlattice's shared support-answer runtime for the auth
 - `src/database/aiSearchHistory/index.ts` — Search history persistence
 - `src/database/queryEmbeddings/index.ts` — Scoped query embedding cache
 
+### Widget Answer And Fallback Boundary
+
+- Widget RAG links pass through the public citation URL boundary; unsafe or private URLs are omitted.
+- Related article, FAQ, and changelog labels run a follow-up search instead of exposing internal source objects.
+- The widget displays when screenshot processing failed and the answer used text only.
+- Feedback responses return the persisted resolution outcome, including replay behavior.
+- An unresolved user can explicitly create one deterministic support ticket from the stored widget search record. The client cannot supply internal retrieval debug or workspace scope.
+- Automatic evaluator-driven escalation remains controlled by `ENABLE_ANSWERLATTICE_AI_ESCALATION` and is disabled by default.
+
 ### Types
 - `src/types/chatSession.ts` — ChatMessage, ChatSession, and ConversationFilters
 
@@ -97,6 +106,7 @@ User Query → Zod Validation → Rate Limit → SAFE_MODE Check
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-18 | 1.2.0 | Hardened public widget citation/related-content projection, image fallback disclosure, authoritative feedback replay, and explicit idempotent support-ticket fallback |
 | 2026-07-18 | 1.1.0 | Added the default-off bounded hybrid evidence lane for exact technical literals plus resolved entities; canonical and approved FAQ priority remain unchanged |
 | 2026-06-30 | 1.0.2 | HelpChat message copy, AI Search answer copy, and article-link copy now share acknowledged Clipboard API plus textarea fallback handling with bounded support metadata; no retrieval, schema, Firestore, Storage, Cloud Function, or product-scope change |
 | 2026-06-27 | 1.0.1 | Bounded HelpChat client diagnostics added for draft storage and feedback submission paths; no retrieval, schema, Firestore, Storage, Cloud Function, or product-scope change |

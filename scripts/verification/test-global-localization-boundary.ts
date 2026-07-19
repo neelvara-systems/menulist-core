@@ -21,6 +21,19 @@ import {
 } from '../../src/utils/dateTime';
 import { timeAgo } from '../../src/utils/dateTime/timeAgo';
 import { formatNumber } from '../../src/utils/formatters';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+    getPublicCustomerLocale,
+    getPublicSpiceLevelLabel,
+} from '../../src/lib/localization/publicCustomerMessages';
+import { localizePublicHoursText } from '../../src/lib/localization/publicHoursText';
+import {
+    appendPublicLanguageParam,
+    getNextIntlLocaleForPublicLanguage,
+    normalizePublicLanguageCode,
+    resolveStorePublicLanguage,
+} from '../../src/lib/localization/publicRenderLanguage';
 
 assert.equal(defaultTimezone, 'UTC', 'SSR timezone fallback must remain deterministic');
 assert.equal(normalizeLocalePreference('en'), defaultLocale);
@@ -56,5 +69,68 @@ assert.equal(toDate(0).toISOString(), '1970-01-01T00:00:00.000Z');
 assert.equal(formatNumber(1234567, {}, 'en-US'), '1,234,567');
 assert.equal(formatNumber(1234567, {}, 'hi-IN'), '12,34,567');
 assert.equal(timeAgo(new Date('2026-07-16T12:00:00.000Z'), 'en-US', Date.parse('2026-07-17T12:00:00.000Z')), 'yesterday');
+
+assert.equal(normalizePublicLanguageCode(' AR-sa '), 'ar');
+assert.equal(normalizePublicLanguageCode(['ks-IN', 'en-US']), 'ks');
+assert.equal(normalizePublicLanguageCode(''), null);
+assert.equal(getNextIntlLocaleForPublicLanguage('ks'), 'ks-IN');
+assert.equal(getNextIntlLocaleForPublicLanguage('sat'), 'sat-IN');
+assert.equal(getNextIntlLocaleForPublicLanguage('brx'), 'brx-IN');
+assert.equal(getNextIntlLocaleForPublicLanguage('tl'), 'fil-PH');
+assert.equal(getNextIntlLocaleForPublicLanguage('unsupported'), 'en-US');
+assert.equal(getPublicCustomerLocale('ar'), 'ar-SA');
+assert.equal(getPublicCustomerLocale('unsupported'), 'en-US');
+assert.equal(getPublicCustomerLanguageDirection('ar'), 'rtl');
+assert.equal(getPublicCustomerLanguageDirection('ks'), 'rtl');
+assert.equal(getPublicCustomerLanguageDirection('hi'), 'ltr');
+
+const publicStorePolicy = {
+    activeLanguages: ['hi', 'ar'],
+    defaultLanguage: 'hi',
+};
+assert.equal(resolveStorePublicLanguage(publicStorePolicy, 'ar-SA'), 'ar');
+assert.equal(resolveStorePublicLanguage(publicStorePolicy, 'fr'), 'hi');
+
+const hindiPublicT = createPublicCustomerTranslator('hi');
+const englishPublicT = createPublicCustomerTranslator('en');
+assert.notEqual(
+    hindiPublicT('feedback.submitFeedback'),
+    englishPublicT('feedback.submitFeedback'),
+    'Hindi fixed public chrome must resolve from the checked-in Hindi pack',
+);
+assert.equal(
+    hindiPublicT('menu.redirectingIn', { count: 3 }),
+    hindiPublicT('menu.redirectingIn', { count: '3' }),
+    'public message interpolation must preserve number and string values consistently',
+);
+assert.equal(
+    getPublicSpiceLevelLabel('very_hot', hindiPublicT),
+    hindiPublicT('menu.spiceVeryHot'),
+);
+assert.equal(getPublicSpiceLevelLabel('chef_special', hindiPublicT), 'chef special');
+
+assert.equal(
+    appendPublicLanguageParam('/client/example?source=qr#menu', 'ar-SA'),
+    '/client/example?source=qr&lang=ar#menu',
+);
+assert.equal(
+    appendPublicLanguageParam('https://example.com/menu?source=qr#menu', 'ks'),
+    'https://example.com/menu?source=qr&lang=ks#menu',
+);
+assert.equal(appendPublicLanguageParam('/client/example', null), '/client/example');
+
+assert.equal(localizePublicHoursText('Closed', hindiPublicT), hindiPublicT('menu.closed'));
+assert.equal(
+    localizePublicHoursText('Opens next Monday at 10:00', hindiPublicT),
+    hindiPublicT('menu.opensNextDayAt', {
+        day: hindiPublicT('menu.days.Monday'),
+        time: '10:00',
+    }),
+);
+assert.equal(
+    localizePublicHoursText('Owner-provided note', hindiPublicT),
+    'Owner-provided note',
+    'unrecognized owner-provided hours text must remain unchanged',
+);
 
 console.log('Global localization boundary tests passed.');

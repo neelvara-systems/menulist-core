@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { LuDatabase, LuFileCheck2, LuLock, LuServerCog } from 'react-icons/lu';
+import { ANSWERLATTICE_RETENTION_DAYS } from '@data/shared/answerlatticeRetention';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
@@ -71,12 +72,12 @@ const PROVIDER_FACTS = [
 ];
 
 const RETENTION_FACTS = [
-    ['Query embedding cache', '30 days', 'Temporary retrieval cache with expiry and cleanup.'],
-    ['Raw answer and search history', '90 days', 'Bounded runtime trace used for feedback, support gaps, and troubleshooting.'],
-    ['Scheduler and notification delivery logs', '90 days', 'Compact operational and delivery diagnostics.'],
-    ['Notification rate-limit counters', '2 days', 'Short-lived abuse and delivery-volume counters.'],
-    ['Public contact enquiries', '365 days', 'Buyer or support follow-up records with an expiry field.'],
-    ['Signal events', '12 months', 'Scheduler cleanup bounds the raw signal window.'],
+    ['Query embedding cache', `${ANSWERLATTICE_RETENTION_DAYS.queryEmbeddings} days`, 'Temporary retrieval cache with expiry and cleanup.'],
+    ['Raw answer and search history', `${ANSWERLATTICE_RETENTION_DAYS.aiSearchHistory} days`, 'Bounded runtime trace used for feedback, support gaps, and troubleshooting.'],
+    ['Scheduler and notification delivery logs', `${ANSWERLATTICE_RETENTION_DAYS.notificationLogs} days`, 'Compact operational and delivery diagnostics.'],
+    ['Notification rate-limit counters', `${ANSWERLATTICE_RETENTION_DAYS.ownerNotificationRateLimits} days`, 'Short-lived abuse and delivery-volume counters.'],
+    ['Public contact enquiries', `${ANSWERLATTICE_RETENTION_DAYS.contactEnquiries} days`, 'Buyer or support follow-up records with an expiry field.'],
+    ['Signal events', `${ANSWERLATTICE_RETENTION_DAYS.signalEvents} days`, 'Scheduler cleanup bounds the raw signal window.'],
     ['Friction daily statistics', '90 days', 'Compact historical product-friction measurements.'],
     ['Knowledge Intake raw media', 'Not retained after extraction', 'Extracted, redacted source text and review lineage remain until removed or a later lifecycle policy applies.'],
 ];
@@ -103,6 +104,11 @@ const CLAIM_STATUS = [
         detail: 'If a specific processing or storage region is mandatory, it must be confirmed as a contractual deployment requirement before purchase.',
     },
     {
+        label: 'AI-provider training and zero retention',
+        status: 'No public no-training or zero-retention claim',
+        detail: 'Those claims depend on the active Gemini billing tier, feature use, abuse-monitoring status, and account configuration. They must be verified against the deployed provider account before purchase or publication.',
+    },
+    {
         label: 'Full workspace deletion',
         status: 'Handled through a scoped support review',
         detail: 'AnswerLattice does not claim a one-click full-workspace deletion flow. Contact the team to confirm scope, billing state, legal constraints, and deletion evidence.',
@@ -124,7 +130,7 @@ export default function AnswerlatticeTrustPage() {
                         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                             This page gives buyers and technical reviewers a codebase-grounded view of AnswerLattice infrastructure, providers, retention, and current compliance claims. It is operational documentation, not a certification or contract.
                         </p>
-                        <p className="mt-4 text-sm text-[#6b6b8a]">Last reviewed: July 11, 2026</p>
+                        <p className="mt-4 text-sm text-[#6b6b8a]">Last reviewed: July 19, 2026</p>
                         <PageProofStrip
                             className="mx-auto mt-8 max-w-5xl text-left"
                             items={[

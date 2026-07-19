@@ -39,6 +39,18 @@ function verifySearchBoundary() {
   const helpChatApi = read('src/components/templates/main-app/helpChat/api.ts');
   const aiSearchModal = read('src/components/organisms/AISearchModal/AiSearchBarComponent.tsx');
   const messageBubble = read('src/components/templates/main-app/helpChat/MessageBubble.tsx');
+  const heroSearchBar = read('src/components/templates/main-app/helpCenter/HeroSearchBar.tsx');
+  const helpCenter = read('src/components/templates/main-app/helpCenter/index.tsx');
+  const tabsConfig = read('src/components/templates/main-app/helpCenter/tabsConfig.tsx');
+  const chatInput = read('src/components/templates/main-app/helpChat/ChatInput.tsx');
+  const helpChatDrafts = read('src/lib/answerlattice/helpChatDrafts.ts');
+  const cacheScopeHook = read('src/hooks/answerlattice/useAnswerlatticeCacheScope.ts');
+  const categoriesCache = read('src/hooks/useKBCategoriesCache.ts');
+  const articleCache = read('src/hooks/useArticleCache.ts');
+  const ticketCache = read('src/hooks/useTicketCache.ts');
+  const changelogCache = read('src/hooks/useChangelogCache.ts');
+  const platformTickets = read('src/components/templates/platform/supportTickets/index.tsx');
+  const faqView = read('src/components/templates/main-app/helpCenter/FaqView.tsx');
 
   assertIncludes(searchRoute, 'withAuth(async (request: NextRequest, session)', 'Help Center search API auth boundary');
   assertIncludes(searchRoute, 'checkAIOperationLimit()', 'Help Center search API AI rate limit');
@@ -86,6 +98,35 @@ function verifySearchBoundary() {
   assertIncludes(aiSearchModal, "readHelpCenterSearchResponse(response, 'ai_search_modal')", 'AI Search modal bounded response parser');
   assertIncludes(aiSearchModal, 'getHelpCenterSearchClientFailureMessage(error, AI_SEARCH_FAILED_MESSAGE)', 'AI Search modal fixed local failure copy');
   assertNotIncludes(aiSearchModal, 'response.json()', 'AI Search modal direct JSON parser');
+
+  assertIncludes(heroSearchBar, "'contact-us': 'contact_support'", 'Help Center contact workflow context');
+  assertNotIncludes(heroSearchBar, "contact: 'contact_support'", 'Help Center stale contact workflow key');
+  assertIncludes(heroSearchBar, 't(currentTab.titleKey as any)', 'Help Center translated breadcrumb title');
+  assertIncludes(helpCenter, 't((activeTab?.titleKey ?? DEFAULT_HOME_TAB.titleKey) as any)', 'Help Center translated tab title');
+  assertNotIncludes(tabsConfig, 'description:', 'Help Center dead hardcoded tab description metadata');
+  assertNotIncludes(tabsConfig, 'title:', 'Help Center dead hardcoded tab title metadata');
+  assertIncludes(helpChatDrafts, 'resolveAnswerlatticeHelpChatDraftScope', 'Help Chat workspace/user draft scope');
+  assertIncludes(helpChatDrafts, 'normalizedIds.every((value) => value === firstId)', 'Help Chat consistent user identity requirement');
+  assertIncludes(chatInput, 'getAnswerlatticeHelpChatDraftKeys(draftScope, sessionId)', 'Help Chat scoped draft storage keys');
+  assertIncludes(chatInput, 'hydratedDraftKey !== draftKeys.draftKey', 'Help Chat draft hydration-before-save guard');
+  assertIncludes(chatInput, 'purgeForeignAnswerlatticeHelpChatDrafts(localStorage, draftScope)', 'Help Chat prior-scope draft purge');
+  assertIncludes(chatInput, 'parseAnswerlatticeHelpChatDraft(storedDraft)', 'Help Chat bounded draft parser');
+  assertIncludes(chatInput, 'serializeAnswerlatticeHelpChatDraft(inputValue)', 'Help Chat versioned draft serializer');
+  assertIncludes(chatInput, 'localStorage.removeItem(draftKeys.draftKey);', 'Help Chat invalid or empty draft removal');
+  assertIncludes(chatInput, '[selectedImage, draftKeys, draftScope, legacyDraftKeys]', 'Help Chat scope-change draft purge dependency');
+  assertNotIncludes(chatInput, 'const draftKey = `chat-draft-${sessionId', 'Help Chat unscoped draft key');
+  assertIncludes(cacheScopeHook, 'resolveAnswerlatticeWorkspaceCacheScopeKey(session)', 'Help Center exact workspace cache scope');
+  assertIncludes(categoriesCache, 'new Map<string, Promise<KnowledgeBaseCategoriesType | null>>()', 'Help Center category request coalescing per scope');
+  assertIncludes(categoriesCache, 'cachedKBCategories?.scopeKey === scopeKey', 'Help Center category cache scope check');
+  assertIncludes(articleCache, 'cachedArticles.scopeKey === scopeKey', 'Help Center article cache scope check');
+  assertIncludes(ticketCache, 'cachedTickets.scopeKey === scopeKey', 'Help Center ticket cache scope check');
+  assertIncludes(changelogCache, 'new Map<string, Promise<ChangelogPage | null>>()', 'Answerlattice changelog request coalescing per scope');
+  assertIncludes(platformTickets, "useTicketCache({ audience: 'platform' })", 'Platform ticket cache audience separation');
+  assertNotIncludes(categoriesCache, 'let categoriesFetchInFlight:', 'Help Center global category in-flight promise');
+  assertNotIncludes(changelogCache, 'let changelogFetchInFlight:', 'Answerlattice global changelog in-flight promise');
+  assertIncludes(faqView, "if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT)", 'Help Center explicit FAQ flag fallback');
+  assertIncludes(faqView, 'if (failed) {', 'Help Center visible managed FAQ failure');
+  assertNotIncludes(faqView, 'if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT || failed)', 'Help Center silent static FAQ failure fallback');
 }
 
 function verifyMobileBoundary() {
@@ -105,6 +146,8 @@ function verifyMobileBoundary() {
   assertIncludes(mobileHelpScreen, 'const requestedChangelogId = requestedPathTab === \'changelog\'', 'Mobile Help Center changelog deep link');
   assertIncludes(mobileHelpScreen, "window.history.replaceState(null, '', '/dashboard#mobile/more');", 'Mobile Help Center shell back target');
   assertIncludes(mobileHelpScreen, 'min-height: 44px;', 'Mobile Help Center touch target floor');
+  assertIncludes(mobileHelpScreen, "useTranslations('MobileHelp')", 'Mobile Help Center translated header');
+  assertNotIncludes(mobileHelpScreen, 'description="Search docs, check updates, and contact support."', 'Mobile Help Center hardcoded description');
 }
 
 function verifyTicketBoundary() {
@@ -192,6 +235,7 @@ function verifyDocsBoundary() {
   const changelog = read('__docs__/changelog.md');
   const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
   const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
+  const helpCenterTests = read('__docs__/answerlattice/help-center/help-center_test-cases.md');
   const helpChatReadme = read('src/components/templates/main-app/helpChat/README.md');
   const helpChatSummary = read('src/components/templates/main-app/helpChat/IMPLEMENTATION_SUMMARY.md');
   const landingFooter = read('src/components/templates/main-app/helpCenter/landing/LandingFooter.tsx');
@@ -212,6 +256,12 @@ function verifyDocsBoundary() {
   assertIncludes(helpCenterImpl, 'exact positive numeric Firestore document IDs before querying `supportTickets`', 'Help Center implementation exact support ticket scope docs');
   assertIncludes(helpCenterFirebase, 'Support ticket session scope hardening is cost-neutral', 'Help Center Firebase support ticket session scope cost docs');
   assertIncludes(helpCenterFirebase, 'adds no Firestore reads/writes/deletes', 'Help Center Firebase support ticket session scope no-cost docs');
+  assertIncludes(helpCenterImpl, 'binds every Help Center context cache to an exact `workspace:{tId}:{sId}` key', 'Help Center implementation cache-scope docs');
+  assertIncludes(helpCenterImpl, 'text is stored in a strict 24-hour envelope', 'Help Center implementation draft-retention docs');
+  assertIncludes(helpCenterTests, 'Platform ticket cache exists and customer Help Center opens', 'Help Center cache-audience test case');
+  assertIncludes(helpCenterTests, 'Same user reloads within 24 hours', 'Help Center draft hydration test case');
+  assertNotIncludes(helpCenterImpl, 'caches session in module-level variable', 'Help Center stale ticket session-cache claim');
+  assertNotIncludes(helpCenterImpl, 'None of the 3 helpCenter API routes use `withAuth()`', 'Help Center stale unauthenticated API claim');
   assertIncludes(helpChatReadme, 'A source-gated help interface designed for non-technical owners.', 'Help Chat README source-gated overview');
   assertIncludes(helpChatReadme, 'Launch certification still requires the active Help Center verifier', 'Help Chat README launch certification boundary');
   assertNotIncludes(helpChatReadme, 'A production help interface designed for non-technical owners.', 'Help Chat README stale production overview');

@@ -3,6 +3,10 @@ import * as functions from "firebase-functions";
 import { HttpsError } from "firebase-functions/v2/https";
 import { MAPS_PLACE_CHECK_MODEL } from "../constants/ai";
 import { genAIClient } from "../genAiClient";
+import {
+    normalizeMapsGroundingPlaceId,
+    normalizeMapsGroundingSourceUri,
+} from "./mapsPlaceIdentityBoundary";
 
 export type MapsPlaceCheckStatus = "needs_owner_confirmation" | "no_grounded_result";
 
@@ -49,8 +53,6 @@ export interface MapsPlaceCheckResult {
 
 type ParsedMapsPlaceFacts = {
     title?: unknown;
-    placeId?: unknown;
-    uri?: unknown;
     proposedFacts?: Record<string, unknown>;
 };
 
@@ -133,8 +135,6 @@ function buildMapsPlaceCheckPrompt(input: MapsPlaceCheckInput): string {
         "Return this shape:",
         JSON.stringify({
             title: "Best matching Google Maps place title, if found",
-            placeId: "places/{place_id}, if available",
-            uri: "Google Maps source URI, if available",
             proposedFacts: {
                 address: "public address if supported",
                 openingHours: "public opening hours summary if supported",
@@ -212,10 +212,10 @@ function getGroundingSources(response: GenerateContentResponse): MapsPlaceCheckS
         for (const chunk of candidate.groundingMetadata?.groundingChunks || []) {
             const maps = chunk.maps;
             const title = cleanOptionalText(maps?.title, 180);
-            const uri = cleanOptionalText(maps?.uri, 500);
+            const uri = normalizeMapsGroundingSourceUri(maps?.uri);
             if (!title || !uri) continue;
 
-            const placeId = cleanOptionalText(maps?.placeId, 160);
+            const placeId = normalizeMapsGroundingPlaceId(maps?.placeId);
             const key = `${uri}|${placeId || ""}`;
             if (seen.has(key)) continue;
             seen.add(key);
@@ -299,8 +299,8 @@ export async function runMapsPlaceCheck(input: MapsPlaceCheckInput): Promise<Map
             model: MAPS_PLACE_CHECK_MODEL,
             candidate: {
                 title: cleanOptionalText(parsed?.title, 180) || firstSource?.title,
-                placeId: cleanOptionalText(parsed?.placeId, 160) || firstSource?.placeId,
-                uri: cleanOptionalText(parsed?.uri, 500) || firstSource?.uri,
+                placeId: firstSource?.placeId,
+                uri: firstSource?.uri,
                 proposedFacts,
                 sources,
             },

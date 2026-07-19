@@ -1,54 +1,37 @@
-# Predictive Support — Website Content
+# Predictive Support Website Copy Boundary
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-10
+**Status:** Approved claim boundary; not a requirement to add a standalone public page
+**Last verified:** July 18, 2026
 
----
+## Short copy
 
-## §1 — Page: answerlattice.com/features/predictive-support
+**Headline:** Approved help on the page where it applies
 
-### Meta Tags
-```html
-<title>Predictive Support — Answerlattice</title>
-<meta name="description" content="Show your users the right help before they ask. Answerlattice's Predictive Support detects confusion and surfaces contextual help automatically." />
-<meta property="og:title" content="Predictive Support — Answerlattice" />
-<meta property="og:description" content="Prevent support tickets before they happen. Rule-based, knowledge-bound, self-improving proactive help." />
-```
+**Body:** Answerlattice can show a reviewed support cue from safe product context, clear it when the user moves elsewhere, and keep the trigger under your control.
 
-### Hero Section
+## Known issues copy
 
-**Headline:** Help before the question
+**Headline:** Put current incident guidance inside the affected workflow
 
-**Subheadline:** Answerlattice detects where your users get stuck and shows contextual help at the exact moment they need it — before frustration becomes a ticket.
+**Body:** Set an exact page, active window, severity, and optional public status link. The notice expires from eligibility when its window ends.
 
-**CTA:** Get started with Answerlattice
+## Trust copy
 
-### Section 1 — How It Works
+- Exact page context is required before activation.
+- Suggested triggers require owner review.
+- The widget does not inspect unrestricted DOM or form data.
+- Engagement counts do not automatically change trigger status.
+- Predictive support does not perform account actions.
 
-**Headline:** Three steps to proactive help
+## Demo sequence
 
-1. **Detect** — Your product tells Answerlattice which page the user is on
-2. **Evaluate** — Answerlattice checks friction patterns and trigger rules for that page
-3. **Surface** — A contextual help card appears with the right answer
+1. A user enters a page with a known setup issue.
+2. The widget receives the allowlisted page/workflow context.
+3. A reviewed cue appears.
+4. The user opens or dismisses it.
+5. The owner sees engagement evidence and decides whether to edit or disable the trigger.
+6. A page change clears the previous cue.
 
-### Section 2 — Self-Improving
+## Publication rules
 
-**Headline:** Learns from your real support data
-
-Answerlattice analyzes tickets, chat conversations, and escalation patterns to identify which product pages cause the most confusion. It then suggests proactive help triggers — you review and approve.
-
-### Section 3 — Rule-Based, Not AI Guesswork
-
-**Headline:** Deterministic. Predictable. Trustworthy.
-
-No ML models. No behavior scoring. No probabilistic guesswork. Answerlattice uses simple, human-readable rules: "If user is on this page, with this plan, show this help." You control every trigger.
-
----
-
-## §2 — Feature Page Content (for features grid)
-
-**Card Title:** Predictive Support
-
-**Card Description:** Show contextual help before users ask. Rule-based triggers detect known friction and surface the right answer proactively.
-
-**Icon:** Shield with lightbulb (or similar proactive/preventive icon)
+Do not publish fixed accuracy, latency, ticket-reduction, task-completion, or time-saved numbers without measured customer evidence. Do not describe the feature as autonomous learning, screen watching, or an account-action agent.

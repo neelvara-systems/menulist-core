@@ -24,12 +24,17 @@
  * - TTL check with automatic fallback to local computation
  */
 
-import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlockTranslation, getEnabledBlocks } from '@config/decisionBlocks';
+import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getEnabledBlocks } from '@config/decisionBlocks';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import useDeviceType from '@hook/useDeviceType';
 import { isWithinTimeSlot } from '@hook/useTimedCategories';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
+import {
+    createPublicCustomerTranslator,
+    type PublicCustomerMessageKey,
+} from '@lib/localization/publicCustomerMessages';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -74,10 +79,42 @@ interface ComputedBlock {
     reasonParams?: Record<string, any>;  // Optional params for interpolation
 }
 
-const OWNER_PINNED_TITLES: Record<DecisionBlockType, string> = {
-    popular: 'Featured choice',
-    quickPick: 'Quick choice',
-    bestValue: 'Value choice',
+const OWNER_PINNED_TITLE_KEYS: Record<DecisionBlockType, PublicCustomerMessageKey> = {
+    popular: 'menu.featuredChoice',
+    quickPick: 'menu.quickChoice',
+    bestValue: 'menu.valueChoice',
+};
+
+const REASON_MESSAGE_KEYS: Record<string, PublicCustomerMessageKey> = {
+    'decision.bestValue.default.greatValue': 'menu.greatValue',
+    'decision.bestValue.food.greatValue': 'menu.greatValue',
+    'decision.bestValue.food.worthIt': 'menu.worthEveryBite',
+    'decision.bestValue.health.worthInvestment': 'menu.worthTheInvestment',
+    'decision.bestValue.retail.bestDeal': 'menu.bestDeal',
+    'decision.bestValue.retail.smartChoice': 'menu.goodChoice',
+    'decision.bestValue.service.greatValue': 'menu.greatValue',
+    'decision.bestValue.service.worthIt': 'menu.worthEveryPenny',
+    'decision.pinned.ownerPick': 'menu.ownerChoice',
+    'decision.popular.default.favorite': 'menu.customerFavorite',
+    'decision.popular.default.popular': 'menu.popularChoice',
+    'decision.popular.food.favorite': 'menu.customerFavorite',
+    'decision.popular.food.mostOrdered': 'menu.mostOrdered',
+    'decision.popular.food.trending': 'menu.trendingThisWeek',
+    'decision.popular.health.clientFavorite': 'menu.clientFavorite',
+    'decision.popular.health.topRated': 'menu.topRated',
+    'decision.popular.retail.bestSeller': 'menu.bestSeller',
+    'decision.popular.retail.customerLove': 'menu.customersLoveThis',
+    'decision.popular.retail.trending': 'menu.trendingNow',
+    'decision.popular.service.clientFavorite': 'menu.clientFavorite',
+    'decision.popular.service.mostBooked': 'menu.mostBooked',
+    'decision.popular.service.topChoice': 'menu.topChoice',
+    'decision.quickPick.default.instant': 'menu.readyInstantly',
+    'decision.quickPick.default.ready': 'menu.readyInMinutes',
+    'decision.quickPick.food.instant': 'menu.readyInstantly',
+    'decision.quickPick.food.readyIn': 'menu.readyInMinutes',
+    'decision.quickPick.health.express': 'menu.expressMinutesSession',
+    'decision.quickPick.service.express': 'menu.expressMinutes',
+    'decision.quickPick.service.quick': 'menu.quickMinutesSession',
 };
 
 function getLocalizedMenuText(value: unknown, language: string, fallback = ''): string {
@@ -562,6 +599,11 @@ export default function DecisionBlocks({
     menuLayout = MenuLayout.LIST,
     storeTimeZone,
 }: DecisionBlocksProps) {
+    const t = useMemo(
+        () => createPublicCustomerTranslator(activeLanguage),
+        [activeLanguage],
+    );
+    const resolvedBusinessCategory = resolveBusinessCategory(businessType, businessCategory);
     const { deviceType } = useDeviceType();
     const isDesktopLayout = deviceType === 'desktop';
     const containerRef = useRef<HTMLDivElement>(null);
@@ -582,32 +624,31 @@ export default function DecisionBlocks({
         ]));
     }, [categories, primaryLanguage]);
 
-    /**
-     * Translate reason key to localized text
-     * 
-     * NOTE: Customer-facing menu doesn't use next-intl
-     * We use a simple static translation lookup instead
-     * This keeps the menu lightweight and doesn't require i18n provider
-     */
     const translateReason = useCallback((reason: string, params?: Record<string, any>): string => {
-        // If reason doesn't look like an i18n key, return as-is (backward compat)
         if (!reason.startsWith('decision.')) {
             return reason;
         }
 
-        // Get translation from static map
-        const translation = getDecisionBlockTranslation(reason, activeLanguage);
+        const messageKey = REASON_MESSAGE_KEYS[reason];
+        return messageKey ? t(messageKey, params) : reason;
+    }, [t]);
 
-        // Interpolate params (e.g., {minutes} -> 5)
-        if (params && translation) {
-            return Object.entries(params).reduce(
-                (text, [key, value]) => text.replace(`{${key}}`, String(value)),
-                translation
-            );
+    const getBlockTitle = useCallback((
+        blockType: DecisionBlockType,
+        isOwnerPinned: boolean,
+    ): string => {
+        if (isOwnerPinned) return t(OWNER_PINNED_TITLE_KEYS[blockType]);
+        if (blockType === 'bestValue') return t('menu.goodValue');
+        if (blockType === 'quickPick') {
+            if (resolvedBusinessCategory === 'food') return t('menu.readyQuickly');
+            if (resolvedBusinessCategory === 'retail') return t('menu.easyChoice');
+            if (resolvedBusinessCategory === 'health') return t('menu.expressSession');
+            return t('menu.quickSession');
         }
-
-        return translation;
-    }, [activeLanguage]);
+        if (resolvedBusinessCategory === 'food') return t('menu.peopleOftenChoose');
+        if (resolvedBusinessCategory === 'retail') return t('menu.customersOftenChoose');
+        return t('menu.clientsOftenBook');
+    }, [resolvedBusinessCategory, t]);
 
     // Extract owner controls from menuSettings
     const ownerControls: OwnerControls | undefined = useMemo(() => {
@@ -747,7 +788,7 @@ export default function DecisionBlocks({
 
     return (
         <section
-            aria-label="Featured choices"
+            aria-label={t('menu.featuredChoices')}
             style={{
                 boxSizing: 'border-box',
                 marginBottom: 14,
@@ -777,7 +818,7 @@ export default function DecisionBlocks({
                         margin: 0,
                     }}
                 >
-                    Featured
+                    {t('menu.featured')}
                 </h2>
                 {allBlocksOwnerPinned && (
                     <span
@@ -791,7 +832,7 @@ export default function DecisionBlocks({
                             whiteSpace: 'nowrap',
                         }}
                     >
-                        Business picks
+                        {t('menu.businessPicks')}
                     </span>
                 )}
             </div>
@@ -830,7 +871,7 @@ export default function DecisionBlocks({
                             : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
-                        paddingRight: useHorizontalScroller ? 14 : 0,
+                        paddingInlineEnd: useHorizontalScroller ? 14 : 0,
                         width: (canUseFeaturedVisualLayout || useDesktopFeaturedRow) && (isDesktopLayout || isSingleBlock)
                             ? '100%'
                             : useHorizontalScroller
@@ -844,7 +885,7 @@ export default function DecisionBlocks({
                         // But we check for type safety
                         if (!labels) return null;
 
-                        const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, 'Menu item');
+                        const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, t('menu.menuItem'));
                         const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
                         const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
                         const categoryMeta = categoryMetaById.get(rec.item.category);
@@ -856,7 +897,7 @@ export default function DecisionBlocks({
                             && categoryIcon
                             && categoryLabel
                         );
-                        const displayTitle = isOwnerPinned ? OWNER_PINNED_TITLES[rec.blockType] : labels.title;
+                        const displayTitle = getBlockTitle(rec.blockType, isOwnerPinned);
                         const displayMeta = isOwnerPinned
                             ? categoryLabel
                             : translateReason(rec.reason, rec.reasonParams);
@@ -903,7 +944,7 @@ export default function DecisionBlocks({
                                     padding: itemImage ? 10 : 12,
                                     position: 'relative',
                                     scrollSnapAlign: useHorizontalScroller ? 'start' : 'none',
-                                    textAlign: 'left',
+                                    textAlign: 'start',
                                     userSelect: 'none',
                                     WebkitUserSelect: 'none',
                                     width: featuredListMode
@@ -959,7 +1000,7 @@ export default function DecisionBlocks({
                                         justifyContent: 'space-between',
                                         maxWidth: '100%',
                                         minWidth: 0,
-                                        paddingLeft: 0,
+                                        paddingInlineStart: 0,
                                     }}
                                 >
                                     <div style={{ minWidth: 0 }}>

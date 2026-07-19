@@ -8,7 +8,7 @@ import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/c
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 
 export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice').url.replace(/\/$/, '');
-export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - 24/7 Support Layer for Founder-Led SaaS';
+export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Governed Support Layer for Founder-Led SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
     'AnswerLattice turns scattered docs, tickets, releases, product context, screenshots, recordings, notes, and repeated replies into approved answers for your help widget, help center, and future AI agents.';

@@ -19,6 +19,7 @@ import {
 import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
 import { AuthUserIdentityConflictError, getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
     findAnswerlatticeRole,
     getAnswerlatticeDb,
     normalizeAnswerlatticeRolesForStore,
@@ -47,7 +48,12 @@ import {
     resolveAnswerlatticeStaffAuthLookup,
     shouldSendAnswerlatticeStaffSetupEmail,
 } from '@lib/answerlattice/staffAccessContracts';
-import { buildAnswerlatticeStaffClaimAccessProjection } from '@lib/answerlattice/staffClaimsContracts';
+import {
+    buildAnswerlatticeStaffClaimAccessProjection,
+    buildAnswerlatticeStaffClaimStateSignature,
+    normalizeAnswerlatticeStaffClaimPlatformRole,
+    selectAnswerlatticeStaffClaimMembership,
+} from '@lib/answerlattice/staffClaimsContracts';
 import { syncAnswerlatticeStaffProductAccountBridge } from '@lib/answerlattice/staffAccessBridge';
 import {
     buildAnswerlatticeRoleCreationFingerprint,
@@ -234,8 +240,15 @@ const getRecord = (value: unknown): Record<string, unknown> => (
     isUnknownRecord(value) ? value : {}
 );
 
+const privateJson = (body: unknown, status = 200) => (
+    NextResponse.json(body, {
+        headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+        status,
+    })
+);
+
 const jsonError = (error: string, status: number, code?: string) => (
-    NextResponse.json({ error, code }, { status })
+    privateJson({ error, code }, status)
 );
 
 const readAnswerlatticeStaffMutationBody = async (request: NextRequest) => {
@@ -295,7 +308,7 @@ const applyRateLimit = async (
         }),
     }, 'medium');
 
-    return NextResponse.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    return privateJson({ error: 'Too many requests. Please wait before trying again.' }, 429);
 };
 
 const getAnswerlatticeSecurityDetailsContext = (
@@ -689,6 +702,64 @@ const buildAnswerlatticePermissionClaims = (
     }, {} as Record<AnswerlatticePermissionKey, boolean>);
 };
 
+const readAnswerlatticeStaffClaimStoreProjection = async (params: {
+    accountActive: boolean;
+    db: FirebaseFirestore.Firestore;
+    platformRole: string;
+    roleId: string;
+    state: ReturnType<typeof readAnswerlatticeStaffAccessState> & {};
+    storeId: number;
+}) => {
+    const storeSnapshot = await params.db.collection(DB_COLLECTIONS.STORES).doc(String(params.storeId)).get();
+    const storeData = storeSnapshot.data();
+    const storeIsActive = storeSnapshot.exists && isAnswerlatticeActiveStoreInScope(
+        storeData,
+        { storeId: params.storeId, tenantId: params.state.tenantId },
+        storeSnapshot.id,
+    );
+    const roles = storeIsActive
+        ? normalizeAnswerlatticeRolesForStore(
+            storeData?.answerlatticeRoles,
+            params.state.tenantId,
+            params.storeId,
+            'system',
+        ).roles
+        : [];
+    const expectedStoreIds = [String(params.storeId)];
+    const claimAccess = buildAnswerlatticeStaffClaimAccessProjection({
+        accountActive: params.accountActive,
+        roleId: params.roleId,
+        storeIds: expectedStoreIds,
+        storeIsActive,
+    });
+    const adminClaim = params.accountActive && (
+        isPlatformRole(params.platformRole)
+        || (storeIsActive && params.roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER)
+    );
+    const permissionClaims = buildAnswerlatticePermissionClaims(
+        roles,
+        claimAccess.roleId,
+        params.accountActive ? params.platformRole : undefined,
+    );
+
+    return {
+        adminClaim,
+        claimAccess,
+        permissionClaims,
+        signature: buildAnswerlatticeStaffClaimStateSignature({
+            accountActive: params.accountActive,
+            admin: adminClaim,
+            permissions: permissionClaims,
+            platformRole: params.platformRole,
+            roleId: claimAccess.roleId,
+            storeId: params.storeId,
+            storeIds: claimAccess.storeIds,
+            storeIsActive,
+            tenantId: params.state.tenantId,
+        }),
+    };
+};
+
 const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
     fallbackStoreId: number;
     forceClaimsRefresh?: boolean;
@@ -707,16 +778,22 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
         if (!state) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_INVALID');
         const email = typeof data.email === 'string' ? data.email.toLowerCase().trim() : '';
         if (!email) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_EMAIL_MISSING');
-        const primaryMembership = state.primaryMembership;
-        const storeId = primaryMembership?.storeId || params.fallbackStoreId;
-        const roleId = primaryMembership?.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
-        const platformRole = typeof data.platformRole === 'string' ? data.platformRole : 'USER';
+        const platformRole = normalizeAnswerlatticeStaffClaimPlatformRole(data.platformRole);
         const active = data.active !== false && data.deleted !== true && data.authDisabled !== true && state.memberships.length > 0;
+        let synchronizedClaimState: {
+            signature: string;
+            storeId: number;
+        } | null = null;
         try {
             const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
-            const expectedStoreIds = state.memberships.map((membership) => String(membership.storeId));
+            const selectedMembership = selectAnswerlatticeStaffClaimMembership(state, {
+                currentClaimStoreId: answerlatticeUser.customClaims?.storeId,
+                preferredStoreId: params.fallbackStoreId,
+            });
+            const storeId = selectedMembership?.storeId || params.fallbackStoreId;
+            const roleId = selectedMembership?.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
             const expectedClaimRoleId = active ? roleId : 'inactive';
-            const expectedClaimStoreIds = active ? expectedStoreIds : [];
+            const expectedClaimStoreIds = active ? [String(storeId)] : [];
             const currentStoreIds = Array.isArray(answerlatticeUser.customClaims?.storeIds)
                 ? answerlatticeUser.customClaims.storeIds.map((value: unknown) => String(value))
                 : [];
@@ -731,48 +808,30 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
                 || JSON.stringify(currentStoreIds) !== JSON.stringify(expectedClaimStoreIds);
             const disabledNeedsUpdate = answerlatticeUser.disabled === active;
             if (claimsNeedUpdate) {
-                const storeSnapshot = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
-                const storeData = storeSnapshot.data();
-                const storeIsActive = storeSnapshot.exists && isAnswerlatticeActiveStoreInScope(
-                    storeData,
-                    { storeId, tenantId: state.tenantId },
-                    storeSnapshot.id,
-                );
-                const roles = storeIsActive
-                    ? normalizeAnswerlatticeRolesForStore(
-                        storeData?.answerlatticeRoles,
-                        state.tenantId,
-                        storeId,
-                        'system',
-                    ).roles
-                    : [];
-                const claimAccess = buildAnswerlatticeStaffClaimAccessProjection({
+                const claimState = await readAnswerlatticeStaffClaimStoreProjection({
                     accountActive: active,
+                    db,
+                    platformRole,
                     roleId,
-                    storeIds: expectedStoreIds,
-                    storeIsActive,
+                    state,
+                    storeId,
                 });
-                const claimRoleId = claimAccess.roleId;
-                const adminClaim = active && (
-                    isPlatformRole(platformRole)
-                    || (storeIsActive && roleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER)
-                );
                 await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUser.uid, {
                     accessRevision: state.accessRevision,
-                    admin: adminClaim,
+                    admin: claimState.adminClaim,
                     pId: PRODUCT_IDS.ANSWERLATTICE,
                     platformRole,
-                    role: claimRoleId,
+                    role: claimState.claimAccess.roleId,
                     storeId: String(storeId),
-                    storeIds: claimAccess.storeIds,
+                    storeIds: claimState.claimAccess.storeIds,
                     tenantId: String(state.tenantId),
                     uId: normalizedUserId,
-                    ...buildAnswerlatticePermissionClaims(
-                        roles,
-                        claimRoleId,
-                        active ? platformRole : undefined,
-                    ),
+                    ...claimState.permissionClaims,
                 });
+                synchronizedClaimState = {
+                    signature: claimState.signature,
+                    storeId,
+                };
             }
             if (disabledNeedsUpdate) {
                 await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, { disabled: !active });
@@ -786,12 +845,40 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
         }
 
         const refreshed = await getAnswerlatticeUserById(normalizedUserId);
-        const refreshedState = readAnswerlatticeStaffAccessState(refreshed?.data);
+        const refreshedData = getRecord(refreshed?.data);
+        const refreshedState = readAnswerlatticeStaffAccessState(refreshedData);
         if (!refreshedState) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_INVALID');
-        if (refreshedState.accessRevision === state.accessRevision) return;
+        if (refreshedState.accessRevision !== state.accessRevision) continue;
+        if (!synchronizedClaimState) return;
+
+        const refreshedMembership = selectAnswerlatticeStaffClaimMembership(refreshedState, {
+            currentClaimStoreId: synchronizedClaimState.storeId,
+            preferredStoreId: params.fallbackStoreId,
+        });
+        const refreshedStoreId = refreshedMembership?.storeId || params.fallbackStoreId;
+        const refreshedRoleId = refreshedMembership?.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
+        const refreshedPlatformRole = normalizeAnswerlatticeStaffClaimPlatformRole(refreshedData.platformRole);
+        const refreshedActive = refreshedData.active !== false
+            && refreshedData.deleted !== true
+            && refreshedData.authDisabled !== true
+            && refreshedState.memberships.length > 0;
+        const refreshedClaimState = await readAnswerlatticeStaffClaimStoreProjection({
+            accountActive: refreshedActive,
+            db,
+            platformRole: refreshedPlatformRole,
+            roleId: refreshedRoleId,
+            state: refreshedState,
+            storeId: refreshedStoreId,
+        });
+        if (
+            refreshedStoreId === synchronizedClaimState.storeId
+            && refreshedClaimState.signature === synchronizedClaimState.signature
+        ) {
+            return;
+        }
     }
 
-    throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_REVISION_CONFLICT');
+    throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_CONFLICT');
 };
 
 const syncAnswerlatticeAuthClaimsForRoleMembers = async (params: {
@@ -960,7 +1047,7 @@ export const listAnswerlatticeStaffUsers = async (request: NextRequest, session:
         .filter((user) => user.storeIds.includes(access.scope.storeId))
         .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 
-    return NextResponse.json({
+    return privateJson({
         access,
         roles: access.roles,
         store: {
@@ -969,8 +1056,6 @@ export const listAnswerlatticeStaffUsers = async (request: NextRequest, session:
             tenantId: access.scope.tenantId,
         },
         users,
-    }, {
-        headers: { 'Cache-Control': 'private, no-store' },
     });
 };
 
@@ -1220,7 +1305,7 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
         ...getBoundedAnswerlatticeStringContext('userId', userId),
     });
 
-    return NextResponse.json({
+    return privateJson({
         success: true,
         message: isCompletedReplay
             ? 'Team member was already added. Reset their login details if the original passcode was not received.'
@@ -1381,7 +1466,7 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
         );
     }
 
-    return NextResponse.json({
+    return privateJson({
         success: true,
         user: sanitizeAnswerlatticeStaffUser(input.userId, nextData, access.roles, access.scope.storeId),
         userId: input.userId,
@@ -1442,7 +1527,7 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
                     'STAFF_ACCESS_SYNC_FAILED',
                 );
             }
-            return NextResponse.json({ removed: true, replay: true, success: true, userId: input.userId });
+            return privateJson({ removed: true, replay: true, success: true, userId: input.userId });
         }
         return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
     }
@@ -1511,7 +1596,7 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
         );
     }
 
-    return NextResponse.json({
+    return privateJson({
         removed: true,
         success: true,
         userId: input.userId,
@@ -1632,7 +1717,7 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
         );
     }
 
-    return NextResponse.json({
+    return privateJson({
         success: true,
         message: 'Temporary team passcode created.',
         staffAuthMode: getStaffAuthMode(existingData),
@@ -1744,7 +1829,7 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
     });
 
     const updated = await target.ref.get();
-    return NextResponse.json({
+    return privateJson({
         success: true,
         message: 'Team member signed out.',
         user: sanitizeAnswerlatticeStaffUser(input.userId, updated.data(), access.roles, access.scope.storeId),
@@ -1906,7 +1991,7 @@ export const saveAnswerlatticeRoleDefinition = async (request: NextRequest, sess
         return jsonError('Role was saved, but team access refresh did not finish. Save the role again.', 503, 'ROLE_CLAIM_SYNC_FAILED');
     }
 
-    return NextResponse.json({
+    return privateJson({
         role: result.nextRole,
         roles: result.roles,
         success: true,
@@ -1987,7 +2072,7 @@ export const deleteAnswerlatticeRoleDefinition = async (request: NextRequest, se
         return jsonError('Forbidden', 403, 'FORBIDDEN');
     }
 
-    return NextResponse.json({
+    return privateJson({
         roles: result.roles,
         success: true,
     });

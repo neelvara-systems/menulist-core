@@ -6,7 +6,7 @@ export const ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES = 25;
 export const ANSWERLATTICE_ANSWER_TEST_MAX_RUNS = 10;
 export const ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES = 10;
 export const ANSWERLATTICE_ANSWER_TEST_MAX_RESERVATIONS = 5;
-export const ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION = 3;
+export const ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION = 4;
 export const ANSWERLATTICE_ANSWER_TEST_SOURCE_VERSION_KEYS = [
     'canonical',
     'kb',
@@ -85,6 +85,38 @@ const AnswerlatticeAnswerTestExpectedSchema = z.object({
             path: ['referenceIds'],
         });
     }
+    const uniqueReferenceIds = new Set(expected.referenceIds);
+    if (uniqueReferenceIds.size !== expected.referenceIds.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Expected references must be unique.',
+            path: ['referenceIds'],
+        });
+    }
+    const requiredPhrases = expected.mustInclude.map(phrase => phrase.toLowerCase());
+    const blockedPhrases = expected.mustNotInclude.map(phrase => phrase.toLowerCase());
+    if (new Set(requiredPhrases).size !== requiredPhrases.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Required phrases must be unique.',
+            path: ['mustInclude'],
+        });
+    }
+    if (new Set(blockedPhrases).size !== blockedPhrases.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Blocked phrases must be unique.',
+            path: ['mustNotInclude'],
+        });
+    }
+    const blockedPhraseSet = new Set(blockedPhrases);
+    if (requiredPhrases.some(phrase => blockedPhraseSet.has(phrase))) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'A phrase cannot be both required and blocked.',
+            path: ['mustNotInclude'],
+        });
+    }
 });
 
 export const AnswerlatticeAnswerTestCaseSchema = z.object({
@@ -158,7 +190,14 @@ export const AnswerlatticeAnswerTestSaveSchema = z.object({
 
 export const AnswerlatticeAnswerTestRunRequestSchema = z.object({
     requestId: z.string().trim().min(8).max(100).regex(/^[a-zA-Z0-9_-]+$/),
-    caseIds: z.array(z.string().trim().min(1).max(80)).max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES).optional(),
+    caseIds: z.array(z.string().trim().min(1).max(80).regex(/^[a-zA-Z0-9_-]+$/))
+        .max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES)
+        .superRefine((caseIds, context) => {
+            if (new Set(caseIds).size !== caseIds.length) {
+                context.addIssue({ code: z.ZodIssueCode.custom, message: 'Selected answer-test IDs must be unique.' });
+            }
+        })
+        .optional(),
     mode: z.enum(ANSWERLATTICE_ANSWER_TEST_MODES).default('canonical_only'),
 }).strict();
 
@@ -198,6 +237,8 @@ export type AnswerlatticeAnswerTestCaseResult = z.infer<typeof AnswerlatticeAnsw
 
 export type AnswerlatticeAnswerTestRun = {
     id: string;
+    requestFingerprint?: string;
+    suiteRevision?: number;
     mode: AnswerlatticeAnswerTestMode;
     status: 'passed' | 'failed' | 'partial';
     startedAt: string;
@@ -219,6 +260,7 @@ export type AnswerlatticeAnswerTestRun = {
 
 export type AnswerlatticeAnswerTestRunReservation = {
     id: string;
+    requestFingerprint: string;
     createdBy: string;
     startedAt: string;
     expiresAt: string;
@@ -238,9 +280,165 @@ export type AnswerlatticeAnswerTestSummary = {
     updatedBy: string | null;
 };
 
-export const getAnswerlatticeAnswerTestSummaryId = (tId: number, sId: number) => (
-    `answerTests_${Number(tId)}_${Number(sId)}`
-);
+const safeNonNegativeInteger = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+
+export const AnswerlatticeAnswerTestRunClientSchema = z.object({
+    id: z.string().trim().min(1).max(120),
+    suiteRevision: safeNonNegativeInteger.optional(),
+    mode: z.enum(ANSWERLATTICE_ANSWER_TEST_MODES),
+    status: z.enum(['passed', 'failed', 'partial']),
+    startedAt: z.string().max(40),
+    completedAt: z.string().max(40),
+    createdBy: z.string().max(180),
+    caseCount: safeNonNegativeInteger.max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+    passedCount: safeNonNegativeInteger.max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+    failedCount: safeNonNegativeInteger.max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+    criticalCaseCount: safeNonNegativeInteger.max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+    criticalFailureCount: safeNonNegativeInteger.max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+    proofStatus: z.enum(ANSWERLATTICE_ANSWER_TEST_PROOF_STATUSES),
+    providerCaseCount: safeNonNegativeInteger.max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+    durationMs: safeNonNegativeInteger,
+    releaseId: z.string().trim().min(1).max(160).optional(),
+    releaseVersion: z.string().trim().min(1).max(80).optional(),
+    results: z.array(AnswerlatticeAnswerTestCaseResultSchema)
+        .min(1)
+        .max(ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES),
+}).strict().superRefine((run, context) => {
+    const resultIds = run.results.map(result => result.caseId);
+    if (new Set(resultIds).size !== resultIds.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Answer-test run results must have unique case IDs.',
+            path: ['results'],
+        });
+    }
+    const passedCount = run.results.filter(result => result.passed).length;
+    const failedCount = run.results.length - passedCount;
+    const criticalResults = run.results.filter(result => result.riskLevel === 'critical');
+    const criticalFailureCount = criticalResults.filter(result => !result.passed).length;
+    const providerCaseCount = run.results.filter(result => result.aiProviderUsed).length;
+    const proofStatus = criticalFailureCount > 0 ? 'blocked' : failedCount > 0 ? 'review' : 'ready';
+    const status = failedCount === 0 ? 'passed' : passedCount === 0 ? 'failed' : 'partial';
+    const derivedFields = [
+        ['caseCount', run.caseCount, run.results.length],
+        ['passedCount', run.passedCount, passedCount],
+        ['failedCount', run.failedCount, failedCount],
+        ['criticalCaseCount', run.criticalCaseCount, criticalResults.length],
+        ['criticalFailureCount', run.criticalFailureCount, criticalFailureCount],
+        ['providerCaseCount', run.providerCaseCount, providerCaseCount],
+        ['proofStatus', run.proofStatus, proofStatus],
+        ['status', run.status, status],
+    ] as const;
+    derivedFields.forEach(([field, actual, expected]) => {
+        if (actual !== expected) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Answer-test run ${field} is inconsistent.`,
+                path: [field],
+            });
+        }
+    });
+});
+
+const AnswerlatticeAnswerTestClientSummarySchema = z.object({
+    id: z.string().trim().min(1).max(180),
+    schemaVersion: safeNonNegativeInteger.min(1).max(ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION),
+    pId: z.literal('AL'),
+    tId: safeNonNegativeInteger,
+    sId: safeNonNegativeInteger,
+    revision: safeNonNegativeInteger,
+    cases: z.array(AnswerlatticeAnswerTestCaseSchema).max(ANSWERLATTICE_ANSWER_TEST_MAX_CASES),
+    runs: z.array(AnswerlatticeAnswerTestRunClientSchema).max(ANSWERLATTICE_ANSWER_TEST_MAX_RUNS),
+    reservations: z.array(z.never()).length(0),
+    updatedAt: z.string().max(40).nullable(),
+    updatedBy: z.string().max(180).nullable(),
+}).strict().superRefine((summary, context) => {
+    const caseIds = summary.cases.map(testCase => testCase.id);
+    if (new Set(caseIds).size !== caseIds.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Answer-test cases must have unique IDs.',
+            path: ['cases'],
+        });
+    }
+    if (summary.runs.some(run => (
+        run.suiteRevision !== undefined && run.suiteRevision > summary.revision
+    ))) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Answer-test run revision cannot exceed the suite revision.',
+            path: ['runs'],
+        });
+    }
+});
+
+export const projectAnswerlatticeAnswerTestRunForClient = (
+    run: AnswerlatticeAnswerTestRun,
+): AnswerlatticeAnswerTestRun => {
+    const {
+        requestFingerprint: _requestFingerprint,
+        sourceVersions: _sourceVersions,
+        ...clientRun
+    } = run;
+    return clientRun;
+};
+
+export const projectAnswerlatticeAnswerTestSummaryForClient = (
+    summary: AnswerlatticeAnswerTestSummary,
+): AnswerlatticeAnswerTestSummary => ({
+    ...summary,
+    runs: summary.runs.map(projectAnswerlatticeAnswerTestRunForClient),
+    reservations: [],
+});
+
+export const parseAnswerlatticeAnswerTestSummaryForClient = (
+    value: unknown,
+    scope: { tId: number; sId: number },
+): AnswerlatticeAnswerTestSummary | null => {
+    const parsed = AnswerlatticeAnswerTestClientSummarySchema.safeParse(value);
+    if (
+        !parsed.success
+        || parsed.data.id !== getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId)
+        || parsed.data.tId !== scope.tId
+        || parsed.data.sId !== scope.sId
+    ) return null;
+    return parsed.data as AnswerlatticeAnswerTestSummary;
+};
+
+export const parseAnswerlatticeAnswerTestSummaryIdentity = (
+    raw: Record<string, unknown>,
+    scope: { tId: number; sId: number },
+): { schemaVersion: number; revision: number } | null => {
+    const schemaVersion = raw.schemaVersion;
+    const revision = raw.revision;
+    if (
+        raw.id !== getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId)
+        || raw.pId !== 'AL'
+        || raw.tId !== scope.tId
+        || raw.sId !== scope.sId
+        || typeof schemaVersion !== 'number'
+        || !Number.isSafeInteger(schemaVersion)
+        || schemaVersion < 1
+        || schemaVersion > ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION
+        || typeof revision !== 'number'
+        || !Number.isSafeInteger(revision)
+        || revision < 0
+    ) return null;
+    return { schemaVersion, revision };
+};
+
+export const getAnswerlatticeAnswerTestSummaryId = (tId: number, sId: number): string => {
+    if (!Number.isSafeInteger(tId) || tId < 0 || !Number.isSafeInteger(sId) || sId < 0) {
+        throw new Error('Answerlattice answer-test summary scope is invalid.');
+    }
+    return `answerTests_${tId}_${sId}`;
+};
+
+export const isAnswerlatticeAnswerTestRunCurrent = (
+    run: Pick<AnswerlatticeAnswerTestRun, 'suiteRevision'> | null | undefined,
+    summary: Pick<AnswerlatticeAnswerTestSummary, 'revision'>,
+): boolean => Number.isSafeInteger(run?.suiteRevision)
+    && run?.suiteRevision === summary.revision;
 
 export const createEmptyAnswerlatticeAnswerTestSummary = (
     tId: number,

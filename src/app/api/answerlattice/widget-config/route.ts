@@ -47,6 +47,17 @@ const getAnswerlatticeDb = () => {
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
 };
 const WIDGET_CONFIG_SAVE_MAX_BODY_BYTES = 32 * 1024;
+const widgetConfigJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse.json(body, {
+    ...init,
+    headers: {
+        'Cache-Control': 'private, no-store',
+        ...(init.headers || {}),
+    },
+});
+const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+};
 
 const buildConfigResponse = (storeData: Record<string, any>) => ({
     schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
@@ -75,59 +86,59 @@ const allowedOriginsEqual = (left: string[], right: string[]): boolean => {
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-        return NextResponse.json({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
+        return widgetConfigJsonResponse({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
     }
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'widget-config');
-    if (rateLimitResponse) return rateLimitResponse;
+    if (rateLimitResponse) return withPrivateNoStore(rateLimitResponse);
 
     const permission = await requireAnswerlatticePermission(_request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateNoStore(permission.response);
 
     const scope = resolveSessionScope(session);
     if (!scope) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return widgetConfigJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
     const db = getAnswerlatticeDb();
     if (!db) {
-        return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        return widgetConfigJsonResponse({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
     }
 
     try {
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
         const storeSnap = await storeRef.get();
         if (!storeSnap.exists) {
-            return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+            return widgetConfigJsonResponse({ error: 'Store not found' }, { status: 404 });
         }
 
         const storeData = storeSnap.data() || {};
         if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return widgetConfigJsonResponse({ error: 'Forbidden' }, { status: 403 });
         }
 
-        return NextResponse.json(buildConfigResponse(storeData));
+        return widgetConfigJsonResponse(buildConfigResponse(storeData));
     } catch (error) {
         logRuntimeFailure('answerlattice_widget_config_settings_load_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to load widget settings' }, { status: 500 });
+        return widgetConfigJsonResponse({ error: 'Failed to load widget settings' }, { status: 500 });
     }
 });
 
 export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-        return NextResponse.json({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
+        return widgetConfigJsonResponse({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
     }
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateNoStore(permission.response);
 
     const scope = resolveSessionScope(session);
     if (!scope) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return widgetConfigJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
     const db = getAnswerlatticeDb();
     if (!db) {
-        return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+        return widgetConfigJsonResponse({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
     }
 
     try {
@@ -142,13 +153,13 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             && rateLimitResult.current === 0
             && rateLimitResult.remaining === 20
         ) {
-            return NextResponse.json({ error: 'Widget settings are temporarily unavailable' }, {
+            return widgetConfigJsonResponse({ error: 'Widget settings are temporarily unavailable' }, {
                 status: 503,
                 headers: { 'Cache-Control': 'no-store' },
             });
         }
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many requests' }, {
+            return widgetConfigJsonResponse({ error: 'Too many requests' }, {
                 status: 429,
                 headers: { 'Cache-Control': 'no-store' },
             });
@@ -159,7 +170,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             tooLargeMessage: 'Request body too large',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return widgetConfigJsonResponse(
                 { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid widget settings' },
                 { status: bodyResult.response.status },
             );
@@ -171,12 +182,12 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
         const storeSnap = await storeRef.get();
         if (!storeSnap.exists) {
-            return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+            return widgetConfigJsonResponse({ error: 'Store not found' }, { status: 404 });
         }
 
         const storeData = storeSnap.data() || {};
         if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return widgetConfigJsonResponse({ error: 'Forbidden' }, { status: 403 });
         }
 
         const existingConfig = normalizeWidgetConfig(storeData.widgetConfig);
@@ -185,7 +196,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             widgetConfigEquals(existingConfig, config)
             && allowedOriginsEqual(existingOrigins, allowedOrigins)
         ) {
-            return NextResponse.json(buildConfigResponse(storeData));
+            return widgetConfigJsonResponse(buildConfigResponse(storeData));
         }
 
         await storeRef.set({
@@ -212,7 +223,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             originsCount: allowedOrigins.length,
         });
 
-        return NextResponse.json({
+        return widgetConfigJsonResponse({
             schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
             config,
             allowedOrigins,
@@ -225,13 +236,13 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         });
     } catch (error) {
         if (error instanceof ZodError) {
-            return NextResponse.json({ error: 'Invalid widget settings' }, { status: 400 });
+            return widgetConfigJsonResponse({ error: 'Invalid widget settings' }, { status: 400 });
         }
 
         logRuntimeFailure('answerlattice_widget_config_settings_save_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to save widget settings' }, { status: 500 });
+        return widgetConfigJsonResponse({ error: 'Failed to save widget settings' }, { status: 500 });
     }
 });

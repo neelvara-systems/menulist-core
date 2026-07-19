@@ -41,7 +41,7 @@ Help an Answerlattice client reach the first successful support install quickly:
 - No new public write APIs.
 - No new scheduled jobs.
 - No separate helpdesk product.
-- No supported SDK or public npm package promise. Answerlattice client installs use the v1 script and `window.AnswerlatticeWidget` browser contract directly.
+- No separately versioned npm package or broad public SDK promise. The supported first-party browser SDK is the v1 script and constrained `window.AnswerlatticeWidget` contract.
 - No public API v1 self-serve promise. Public API remains rollout-gated and secondary to widget install.
 - No MCP promise. Agent-facing install docs are static/context files, not runtime agent write access.
 
@@ -74,6 +74,7 @@ Help an Answerlattice client reach the first successful support install quickly:
 
 - AGENTS.md, CLAUDE.md, Cursor `RULE.md`, Cursor `.mdc`, Windsurf rule, Codex skill, Markdown docs, dashboard packet JSON, and agent kit ZIP render from the same contract source.
 - Generated packet does not expose the raw widget key unless the user explicitly copies/reveals the key through the existing key flow.
+- Generated HTML snippets escape script, widget-key, and blocked-route attribute values.
 - Workspace-specific ZIP contains the explicit full-key placeholder, saved-key identifier, dashboard-owned allowed origins, dashboard-owned blocked routes, framework hints, and env placeholders by default.
 - Saved key identifiers and prefix-style display values must not be presented as installable widget keys.
 - Generated prompts must not ask owners to manually maintain `ALLOWED_ORIGINS` or `BLOCKED_ROUTES` variables. Answerlattice dashboard owns those values.
@@ -85,6 +86,10 @@ Help an Answerlattice client reach the first successful support install quickly:
 - `/answerlattice/widget` remains compatible and links to `/answerlattice/install-center`.
 - Allowed origins and blocked routes are configured in Answerlattice dashboard UI, not duplicated as client-product settings.
 - The Install Center uses existing widget config/runtime status and optional activation summary.
+- Workspace packet and ZIP routes use actor + tenant + workspace rate-limit keys, `MANAGE_WIDGET`, exact store ownership, private `no-store` responses, and `nosniff`.
+- ZIP generation and browser download reject empty, oversized, non-ZIP, redirected, and non-success responses; both sides cap the artifact at 2 MiB.
+- Setup-response arrays, strings, counters, and runtime timestamps are bounded before dashboard state changes.
+- Copy, download, retry, navigation, and document-open actions preserve a 44px minimum interaction target.
 - The verifier adds no collection scans, no new scheduled jobs, no new listeners, and no new telemetry collection.
 
 ### Starter Setup
@@ -111,6 +116,9 @@ Help an Answerlattice client reach the first successful support install quickly:
 - Public install docs, Markdown mirrors, `/llms.txt`, and `/llms-full.txt` render from the contract source.
 - Agent files render from `src/lib/answerlattice/installContract/contract.ts`.
 - Dashboard packet and agent kit do not include raw widget keys by default.
+- Generated embed snippets escape HTML attribute metacharacters.
+- Protected packet/kit responses are private no-store and actor/workspace rate-limited.
+- Install Center accepts a kit only after status, content type, declared size, and actual blob size checks.
 - Forbidden context fields are rejected or dropped by validation/runtime sanitization.
 - Public install copy does not mention legacy context compatibility before launch.
 - `/answerlattice/install-center` is gated by Answerlattice product scope.

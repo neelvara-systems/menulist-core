@@ -22,15 +22,17 @@ Widget security uses the responsive Access & Security panel with 44px create, ro
 ## Required Mobile Behavior
 
 - Answer Tests render as cards with question, expected result, critical/evidence badges, a wrapping current First 10 proof alert, historical latest-run proof, and 44px actions.
+- A suite-revision mismatch renders a text-labelled stale warning above the historical result; stale state never relies on color alone.
 - Test creation/editing uses a full-screen responsive modal with single-column fields.
 - Run progress does not resize the page and results remain readable without horizontal scrolling.
 - Evidence reference IDs wrap inside result cards; `Ready`, `Review`, and `Blocked` remain text-labelled and do not rely on color alone.
+- The deterministic-proof limitation and the **Adopt current route and evidence** confirmation copy wrap without hiding the unchanged phrase-check warning.
 - Proposal impact opens as a responsive modal. Summary counts stack on narrow screens, current/proposed outcomes render as separate labelled panels, long answer previews wrap, and every close/check/publish action remains at least 44px high.
 - The preview explicitly labels missing linked tests and advisory proof; color is never the only regression or improvement signal.
 - Known Issues render as status cards with primary status action, expiry, affected context, and resolve confirmation.
 - Private keys are shown once in a copyable code area that wraps safely; the screen warns before dismissal.
 - Evidence links open externally with `noopener,noreferrer`.
-- Export uses the browser download flow and displays a clear error when mobile download is blocked.
+- Export uses the bounded browser download flow and displays a clear error when mobile download, rate enforcement, package generation, or audit retention is unavailable.
 - Owner Support Assistant uses stacked evidence and action cards; no dense table or side-by-side composer.
 
 ## Widget Mobile Behavior

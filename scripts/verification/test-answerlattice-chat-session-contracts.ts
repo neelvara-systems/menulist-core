@@ -95,6 +95,28 @@ assert.deepEqual(normalizeAnswerlatticeChatMessagesForStorage([{
     source: 'https://example.com/image.png',
     type: 'image/png',
 });
+assert.deepEqual(normalizeAnswerlatticeChatMessagesForStorage([{
+    ...message('canonical-citation', 'assistant'),
+    citations: [{
+        id: 'citation-docs',
+        title: 'Approved documentation',
+        url: 'https://docs.example.com/support',
+        sourceId: 'private-source-id',
+    }],
+    fallbackReason: 'canonical_scope_context_required',
+    clarification: { type: 'scope_context', requiredContext: ['plan', 'plan', 'role'] },
+    confidence: 'low',
+}])[0], {
+    ...message('canonical-citation', 'assistant'),
+    citations: [{
+        id: 'citation-docs',
+        title: 'Approved documentation',
+        url: 'https://docs.example.com/support',
+    }],
+    fallbackReason: 'canonical_scope_context_required',
+    clarification: { type: 'scope_context', requiredContext: ['plan', 'role'] },
+    confidence: 'low',
+}, 'persisted chat messages must retain public answer metadata without private source IDs');
 
 assert.deepEqual(normalizeAnswerlatticeInternalNote({ type: 'doc', content: [] }), { type: 'doc', content: [] });
 assert.equal(normalizeAnswerlatticeInternalNote('Legacy plain-text note'), 'Legacy plain-text note');

@@ -1,8 +1,9 @@
 # Answerlattice Billing
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-14
+> **Version:** 2.0.1
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers / Ops
+> **Feature audit:** Feature 30 of 44
 
 Answerlattice billing uses the same Razorpay subscription and top-up infrastructure as MenuList, but every payment request carries `productId: 'AL'` and persists Answerlattice subscription, top-up, and transaction data in Answerlattice Firebase.
 
@@ -26,6 +27,8 @@ Answerlattice billing uses the same Razorpay subscription and top-up infrastruct
 MenuList remains the default billing product. Requests without `productId` continue to behave as MenuList payments.
 
 Answerlattice requests must include `productId: 'AL'`. The backend resolves Answerlattice tenant/store scope from `productAccounts.AL` or Answerlattice-scoped session data and writes to Answerlattice Firebase.
+
+Checkout creation returns only the validated provider subscription or order ID required by Razorpay Checkout. Provider notes, status, customer data, URLs, amounts, and future unknown fields stay server-side. The browser rejects response fields outside that minimal contract.
 
 Subscription and support-credit creation share only MenuList's server-owned Razorpay coordination collections because both products use one provider account and plan namespace. The product/workspace-scoped lease retains provider recovery identity and a two-minute completed replay checkpoint, while all Answerlattice subscription, top-up, transaction, entitlement, and usage truth remains in Answerlattice Firebase. Browser access to the central coordination collections is denied.
 
@@ -53,10 +56,30 @@ The transactions screen loads billing history and the first bounded support-cred
 
 Answerlattice App Billing Document ID Boundary: shared product-billing adapters, client active-subscription/history reads, onboarding, Knowledge Intake, and AI accounting use `src/lib/answerlattice/billingDocumentIdBoundary.ts` for strict subscription/ledger IDs and exact positive numeric tenant/store scope before refs, filters, cache keys, or writes. Whitespace-mutated, reserved, empty, path-shaped, decimal, zero, negative, unsafe, or nonnumeric identifiers fail. Store-summary fallback is accepted only when it is current and matches the requested workspace; embedded IDs cannot replace Firestore document IDs.
 
+The Billing screen uses stable `answerlattice_billing_*` failure codes and bounded tenant/store presence-length context. It does not log raw exceptions, provider entities, or workspace identifiers.
+
+Active-subscription read failure is not presented as an empty account. The DAL rethrows the bounded read failure, and the Billing screen clears unverified financial state, disables plan mutation, shows a blocking retry alert, and restores normal actions only after the current billing state is loaded successfully.
+
+Subscription and invoice links pass the same exact hosted-payment boundary: HTTPS, exact `rzp.io`, no credentials, no unexpected port, and no fragment. Unsafe legacy invoice links are omitted.
+
+## Maintained Documents
+
+- [Specification](./answerlattice-billing_spec.md)
+- [Implementation](./answerlattice-billing_impl.md)
+- [Firebase and cost](./answerlattice-billing_firebase.md)
+- [Test cases](./answerlattice-billing_test-cases.md)
+- [Owner help](./answerlattice-billing_helpdoc.md)
+- [Marketing boundary](./answerlattice-billing_marketing.md)
+- [Website boundary](./answerlattice-billing_website.md)
+- [Mobile support](./answerlattice-billing_mobile-support.md)
+
 ## Verification
 
 - `npx tsc --noEmit --incremental false`
 - `npm run verify:billing-entitlement-boundary`
+- `npm run test:answerlattice-billing-contracts`
+- `npm run test:answerlattice-billing:rules`
+- `npm run test:answerlattice-billing:shared-rules`
 - `npm run test:billing-checkout-concurrency:emulator`
 - `npm run test:billing-coordination:rules`
 - `npm run verify:answerlattice-runtime-truth`

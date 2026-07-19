@@ -151,14 +151,7 @@ export const SearchRequestSchema = z.object({
     // Context-aware support metadata. This is validated again by
     // AnswerlatticeContextSchema in the route so conversation history and product
     // context stay separately owned.
-    productContext: z.unknown().optional(),
-
-    // AI Failure Escalation (Item #8) — session failure count for S3 repeated failure trigger
-    sessionFailureCount: z.number()
-        .int()
-        .min(0)
-        .max(100) // Reasonable upper bound
-        .optional()
+    productContext: z.unknown().optional()
 }).strict();
 
 export type SearchRequestInput = z.infer<typeof SearchRequestSchema>;

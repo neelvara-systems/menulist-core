@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Firebase
 
-> **Version:** 1.2.0
-> **Last Updated:** 2026-07-13
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers
 > **Firebase Project:** Answerlattice (separate from MenuList's menulist-qa)
 
@@ -86,9 +86,11 @@ Uses existing `platformSummary` collection. No new collection needed.
 
 **Estimated doc size:** ~500-1000 bytes (all adapter configs combined)
 
-Every config carries exact `pId: 'AL'`, `tId`, and `sId` ownership. The server settings/test routes and Functions reader compare those fields with the session/event-derived document ID. A fully unowned legacy document can be claimed once inside an ownership-validating transaction; partial or conflicting identity fails closed. The settings save re-reads and validates ownership in the same transaction that writes Slack/email state. This reconciles the Admin writer with the existing Firestore-rule requirement that client-readable `platformSummary` rows carry Answerlattice ownership. The owner settings merge is field-owned: it changes Slack/email plus identity/audit time only, leaving controlled adapters and circuit-breaker state untouched.
+Every config carries exact `pId: 'AL'`, `tId`, and `sId` ownership. The server settings/test routes and Functions reader compare those fields with the session/event-derived document ID. A fully unowned legacy document can be claimed once inside an ownership-validating transaction; partial or conflicting identity fails closed. The settings save re-reads and validates ownership in the same transaction that writes Slack/email state. The owner settings merge is field-owned: it changes Slack/email plus identity/audit time only, leaving controlled adapters and circuit-breaker state untouched.
 
-**Health summary:** `platformSummary/integrationHealth_{tId}_{sId}` stores sanitized last-success/last-failure state for owner UI. Raw delivery logs are not read by the settings screen. The settings API maps any stored adapter `lastError` to fixed review copy before returning health to the browser.
+**Secret rule boundary:** `integrationConfig_*` is excluded from all client reads, creates, and updates in both `firestore-answerlattice.rules` and the shared recovery rules, including the platform-admin branch. Admin SDK routes/Functions remain authoritative. The owner API returns only `webhookConfigured`; it never returns the raw Slack webhook.
+
+**Health summary:** `platformSummary/integrationHealth_{tId}_{sId}` stores sanitized last-success/last-failure state for owner UI. Functions update its nested adapter map in an ownership-validating transaction, so each health write is `1R + 1W`. Fully unowned legacy rows can be claimed; partial/conflicting rows fail closed. Raw delivery logs are not read by the settings screen. The settings API maps any stored adapter `lastError` to fixed review copy before returning health to the browser.
 
 ---
 
@@ -133,11 +135,11 @@ Collection: answerlattice_integrationDeliveryLogs
 | Consume minute + daily adapter counters | 2R + 2W | Transactions | $0.0000048 |
 | Write delivery log (success) | 1 | Write | $0.0000018 |
 | Reconcile circuit breaker | 1R + 0-1W | Transaction | $0.0000006-$0.0000024 |
-| Write delivery health summary | 1 | Write | $0.0000018 |
+| Validate and write delivery health summary | 1R + 1W | Transaction | $0.0000024 |
 | Finalize exact processing event | 1R + 1W | Transaction | $0.0000024 |
-| **Total per one-adapter success** | **6R + 6-7W** | | **~$0.000015-$0.000016** |
+| **Total per one-adapter success** | **7R + 6-7W** | | **~$0.000016-$0.000017** |
 
-Claim/finalize/config are per event, not repeated per adapter. Each extra non-email adapter adds its two counter transactions, one delivery-log write, one breaker transaction read (plus a write only when state changes), and one health write. Each allowed email recipient adds one daily-counter transaction (1R + 1W).
+Claim/finalize/config are per event, not repeated per adapter. Each extra non-email adapter adds its two counter transactions, one delivery-log write, one breaker transaction read (plus a write only when state changes), and one health transaction. Email performs one all-recipient transaction with one read/write per normalized recipient only when the complete recipient set is under its cap.
 
 ### 3.3 — Event Processing (3 total attempts, all fail)
 
@@ -151,13 +153,13 @@ Claim/finalize/config are per event, not repeated per adapter. Each extra non-em
 | Write delivery log (attempt 2) | 1 | Write | $0.0000018 |
 | Write delivery log (attempt 3) | 1 | Write | $0.0000018 |
 | Record circuit-breaker failure | 1R + 1W | Transaction | $0.0000024 |
-| Write delivery health summary | 1 | Write | $0.0000018 |
+| Validate and write delivery health summary | 1R + 1W | Transaction | $0.0000024 |
 | Finalize exact processing event as failed | 1R + 1W | Transaction | $0.0000024 |
-| **Total per one-adapter three-attempt failure** | **6R + 9W** | | **~$0.000020** |
+| **Total per one-adapter three-attempt failure** | **7R + 9W** | | **~$0.000021** |
 
 Slack webhook delivery now validates the configured webhook target through the Answerlattice Functions public DNS guard before each delivery attempt. This adds one DNS lookup per attempted Slack delivery and no Firestore reads/writes beyond the existing config read, rate-counter transaction, delivery log, health summary, event-status update, and circuit-breaker writes. GitHub owner/repo path-segment encoding and bounded GitHub/Linear success diagnostics add no Firestore reads/writes, provider calls, retry queue, new collection, schema change, or owner-facing setting.
 
-Delivery-log, event-status, and integration-health failure diagnostics are bounded in Functions logger breadcrumbs only. The intended Firestore writes to `answerlattice_integrationDeliveryLogs`, `answerlattice_integrationEvents`, and `platformSummary/integrationHealth_{tId}_{sId}` keep their existing fields and operation counts. Authenticated settings reads use the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. The authenticated test-event route now rate-limits before permission/config/event work and logs unexpected failures with fixed-code bounded tenant/store metadata without changing its 1R + 1W cost shape.
+Delivery-log, event-status, and integration-health failure diagnostics are bounded in Functions logger breadcrumbs only. Health now incurs one transaction read before its existing write so conflicting ownership cannot be overwritten. Authenticated settings reads use the shared Answerlattice dashboard `DATA_READ` limiter before permission and `platformSummary` reads. Save/test use actor plus workspace rate limits before permission/data work, so actors do not share quota; the test route keeps its 1R + 1W config/event cost shape after admission.
 
 Event-bus cap, success, and failure diagnostics are also bounded in Functions logger breadcrumbs only. The intended Firestore write to `answerlattice_integrationEvents` keeps its existing fields and operation count.
 
@@ -183,15 +185,15 @@ Firestore TTL deletes expired integration events, delivery logs, and rate counte
 
 ## §4 — Cost Projection (Monthly)
 
-The projections below use an average of 1.2 emitted events per active tenant/night. The hard runtime maximum for the current nightly producer is three (summary + coverage drop + recurring AI failure), so unusually unhealthy tenants can cost up to roughly 2.5× the event-processing portion of these averages.
+The projections below use an average of 1.2 emitted events per active tenant/night, Slack plus email, one email recipient, successful first attempts, and clean circuit breakers. That path is approximately `12R + 11W` in processing plus the producer's event write. The hard runtime maximum for the current nightly producer is three events, so unusually unhealthy tenants can cost up to roughly 2.5 times the event-processing average. Prices use the dossier's existing Firestore unit assumptions and must be rechecked for the deployed region.
 
 ### Scenario A: 10 Tenants (Early Stage)
 
 | Item | Calculation | Monthly Cost |
 |------|-----------|-------------|
 | Integration events | 10 tenants × 1.2 events/night × 30 days = 360 writes | <$0.001 |
-| Claim/finalize + delivery logs + health + rate counters | ~3,600 writes at two adapters/event | ~$0.007 |
-| Config/claim/rate/breaker/finalize reads | ~3,240 reads | ~$0.002 |
+| Claim/finalize + delivery logs + health + rate counters | ~3,960 writes at two adapters/event | ~$0.007 |
+| Config/claim/rate/breaker/health/finalize reads | ~4,320 reads | ~$0.003 |
 | TTL cleanup | Firestore TTL, no nightly query | no scheduler reads |
 | Cloud Functions | 360 invocations | negligible |
 | **Total** | | **~$0.01/month + external SMTP cost** |
@@ -201,24 +203,24 @@ The projections below use an average of 1.2 emitted events per active tenant/nig
 | Item | Calculation | Monthly Cost |
 |------|-----------|-------------|
 | Integration events | 100 × 1.2 × 30 = 3,600 writes | ~$0.006 |
-| Claim/finalize + delivery logs + health + rate counters | ~36,000 writes | ~$0.065 |
-| Config/claim/rate/breaker/finalize reads | ~32,400 reads | ~$0.019 |
+| Claim/finalize + delivery logs + health + rate counters | ~39,600 writes | ~$0.071 |
+| Config/claim/rate/breaker/health/finalize reads | ~43,200 reads | ~$0.026 |
 | TTL cleanup | Firestore TTL, no nightly query | no scheduler reads |
 | Cloud Functions | 3,600 invocations | negligible |
-| **Total** | | **~$0.09/month + external SMTP cost** |
+| **Total** | | **~$0.10/month + external SMTP cost** |
 
 ### Scenario C: 1,000 Tenants (Scale)
 
 | Item | Calculation | Monthly Cost |
 |------|-----------|-------------|
 | Integration events | 1,000 × 1.2 × 30 = 36,000 writes | ~$0.065 |
-| Claim/finalize + delivery logs + health + rate counters | ~360,000 writes | ~$0.65 |
-| Config/claim/rate/breaker/finalize reads | ~324,000 reads | ~$0.19 |
+| Claim/finalize + delivery logs + health + rate counters | ~396,000 writes | ~$0.71 |
+| Config/claim/rate/breaker/health/finalize reads | ~432,000 reads | ~$0.26 |
 | TTL cleanup | Firestore TTL, no nightly query | no scheduler reads |
 | Cloud Functions | 36,000 invocations | low |
-| **Total** | | **~$0.91/month + external SMTP cost** |
+| **Total** | | **~$1.04/month + external SMTP cost** |
 
-The workflow event processor still writes and updates the existing integration-event, delivery-log, rate-limit, and integration-health documents with the required event and tenant/store keys. June 28, 2026 processor diagnostic cleanup changed logger breadcrumbs only: invalid-event, delivery-attempt, and no-enabled-adapter logs now use stable failure/event metadata, event ID presence/length metadata, and tenant/store scope booleans instead of raw event IDs or raw `tId/sId` values. Firestore read/write counts, TTL behavior, adapter dispatch, rate limits, and health-summary writes are unchanged.
+The workflow event processor still writes and updates the existing integration-event, delivery-log, rate-limit, and integration-health documents with the required event and tenant/store keys. The June 28, 2026 processor diagnostic cleanup changed logger breadcrumbs only: invalid-event, delivery-attempt, and no-enabled-adapter logs use stable failure/event metadata, event ID presence/length metadata, and tenant/store scope booleans instead of raw event IDs or raw `tId/sId` values. That diagnostics-only change did not alter Firestore operations. The July 19, 2026 ownership hardening later changed each health update to the `1R + 1W` transaction documented above.
 
 The circuit-breaker helper writes the same `platformSummary/integrationConfig_{tId}_{sId}` state fields, but failure increments and success resets now run in ownership-validating transactions. Failure count is derived from the transaction snapshot rather than a caller-stale event snapshot, preventing lost increments under concurrent deliveries. Successful delivery always enters the transaction; it becomes a no-write transaction when the breaker is already clean. The opened breadcrumb logs only the stable failure code, adapter, failure count, and tenant/store scope booleans.
 
@@ -238,6 +240,8 @@ firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-q
 ```
 
 Use the same names with `--project answerlattice` for production. Answerlattice Functions intentionally do not read generic `SMTP_*` variables from MenuList or another runtime plane.
+
+The July 19, 2026 Feature 34 audit attempted the smallest changed-function deployment with `firebase deploy --only functions:answerlattice:answerlatticeNightly,functions:answerlattice:processIntegrationEvent --project answerlattice-qa --config firebase-answerlattice.json`. Local Functions TypeScript had already passed, but the Firebase CLI stopped before project or secret inspection with `Error: Failed to authenticate, have you run firebase login?`. No QA function revision changed.
 
 The July 13, 2026 delivery-integrity deployment was attempted with `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive`. The Functions predeploy TypeScript build passed, then Cloud Resource Manager rejected the project metadata request with HTTP 403 (`The caller does not have permission`). The deploy did not reach secret binding, so QA versions/values for the four `ANSWERLATTICE_SMTP_*` secrets remain an unverified cloud prerequisite rather than a locally certified fact.
 
@@ -261,9 +265,9 @@ Deployment of the June 29, 2026 nightly adapter-check diagnostic cleanup was att
 
 | Service | Cost | Notes |
 |---------|------|-------|
-| Slack Incoming Webhooks | **FREE** | No limits on incoming webhooks |
-| Linear API | **Controlled rollout** | Adapter exists, not self-service until secret lifecycle is ready |
-| GitHub REST API | **Controlled rollout** | Adapter exists, not self-service until secret lifecycle is ready |
+| Slack Incoming Webhooks | Provider-plan dependent | Slack documents approximately one incoming-webhook request per second and `429 Retry-After`; no Answerlattice connector surcharge is asserted here |
+| Linear API | **Controlled rollout only** | OAuth refresh-token, scope, GraphQL rate-error, and secret lifecycle evidence is required before activation |
+| GitHub REST API | **Controlled rollout only** | Fine-grained Issues write permission, token rotation, and current API-version evidence is required before activation |
 | Email (SMTP) | **Provider-dependent** | Uses separately provisioned Answerlattice SMTP secrets; provider may be shared operationally, credentials are not inherited from MenuList |
 
 ---
@@ -302,17 +306,17 @@ Deployment of the June 29, 2026 nightly adapter-check diagnostic cleanup was att
 | Function | Collection | Operations |
 |----------|-----------|------------|
 | `emitIntegrationEvent()` | answerlattice_integrationEvents | 1W |
-| `processIntegrationEvent()` | answerlattice_integrationEvents + config + deliveryLogs + rateLimits + health | one-adapter success ~6R + 6-7W; see §3 for multi-adapter/email additions |
+| `processIntegrationEvent()` | answerlattice_integrationEvents + config + deliveryLogs + rateLimits + health | one non-email adapter success ~7R + 6-7W; see §3 for multi-adapter/email additions |
 | `getIntegrationConfig()` | platformSummary | 1R |
 | `logDeliveryAttempt()` | answerlattice_integrationDeliveryLogs | 1W |
 | `updateEventStatus()` | answerlattice_integrationEvents | 1W |
-| `updateIntegrationHealth()` | platformSummary | 1W |
+| `updateIntegrationHealth()` | platformSummary | 1R + 1W transaction |
 | `claimCircuitBreakerProbe()` | platformSummary | 1R + 0-1W transaction |
 | `recordDeliverySuccess()` | platformSummary | 1R + 0-1W transaction |
 | `recordDeliveryFailure()` | platformSummary | 1R + 1W transaction |
 | `cleanupExpiredEvents()` | Firestore TTL | 0 scheduler reads |
 
-Event-processor side-effect diagnostics do not add Firestore operations. Failed event-status updates, rate-limit checks, email-recipient-limit checks, and circuit-breaker success/failure records now emit bounded Cloud Functions logs with stable `answerlattice_integration_*` failure codes, source error name/code/status metadata, event ID presence/length, tenant/store scope booleans, adapter/status labels, and counts only. Existing fail-closed behavior and delivery-log/health writes are unchanged.
+Event-processor side-effect diagnostics do not add Firestore operations. Failed event-status updates, rate-limit checks, email-recipient-limit checks, and circuit-breaker success/failure records emit bounded Cloud Functions logs with stable `answerlattice_integration_*` failure codes, source error name/code/status metadata, event ID presence/length, tenant/store scope booleans, adapter/status labels, and counts only. Those diagnostics leave delivery behavior unchanged; the separate July 19 health-ownership transaction is included in the current operation counts above.
 
 ### Frontend/API Side
 
@@ -321,9 +325,9 @@ Event-processor side-effect diagnostics do not add Firestore operations. Failed 
 | `GET /api/answerlattice/integrations` | platformSummary config + health | 2R via Admin SDK |
 | `PUT /api/answerlattice/integrations` | platformSummary config | 1R + 1W via Admin SDK |
 | `POST /api/answerlattice/integrations/test` | platformSummary config + answerlattice_integrationEvents | 1R + 1W via Admin SDK |
-| Settings UI delivery health | platformSummary health | Included in GET; no raw delivery-log reads |
+| Workflow Notifications UI delivery health | platformSummary health | Included in GET; no raw delivery-log reads |
 
-The Settings UI sends integration load/save/test calls with no-store cache, same-origin credentials, and manual redirect handling, then parses responses through a 64 KB bounded response reader and requires the documented safe response shape before local state or success copy advances. This does not change the Firestore cost shape; it only rejects cached, redirected, malformed, oversized, rejected, or wrong-shape browser responses.
+The dedicated Workflow Notifications route sends load/save/test calls with no-store cache, same-origin credentials, and manual redirect handling, then parses responses through a 64 KB bounded reader and shared strict schemas before local state or success copy advances. Save keeps the loaded health projection instead of adding another read. Direct browser access to `integrationConfig_*` is denied in both rule sets, including platform-admin clients. Nested health ownership adds one transaction read per adapter attempt; all-recipient email admission uses the same per-recipient read/write count as the former independent counters but commits or rejects the set atomically.
 
 ---
 
@@ -331,6 +335,7 @@ The Settings UI sends integration load/save/test calls with no-store cache, same
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 1.3.0 | Added browser-denied integration secrets, dedicated strict owner contracts, nested transactional health, atomic all-recipient email admission, provider-specific Slack retry handling, corrected operation/cost estimates, and explicit provider-evidence blockers. |
 | 2026-07-13 | 1.2.0 | Reconciled exact event lifecycle transactions, deterministic create-only event/attempt identities, circuit-probe transactions, real operation counts, and Answerlattice-scoped SMTP secret provisioning. |
 | 2026-06-29 | 1.1.11 | Recorded nightly adapter-config read failures as bounded failed scheduler tasks without adding Firestore operations. |
 | 2026-06-29 | 1.1.10 | Bounded event-processor side-effect failure diagnostics without adding Firestore operations or changing delivery/rate-limit behavior. |

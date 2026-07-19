@@ -1,8 +1,8 @@
 # AnswerLattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for AnswerLattice product
-> **Status:** ✅ IMPLEMENTED — approved-answers-first positioning, interactive governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, agent-readable discovery, and consent-gated website analytics
-> **Date:** 2026-07-13
+> **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
+> **Date:** 2026-07-19
 > **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -16,7 +16,21 @@
 | 1 | **README.md** (this file) | Everyone | Master index |
 | 2 | `answerlattice-website_spec.md` | CEO/PM | Business requirements, page architecture |
 | 3 | `answerlattice-website_impl.md` | Developers | Technical blueprint, file paths, routing |
-| 4 | `answerlattice-website_assets-preparation.md` | Marketing / Design / Product | Generated product-scene asset contract, concept illustration inventory, final screenshot/video plan, visual-slot inventory, and capture rules |
+| 4 | `answerlattice-website_marketing.md` | Founder / Marketing | ICP, positioning, evidence hierarchy, claim boundaries, conversion, and outcome metrics |
+| 5 | `answerlattice-website_website.md` | Product / Content / Engineering | Public route, discovery, form, trust, legal, and source-of-truth contract |
+| 6 | `answerlattice-website_helpdoc.md` | Prospective buyer / New founder | Evaluation, signup, recovery, contact, and accessibility guidance |
+| 7 | `answerlattice-website_firebase.md` | Engineering / Operations | Public operation, product-boundary, retention, cost, and deployment contract |
+| 8 | `answerlattice-website_mobile-support.md` | Product / QA / Engineering | Responsive navigation, form, layout, and external mobile evidence contract |
+| 9 | `answerlattice-website_test-cases.md` | Engineering / QA | Automated source gate, functional cases, and external release evidence |
+| 10 | `answerlattice-website_assets-preparation.md` | Marketing / Design / Product | Generated product-scene asset contract, concept illustration inventory, final screenshot/video plan, visual-slot inventory, and capture rules |
+
+## July 19, 2026 Audit Result
+
+Feature 33 is locally source complete. Pricing, onboarding, Billing projection, and homepage offer schema share the AnswerLattice plan source. Public support-credit wording now matches the runtime ledger: provider-backed fallback, full-runtime answer tests, first-ten starter-answer generation, OCR, and transcription are charged while approved/cached widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and help browsing are not. Trust and Privacy render shared retention constants and explicitly avoid unsupported Gemini no-training or zero-retention promises. Terms identify the verified Neelvara Systems operating trade-name relationship, document cancellation/end-of-cycle and deletion boundaries, and keep governing-law, jurisdiction, warranty, liability, SLA, and customer-specific refund clauses pending founder/legal approval.
+
+The deterministic demo has no network/provider path. Get Started uses native form submission, server-matching field bounds, linked legal terms, selected-surface admission, and alias-safe public links. Mobile navigation contains and restores focus. The sitemap does not assign one synthetic build timestamp to every page. The public category is `governed support layer`; the claim guard still rejects the unsupported `the first 24/7 support layer` superlative. Root mail delivery uses the `nodemailer9` runtime alias pinned to Nodemailer `9.0.3`; NextAuth's incompatible optional Nodemailer 7 peer remains absent, and Answerlattice Functions retain their independent `9.0.3` pin.
+
+`npm run verify:answerlattice-public-website` owns this cross-surface contract and is part of the aggregate AnswerLattice runtime gate. Hosted-domain, analytics, search-index, real Google/Razorpay/Turnstile, counsel, and real-buyer evidence remain external.
 
 ## Related Strategy
 
@@ -288,6 +302,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-07-19 | Aligned public support-credit copy with operation-level accounting, moved the category to governed support layer, sourced retention wording from shared constants, added AI-provider data-use non-claims, expanded the product terms summary without inventing legal clauses, and moved root mail delivery to the compatible Nodemailer 9 runtime alias |
 | 2026-07-13 | Hardened AnswerLattice Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the phone drawer to full-width mobile presentation with higher overlay stacking, internal scroll isolation, and safe-area CTA behavior |
 | 2026-07-11 | Replaced the static demo switcher with a deterministic governance event, exposed INR/USD plan selection through Pricing and Get Started, added factual Trust and Data Handling disclosures, and updated privacy-provider/retention wording without claiming certification or contractual terms |
 | 2026-07-05 | Answerlattice website analytics URL minimization boundary: stripped query strings and fragments from GA4 page-location, click-link, resource target, referrer, and entry-page URL fields while bounding analytics text fields |

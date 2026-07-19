@@ -5,9 +5,10 @@ import { HELP_CENTER_TABS, HOME_TAB_KEY } from '@template/main-app/helpCenter/ta
 import { helpCenterTabRouting } from '@constant/navigations';
 import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffect, useMemo } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
-import { Flex, Text } from '../antd';
+import { Flex } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileHelpScreenProps {
@@ -22,6 +23,7 @@ function normalizeHelpCenterTab(tab?: string | null) {
 }
 
 export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScreenProps) {
+    const t = useTranslations('MobileHelp');
     const router = useRouter();
     const { token } = theme.useToken();
     const pathname = usePathname();
@@ -58,16 +60,10 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
     return (
         <Flex style={{ minHeight: '100%', minWidth: 0 }} vertical>
             <MobileSettingsScreenHeader
-                description="Search docs, check updates, and contact support."
-                infoContent={(
-                    <Flex gap={4} style={{ maxWidth: 240 }} vertical>
-                        <Text strong>Help Center</Text>
-                        <Text type="secondary">Use the back arrow to return to MenuList.</Text>
-                    </Flex>
-                )}
+                description={t('subtitle')}
                 onBack={handleBack}
                 right={<LuHelpCircle color={token.colorPrimary} size={18} />}
-                title="Help Center"
+                title={t('title')}
             />
             <div
                 data-mobile-help-center

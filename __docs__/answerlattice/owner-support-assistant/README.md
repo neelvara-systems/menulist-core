@@ -20,6 +20,8 @@ The live runtime is intentionally smaller than the frozen target architecture:
 - The Support Control navigation presents the route as `Daily Brief` and lists it first because the live runtime opens with today's read-only plan before follow-up questions.
 - `GET /api/answerlattice/support-assistant/brief` reads six compact `platformSummary` documents through one bounded `getAll()` call, with a 60-second, 300-entry in-process cache.
 - `POST /api/answerlattice/support-assistant/query` accepts one 3-500 character question, rate-limits before the Firestore-backed permission check, and classifies only attention, answer-risk, friction, readiness, intake, release, install, reply, cost, or unsupported intents.
+- Each source is strictly parsed and reported as available, missing, invalid, or stale. Scheduled evidence older than 48 hours is stale; implausible future timestamps are invalid.
+- Evidence, next actions, Daily Brief actions, launch verification, product-change controls, and prepared-card capability are filtered by the caller's current route permissions.
 - The brief response can include `dailyBrief`, a read-only Daily Founder Brief that ranks the smallest useful actions for today from the same six compact summaries.
 - Responses are deterministic, private/no-store, source-linked, and summary-only. There is no Gemini/provider call, transcript, assistant collection, write, listener, scheduler, or raw conversation/ticket read.
 - The default UI opens governed review routes. `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS` is independently disabled by default; when intentionally enabled, selected launch/release items can prefill the existing Support Board create form without writing a card.
@@ -135,3 +137,4 @@ The feature must reuse:
 | 2026-06-07 | Added owner analytics decision: dashboard and assistant period stats reuse existing daily aggregates plus compact `platformSummary` read models, with no dedicated analytics collection. |
 | 2026-06-07 | Hardened into a frozen architecture: existing-system reuse, compact `platformSummary` assistant summary, no new assistant-owned collections, and no standalone scheduler. |
 | 2026-06-07 | Added docs-first strategy for Owner Support Assistant after validating the ChatGPT proposal against Answerlattice doctrine, existing systems, and Firebase cost guardrails. |
+| 2026-07-19 | Source-hardened the live six-summary runtime with strict source health, capability projection, route-permission filtering, and fail-closed browser response contracts. |

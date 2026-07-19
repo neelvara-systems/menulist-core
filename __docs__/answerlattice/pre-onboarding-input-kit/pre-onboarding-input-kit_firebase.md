@@ -38,3 +38,7 @@ The prompt tells customers not to include secrets, tokens, private customer data
 This reduces intake cleanup cost and prevents avoidable sensitive-data review.
 
 The prompt also tells agents to mark inaccessible private repos, login-only apps, restricted websites, recordings, screenshots, and local files as pending. That prevents Answerlattice from treating unverified or inaccessible source areas as covered support truth.
+
+Private source material requires owner permission for the selected AI tool. Generated package metadata records source authority, access scope, citation eligibility, applicability, and conflicts; those fields are review context and do not grant runtime access or approval.
+
+The package standard stays within one existing Knowledge Intake job: at most 50 upload sources and 40,000 characters per source. Review-only JSONL skeletons do not create Firebase cost until an authenticated owner submits reviewed source content through Knowledge Intake.

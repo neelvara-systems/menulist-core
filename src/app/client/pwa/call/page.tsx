@@ -17,12 +17,18 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import { buildTelHref } from '@lib/phone/phoneNumber';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { resolveStorePublicLanguage } from '@lib/localization/publicRenderLanguage';
 import PwaCallHandoffClient from './PwaCallHandoffClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function PwaCallHandoffPage() {
+export default async function PwaCallHandoffPage({
+    searchParams,
+}: {
+    searchParams?: { lang?: string | string[] };
+}) {
     const tenant = await getTenantFromHeaders('PwaCallHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)
@@ -42,11 +48,14 @@ export default async function PwaCallHandoffPage() {
     });
     if (!telUrl) return notFound();
 
+    const activeLanguage = resolveStorePublicLanguage(store, searchParams?.lang);
+    const t = createPublicCustomerTranslator(activeLanguage);
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
-    const storeName = getStoreContextName(store, 'Restaurant');
+    const storeName = getStoreContextName(store, t('common.business'));
 
     return (
         <PwaCallHandoffClient
+            activeLanguage={activeLanguage}
             storeId={store.id}
             tenantId={store.tenantId}
             telUrl={telUrl}

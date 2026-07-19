@@ -27,6 +27,36 @@ const entityChangesSchema = z.array(strictDocumentId('Entity ID'))
         }
     });
 
+export function normalizeAnswerlatticeVersionLabel(
+    value: unknown,
+): { label: string; normalized: number } | null {
+    if (typeof value !== 'string') return null;
+    const label = value.trim().replace(/^v/i, '');
+    if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(label)) return null;
+    const parts = label.split('.').map(Number);
+    if (parts.some((part) => !Number.isSafeInteger(part) || part < 0 || part > 999_999)) return null;
+    const [major, minor = 0, patch = 0] = parts;
+    if (major <= 0 || minor > 999 || patch > 999) return null;
+    const normalized = major * 1_000_000 + minor * 1_000 + patch;
+    return Number.isSafeInteger(normalized) ? { label, normalized } : null;
+}
+
+const addVersionConsistencyIssue = (
+    value: { versionLabel: string; versionNormalized: number },
+    context: z.RefinementCtx,
+) => {
+    const normalized = normalizeAnswerlatticeVersionLabel(value.versionLabel);
+    if (!normalized
+        || value.versionLabel !== normalized.label
+        || value.versionNormalized !== normalized.normalized) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['versionNormalized'],
+            message: 'Release version label and normalized version must match',
+        });
+    }
+};
+
 export const AnswerlatticeCreateReleaseActionSchema = z.object({
     action: z.literal('create'),
     requestId: requestIdSchema,
@@ -45,7 +75,11 @@ export const AnswerlatticeActivateReleaseActionSchema = z.object({
 export const AnswerlatticeReleaseActionSchema = z.discriminatedUnion('action', [
     AnswerlatticeCreateReleaseActionSchema,
     AnswerlatticeActivateReleaseActionSchema,
-]);
+]).superRefine((value, context) => {
+    if (value.action === 'create') {
+        addVersionConsistencyIssue(value as { versionLabel: string; versionNormalized: number }, context);
+    }
+});
 
 export type AnswerlatticeCreateReleaseAction = {
     action: 'create';
@@ -133,7 +167,7 @@ export const AnswerlatticeStoredReleaseSchema = z.object({
     createdBy: z.string().trim().min(1).max(200),
     modifiedOn: timestampLikeSchema,
     modifiedBy: z.string().trim().min(1).max(200),
-}).passthrough();
+}).passthrough().superRefine(addVersionConsistencyIssue);
 
 export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('action', [
     z.object({
@@ -155,20 +189,6 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
 ]);
 
 export type AnswerlatticeReleaseActionResult = z.infer<typeof AnswerlatticeReleaseActionResultSchema>;
-
-export const normalizeAnswerlatticeVersionLabel = (
-    value: unknown,
-): { label: string; normalized: number } | null => {
-    if (typeof value !== 'string') return null;
-    const label = value.trim().replace(/^v/i, '');
-    if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(label)) return null;
-    const parts = label.split('.').map(Number);
-    if (parts.some((part) => !Number.isSafeInteger(part) || part < 0 || part > 999_999)) return null;
-    const [major, minor = 0, patch = 0] = parts;
-    if (major <= 0 || minor > 999 || patch > 999) return null;
-    const normalized = major * 1_000_000 + minor * 1_000 + patch;
-    return Number.isSafeInteger(normalized) ? { label, normalized } : null;
-};
 
 export const getAnswerlatticeTimestampMillis = (value: unknown): number => {
     if (!value || typeof value !== 'object' || typeof (value as { toMillis?: unknown }).toMillis !== 'function') return 0;

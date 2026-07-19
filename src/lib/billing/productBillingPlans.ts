@@ -8,7 +8,7 @@ export const ANSWERLATTICE_CREDIT_PACKS_LIST: AIEnhancementPack[] = [
     {
         packId: 'answerlattice_support_credits',
         name: 'Support Credit Pack',
-        description: 'Extra Answerlattice answer, widget chat, intake media, and review credits. One-time purchase. No expiry.',
+        description: 'Extra Answerlattice credits for provider fallback answers, full-runtime answer tests, starter-answer generation, screenshot OCR, and short recording transcription. One-time purchase. No expiry.',
         creditAmount: 500,
         priceINR: { price: 249900, monthlyCredits: null },
         priceUSD: { price: 3000, monthlyCredits: null },

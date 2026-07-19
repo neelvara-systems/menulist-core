@@ -1,74 +1,21 @@
-# AI Failure Escalation — Website Content
+# AI Failure Escalation - Website Boundary
 
-> **Version:** 1.0.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
-> **Audience:** Public (answerlattice.com website)
-> **Page:** Feature detail / product page section
+> **Last Updated:** 2026-07-18
+> **Status:** Do not publish a standalone automatic-escalation feature page yet
 
----
+## Approved Product Copy
 
-## §1 — Page Section: Intelligent Escalation
+**When an answer is not enough, keep the question attached.**
 
-### Headline
-**When AI fails, Answerlattice doesn't just apologize — it investigates.**
+Users can mark a widget answer as unresolved and create an asynchronous support request with the original question and bounded product context already attached. The founder receives a normal ticket for review; the interaction does not automatically rewrite approved knowledge.
 
-### Subheadline
-Every AI failure creates a pre-filled, debuggable support ticket with full retrieval context. Your team answers in seconds, not minutes.
+## Required Qualification
 
-### Body Copy
+- Support is asynchronous.
+- No response time or resolution guarantee is implied.
+- Automatic low-confidence suggestions are rollout-gated.
+- Public source links appear only when approved for public delivery.
 
-Most AI support tools hide their failures behind a polite "I'm sorry, I couldn't help with that."
+## Publication Hold
 
-Answerlattice takes a different approach. When the AI can't confidently answer a question, it:
-
-1. **Detects the failure** using five independent signals — low confidence, missing entities, repeated failures, explicit user requests, and weak search results.
-
-2. **Offers a seamless handoff** with a single "Still need help?" prompt. No dead ends, no broken flows.
-
-3. **Creates a structured ticket** pre-filled with the user's question, conversation history, and full AI debugging context — what was searched, what matched, and why it failed.
-
-4. **Feeds the knowledge engine** so every failure becomes a signal for improvement. After enough escalations on the same topic, Answerlattice automatically proposes a new canonical answer.
-
-The result: your support team resolves escalation tickets in under 30 seconds, and your knowledge base gets smarter with every failure.
-
-### CTA
-**See how escalation works →** (links to demo or docs)
-
----
-
-## §2 — Feature Comparison Table
-
-| Capability | Generic AI Chat | Answerlattice |
-|-----------|----------------|---------|
-| Detects AI failure | ❌ Shows generic error | ✅ 5 independent detection signals |
-| Preserves context | ❌ User starts over | ✅ Full conversation + query attached |
-| Debugging data | ❌ None | ✅ Retrieval logs + entity trace |
-| Knowledge improvement | ❌ Manual | ✅ Automatic (failure → signal → proposal) |
-| Time to resolve | 10-15 minutes | Under 30 seconds |
-
----
-
-## §3 — Social Proof Copy (Template)
-
-> "Before Answerlattice, AI failures were black boxes. Now every escalation comes with an investigation report — what the AI searched, what it found, and exactly why it failed. Our support resolution time dropped from 12 minutes to 45 seconds."
->
-> — [Customer Name], [Title], [Company]
-
----
-
-## §4 — SEO Meta
-
-**Title:** Intelligent AI Escalation | Answerlattice
-**Description:** When AI support fails, Answerlattice creates structured, debuggable tickets with full retrieval context. Resolve escalations in seconds, not minutes. Every failure improves your knowledge base.
-**Keywords:** AI escalation, support ticket creation, AI failure handling, knowledge management, SaaS support infrastructure
-
----
-
-## §5 — OG Tags
-
-```html
-<meta property="og:title" content="Intelligent AI Escalation | Answerlattice" />
-<meta property="og:description" content="When AI fails, Answerlattice creates pre-filled tickets with full debugging context. Resolve in seconds. Every failure improves your KB." />
-<meta property="og:type" content="website" />
-```
+Do not publish automatic detection, zero-configuration triggers, automatic notification, self-healing knowledge, competitor-superiority, or time-saved claims until current runtime deployment and customer outcome evidence supports them.

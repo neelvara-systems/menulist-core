@@ -1,261 +1,89 @@
-# Ticket System — Firebase Cost & Operations Tracking
+# Answerlattice Ticket and Conversation Firebase Contract
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-07-02
-> **Audience:** Developers, Ops
-> **Source:** Codebase forensic audit
+> **Last verified:** July 19, 2026
 
----
+## Collections and storage
 
-## 1. Firestore Collection
+| Target | Purpose | Retention |
+|---|---|---|
+| `supportTickets` | Durable human fallback, messages, statuses, context, private support fields | Durable until soft/full deletion; no automatic ticket TTL |
+| `chatSessions` | Retained user/assistant conversation evidence and support metadata | Durable; no automatic session TTL |
+| `chatAnalytics` | Server-owned aggregate conversation analytics | Server-owned |
+| `aiSearchHistory` | Widget/search evidence linked to explicit handoff | Governed by the search-history retention contract |
+| `answerlattice_notificationLogs` | Email claim, delivery status, and bounded diagnostics | 90 days using `expiresAt` TTL; explicit legacy cleanup fallback |
+| Storage `supportTickets/documents/{tId}/{sId}/{fileId}` | Top-level ticket attachments | Removed on full-platform hard delete, best effort |
+| Storage `supportTickets/messages/{tId}/{sId}/{fileId}` | Reply attachments | Removed on full-platform hard delete, best effort |
+| Storage `chatSessions/chatimages/{tId}/{sId}/{imageId}` | Shared conversation/search image evidence | Retained when session references are removed until reference-safe cleanup exists |
 
-| Property | Value |
-|----------|-------|
-| **Collection** | `supportTickets` |
-| **DB_COLLECTIONS constant** | `DB_COLLECTIONS.SUPPORT_TICKETS` |
-| **Doc ID** | Auto-generated (Firestore) |
-| **Display ID** | First 6 chars of doc ID, uppercased |
-| **Scoping** | `tId` + `sId` fields (tenant + store) |
-| **Avg Doc Size** | 2-50 KB (grows with messages + attachments) |
-| **Growth Rate** | Per-ticket submission |
-| **Soft Delete** | `deleted: true` field (not hard delete from UI) |
+## Operation costs
 
-### Document Schema
+| Operation | Firestore work | Storage/provider work |
+|---|---|---|
+| Create ticket | 1 write | 0-4 uploads; signal and email are best effort |
+| Append reply | 1 transaction read + 1 write | 0-4 uploads; optional email |
+| Change status | 1 transaction read + 1 write | optional email |
+| Change priority/category/notes/tags/delete flag | 1 transaction read + 1 write | none |
+| Submit satisfaction | 1 transaction read + 1 write | none |
+| Hard delete | 1 transaction read + 1 delete | owned attachment deletes best effort |
+| Read ticket | 1 read | attachment download only when opened |
+| Workspace listener | Up to latest 100 initial reads, then changed-document reads | none |
+| Platform listener | Up to latest 500 initial reads, then changed-document reads | none |
+| Deleted queue | Up to latest 100 reads | none |
+| Conversation page | Bounded paginated reads | chat image downloads only when rendered |
+| Ticket notification | access-control reads + 1 exact ticket Admin read + delivery-claim/rate/finalization reads/writes | at most one SMTP attempt per claimed identity |
 
-```typescript
-{
-  id: string;                    // Firestore auto-ID
-  displayId: string;             // First 6 chars, uppercase
-  subject: string;
-  status: string;                // Open | In Progress | Resolved | Closed | Re-Opened
-  priority: string;              // Low | Normal | High
-  category: string;              // 7 categories
-  message: string;               // Initial description
-  documents: Array<{             // File attachments
-    name: string;
-    size: number;
-    type: string;
-    url: string;                 // Firebase Storage URL
-    uid: string;
-  }>;
-  platformNotes: string;         // Admin internal notes
-  platformTags: string[];        // Admin tags [Issue, Bug, Feature, Improvement, Performance]
-  deleted: boolean;              // Soft delete flag
-  statuses: Array<{              // Status audit trail
-    status: string;
-    timestamp: Timestamp;
-    createdBy: { id, name, email };
-    remark: string;
-  }>;
-  messages: Array<{              // Conversation thread
-    id: string;
-    text: string;
-    type: 'user' | 'system';
-    sender: { id, name, email };
-    timestamp: Timestamp;
-    attachments?: Array<{ url, name, type, size }>;
-  }>;
-  clientDetails: {               // Requester info (captured on creation)
-    storeName: string;
-    tenantName: string;
-    email: string;
-    phone: string;
-  };
-  logs: Array<{                  // Captured browser logs
-    timestamp: number;
-    message: string;
-    level: 'info' | 'warn' | 'error';
-  }>;
-  clientDebugContext?: {          // Captured once on ticket creation
-    userAgent?: string;           // capped raw user-agent string
-    capturedAt?: number;          // epoch ms
-  };
-  // Auto-injected by requestBodyComposer:
-  createdOn: Timestamp;
-  modifiedOn: Timestamp;
-  createdBy: string;
-  modifiedBy: string;
-  sId: string;
-  tId: string;
-  uId: string;
-}
+No new scheduler or collection is required by the 50-message/25-status cap.
+
+## Rules
+
+Firestore:
+
+- exact `AL/tId/sId` scope;
+- support-control permission;
+- strict create shape and one initial status;
+- one message or one status+system-message append per update;
+- immutable prior history;
+- valid actor identity and allowed status transition;
+- 50 messages, 25 statuses, four creation documents;
+- uploaded and parsed document metadata is limited to four files and 10 MiB each; Firestore Rules enforce the list cap while the DAL/read parser and trusted-download boundary fail closed on invalid metadata or URLs;
+- satisfaction is one-time and only after Resolved/Closed;
+- hard delete is full `PLATFORM` only.
+
+Storage:
+
+- support-control role parity in dedicated and shared projects;
+- exact path scope for tenant users;
+- `PLATFORM_SUPPORT` and `PLATFORM` support-media access;
+- images up to 5 MiB for chat;
+- allowlisted image/document ticket files up to 10 MiB;
+- no arbitrary executable/binary upload.
+
+## Indexes
+
+Maintained support-ticket indexes include:
+
+- `pId, tId, sId, deleted, createdOn`;
+- `pId, deleted, createdOn`.
+
+Conversation and notification indexes are maintained in both Answerlattice index configurations according to their bounded query paths.
+
+## Cost and scale decisions
+
+- Embedded histories avoid one read per reply but require strict caps.
+- The previous 500-message/200-status declaration was not writable at scale under Firestore Rules' 1,000-expression evaluation ceiling. Runtime, Rules, and emulators now agree on 50/25.
+- Ticket creation is a fallback workflow; reaching either cap stops further mutation with an explicit limit error. It does not silently truncate legal/audit history.
+- Platform reads are capped at 500; Answerlattice is not building an unbounded help-desk archive query.
+- Notifications are asynchronous so SMTP latency or failure cannot hold a ticket transaction open.
+
+## Deployment
+
+Changes to either Firestore Rules or Storage Rules require the matching narrow QA deploy:
+
+```bash
+firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only storage --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive
+firebase deploy --only storage --project menulist-qa --config firebase.json --non-interactive
 ```
 
----
-
-## 2. Firebase Storage
-
-### Paths
-
-| Purpose | Path Pattern | Tenant-Scoped |
-|---------|-------------|:-------------:|
-| Ticket attachments | `supportTickets/documents/{tId}/{sId}/{timestamp}-{uid}` | ✅ |
-| Message attachments | `supportTickets/messages/{tId}/{sId}/{timestamp}-{uid}` | ✅ |
-
-### Storage Operations
-
-| Operation | When | Size |
-|-----------|------|------|
-| Upload attachment | Ticket creation / message reply | 0-10 MB per file, max 4 files |
-| Delete attachment | Hard delete ticket (DAL `deleteTicket`) | Deletes all associated files |
-
-June 29 browser-handoff hardening changes only new-tab attachment opens in platform ticket UI to use `noopener,noreferrer`. It adds no Firestore reads/writes/deletes, Storage uploads/downloads/deletes, Cloud Functions, provider calls, rules, indexes, schema fields, or ticket-state changes.
-
-July 2 mutation-scope hardening is cost-neutral. `updateTicket()`, `addTicketMessage()`, and `updateTicketStatus()` now require selected ticket `tId/sId` for non-platform sessions before partial merge writes; platform partial updates without explicit ticket scope strip composer-injected `tId/sId` so existing ticket ownership is preserved. This adds no Firestore reads, no extra writes, no Storage operations, no rules/index changes, no Cloud Functions, and no deploy requirement.
-
----
-
-## 3. Operations Per Action
-
-### 3.1 Create Ticket
-
-| Step | Reads | Writes | Storage |
-|------|:-----:|:------:|:-------:|
-| `requestBodyComposer` | 0 | 0 | — |
-| Upload attachments (0-4 files) | 0 | 0 | 0-4 files |
-| `addDoc` to supportTickets | 0 | 1 | — |
-| **Total** | **0** | **1** | **0-4 files** |
-
-### 3.2 Send Message
-
-| Step | Reads | Writes | Storage |
-|------|:-----:|:------:|:-------:|
-| Upload attachments (optional) | 0 | 0 | 0-N files |
-| `setDoc` merge (append to messages) | 0 | 1 | — |
-| **Total** | **0** | **1** | **0-N files** |
-
-### 3.3 Update Ticket (Status/Priority/Category/Notes/Tags)
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| `setDoc` merge | 0 | 1 |
-| **Total** | **0** | **1** |
-
-### 3.4 Soft Delete
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| `updateTicket({ deleted: true })` | 0 | 1 |
-| **Total** | **0** | **1** |
-
-Ticket create acknowledgement hardening is cost-neutral. `AddSupportTicket` and HelpChat AI escalation still use the existing `addTicket()` create path, attachment upload behavior, ticket signal, and notification handoff, but now require `assertSupportTicketCreateSucceeded()` before local ticket state, callbacks, modal close, or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
-
-Ticket update acknowledgement hardening is cost-neutral. `TicketDetailView` status/details saves, `PlatformTicketsView` soft deletes, and restores still use the existing `updateTicket()` write, but now require `assertSupportTicketUpdateSucceeded()` before local ticket state, drawer state, or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
-
-Ticket reply acknowledgement hardening is cost-neutral. `ConversationTimeline` still uses the existing `addTicketMessage()` `setDoc` merge and optional attachment upload behavior, but now requires `assertSupportTicketMessageAddSucceeded()` before local conversation state, form reset, or success copy advances. `updateTicketStatus()` also returns an explicit acknowledgement envelope for future direct callers. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
-
-### 3.5 Hard Delete (DAL only)
-
-| Step | Reads | Writes | Storage |
-|------|:-----:|:------:|:-------:|
-| Delete all storage files | 0 | 0 | N deletes |
-| `deleteDoc` | 0 | 1 | — |
-| **Total** | **0** | **1** | **N deletes** |
-
-### 3.6 Get Store Tickets (Owner Fallback / Explicit Fetch)
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| Query: `tId + sId + deleted=false + orderBy createdOn desc` | N | 0 |
-| **Total** | **N** | **0** |
-
-### 3.7 Get All Tickets (Platform Admin Fallback / Explicit Fetch)
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| Query: `deleted=false + orderBy createdOn desc + limit(500)` (or latest 500 if includeDeleted) | up to 500 | 0 |
-| **Total** | **up to 500** | **0** |
-
-### 3.8 Real-Time Subscription (Owner)
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| Initial snapshot | N (store-scoped) | 0 |
-| Per change | 1 (changed doc) | 0 |
-| **Per hour (estimated)** | **~5-20** | **0** |
-
-### 3.9 Real-Time Subscription (Platform)
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| Initial snapshot | up to 500 active tickets | 0 |
-| Per change | 1 (changed doc) | 0 |
-
-### 3.10 Trash View (Platform)
-
-| Step | Reads | Writes |
-|------|:-----:|:------:|
-| Query deleted tickets: `deleted=true + orderBy createdOn desc + limit(100)` | up to 100 | 0 |
-| Restore ticket | 0 | 1 |
-| Active list after restore | live listener change read | 0 |
-
----
-
-## 4. Firestore Indexes Required
-
-| Fields | Order | Purpose |
-|--------|-------|---------|
-| `tId ASC, sId ASC, deleted ASC, createdOn DESC` | Composite | Store-scoped ticket list |
-| `deleted ASC, createdOn DESC` | Composite | Platform-wide ticket list |
-
----
-
-## 5. Cost Estimates
-
-### Scenario: 10 stores, 5 tickets/week, 3 messages/ticket
-
-| Operation | Frequency | Reads/mo | Writes/mo |
-|-----------|-----------|:--------:|:---------:|
-| Create ticket | 50/mo | 0 | 50 |
-| Send messages | 150/mo | 0 | 150 |
-| Status updates | 100/mo | 0 | 100 |
-| Owner ticket surface opens (listener initial snapshot) | ~300/mo | 300 × ~5 = 1,500 | 0 |
-| Platform admin opens (listener initial snapshot) | ~100/mo | 100 × ~50 = 5,000 | 0 |
-| Real-time listener (owner) | Continuous | ~3,000 | 0 |
-| Real-time listener (platform) | Continuous | ~2,000 | 0 |
-| **Total** | | **~11,500** | **~300** |
-
-### Monthly Cost
-
-| Resource | Usage | Cost |
-|----------|-------|------|
-| Firestore reads | ~11,500 | $0.004 |
-| Firestore writes | ~300 | $0.0003 |
-| Storage | ~25 MB/mo | ~$0.003 |
-| **Total** | | **~$0.007/month** |
-
-**At 1,000 stores:** ~$0.70/month
-
----
-
-## 6. DAL Function → Collection Mapping
-
-| DAL Function | Collection | Operation | Cost Pattern |
-|-------------|-----------|-----------|-------------|
-| `addTicket` | `supportTickets` | addDoc | 1W + N storage |
-| `updateTicket` | `supportTickets` | setDoc merge | 1W |
-| `addTicketMessage` | `supportTickets` | setDoc merge | 1W + N storage |
-| `updateTicketStatus` | `supportTickets` | setDoc merge | 1W |
-| `deleteTicket` | `supportTickets` | deleteDoc | 1W + N storage deletes |
-| `restoreTicket` | `supportTickets` | setDoc merge | 1W |
-| `getTicketById` | `supportTickets` | getDoc | 1R |
-| `getStoresTickets` | `supportTickets` | getDocs (query) | NR |
-| `getSupportTickets` | `supportTickets` | getDocs (query) | NR |
-| `subscribeSupportTickets` | `supportTickets` | onSnapshot | Listener |
-| `subscribeStoreTickets` | `supportTickets` | onSnapshot | Listener |
-
----
-
-## 7. Document Growth Risk
-
-**Concern:** Messages stored as array inside ticket document. Each message ~200-500 bytes. Firestore max doc size = 1 MB.
-
-| Messages | Est. Doc Size | Status |
-|:--------:|:------------:|:------:|
-| 10 | ~5 KB | ✅ Safe |
-| 50 | ~25 KB | ✅ Safe |
-| 200 | ~100 KB | ✅ Safe |
-| 500 | ~250 KB | ⚠️ Watch |
-| 1000+ | ~500 KB+ | 🔴 Risk |
-
-**Mitigation:** Typical support tickets have 5-20 messages. Risk is very low for normal usage. If tickets with 100+ messages become common, consider moving messages to a subcollection.
+Vercel deployment remains owner-approved only.

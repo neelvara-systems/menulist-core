@@ -408,15 +408,17 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
 
                 const newContent = extractEditortextForComparison(data.content);
                 const prevContent = extractEditortextForComparison(editingArticle.content);
-                if (newContent !== prevContent) {
+                const searchTruthChanged = newContent !== prevContent
+                    || changedData.title !== undefined
+                    || changedData.categoryId !== undefined
+                    || changedData.sectionId !== undefined;
+                if (searchTruthChanged) {
                     await generateEmbedding(mergedArticle);
                 }
                 onSuccess(mergedArticle);
             } else {
                 const newArticleData: Partial<KnowledgeBaseArticleType> = {
                     ...values,
-                    active: true,
-                    status: 'published',
                     categoryId: values.categoryId,
                     sectionId: values.sectionId ?? null,
                     index: values.index,
@@ -454,7 +456,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
         }
     };
 
-    const isSearchReady = Boolean(editingArticle?.embedding);
+    const isSearchReady = editingArticle?.embeddingStatus === 'embedded' && Boolean(editingArticle?.embedding);
 
     const RenderTitle = () => {
         return (

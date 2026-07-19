@@ -26,7 +26,9 @@ No new database collections, background jobs, provider calls, or ingestion APIs 
 | `src/app/sites/answerlattice/resources/page.tsx` | Resource hub link. |
 | `src/lib/answerlattice/installContract/contract.ts` | LLM context link to the pre-onboarding prompt. |
 
-The prompt modal fetches `/pre-onboarding.md` as a same-origin Markdown resource with no-store cache and manual redirect handling, caps the response at 128 KB with `readResponseUint8ArrayWithLimit()`, accepts only `text/markdown` or `text/plain`, and shows fixed load-failure copy. The Copy Prompt action waits for either Clipboard API success or confirmed textarea fallback success before showing copied state; rejected Clipboard API writes fall through to the fallback, and unavailable or failed fallback support keeps the fixed error state instead of reporting success. The direct Markdown route remains available for agents and downloads if the modal cannot load the preview.
+The prompt modal fetches `/pre-onboarding.md` as a same-origin Markdown resource with no-store cache and manual redirect handling, caps the response at 128 KB with `readResponseUint8ArrayWithLimit()`, requires `text/markdown` or `text/plain`, and shows fixed load-failure copy. The dialog places initial focus on its in-dialog close button, removes the click-to-close backdrop from the tab order and accessibility tree, traps keyboard focus, restores focus to its trigger on close, and keeps the page scroll state stable. The Copy Prompt action waits for either Clipboard API success or confirmed textarea fallback success before showing copied state; rejected Clipboard API writes fall through to the fallback, and unavailable or failed fallback support keeps the fixed error state instead of reporting success. The direct Markdown route remains available for agents and downloads if the modal cannot load the preview.
+
+All master, owner, agent, and tool-specific Markdown routes reuse `ANSWERLATTICE_PRE_ONBOARDING_MARKDOWN_RESPONSE_HEADERS`. The shared public response contract sets Markdown content type, bounded public caching, and `X-Content-Type-Options: nosniff`.
 
 ## Folder Output Contract For Clients
 
@@ -59,6 +61,10 @@ Supported source modes:
 
 The folder contract stays stable for Answerlattice. Missing or inapplicable source families are represented with explicit `Not available` or `Not applicable` notes rather than invented support content.
 
+`api-payloads/add-source-payloads.jsonl` is a review artifact unless every non-website entry includes reviewed `contentText`. Public page entries use singular `originUrl`; `sourceUrls` is not accepted by the strict add-source API. Raw screenshot, audio, and video files use the authenticated media upload flow instead of the JSONL request shape. Authenticated runtime scope provides `pId`, `tId`, and `sId`; generated client payloads must not invent tenant identity.
+
+Each manifest and source evidence entry records authority, approval status, access scope, citation eligibility, effective/verified dates, applicability, and conflicts. These values preserve review context; they do not auto-promote a connected source into approved truth.
+
 The implementation must also keep the capability boundary visible: the prompt works only with sources the AI IDE can access. Blocked private repos, login-only apps, unreachable websites, unsupported media, or unavailable files must be represented as pending source-access gaps, not as covered truth.
 
 For multi-product repos, `product-boundary-and-exclusions.md` must list:
@@ -83,6 +89,12 @@ The prompt requires the agent to validate:
 - CSV files parse cleanly;
 - no raw angle-bracket placeholder text remains;
 - no source exceeds the configured Answerlattice size limit;
+- no package exceeds 50 upload sources for one intake job;
+- payloads use a supported source type and singular `originUrl`;
+- review-only skeletons are distinguished from API-ready payloads with source bodies;
+- source authority, approval status, access scope, citation eligibility, applicability, and conflicts are present;
+- support exports remain signals until authoritative facts are reviewed;
+- private-source use in the selected AI tool is owner-authorized;
 - all high-risk topics have escalation rules;
 - live support test questions cover routine and risky flows;
 - public website claims are represented;
@@ -104,6 +116,8 @@ The generated package should not include:
 - service account content;
 - private support messages with user data;
 - unapproved screenshots.
+
+It must also avoid feeding private sources to an AI tool without owner authorization, exposing private source URLs as public citations, or editing the client product/source files as a side effect of package preparation.
 
 If the client needs account-specific onboarding, that happens inside authenticated Answerlattice runtime paths after workspace creation.
 
@@ -139,3 +153,7 @@ The `/pre-onboarding/guide`, `/pre-onboarding.md`, `/pre-onboarding/owner-guide.
 No Firebase deployment is required for this feature.
 
 If the public website route is changed, a normal Vercel deployment is required later. This session does not run Vercel deploys.
+
+## Feature 27 Audit — 2026-07-19
+
+The feature-flow audit aligned the generated JSONL with the strict Knowledge Intake source route, added governed source metadata and private-source permission rules, hardened all public Markdown response headers, made missing MIME types fail closed, and corrected dialog focus containment/restoration. `test:answerlattice-pre-onboarding-contracts` now prevents source-mode, 26-file sequence, runtime-limit, source-type, payload-field, governance, wrapper, and response-header drift.

@@ -4,6 +4,22 @@ import { z } from 'zod';
 const MAX_HOSTED_HELP_DOMAINS = 5;
 const MAX_HOSTED_HELP_TEXT = 120;
 const MAX_HOSTED_HELP_DESCRIPTION = 220;
+const MAX_HOSTED_HELP_DNS_RECORDS = 20;
+const MAX_HOSTED_HELP_DNS_RECORD_TEXT = 1_024;
+
+export type AnswerlatticeHostedHelpDnsRecord = {
+    type: string;
+    domain?: string;
+    name?: string;
+    value?: string;
+    reason?: string;
+};
+
+export type AnswerlatticeHostedHelpDomainVerification = {
+    misconfigured: boolean | null;
+    verificationRecords: AnswerlatticeHostedHelpDnsRecord[];
+    configuredBy: AnswerlatticeHostedHelpDnsRecord[];
+};
 
 export const AnswerlatticeHostedHelpConfigSchema = z.object({
     enabled: z.boolean().default(false),
@@ -55,3 +71,47 @@ export function parseHostedHelpConfigSaveInput(value: unknown): AnswerlatticeHos
     return normalizeHostedHelpConfig(value);
 }
 
+const normalizeDnsRecordText = (value: unknown, maxLength = MAX_HOSTED_HELP_DNS_RECORD_TEXT): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+    return normalized && normalized.length <= maxLength ? normalized : null;
+};
+
+const normalizeHostedHelpDnsRecord = (value: unknown): AnswerlatticeHostedHelpDnsRecord | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    const type = normalizeDnsRecordText(record.type, 16) || 'TXT';
+    const domain = normalizeDnsRecordText(record.domain, 253);
+    const name = normalizeDnsRecordText(record.name, 253);
+    const recordValue = normalizeDnsRecordText(record.value);
+    const reason = normalizeDnsRecordText(record.reason, 240);
+    if (!domain && !name && !recordValue && !reason) return null;
+
+    return {
+        type,
+        ...(domain ? { domain } : {}),
+        ...(name ? { name } : {}),
+        ...(recordValue ? { value: recordValue } : {}),
+        ...(reason ? { reason } : {}),
+    };
+};
+
+export function normalizeHostedHelpDomainVerification(value: unknown): AnswerlatticeHostedHelpDomainVerification {
+    const record = value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+    const normalizeRecords = (candidate: unknown) => (
+        Array.isArray(candidate)
+            ? candidate
+                .slice(0, MAX_HOSTED_HELP_DNS_RECORDS)
+                .map(normalizeHostedHelpDnsRecord)
+                .filter((item): item is AnswerlatticeHostedHelpDnsRecord => item !== null)
+            : []
+    );
+
+    return {
+        misconfigured: typeof record.misconfigured === 'boolean' ? record.misconfigured : null,
+        verificationRecords: normalizeRecords(record.verificationRecords),
+        configuredBy: normalizeRecords(record.configuredBy),
+    };
+}

@@ -12,6 +12,7 @@ interface PublicMenuListAttributionProps {
     surfaceLabel?: string;
     rightsLabel?: string | null;
     ctaLabel?: string | null;
+    ariaLabel?: string;
     mutedColor?: string;
     accentColor?: string;
     containerStyle?: CSSProperties;
@@ -66,6 +67,7 @@ export default function PublicMenuListAttribution({
     surfaceLabel = 'Powered by MenuList',
     rightsLabel = 'All rights reserved',
     ctaLabel = null,
+    ariaLabel = 'Create an official customer link with MenuList',
     mutedColor = '#8a8f98',
     accentColor = '#111',
     containerStyle,
@@ -112,7 +114,7 @@ export default function PublicMenuListAttribution({
                     margin: 0,
                     textDecoration: 'none',
                 }}
-                aria-label="Create an official customer link with MenuList"
+                aria-label={ariaLabel}
             >
                 <MenuListLogoMark height={markHeight} />
                 <span>{surfaceLabel}{rightsLabel ? `. ${rightsLabel}` : ''}</span>

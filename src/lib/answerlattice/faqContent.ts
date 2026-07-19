@@ -10,7 +10,7 @@ import {
 } from '@type/answerlattice';
 import { z } from 'zod';
 import { normalizeAnswerlatticeFaqId } from './faqIdBoundary';
-import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
+import { normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
 import { normalizeContextKeys, normalizeSurfaceList } from './productSurfaceContent';
 
@@ -189,41 +189,31 @@ const FaqSaveSchema = z.object({
         ANSWERLATTICE_FAQ_STATUS.PUBLISHED,
         ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
     ]).optional().default(ANSWERLATTICE_FAQ_STATUS.DRAFT),
-    source: z.enum([
-        ANSWERLATTICE_FAQ_SOURCE.IMPORT,
-        ANSWERLATTICE_FAQ_SOURCE.MANUAL,
-        ANSWERLATTICE_FAQ_SOURCE.TICKET_SIGNAL,
-        ANSWERLATTICE_FAQ_SOURCE.ARTICLE,
-    ]).optional().default(ANSWERLATTICE_FAQ_SOURCE.MANUAL),
-    active: z.boolean().optional(),
     articleId: z.string().trim().max(180).nullable().optional(),
-    articleTitle: z.string().trim().max(240).nullable().optional(),
-    canonicalAnswerId: z.string().trim().max(180).nullable().optional(),
     entityIds: z.array(z.string().trim().min(1).max(180)).max(MAX_ENTITY_IDS).optional().default([]),
     contextKeys: z.union([z.array(z.string()), z.string()]).optional().default([]),
     tags: z.union([z.array(z.string()), z.string()]).optional().default([]),
     sortOrder: z.coerce.number().int().min(0).max(9999).optional().default(100),
-    jobId: z.string().trim().max(180).nullable().optional(),
-    generatedFromArticleId: z.string().trim().max(180).nullable().optional(),
-});
+}).strict();
 
 export type AnswerlatticeFaqSaveInput = z.infer<typeof FaqSaveSchema>;
+
+export type ParsedAnswerlatticeFaqSaveInput = Pick<
+    AnswerlatticeFaq,
+    'pId' | 'tId' | 'sId' | 'question' | 'answer' | 'status' | 'articleId' | 'entityIds' | 'contextKeys' | 'tags' | 'sortOrder'
+> & { id?: string };
 
 export function parseAnswerlatticeFaqSaveInput(
     value: unknown,
     scope: { tId: number; sId: number },
-): Omit<AnswerlatticeFaq, 'id'> & { id?: string } {
+): ParsedAnswerlatticeFaqSaveInput {
     const parsed = FaqSaveSchema.parse(value);
     const status = normalizeFaqStatus(parsed.status);
     const faqId = parsed.id ? normalizeAnswerlatticeFaqId(parsed.id) : null;
     const articleId = parsed.articleId ? normalizeAnswerlatticeKbArticleId(parsed.articleId) : null;
-    const canonicalAnswerId = parsed.canonicalAnswerId ? normalizeAnswerlatticeCanonicalAnswerId(parsed.canonicalAnswerId) : null;
-    const generatedFromArticleId = parsed.generatedFromArticleId ? normalizeAnswerlatticeKbArticleId(parsed.generatedFromArticleId) : null;
 
     if (parsed.id && !faqId) throw new Error('Invalid FAQ id');
     if (parsed.articleId && !articleId) throw new Error('Invalid linked article id');
-    if (parsed.canonicalAnswerId && !canonicalAnswerId) throw new Error('Invalid canonical answer id');
-    if (parsed.generatedFromArticleId && !generatedFromArticleId) throw new Error('Invalid generated-from article id');
 
     return {
         ...(faqId ? { id: faqId } : {}),
@@ -233,17 +223,11 @@ export function parseAnswerlatticeFaqSaveInput(
         question: normalizeFaqText(parsed.question, MAX_QUESTION_LENGTH),
         answer: normalizeFaqText(parsed.answer, MAX_ANSWER_LENGTH),
         status,
-        source: normalizeFaqSource(parsed.source),
-        active: parsed.active ?? status !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
         articleId,
-        articleTitle: parsed.articleTitle ? normalizeFaqText(parsed.articleTitle, 240) : null,
-        canonicalAnswerId,
         entityIds: normalizeAnswerlatticeResolvedEntityIds(parsed.entityIds, MAX_ENTITY_IDS),
         contextKeys: normalizeContextKeys(parsed.contextKeys),
         tags: normalizeSurfaceList(parsed.tags, MAX_TAGS, 64),
         sortOrder: parsed.sortOrder ?? 100,
-        jobId: parsed.jobId ? normalizeFaqText(parsed.jobId, 180) : null,
-        generatedFromArticleId,
     };
 }
 

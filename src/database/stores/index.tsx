@@ -29,12 +29,18 @@ import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { isDataUrl } from "@lib/media/mediaStorage";
 import { normalizeTimeSlotPresets } from "@lib/menu/timeSlotPresetBoundary";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import {
+    buildOwnerGoogleMapsLinkIdentityBinding,
+    EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
+    normalizeExternalLocationIdentityBinding,
+} from "@lib/public-truth-tools/externalLocationIdentity";
 import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import {
     isStoreNestedDelete,
     mergeStoreNestedUpdateWithCurrent,
     projectStoreNestedUpdateEntries,
+    STORE_NESTED_DELETE,
     type StoreNestedUpdateEntry,
 } from "@lib/store/storeNestedUpdateProjection";
 import {
@@ -46,7 +52,12 @@ import {
 } from "@lib/onboarding/starterActivation";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
-import { StoreDataType, TimeSlotPreset } from "@type/platform/store";
+import {
+    ExternalLocationIdentityBinding,
+    ExternalLocationIdentityProvider,
+    StoreDataType,
+    TimeSlotPreset,
+} from "@type/platform/store";
 import { deleteField, doc, FieldPath, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.STORES;
@@ -88,6 +99,55 @@ const normalizeWorkingHoursUpdate = (value: unknown, allowDeleteMarkers: boolean
         if (normalized === null) throw new Error('store_working_hours_range_invalid');
         return [day, normalized];
     }));
+};
+
+const mirrorOwnerGoogleMapsLinkIdentity = (data: Record<string, any>): void => {
+    const publicPresence = data.publicPresence;
+    if (
+        !publicPresence
+        || typeof publicPresence !== 'object'
+        || Array.isArray(publicPresence)
+        || !Object.prototype.hasOwnProperty.call(publicPresence, 'googleMapsUrl')
+    ) {
+        return;
+    }
+
+    const rawGoogleMapsUrl = publicPresence.googleMapsUrl;
+    const clearsGoogleMapsUrl = isStoreNestedDelete(rawGoogleMapsUrl)
+        || rawGoogleMapsUrl === null
+        || (typeof rawGoogleMapsUrl === 'string' && !rawGoogleMapsUrl.trim());
+    if (clearsGoogleMapsUrl) {
+        data.externalLocationIdentity = {
+            ...(data.externalLocationIdentity || {}),
+            schemaVersion: EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
+            bindings: {
+                ...(data.externalLocationIdentity?.bindings || {}),
+                google_maps: STORE_NESTED_DELETE,
+            },
+        };
+        return;
+    }
+
+    const binding = buildOwnerGoogleMapsLinkIdentityBinding(
+        rawGoogleMapsUrl,
+        new Date().toISOString(),
+    );
+    if (!binding) {
+        throw new Error('store_google_maps_identity_invalid');
+    }
+
+    data.publicPresence = {
+        ...publicPresence,
+        googleMapsUrl: binding.providerUri,
+    };
+    data.externalLocationIdentity = {
+        ...(data.externalLocationIdentity || {}),
+        schemaVersion: EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
+        bindings: {
+            ...(data.externalLocationIdentity?.bindings || {}),
+            google_maps: binding,
+        },
+    };
 };
 
 const materializeStoreNestedEntry = (entry: StoreNestedUpdateEntry) => ({
@@ -428,6 +488,10 @@ export const updateStore = async (data: any) => {
                 return currentStoreData || {};
             };
 
+            if (Object.prototype.hasOwnProperty.call(data, 'externalLocationIdentity')) {
+                throw new Error('store_external_location_identity_direct_update_forbidden');
+            }
+
             if ('activeLanguages' in data || 'defaultLanguage' in data || 'language' in data) {
                 const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
                 data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
@@ -437,6 +501,7 @@ export const updateStore = async (data: any) => {
             if (data.workingHours !== undefined) {
                 data.workingHours = normalizeWorkingHoursUpdate(data.workingHours, true);
             }
+            mirrorOwnerGoogleMapsLinkIdentity(data);
 
             data.id = data.storeId
             if (data.imageToUpdate) {
@@ -886,6 +951,167 @@ const assertActiveSessionStore = async (
     }
     return session;
 };
+
+const getExternalLocationIdentitySessionTenantId = (session: Record<string, any>): string => {
+    const sessionTenantId = String(session.tId ?? '').trim();
+    const tenantId = Number(sessionTenantId);
+    if (!/^[1-9]\d*$/.test(sessionTenantId) || !Number.isSafeInteger(tenantId)) {
+        throw new Error('external_location_identity_tenant_scope_invalid');
+    }
+    return sessionTenantId;
+};
+
+const assertExternalLocationIdentityStoreAvailable = (
+    store: Record<string, any>,
+    storeId: number,
+    sessionTenantId: string,
+): void => {
+    if (
+        String(store.storeId) !== String(storeId)
+        || String(store.tenantId) !== sessionTenantId
+    ) {
+        throw new Error('external_location_identity_store_scope_changed');
+    }
+    if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) {
+        throw new Error('external_location_identity_store_unavailable');
+    }
+};
+
+export type ExternalLocationIdentityMutationResult = {
+    success: true;
+    storeId: number;
+    provider: ExternalLocationIdentityProvider;
+    confirmed: boolean;
+    recordedAt: string;
+    binding?: ExternalLocationIdentityBinding;
+};
+
+export const confirmExternalLocationIdentity = async (data: {
+    storeId: number;
+    binding: ExternalLocationIdentityBinding;
+}) => {
+    return await apiCallComposer(
+        async () => {
+            const storeId = Number(data.storeId);
+            const requestedBinding = normalizeExternalLocationIdentityBinding(data.binding);
+            if (
+                !Number.isSafeInteger(storeId)
+                || storeId <= 0
+                || !requestedBinding
+                || requestedBinding.provider !== 'google_maps'
+                || requestedBinding.source !== 'maps_place_check'
+            ) {
+                throw new Error('external_location_identity_input_invalid');
+            }
+            const session = await assertActiveSessionStore(
+                storeId,
+                'external_location_identity_store_scope_mismatch',
+            );
+            const sessionTenantId = getExternalLocationIdentitySessionTenantId(session);
+            const binding = {
+                ...requestedBinding,
+                confirmedAt: new Date().toISOString(),
+            } satisfies ExternalLocationIdentityBinding;
+            const storeRef = getDocRef(`${storeId}`);
+            await runTransaction(firebaseClient, async (transaction) => {
+                const storeSnapshot = await transaction.get(storeRef);
+                if (!storeSnapshot.exists()) throw new Error('external_location_identity_store_missing');
+                assertExternalLocationIdentityStoreAvailable(
+                    storeSnapshot.data(),
+                    storeId,
+                    sessionTenantId,
+                );
+                transaction.update(
+                    storeRef,
+                    new FieldPath('externalLocationIdentity', 'schemaVersion'),
+                    EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
+                    new FieldPath('externalLocationIdentity', 'bindings', binding.provider),
+                    binding,
+                );
+            });
+            return {
+                success: true,
+                storeId,
+                provider: binding.provider,
+                confirmed: true,
+                recordedAt: binding.confirmedAt,
+                binding,
+            } satisfies ExternalLocationIdentityMutationResult;
+        },
+        { provider: data.binding?.provider, storeId: data.storeId },
+        'confirmExternalLocationIdentity',
+    );
+};
+
+export const clearExternalLocationIdentity = async (data: {
+    storeId: number;
+    provider: ExternalLocationIdentityProvider;
+}) => {
+    return await apiCallComposer(
+        async () => {
+            const storeId = Number(data.storeId);
+            if (
+                !Number.isSafeInteger(storeId)
+                || storeId <= 0
+                || (data.provider !== 'google_maps' && data.provider !== 'google_business_profile')
+            ) {
+                throw new Error('external_location_identity_input_invalid');
+            }
+            const session = await assertActiveSessionStore(
+                storeId,
+                'external_location_identity_store_scope_mismatch',
+            );
+            const sessionTenantId = getExternalLocationIdentitySessionTenantId(session);
+            const recordedAt = new Date().toISOString();
+            const storeRef = getDocRef(`${storeId}`);
+            await runTransaction(firebaseClient, async (transaction) => {
+                const storeSnapshot = await transaction.get(storeRef);
+                if (!storeSnapshot.exists()) throw new Error('external_location_identity_store_missing');
+                assertExternalLocationIdentityStoreAvailable(
+                    storeSnapshot.data(),
+                    storeId,
+                    sessionTenantId,
+                );
+                transaction.update(
+                    storeRef,
+                    new FieldPath('externalLocationIdentity', 'bindings', data.provider),
+                    deleteField(),
+                );
+            });
+            return {
+                success: true,
+                storeId,
+                provider: data.provider,
+                confirmed: false,
+                recordedAt,
+            } satisfies ExternalLocationIdentityMutationResult;
+        },
+        data,
+        'clearExternalLocationIdentity',
+    );
+};
+
+export function assertExternalLocationIdentityMutationSucceeded(
+    result: unknown,
+    expectedStoreId: string | number,
+    expectedProvider: ExternalLocationIdentityProvider,
+    expectedConfirmed: boolean,
+    rejectionCode = 'external_location_identity_update_rejected',
+): asserts result is ExternalLocationIdentityMutationResult {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+    const updateResult = result as Partial<ExternalLocationIdentityMutationResult>;
+    if (
+        updateResult.success !== true
+        || String(updateResult.storeId) !== String(expectedStoreId)
+        || updateResult.provider !== expectedProvider
+        || updateResult.confirmed !== expectedConfirmed
+        || !normalizeStarterActivationTimestamp(updateResult.recordedAt)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
 
 export const recordStarterActivationSignal = async (
     storeId: number,

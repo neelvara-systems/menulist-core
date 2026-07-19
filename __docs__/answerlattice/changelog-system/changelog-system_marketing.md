@@ -1,29 +1,26 @@
-# Changelog System — Marketing & Sales Collateral
+# Releases and Changelog Marketing Truth
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Sales, Marketing (Internal)
+## Safe claims
 
----
+- Publish release notes that stay linked to the product areas they changed.
+- Keep versioned notes private until release checks finish.
+- Flag approved answers that may need review after a release.
+- Show customers only explicitly published notes.
+- Recover failed publication as a draft instead of exposing a partial release.
 
-## 1. Elevator Pitch
+## Proof required before quantified claims
 
-**One-liner:** "Rich release notes with timeline view, tag filtering, KB integration, and user feedback — built into your dashboard."
+- Real customer release-to-review timing.
+- Percentage of changed answers correctly identified.
+- Reduction in stale support replies after releases.
+- Hosted publication and retry evidence.
 
-**30 seconds:** MenuList's Changelog keeps your users informed with beautiful timeline-style release notes. Platform teams create entries with rich text, tags, file attachments, YouTube embeds, and links to related KB articles. Owners browse, search, filter by tag, and give feedback. Paginated architecture means it scales without performance degradation. No external newsletter tools needed.
+## Claims to avoid
 
----
+- "Automatically keeps every answer correct."
+- "Zero-downtime documentation updates."
+- "Detects every impacted answer."
+- "A complete public status page."
+- "Automatically approves updated answers."
 
-## 2. Key Selling Points
-
-| Point | Evidence |
-|-------|---------|
-| **Timeline visualization** | Animated timeline with version numbers, dates, and gradient colors |
-| **Rich content** | TipTap editor with formatting, lists, images, code blocks |
-| **Multi-media** | File attachments + YouTube embeds per entry |
-| **KB integration** | Link changelog to related help articles |
-| **Tag filtering** | Color-coded tags with sidebar filter |
-| **User feedback** | Likes/dislikes + detailed comments per entry |
-| **Infinite scroll** | Paginated document model — loads older entries on demand |
-| **Auto-pagination** | 900KB page rollover — no manual page management |
-| **Cost** | ~$0.003/month for 10 stores |
+The defensible promise is controlled propagation and review, not autonomous truth.

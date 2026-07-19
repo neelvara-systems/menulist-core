@@ -1,6 +1,6 @@
 # Entity System — Firebase Cost & Operations
 
-> **Version:** 2.0.1
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Developers
 > **Status:** MAINTAINED — Current operations, bounded reads/writes, and required indexes
@@ -23,6 +23,10 @@ This feature uses existing Answerlattice collections and adds no collection. The
 | `answerlattice_auditLogs` | `ANSWERLATTICE_AUDIT_LOGS` | Answerlattice | Audit trail |
 | `answerlattice_releases` | `ANSWERLATTICE_RELEASES` | Answerlattice | Version timeline |
 | `kb_articles` | `KB_ARTICLES` | Answerlattice | Article `entityIds` and fallback evidence |
+| `answerlattice_faqs` | `ANSWERLATTICE_FAQS` | Answerlattice | FAQ `entityIds` rewritten by merge and checked by deprecation |
+| `answerlattice_productSurfaces` | `ANSWERLATTICE_PRODUCT_SURFACES` | Answerlattice | Product-surface `entityIds` rewritten by merge and checked by deprecation |
+| `platformSummary` | `PLATFORM_SUMMARY` | Answerlattice | Ontology counters, source versions, bundle state, and compact graph summary |
+| `answerlattice_cacheVersions` | `ANSWERLATTICE_CACHE_VERSIONS` | Answerlattice | KB/canonical freshness invalidation |
 
 ---
 
@@ -76,9 +80,10 @@ When ontology is enabled, article create and content, title, or category updates
 | Load scoped entity registry | READ | Up to 500 returned documents; inactive/cross-product rows are discarded |
 | Entity extraction | EXTERNAL | 1 model call |
 | AI accounting | WRITE | Existing accounting operation writes |
-| New entity candidates | READ+WRITE | Bounded governed writes per new candidate |
+| Revalidate source and matched entities | READ | 1 article point read plus one point read per matched entity inside the final transaction |
+| New entity candidates | READ+WRITE | Bounded governed upserts after source revalidation; failures remain review-work failures, not article truth |
 | Persist confirmed article `entityIds` | WRITE | 0-1 article writes with at most 10 normalized active entity IDs; a confirmed empty match may clear stale links |
-| Invalidate KB cache/context versions | WRITE | Existing bounded KB invalidation batch only when links changed |
+| Invalidate KB cache/context versions | WRITE | Cache-version, source-version, and bundle-stale writes in the same transaction only when links changed |
 
 The browser trigger is best effort and has no durable retry lease. Provider or parsing failure preserves current links and returns failure; a successful no-change extraction avoids the article and cache writes. Recalculate cost from actual enabled save volume, registry size, candidate count, model usage, and current provider pricing.
 
@@ -93,13 +98,25 @@ The browser trigger is best effort and has no durable retry lease. Provider or p
 | Rewrite affected answers and write answer audits | WRITE | Per merge | 2N writes |
 | Read articles linked to merged entity | READ | Per merge | At most 201 returned documents before the 200-reference guard rejects |
 | Rewrite affected article `entityIds` | WRITE | Per merge | 0-200 bounded writes |
-| Read inbound/outbound relations | READ | Per merge | Two bounded queries, each returning at most 201 documents before rejection |
-| Rewrite or remove affected relations | WRITE | Per merge | One write per unique affected relation |
+| Read workspace FAQs | READ | Per merge | At most 151 returned documents; the 150-item management guard rejects overflow |
+| Rewrite affected FAQ `entityIds` | WRITE | Per merge | 0-150 bounded writes |
+| Read workspace product surfaces | READ | Per merge | At most 301 returned documents; the 300-item surface guard rejects overflow |
+| Rewrite affected surface `entityIds` | WRITE | Per merge | 0-300 bounded writes, still subject to the total 450-write merge guard |
+| Read inbound/outbound relations | READ | Per merge | Four bounded queries covering both merged and survivor endpoints, each returning at most 201 documents before rejection |
+| Rewrite or remove affected relations | WRITE | Per merge | Deterministic target writes plus source deletes; self-links and semantic duplicates are deleted |
 | Read survivor/merged search-index rows | READ | Per merge | Two bounded queries, each returning at most 11 documents before the 10-row guard rejects |
-| Update or remove search-index rows | WRITE | Per merge | One write per returned row |
+| Rebuild or remove search-index rows | WRITE | Per merge | One complete survivor index write plus deletion of duplicate survivor and merged rows |
 | Entity, counter, audit, source-version, cache, and bundle updates | WRITE | Per merge | Bounded fixed overhead; conditional cache writes depend on affected sources |
 
 Do not use a fixed merge-price estimate. Guard queries request one extra document to detect overflow. The server rejects the merge before the 450-write transaction boundary; larger migrations require a controlled server migration.
+
+### Entity Deprecation
+
+Deprecation is rare but intentionally reads dependent truth before changing lifecycle state: one entity, one active-answer query, one article query, the bounded FAQ set (up to 151 for overflow detection), the bounded product-surface set (up to 301), and one incoming plus one outgoing relation query. It writes the entity, invalidation state, and idempotent operation audit only when no dependency remains. This cost is accepted because silently deprecating a still-used product concept would create stale or contradictory support behavior.
+
+### Nightly Graph Rebuild
+
+The existing nightly task reads up to 501 active entities, 2,001 relations, and 1,001 active canonical answers to detect configured-cap overflow, then reads the existing compact graph summary. Exact `pId = AL`, tenant, and workspace scope is required for every admitted row. Overflow or scope failure throws before any summary write, preserving the last valid graph. A changed valid graph produces bounded summary writes; an unchanged source hash avoids rewriting the graph payload.
 
 ---
 
@@ -185,7 +202,7 @@ Answerlattice App Entity DAL ID Boundary: browser reads validate stored contract
 | extractEntitiesFromArticles | AI + callback | Caller-owned | Governed candidate callback only |
 | buildSearchIndexEntry | PURE | 0 | 0 |
 | extractEntitiesForArticle | Helper | Returned entity documents | 0; caller owns persistence |
-| `/api/answerlattice/articles/extract-entities` | Protected route | 1 stored article + 0-500 entities | Accounting, candidates, 0-1 article, bounded cache invalidation |
+| `/api/answerlattice/articles/extract-entities` | Protected route | Initial article + 0-500 entities, then transactional article/matched-entity revalidation | Accounting, reviewed candidate upserts, 0-1 article, transaction-owned freshness invalidation |
 
 ### canonicalRetrieval.ts (3 functions — 2 new)
 
@@ -199,13 +216,15 @@ Answerlattice App Entity DAL ID Boundary: browser reads validate stored contract
 
 ## 6. Security Rules
 
-No changes to Firestore security rules needed. All Answerlattice collections already have admin-only rules. The `kb_articles` collection uses existing rules that allow read/write with proper auth.
+No Feature 7 Firestore-rule change was required. Entity, relation, search-index, candidate, audit, cache-version, and platform-summary mutations remain server-owned. Existing dedicated and shared rules were re-run to prove browser mutation denials and scoped read behavior.
 
 ---
 
 ## 7. Backup & Recovery
 
 - All entity operations produce audit logs (`ANSWERLATTICE_AUDIT_LOGS`)
-- Entity merge is the only destructive operation — mitigated by soft-delete (deprecated status)
+- Merge and deprecation are soft lifecycle changes; relation removal is audited server-owned graph maintenance
 - No entity is ever hard-deleted
 - entityIds on articles can be recalculated by re-running extraction
+- FAQ and product-surface entity links are preserved by governed merge rather than left pointing at a deprecated duplicate
+- Graph rebuild failure preserves the prior compact summary

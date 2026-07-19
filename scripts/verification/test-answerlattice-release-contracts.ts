@@ -29,6 +29,8 @@ assert.equal(parseAnswerlatticeReleaseAction({
     entityChanges: Array.from({ length: ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES + 1 }, (_, index) => `entity-${index}`),
 }), null, 'release entity fan-out must be capped');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, releasedAt: 'not-a-date' }), null, 'release timestamps must be ISO dates');
+assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, versionNormalized: 2_004_002 }), null, 'version labels and normalized versions must agree');
+assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, versionLabel: 'v2.4.1' }), null, 'stored release labels must use canonical numeric form');
 assert.equal(parseAnswerlatticeReleaseAction({ action: 'activate', requestId: 'activate_12345', releaseId: 'release/unsafe' }), null);
 assert.deepEqual(parseAnswerlatticeReleaseAction({
     action: 'activate',
@@ -61,6 +63,7 @@ assert.equal(AnswerlatticeStoredReleaseSchema.safeParse(stored).success, true);
 assert.equal(AnswerlatticeStoredReleaseSchema.safeParse({ ...stored, pId: 'ML' }).success, false);
 assert.equal(AnswerlatticeStoredReleaseSchema.safeParse({ ...stored, tId: '1' }).success, false);
 assert.equal(AnswerlatticeStoredReleaseSchema.safeParse({ ...stored, status: 'published' }).success, false);
+assert.equal(AnswerlatticeStoredReleaseSchema.safeParse({ ...stored, versionNormalized: 2_004_002 }).success, false);
 assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     success: true,
     action: 'activate',

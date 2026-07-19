@@ -1,6 +1,6 @@
 # Entity System — Help Documentation
 
-> **Version:** 2.0.0
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Answerlattice customers (SaaS founders/support teams)
 > **Language Governance:** Zero jargon, step-by-step instructions
@@ -83,7 +83,7 @@ Over time, similar entities may appear. You can merge them.
 1. Select the two entities you want to merge
 2. Choose which entity name to keep
 3. Click **Merge**
-4. The governed merge transfers bounded article, approved-answer, relationship, and search-index references together
+4. The governed merge transfers bounded article, FAQ, product-surface, approved-answer, relationship, and search-index references together
 5. The merged entity's name becomes an alias
 
 ### Deprecating an Entity
@@ -92,8 +92,17 @@ If a product feature is removed or renamed:
 
 1. Open the entity
 2. Click **Deprecate**
-3. The entity is marked as deprecated
-4. Existing articles still reference it, but new articles won't suggest it
+3. If an approved answer, article, FAQ, product surface, or relationship still uses the entity, Answerlattice stops and asks you to reassign or remove that dependency
+4. After those dependencies are cleared, the entity is marked as deprecated and is no longer used for new matches
+
+### Managing Relationships
+
+1. Open an entity
+2. In **Relationships**, choose a relationship type and another active entity
+3. Add the relationship
+4. Remove a relationship when it is no longer true
+
+Answerlattice prevents self-links, duplicate relationships, cross-workspace links, and relationships to deprecated entities.
 
 ---
 

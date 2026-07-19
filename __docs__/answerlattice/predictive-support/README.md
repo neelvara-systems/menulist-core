@@ -1,109 +1,98 @@
-# Answerlattice — Predictive Support System
+# Predictive Support And Known Issues
 
-> **Status:** ✅ IMPLEMENTED — Enabled with guards
-> **Version:** 1.1.2
-> **Created:** 2026-03-10
-> **Last Updated:** 2026-07-06
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT` (enabled)
-> **Expansion Item:** #12 (answerlattice-expansion-tracker.md)
-> **Dependencies:** #1 Context-Aware (DONE), #5 Friction Intelligence (DONE), #11 Knowledge Graph (DONE)
+**Status:** Implemented and locally hardened on July 18, 2026
+**Feature flags:** `ENABLE_ANSWERLATTICE_WIDGET`, `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`, `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`, and optional `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`
 
----
+## Purpose
 
-## Identity
+Predictive support gives an end user a bounded, page-specific support cue before they submit a question. Known issues use the same governed runtime to show an active incident notice on an exact product page.
 
-Predictive Support is the **proactive help layer** for Answerlattice. Instead of waiting for users to ask questions, the system detects where the user is in the product, evaluates friction patterns for that location, and surfaces contextual help *before* confusion turns into a support ticket.
+This feature does not watch the DOM, infer arbitrary behavior, publish knowledge, or change the client product. It selects an owner-reviewed trigger from approved runtime truth and opens the existing Answerlattice widget.
 
-**Core principle:** Prevent support tickets, don't just answer them faster.
+## Governed flow
 
----
-
-## Architecture Summary
-
-```
-Widget browser contract (path/feature/workflow context)
-        │
-        ▼
-Predictive Help API (/api/answerlattice/predictive-help)
-        │
-        ├─ Load trigger rules (cached in platformSummary)
-        ├─ Evaluate conditions against context
-        ├─ Check cooldown (Upstash Redis)
-        ├─ Use pre-resolved suggestion snippets from summary
-        ├─ Fallback canonical-answer read only for stale summary docs
-        │
-        ▼
-Suggestion Payload → Widget renders contextual help
+```text
+owner or system suggestion
+-> review and exact page assignment
+-> active trigger summary
+-> widget config capability check
+-> safe product context
+-> authenticated predictive request
+-> deterministic trigger match
+-> bounded widget suggestion
+-> shown, opened, or dismissed signal
+-> engagement evidence for owner review
 ```
 
-**Key design choice:** Reuses existing Answerlattice infrastructure (context payload, friction stats, entity index, canonical answers, Upstash Redis). Only **1 new collection** + **1 platformSummary doc** + **1 API route** + **1 lib module** needed.
+System-generated friction suggestions remain `suggested` and have no page. They cannot become active until an owner reviews the content and assigns an exact page.
 
-Nightly predictive trigger sync diagnostics use fixed failure codes with source error name/code/status metadata and tenant/store scope booleans. Auto-generation, summary rebuild, and effectiveness failures do not log raw exception text or raw tenant/store identifiers.
+## Runtime contracts
 
-Answerlattice App Predictive Trigger ID Boundary: owner/admin trigger actions normalize trigger document IDs through the shared Firestore document-ID guard before app-side get, update, activate, disable, delete, and audit-log writes. Malformed, reserved, empty, or path-shaped trigger IDs fail through the existing fixed action copy before Firestore document access.
+- Conditions: exact normalized `page`, plus optional `feature`, `workflow`, `plan`, and `userRole`.
+- Page input: `context.page`, with `contextKey` accepted by the public loader as the page fallback.
+- Context exclusions: raw DOM, unrestricted URL/path data, form values, tokens, screenshots, email, customer ID, and arbitrary application state.
+- Trigger cap: 200 per workspace. Summary overflow fails closed and does not replace the last valid summary.
+- Priority: integer 0-100.
+- Cooldown: integer 1-720 hours for ordinary predictive prompts.
+- Known issues: severity, optional start/end window, and optional public HTTPS status-page URL.
+- Response: bounded to 32 KiB and normalized again in the public loader and widget iframe.
+- Cooldown identity: non-PII per-tab session identity stored in `sessionStorage`.
 
----
+## Security boundary
 
-## Document Index
+Both predictive endpoints require:
 
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| [predictive-support_spec.md](./predictive-support_spec.md) | CEO/PM | Business requirements, user flows, strategic value |
-| [predictive-support_impl.md](./predictive-support_impl.md) | Developers | Technical blueprint, data model, file structure, ADRs |
-| [predictive-support_firebase.md](./predictive-support_firebase.md) | DevOps/Cost | Firestore operations, cost estimates, indexes |
-| [predictive-support_marketing.md](./predictive-support_marketing.md) | Sales/Marketing | Pitch angles, competitive positioning |
-| [predictive-support_website.md](./predictive-support_website.md) | Content | Landing page content, SEO meta |
-| [predictive-support_helpdoc.md](./predictive-support_helpdoc.md) | Customers | Help documentation for SaaS founders using Answerlattice |
-| [predictive-support_mobile-support.md](./predictive-support_mobile-support.md) | Mobile | Mobile admission test + support assessment |
-| [_archive/chatgpt-review.md](./_archive/chatgpt-review.md) | Internal | ChatGPT conversation review + accuracy assessment |
+1. an `al_` widget key;
+2. fail-closed pre-auth and API-key rate limits;
+3. Answerlattice product, widget purpose, and `widget:predictive` scope;
+4. exact tenant/workspace scope derived from the key;
+5. allowed origin and widget runtime-token authorization;
+6. a strict 4 KiB request body.
 
----
+Interaction events are rechecked against the current active trigger, applicability window, and submitted context before a signal can be emitted.
 
-## Key Decisions (Locked)
+## Evidence semantics
 
-1. **Rule-based triggers only** — No ML, no behavior scoring, no predictive models. Deterministic.
-2. **Reuse existing infrastructure** — AnswerlatticeContextPayload, friction stats, entity index, Upstash Redis, nightly batch.
-3. **1 new collection** — `answerlattice_predictiveTriggers` (trigger rules). Everything else uses existing infra.
-4. **Widget-initiated only after capability gate** — The widget calls predictive API only when runtime config confirms active triggers. Server evaluates rules. No event streaming.
-5. **Non-blocking UI** — Context card pattern. Never blocks user workflow. Dismissible.
-6. **Nightly auto-suggestions** — Friction patterns auto-generate trigger rule suggestions (founder approves).
-7. **Fire-and-forget signals** — Suggestion interactions (shown/clicked/dismissed) logged to existing signal events.
-8. **Feature-flagged and enabled with guards** — `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT` is active with API-key scope, origin checks, rate limits, Redis cooldowns, and fail-closed behavior when cooldown storage is unavailable.
-9. **Summary-backed runtime** — Nightly stores resolved suggestion snippets and source hashes so runtime calls usually avoid canonical-answer reads and cache writes are skipped when unchanged.
+`suggestion_shown`, `suggestion_clicked`, and `suggestion_dismissed` are engagement evidence only. `suggestion_clicked` currently means the user opened the widget from the cue. These events do not prove resolution, ticket prevention, answer correctness, or task completion.
 
----
+The nightly function may aggregate this evidence for review. It does not automatically disable triggers, change priority, approve content, or publish new truth.
 
-## Version History
+## Data and cost
 
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-07-11 | 1.1.3 | Added exact product/workspace mutation and allowlisted public-summary/runtime parsing boundaries. |
-| 2026-07-06 | 1.1.2 | Added app-side predictive trigger document-ID boundary for CRUD/action refs and audit IDs. |
-| 2026-06-28 | 1.1.1 | Bounded nightly predictive trigger sync diagnostics with fixed failure codes and source metadata. |
-| 2026-05-24 | 1.1.0 | Added capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed notes. |
-| 2026-03-10 | 1.0.0 | Initial predictive support documentation. |
+- Source collection: `answerlattice_predictiveTriggers`.
+- Hot read model: `platformSummary/predictiveTriggers_{tId}_{sId}`.
+- Runtime cache: 60 seconds when active triggers exist; 5 minutes for an empty result.
+- A trigger mutation performs the trigger write, one bounded summary query, one summary write, and existing compiled-context invalidation work.
+- An interaction writes an existing signal only when signal mutation is enabled and the event passes admission.
+- No new listener, collection, index, Storage object, AI call, or standalone scheduler was added by the Feature 18 hardening.
 
----
+## Owner surfaces
 
-## ChatGPT Accuracy Assessment
+- Predictive triggers: Governance -> Advanced -> Predictive Triggers.
+- Known issues: `/answerlattice/known-issues`.
+- Suggested triggers open in review/edit mode. They are not directly activated.
+- The management surface labels aggregate counts as engagement evidence rather than effectiveness or resolution.
 
-**Overall: ~55%**
+## Maintained documents
 
-| Category | Accuracy | Notes |
-|----------|----------|-------|
-| Core concept (rule-based proactive help) | 90% | Valid and correct |
-| Architecture (Pub/Sub + Cloud Run) | 20% | Massive over-engineering for Answerlattice's scale |
-| Data model (4 new collections) | 30% | Only 1 needed; rest exists or is unnecessary |
-| Cost analysis | 40% | Correct concern but wrong solution (event streaming vs API call) |
-| UI patterns (3 types) | 85% | Good constraint, adopted |
-| Learning loop | 70% | Concept correct, implementation too heavy |
+- [Specification](./predictive-support_spec.md)
+- [Implementation](./predictive-support_impl.md)
+- [Firebase and cost](./predictive-support_firebase.md)
+- [Help](./predictive-support_helpdoc.md)
+- [Marketing boundary](./predictive-support_marketing.md)
+- [Website boundary](./predictive-support_website.md)
+- [Mobile support](./predictive-support_mobile-support.md)
+- [Test cases](./predictive-support_test-cases.md)
 
----
+## Named hardening checkpoints
 
-## Relationship to Other Expansion Items
+- **Answerlattice App Predictive Trigger ID Boundary**
+- strict shared trigger and suggestion projection;
+- exact-page activation gate;
+- public widget runtime authorization;
+- bounded interaction evidence contract;
+- no automatic trigger mutation from engagement signals.
 
-- **Depends on #1** (Context-Aware) — AnswerlatticeContextPayload provides page/feature/workflow. ✅ DONE
-- **Depends on #5** (Friction Intelligence) — Friction patterns feed auto-trigger generation. ✅ DONE  
-- **Benefits from #11** (Knowledge Graph) — Entity relations expand trigger coverage. ✅ DONE
-- **Benefits from #8** (AI Escalation) — Failed predictions can escalate with context.
-- **Benefits from #10** (Trust Metrics) — Prediction effectiveness feeds trust dashboard.
+## Verification boundary
+
+Local verification proves source contracts, rules, compilation, and deterministic tests. Hosted allowed-origin behavior, real Redis cooldown persistence, production traffic, desktop/mobile browser behavior, and measured customer outcomes require separate external evidence.

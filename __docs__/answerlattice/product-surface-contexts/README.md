@@ -8,6 +8,8 @@ Answerlattice App Product Surface ID Boundary: owner-edited and generated produc
 
 Answerlattice Product Surface Summary Boundary: stored product-surface documents and `platformSummary/contextContent_{tId}_{sId}` summaries re-enter an exact `pId=AL`, exact numeric workspace, normalized surface-key, bounded-counter, resolved-entity and allowlisted related-content parser before browser state, server memory cache, search related content, activation readiness or compiled-context fallback use. Invalid derived rows fail closed until rebuilt.
 
+Answerlattice Product Surface Ownership And Freshness Boundary: owner mutations are transaction-backed, context keys are immutable, duplicate deterministic keys fail, and client rules cannot set ingestion lineage or undeclared fields. Runtime route matching supports exact and bounded wildcard patterns without copying a raw path into persisted page context. Rebuilds query active surfaces before limits, reject overflow/duplicate keys, omit undefined optional fields, and replace the complete summary so archived mappings cannot remain active indirectly.
+
 ## Documents
 
 - [Spec](product-surface-contexts_spec.md)

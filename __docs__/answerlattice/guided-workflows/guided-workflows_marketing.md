@@ -13,9 +13,9 @@ Answerlattice can turn an approved procedure into step-by-step in-product guidan
 - The client product can mark stable semantic targets.
 - Answerlattice can highlight the current target without clicking it.
 - A client-verified event can advance the current step.
-- Missing targets and escalations can become governed support signals.
+- Missing targets can become governed signals, and a successful explicit support request can record the guide as escalated.
 - Existing human approval remains authoritative.
-- Guided sessions add no listener, scheduler, or AI request.
+- Guided sessions add no database listener, scheduler, or AI request; short-lived browser resize/scroll listeners position the active highlight.
 
 ## Claims Held Until Real-Client Evidence
 

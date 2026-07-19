@@ -9,8 +9,13 @@
  */
 
 import { useEffect } from 'react';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 
 interface Props {
+    activeLanguage?: string;
     open: boolean;
     onClose: () => void;
     storeName: string;
@@ -19,12 +24,15 @@ interface Props {
 }
 
 export default function InstallInstructions({
+    activeLanguage,
     open,
     onClose,
     storeName,
     themeColor,
     textColor,
 }: Props) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const languageDirection = getPublicCustomerLanguageDirection(activeLanguage);
     // Close on Escape.
     useEffect(() => {
         if (!open) return;
@@ -41,7 +49,9 @@ export default function InstallInstructions({
         <div
             role="dialog"
             aria-modal="true"
-            aria-label={`Install ${storeName}`}
+            aria-label={t('menu.installTitle', { storeName })}
+            dir={languageDirection}
+            lang={activeLanguage}
             onClick={onClose}
             style={{
                 position: 'fixed',
@@ -77,23 +87,21 @@ export default function InstallInstructions({
                     }}
                 />
                 <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px' }}>
-                    Add {storeName} to your Home Screen
+                    {t('menu.addToHomeScreenTitle', { storeName })}
                 </h2>
                 <p style={{ fontSize: 14, color: '#475569', margin: '0 0 20px' }}>
-                    Follow these 3 steps in Safari:
+                    {t('menu.followSafariSteps')}
                 </p>
 
-                <ol style={{ margin: 0, padding: '0 0 0 20px', fontSize: 15, lineHeight: 1.6 }}>
+                <ol style={{ margin: 0, paddingInlineStart: 20, fontSize: 15, lineHeight: 1.6 }}>
                     <li style={{ marginBottom: 12 }}>
-                        Tap the <strong>Share</strong> button{' '}
-                        <span aria-hidden="true">⎋</span> at the bottom of Safari.
+                        {t('menu.safariShareStep')}
                     </li>
                     <li style={{ marginBottom: 12 }}>
-                        Scroll down and tap <strong>&ldquo;Add to Home Screen&rdquo;</strong>{' '}
-                        <span aria-hidden="true">➕</span>.
+                        {t('menu.safariHomeScreenStep')}
                     </li>
                     <li>
-                        Tap <strong>Add</strong> in the top-right corner.
+                        {t('menu.safariAddStep')}
                     </li>
                 </ol>
 
@@ -113,7 +121,7 @@ export default function InstallInstructions({
                         cursor: 'pointer',
                     }}
                 >
-                    Got it
+                    {t('menu.gotIt')}
                 </button>
             </div>
         </div>

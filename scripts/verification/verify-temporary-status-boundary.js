@@ -306,18 +306,23 @@ forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Tempor
 [
   'getActiveTempStatus(storeDetails?.tempStatus)',
   'FEATURE_FLAGS.ENABLE_TEMP_STATUS && activeTempStatus',
-  '<TempStatusBanner tempStatus={activeTempStatus as any} variant="pill" />',
+  'activeLanguage={activeLanguage}',
+  'tempStatus={activeTempStatus as any}',
+  'variant="pill"',
 ].forEach((token) => requireToken(menuPage, token, 'Digital menu Temporary Status output'));
 
 [
   'FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeInfo.tempStatus',
-  '<TempStatusBanner tempStatus={storeInfo.tempStatus} />',
+  'activeLanguage={storeInfo.contentLanguage}',
+  'tempStatus={storeInfo.tempStatus}',
 ].forEach((token) => requireToken(feedbackPage, token, 'Feedback page Temporary Status output'));
 
 [
   'import TempStatusBanner from "@atoms/TempStatusBanner";',
   'FEATURE_FLAGS.ENABLE_TEMP_STATUS && store?.tempStatus',
-  '<TempStatusBanner tempStatus={store.tempStatus} variant="pill" />',
+  'activeLanguage={contentLanguage}',
+  'tempStatus={store.tempStatus}',
+  'variant="pill"',
 ].forEach((token) => requireToken(obpResolvedSurface, token, 'OBP Temporary Status output'));
 
 [

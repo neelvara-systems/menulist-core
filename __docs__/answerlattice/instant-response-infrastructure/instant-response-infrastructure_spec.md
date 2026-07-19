@@ -1,160 +1,46 @@
-# Instant Response Infrastructure — Spec
+# Instant Response Infrastructure Spec
 
-> **Version:** 1.1.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-07-11
-> **Audience:** CEO, PM, Clients
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
+**Version:** 2.0
 
----
+**Last updated:** July 18, 2026
 
-## §1 — Problem Statement
+## Problem
 
-Answerlattice's canonical retrieval path currently requires 2 Firestore reads per query (entity search index + answer document). While fast (~50-100ms), this creates:
+Repeated canonical-answer requests should avoid unnecessary repeated work when a safe cache is configured, but a cache must never serve stale, malformed, cross-scope, reviewer-blocked, or unsupported answer content.
 
-1. **Unnecessary Firestore costs** — Repeated identical questions re-read the same documents
-2. **Latency floor** — Even cached Firestore reads have network overhead on Vercel serverless
-3. **Scale concern** — At 100K+ queries/day, Firestore reads become a measurable cost line
+## Required behavior
 
-Industry data shows 60-80% of support queries are repeated questions. Caching resolved canonical answers eliminates redundant computation for the majority of traffic.
+1. Cache lookup starts only after a resolved entity and positive canonical validation version are known.
+2. The key includes exact tenant/workspace identity and hashes raw entity/applicability segments.
+3. A Redis hit is parsed through the cached canonical schema and rejected if IDs, version, timestamp, answer type, confidence, procedure, citations, source versions, or payload bytes are invalid.
+4. Freshness checks confirm source-version equality when available and otherwise re-read exact canonical truth.
+5. Active status, no drift, no required review, exact scope, unchanged content, and matching validation version are mandatory.
+6. Cache failure, timeout, malformed data, or staleness falls through to the normal canonical/FAQ/RAG pipeline.
+7. Only resolved canonical hits are written. RAG responses are not written to Redis.
+8. Search-history cache reads reject expired records and non-canonical rows without valid source references.
 
----
+## Cache key
 
-## §2 — Solution
+`canon:v4:{tId}:{sId}:e:{entityHash}:v{answerVersion}:p:{planHash}:r:{roleHash}:s:{stateHash}`
 
-Add an Upstash Redis cache layer that stores fully-resolved canonical answers. When a user asks a question that matches a previously-answered canonical entity, the cached answer is returned in ~5ms — bypassing Firestore entirely.
+Raw entity, plan, role, and state values are not part of the key. Hashing is an exposure/collision-hardening measure, not an authorization boundary; tenant/workspace and live canonical validation remain mandatory.
 
-**Key principle:** Cache the final answer, not intermediate computation. The cached payload is the exact same response the user would get from a fresh canonical retrieval.
+## Limits
 
----
+| Setting | Current value |
+| --- | ---: |
+| Redis TTL | 86,400 seconds |
+| Lookup timeout | 50 ms |
+| Maximum normalized payload | 10 KiB UTF-8 |
+| Matched entities | 50 |
+| Future cached timestamp tolerance | 60 seconds |
 
-## §3 — User Stories
+## Success measures
 
-### US-1: End User Gets Instant Answer
-**As** an end user asking a common question via the help widget,
-**I want** to receive the answer instantly,
-**So that** I can resolve my issue without waiting.
+- measured hit/miss/timeout/invalid/stale rates;
+- measured end-to-end latency by result path;
+- cache correctness regression rate;
+- provider and Firestore work avoided per verified hit;
+- fallback correctness when Redis is unavailable.
 
-**Acceptance:** Answer appears in <100ms for cached questions (vs ~200-500ms today for canonical path, ~3-5s for RAG path).
-
-### US-2: Founder Sees Reduced Costs
-**As** a SaaS founder using Answerlattice,
-**I want** repeated queries to not consume additional Firestore reads,
-**So that** my support infrastructure costs stay predictable.
-
-**Acceptance:** Cache hit rate ≥60% after 1 week of traffic.
-
-### US-3: System Handles Traffic Spikes
-**As** a platform operator,
-**I want** the cache to absorb traffic spikes,
-**So that** Firestore is not overwhelmed during peak hours.
-
-**Acceptance:** Cache serves answers independently of Firestore availability.
-
----
-
-## §4 — Behavior Specification
-
-### 4.1 — Cache Lifecycle
-
-1. **First query for an entity:** Cache MISS → canonical retrieval runs normally → answer cached in Redis with an entity/scope key and canonical source version.
-2. **Subsequent matching queries:** the compact canonical source manifest is checked, then a Redis hit skips canonical document retrieval and fallback work.
-3. **Answer or scope updated:** the canonical source version changes → the old entry is immediately ineligible and removed best-effort; the versioned key/TTL handles storage cleanup.
-4. **Entity deprecated or truth enters review:** the manifest and live canonical eligibility checks block the old answer before it can be returned.
-
-### 4.2 — Cache Key Design
-
-Cache key encodes all factors that affect answer selection:
-
-```
-canon:v2:{tId}:{sId}:e:{topEntityId}:v{answerVersion}:p:{planId}:r:{roleId}:s:{stateId}
-```
-
-**Why these components:**
-- `tId` + `sId` — Tenant isolation (MANDATORY)
-- `topEntityId` — The primary matched entity (deterministic from tokenization)
-- `answerVersion` — Ensures stale answers auto-invalidate
-- `planId` + `roleId` + `stateId` — Same entity may have different eligible answers per governed scope
-
-### 4.3 — What Gets Cached
-
-Only **canonical answer hits** are cached. Specifically:
-
-| Cached | Not Cached |
-| ------ | ---------- |
-| Canonical retrieval hits (deterministic, versioned) | RAG fallback responses (non-deterministic, LLM-generated) |
-| High + Medium confidence matches | Low confidence matches |
-| Active answers | Drifted answers (`governance.driftFlag === true`) |
-
-**Cached payload:**
-```typescript
-{
-  craftedAnswer: string;      // The answer text
-  canonicalAnswerId: string;  // For analytics linkage
-  confidence: string;         // 'high' | 'medium'
-  answerType: string;         // 'explanation' | 'procedure' | 'navigation'
-  procedure?: object;         // Guided workflow steps (if procedure type)
-  matchedEntityIds: string[]; // For debugging
-  cachedAt: number;           // Timestamp for TTL verification
-  answerVersion: number;      // For invalidation tracking
-}
-```
-
-### 4.4 — Cache Configuration
-
-| Parameter | Value | Rationale |
-| --------- | ----- | --------- |
-| TTL | 24 hours | Balance between freshness and hit rate. Answers change infrequently. |
-| Max payload size | 10KB | Canonical answers are structured text, typically 1-3KB |
-| Cache scope | Per-tenant, per-store | Matches all Answerlattice data isolation |
-| Invalidation | Automatic via version in key | No manual purge needed |
-
-### 4.5 — Graceful Degradation
-
-- **Redis unavailable:** Fall through to existing pipeline silently. No error to user.
-- **Redis timeout (>50ms):** Abandon cache lookup, proceed to Firestore path.
-- **Corrupted cache entry:** Discard, proceed to Firestore path, log warning.
-- **Feature flag OFF:** Cache layer completely bypassed. Zero behavior change.
-
----
-
-## §5 — What This Feature Does NOT Do
-
-1. **Does NOT cache RAG responses** — Non-deterministic LLM output should not be cached in Redis
-2. **Does NOT replace aiSearchHistory** — That Firestore collection serves analytics/feedback, not performance
-3. **Does NOT add new Cloud Functions** — All caching happens in the existing `coreSearch()` pipeline
-4. **Does NOT require new Firestore collections** — Zero new documents
-5. **Does NOT change the canonical retrieval algorithm** — Same entity matching, same specificity scoring
-6. **Does NOT do semantic/fuzzy caching** — Only exact entity-match cache keys
-
----
-
-## §6 — Success Metrics
-
-| Metric | Target | Measurement |
-| ------ | ------ | ----------- |
-| Cache hit rate (after 1 week) | ≥60% | Performance logs: `INSTANT_CACHE_HIT` vs `INSTANT_CACHE_MISS` |
-| Canonical answer latency (p50) | <20ms (cache hit) | Performance logs: `totalMs` field |
-| Canonical answer latency (p50, miss) | <150ms (unchanged) | Performance logs: existing `CANONICAL_HIT` |
-| RAG latency | Unchanged | Not affected by this feature |
-| Firestore reads saved | ≥40% reduction for canonical path | Before/after comparison |
-| Error rate from cache | <0.1% | Warning logs: `INSTANT_CACHE_ERROR` |
-
----
-
-## §7 — Rollout Plan
-
-1. **Flag OFF** (default) — Zero behavior change, zero risk
-2. **Enable for MenuList tenant only** — Monitor cache hit rate, latency, correctness
-3. **Enable for all tenants** — After 1 week of clean MenuList data
-4. **Monitor for 30 days** — Track hit rate, cost, latency before considering feature stable
-
----
-
-## §8 — Invariants
-
-- **INV-1:** Cache NEVER returns a drifted answer (`governance.driftFlag === true`)
-- **INV-2:** Cache NEVER crosses tenant boundaries (tId + sId always in key)
-- **INV-3:** Cache failure NEVER blocks the user — always falls through to existing pipeline
-- **INV-4:** Cache does NOT affect analytics — `aiSearchHistory` still written for all queries
-- **INV-5:** Answers served from cache are byte-identical to fresh canonical retrieval results
+No numerical target is approved until a configured environment and representative customer workload produce evidence.

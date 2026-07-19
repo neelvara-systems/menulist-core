@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { collection, doc, getDoc, getDocs, limit, query, setDoc, where } from '@firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, runTransaction, where } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
@@ -184,9 +184,12 @@ export const getProductSurfacesForSession = async (scopeOverride?: ProductSurfac
             getCollectionRef(),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
-            limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT),
+            limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT + 1),
         );
         const snapshot = await getDocs(q);
+        if (snapshot.size > ANSWERLATTICE_PRODUCT_SURFACE_LIMIT) {
+            throw new Error('Product surface limit exceeded. Archive cleanup or pagination is required.');
+        }
         const surfaces = snapshot.docs
             .map(item => normalizeStoredAnswerlatticeProductSurface({ ...item.data(), id: item.id }, scope, item.id))
             .filter((item): item is AnswerlatticeProductSurface => Boolean(item));
@@ -206,12 +209,36 @@ export const saveProductSurface = async (input: unknown) => {
         async () => {
             const scope = await requireScope();
             const parsed = parseProductSurfaceSaveInput(input, scope);
+            const { id: existingSurfaceId, ...surfaceData } = parsed;
+            const isUpdate = Boolean(existingSurfaceId);
             const docId = normalizeAnswerlatticeProductSurfaceId(
-                parsed.id || buildProductSurfaceDocId(scope.tId, scope.sId, parsed.key),
+                existingSurfaceId || buildProductSurfaceDocId(scope.tId, scope.sId, parsed.key),
             );
             if (!docId) throw new Error('Invalid Answerlattice product surface id');
-            const composedData = await answerlatticeRequestBodyComposer(parsed, { isNew: !parsed.id });
-            await setDoc(getDocRef(docId), composedData, { merge: true });
+            const composedData = await answerlatticeRequestBodyComposer(surfaceData, { isNew: !isUpdate });
+            const surfaceRef = getDocRef(docId);
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const existingSnapshot = await transaction.get(surfaceRef);
+                if (!isUpdate) {
+                    if (existingSnapshot.exists()) {
+                        throw new Error('A product surface already uses this context key.');
+                    }
+                } else {
+                    if (!existingSnapshot.exists()) {
+                        throw new Error('Product surface is not available.');
+                    }
+                    const existing = normalizeStoredAnswerlatticeProductSurface(
+                        { ...existingSnapshot.data(), id: existingSnapshot.id },
+                        scope,
+                        existingSnapshot.id,
+                    );
+                    if (!existing) throw new Error('Product surface is not available for this workspace.');
+                    if (existing.key !== parsed.key) {
+                        throw new Error('Product surface context keys cannot be changed after creation.');
+                    }
+                }
+                transaction.set(surfaceRef, composedData, { merge: true });
+            });
             await markAnswerlatticeCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
                 reason: 'product_surface_save',
                 sourceId: docId,
@@ -221,7 +248,7 @@ export const saveProductSurface = async (input: unknown) => {
                 ...composedData,
                 id: docId,
                 success: true,
-                operation: parsed.id ? 'update' : 'create',
+                operation: isUpdate ? 'update' : 'create',
                 sourceChanged: true,
             } satisfies AnswerlatticeProductSurfaceWriteResult;
         },
@@ -242,7 +269,20 @@ export const archiveProductSurface = async (surface: Pick<AnswerlatticeProductSu
                 tId: scope.tId,
                 sId: scope.sId,
             }, { isNew: false });
-            await setDoc(getDocRef(surfaceId), composedData, { merge: true });
+            const surfaceRef = getDocRef(surfaceId);
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const existingSnapshot = await transaction.get(surfaceRef);
+                if (!existingSnapshot.exists()) throw new Error('Product surface is not available.');
+                const existing = normalizeStoredAnswerlatticeProductSurface(
+                    { ...existingSnapshot.data(), id: existingSnapshot.id },
+                    scope,
+                    existingSnapshot.id,
+                );
+                if (!existing || existing.key !== normalizeSurfaceKey(surface.key)) {
+                    throw new Error('Product surface is not available for this workspace.');
+                }
+                transaction.set(surfaceRef, composedData, { merge: true });
+            });
             await markAnswerlatticeCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
                 reason: 'product_surface_archive',
                 sourceId: surfaceId,

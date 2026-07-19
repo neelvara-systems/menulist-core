@@ -65,7 +65,7 @@ Core ready-to-use flags are now enabled for Answerlattice activation. Predictive
 | **2 — Canonical Answer Engine** | Governed, versioned, scoped answers; canonical-first retrieval | `canonicalAnswers.ts` + `canonicalRetrieval.ts` — 3-layer retrieval stack, version filtering, specificity scoring                                     | **VERIFIED**                               |
 | **3 — Drift Governance**        | 4 drift classes, deterministic, idempotent                     | `driftDetection.ts` — all 4 classes implemented: version, signal, scope conflict, orphan                                                              | **VERIFIED**                               |
 | **4 — Signal Mutation**         | 3 signal sources, 4 mutation types, human approval             | `signalMutation.ts` + `signalEmitter.ts` + `mutationProposals.ts` — entity-based clustering, proposal generation, state machine guards                | **VERIFIED**                               |
-| **5 — Public API**              | Public retrieval and signal ingestion                          | `public/v1/answers`, `public/v1/entities`, and `public/v1/signals` implemented with `al_*` key auth, rate limits, and tenant-derived context | **VERIFIED** |
+| **5 — Public API**              | Server-side governed retrieval and signal ingestion            | Owner-controlled one-key lifecycle plus `public/v1/answers`, `public/v1/entities`, and `public/v1/signals` with exact AL purpose/scopes, fail-closed limits, browser rejection, active-workspace context, private projections, and replay conflict handling | **VERIFIED, ROLLOUT-GATED** |
 
 ### 2.2 Invariants
 
@@ -77,7 +77,7 @@ Core ready-to-use flags are now enabled for Answerlattice activation. Predictive
 | Append-only signal events        | No update, no delete                                                     | `signalEvents.ts` only exports `addSignalEvent` + read functions                                                  | **VERIFIED** |
 | Mutation state machine           | `pending_review → approved → implemented` or `pending_review → rejected` | Guards in `approveMutationProposal`, `rejectMutationProposal`, `markMutationImplemented` all check current status | **VERIFIED** |
 | Release immutable after creation | Server-owned governed lifecycle                                          | Browser exports no general update; bounded create/activate actions use the authenticated Admin transaction/lease lifecycle with exact stored scope/version admission. | **VERIFIED LOCALLY** |
-| Drift derived, not toggled       | Computed from primitives                                                 | `evaluateDriftForTenant` computes fresh each run, doesn't read previous flag to decide                            | **VERIFIED** |
+| Drift derived, not toggled       | Computed from server-owned primitives                                    | Manual and nightly evaluation use the shared four-class policy; browser clients cannot submit authoritative automated reasons | **VERIFIED LOCALLY** |
 | Cross-tenant isolation           | tId+sId on all queries                                                   | All DAL queries include `where('tId', '==', tId), where('sId', '==', sId)`                                        | **VERIFIED** |
 | Entity deprecation guard         | Cannot deprecate if active answers reference it                          | `deprecateEntity` checks `getActiveAnswersForEntity` before deprecating                                           | **VERIFIED** |
 | Release entityChanges mandatory  | Must declare changed entities                                            | `addRelease` throws if `entityChanges.length === 0`                                                               | **VERIFIED** |
@@ -146,16 +146,17 @@ POST /api/helpCenter/search-kb
 
 ```
 activateRelease(releaseId)
-  → Fetch release doc
-  → Mark status: 'processing'
-  → evaluateDriftForTenant(tId, sId, { releaseVersion, changedEntityIds })
-    → ADVISORY ONLY — catch block logs failure to audit trail
-  → Mark status: 'active'
+  → Authenticated route acquires the activation lease
+  → Finish transaction re-reads the exact stored release
+  → Read capped active answers linked to changed entities
+  → Derive Class A version drift with shared policy
+  → Write drift/review state, deterministic audits, cache/source invalidation, and bundle-stale state
+  → Mark the release active in the same transaction
 ```
 
 Answerlattice App Release ID Boundary: browser reads normalize release IDs through the shared Firestore document-ID guard. Create/activate actions cross the bounded authenticated route; the Admin transaction/lease lifecycle proves exact release, entity and affected-answer product/workspace/version identity before writes. Malformed, reserved, path-shaped or coercive IDs/scope fail closed.
 
-**Verdict:** SAFE. Drift evaluation failure logged to audit trail (not just console.warn — fixed in prior session). Release activation never blocked by drift failure.
+**Verdict:** SAFE LOCALLY. Detecting drift is advisory and does not reject the release, but invalid scope, malformed stored truth, or an over-cap affected-answer set fails activation closed before partial writes.
 
 ### Flow E — Nightly Job
 
@@ -176,9 +177,9 @@ Answerlattice App Release ID Boundary: browser reads normalize release IDs throu
 ### Flow F — Widget Key → Search → Feedback
 
 ```
-Settings / onboarding
-  → generate al_* raw key once
-  → store publicApi.apiKeyHash + keyPrefix only
+Widget settings / onboarding
+  → generate al_* widget key once
+  → store answerlatticeWidgetApi key hashes + bounded summaries only
   → malformed keys short-circuit before Firestore lookup
   → widget routes rate-limit by key hash, then validate X-API-Key by hash
   → resolved store context must have positive tId+sId
@@ -187,6 +188,23 @@ Settings / onboarding
 ```
 
 **Verdict:** SAFE. Raw widget keys are not persisted. Rate-limit keys use key hashes, not raw API keys. Malformed keys avoid Firestore reads, misconfigured store contexts fail closed, and feedback cannot update another workspace's search history record.
+
+### Flow F2 — Public API Key -> Governed External Use
+
+```
+Flag-gated Public API page
+  -> authenticated exact workspace + MANAGE_INTEGRATIONS
+  -> fail-closed actor/workspace rate limit + same-origin management
+  -> create/rotate one al_* raw key once
+  -> stores.publicApi keeps hash + bounded summary only
+  -> server-reserved audit summary, no raw key/hash
+  -> external trusted server uses X-API-Key
+  -> IP + per-key/endpoint fail-closed admission
+  -> exact product/purpose/scope + active workspace
+  -> canonical answer / public entities / governed signal
+```
+
+**Verdict:** SOURCE VERIFIED, ROLLOUT-GATED. Browser-origin external use is rejected, rotation/revocation has no positive-auth cache delay, public answer projections exclude internal guidance/evidence, and signal replay conflicts cannot silently change evidence.
 
 ### Flow G — Guided Public Widget
 

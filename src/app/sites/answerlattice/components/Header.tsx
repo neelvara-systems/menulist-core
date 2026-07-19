@@ -190,6 +190,9 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     const openTimerRef = useRef<number | null>(null);
     const closeTimerRef = useRef<number | null>(null);
+    const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+    const drawerRef = useRef<HTMLElement | null>(null);
+    const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const { isMobile, hasMounted } = useIsMobile(1280);
     const shouldShowMobileNavigation = hasMounted && isMobile;
 
@@ -227,6 +230,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
         closeTimerRef.current = window.setTimeout(() => {
             closeTimerRef.current = null;
             setIsDrawerMounted(false);
+            menuButtonRef.current?.focus();
         }, DRAWER_TRANSITION_MS);
     }, [isDrawerMounted]);
 
@@ -260,12 +264,43 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
         if (!isDrawerMounted) return undefined;
 
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') closeDrawer();
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeDrawer();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const drawer = drawerRef.current;
+            if (!drawer) return;
+            const focusableElements = Array.from(drawer.querySelectorAll<HTMLElement>(
+                'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            )).filter((element) => element.getAttribute('aria-hidden') !== 'true');
+            if (focusableElements.length === 0) {
+                event.preventDefault();
+                return;
+            }
+
+            const first = focusableElements[0];
+            const last = focusableElements[focusableElements.length - 1];
+            const active = document.activeElement;
+            if (event.shiftKey && (active === first || !drawer.contains(active))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (active === last || !drawer.contains(active))) {
+                event.preventDefault();
+                first.focus();
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isDrawerMounted, closeDrawer]);
+
+    useEffect(() => {
+        if (!isDrawerVisible) return;
+        closeButtonRef.current?.focus();
+    }, [isDrawerVisible]);
 
     useEffect(() => {
         if (!shouldShowMobileNavigation && isDrawerMounted) {
@@ -547,11 +582,12 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                     {shouldShowMobileNavigation ? (
                         <button
+                            ref={menuButtonRef}
+                            aria-controls="answerlattice-mobile-navigation"
                             aria-expanded={isDrawerVisible}
                             aria-label="Open navigation"
                             className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white xl:hidden"
                             onClick={openDrawer}
-                            onTouchStart={openDrawer}
                             type="button"
                         >
                             <LuMenu size={22} aria-hidden />
@@ -568,6 +604,8 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         onClick={closeDrawer}
                     />
                     <aside
+                        ref={drawerRef}
+                        id="answerlattice-mobile-navigation"
                         aria-label="AnswerLattice navigation"
                         aria-modal="true"
                         className={`al-mobile-drawer fixed bottom-0 right-0 top-0 z-[2147483200] flex max-h-[100dvh] w-full flex-col overflow-hidden bg-[var(--al-bg)] shadow-2xl shadow-black/60 sm:w-[min(420px,92vw)] sm:border-l sm:border-white/[0.08] ${isDrawerVisible ? 'al-mobile-drawer--open' : ''}`}
@@ -580,6 +618,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                 <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>
                             </L>
                             <button
+                                ref={closeButtonRef}
                                 aria-label="Close navigation"
                                 className="flex h-11 w-11 items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:bg-white/[0.04] hover:text-white"
                                 onClick={closeDrawer}

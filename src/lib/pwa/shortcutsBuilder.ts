@@ -15,6 +15,9 @@
  * avoids icon generation overhead.
  */
 
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
+
 export interface ShortcutStoreInfo {
   /** Resolvable public menu path. Null/empty omits the View Menu shortcut. */
   menuPath?: string | null;
@@ -37,73 +40,82 @@ export interface ManifestShortcut {
   url: string;
 }
 
-function withEntrySource(url: string, entrySource: string): string {
+function withEntrySource(
+  url: string,
+  entrySource: string,
+  activeLanguage?: string | null,
+): string {
   // Preserve existing query string if any.
-  const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}entry_source=shortcut-${entrySource}`;
+  const localizedUrl = appendPublicLanguageParam(url, activeLanguage);
+  const sep = localizedUrl.includes('?') ? '&' : '?';
+  return `${localizedUrl}${sep}entry_source=shortcut-${entrySource}`;
 }
 
 /**
  * Build the shortcuts list for a store's manifest.
  */
-export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
+export function buildShortcuts(
+  info: ShortcutStoreInfo,
+  activeLanguage?: string | null,
+): ManifestShortcut[] {
+  const t = createPublicCustomerTranslator(activeLanguage);
   const shortcuts: ManifestShortcut[] = [];
 
   const menuPath = info.menuPath?.trim();
   if (menuPath) {
     shortcuts.push({
-      name: 'View Menu',
-      short_name: 'Menu',
-      description: 'Open the menu',
-      url: withEntrySource(menuPath, 'menu'),
+      name: t('menu.menuOffering'),
+      short_name: t('menu.menuOffering'),
+      description: t('menu.menuOffering'),
+      url: withEntrySource(menuPath, 'menu', activeLanguage),
     });
   }
 
   if (info.phone) {
     shortcuts.push({
-      name: 'Call',
-      short_name: 'Call',
-      description: 'Call the restaurant',
+      name: t('menu.call'),
+      short_name: t('menu.call'),
+      description: t('menu.call'),
       // tel: links don't support query params reliably; we keep a same-origin
       // redirect URL instead so the analytics event can fire before the tel: handoff.
-      url: withEntrySource('/pwa/call', 'call'),
+      url: withEntrySource('/pwa/call', 'call', activeLanguage),
     });
   }
 
   if (info.mapsUrl) {
     shortcuts.push({
-      name: 'Directions',
-      short_name: 'Directions',
-      description: 'Get directions',
-      url: withEntrySource('/pwa/directions', 'directions'),
+      name: t('menu.directions'),
+      short_name: t('menu.directions'),
+      description: t('menu.directions'),
+      url: withEntrySource('/pwa/directions', 'directions', activeLanguage),
     });
   }
 
   if (info.whatsappNumber) {
     shortcuts.push({
-      name: 'WhatsApp',
-      short_name: 'WhatsApp',
-      description: 'Message on WhatsApp',
-      url: withEntrySource('/pwa/whatsapp', 'whatsapp'),
+      name: t('menu.whatsApp'),
+      short_name: t('menu.whatsApp'),
+      description: t('menu.whatsApp'),
+      url: withEntrySource('/pwa/whatsapp', 'whatsapp', activeLanguage),
     });
   }
 
   if (info.reservationUrl) {
     shortcuts.push({
-      name: 'Book a Table',
-      short_name: 'Reserve',
-      description: 'Make a reservation',
+      name: t('menu.reserve'),
+      short_name: t('menu.reserve'),
+      description: t('menu.reserve'),
       // Same same-origin handoff pattern as call/whatsapp — event first, then redirect.
-      url: withEntrySource('/pwa/reservation', 'reservation'),
+      url: withEntrySource('/pwa/reservation', 'reservation', activeLanguage),
     });
   }
 
   if (info.orderUrl) {
     shortcuts.push({
-      name: 'Order Online',
-      short_name: 'Order',
-      description: 'Order for delivery or pickup',
-      url: withEntrySource('/pwa/order', 'order'),
+      name: t('menu.order'),
+      short_name: t('menu.order'),
+      description: t('menu.order'),
+      url: withEntrySource('/pwa/order', 'order', activeLanguage),
     });
   }
 

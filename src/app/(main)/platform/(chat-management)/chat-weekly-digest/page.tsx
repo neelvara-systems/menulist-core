@@ -5,7 +5,7 @@ import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeCo
 
 export const metadata: Metadata = {
     title: 'Weekly Digest | Chat Management',
-    description: 'AI-powered weekly performance summaries and insights'
+    description: 'Deterministic completed-week support summary and review signals'
 };
 
 export default function WeeklyDigestPage() {

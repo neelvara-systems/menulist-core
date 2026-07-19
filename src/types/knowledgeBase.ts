@@ -133,6 +133,7 @@ export interface IngestionJob {
     embeddingFailedArticleIds?: string[];
     embeddingEnqueueStatus?: 'pending' | 'queued' | 'failed';
     embeddingRunId?: string;
+    replacementArticleIds?: string[];
     generationRun?: {
         id: string;
         status: 'processing' | 'completed' | 'failed';
@@ -267,6 +268,9 @@ export interface KnowledgeBaseArticleType {
     faqIds?: string[]; // Answerlattice FAQ IDs linked to this article
     generatedFaqs?: KnowledgeBaseGeneratedFaq[]; // Review-only FAQ suggestions, removed after publish
     translations?: Record<string, AnswerlatticeArticleTranslation>; // Locale-specific Answerlattice KB translations
+    intakeJobId?: string | null;
+    intakeReviewItemId?: string | null;
+    intakeSourceIds?: string[];
     tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc. Required by ANSWERLATTICE_RULES Rule 6.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
 }

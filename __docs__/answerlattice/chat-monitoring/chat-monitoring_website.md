@@ -1,40 +1,22 @@
-# Chat Monitoring — Website Content
+# Conversation Monitoring Website Guidance
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Public website visitors
+## Safe claim
 
----
+Answerlattice shows founders which support conversations need follow-up and which questions or answers repeatedly create friction.
 
-## SEO Meta
+## Demonstrable capabilities
 
-```
-Title: AI Chat Monitoring Dashboard | MenuList
-Description: Review support conversations, filter by answer quality, calculate ROI, and get source-backed weekly performance summaries.
-Keywords: chat monitoring, AI quality, conversation analytics, support dashboard
-OG Title: Know How Your AI Is Performing
-OG Description: Quality filtering, ROI calculation, and verified weekly performance summaries — built in.
-```
+- Scoped conversation history and answer feedback.
+- Status, priority, tags, and private internal notes.
+- Bounded top-question and negative-feedback review.
+- Connection from conversation evidence to governed knowledge work.
 
----
+## Avoid
 
-## Feature Block
+- “Omnichannel inbox,” “live chat replacement,” or workforce-routing claims.
+- Claims that negative feedback proves the right answer.
+- Claims that deleting a conversation immediately deletes every associated image.
+- Resolution, deflection, or ROI claims based only on conversation counts.
+- Automatic learning or publishing from raw transcripts.
 
-### Headline
-**Monitor what matters.**
-
-### Subheadline
-See every support conversation. Filter by quality. Calculate ROI. Get verified weekly performance summaries. No external analytics tools.
-
-### How It Works
-
-**Filter by quality** — Instantly find conversations where the AI struggled. Quality scores based on answer confidence help you spot content gaps before users complain.
-
-**Triage conversations** — Assign status, priority, and tags. Add internal team notes for collaboration. Export conversations as CSV or Markdown.
-
-**Measure impact** — Built-in ROI calculator quantifies hours saved, cost saved, and automation rate. Source-backed weekly reports highlight trends and recurring answer gaps.
-
-### Trust Indicators
-- Quality scores calculated from real similarity metrics, not guesses
-- 99.95% cheaper than raw session scanning (aggregated analytics)
-- Weekly summaries are rebuilt from completed, scoped analytics data
+Conversation Monitoring should be presented as the observe-and-improve part of governed support, not as a separate analytics product.

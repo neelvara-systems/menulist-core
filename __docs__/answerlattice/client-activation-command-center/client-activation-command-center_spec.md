@@ -22,16 +22,20 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Show current activation score from required launch steps.
 - Show the next incomplete required action.
 - Link directly to the relevant Answerlattice management surface.
-- Show widget runtime status from sanitized last-seen telemetry.
+- Show widget runtime status from sanitized last-seen telemetry, and require telemetry from the last seven days for current install/page-context proof.
 - Show content counts from the product-surface context summary.
 - Show license status from the store subscription summary.
 - Show whether the help center has published content.
-- Show whether product entities and active canonical answers exist, using trust summary counts.
+- Show whether product entities and active canonical answers exist, using explicit answer-evidence summary counts.
 - Show whether the founder's First 10 answer set exists and whether its latest retained proof is ready, needs review, or is blocked.
 - Show a first-client launch proof that groups setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source test status.
 - Present one ordered founder journey above the detailed diagnostics: product details, product knowledge, First 10, approved support truth, product surfaces, secure install, and launch verification.
 - Avoid reading source KB, changelog, ticket, and signal collections.
 - Keep Firebase/cache implementation details out of the client-facing UI.
+- Select the internal `live` stage only when every launch-proof group is complete; a readiness percentage alone is not a launch gate.
+- Present the readiness percentage as setup diagnostics on Readiness Metrics; launch-ready success copy and styling require `launchProof.ready`.
+- Label checklist prerequisites as ready to test, then require the owner to manually exercise a known answer, contextual widget question, unresolved fallback, and resulting signal.
+- Reject malformed notification-test recipients and malformed or internally inconsistent compiled-context rebuild responses before showing success copy.
 
 ## Non-Goals
 
@@ -39,6 +43,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - No replacement for governance dashboard metrics.
 - No per-event analytics collection.
 - No MenuList-specific hardcoding.
+- No claim that configuration readiness proves customer resolution, task completion, or correct escalation.
 
 ## Readiness Steps
 
@@ -68,7 +73,7 @@ Proof groups:
 - Knowledge and surfaces: imported content, help center, and product-surface mapping.
 - Ontology and canonical answers: product entities and active canonical answers.
 - Priority answer checks: ten launch questions exist, the latest retained proof is ready, and no critical test is failing.
-- Widget runtime proof: widget key, allowed origins, install telemetry, and page context.
+- Widget runtime proof: widget key, allowed origins, install telemetry seen within seven days, and context attached to that current telemetry.
 - Governance summaries: coverage, trust, and compiled context summaries.
 - Signal source test: fallback or ticket signal source visible before broader rollout; Signal Queue remains the confirmation surface for proposal quality.
 
@@ -82,3 +87,7 @@ The Answerlattice base route is stage-aware:
 - support, knowledge, widget, and other restricted roles retain their existing permission-based fallback routes.
 
 The entry decision may read only the compact activation summary. It must not rebuild readiness or scan source collections.
+
+## Proof Semantics
+
+`readinessScore` is a diagnostic percentage over required setup steps. `launchProof.ready` is the stricter configuration/evidence gate and is the only condition that can produce `stage: live`. Neither field proves a customer received a correct answer or completed a support task. The Test-as-Customer checklist remains a manual workflow until Answerlattice has explicit, verified outcome evidence.

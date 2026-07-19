@@ -1,6 +1,6 @@
 # First Trusted Answers Implementation
 
-**Updated:** 2026-07-17
+**Updated:** 2026-07-19
 
 ## Architecture
 
@@ -31,6 +31,7 @@ Launch route
 | Launch route | `src/app/(answerlattice)/answerlattice/launch-answers/page.tsx` |
 | Navigation | `src/constants/answerlattice/routes.ts`, `src/constants/answerlattice/navigations.ts` |
 | Existing test persistence | `src/app/api/answerlattice/answer-tests/route.ts` |
+| Launch identity and browser contracts | `src/lib/answerlattice/answerTestStarterPack.ts`, `src/lib/answerlattice/answerTestContracts.ts`, `src/lib/answerlattice/activationAnswerTestSummary.ts` |
 | Widget outcome | `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/feedback/route.ts` |
 | Outcome aggregation | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` |
 | Trust UI | `src/components/templates/answerlattice/governance/FounderTrustDashboard.tsx` |
@@ -63,10 +64,15 @@ No new collection is introduced.
 - Repeated requests for unchanged prompt inputs reuse the completed pack; audience or included source/context changes create a new pack, while sources excluded by the prompt budget do not trigger needless provider work. Concurrent generation is rejected by a short job lease.
 - A changed generation-input hash creates a new traceable draft pack without overwriting accepted or published history. The existing 120-review-item job cap remains the hard bound.
 - Product-pack Answer Test cases carry bounded generation-input-hash and review-item provenance. Cached reuse preserves owner-edited cases; changed included sources or launch context require explicit refresh confirmation and replace only the ten product-launch slots.
+- The launch-pack route applies the shared SAFE_MODE gate after strict body validation and before pack generation. The server generation boundary separately validates the bounded request ID before job, provider, or usage work.
+- Cached product packs are reusable only when exact positions `1` through `10`, deterministic review-item IDs, source hash, and review state remain coherent.
+- Launch identity uses exact registered generic or product IDs. Product mode requires one common generation-input hash and unique review-item provenance across the available registered slots; it never counts a mixed generic/product set.
+- The launch-only action resolves the exact active First 10 IDs and sends those IDs explicitly. The run route rejects missing, changed, or inactive selections instead of silently executing a subset.
 - New Answer Test runs retain a six-counter governed-source snapshot. Activation accepts launch proof only when the retained run is newer than every current First 10 case and its snapshot matches current canonical, KB/FAQ, docs-navigation, entity, relation, and release truth.
 - Legacy runs without source-version evidence remain reviewable but require one fresh owner-triggered run. Source-version counters stay server-side; the Activation client receives only stale/proof state.
 - First 10 creation and edit timestamps are authored in the save transaction. A client cannot submit a stale or future timestamp to keep changed launch questions covered by old proof.
 - The launch screen presents server-derived **Current First 10 proof** separately from the historical **Latest run proof**. Opening, saving, or completing a run refreshes that current projection without exposing source-version counters.
+- Answer Tests API responses use strict, private, no-store projections. Browser summaries exclude active reservations; browser runs exclude request fingerprints and governed-source counters; the client validates exact scope, unique IDs, bounded fields, and derived run totals before replacing state.
 - Empty explicit-outcome samples render as unavailable instead of a misleading 0%.
 - The bounded sample reports only observed same-session recontacts; it does not claim that the absence of a recontact proves durable resolution.
 - The nightly sample is ordered newest-first and remains capped at 500 rows.
@@ -106,4 +112,15 @@ Final adversarial cross-check on 2026-07-17:
 - the Knowledge Intake emulator now explicitly clears `GOOGLE_APPLICATION_CREDENTIALS`, preventing a developer-specific credential path from breaking isolated tests;
 - focused contracts, Knowledge Intake Firestore emulator, full Answerlattice runtime-truth suite, root TypeScript, targeted ESLint, Answerlattice Functions build, production Next.js build, final-readiness verifier, and `git diff --check` passed.
 
-The original First Trusted Answers implementation includes the documented scoped search-history index and Answerlattice nightly outcome aggregation changes; those Firebase assets must be deployed through the normal Answerlattice Firebase release if they are not already present in the target project. This proof-freshness cross-check changes no Firestore rule, index, Storage rule, or Answerlattice Cloud Function. The app/API/public-copy changes still require the normal Vercel release and an authenticated QA smoke with a configured Gemini key and active Answerlattice subscription. The current repository-wide `git diff --check` passes.
+Feature 26 flow audit on 2026-07-19:
+
+- exact product slot membership replaced prefix-based launch identity;
+- coherent-set selection now prevents generic/product mixing, mismatched generation snapshots, duplicate review provenance, and inactive cases from producing complete launch coverage;
+- the launch screen now runs the exact active First 10 set, while the run API rejects a changed or inactive requested case;
+- Activation rejects malformed case timestamps and future-dated runs, and derives critical failures conservatively from retained and current case evidence;
+- Answer Tests management, run, release-check, and launch-pack responses use private no-store and `nosniff` headers;
+- strict browser projections strip reservations, request fingerprints, and source-version counters, then validate scope and derived run consistency;
+- paid pack generation now respects shared SAFE_MODE before provider work, direct server calls reject malformed request IDs, and cached packs require every exact position `1` through `10`;
+- Answerlattice and root TypeScript, focused ESLint, Feature 26 contract tests, runtime-truth verification, and `git diff --check` passed.
+
+The original First Trusted Answers implementation includes the documented scoped search-history index and Answerlattice nightly outcome aggregation changes; those Firebase assets must be deployed through the normal Answerlattice Firebase release if they are not already present in the target project. This Feature 26 audit changes no Firestore rule, index, Storage rule, or Answerlattice Cloud Function. The app/API/public-copy changes still require the normal Vercel release and an authenticated QA smoke with a configured Gemini key and active Answerlattice subscription.

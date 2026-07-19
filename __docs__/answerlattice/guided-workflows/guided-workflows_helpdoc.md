@@ -57,9 +57,9 @@ Existing widget configurations remain disabled until this setting is enabled.
 ## End-User Behavior
 
 - **Guide me:** starts the current approved procedure.
-- **Continue:** advances a step when no verified event is required.
+- **Next step / Finish guide:** advances only a step that does not require a verified event.
 - **Target missing:** ends the guide and records which semantic target was absent.
-- **Get support:** ends the guide and sends a governed escalation signal.
+- **Still stuck:** opens the reply-email support form. The guide is marked escalated only after the support request is created.
 - Closing the widget or changing page/context safely clears the highlight.
 
 If a target is missing, the written instruction remains visible so the user is not blocked by instrumentation.
@@ -69,10 +69,10 @@ If a target is missing, the written instruction remains visible so the user is n
 | Problem | Check |
 |---|---|
 | Guide button is absent | Workspace toggle, canonical answer status, procedure shape |
-| Target is not highlighted | Exact `data-answerlattice-target` value and current page |
+| Target is not highlighted | Wait for the bounded lookup, then check the exact `data-answerlattice-target` value and current page |
 | Step does not advance | Exact `expectedEvent` value and event emitted after verified state |
 | Guide resets | The page route or widget context changed |
-| Outcome is not recorded | Signal mutation may be disabled, or public request admission failed |
+| Outcome is not recorded | Signal mutation may be disabled, the search evidence may be expired/mismatched, or public request admission failed |
 
 ## Safety Limits
 

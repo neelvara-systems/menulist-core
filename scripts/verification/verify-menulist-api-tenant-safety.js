@@ -351,11 +351,6 @@ function verifyMenuListMutatingApiAdmissionGuards() {
 
     const hasBoundedBodyGate = /read(?:Optional)?Bounded(?:Json|Text|FormData)Body|rejectInvalidOrOversizedDeclaredBody/.test(content);
     const hasProtectedAdmission = /\bwith(?:Platform)?Auth\b|\bwithPublicApiAuth\b/.test(content);
-    const hasProtectedRouteDelegation = route === 'src/app/api/analytics/weekly-narrative/regenerate/route.ts'
-      && content.includes("import { POST as generateWeeklyNarrativePost } from '../generate-local/route';")
-      && content.includes('return await generateWeeklyNarrativePost(request);')
-      && read('src/app/api/analytics/weekly-narrative/generate-local/route.ts')
-        .includes('export const POST = withAuth(generateWeeklyNarrativeLocally);');
     const hasPublicAdmission = /\bcheckPublicRateLimit\b|\bvalidatePublicApiKey\b|\bwithCORS\b/.test(content);
     const hasSecretOrSignatureAdmission = /REVALIDATION_SECRET|WORKER_SECRET|BATCH_IMAGE_GENERATION_WORKER_SECRET|x-[a-z0-9-]*signature|timingSafeEqual|validate[A-Za-z]*WebhookSignature/i.test(content);
     const hasAnonymousTokenAdmission = hasBoundedBodyGate
@@ -365,7 +360,6 @@ function verifyMenuListMutatingApiAdmissionGuards() {
 
     assert(
       hasProtectedAdmission
-      || hasProtectedRouteDelegation
       || hasPublicAdmission
       || hasSecretOrSignatureAdmission
       || hasAnonymousTokenAdmission
@@ -2836,8 +2830,8 @@ function verifyAuthClaimAndCacheBoundaries() {
       'const claimTenantScope = canonicalWorkspace.tenantScope;',
       'tenantId: claimTenantScope.documentId',
       'storeId: claimStoreScope.documentId',
-      '? getAnswerlatticeStaffClaimStoreIds(answerlatticeClaimState)',
-      ': getStoreIdsClaim(dbUser))',
+      "storeIds: productId === PRODUCT_IDS.ANSWERLATTICE\n                ? [claimStoreScope.documentId]",
+      '...getStoreIdsClaim(dbUser),',
       'claimStoreScope.documentId',
       'normalizeEmail(validatedDefaultFirebaseUser.email) !== normalizeEmail(session.user.email)',
       'set_claims_uid_email_mismatch_rejected',
@@ -3979,71 +3973,18 @@ function verifyAnalyticsErrorBoundary() {
     'analytics reports read limiter before permission/provider work',
   );
 
-  assertIncludes(
-    'src/app/api/analytics/weekly-narrative/generate-local/route.ts',
-    [
-      "import { withAuth } from '@/middleware/auth';",
-      "import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';",
-      "import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';",
-      "import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';",
-      "import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';",
-      'async function generateWeeklyNarrativeLocally(request: NextRequest, session: any)',
-      'export const POST = withAuth(generateWeeklyNarrativeLocally);',
-      'const scope = resolveAnswerlatticeSessionScope(session);',
-      "key: buildAnswerlatticeRateLimitKey(",
-      'const permission = await requireAnswerlatticePermission(',
-      'ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS',
-      'if (permission.response) return permission.response;',
-      'const WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH = 80;',
-      'const WEEKLY_NARRATIVE_OUTPUT_TEXT_MAX_LENGTH = 500;',
-      'const WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH = 220;',
-      'const WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS = 5;',
-      'const cleanWeeklyNarrativeOutputText = (',
-      /replace\(\s*\/\[\\u0000-\\u001f\\u007f\]\/g,\s*' '\s*\)/,
-      ".replace(/[{}<>`$\\\\]/g, '')",
-      'normalizeWeeklyNarrativeOutputText(parsed?.narrative, fallback.narrative)',
-      'normalizeWeeklyNarrativeOutputList(parsed?.highlights, fallback.highlights)',
-      'normalizeWeeklyNarrativeOutputList(parsed?.recommendations, fallback.recommendations)',
-      'parseAnswerlatticeChatAnalyticsDay({',
-      "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
-      'getAnswerlatticeCompletedWeeklyWindows(new Date(), WEEKLY_NARRATIVE_DAYS)',
-      'recordAnswerlatticeAiOperation({ tId, sId },',
-      "logRuntimeFailure('weekly_narrative_local_generation_failed'",
-    ],
-    'weekly narrative local route shared auth guard',
-  );
-  assertOrder(
-    'src/app/api/analytics/weekly-narrative/generate-local/route.ts',
-    [
-      'const rateLimit = await checkRateLimit({',
-      'if (!rateLimit.allowed) {',
-      'const permission = await requireAnswerlatticePermission(',
-      'if (permission.response) return permission.response;',
-      "logger.info('[Weekly Narrative Local] Generating weekly narrative'",
-      'answerlatticeFirestoreAdmin',
-      'answerlatticeGenAIClient.models.generateContent({',
-    ],
-    'weekly narrative route must rate-limit and permission-check before provider/firestore work',
-  );
   const weeklyNarrativeRouteForAuth = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
-  assert(!weeklyNarrativeRouteForAuth.includes('getActiveSession'), 'weekly narrative local route must use withAuth instead of direct session lookup');
-  assert(!weeklyNarrativeRouteForAuth.includes('key: `weekly-narrative:${session.uId}:${tId}:${sId}`'), 'weekly narrative local route must not store raw user/tenant/store IDs in rate-limit keys');
-  assert(!weeklyNarrativeRouteForAuth.includes('categories[q.category]'), 'weekly narrative route must not index category totals with raw analytics category text');
-  assert(!weeklyNarrativeRouteForAuth.includes('? parsed.narrative.trim()'), 'weekly narrative route must not persist raw generated narrative text through trim-only normalization');
-  assert(!weeklyNarrativeRouteForAuth.includes('.map((entry) => entry.trim())'), 'weekly narrative route must not persist generated list entries through trim-only normalization');
-  assert(aiSystemReadme.includes('Weekly narrative output boundary'), 'AI System README weekly narrative output boundary missing');
-  assert(aiSystemImplDoc.includes('July 5 weekly narrative output boundary'), 'AI System implementation weekly narrative output boundary missing');
-  assert(aiSystemFirebaseDoc.includes('July 5 weekly narrative output boundary is Firebase-cost neutral'), 'AI System Firebase weekly narrative output boundary missing');
-  assert(productionAudit.includes('Weekly narrative output boundary checkpoint'), 'Production audit weekly narrative output boundary checkpoint missing');
-  assert(changelog.includes('Weekly Narrative Output Boundary'), 'Changelog weekly narrative output boundary checkpoint missing');
-  assertIncludes(
-    'src/app/api/analytics/weekly-narrative/regenerate/route.ts',
-    [
-      "import { POST as generateWeeklyNarrativePost } from '../generate-local/route';",
-      'export async function POST(request: NextRequest) {',
-      'return await generateWeeklyNarrativePost(request);',
-    ],
-    'weekly narrative regenerate shared auth guard',
+  assert(weeklyNarrativeRouteForAuth.includes("import { withAuth } from '@/middleware/auth';"), 'weekly narrative refresh must use shared auth');
+  assert(weeklyNarrativeRouteForAuth.includes('ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT'), 'weekly narrative refresh must require support management');
+  assert(weeklyNarrativeRouteForAuth.includes("'answerlattice-weekly-narrative',\n                'workspace'"), 'weekly narrative refresh must use a workspace-scoped limiter');
+  assert(weeklyNarrativeRouteForAuth.includes('limit: 2'), 'weekly narrative refresh must cap workspace refreshes');
+  assert(weeklyNarrativeRouteForAuth.includes("generationMode: 'deterministic'"), 'weekly narrative refresh must remain deterministic');
+  assert(weeklyNarrativeRouteForAuth.includes("currentInsight.get('sourceHash') !== sourceHash"), 'weekly narrative refresh must hash-skip unchanged writes');
+  assert(!weeklyNarrativeRouteForAuth.includes('answerlatticeGenAIClient'), 'weekly narrative refresh must not call a model provider');
+  assert(!weeklyNarrativeRouteForAuth.includes('recordAnswerlatticeAiOperation'), 'weekly narrative refresh must not record a provider operation');
+  assert(
+    !fs.existsSync(path.join(ROOT, 'src/app/api/analytics/weekly-narrative/regenerate/route.ts')),
+    'retired Answerlattice weekly narrative regeneration wrapper must stay absent',
   );
   assertIncludes(
     'src/app/api/ai-operations/route.ts',
@@ -7887,39 +7828,14 @@ function verifyPaymentMutationBoundedJson() {
   assert(!functionsCircuitBreaker.includes('sourceErrorCode: (error as any).code'), 'Functions circuit breaker must bound source error codes');
   assert(!functionsCircuitBreaker.includes('sourceErrorStatus: (error as any).status || (error as any).statusCode'), 'Functions circuit breaker must normalize source error status');
 
-  assertIncludes(
-    'src/app/api/analytics/weekly-narrative/generate-local/route.ts',
-    [
-      'getWeeklyNarrativeRouteLogContext',
-      "logRuntimeFailure('weekly_narrative_response_parse_failed'",
-      "logRuntimeFailure('weekly_narrative_operation_log_failed'",
-      "logRuntimeFailure('weekly_narrative_local_generation_failed'",
-      'fallbackUsed: true',
-      "getBoundedRuntimeStringContext('tenantId'",
-      "getBoundedRuntimeStringContext('storeId'",
-      "getBoundedRuntimeStringContext('userId'",
-    ],
-    'weekly narrative bounded route diagnostics',
-  );
   const weeklyNarrativeLocalRoute = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
-  assert(!weeklyNarrativeLocalRoute.includes('reason: error instanceof Error ? error.message'), 'weekly narrative parser fallback must not log raw exception messages');
-  assert(!weeklyNarrativeLocalRoute.includes("logger.warn('[Weekly Narrative Local] AI response parse failed; using fallback narrative'"), 'weekly narrative parser fallback must not use ad hoc raw warning diagnostics');
-  assert(!weeklyNarrativeLocalRoute.includes("logger.error('[Weekly Narrative Local] Operation log failed'"), 'weekly narrative operation logging must not raw-log operation failures');
-  assert(!weeklyNarrativeLocalRoute.includes("logger.error('[Weekly Narrative Local] Error'"), 'weekly narrative route must not raw-log top-level failures');
-  assert(!weeklyNarrativeLocalRoute.includes("logger.info('[Weekly Narrative Local] Generating weekly narrative', { tId, sId })"), 'weekly narrative start diagnostics must not log raw tenant/store IDs');
-  assert(!weeklyNarrativeLocalRoute.includes("logger.info('[Weekly Narrative Local] Generated successfully', { tId, sId, weekEnd, weekStart })"), 'weekly narrative success diagnostics must not log raw tenant/store IDs');
-
-  assertIncludes(
-    'src/app/api/analytics/weekly-narrative/regenerate/route.ts',
-    [
-      "logRuntimeFailure('weekly_narrative_regeneration_failed'",
-      "endpoint: '/api/analytics/weekly-narrative/regenerate'",
-    ],
-    'weekly narrative regeneration bounded diagnostics',
-  );
+  assert(weeklyNarrativeLocalRoute.includes('getWeeklyNarrativeRouteLogContext'), 'weekly narrative refresh must use bounded route context');
+  assert(weeklyNarrativeLocalRoute.includes("logRuntimeFailure(\n            'weekly_narrative_local_generation_failed'"), 'weekly narrative refresh must use bounded failure diagnostics');
+  assert(!weeklyNarrativeLocalRoute.includes('reason: error instanceof Error ? error.message'), 'weekly narrative refresh must not log raw exception messages');
+  assert(!weeklyNarrativeLocalRoute.includes('answerlatticeGenAIClient'), 'weekly narrative refresh diagnostics must not restore provider work');
   assert(
-    !read('src/app/api/analytics/weekly-narrative/regenerate/route.ts').includes("logger.error('[Weekly Narrative Regeneration] Error'"),
-    'weekly narrative regeneration route must not raw-log top-level failures',
+    !fs.existsSync(path.join(ROOT, 'src/app/api/analytics/weekly-narrative/regenerate/route.ts')),
+    'retired weekly narrative wrapper must stay absent from route diagnostics',
   );
 
   const razorpayRoutes = [

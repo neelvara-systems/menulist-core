@@ -72,7 +72,9 @@ const SOURCE_MODES = [
 const SAFETY_ITEMS = [
     'No secrets, tokens, cookies, or service accounts.',
     'No payment details, raw logs, or private customer records.',
+    'No private-source processing without permission for the selected AI tool, and no public citation of private source material.',
     'No legal, privacy, refund, or security claims without approved source wording.',
+    'No ticket, chat, macro, or repeated reply becomes approved truth without review.',
     'No guarantee that every AI IDE can inspect every private repo, login-only app, website, recording, or file.',
     'Unavailable sources must be marked pending instead of treated as covered.',
     'No live support until sources, product surfaces, widget context, and test questions pass.',

@@ -41,8 +41,17 @@ async function run(): Promise<void> {
         const supportOnly = testEnv.authenticatedContext('support-1', {
             canManageSupport: true, role: 'STAFF', storeId: '101', tenantId: '1', uId: 'support-1',
         }).storage();
+        const noSupport = testEnv.authenticatedContext('viewer-1', {
+            role: 'VIEWER', storeId: '101', tenantId: '1', uId: 'viewer-1',
+        }).storage();
+        const platformSupport = testEnv.authenticatedContext('platform-support-1', {
+            platformRole: 'PLATFORM_SUPPORT', role: 'PLATFORM_SUPPORT', uId: 'platform-support-1',
+        }).storage();
         const otherTenant = testEnv.authenticatedContext('owner-2', {
             role: 'OWNER', storeId: '202', tenantId: '2', uId: 'owner-2',
+        }).storage();
+        const platform = testEnv.authenticatedContext('platform-1', {
+            platformRole: 'PLATFORM', role: 'PLATFORM', uId: 'platform-1',
         }).storage();
         const publicStorage = testEnv.unauthenticatedContext().storage();
         const sourcePath = 'ingestion_source_files/1/101/source.txt';
@@ -71,6 +80,45 @@ async function run(): Promise<void> {
             sourceMetadata,
         ));
         await assertSucceeds(deleteObject(ref(owner, sourcePath)));
+
+        const ticketDocumentPath = 'supportTickets/documents/1/101/ticket.txt';
+        const ticketMessagePath = 'supportTickets/messages/1/101/reply.txt';
+        await assertSucceeds(uploadBytes(
+            ref(owner, ticketDocumentPath),
+            new TextEncoder().encode('ticket document'),
+            { contentType: 'text/plain' },
+        ));
+        await assertSucceeds(getBytes(ref(supportOnly, ticketDocumentPath)));
+        await assertSucceeds(getBytes(ref(platform, ticketDocumentPath)));
+        await assertSucceeds(getBytes(ref(platformSupport, ticketDocumentPath)));
+        await assertFails(getBytes(ref(noSupport, ticketDocumentPath)));
+        await assertFails(getBytes(ref(otherTenant, ticketDocumentPath)));
+        await assertSucceeds(uploadBytes(
+            ref(platform, ticketMessagePath),
+            new TextEncoder().encode('support reply'),
+            { contentType: 'text/plain' },
+        ));
+        const platformSupportMessagePath = 'supportTickets/messages/1/101/support-reply.txt';
+        await assertSucceeds(uploadBytes(
+            ref(platformSupport, platformSupportMessagePath),
+            new TextEncoder().encode('support reply'),
+            { contentType: 'text/plain' },
+        ));
+        await assertSucceeds(deleteObject(ref(platform, ticketDocumentPath)));
+        await assertSucceeds(deleteObject(ref(platform, ticketMessagePath)));
+        await assertSucceeds(deleteObject(ref(platformSupport, platformSupportMessagePath)));
+
+        const chatImagePath = 'chatSessions/chatimages/1/101/chat.png';
+        await assertSucceeds(uploadBytes(
+            ref(supportOnly, chatImagePath),
+            new Uint8Array([1, 2, 3]),
+            { contentType: 'image/png' },
+        ));
+        await assertSucceeds(getBytes(ref(platform, chatImagePath)));
+        await assertSucceeds(getBytes(ref(platformSupport, chatImagePath)));
+        await assertFails(getBytes(ref(noSupport, chatImagePath)));
+        await assertFails(getBytes(ref(otherTenant, chatImagePath)));
+        await assertSucceeds(deleteObject(ref(platformSupport, chatImagePath)));
 
         await assertSucceeds(uploadBytes(
             ref(owner, 'changelog/files/1/101/release.txt'),

@@ -1,5 +1,7 @@
 # Support Board Website Guidance
 
+> **Last verified:** July 19, 2026
+
 Support Board can be mentioned on the Answerlattice public website only as an internal owner workflow.
 
 Safe claim:
@@ -14,6 +16,8 @@ Do not claim:
 - SLA automation
 - automatic answer publishing
 - automatic card creation from every runtime event
+- complete-history coverage from a bounded board or source window
+- deletion of source records when copied card details are removed
 
 Best placement:
 
@@ -29,3 +33,5 @@ Feature wording:
 - "Create an answer proposal"
 
 Avoid "Owner Notes" as the main feature name because it sounds generic and undersells the support-loop value.
+
+Public copy may say source items are deduplicated and that copied source details can be removed only after the deployed rules, function, and authenticated workflow are verified. Do not market exact workspace-wide counts as live until `answerlatticeSupportBoardSummaryOnWrite` is deployed to the target environment.

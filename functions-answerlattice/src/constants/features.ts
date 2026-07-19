@@ -41,10 +41,11 @@ export const FUNCTION_FLAGS = {
      * Answerlattice Automatic Knowledge Creation (AI Draft Generation)
      *
      * When true + ENABLE_ANSWERLATTICE_NIGHTLY is true:
-     * Step 9 of the nightly batch generates AI draft content for
-     * new_answer_required mutation proposals using Gemini.
+     * The master scheduler generates bounded draft content for eligible
+     * new-answer and content-refinement proposals.
      *
-     * Max 10 drafts per nightly run. Cost: <$0.01/run.
+     * Max 10 successful drafts per tenant run. Actual cost is recorded through
+     * runtime operation accounting rather than a static estimate.
      *
      * @see __docs__/answerlattice/automatic-knowledge-creation/
      */
@@ -53,8 +54,8 @@ export const FUNCTION_FLAGS = {
     /**
      * Answerlattice Product Friction Intelligence (nightly + weekly)
      *
-     * Step 9: Nightly friction aggregation (daily stats per entity)
-     * Step 10: Weekly AI insight generation (Sundays only)
+     * Step 9: Nightly scoped evidence aggregation and completed UTC-window snapshot.
+     * Step 10: Weekly advisory AI review generation (Sundays only).
      *
      * @see __docs__/answerlattice/product-friction-intelligence/
      */
@@ -64,8 +65,9 @@ export const FUNCTION_FLAGS = {
      * Answerlattice Founder Trust Layer
      *
      * When true + ENABLE_ANSWERLATTICE_NIGHTLY is true:
-     * Aggregates coverage, resolution, drift, entity health, and top failing
-     * entities into platformSummary/trustMetrics_{tId}_{sId}.
+     * Aggregates complete-window canonical coverage, non-escalation, explicit
+     * resolution outcomes, drift, entity answer coverage, and top review areas
+     * into platformSummary/trustMetrics_{tId}_{sId}.
      *
      * Zero new collections. One compact platformSummary write per tenant/run.
      *
@@ -104,11 +106,10 @@ export const FUNCTION_FLAGS = {
     /**
      * Answerlattice Ticket → Knowledge Loop (Expansion Item #9)
      *
-     * Step 14 of nightly batch: extracts knowledge candidates from
-     * resolved ticket clusters (3+ tickets per entity). Generates
-     * AI draft canonical answers from accumulated resolutions.
+     * The master scheduler extracts review candidates from resolved ticket
+     * clusters with 3+ unique tickets per entity.
      *
-     * Max 5 drafts per run. Cost: ~$0.12/tenant/month.
+     * Max 5 new proposals per tenant run. Tickets remain evidence; owners approve truth.
      *
      * Requires: ENABLE_ANSWERLATTICE_NIGHTLY + ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE
      * @see __docs__/answerlattice/ticket-knowledge-loop/

@@ -20,6 +20,15 @@ import { getBrandStoreLabel } from '@lib/businessIdentity/names';
 import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { getBoundedPublicFeedbackStringContext, logPublicFeedbackPageFailure } from '@lib/feedback/publicFeedbackDiagnostics';
 import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
+import {
+    appendPublicLanguageParam,
+    normalizePublicLanguageCode,
+    resolveStorePublicLanguage,
+} from '@lib/localization/publicRenderLanguage';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
@@ -67,7 +76,10 @@ function parseSource(raw: string | undefined): FeedbackSource {
 
 interface PageProps {
     params: { projectId: string };
-    searchParams?: { source?: string };
+    searchParams?: {
+        lang?: string | string[];
+        source?: string | string[];
+    };
 }
 
 /**
@@ -129,6 +141,7 @@ const getProjectData = cache(async (projectId: string) => {
 
 interface StoreInfo {
     accentColor?: string;
+    contentLanguage: string;
     storeDetails: Record<string, any>;
     storeName?: string;
     feedbackDefaults: FeedbackDefaults;
@@ -143,7 +156,12 @@ interface StoreInfo {
  * Get store data including name and feedback settings
  * Uses direct doc fetch by sId (storeId is the document ID)
  */
-const getStoreInfo = cache(async (tId: number, sId: number, storeDocumentId: string): Promise<StoreInfo | null> => {
+const getStoreInfo = cache(async (
+    tId: number,
+    sId: number,
+    storeDocumentId: string,
+    requestedLanguage?: string,
+): Promise<StoreInfo | null> => {
     try {
         // Reuse the canonical public lookup so store/tenant activity, identity,
         // blocking, request deduplication, and public cache invalidation stay
@@ -165,7 +183,7 @@ const getStoreInfo = cache(async (tId: number, sId: number, storeDocumentId: str
         });
         if (!storeDetails) return null;
 
-        const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
+        const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
         const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
         const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';
         const displayStoreName = getBrandStoreLabel(storeData, businessName || tenantName || undefined);
@@ -175,6 +193,7 @@ const getStoreInfo = cache(async (tId: number, sId: number, storeDocumentId: str
 
         return {
             accentColor: resolveOBPAccentColor(storeData.publicPresence),
+            contentLanguage,
             storeDetails,
             storeName: displayStoreName,
             feedbackEnabled,
@@ -183,14 +202,17 @@ const getStoreInfo = cache(async (tId: number, sId: number, storeDocumentId: str
                 ...storeData.feedbackDefaults,
             },
             logoUrl: (storeData.logo || '') as string | undefined,
-            officialPageUrl: generateOBPUrl(storeData.subdomain, storeData.customDomain),
+            officialPageUrl: appendPublicLanguageParam(
+                generateOBPUrl(storeData.subdomain, storeData.customDomain),
+                contentLanguage,
+            ),
             tagline: (
                 getLocalizedText(
                     storeData.tagline,
                     contentLanguage,
                     getPrimaryLocalizedLanguage(storeData.tagline, contentLanguage),
                     '',
-                ) || getPublicBusinessDescription(storeData) || ''
+                ) || getPublicBusinessDescription(storeData, contentLanguage) || ''
             ) as string | undefined,
             tempStatus: storeData.tempStatus,
         };
@@ -210,6 +232,10 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     }
 
     const { projectId } = params;
+    const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang) || undefined;
+    const requestedSource = Array.isArray(searchParams?.source)
+        ? searchParams?.source[0]
+        : searchParams?.source;
 
     // Get project data
     const project = await getProjectData(projectId);
@@ -218,12 +244,19 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     }
 
     // Get store info (name, feedback settings)
-    const storeInfo = await getStoreInfo(project.tId, project.sId, project.storeDocumentId);
+    const storeInfo = await getStoreInfo(
+        project.tId,
+        project.sId,
+        project.storeDocumentId,
+        requestedLanguage,
+    );
     if (!storeInfo || !storeInfo.feedbackEnabled) {
         notFound();
     }
 
     const headerMoodConfig = getMoodWithBrandColor(MenuMood.CLEAN, storeInfo.accentColor);
+    const t = createPublicCustomerTranslator(storeInfo.contentLanguage);
+    const languageDirection = getPublicCustomerLanguageDirection(storeInfo.contentLanguage);
     const publicHeaderTheme = {
         background: headerMoodConfig.background,
         textColor: headerMoodConfig.bodyColor,
@@ -238,24 +271,35 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     };
 
     return (
-        <div className={feedbackStyles.page} data-obp-page="true">
+        <div
+            className={feedbackStyles.page}
+            data-obp-page="true"
+            dir={languageDirection}
+            lang={storeInfo.contentLanguage}
+        >
             {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeInfo.tempStatus ? (
-                <TempStatusBanner tempStatus={storeInfo.tempStatus} />
+                <TempStatusBanner
+                    activeLanguage={storeInfo.contentLanguage}
+                    tempStatus={storeInfo.tempStatus}
+                />
             ) : null}
             <MenuBreadcrumb
-                businessName={storeInfo.storeName || 'Business'}
-                projectName="Feedback"
+                ariaLabel={t('menu.businessInformation')}
+                businessName={storeInfo.storeName || t('common.business')}
+                homeHref={storeInfo.officialPageUrl}
+                projectName={t('feedback.pageTitle')}
                 logoUrl={storeInfo.logoUrl || null}
                 variant="identity"
                 theme={publicHeaderTheme}
             />
             <div className={feedbackStyles.pageInner}>
                 <GuestFeedbackForm
+                    activeLanguage={storeInfo.contentLanguage}
                     accentColor={storeInfo.accentColor}
                     tId={project.tId}
                     sId={project.sId}
                     projectId={project.projectId}
-                    source={parseSource(searchParams?.source)}
+                    source={parseSource(requestedSource)}
                     storeName={storeInfo.storeName}
                     storeDetails={storeInfo.storeDetails}
                     feedbackDefaults={storeInfo.feedbackDefaults}
@@ -270,20 +314,29 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
 /**
  * Generate metadata for SEO
  */
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params, searchParams }: PageProps) {
+    const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang) || undefined;
     const project = await getProjectData(params.projectId);
 
     if (!project) {
         return {
-            title: 'Feedback',
+            title: createPublicCustomerTranslator(requestedLanguage)('feedback.pageTitle'),
         };
     }
 
-    const storeInfo = await getStoreInfo(project.tId, project.sId, project.storeDocumentId);
+    const storeInfo = await getStoreInfo(
+        project.tId,
+        project.sId,
+        project.storeDocumentId,
+        requestedLanguage,
+    );
+    const t = createPublicCustomerTranslator(storeInfo?.contentLanguage || requestedLanguage);
 
     return {
-        title: `Share Feedback | ${storeInfo?.storeName || 'Business'}`,
-        description: 'Share private feedback with the business.',
+        title: t('feedback.metadataTitle', {
+            businessName: storeInfo?.storeName || t('common.business'),
+        }),
+        description: t('feedback.metadataDescription'),
         robots: 'noindex, nofollow', // Don't index feedback pages
     };
 }

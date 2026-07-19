@@ -15,9 +15,11 @@
 
 import { type MouseEvent, type PointerEvent, type TouchEvent, useEffect, useState } from 'react';
 import { LuArrowUp } from 'react-icons/lu';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import { MenuMoodConfig } from '../designSystem';
 
 interface BackToTopProps {
+    activeLanguage?: string;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     moodConfig: MenuMoodConfig;
 }
@@ -53,8 +55,9 @@ const getCurrentScrollTop = (container: HTMLElement | null): number => {
     return Math.max(container?.scrollTop || 0, ancestorScrollTop, getDocumentScrollTop());
 };
 
-export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopProps) {
+export default function BackToTop({ activeLanguage, scrollContainerRef, moodConfig }: BackToTopProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const t = createPublicCustomerTranslator(activeLanguage);
 
     useEffect(() => {
         const container = scrollContainerRef.current;
@@ -197,7 +200,7 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
                 WebkitTapHighlightColor: 'transparent',
             }}
             className="active:scale-90"
-            aria-label="Back to top"
+            aria-label={t('menu.backToTop')}
         >
             <LuArrowUp size={22} strokeWidth={2.4} />
         </button>

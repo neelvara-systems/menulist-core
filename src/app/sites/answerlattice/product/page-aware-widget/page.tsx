@@ -52,7 +52,7 @@ export default function PageAwareWidgetProductPage() {
                 workflowSteps={[
                     { title: 'Generate widget key', description: 'Create the widget credential from the AnswerLattice dashboard and copy it during setup.' },
                     { title: 'Install the script', description: 'Place the widget snippet in the client product shell or selected app surfaces.' },
-                    { title: 'Configure access', description: 'Add allowed origins and blocked routes so the widget appears only where it should.' },
+                    { title: 'Configure access', description: 'Allow exact app origins, then hide the launcher on routes where support should not appear.' },
                     { title: 'Send safe context', description: 'Pass page, feature, workflow, role, or plan hints; screenshot input stays user-initiated, optional, and bounded.' },
                     { title: 'Enable prompts where useful', description: 'Use active triggers for pages that benefit from proactive help; inactive workspaces skip those calls.' },
                     { title: 'Review gaps', description: 'Use fallback and feedback signals to improve approved answers, owner FAQs, and source articles over time.' },

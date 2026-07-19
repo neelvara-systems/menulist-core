@@ -2,7 +2,6 @@ import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { firestoreAdmin } from '../firebaseAdmin';
 import {
-    ARTICLE_STATUS,
     EmbedArticleType,
     INGESTION_JOB_COLLECTION,
     INGESTION_JOB_STATUS,
@@ -224,12 +223,6 @@ export async function embedArticleWorkerLogic(
             const completedIds = Array.from(new Set([...job.embeddingCompletedArticleIds, articleId]))
                 .slice(0, MAX_EMBEDDING_ARTICLES_PER_JOB);
             const failedIds = job.embeddingFailedArticleIds.filter(id => id !== articleId);
-            transaction.set(articleRef, {
-                active: true,
-                status: ARTICLE_STATUS.PUBLISHED,
-                lastReviewedOn: completedAt,
-                modifiedOn: completedAt,
-            }, { merge: true });
             transaction.set(jobRef, {
                 embeddingCompletedArticleIds: completedIds,
                 embeddingFailedArticleIds: failedIds,

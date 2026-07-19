@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** July 18, 2026
+**Last Updated:** July 19, 2026
 
 ---
 
@@ -579,7 +579,8 @@ Rules:
 - Do not animate the base dashed SVG lines. Supporting page diagrams should keep static dotted connectors and may use only the shared reduced-motion-aware pulse overlay.
 - `/how-it-works` uses source inputs -> MenuList owner review -> customer surfaces.
 - `/multi-location` uses approved master source -> linked outlet cards.
-- On mobile/tablet, `/how-it-works` uses three rows with horizontal inputs, centered owner review, customer outputs grouped into two rows of three cards, and separate static dotted paths aligned to the row flow and card edges; narrow phones use two-column source/output cards with decorative paths hidden. `/multi-location` shows three outlet cards in the master-to-outlet flow. Desktop keeps the full diagram layouts.
+- On mobile/tablet, `/how-it-works` uses three rows: source inputs, centered owner review, and customer outputs. The 521px–768px layout keeps the compact four-input and two-row output network. At 520px and below, use a dedicated two-column network routed through the empty center gutter; do not stretch tablet path geometry or hide the source-to-output relationship. `/multi-location` shows three outlet cards in the master-to-outlet flow. Desktop keeps the full diagram layouts.
+- When a diagram changes grid topology at a breakpoint, create one lightweight SVG network per topology and show exactly one at a time. Connector layers must remain non-interactive and behind cards, and their endpoints must align with the rendered card edges at the supported widths.
 - Supporting-page source maps must use the same theme behavior as the homepage workflow map. Light mode renders light diagram surfaces; dark mode renders the dark contrast treatment.
 - Pulse behavior: `/how-it-works` pulses from source inputs into MenuList, pauses while the center rings keep a light always-on pulse, then moves from MenuList toward customer outputs. `/multi-location` pulses from the approved master toward outlet cards using the same `ws-map-pulse-flow` animated pulse-stroke pattern as the homepage source map, with all outlet paths synchronized. Do not use custom moving circle dots for `/multi-location`. Destination cards may use the same pulse color for a brief border-only highlight when the moving pulse reaches them.
 - `/how-it-works` desktop output paths should follow the homepage source-map geometry: start inside the center core, roughly 40 viewBox pixels to the right of the core center, so the visible line appears to emerge from the logo/ring boundary instead of beginning outside the ring.

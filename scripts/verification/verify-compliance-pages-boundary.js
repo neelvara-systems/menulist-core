@@ -210,7 +210,8 @@ function verifyPublicRouteBoundary() {
   assertIncludes(page, 'FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES', 'Client route compliance feature flag');
   assertIncludes(page, 'type={slug as \'privacy\' | \'terms\' | \'refund\'}', 'Client route compliance type pass-through');
   assertIncludes(page, "backHref={appendPublicLanguageParam('/', requestedLanguage)}", 'Client route compliance localized back link');
-  assertIncludes(page, 'COMPLIANCE_METADATA_BY_SLUG[firstSlug || \'\']', 'Client route compliance metadata mapping');
+  assertIncludes(page, "getComplianceMetadata(firstSlug || '', publicCustomerT)", 'Client route localized compliance metadata mapping');
+  assertIncludes(page, 'const publicCustomerT = createPublicCustomerTranslator(contentLanguage);', 'Client route compliance metadata public translator');
 
   assertIncludes(renderer, "sharedGetTenantFromHeaders('CompliancePage')", 'Compliance renderer shared tenant header helper');
   assertIncludes(renderer, 'getStoreBySubdomain(subdomain)', 'Compliance renderer subdomain store lookup');
@@ -234,15 +235,18 @@ function verifyPublicRouteBoundary() {
   assertIncludes(renderer, 'hasCustomDomain: Boolean(customDomain)', 'Compliance renderer domain presence metadata');
   assertIncludes(renderer, 'hasSubdomain: Boolean(subdomain)', 'Compliance renderer subdomain presence metadata');
   assertIncludes(renderer, '<PublicMenuListAttribution', 'Compliance renderer MenuList attribution policy');
+  assertIncludes(renderer, 'const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);', 'Compliance renderer owner-controlled public language');
+  assertIncludes(renderer, 'const t = createPublicCustomerTranslator(contentLanguage);', 'Compliance renderer localized chrome');
+  assertIncludes(renderer, "lang={contentLanguage.startsWith('en') ? contentLanguage : 'en'}", 'Compliance renderer canonical English legal-body language truth');
   assertNotIncludes(renderer, '.doc(String(sId))', 'Compliance renderer must not build override refs from raw String(sId)');
   assertNotIncludes(renderer, 'dangerouslySetInnerHTML', 'Compliance renderer must not render custom content as HTML');
   assertNotIncludes(renderer, '} catch {\n        // Firestore error', 'Compliance renderer override read must not silently fall back');
   assertNotIncludes(renderer, 'console.error', 'Compliance renderer direct error logging');
   assertNotIncludes(renderer, 'console.warn', 'Compliance renderer direct warn logging');
 
-  assertIncludes(menuFooter, "href: '/privacy'", 'Public menu footer privacy link');
-  assertIncludes(menuFooter, "href: '/terms'", 'Public menu footer terms link');
-  assertIncludes(menuFooter, "href: '/refund'", 'Public menu footer refund link');
+  assertIncludes(menuFooter, "href: appendPublicLanguageParam('/privacy', activeLanguage)", 'Public menu footer localized privacy link');
+  assertIncludes(menuFooter, "href: appendPublicLanguageParam('/terms', activeLanguage)", 'Public menu footer localized terms link');
+  assertIncludes(menuFooter, "href: appendPublicLanguageParam('/refund', activeLanguage)", 'Public menu footer localized refund link');
   assertIncludes(menuFooter, 'showPrivacyLink', 'Public menu footer privacy visibility control');
   assertIncludes(menuFooter, 'showTermsLink', 'Public menu footer terms visibility control');
   assertIncludes(menuFooter, 'showRefundLink', 'Public menu footer refund visibility control');

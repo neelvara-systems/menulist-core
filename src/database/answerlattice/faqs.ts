@@ -4,13 +4,11 @@ import {
     arrayUnion,
     collection,
     doc,
-    getDoc,
     getDocs,
     limit,
     orderBy,
     query,
     runTransaction,
-    setDoc,
     Timestamp,
     where,
 } from '@firebase/firestore';
@@ -22,6 +20,7 @@ import {
     ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
     ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT,
     ANSWERLATTICE_FAQ_PUBLIC_LIMIT,
+    normalizeFaqText,
     parseAnswerlatticeFaqSaveInput,
 } from '@lib/answerlattice/faqContent';
 import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
@@ -32,6 +31,7 @@ import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentCom
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import {
     ANSWERLATTICE_FAQ_STATUS,
+    ANSWERLATTICE_FAQ_SOURCE,
     type AnswerlatticeFaq,
     type AnswerlatticeFaqStatus,
 } from '@type/answerlattice';
@@ -246,6 +246,7 @@ export const saveFaq = async (input: unknown) => {
                 ].filter((articleId): articleId is string => Boolean(articleId))));
                 const linkedArticleRefs = linkedArticleIds.map(getArticleRef);
                 const linkedArticleDocs = await Promise.all(linkedArticleRefs.map(articleRef => transaction.get(articleRef)));
+                const linkedArticles = new Map<string, Record<string, any>>();
                 linkedArticleDocs.forEach((articleDoc, index) => {
                     const linkedArticleId = linkedArticleIds[index];
                     if (!articleDoc.exists()) throw new Error(`Linked article ${linkedArticleId} was not found.`);
@@ -257,11 +258,35 @@ export const saveFaq = async (input: unknown) => {
                     ) {
                         throw new Error(`Linked article ${linkedArticleId} is outside this workspace.`);
                     }
+                    linkedArticles.set(linkedArticleId, linkedArticle);
                 });
+
+                const nextArticle = nextArticleId ? linkedArticles.get(nextArticleId) : null;
+                if (
+                    nextStatus === ANSWERLATTICE_FAQ_STATUS.PUBLISHED
+                    && nextArticleId
+                    && (nextArticle?.status !== 'published' || nextArticle?.active !== true)
+                ) {
+                    throw new Error('Publish the linked article before publishing this FAQ.');
+                }
+                const nextArticleTitle = nextArticleId
+                    ? normalizeFaqText(nextArticle?.title, 240)
+                    : null;
+                if (nextArticleId && !nextArticleTitle) {
+                    throw new Error('Linked article title is unavailable.');
+                }
+
+                const existingSource = existing?.source;
+                if (existing && !Object.values(ANSWERLATTICE_FAQ_SOURCE).includes(existingSource as any)) {
+                    throw new Error('FAQ has invalid stored provenance and cannot be updated safely.');
+                }
 
                 const isNew = !existing;
                 const composedData = {
                     ...baseComposedData,
+                    source: existingSource || ANSWERLATTICE_FAQ_SOURCE.MANUAL,
+                    active: nextStatus !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
+                    articleTitle: nextArticleTitle,
                     ...(isNew ? {
                         createdBy: baseComposedData.modifiedBy,
                         createdOn: baseComposedData.modifiedOn,
@@ -273,6 +298,10 @@ export const saveFaq = async (input: unknown) => {
                         lastReviewedOn: now,
                         reviewRequestedOn: null,
                     } : {}),
+                    ...(nextStatus === ANSWERLATTICE_FAQ_STATUS.NEEDS_REVIEW
+                        && existing?.status !== ANSWERLATTICE_FAQ_STATUS.NEEDS_REVIEW ? {
+                            reviewRequestedOn: now,
+                        } : {}),
                 };
                 appendAnswerlatticeCacheInvalidation(
                     transaction,
@@ -384,36 +413,5 @@ export const archiveFaq = async (faqId: string) => {
         },
         { faqId: normalizedFaqId },
         'archiveFaq',
-    );
-};
-
-export const updateFaqFeedback = async (
-    faqId: string,
-    type: 'like' | 'dislike',
-    shouldIncrement: boolean = true,
-) => {
-    const normalizedFaqId = normalizeAnswerlatticeFaqId(faqId);
-    return await apiCallComposer(
-        async () => {
-            if (!normalizedFaqId) throw new Error('Invalid Answerlattice FAQ id');
-
-            const docRef = getDocRef(normalizedFaqId);
-            return await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const snap = await transaction.get(docRef);
-                if (!snap.exists()) throw new Error('FAQ not found.');
-
-                const field = type === 'like' ? 'likes' : 'dislikes';
-                const current = Number(snap.data()?.[field] || 0);
-                const delta = shouldIncrement ? 1 : -1;
-                const next = Math.max(0, current + delta);
-                transaction.update(docRef, { [field]: next });
-                return {
-                    likes: field === 'likes' ? next : Number(snap.data()?.likes || 0),
-                    dislikes: field === 'dislikes' ? next : Number(snap.data()?.dislikes || 0),
-                };
-            });
-        },
-        { faqId: normalizedFaqId, type, shouldIncrement },
-        'updateFaqFeedback',
     );
 };

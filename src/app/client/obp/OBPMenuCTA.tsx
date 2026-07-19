@@ -22,7 +22,6 @@ import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/anal
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
-import { getProjectImageAltText } from '@lib/media/altText';
 import { LuBookOpen } from 'react-icons/lu';
 import styles from './obp.module.scss';
 
@@ -183,7 +182,7 @@ export default function OBPMenuCTA({
                 <span className={styles.menuButtonContent}>
                     {primary.projectImage ? (
                         <span className={styles.menuButtonThumb}>
-                            <img alt={getProjectImageAltText(primary.name)} src={primary.projectImage} />
+                            <img alt={primary.name} src={primary.projectImage} />
                         </span>
                     ) : (
                         <span className={styles.menuButtonThumbFallback} aria-hidden="true">
@@ -213,7 +212,7 @@ export default function OBPMenuCTA({
                     >
                         {project.projectImage ? (
                             <span className={styles.projectCardThumb}>
-                                <img alt={getProjectImageAltText(project.name)} src={project.projectImage} />
+                                <img alt={project.name} src={project.projectImage} />
                             </span>
                         ) : (
                             <span className={styles.projectCardThumbFallback} aria-hidden="true">

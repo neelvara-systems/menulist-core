@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
  */
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { isAnswerlatticeHostedHelpCandidateHostname } from "@constant/answerlattice/hostedHelp";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import {
     addDomainToVercelProject,
@@ -409,6 +410,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { status: 409 },
         );
     }
+    if (isAnswerlatticeHostedHelpCandidateHostname(normalizedDomain)) {
+        return NextResponse.json(
+            { error: "Support-style domains are reserved for Answerlattice hosted help" },
+            { status: 409 },
+        );
+    }
 
     const db = admin.firestore();
     const reservationId = randomUUID();
@@ -759,6 +766,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 available: false,
                 normalized: candidate,
                 reason: "This domain is reserved for MenuList services",
+            });
+        }
+        if (isAnswerlatticeHostedHelpCandidateHostname(candidate)) {
+            return NextResponse.json({
+                available: false,
+                normalized: candidate,
+                reason: "Support-style domains are reserved for Answerlattice hosted help",
             });
         }
 

@@ -61,11 +61,23 @@ async function run(): Promise<void> {
             storeId: '202',
             uId: 'owner-2',
         }).firestore();
+        const noSupportDb = testEnv.authenticatedContext('viewer-1', {
+            role: 'VIEWER', tenantId: '1', storeId: '101', uId: 'viewer-1',
+        }).firestore();
+        const supportDb = testEnv.authenticatedContext('support-1', {
+            canManageSupport: true, role: 'CUSTOM', tenantId: '1', storeId: '101', uId: 'support-1',
+        }).firestore();
+        const platformSupportDb = testEnv.authenticatedContext('platform-support-1', {
+            platformRole: 'PLATFORM_SUPPORT', role: 'PLATFORM_SUPPORT', uId: 'platform-support-1',
+        }).firestore();
         const publicDb = testEnv.unauthenticatedContext().firestore();
         const sessionRef = doc(ownerDb, 'chatSessions', 'session-1');
 
         await assertSucceeds(setDoc(sessionRef, chatSession()));
         await assertSucceeds(getDoc(sessionRef));
+        await assertFails(getDoc(doc(noSupportDb, 'chatSessions', 'session-1')));
+        await assertSucceeds(getDoc(doc(supportDb, 'chatSessions', 'session-1')));
+        await assertSucceeds(getDoc(doc(platformSupportDb, 'chatSessions', 'session-1')));
         await assertFails(getDoc(doc(otherDb, 'chatSessions', 'session-1')));
         await assertFails(getDoc(doc(publicDb, 'chatSessions', 'session-1')));
         await assertSucceeds(getDocs(query(

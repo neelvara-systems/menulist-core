@@ -14,9 +14,14 @@
 
 import { LuAlarmClock, LuChefHat, LuClock, LuInfo, LuLock, LuUtensils } from 'react-icons/lu';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
+import {
+    createPublicCustomerTranslator,
+    type PublicCustomerMessageKey,
+} from '@lib/localization/publicCustomerMessages';
 import styles from './tempStatusBanner.module.scss';
 
 interface TempStatusBannerProps {
+    activeLanguage?: string;
     tempStatus?: {
         type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
         message?: string;
@@ -35,16 +40,36 @@ const TYPE_ICONS = {
     custom: LuInfo,
 };
 
-export default function TempStatusBanner({ tempStatus, variant = 'banner' }: TempStatusBannerProps) {
+const TYPE_MESSAGE_KEYS: Partial<Record<
+    NonNullable<TempStatusBannerProps['tempStatus']>['type'],
+    PublicCustomerMessageKey
+>> = {
+    closed_today: 'menu.tempClosedToday',
+    opening_late: 'menu.tempOpeningLate',
+    closing_early: 'menu.tempClosingEarly',
+    kitchen_closed: 'menu.tempKitchenClosed',
+    special_menu: 'menu.tempSpecialMenu',
+};
+
+export default function TempStatusBanner({
+    activeLanguage,
+    tempStatus,
+    variant = 'banner',
+}: TempStatusBannerProps) {
     const activeStatus = useActiveTempStatus(tempStatus);
     if (!activeStatus) return null;
 
+    const t = createPublicCustomerTranslator(activeLanguage);
     const Icon = TYPE_ICONS[activeStatus.type] || LuInfo;
+    const standardMessageKey = TYPE_MESSAGE_KEYS[activeStatus.type];
+    const displayMessage = standardMessageKey
+        ? t(standardMessageKey)
+        : activeStatus.message || t('menu.tempTemporaryNotice');
 
     return (
         <div className={`${styles.banner} ${variant === 'pill' ? styles.pill : ''}`}>
             <span className={styles.icon}><Icon aria-hidden="true" size={16} /></span>
-            <span className={styles.message}>{activeStatus.message}</span>
+            <span className={styles.message}>{displayMessage}</span>
         </div>
     );
 }

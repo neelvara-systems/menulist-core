@@ -11,7 +11,9 @@ import {
     updateChatSession,
     uploadChatImage,
 } from '@database/chatSessions';
+import { FEATURE_FLAGS } from '@config/features';
 import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
+import { resolveAnswerlatticeHelpChatDraftScope } from '@lib/answerlattice/helpChatDrafts';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import {
     copyAnswerlatticeSupportTextToClipboard,
@@ -90,9 +92,6 @@ export function useChatHandlers({
     // 🔒 FIX FEEDBACK RACE CONDITIONS: Track in-progress feedback submissions
     const feedbackInProgressRef = useRef<Set<string>>(new Set());
 
-    // AI Failure Escalation (Item #8): Track session failure count for S3 trigger
-    const sessionFailureCountRef = useRef(0);
-
     // Keep refs in sync with state
     useEffect(() => {
         activeSessionRef.current = activeSession;
@@ -126,7 +125,6 @@ export function useChatHandlers({
         setSearchQuery('');
         setCurrentMode('qna');
         dispatchChatState({ type: 'RESET' });
-        sessionFailureCountRef.current = 0; // Reset escalation failure count for new session
     };
 
     // Handler: Select Existing Chat Session
@@ -156,13 +154,7 @@ export function useChatHandlers({
             conversationHistory,
             image,
             productContext,
-            sessionFailureCount: sessionFailureCountRef.current,
         });
-
-        // Track escalation suggestions for S3 repeated failure trigger
-        if (result.escalation?.suggested) {
-            sessionFailureCountRef.current++;
-        }
 
         return result;
     };
@@ -170,9 +162,9 @@ export function useChatHandlers({
     // Handler: Send Message
     // targetMode: Optional mode override to fix race condition with suggested questions
     const onSendMessage = async (content: string, image?: UserUploadedFileType, targetMode?: ChatMode) => {
-        // AI Failure Escalation (Item #8) — S4: Detect explicit escalation intent BEFORE calling API
+        // AI Failure Escalation (Item #8) — S3: Detect explicit escalation intent BEFORE calling API
         // If user types "talk to human", "create ticket", etc., skip search and offer ticket creation
-        if (content) {
+        if (content && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION) {
             const { ESCALATION_INTENT_PATTERNS } = await import('@lib/answerlattice/escalationTypes');
             const isExplicitEscalation = ESCALATION_INTENT_PATTERNS.some(p => p.test(content));
             if (isExplicitEscalation) {
@@ -301,7 +293,11 @@ export function useChatHandlers({
                         craftedAnswer: result.craftedAnswer,
                         searchHistoryId: result.id,
                         references: result.references, // Includes similarityScore for quality calculation
+                        citations: result.citations,
                         answerSource: result.answerSource,
+                        confidence: result.confidence,
+                        fallbackReason: result.fallbackReason,
+                        clarification: result.clarification,
                         relatedContent: result.relatedContent,
                         suggestedQuestions: result.suggestedQuestions, // AI-generated follow-up questions
                         // AI Failure Escalation (Item #8) — attach escalation data to message
@@ -383,7 +379,7 @@ export function useChatHandlers({
                     }
 
                     // Clear draft after successful response
-                    clearDraft(activeSessionId);
+                    clearDraft(activeSessionId, resolveAnswerlatticeHelpChatDraftScope(loggedInSession));
 
                     // Start typing animation
                     dispatchChatState({
@@ -456,7 +452,11 @@ export function useChatHandlers({
                 craftedAnswer: result.craftedAnswer,
                 searchHistoryId: result.id,
                 references: result.references, // Includes similarityScore for quality calculation
+                citations: result.citations,
                 answerSource: result.answerSource,
+                confidence: result.confidence,
+                fallbackReason: result.fallbackReason,
+                clarification: result.clarification,
                 relatedContent: result.relatedContent,
                 suggestedQuestions: result.suggestedQuestions, // AI-generated follow-up questions
                 generationMetadata: {
@@ -512,7 +512,7 @@ export function useChatHandlers({
                 }
             }
 
-            clearDraft(activeSessionId);
+            clearDraft(activeSessionId, resolveAnswerlatticeHelpChatDraftScope(loggedInSession));
 
             dispatchChatState({
                 type: 'SEARCH_SUCCESS',
@@ -816,7 +816,7 @@ export function useChatHandlers({
                 'help_chat_escalation_ticket_create_rejected',
             );
 
-            antMessage.success('Support ticket created. Our team will get back to you soon.');
+            antMessage.success('Support ticket created.');
         } catch {
             antMessage.error('Failed to create support ticket. Please try again.');
         }

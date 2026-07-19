@@ -59,6 +59,13 @@ export interface SupportTicketType {
     knowledgeCandidate?: boolean;
     /** How this ticket was created */
     source?: 'manual' | 'ai_escalation';
+    /** Public widget handoff metadata. Retrieval context is derived server-side from search history. */
+    widgetEscalation?: {
+        searchHistoryId: string;
+        replyEmail: string;
+        submittedName?: string;
+        detailsProvided: boolean;
+    };
 
     //metatdata which injected via requestBodyComposer //src/lib/apiHelper/index.ts
     createdOn?: Timestamp;
@@ -155,6 +162,67 @@ export const SLA_CONFIG = {
 
 // SLA Status Types
 export type SLAStatus = 'on_time' | 'at_risk' | 'breached';
+
+const getSupportTicketTimestampMillis = (value: unknown): number | null => {
+    if (!value || typeof value !== 'object') return null;
+    const timestamp = value as { seconds?: unknown; toMillis?: unknown };
+    if (typeof timestamp.toMillis === 'function') {
+        const millis = (timestamp.toMillis as () => number)();
+        return Number.isFinite(millis) ? millis : null;
+    }
+    if (typeof timestamp.seconds === 'number' && Number.isFinite(timestamp.seconds)) {
+        return timestamp.seconds * 1000;
+    }
+    return null;
+};
+
+export const getFirstSupportTicketResponse = (
+    ticket: Pick<SupportTicketType, 'clientDetails' | 'messages' | 'uId'>,
+): TicketMessage | undefined => {
+    const requesterEmail = String(ticket.clientDetails?.email || '').trim().toLowerCase();
+    const requesterId = String(ticket.uId || '').trim();
+    return (ticket.messages || []).find((message) => {
+        if (message.type === 'system') return false;
+        const senderEmail = String(message.sender?.email || '').trim().toLowerCase();
+        const senderId = String(message.sender?.id || '').trim();
+        if (requesterEmail) return Boolean(senderEmail && senderEmail !== requesterEmail);
+        return Boolean(requesterId && senderId && senderId !== requesterId);
+    });
+};
+
+export const calculateSupportTicketSLAStatus = (
+    ticket: Pick<SupportTicketType, 'clientDetails' | 'createdOn' | 'messages' | 'priority' | 'statuses' | 'uId'>,
+    nowMillis: number = Date.now(),
+): ReturnType<typeof calculateSLAStatus> | null => {
+    const createdMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+    if (createdMillis === null) return null;
+    const config = SLA_CONFIG[ticket.priority] || SLA_CONFIG[SUPPORT_TICKET_PRIORITY.NORMAL];
+    const firstResponse = getFirstSupportTicketResponse(ticket);
+    const firstResponseMillis = getSupportTicketTimestampMillis(firstResponse?.timestamp);
+    const firstResolution = (ticket.statuses || []).find((entry) => (
+        entry.status === SUPPORT_TICKET_STATUS.RESOLVED
+        || entry.status === SUPPORT_TICKET_STATUS.CLOSED
+    ));
+    const resolutionMillis = getSupportTicketTimestampMillis(firstResolution?.timestamp);
+    const boundedNow = Number.isFinite(nowMillis) ? Math.max(nowMillis, createdMillis) : createdMillis;
+    const responseTimeUsed = Math.max(0, (Math.max(firstResponseMillis ?? boundedNow, createdMillis) - createdMillis) / (1000 * 60 * 60));
+    const resolutionTimeUsed = Math.max(0, (Math.max(resolutionMillis ?? boundedNow, createdMillis) - createdMillis) / (1000 * 60 * 60));
+    const classify = (used: number, target: number): SLAStatus => {
+        const percentage = (used / target) * 100;
+        if (percentage > 100) return 'breached';
+        if (percentage >= 80) return 'at_risk';
+        return 'on_time';
+    };
+
+    return {
+        responseStatus: classify(responseTimeUsed, config.firstResponse),
+        resolutionStatus: classify(resolutionTimeUsed, config.resolution),
+        responseTimeUsed,
+        resolutionTimeUsed,
+        responseTimeRemaining: config.firstResponse - responseTimeUsed,
+        resolutionTimeRemaining: config.resolution - resolutionTimeUsed,
+    };
+};
 
 // Helper to calculate SLA status
 export const calculateSLAStatus = (

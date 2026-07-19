@@ -20,6 +20,11 @@ import {
     createAnswerlatticeSupportSearchAccounting,
 } from '@lib/answerlattice/supportSearchAccounting';
 import {
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticePublicFallbackReason,
+    normalizeAnswerlatticeScopeClarification,
+} from '@lib/answerlattice/publicAnswerContracts';
+import {
     getAnswerlatticeScopedSession,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
@@ -128,8 +133,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             imageUrl,
             mode,
             context,
-            productContext: rawProductContext,
-            sessionFailureCount
+            productContext: rawProductContext
         } = validatedInput;
 
         // ===== CONTEXT-AWARE SUPPORT =====
@@ -179,7 +183,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             conversationHistory: mode === 'assistant' && context ? context : undefined,
             imageUrl: imageUrl || undefined,
             productContext,
-            sessionFailureCount: typeof sessionFailureCount === 'number' ? sessionFailureCount : undefined,
             beforeAiProviderCall: supportSearchAccounting.beforeAiProviderCall,
         });
         await supportSearchAccounting.settle(result, Date.now() - operationStart);
@@ -189,10 +192,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const response: Record<string, any> = {
             craftedAnswer: result.craftedAnswer,
             references: result.references,
+            citations: normalizeAnswerlatticePublicCitations(result.citations),
             suggestedQuestions: result.suggestedQuestions || [],
             id: result.searchHistoryId,
             imageProcessed: result.imageProcessed,
             answerSource: result.answerSource || (result.canonical ? 'canonical' : 'rag'),
+            fallbackReason: normalizeAnswerlatticePublicFallbackReason(result.fallbackReason),
+            clarification: normalizeAnswerlatticeScopeClarification(result.clarification),
+            confidence: result.confidence,
         };
 
         if (result.relatedContent) {
@@ -203,7 +210,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (result.canonical) {
             response.canonical = true;
             response.canonicalAnswerId = result.canonicalAnswerId;
-            response.confidence = result.confidence;
             response.answerType = result.answerType;
             response.drifted = result.drifted;
         }

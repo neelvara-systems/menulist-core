@@ -13,6 +13,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { doc, getDoc } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { parseAnswerlatticeTrustMetrics } from "@lib/answerlattice/analyticsIntelligenceContracts";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { AnswerlatticeTrustMetrics } from "@type/answerlattice";
 
@@ -26,7 +27,7 @@ export const getTrustMetrics = async (tId: number, sId: number): Promise<Answerl
             const docRef = doc(answerlatticeFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `trustMetrics_${tId}_${sId}`);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return docSnap.data() as AnswerlatticeTrustMetrics;
+                return parseAnswerlatticeTrustMetrics(docSnap.data(), { tenantId: tId, storeId: sId });
             }
             return null;
         },

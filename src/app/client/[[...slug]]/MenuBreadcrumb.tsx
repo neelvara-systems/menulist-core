@@ -18,10 +18,10 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { appendPublicLanguageParam, normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
-import { getBusinessLogoAltText } from '@lib/media/altText';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 
 interface MenuBreadcrumbProps {
+    ariaLabel?: string;
     /** Master-tenant brand display name (always shown as the root node). */
     businessName: string;
     /** Outlet display name — omit for single-store tenants. */
@@ -87,6 +87,7 @@ function logBreadcrumbLanguagePreserveFailure(
 }
 
 export default function MenuBreadcrumb({
+    ariaLabel,
     businessName,
     outletName,
     outletSlug,
@@ -97,6 +98,7 @@ export default function MenuBreadcrumb({
     variant = 'breadcrumb',
     theme,
 }: MenuBreadcrumbProps) {
+    const resolvedAriaLabel = ariaLabel || businessName;
     const showOutletNode = Boolean(outletName && outletSlug);
     const normalizedLogoUrl = typeof logoUrl === 'string' ? logoUrl.trim() : '';
     const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
@@ -165,7 +167,7 @@ export default function MenuBreadcrumb({
 
         return (
             <nav
-                aria-label="Business identity"
+                aria-label={resolvedAriaLabel}
                 dir="auto"
                 style={{
                     padding: '10px 16px',
@@ -186,12 +188,12 @@ export default function MenuBreadcrumb({
                         minWidth: 0,
                     }}
                 >
-                    <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={`${businessName} home`}>
+                    <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={businessName}>
                         {showLogoImage ? (
                             <img
                                 ref={logoImageRef}
                                 src={normalizedLogoUrl}
-                                alt={getBusinessLogoAltText(businessName)}
+                                alt={businessName}
                                 width={44}
                                 height={44}
                                 onError={() => setFailedLogoUrl(normalizedLogoUrl)}
@@ -294,7 +296,7 @@ export default function MenuBreadcrumb({
 
     return (
         <nav
-            aria-label="Breadcrumb"
+            aria-label={resolvedAriaLabel}
             // T4-N-02 / §4 PUBLIC-ROUTING-DOCTRINE: `dir="auto"` lets the
             // browser derive reading direction from the first strong
             // character in each node's text content. Arabic/Hebrew brand

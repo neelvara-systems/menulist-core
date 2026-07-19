@@ -20,6 +20,10 @@ import {
     IntegrationEvent,
     INTEGRATION_LIMITS,
 } from './types';
+import {
+    buildIntegrationConfigIdentity,
+    classifyIntegrationConfigOwnership,
+} from './configOwnership';
 import { sanitizeDeliveryError } from './safety';
 import { isClaimableIntegrationEventDocument, isOwnedProcessingIntegrationEventDocument } from './eventDeliveryState';
 
@@ -191,30 +195,44 @@ export async function updateIntegrationHealth(params: {
     result: DeliveryResult;
 }): Promise<void> {
     try {
+        const identity = buildIntegrationConfigIdentity(params.tId, params.sId);
+        if (!identity) throw new Error('Answerlattice integration health scope is invalid');
         const now = Timestamp.now();
-        const update: Record<string, unknown> = {
-            pId: 'AL',
-            tId: params.tId,
-            sId: params.sId,
-            [`adapters.${params.adapter}.lastStatus`]: params.status,
-            [`adapters.${params.adapter}.lastAttemptAt`]: now,
-            [`adapters.${params.adapter}.lastEventId`]: params.eventId,
-            [`adapters.${params.adapter}.lastEventType`]: params.eventType,
-            [`adapters.${params.adapter}.lastError`]: params.result.error ? sanitizeDeliveryError(params.result.error) : null,
-            [`adapters.${params.adapter}.statusCode`]: params.result.statusCode ?? null,
-            [`adapters.${params.adapter}.durationMs`]: params.result.durationMs,
-            modifiedOn: now,
+        const adapterHealth: Record<string, unknown> = {
+            lastStatus: params.status,
+            lastAttemptAt: now,
+            lastEventId: params.eventId,
+            lastEventType: params.eventType,
+            lastError: params.result.error ? sanitizeDeliveryError(params.result.error) : null,
+            statusCode: params.result.statusCode ?? null,
+            durationMs: params.result.durationMs,
         };
 
         if (params.status === 'success') {
-            update[`adapters.${params.adapter}.lastSuccessAt`] = now;
+            adapterHealth.lastSuccessAt = now;
         } else {
-            update[`adapters.${params.adapter}.lastFailureAt`] = now;
+            adapterHealth.lastFailureAt = now;
         }
+        const update = {
+            ...identity,
+            adapters: {
+                [params.adapter]: adapterHealth,
+            },
+            modifiedOn: now,
+        };
 
-        await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getHealthDocId(params.tId, params.sId))
-            .set(update, { merge: true });
+        const healthRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(getHealthDocId(params.tId, params.sId));
+        await db.runTransaction(async transaction => {
+            const current = await transaction.get(healthRef);
+            if (
+                current.exists
+                && classifyIntegrationConfigOwnership(current.data(), params.tId, params.sId) === 'invalid'
+            ) {
+                throw new Error('Answerlattice integration health ownership mismatch');
+            }
+            transaction.set(healthRef, update, { merge: true });
+        });
     } catch (error) {
         logger.warn('[Answerlattice Integration] Failed to update integration health', {
             failureCode: 'answerlattice_integration_health_update_failed',

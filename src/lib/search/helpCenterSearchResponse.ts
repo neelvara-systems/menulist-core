@@ -1,7 +1,18 @@
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { normalizeAnswerlatticePublicRelatedContent } from '@lib/answerlattice/productSurfaceContent';
-import type { AnswerlatticeSurfaceContentItem } from '@type/answerlattice';
+import {
+    normalizeAnswerlatticePublicCitation,
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticePublicFallbackReason,
+    normalizeAnswerlatticeScopeClarification,
+    type AnswerlatticePublicFallbackReason,
+} from '@lib/answerlattice/publicAnswerContracts';
+import type {
+    AnswerlatticePublicCitation,
+    AnswerlatticeScopeClarification,
+    AnswerlatticeSurfaceContentItem,
+} from '@type/answerlattice';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 
 export const HELP_CENTER_SEARCH_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
@@ -17,10 +28,14 @@ export type HelpCenterSearchResponse = {
     id?: string;
     craftedAnswer: string;
     references: KnowledgeBaseArticleType[];
+    citations?: AnswerlatticePublicCitation[];
     relatedContent?: AnswerlatticeSurfaceContentItem;
     suggestedQuestions?: string[];
     imageProcessed?: boolean;
     answerSource?: string;
+    fallbackReason?: AnswerlatticePublicFallbackReason;
+    clarification?: AnswerlatticeScopeClarification;
+    confidence?: 'high' | 'medium' | 'low' | 'none';
     escalation?: {
         suggested?: boolean;
         type?: unknown;
@@ -57,6 +72,13 @@ const isReferenceArticle = (value: unknown): value is KnowledgeBaseArticleType =
     && (value.url === undefined || (typeof value.url === 'string' && value.url.length <= 500))
 );
 
+const isPublicCitation = (value: unknown): value is AnswerlatticePublicCitation => (
+    isRecord(value)
+    && !hasSensitiveResponseKey(value)
+    && Object.keys(value).every(key => ['id', 'title', 'url'].includes(key))
+    && normalizeAnswerlatticePublicCitation(value) !== null
+);
+
 export const isHelpCenterSearchResponse = (value: unknown): value is HelpCenterSearchResponse => (
     isRecord(value)
     && !hasSensitiveResponseKey(value)
@@ -68,6 +90,14 @@ export const isHelpCenterSearchResponse = (value: unknown): value is HelpCenterS
     && value.references.length <= 8
     && value.references.every(isReferenceArticle)
     && (
+        value.citations === undefined
+        || (
+            Array.isArray(value.citations)
+            && value.citations.length <= 8
+            && value.citations.every(isPublicCitation)
+        )
+    )
+    && (
         value.suggestedQuestions === undefined
         || (
             Array.isArray(value.suggestedQuestions)
@@ -77,6 +107,9 @@ export const isHelpCenterSearchResponse = (value: unknown): value is HelpCenterS
     )
     && (value.imageProcessed === undefined || typeof value.imageProcessed === 'boolean')
     && (value.answerSource === undefined || (typeof value.answerSource === 'string' && value.answerSource.length <= 32))
+    && (value.fallbackReason === undefined || value.fallbackReason === null || normalizeAnswerlatticePublicFallbackReason(value.fallbackReason) !== null)
+    && (value.clarification === undefined || value.clarification === null || normalizeAnswerlatticeScopeClarification(value.clarification) !== null)
+    && (value.confidence === undefined || ['high', 'medium', 'low', 'none'].includes(String(value.confidence)))
     && (
         value.relatedContent === undefined
         || normalizeAnswerlatticePublicRelatedContent(value.relatedContent) !== null
@@ -174,9 +207,15 @@ export const readHelpCenterSearchResponse = async (
     const relatedContent = payload.relatedContent === undefined
         ? undefined
         : normalizeAnswerlatticePublicRelatedContent(payload.relatedContent) || undefined;
+    const citations = normalizeAnswerlatticePublicCitations(payload.citations);
+    const fallbackReason = normalizeAnswerlatticePublicFallbackReason(payload.fallbackReason);
+    const clarification = normalizeAnswerlatticeScopeClarification(payload.clarification);
 
     return {
         ...payload,
+        ...(citations.length > 0 ? { citations } : { citations: [] }),
+        fallbackReason: fallbackReason || undefined,
+        clarification: clarification || undefined,
         ...(relatedContent ? { relatedContent } : {}),
     };
 };

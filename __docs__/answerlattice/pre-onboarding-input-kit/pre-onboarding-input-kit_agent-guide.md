@@ -15,11 +15,15 @@ The agent prepares a source-backed input package for Answerlattice. It does not 
 ## Required Behavior
 
 - Read source truth before writing final inputs.
-- Prefer current public pages, current docs, and current code over stale strategy notes.
+- Prefer current approved sources over stale strategy notes; use current public pages, docs, and code as evidence without silently overriding an approved policy.
 - Treat archive/history/AI review files as decision context only.
 - Respect the declared source mode instead of assuming every product has the same repo/docs structure as the reference onboarding package.
 - In multi-product repos, identify the target product before creating source files and exclude sister-product truth.
 - Treat demo, FAQ, website, API, and support-export requests as review-ready briefs unless approved public assets already exist.
+- Record source authority, approval status, access scope, citation eligibility, applicability, and conflicts.
+- Treat tickets, chats, macros, repeated replies, and support exports as signals until an authoritative source or owner confirms their facts.
+- Use private sources only when the owner is authorized to process them in the selected AI tool; never mark private source URLs or text for public citation.
+- Change only the generated package. Product code, source docs, policies, and production data require a separate owner-reviewed task.
 - Keep private data out.
 - Escalation-gate risky topics.
 - Validate output as a package.
@@ -48,7 +52,8 @@ If a capability is missing, the output must mark that source as pending. No prom
 | Multiple products in one repo | Map all products, confirm the target using product name/slug/URLs/paths, include shared infrastructure only when support-relevant, and document exclusions. |
 | Demo or website asset request | Create source-backed briefs, scripts, claim candidates, scrub rules, and owner approval gates; do not claim final public assets are approved. |
 | API spec provided | Use only public/customer-facing API behavior; exclude internal endpoints, callbacks, secrets, and provider-only operations. |
-| Support export provided | Convert sanitized patterns into FAQ seeds and coverage gaps; exclude raw private conversations and identifiers. |
+| Support export provided | Convert sanitized patterns into FAQ seeds and coverage gaps; exclude raw private conversations and identifiers, and do not treat repeated replies as approved truth. |
+| Sources conflict | Preserve both facts, authority and applicability metadata, and the owner decision required; do not silently choose a winner. |
 | Owner notes only | Create a starter package and mark repo, docs, website, legal, pricing, and production facts pending unless supplied. |
 | No legal page | Add risk boundary, not invented policy wording. |
 | No screenshots | Create capture plan and scrub rules. |
@@ -70,6 +75,7 @@ The final response must include:
 - source-access limits or blocked sources;
 - products detected and target product boundary if a multi-product repo was inspected;
 - sister products or source families excluded;
+- source conflicts and owner decisions still required;
 - gaps fixed;
 - production-only confirmations still needed.
 

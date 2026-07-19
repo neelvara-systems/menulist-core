@@ -34,6 +34,10 @@ Open Support Assistant and see:
 12. Show factual launch verification from the compact activation snapshot.
 13. Show confirmed-resolution and same-session recontact evidence when explicit outcomes exist.
 14. Provide one owner-triggered `I shipped a change` action that opens the existing changelog form; it must not write until the owner saves.
+15. Show source health for all six summaries and never convert missing evidence into a zero metric.
+16. Remove every action, evidence link, launch-verification control, and prepared-card capability the caller cannot use.
+17. Treat a complete but empty packet as insufficient evidence.
+18. Fail closed on an unknown, malformed, oversized, or redirected browser response.
 
 ## Action Categories
 
@@ -65,6 +69,8 @@ Daily Brief is the default management home only after `activation.launchProof.re
 ## Access
 
 The brief uses the same access gate as Support Assistant: `canManageSupport`.
+
+The entry permission does not imply access to every destination. Each returned route is independently checked against the current caller permission map.
 
 ## Feature Flag
 

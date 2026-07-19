@@ -81,7 +81,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                             <span>AnswerLattice</span>
                         </div>
                         <p>
-                            The first 24/7 support layer for founder-led SaaS.
+                            The governed support layer for founder-led SaaS.
                             Turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into widget help, hosted docs, fallback tickets, feedback, and reviewable answers.
                         </p>
                         <div className="al-site-footer__actions">

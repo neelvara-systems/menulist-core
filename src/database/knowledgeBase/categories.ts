@@ -11,6 +11,7 @@ import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatti
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import {
     addKnowledgeBaseCategory,
+    assertKnowledgeBaseCategoriesMapBounds,
     deleteKnowledgeBaseArticleMeta,
     deleteKnowledgeBaseCategory,
     deleteKnowledgeBaseSection,
@@ -26,6 +27,7 @@ import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCat
 
 const COLLECTION = DB_COLLECTIONS.KB_CATEGORIES;
 const LEGACY_CATEGORIES_DOC_ID = 'categories';
+const MAX_DENORMALIZED_TITLE_UPDATES = 100;
 
 type KnowledgeBaseCategorySessionLookup = {
     failed: boolean;
@@ -132,11 +134,7 @@ const mutateCategories = async (
         ? requireCategoriesMap(snapshot.data().categories)
         : {};
     const next = mutate(current);
-    if (!isRecord(next) || Object.keys(next).length > 500) {
-        throw new Error('answerlattice_kb_categories_document_invalid');
-    }
-    const byteLength = new TextEncoder().encode(JSON.stringify({ categories: next })).length;
-    if (byteLength > 900 * 1024) throw new Error('answerlattice_kb_categories_document_too_large');
+    assertKnowledgeBaseCategoriesMapBounds(next);
     appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
         ...invalidation,
         sourceType: 'kb_category',
@@ -145,6 +143,59 @@ const mutateCategories = async (
     else transaction.set(categoryRef, { categories: next });
     return { categories: next };
 });
+
+const getCategoryArticleIds = (category: KnowledgeBaseCategory) => Array.from(new Set([
+    ...(category.articles || []).map(article => article.id),
+    ...(category.sections || []).flatMap(section => (section.articles || []).map(article => article.id)),
+]));
+
+const mutateCategoriesWithArticleTitlePropagation = async (
+    scope: KnowledgeBaseCategoryScope,
+    invalidation: { reason: string; sourceId?: string },
+    resolveArticleIds: (current: KnowledgeBaseCategoriesType['categories']) => string[],
+    mutate: (current: KnowledgeBaseCategoriesType['categories']) => KnowledgeBaseCategoriesType['categories'],
+    articleUpdate: Record<string, unknown>,
+    articleMatches: (article: KnowledgeBaseArticleType) => boolean,
+): Promise<KnowledgeBaseCategoriesType> => {
+    return runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+        const categoryRef = getDocRef(scope);
+        const categorySnapshot = await transaction.get(categoryRef);
+        if (!categorySnapshot.exists()) throw new Error('answerlattice_kb_categories_document_not_found');
+        const current = requireCategoriesMap(categorySnapshot.data().categories);
+        const articleIds = Array.from(new Set(resolveArticleIds(current)));
+        if (articleIds.length > MAX_DENORMALIZED_TITLE_UPDATES) {
+            throw new Error('answerlattice_kb_title_propagation_too_large');
+        }
+        const next = assertKnowledgeBaseCategoriesMapBounds(mutate(current));
+        const articleRefs = articleIds.map(articleId => doc(
+            answerlatticeFirebaseClient,
+            DB_COLLECTIONS.KB_ARTICLES,
+            requireKnowledgeBaseNavigationId(articleId),
+        ));
+        const articleSnapshots = await Promise.all(articleRefs.map(articleRef => transaction.get(articleRef)));
+        articleSnapshots.forEach((articleSnapshot, index) => {
+            if (!articleSnapshot.exists()) {
+                throw new Error(`Knowledge base navigation references missing article ${articleIds[index]}.`);
+            }
+            const article = { ...articleSnapshot.data(), id: articleSnapshot.id } as KnowledgeBaseArticleType;
+            if (
+                article.pId !== 'AL'
+                || normalizeAnswerlatticeScopeDocumentId(article.tId) !== scope.tId
+                || normalizeAnswerlatticeScopeDocumentId(article.sId) !== scope.sId
+                || !articleMatches(article)
+            ) {
+                throw new Error(`Knowledge base article ${article.id} is outside this navigation update.`);
+            }
+        });
+        appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+            ...invalidation,
+            sourceType: 'kb_category',
+        });
+        transaction.update(categoryRef, { categories: next });
+        articleRefs.forEach(articleRef => transaction.update(articleRef, articleUpdate));
+        return { categories: next };
+    });
+};
 
 export function assertKnowledgeBaseCategoryWriteSucceeded(
     result: unknown,
@@ -263,10 +314,18 @@ export const updateCategory = async (category: KnowledgeBaseCategory) => {
             const composedCategory = await answerlatticeRequestBodyComposer(normalizedCategory, { isNew: false });
             const categoryId = normalizedCategory.id;
             const scope = await getRequiredKnowledgeBaseCategoryScope('category_update');
-            const updated = await mutateCategories(scope, { reason: 'category_update', sourceId: categoryId }, (current) => updateKnowledgeBaseCategoryMetadata(
-                current,
-                composedCategory as KnowledgeBaseCategory,
-            ));
+            const updated = await mutateCategoriesWithArticleTitlePropagation(
+                scope,
+                { reason: 'category_update', sourceId: categoryId },
+                current => {
+                    const storedCategory = current[categoryId];
+                    if (!storedCategory) throw new Error('answerlattice_kb_category_not_found');
+                    return getCategoryArticleIds(storedCategory);
+                },
+                current => updateKnowledgeBaseCategoryMetadata(current, composedCategory as KnowledgeBaseCategory),
+                { categoryTitle: normalizedCategory.title },
+                article => article.categoryId === categoryId,
+            );
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateCategory');
             return {
                 ...composedCategory,
@@ -285,11 +344,19 @@ export const upsertSectionInCategory = async (categoryId: string, section: Knowl
             const normalizedCategoryId = requireKnowledgeBaseNavigationId(categoryId);
             const normalizedSection = normalizeKnowledgeBaseSectionInput(section);
             const scope = await getRequiredKnowledgeBaseCategoryScope('category_section_upsert');
-            const updated = await mutateCategories(scope, { reason: 'category_section_upsert', sourceId: normalizedCategoryId }, (current) => upsertKnowledgeBaseSection(
-                current,
-                normalizedCategoryId,
-                normalizedSection,
-            ));
+            const updated = await mutateCategoriesWithArticleTitlePropagation(
+                scope,
+                { reason: 'category_section_upsert', sourceId: normalizedCategoryId },
+                current => {
+                    const storedCategory = current[normalizedCategoryId];
+                    if (!storedCategory) throw new Error('answerlattice_kb_category_not_found');
+                    const storedSection = storedCategory.sections?.find(item => item.id === normalizedSection.id);
+                    return (storedSection?.articles || []).map(article => article.id);
+                },
+                current => upsertKnowledgeBaseSection(current, normalizedCategoryId, normalizedSection),
+                { sectionTitle: normalizedSection.title },
+                article => article.categoryId === normalizedCategoryId && article.sectionId === normalizedSection.id,
+            );
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'upsertSectionInCategory');
             return withCategoriesMutationResult(updated, 'upsertSection', {
                 categoryId: normalizedCategoryId,

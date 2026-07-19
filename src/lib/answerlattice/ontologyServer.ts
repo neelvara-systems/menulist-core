@@ -3,6 +3,9 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { buildAnswerlatticeEntityPrefixTokens } from './entitySearchTokens';
+import { ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT } from './faqContent';
+import { normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
+import { ANSWERLATTICE_PRODUCT_SURFACE_LIMIT } from './productSurfaceContent';
 import { answerlatticeTokenize } from './tokenizer';
 import {
     ANSWERLATTICE_ONTOLOGY_CONSTRAINTS,
@@ -104,7 +107,7 @@ const getScopeAndActor = (access: AnswerlatticeAccessContext): { scope: Scope; a
 };
 
 const documentIsInScope = (data: Record<string, unknown>, scope: Scope) => (
-    (data.pId === undefined || data.pId === PRODUCT_IDS.ANSWERLATTICE)
+    data.pId === PRODUCT_IDS.ANSWERLATTICE
     && data.tId === scope.tId
     && data.sId === scope.sId
 );
@@ -541,7 +544,16 @@ const deprecateEntity = async (
     const operationRef = db.collection(AUDIT_COLLECTION).doc(getOperationId(scope, action.requestId));
     const fingerprint = sha(canonicalJson(action));
     return db.runTransaction(async (transaction) => {
-        const [operationSnapshot, entitySnapshot, activeAnswers, outgoing, incoming] = await Promise.all([
+        const [
+            operationSnapshot,
+            entitySnapshot,
+            activeAnswers,
+            linkedArticles,
+            tenantFaqs,
+            tenantSurfaces,
+            outgoing,
+            incoming,
+        ] = await Promise.all([
             transaction.get(operationRef),
             transaction.get(entityRef),
             transaction.get(db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
@@ -551,6 +563,22 @@ const deprecateEntity = async (
                 .where('status', '==', 'active')
                 .where('scope.entityIds', 'array-contains', action.entityId)
                 .limit(1)),
+            transaction.get(db.collection(DB_COLLECTIONS.KB_ARTICLES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+                .where('tId', '==', scope.tId)
+                .where('sId', '==', scope.sId)
+                .where('entityIds', 'array-contains', action.entityId)
+                .limit(1)),
+            transaction.get(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+                .where('tId', '==', scope.tId)
+                .where('sId', '==', scope.sId)
+                .limit(ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT + 1)),
+            transaction.get(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+                .where('tId', '==', scope.tId)
+                .where('sId', '==', scope.sId)
+                .limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT + 1)),
             transaction.get(db.collection(RELATION_COLLECTION)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
@@ -572,7 +600,30 @@ const deprecateEntity = async (
         if (parsed.data.status === 'deprecated') {
             return { success: true, action: action.action, replayed: true, entity: parsed.data as AnswerlatticeEntity };
         }
+        if (tenantFaqs.size > ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT
+            || tenantSurfaces.size > ANSWERLATTICE_PRODUCT_SURFACE_LIMIT) {
+            throw new AnswerlatticeOntologyError(
+                'ontology_dependency_scan_limit',
+                409,
+                'Product structure dependencies exceed the supported review limit. Contact support for a controlled cleanup.',
+            );
+        }
+        const linkedFaq = tenantFaqs.docs.some((document) => (
+            documentIsInScope(document.data(), scope)
+            && normalizeAnswerlatticeResolvedEntityIds(document.data().entityIds, 25).includes(action.entityId)
+        ));
+        const linkedSurface = tenantSurfaces.docs.some((document) => (
+            documentIsInScope(document.data(), scope)
+            && normalizeAnswerlatticeResolvedEntityIds(document.data().entityIds, 25).includes(action.entityId)
+        ));
         if (!activeAnswers.empty) throw new AnswerlatticeOntologyError('ontology_entity_in_use', 409, 'Reassign active approved answers before deprecating this entity.');
+        if (!linkedArticles.empty || linkedFaq || linkedSurface) {
+            throw new AnswerlatticeOntologyError(
+                'ontology_entity_content_dependency',
+                409,
+                'Reassign linked articles, FAQs, and product surfaces before deprecating this entity.',
+            );
+        }
         if (!outgoing.empty || !incoming.empty) throw new AnswerlatticeOntologyError('ontology_entity_related', 409, 'Remove this entity’s product relations before deprecating it.');
         const entity = { ...parsed.data, status: 'deprecated' as const, pId: PRODUCT_IDS.ANSWERLATTICE } as AnswerlatticeEntity;
         const response: AnswerlatticeOntologyActionResult = { success: true, action: action.action, replayed: false, entity };

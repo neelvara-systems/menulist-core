@@ -59,6 +59,7 @@ const { Title, Text, Paragraph } = Typography;
 const ANSWERLATTICE_ACTIVATION_SUMMARY_LOAD_FAILED = 'Could not load activation summary';
 const ANSWERLATTICE_ACTIVATION_NOTIFICATION_TEST_FAILED = 'Could not send test notification';
 const ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED = 'Could not rebuild compiled context';
+const ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_NEEDS_REVIEW = 'Compiled context rebuild needs review';
 
 const STATUS_META = {
     complete: { color: 'success', label: 'Done', icon: LuCheckCircle2 },
@@ -71,7 +72,7 @@ const stageLabel: Record<string, string> = {
     setup: 'Set up workspace',
     knowledge: 'Add knowledge',
     install: 'Install widget',
-    live: 'Ready for launch',
+    live: 'Launch checks complete',
 };
 
 const formatDateTime = (value: any): string => {
@@ -302,9 +303,11 @@ export default function AnswerlatticeActivationCommandCenter() {
                 isAnswerlatticeCompiledContextRebuildResponse,
                 ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED,
             );
-            message.success(data.manifest?.status === 'ready'
-                ? `Compiled context v${data.manifest.bundleVersion} is ready`
-                : 'Compiled context rebuild finished');
+            if (data.ok && data.manifest.status === 'ready') {
+                message.success(`Compiled context v${data.manifest.bundleVersion} is ready`);
+            } else {
+                message.warning(ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_NEEDS_REVIEW);
+            }
             await loadSummary(true);
         } catch {
             message.error(ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_FAILED);
@@ -324,7 +327,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                 message="Activation summary is unavailable"
                 description="Refresh after this Answerlattice workspace is fully connected."
                 showIcon
-                action={<Button onClick={() => loadSummary(true)}>Retry</Button>}
+                action={<Button onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>Retry</Button>}
             />
         );
     }
@@ -395,10 +398,10 @@ export default function AnswerlatticeActivationCommandCenter() {
                 type={summary.launchProof.ready ? 'success' : needsReview.length ? 'warning' : 'info'}
                 showIcon
                 message={summary.launchProof.ready
-                    ? 'Ready to serve users'
+                    ? 'Ready for controlled customer testing'
                     : `${summary.launchProof.blockers.length} launch check${summary.launchProof.blockers.length === 1 ? '' : 's'} remain`}
                 description={summary.launchProof.ready
-                    ? 'The latest factual launch verification is complete. Daily Brief is now the normal operating home.'
+                    ? 'Configuration and retained evidence checks are complete. Run the manual customer path before depending on the support layer.'
                     : summary.launchProof.blockers[0]
                         ? `Start with ${summary.launchProof.blockers[0].toLowerCase()}. The ordered launch path keeps the remaining work in one flow.`
                         : 'Follow the ordered launch path before customer traffic depends on support.'}
@@ -480,7 +483,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                                 icon={<LuExternalLink />}
                                                 aria-label={item.actionLabel || `Open ${item.title}`}
                                                 onClick={() => openRoute(item.route)}
-                                                style={{ minHeight: 44 }}
+                                                style={{ minHeight: 44, minWidth: 44 }}
                                             >
                                                 {isMobile ? '' : item.actionLabel || 'Open'}
                                             </Button>,
@@ -531,7 +534,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                 type="circle"
                                 percent={summary.readinessScore}
                                 size={isMobile ? 84 : 104}
-                                strokeColor={summary.readinessScore >= 85 ? token.colorSuccess : token.colorPrimary}
+                                strokeColor={summary.launchProof.ready ? token.colorSuccess : token.colorPrimary}
                             />
                             <div>
                                 <Text type="secondary">Required steps</Text>
@@ -597,6 +600,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                                 icon={<LuExternalLink />}
                                                 aria-label={step.actionLabel || `Open ${step.title}`}
                                                 onClick={() => openRoute(step.route)}
+                                                style={{ minHeight: 44, minWidth: 44 }}
                                             >
                                                 {isMobile ? '' : step.actionLabel || 'Open'}
                                             </Button>,
@@ -681,6 +685,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                     icon={<LuDatabase />}
                                     loading={rebuildingContext}
                                     onClick={rebuildCompiledContext}
+                                    style={{ minHeight: 44 }}
                                 >
                                     Rebuild Context
                                 </Button>
@@ -712,6 +717,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                     loading={testingNotification}
                                     disabled={!summary.notifications.enabled || !summary.notifications.smtpConfigured || !summary.workspace.supportEmail}
                                     onClick={testNotifications}
+                                    style={{ minHeight: 44 }}
                                 >
                                     Send Test Email
                                 </Button>
@@ -748,7 +754,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                                 </Flex>
                             </Space>
                         </Card>
-                        <Card title="Knowledge Health">
+                        <Card title="Answer Evidence">
                             <Space direction="vertical" size={10} style={{ width: '100%' }}>
                                 <Flex justify="space-between" gap={12}>
                                     <Text type="secondary">Canonical coverage</Text>
@@ -763,12 +769,22 @@ export default function AnswerlatticeActivationCommandCenter() {
                                     <Text>{summary.governance.canonicalCoverageTotal ?? 0}</Text>
                                 </Flex>
                                 <Flex justify="space-between" gap={12}>
-                                    <Text type="secondary">Trust score</Text>
-                                    <Text>
-                                        {summary.governance.trustScore !== null && summary.governance.trustScore !== undefined
-                                            ? `${summary.governance.trustScore}/100`
-                                            : 'Pending'}
-                                    </Text>
+                                    <Text type="secondary">No escalation</Text>
+                                    <Text>{summary.governance.noEscalationRate !== null && summary.governance.noEscalationRate !== undefined
+                                        ? `${summary.governance.noEscalationRate}%`
+                                        : 'Pending'}</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Confirmed resolved</Text>
+                                    <Text>{summary.governance.confirmedResolutionRate !== null && summary.governance.confirmedResolutionRate !== undefined
+                                        ? `${summary.governance.confirmedResolutionRate}% (${summary.governance.confirmedResolutionTotal || 0} outcomes)`
+                                        : 'Not enough explicit outcomes'}</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Entity answer coverage</Text>
+                                    <Text>{summary.governance.entityAnswerCoverageRate !== null && summary.governance.entityAnswerCoverageRate !== undefined
+                                        ? `${summary.governance.entityAnswerCoverageRate}%`
+                                        : 'Pending'}</Text>
                                 </Flex>
                             </Space>
                         </Card>

@@ -11,10 +11,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import {
     getCanonicalAnswers,
     getCanonicalAnswerById,
-    getDriftedAnswers,
     proposeCanonicalAnswerCreate,
     proposeCanonicalAnswerUpdate,
 } from '@database/answerlattice/canonicalAnswers';
+import { AnswerlatticeGovernanceClientError } from '@lib/answerlattice/governanceClient';
 import { AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -22,6 +22,10 @@ import { useCallback, useEffect, useState } from 'react';
 const ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED = 'Could not load canonical answers';
 const ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED = 'Could not create answer';
 const ANSWERLATTICE_CANONICAL_ANSWER_UPDATE_FAILED = 'Could not update answer';
+
+const getGovernanceActionMessage = (error: unknown, fallback: string) => (
+    error instanceof AnswerlatticeGovernanceClientError ? error.message : fallback
+);
 
 interface UseCanonicalAnswersReturn {
     answers: AnswerlatticeCanonicalAnswer[];
@@ -49,12 +53,10 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
         setLoading(true);
         setError(null);
         try {
-            const [allAnswers, drifted] = await Promise.all([
-                getCanonicalAnswers(tId, sId),
-                getDriftedAnswers(tId, sId),
-            ]);
-            setAnswers(allAnswers || []);
-            setDriftedAnswers(drifted || []);
+            const allAnswers = await getCanonicalAnswers(tId, sId);
+            const normalizedAnswers = allAnswers || [];
+            setAnswers(normalizedAnswers);
+            setDriftedAnswers(normalizedAnswers.filter(answer => answer.governance?.driftFlag === true));
         } catch {
             setError(ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED);
         } finally {
@@ -71,8 +73,8 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             await proposeCanonicalAnswerCreate(data);
             message.success('New answer sent to Governance review');
             return true;
-        } catch {
-            message.error(ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED);
+        } catch (error) {
+            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED));
             return false;
         }
     }, []);
@@ -93,8 +95,8 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             });
             message.success('Answer update sent to Governance review');
             return true;
-        } catch {
-            message.error(ANSWERLATTICE_CANONICAL_ANSWER_UPDATE_FAILED);
+        } catch (error) {
+            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_CANONICAL_ANSWER_UPDATE_FAILED));
             return false;
         }
     }, [tId, sId]);

@@ -1,5 +1,6 @@
 import { ARTICLE_STATUS, type KnowledgeBaseArticleType, type KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
+import { isAnswerlatticeChangelogEntryPublished } from './changelogContracts';
 
 export type AnswerlatticePublicArticle = {
     id: string;
@@ -217,7 +218,7 @@ export const normalizeAnswerlatticePublicChangelogEntry = (value: unknown): Answ
 };
 
 export const projectAnswerlatticePublicChangelogEntry = (value: unknown, id: string) => {
-    if (!isRecord(value) || value.published === false) return null;
+    if (!isRecord(value) || !isAnswerlatticeChangelogEntryPublished(value)) return null;
     return normalizeAnswerlatticePublicChangelogEntry({ id, title: value.title, description: value.description, tags: value.tags ?? [], releasedOn: value.releasedOn, version: value.version ?? null, likes: value.likes ?? 0, dislikes: value.dislikes ?? 0, files: value.files ?? [], kbSources: value.kbSources ?? [], youtubeLinks: value.youtubeLinks ?? [] });
 };
 
@@ -234,8 +235,16 @@ export const normalizeAnswerlatticePublicChangelogPage = (value: unknown): Answe
     return { id, pageNumber, nextPageId, entries: validEntries, entryIds };
 };
 
-export const projectAnswerlatticePublicChangelogPage = (value: unknown, id: string): AnswerlatticePublicChangelogPage | null => {
-    if (!isRecord(value) || !Array.isArray(value.entries)) return null;
+export const projectAnswerlatticePublicChangelogPage = (
+    value: unknown,
+    id: string,
+    scope: { tId: number; sId: number },
+): AnswerlatticePublicChangelogPage | null => {
+    if (!isRecord(value)
+        || value.pId !== 'AL'
+        || value.tId !== scope.tId
+        || value.sId !== scope.sId
+        || !Array.isArray(value.entries)) return null;
     const entries = value.entries.map((entry, index) => projectAnswerlatticePublicChangelogEntry(entry, isRecord(entry) && typeof entry.id === 'string' ? entry.id : `${id}-${index}`)).filter((entry): entry is AnswerlatticePublicChangelogEntry => entry !== null);
     return normalizeAnswerlatticePublicChangelogPage({ id, pageNumber: value.pageNumber, nextPageId: value.nextPageId ?? null, entries, entryIds: entries.map(entry => entry.id) });
 };

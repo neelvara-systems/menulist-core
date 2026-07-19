@@ -22,10 +22,10 @@ const validToken = createAnswerlatticeMcpSessionToken({
     sId: 701,
     scope: ['context:read', 'signals:write'],
     bundleVersion: 4,
-    revocationVersion: 2,
     ttlSeconds: 300,
 });
 const validPayload = verifyAnswerlatticeMcpSessionToken(validToken);
+assert.equal(validPayload?.aud, 'answerlattice_mcp');
 assert.equal(validPayload?.tId, 71);
 assert.equal(validPayload?.sId, 701);
 assert.deepEqual(validPayload?.scope, ['context:read', 'signals:write']);
@@ -34,6 +34,7 @@ assert.equal(getAnswerlatticeMcpToolRequiredScope('get_product_context'), 'conte
 assert.equal(getAnswerlatticeMcpToolRequiredScope('report_missing_context'), 'signals:write');
 assert.equal(getAnswerlatticeMcpToolRequiredScope('unknown_tool'), null);
 assert.equal(verifyAnswerlatticeMcpSessionToken(`${validToken}.ignored`), null, 'extra token segments must be rejected');
+assert.equal(verifyAnswerlatticeMcpSessionToken(`${'a'.repeat(4097)}.${'b'.repeat(43)}`), null, 'oversized tokens must be rejected');
 assert.throws(
     () => Reflect.apply(createAnswerlatticeMcpSessionToken, null, [{
         tId: 71,
@@ -44,15 +45,25 @@ assert.throws(
     /payload is invalid/,
     'the issuer must not sign unsupported capabilities',
 );
+assert.throws(
+    () => createAnswerlatticeMcpSessionToken({
+        tId: 71,
+        sId: 701,
+        scope: ['context:read'],
+        bundleVersion: 0,
+    }),
+    /payload is invalid/,
+    'the issuer must require a ready positive bundle version',
+);
 
 const now = Math.floor(Date.now() / 1000);
 const basePayload = {
     sub: 'answerlattice_mcp_session',
+    aud: 'answerlattice_mcp',
     tId: 71,
     sId: 701,
     scope: ['context:read'],
     bundleVersion: 4,
-    revocationVersion: 0,
     iat: now,
     exp: now + 300,
 };
@@ -63,6 +74,11 @@ assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, tI
 assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, scope: ['admin:*'] })), null);
 assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, scope: ['context:read', 'context:read'] })), null);
 assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, exp: now + 901 })), null);
+assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, aud: 'another_service' })), null);
+assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, revocationVersion: 0 })), null);
 assert.equal(verifyAnswerlatticeMcpSessionToken(signPayload({ ...basePayload, unexpected: true })), null);
+
+process.env.ANSWERLATTICE_MCP_SESSION_SECRET = 'too-short';
+assert.equal(verifyAnswerlatticeMcpSessionToken(validToken), null, 'the verifier must reject weak configured secrets');
 
 process.stdout.write('Answerlattice MCP session token contract passed.\n');

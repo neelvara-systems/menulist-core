@@ -4,6 +4,7 @@ import {
     isDeletableIngestionJobStatus,
     isExactAnswerlatticeProductId,
     normalizeIngestionJobQueryLimit,
+    planIngestionJobSourceCleanup,
 } from '../../src/lib/answerlattice/ingestionJobDeletionBoundary';
 
 assert.equal(isDeletableIngestionJobStatus('needs_review'), true);
@@ -25,5 +26,39 @@ assert.equal(normalizeIngestionJobQueryLimit(12, 20, 50), 12);
 assert.equal(normalizeIngestionJobQueryLimit(80, 20, 50), 50);
 assert.equal(normalizeIngestionJobQueryLimit(Number.NaN, 20, 50), 20);
 assert.equal(normalizeIngestionJobQueryLimit(0, 20, 50), 20);
+
+const sourcePrefix = 'ingestion_source_files/12/34/';
+const cleanupPlan = planIngestionJobSourceCleanup([
+    {
+        storagePath: `${sourcePrefix}job-a.pdf`,
+        downloadURL: 'https://storage.example/job-a.pdf',
+    },
+    {
+        storagePath: `${sourcePrefix}shared.pdf`,
+        downloadURL: 'https://storage.example/shared.pdf',
+    },
+], [[{
+    storagePath: `${sourcePrefix}shared.pdf`,
+}]], sourcePrefix);
+assert.deepEqual(cleanupPlan.cleanupCandidates, [{
+    storagePath: `${sourcePrefix}job-a.pdf`,
+    downloadURL: 'https://storage.example/job-a.pdf',
+}]);
+assert.deepEqual(cleanupPlan.preservedStoragePaths, [`${sourcePrefix}shared.pdf`]);
+
+assert.throws(
+    () => planIngestionJobSourceCleanup([{
+        storagePath: 'ingestion_source_files/99/34/outside.pdf',
+        downloadURL: 'https://storage.example/outside.pdf',
+    }], [], sourcePrefix),
+    /invalid source-file cleanup data/,
+);
+assert.throws(
+    () => planIngestionJobSourceCleanup([{
+        storagePath: `${sourcePrefix}job-a.pdf`,
+        downloadURL: 'https://storage.example/job-a.pdf',
+    }], [[{ storagePath: `${sourcePrefix}../unsafe.pdf` }]], sourcePrefix),
+    /invalid source-file reference data/,
+);
 
 process.stdout.write('Answerlattice ingestion-job deletion boundary tests passed.\n');

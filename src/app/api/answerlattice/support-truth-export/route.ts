@@ -7,6 +7,7 @@ import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys
 import {
     AnswerlatticeSupportTruthExportTooLargeError,
     buildAnswerlatticeSupportTruthExport,
+    recordAnswerlatticeSupportTruthExportAudit,
 } from '@lib/answerlattice/supportTruthExport';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -31,7 +32,7 @@ const featureUnavailable = () => NextResponse.json(
     { status: 403, headers: privateNoStoreHeaders },
 );
 
-export const GET = withAuth(async (request: NextRequest, session) => {
+export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT) {
         return featureUnavailable();
     }
@@ -52,9 +53,26 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             sessionScope.storeId,
         ),
         ...EXPORT_RATE_LIMIT,
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
         const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+        if (rateLimit.reason === 'provider_unavailable') {
+            return NextResponse.json(
+                {
+                    error: 'Support truth export is temporarily unavailable. Please try again shortly.',
+                    code: 'RATE_LIMIT_UNAVAILABLE',
+                    retryAfter,
+                },
+                {
+                    status: 503,
+                    headers: {
+                        ...privateNoStoreHeaders,
+                        'Retry-After': String(retryAfter),
+                    },
+                },
+            );
+        }
         return NextResponse.json(
             {
                 error: 'Too many exports. Please try again later.',
@@ -86,9 +104,17 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     }
 
     try {
-        const { json } = await buildAnswerlatticeSupportTruthExport({
+        const { json, payload } = await buildAnswerlatticeSupportTruthExport({
             db: answerlatticeFirestoreAdmin,
             productName: access.storeName,
+            tId: access.scope.tenantId,
+            sId: access.scope.storeId,
+        });
+        await recordAnswerlatticeSupportTruthExportAudit({
+            actorId: access.user.id || access.user.email,
+            db: answerlatticeFirestoreAdmin,
+            json,
+            payload,
             tId: access.scope.tenantId,
             sId: access.scope.storeId,
         });
@@ -123,3 +149,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         );
     }
 });
+
+export const GET = async () => NextResponse.json(
+    { error: 'Use POST to create a support truth export.', code: 'METHOD_NOT_ALLOWED' },
+    {
+        status: 405,
+        headers: {
+            ...privateNoStoreHeaders,
+            Allow: 'POST',
+        },
+    },
+);

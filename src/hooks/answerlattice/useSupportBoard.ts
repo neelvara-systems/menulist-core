@@ -6,6 +6,7 @@ import {
     createAnswerlatticeSupportBoardCards,
     getAnswerlatticeSupportBoardSummary,
     listAnswerlatticeSupportBoardCards,
+    redactAnswerlatticeSupportBoardSourceIdentity,
     updateAnswerlatticeSupportBoardCard,
     type CreateAnswerlatticeSupportBoardCardInput,
     type UpdateAnswerlatticeSupportBoardCardInput,
@@ -29,7 +30,6 @@ import {
     type AnswerlatticeSupportBoardStatus,
 } from '@type/answerlattice';
 import { SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, type SupportTicketType } from '@type/supportTicket';
-import { Timestamp } from 'firebase/firestore';
 import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -322,17 +322,9 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
     const updateCard = useCallback(async (cardId: string, patch: UpdateAnswerlatticeSupportBoardCardInput) => {
         setSaving(true);
         try {
-            const isResolved = patch.status === ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED;
             await updateAnswerlatticeSupportBoardCard(cardId, {
                 ...patch,
                 ...(patch.status ? getActorStatusMeta(actor, 'Status updated from Support Board') : {}),
-                ...(isResolved ? {
-                    resolvedOn: Timestamp.now(),
-                    resolvedBy: actor?.name || actor?.id || 'Team member',
-                } : patch.status ? {
-                    resolvedOn: null,
-                    resolvedBy: null,
-                } : {}),
             });
             await refresh();
         } catch {
@@ -358,6 +350,26 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             await refresh();
         } catch {
             message.error(ANSWERLATTICE_SUPPORT_BOARD_NOTE_ADD_FAILED);
+        } finally {
+            setSaving(false);
+        }
+    }, [actor?.id, actor?.name, refresh]);
+
+    const redactSourceIdentity = useCallback(async (cardId: string) => {
+        setSaving(true);
+        try {
+            const redacted = await redactAnswerlatticeSupportBoardSourceIdentity(cardId, {
+                id: actor?.id || 'unknown',
+                name: actor?.name || 'Team member',
+            });
+            if (redacted) {
+                message.success('Source customer details removed');
+                await refresh();
+            }
+            return redacted;
+        } catch {
+            message.error('Could not remove source customer details');
+            return false;
         } finally {
             setSaving(false);
         }
@@ -444,6 +456,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             const proposal = await addMutationProposal({
                 tId,
                 sId,
+                requestId: `support_board_${card.id}`,
                 targetAnswerId: card.relatedAnswerId || '',
                 relatedEntityIds: [relatedEntityId],
                 mutationType: card.relatedAnswerId
@@ -472,18 +485,33 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             });
 
             await updateAnswerlatticeSupportBoardCard(card.id, {
-                status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_ANSWER,
+                status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.DRAFT_READY,
                 relatedProposalId: proposal.id,
                 ...getActorStatusMeta(actor, 'Answer proposal created'),
             });
 
-            await addAnswerlatticeSupportBoardNote(card.id, {
-                text: `Governance proposal ${proposal.id.slice(0, 8)} created. Generate and approve the draft from Knowledge Governance.`,
-                authorId: actor?.id || 'system',
-                authorName: actor?.name || 'Answerlattice',
-            });
+            let noteAdded = true;
+            try {
+                await addAnswerlatticeSupportBoardNote(card.id, {
+                    text: `Governance proposal ${proposal.id.slice(0, 8)} created. Generate and approve the draft from Knowledge Governance.`,
+                    authorId: actor?.id || 'system',
+                    authorName: actor?.name || 'Answerlattice',
+                });
+            } catch (error) {
+                noteAdded = false;
+                logAnswerlatticeFailure(
+                    'answerlattice_support_board_proposal_note_add_failed',
+                    error,
+                    {
+                        ...getBoundedAnswerlatticeStringContext('cardId', card.id),
+                        ...getBoundedAnswerlatticeStringContext('proposalId', proposal.id),
+                    },
+                );
+            }
 
-            message.success('Answer proposal created');
+            message.success(noteAdded
+                ? 'Answer proposal created'
+                : 'Answer proposal created; private board note was not added');
             await refresh();
         } catch {
             message.error(ANSWERLATTICE_SUPPORT_BOARD_PROPOSAL_CREATE_FAILED);
@@ -502,6 +530,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         loading,
         moveCard,
         refresh,
+        redactSourceIdentity,
         saving,
         sourceSyncEnabled,
         nightlySummaryEnabled,

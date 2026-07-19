@@ -8,6 +8,7 @@ import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValida
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
+    ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS,
     ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS,
     ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE,
     type AnswerlatticeIntakeReviewItem,
@@ -140,6 +141,9 @@ export const AnswerlatticeIntakeReviewItemSchema = z.object({
     ...answerlatticeIdentity,
     jobId: intakeJobId,
     sourceId: intakeSourceId.nullable().optional(),
+    sourceIds: z.array(intakeSourceId)
+        .max(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS)
+        .optional(),
     target: z.enum(Object.values(ANSWERLATTICE_INTAKE_REVIEW_TARGET) as [string, ...string[]]),
     status: z.enum(Object.values(ANSWERLATTICE_INTAKE_REVIEW_STATUS) as [string, ...string[]]),
     title: z.string().max(180),

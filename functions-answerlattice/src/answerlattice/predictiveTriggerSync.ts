@@ -4,7 +4,7 @@
  * Three sub-steps:
  * 16a. Auto-generate suggested triggers from friction patterns
  * 16b. Rebuild platformSummary cache from collection
- * 16c. Compute effectiveness scores + auto-disable low performers
+ * 16c. Compute advisory effectiveness scores
  * 
  * Feature-flagged: ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT
  * 
@@ -26,9 +26,7 @@ import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBounda
 
 const MAX_AUTO_SUGGESTIONS_PER_NIGHT = 5;
 const MIN_FRICTION_SCORE_FOR_SUGGESTION = 5;
-const AUTO_DISABLE_SCORE_THRESHOLD = -0.3;
-const AUTO_DISABLE_MIN_IMPRESSIONS = 100;
-const MAX_TRIGGERS_PER_TENANT = 500;
+const MAX_TRIGGERS_PER_TENANT = 200;
 const MAX_TRIGGER_SIGNALS_PER_RUN = 2000;
 const MAX_CANONICAL_ANSWERS_FOR_TRIGGER_CACHE = 1000;
 const MAX_ENTITY_IDS_PER_ANSWER_LOOKUP = 30;
@@ -88,6 +86,146 @@ function resolveAnswerVersion(answer: any): string | number | undefined {
         || answer?.productBinding?.introducedInVersion
         || answer?.modifiedOn?.toMillis?.()
         || answer?.createdOn?.toMillis?.();
+}
+
+function toBoundedString(value: unknown, maxLength: number): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().slice(0, maxLength);
+    return normalized || undefined;
+}
+
+function getTimestampMillis(value: unknown): number | null {
+    if (!value) return null;
+    try {
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (typeof (value as any)?.toMillis === 'function') {
+            const millis = Number((value as any).toMillis());
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (typeof value === 'string' || typeof value === 'number') {
+            const millis = new Date(value).getTime();
+            return Number.isFinite(millis) ? millis : null;
+        }
+    } catch {
+        return null;
+    }
+    return null;
+}
+
+function normalizePublicHttpsUrl(value: unknown): string | undefined {
+    const raw = toBoundedString(value, 500);
+    if (!raw) return undefined;
+    try {
+        const parsed = new URL(raw);
+        const host = parsed.hostname.toLowerCase();
+        if (
+            parsed.protocol !== 'https:'
+            || parsed.username
+            || parsed.password
+            || host === 'localhost'
+            || host.endsWith('.localhost')
+            || host.endsWith('.local')
+            || /^(?:0|10|127|169\.254|172\.(?:1[6-9]|2\d|3[01])|192\.168)\./.test(host)
+        ) return undefined;
+        return parsed.toString();
+    } catch {
+        return undefined;
+    }
+}
+
+function projectPredictiveTriggerForRuntime(params: {
+    trigger: any;
+    id: string;
+    tId: number;
+    sId: number;
+    resolvedSuggestion?: any;
+}): any | null {
+    const { trigger, id, tId, sId } = params;
+    const name = toBoundedString(trigger.name, 100);
+    const conditions = trigger.conditions && typeof trigger.conditions === 'object' && !Array.isArray(trigger.conditions)
+        ? trigger.conditions
+        : null;
+    const action = trigger.action && typeof trigger.action === 'object' && !Array.isArray(trigger.action)
+        ? trigger.action
+        : null;
+    if (!name || !conditions || !action) return null;
+    if (!['active', 'suggested', 'disabled', 'archived'].includes(trigger.status)) return null;
+    if (!['manual', 'friction_auto', 'system'].includes(trigger.source)) return null;
+    if (!['help_card', 'workflow_guide', 'link_article', 'known_issue'].includes(action.type)) return null;
+    if (!Number.isSafeInteger(trigger.priority) || trigger.priority < 0 || trigger.priority > 100) return null;
+    if (!Number.isSafeInteger(trigger.cooldownHours) || trigger.cooldownHours < 1 || trigger.cooldownHours > 720) return null;
+
+    const kind = trigger.kind === 'known_issue' ? 'known_issue' : 'predictive_help';
+    if ((kind === 'known_issue') !== (action.type === 'known_issue')) return null;
+    const projectedKnownIssue = kind === 'known_issue' && trigger.knownIssue && typeof trigger.knownIssue === 'object'
+        ? {
+            severity: ['info', 'degraded', 'outage'].includes(trigger.knownIssue.severity)
+                ? trigger.knownIssue.severity
+                : 'info',
+            ...(getTimestampMillis(trigger.knownIssue.startsAt) !== null ? { startsAt: trigger.knownIssue.startsAt } : {}),
+            ...(trigger.knownIssue.endsAt === null
+                ? { endsAt: null }
+                : getTimestampMillis(trigger.knownIssue.endsAt) !== null ? { endsAt: trigger.knownIssue.endsAt } : {}),
+            ...(normalizePublicHttpsUrl(trigger.knownIssue.statusPageUrl)
+                ? { statusPageUrl: normalizePublicHttpsUrl(trigger.knownIssue.statusPageUrl) }
+                : {}),
+        }
+        : undefined;
+    if (kind === 'known_issue' && !projectedKnownIssue) return null;
+
+    const projectedSuggestion = params.resolvedSuggestion && typeof params.resolvedSuggestion === 'object'
+        ? {
+            title: toBoundedString(params.resolvedSuggestion.title, 160),
+            summary: typeof params.resolvedSuggestion.summary === 'string'
+                ? params.resolvedSuggestion.summary.trim().slice(0, 600)
+                : '',
+            ...(toBoundedString(params.resolvedSuggestion.sourceAnswerId, 180)
+                ? { sourceAnswerId: toBoundedString(params.resolvedSuggestion.sourceAnswerId, 180) }
+                : {}),
+            ...(typeof params.resolvedSuggestion.sourceAnswerVersion === 'string' || typeof params.resolvedSuggestion.sourceAnswerVersion === 'number'
+                ? { sourceAnswerVersion: params.resolvedSuggestion.sourceAnswerVersion }
+                : {}),
+            ...(Array.isArray(params.resolvedSuggestion.articles)
+                ? { articles: params.resolvedSuggestion.articles.slice(0, 3) }
+                : {}),
+            ...(action.type === 'workflow_guide' && params.resolvedSuggestion.procedure
+                ? { procedure: params.resolvedSuggestion.procedure }
+                : {}),
+        }
+        : undefined;
+
+    return {
+        id,
+        pId: ANSWERLATTICE_PRODUCT_ID,
+        tId,
+        sId,
+        name,
+        ...(toBoundedString(trigger.description, 300) ? { description: toBoundedString(trigger.description, 300) } : {}),
+        kind,
+        conditions: {
+            ...(toBoundedString(conditions.page, 100) ? { page: toBoundedString(conditions.page, 100) } : {}),
+            ...(toBoundedString(conditions.feature, 100) ? { feature: toBoundedString(conditions.feature, 100) } : {}),
+            ...(toBoundedString(conditions.workflow, 100) ? { workflow: toBoundedString(conditions.workflow, 100) } : {}),
+            ...(toBoundedString(conditions.plan, 100) ? { plan: toBoundedString(conditions.plan, 100) } : {}),
+            ...(toBoundedString(conditions.userRole, 100) ? { userRole: toBoundedString(conditions.userRole, 100) } : {}),
+        },
+        action: {
+            type: action.type,
+            ...(toBoundedString(action.entityId, 180) ? { entityId: toBoundedString(action.entityId, 180) } : {}),
+            ...(toBoundedString(action.articleId, 180) ? { articleId: toBoundedString(action.articleId, 180) } : {}),
+            ...(toBoundedString(action.customTitle, 160) ? { customTitle: toBoundedString(action.customTitle, 160) } : {}),
+            ...(toBoundedString(action.customSummary, 200) ? { customSummary: toBoundedString(action.customSummary, 200) } : {}),
+        },
+        ...(projectedSuggestion?.title ? { resolvedSuggestion: projectedSuggestion } : {}),
+        priority: trigger.priority,
+        cooldownHours: trigger.cooldownHours,
+        status: trigger.status,
+        source: trigger.source,
+        ...(projectedKnownIssue ? { knownIssue: projectedKnownIssue } : {}),
+    };
 }
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
@@ -152,7 +290,6 @@ export interface PredictiveTriggerSyncResult {
     cacheRebuilt: boolean;
     triggerCount: number;
     effectivenessUpdated: number;
-    autoDisabled: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -182,8 +319,9 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
             .collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
-            .limit(MAX_TRIGGERS_PER_TENANT)
+            .limit(MAX_TRIGGERS_PER_TENANT + 1)
             .get();
+        if (existingSnap.size >= MAX_TRIGGERS_PER_TENANT) return 0;
 
         const coveredEntityIds = new Set<string>();
         existingSnap.docs.forEach(d => {
@@ -197,7 +335,10 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
 
         // Generate suggestions for uncovered high-friction entities
         for (const entity of topEntities) {
-            if (generated >= MAX_AUTO_SUGGESTIONS_PER_NIGHT) break;
+            if (
+                generated >= MAX_AUTO_SUGGESTIONS_PER_NIGHT
+                || existingSnap.size + generated >= MAX_TRIGGERS_PER_TENANT
+            ) break;
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(entity.entityId);
             if (!entityId || !entity.entityName) continue;
             if (entity.last7d?.frictionScore < MIN_FRICTION_SCORE_FOR_SUGGESTION) continue;
@@ -210,6 +351,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
                 sId,
                 name: `Help for ${entity.entityName}`,
                 description: `Auto-suggested from friction data (score: ${entity.last7d.frictionScore})`,
+                kind: 'predictive_help',
                 conditions: {
                     // Page left undefined — founder must set the page
                 },
@@ -248,14 +390,17 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
 // 16b — REBUILD PLATFORM SUMMARY CACHE
 // ═══════════════════════════════════════════════════════════════
 
-async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
+async function rebuildTriggerCache(tId: number, sId: number): Promise<{ count: number; rebuilt: boolean }> {
     try {
         const snap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
-            .limit(MAX_TRIGGERS_PER_TENANT)
+            .limit(MAX_TRIGGERS_PER_TENANT + 1)
             .get();
+        if (snap.size > MAX_TRIGGERS_PER_TENANT) {
+            throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_LIMIT_EXCEEDED');
+        }
 
         const triggers: Record<string, any> = {};
         const legacyRefs: DocumentReference[] = [];
@@ -284,19 +429,21 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
             const answer = entityId ? answersByEntity.get(entityId) : null;
             const resolvedTitle = trigger.action?.customTitle || answer?.title || trigger.name;
             const resolvedSummary = trigger.action?.customSummary || answer?.content?.structuredSummary || '';
-            triggers[trigger.id] = {
-                ...trigger,
-                ...(resolvedTitle ? {
-                    resolvedSuggestion: {
-                        title: resolvedTitle,
-                        summary: resolvedSummary,
-                        sourceAnswerId: answer?.id,
-                        sourceAnswerVersion: resolveAnswerVersion(answer),
-                        articles: answer?.id ? [{ id: answer.id, title: answer.title || resolvedTitle }] : undefined,
-                        procedure: trigger.action?.type === 'workflow_guide' ? answer?.content?.procedure : undefined,
-                    },
-                } : {}),
-            };
+            const projected = projectPredictiveTriggerForRuntime({
+                trigger,
+                id: trigger.id,
+                tId,
+                sId,
+                resolvedSuggestion: resolvedTitle ? {
+                    title: resolvedTitle,
+                    summary: resolvedSummary,
+                    sourceAnswerId: answer?.id,
+                    sourceAnswerVersion: resolveAnswerVersion(answer),
+                    articles: answer?.id ? [{ id: answer.id, title: answer.title || resolvedTitle }] : undefined,
+                    procedure: trigger.action?.type === 'workflow_guide' ? answer?.content?.procedure : undefined,
+                } : undefined,
+            });
+            if (projected) triggers[trigger.id] = projected;
         });
 
         const triggerCount = Object.keys(triggers).length;
@@ -304,19 +451,16 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
         const activeTriggerCount = Object.values(triggers).filter(trigger => {
             if (trigger.status !== 'active') return false;
             if (trigger.kind !== 'known_issue') return true;
+            const startsAt = getTimestampMillis(trigger.knownIssue?.startsAt);
             const rawEndsAt = trigger.knownIssue?.endsAt;
-            const endsAt = typeof rawEndsAt?.toMillis === 'function'
-                ? Number(rawEndsAt.toMillis())
-                : typeof rawEndsAt === 'string' || typeof rawEndsAt === 'number'
-                    ? new Date(rawEndsAt).getTime()
-                    : null;
-            return endsAt === null || !Number.isFinite(endsAt) || endsAt > now;
+            const endsAt = getTimestampMillis(rawEndsAt);
+            return (startsAt === null || startsAt <= now) && (endsAt === null || endsAt > now);
         }).length;
         const sourceHash = hashPayload({ triggerCount, activeTriggerCount, triggers });
         const docRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`predictiveTriggers_${tId}_${sId}`);
         const existingSnap = await docRef.get();
         if (existingSnap.exists && existingSnap.data()?.sourceHash === sourceHash) {
-            return triggerCount;
+            return { count: triggerCount, rebuilt: false };
         }
 
         await docRef.set({
@@ -335,24 +479,23 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
             sourceType: 'platformSummary/predictiveTriggers',
         });
 
-        return triggerCount;
+        return { count: triggerCount, rebuilt: true };
     } catch (error) {
         logger.error('[Predictive Trigger Sync] Cache rebuild failed', {
             failureCode: ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED,
             ...getPredictiveTriggerScopeContext(tId, sId),
             ...getPredictiveTriggerSourceErrorContext(error),
         });
-        return 0;
+        return { count: 0, rebuilt: false };
     }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 16c — EFFECTIVENESS SCORING + AUTO-DISABLE
+// 16c — ADVISORY EFFECTIVENESS SCORING
 // ═══════════════════════════════════════════════════════════════
 
-async function updateEffectiveness(tId: number, sId: number): Promise<{ updated: number; disabled: number }> {
+async function updateEffectiveness(tId: number, sId: number): Promise<number> {
     let updated = 0;
-    let disabled = 0;
 
     try {
         // Load active triggers
@@ -364,7 +507,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
             .limit(MAX_TRIGGERS_PER_TENANT)
             .get();
 
-        if (triggerSnap.empty) return { updated: 0, disabled: 0 };
+        if (triggerSnap.empty) return 0;
 
         // Load suggestion signals from last 30 days
         const thirtyDaysAgo = new Date();
@@ -419,22 +562,13 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
                 lastEvaluated: Timestamp.now(),
             };
 
-            // Auto-disable if low performing
-            if (signals.shown >= AUTO_DISABLE_MIN_IMPRESSIONS && score < AUTO_DISABLE_SCORE_THRESHOLD) {
-                batch.update(triggerDoc.ref, {
-                    pId: ANSWERLATTICE_PRODUCT_ID,
-                    effectiveness,
-                    status: 'disabled',
-                    modifiedOn: Timestamp.now(),
-                });
-                disabled++;
-            } else {
-                batch.update(triggerDoc.ref, {
-                    pId: ANSWERLATTICE_PRODUCT_ID,
-                    effectiveness,
-                    modifiedOn: Timestamp.now(),
-                });
-            }
+            // Public interaction evidence is advisory. It must never change
+            // trigger status without a founder review decision.
+            batch.update(triggerDoc.ref, {
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                effectiveness,
+                modifiedOn: Timestamp.now(),
+            });
 
             updated++;
             batchCount++;
@@ -454,7 +588,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
         });
     }
 
-    return { updated, disabled };
+    return updated;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -471,7 +605,6 @@ export async function runPredictiveTriggerSync(
             cacheRebuilt: false,
             triggerCount: 0,
             effectivenessUpdated: 0,
-            autoDisabled: 0,
         };
     }
 
@@ -479,16 +612,15 @@ export async function runPredictiveTriggerSync(
     const suggestionsGenerated = await autoGenerateSuggestions(tId, sId);
 
     // 16c: Update effectiveness scores (before cache rebuild so cache is fresh)
-    const { updated: effectivenessUpdated, disabled: autoDisabled } = await updateEffectiveness(tId, sId);
+    const effectivenessUpdated = await updateEffectiveness(tId, sId);
 
     // 16b: Rebuild cache (after auto-gen + effectiveness updates)
-    const triggerCount = await rebuildTriggerCache(tId, sId);
+    const cacheResult = await rebuildTriggerCache(tId, sId);
 
     return {
         suggestionsGenerated,
-        cacheRebuilt: true,
-        triggerCount,
+        cacheRebuilt: cacheResult.rebuilt,
+        triggerCount: cacheResult.count,
         effectivenessUpdated,
-        autoDisabled,
     };
 }

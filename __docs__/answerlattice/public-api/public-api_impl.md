@@ -1,109 +1,141 @@
-# Answerlattice Public API — Implementation
+# Answerlattice Public API v1 - Implementation
 
-> **Status:** Implemented
-> **Last Updated:** 2026-06-29
+> **Status:** Implemented, locally audited, rollout-gated
+> **Last Updated:** 2026-07-20
 
----
+## Connected File Map
 
-## Files
-
-| File | Role |
+| File | Responsibility |
 | --- | --- |
-| `src/lib/answerlattice/publicApi.ts` | Shared public API-key authentication, rate limiting, schema version, timestamp helpers |
-| `src/lib/publicApi/auth.ts` | Shared hash validation, credential source selection, and scope checks |
-| `src/app/api/answerlattice/public/v1/answers/route.ts` | Public canonical answer retrieval |
-| `src/app/api/answerlattice/public/v1/entities/route.ts` | Public entity registry |
-| `src/app/api/answerlattice/public/v1/signals/route.ts` | Public signal ingestion |
-| `src/lib/answerlattice/canonicalRetrieval.ts` | Canonical-first retrieval used by answers API |
-| `src/lib/answerlattice/signalEmitter.ts` | Server-side Answerlattice signal write path used by signals API |
+| `src/config/features.ts` | Main rollout flag and compiled-bundle read flag. |
+| `src/constants/answerlattice/routes.ts` | Owner Public API management route. |
+| `src/constants/answerlattice/navigations.ts` | Flag- and permission-gated navigation item. |
+| `src/constants/answerlattice/permissions.ts` | `MANAGE_INTEGRATIONS` route admission. |
+| `src/app/(answerlattice)/answerlattice/public-api/page.tsx` | Dedicated owner management page. |
+| `src/components/templates/answerlattice/settings/AnswerlatticePublicApiManagement.tsx` | Strict status, create/rotate, one-time reveal, copy, and revoke UI. |
+| `src/app/api/answerlattice/public-api-key/route.ts` | Authenticated key-management API. |
+| `src/lib/answerlattice/publicApiContracts.ts` | Exact scopes, schemas, credential checks, response checks, public statuses/signal types, and metadata sanitization. |
+| `src/lib/answerlattice/publicApiKeyStore.ts` | Hash-only store persistence and transactional audit. |
+| `src/lib/answerlattice/publicApi.ts` | External request authentication, rate limiting, tenant resolution, and response headers. |
+| `src/app/api/answerlattice/public/v1/answers/route.ts` | Canonical answer retrieval. |
+| `src/app/api/answerlattice/public/v1/entities/route.ts` | Public entity registry and ETag behavior. |
+| `src/app/api/answerlattice/public/v1/signals/route.ts` | Governed signal intake and replay-conflict response. |
+| `src/lib/publicApi/auth.ts` | Shared hash lookup primitives; Answerlattice disables legacy raw fallback and positive auth cache. |
+| `src/lib/answerlattice/canonicalRetrieval.ts` | Canonical-first retrieval and applicability resolution. |
+| `src/lib/answerlattice/signalEmitter.ts` | Deterministic signal persistence and payload-conflict enforcement. |
 
----
+## Owner Management Flow
 
-## Authentication Contract
-
-`authenticateAnswerlatticePublicApi()` enforces:
-
-1. `ENABLE_ANSWERLATTICE_PUBLIC_API` is enabled.
-2. `X-API-Key` exists and starts with `al_`.
-3. Rate limit is checked before Firestore key lookup.
-4. `validatePublicApiKey()` resolves the hash-only key from `stores.publicApi.apiKeyHash`; Answerlattice public APIs disable the legacy raw-key fallback and do not opt into widget-only credential sources.
-5. The resolved key must be an Answerlattice public API key (`productId: 'AL'` when present, `purpose: 'answerlattice_public_api'` when present, and the endpoint's required scope is present).
-   - Read endpoints require `public:read`.
-   - Signal-ingestion endpoints require `signals:write`.
-6. If the request has an `Origin`, it must match the store's allowed origins.
-7. `tId` and `sId` are derived from the resolved store, never from the request body.
-
-Widget credentials are intentionally separate:
-
-- `stores.answerlatticeWidgetApi` is accepted only by widget runtime routes.
-- Legacy `stores.publicApi.purpose = "answerlattice_widget"` keys remain accepted by widget routes but are rejected by Answerlattice public API routes.
-
----
-
-## Endpoint Behavior
-
-### `POST /api/answerlattice/public/v1/answers`
-
-- Validates request body with Zod.
-- Optionally validates context with `AnswerlatticeContextSchema`.
-- Calls `attemptCanonicalRetrieval()`.
-- Returns governed canonical answer data only.
-- Suppresses internal entity-resolution debug traces in production responses; retrieval debug stays inside owner-controlled escalation/ticket diagnostics.
-- Does not run RAG fallback or provider-heavy AI work.
-
-### `GET /api/answerlattice/public/v1/entities`
-
-- Reads compiled private entity-index bundle context first when bundle reads are enabled and ready.
-- Falls back to a capped tenant entity list from Answerlattice Firestore when bundles are disabled, missing, not ready, or unavailable.
-- Logs `answerlattice_public_entities_bundle_manifest_load_failed` or `answerlattice_public_entities_bundle_object_load_failed` when a bundle manifest/object read throws before falling back.
-- Filters by optional `type` and `status` in memory to avoid adding more composite index requirements.
-- Defaults to public-visible statuses: `active` and `beta`.
-- Supports `ETag` and short private cache headers.
-
-### `POST /api/answerlattice/public/v1/signals`
-
-- Requires `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`.
-- Requires an explicit `signals:write` public API key scope; `public:read` alone cannot write signals.
-- Validates signal type against `ANSWERLATTICE_SIGNAL_TYPE`.
-- Sanitizes metadata to primitive values with key and value limits.
-- Treats `externalId`, `requestId`, or `idempotencyKey` as server-side signal idempotency keys when present.
-- Calls `emitAnswerlatticeSignal()`.
-- Returns `202 Accepted`.
-
----
-
-## Cost Controls
-
-- Malformed/non-`al_*` keys fail before Firestore lookup.
-- Hash-only Answerlattice keys skip the legacy raw-key fallback query.
-- Rate limiting runs before key validation.
-- Answer retrieval does not call Gemini/RAG.
-- Entity registry uses compiled context first when available; Firestore fallback reads are capped at 200 documents.
-- Signal ingestion writes one signal document and uses deterministic document IDs for explicit source/request IDs so retries do not append duplicate signal rows.
-
----
-
-## Security Notes
-
-- API keys are never stored raw.
-- API responses do not include internal audit trails, mutation proposals, user data, or raw Firestore documents.
-- Public answer responses do not expose entity-resolution debug internals in production.
-- Signal ingestion never mutates canonical answers directly; it only feeds the governed mutation pipeline.
-- Tenant isolation is key-derived and server-side.
-
----
-
-## Testing
-
-Baseline checks:
-
-```bash
-npx tsc --noEmit --incremental false
-npm --prefix functions-answerlattice run build
+```text
+flag + authenticated session
+  -> exact Answerlattice session scope
+  -> fail-closed actor/workspace rate limit
+  -> MANAGE_INTEGRATIONS permission
+  -> strict bounded request
+  -> create/rotate or revoke
+  -> active-workspace transaction
+  -> stores.publicApi hash-only update/delete
+  -> append-only answerlattice_auditLogs summary
+  -> strict private response
 ```
 
-Route smoke checks:
+One workspace has at most one active Public API credential. Generating a new key is rotation, not key proliferation. The raw key is generated server-side and returned only in the successful create/rotate response.
 
-- Feature flag disabled returns `404 FEATURE_DISABLED`.
-- Missing/invalid key returns `401 INVALID_API_KEY`.
-- Malformed body returns `400 INVALID_INPUT`.
+The persisted credential shape is:
+
+```ts
+{
+  apiKeyHash: string; // 64 lowercase hex characters
+  keyPrefix: string;  // bounded al_ prefix for recognition
+  createdAt: string;  // exact ISO timestamp
+  productId: 'AL';
+  purpose: 'answerlattice_public_api';
+  scopes: Array<'public:read' | 'signals:write' | 'mcp:read'>;
+}
+```
+
+The browser never receives the hash. Audit records contain only prefix, timestamp, scopes, active state, actor, and tenant/workspace scope.
+
+## External Authentication Flow
+
+`authenticateAnswerlatticePublicApi()` enforces this order:
+
+1. Main feature flag is enabled.
+2. `X-API-Key` is a non-empty `al_*` value.
+3. IP-based pre-auth rate limiting runs and fails closed on provider error.
+4. Per-key-hash and endpoint rate limiting runs and fails closed.
+5. Requests carrying a browser `Origin` are rejected; this credential is server-side only.
+6. Hash-only lookup runs against `stores.publicApi` with legacy raw fallback disabled and cache TTL `0`.
+7. Credential source, product, purpose, scope array, and required endpoint scope match exactly.
+8. Active Answerlattice tenant/workspace scope is derived from the store record.
+
+`mcp:read` is deliberately separate from `public:read`. The MCP session exchange cannot turn an ordinary public-read credential into private compiled-context access.
+9. Retrieval or signal work begins.
+
+Key-management POST requests separately reject cross-origin browser submissions before permission or Firestore work.
+
+## Endpoint Contracts
+
+### Answers
+
+- Body limit: 16 KiB.
+- Query: 1-500 trimmed characters.
+- Optional version: positive bounded integer.
+- Optional plan, role, and state: non-empty bounded IDs.
+- Optional context: `AnswerlatticeContextSchema`, only when context-aware support is enabled.
+- Runtime: `attemptCanonicalRetrieval()` only; no RAG/provider fallback.
+- Public projection: approved answer content, applicability, normalized citations, confidence, clarification, bounded governance flags, and timestamps.
+- Excluded: internal evidence IDs, drift reasons, audit records, raw source records, knowledge-graph expansion/interaction rules, and production debug traces.
+
+### Entities
+
+- Query allows known entity type, public status (`active` or `beta`), and limit 1-200.
+- Compiled private entity-index bundle is preferred only when both bundle flags are enabled and the manifest is ready.
+- Firestore fallback is capped and sorted deterministically.
+- ETag is derived from stable payload fields and excludes `generatedAt`, so `If-None-Match` can return `304`.
+- `deprecated`, draft, and invalid entity rows are excluded.
+- The response reports `truncated` when the bounded source cannot prove completeness; v1 has no cursor pagination.
+
+### Signals
+
+- Body limit: 32 KiB.
+- Requires `signals:write` and enabled signal mutation.
+- Allows only public support/friction signal types.
+- Requires a bounded idempotency key.
+- Optional entity ID must pass the shared governance ID boundary.
+- Metadata is capped to primitive values and reserved identity/source fields are stripped.
+- Server-owned source/request IDs are added after sanitization.
+- Exact replay is idempotent; changed replay content returns deterministic `409`.
+- A successful write returns `202`; it never mutates or publishes a canonical answer.
+
+## Response and Cache Contract
+
+- Answer and signal responses: `private, no-store, max-age=0`.
+- Entity responses: `private, max-age=60`, `Vary: X-API-Key`, `nosniff`, and stable ETag.
+- Authentication and error responses: private/no-store with fixed public error bodies.
+- No CORS allow headers are emitted because browser use is unsupported.
+
+## Deliberate Non-Goals
+
+- browser or mobile secret use;
+- generic document/chunk search;
+- ticket management or help-desk replacement;
+- canonical-answer writes or approvals;
+- private evidence/source export;
+- autonomous actions;
+- multiple active keys per workspace;
+- customer-selected arbitrary scopes;
+- broad webhook/workflow automation.
+
+## Verification
+
+Focused source gates:
+
+```bash
+npm run test:answerlattice-public-api-contracts
+env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-public-api-key:emulator
+npm run typecheck:answerlattice
+node scripts/verification/verify-answerlattice-runtime-truth.js
+```
+
+Hosted external-consumer proof remains a rollout requirement and is not implied by local source completion.

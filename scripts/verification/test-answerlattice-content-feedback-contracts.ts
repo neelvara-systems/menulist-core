@@ -28,6 +28,11 @@ assert.equal(parseAnswerlatticeContentFeedbackRequest({
     pageId: 'page-1',
     contentId: 'entry-1',
 })?.type, 'changelog');
+assert.equal(parseAnswerlatticeContentFeedbackRequest({
+    ...valid,
+    type: 'faq',
+    contentId: 'faq-1',
+})?.type, 'faq');
 assert.equal(AnswerlatticeContentFeedbackResultSchema.safeParse({
     success: true,
     likes: 1,

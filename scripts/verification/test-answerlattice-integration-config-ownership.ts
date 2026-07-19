@@ -7,6 +7,11 @@ import {
     buildIntegrationConfigIdentity,
     classifyIntegrationConfigOwnership,
 } from '../../functions-answerlattice/src/integrations/configOwnership';
+import {
+    ANSWERLATTICE_WORKFLOW_INTEGRATION_EVENT_TYPES,
+    AnswerlatticeWorkflowIntegrationTestResponseSchema,
+    AnswerlatticeWorkflowIntegrationsResponseSchema,
+} from '../../src/lib/answerlattice/workflowIntegrationContracts';
 
 const scope = { tId: 11, sId: 22 };
 const cases: Array<{ value: unknown; expected: 'owned' | 'legacy-unowned' | 'invalid' }> = [
@@ -33,5 +38,69 @@ assert.deepEqual(buildAnswerlatticeIntegrationConfigIdentity(scope), { pId: 'AL'
 assert.deepEqual(buildIntegrationConfigIdentity(scope.tId, scope.sId), { pId: 'AL', tId: 11, sId: 22 });
 assert.equal(buildAnswerlatticeIntegrationConfigIdentity({ tId: 0, sId: 22 }), null);
 assert.equal(buildIntegrationConfigIdentity('11', 22), null);
+
+const validIntegrationResponse = {
+    slack: {
+        enabled: true,
+        webhookConfigured: true,
+        channel: '#support',
+        eventFilters: ['nightly_summary'],
+    },
+    email: {
+        enabled: true,
+        recipients: ['owner@example.com'],
+        eventFilters: ['coverage_drop'],
+    },
+    eventTypes: [...ANSWERLATTICE_WORKFLOW_INTEGRATION_EVENT_TYPES],
+    defaultEventFilters: ['nightly_summary', 'coverage_drop'],
+    health: {
+        slack: {
+            lastStatus: 'success',
+            lastAttemptAt: '2026-07-19T10:00:00.000Z',
+            lastSuccessAt: '2026-07-19T10:00:00.000Z',
+            lastFailureAt: null,
+            lastError: null,
+        },
+        email: {
+            lastStatus: null,
+            lastAttemptAt: null,
+            lastSuccessAt: null,
+            lastFailureAt: null,
+            lastError: null,
+        },
+    },
+};
+
+assert.equal(AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse(validIntegrationResponse).success, true);
+assert.equal(AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse({
+    ...validIntegrationResponse,
+    unexpected: true,
+}).success, false);
+assert.equal(AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse({
+    ...validIntegrationResponse,
+    slack: {
+        ...validIntegrationResponse.slack,
+        eventFilters: ['unknown_event'],
+    },
+}).success, false);
+assert.equal(AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse({
+    ...validIntegrationResponse,
+    health: {
+        ...validIntegrationResponse.health,
+        slack: {
+            ...validIntegrationResponse.health.slack,
+            lastAttemptAt: 'not-a-date',
+        },
+    },
+}).success, false);
+assert.equal(AnswerlatticeWorkflowIntegrationTestResponseSchema.safeParse({
+    eventId: 'event-1',
+    message: 'Test notification queued.',
+}).success, true);
+assert.equal(AnswerlatticeWorkflowIntegrationTestResponseSchema.safeParse({
+    eventId: 'event-1',
+    message: 'Test notification queued.',
+    rawProviderResponse: 'must not pass',
+}).success, false);
 
 console.log('Answerlattice integration-config ownership boundaries passed.');

@@ -66,8 +66,11 @@ function verifyBillingEntitlementBoundary() {
   const reconciliationFunction = read('functions/src/billing/reconcileSubscriptions.ts');
   const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
   const firestoreRules = read('firestore.rules');
+  const answerlatticeFirestoreRules = read('firestore-answerlattice.rules');
   const verifyTopup = read('src/app/api/razorpay/verify-topup/route.ts');
   const webhook = read('src/app/api/razorpay/webhook/route.ts');
+  const paymentCheckoutBoundary = read('src/lib/billing/paymentCheckoutBoundary.ts');
+  const checkoutUrlBoundary = read('src/lib/razorpay/checkoutUrl.ts');
   const productBillingServer = read('src/lib/billing/productBillingServer.ts');
   const billingPeriod = read('src/lib/billing/billingPeriod.ts');
   const topupSettlement = read('src/lib/billing/topupSettlement.ts');
@@ -86,11 +89,13 @@ function verifyBillingEntitlementBoundary() {
   const answerlatticeIntakeUsageLedger = read('src/lib/answerlattice/intakeUsageLedger.ts');
   const answerlatticeIntakeUsageSettlement = read('src/lib/answerlattice/intakeUsageSettlement.ts');
   const answerlatticeBillingDocumentIdBoundary = read('src/lib/answerlattice/billingDocumentIdBoundary.ts');
+  const answerlatticeBillingScopeBoundary = read('src/lib/answerlattice/billingScopeBoundary.ts');
   const answerlatticeBillingClient = read('src/database/answerlattice/billing.ts');
   const menuListIndexes = JSON.parse(read('firestore.indexes.json'));
   const answerlatticeIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
   const razorpayUtils = read('src/utils/razorpay.ts');
   const paymentHook = read('src/hooks/usePaymentHandler.ts');
+  const answerlatticeBilling = read('src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx');
   const desktopBilling = read('src/components/templates/main-app/billing/index.tsx');
   const desktopSubscriptionCard = read('src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx');
   const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.tsx');
@@ -122,6 +127,82 @@ function verifyBillingEntitlementBoundary() {
     'package.json must expose verify:billing-entitlement-boundary',
   );
   assert(
+    packageJson.scripts?.['test:answerlattice-billing-contracts']?.includes('test-answerlattice-billing-contracts.ts'),
+    'package.json must expose Answerlattice billing response and URL contracts',
+  );
+  assert(
+    packageJson.scripts?.['test:answerlattice-billing:rules']?.includes('firestore-answerlattice.rules'),
+    'package.json must expose dedicated Answerlattice billing rules coverage',
+  );
+  assert(
+    packageJson.scripts?.['test:answerlattice-billing:shared-rules']?.includes('firestore.rules'),
+    'package.json must expose shared-mode Answerlattice billing rules coverage',
+  );
+  [
+    'projectRazorpaySubscriptionCheckoutResponse',
+    'parseRazorpaySubscriptionCheckoutResponse',
+    'projectRazorpayTopupCheckoutResponse',
+    'parseRazorpayTopupCheckoutResponse',
+    'RAZORPAY_SUBSCRIPTION_ID_PATTERN',
+    'RAZORPAY_ORDER_ID_PATTERN',
+    "hasOnlyKeys(value, ['subscription', 'reused'])",
+    "hasOnlyKeys(value.subscription, ['id'])",
+    "hasOnlyKeys(value, ['order'])",
+  ].forEach((token) => assertIncludes(paymentCheckoutBoundary, token, 'Razorpay checkout response projection boundary'));
+  [
+    'projectRazorpaySubscriptionCheckoutResponse(',
+    'projectRazorpayTopupCheckoutResponse(',
+  ].forEach((token) => {
+    const route = token.includes('Subscription') ? createSubscription : createTopupOrder;
+    assertIncludes(route, token, 'Provider checkout route response projection');
+  });
+  [
+    'parseRazorpaySubscriptionCheckoutResponse(subscriptionPayload)',
+    'parseRazorpayTopupCheckoutResponse(topupOrderPayload)',
+  ].forEach((token) => assertIncludes(paymentHook, token, 'Browser checkout response admission'));
+  [
+    "const RAZORPAY_HOSTED_PAYMENT_HOST = 'rzp.io';",
+    "url.protocol !== 'https:'",
+    'Boolean(url.username)',
+    'Boolean(url.password)',
+    "url.port !== '443'",
+    'url.hash =',
+    'normalizeRazorpaySubscriptionCheckoutUrl',
+    'normalizeRazorpayInvoiceUrl',
+  ].forEach((token) => assertIncludes(checkoutUrlBoundary, token, 'Razorpay hosted-payment URL boundary'));
+  assertIncludes(createSubscription, 'normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url)', 'Subscription short URL server admission');
+  assertIncludes(webhook, 'normalizeRazorpayInvoiceUrl(invoice.short_url)', 'Webhook invoice URL server admission');
+  assertIncludes(billingHistoryFormatter, 'normalizeRazorpayInvoiceUrl(event.invoiceUrl) || undefined', 'Billing history invoice URL browser admission');
+  [
+    'logPaymentFailure(',
+    'getBoundedPaymentStringContext(',
+    'answerlattice_billing_subscription_load_failed',
+    'answerlattice_billing_history_load_failed',
+    'answerlattice_billing_payment_flow_failed',
+    'answerlattice_billing_credit_purchase_failed',
+    'const [hasBillingLoadError, setHasBillingLoadError] = useState(false);',
+    'disabled={isLoading || hasBillingLoadError || !scope}',
+    'message="Billing could not be loaded"',
+    'No subscription changes are available until the current billing state is confirmed.',
+    'action={<Button onClick={() => void refetchActiveSubscription()}>Retry</Button>}',
+  ].forEach((token) => assertIncludes(answerlatticeBilling, token, 'Answerlattice billing bounded diagnostics'));
+  assertNotIncludes(answerlatticeBilling, "logger.error('Failed to load Answerlattice", 'Answerlattice billing raw load diagnostics');
+  assertIncludes(answerlatticeBillingClient, 'throw error;', 'Answerlattice active-subscription read failures propagate to the fail-closed UI');
+  assertNotIncludes(answerlatticeBillingClient, 'return null;\n        })\n        .finally(() => subscriptionRequests.delete(requestKey))', 'Answerlattice active-subscription read failures must not become false absence');
+  [
+    'hasExactAnswerlatticeBillingIdentity(resource.data)',
+    "hasAnswerlatticePermission('canManageBilling')",
+    'allow write: if false;',
+  ].forEach((token) => assertIncludes(answerlatticeFirestoreRules, token, 'Dedicated Answerlattice billing rules'));
+  [
+    'function canReadProductBillingResource()',
+    'function isAnswerlatticeBillingScopeMember(data)',
+    'allow read: if canReadProductBillingResource();',
+    'hasExactAnswerlatticeBillingIdentity(resource.data)',
+    "!hasAnyAnswerlatticeBillingIdentity(resource.data)",
+    "hasAnswerlatticePermission('canManageBilling')",
+  ].forEach((token) => assertIncludes(firestoreRules, token, 'Shared product billing rules'));
+  assert(
     !fs.existsSync(path.join(ROOT, 'src/database/topups/index.ts')),
     'Client top-up mutation DAL must stay absent; provider order creation and settlement are server-owned',
   );
@@ -147,6 +228,13 @@ function verifyBillingEntitlementBoundary() {
   assertIncludes(mobileBilling, 'getBillingHistoryForStore(session?.user?.tenantId, historyStoreId)', 'Mobile billing history must preserve raw signed scope for exact DAL admission');
   assertNotIncludes(desktopBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Desktop billing history must not coerce nullable session scope');
   assertNotIncludes(mobileBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Mobile billing history must not coerce nullable session scope');
+  [
+    "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
+    "where('tenantId', '==', tenantId)",
+    "where('storeId', '==', storeId)",
+    "where('tenantId', '==', tenantScope.numericId)",
+    "where('storeId', '==', storeScope.numericId)",
+  ].forEach((token) => assertIncludes(answerlatticeBillingClient, token, 'Answerlattice billing client exact product/workspace query scope'));
   [
     'const toMilliseconds = (value: unknown): number | null => {',
     "typeof record.toMillis === 'function'",
@@ -229,8 +317,16 @@ function verifyBillingEntitlementBoundary() {
     'package.json must expose billing checkout concurrency emulator coverage',
   );
   assert(
+    packageJson.scripts?.['test:billing-checkout-concurrency:emulator']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'),
+    'billing checkout concurrency command must clear inherited ADC',
+  );
+  assert(
     packageJson.scripts?.['test:billing-coordination:rules']?.includes('test-billing-coordination-rules.ts'),
     'package.json must expose billing coordination Firestore rules coverage',
+  );
+  assert(
+    packageJson.scripts?.['test:billing-coordination:rules']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'),
+    'billing coordination rules command must clear inherited ADC',
   );
   [
     'exactly one concurrent checkout lease claim must win',
@@ -705,6 +801,14 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(answerlatticeBillingDocumentIdBoundary, token, 'Answerlattice billing document/scope boundary'));
 
   [
+    'export const getAnswerlatticeBillingRecordScope = (',
+    'productValues.length > 0',
+    'productValues.every((value) => value === PRODUCT_IDS.ANSWERLATTICE)',
+    "const tId = getExactNumericScope(record, ['tId', 'tenantId']);",
+    "const sId = getExactNumericScope(record, ['sId', 'storeId']);",
+  ].forEach((token) => assertIncludes(answerlatticeBillingScopeBoundary, token, 'Answerlattice persisted billing identity boundary'));
+
+  [
     'normalizeAnswerlatticeBillingScopeDocumentId(tenantId)',
     'normalizeAnswerlatticeBillingScopeDocumentId(storeId)',
     'isAnswerlatticeStoreInScope(storeData, { tenantId, storeId }, storeSnapshot.id)',
@@ -720,6 +824,9 @@ function verifyBillingEntitlementBoundary() {
   assertNotIncludes(answerlatticeBillingClient, 'Number(item.storeId ?? item.sId)', 'Answerlattice billing history must not coerce persisted store ownership');
   [
     'isAnswerlatticeStoreInScope(',
+    'getAnswerlatticeBillingRecordScope,',
+    '&& !getAnswerlatticeBillingRecordScope(subscription)',
+    '&& !getAnswerlatticeBillingRecordScope(current)',
     'isAnswerlatticeSubscriptionInScope(subscriptionData, {',
     'isAnswerlatticeSubscriptionInScope(currentData, {',
     'pId: PRODUCT_IDS.ANSWERLATTICE,',

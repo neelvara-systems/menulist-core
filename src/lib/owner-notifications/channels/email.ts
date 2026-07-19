@@ -1,9 +1,9 @@
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
+import nodemailer, { type Transporter } from '@lib/email/nodemailerRuntime';
 import { getSmtpConfigFromEnv, isSmtpConfigured } from '@lib/notifications/smtpConfig';
-import * as nodemailer from 'nodemailer';
 import type { OwnerNotificationChannelResult } from '../types';
 
-let cachedTransporter: nodemailer.Transporter | null = null;
+let cachedTransporter: Transporter | null = null;
 const OWNER_NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS = 10_000;
 const OWNER_NOTIFICATION_SMTP_GREETING_TIMEOUT_MS = 10_000;
 const OWNER_NOTIFICATION_SMTP_SOCKET_TIMEOUT_MS = 15_000;
@@ -17,7 +17,7 @@ function normalizeProviderMessageId(value: unknown): string | undefined {
         : undefined;
 }
 
-function getTransporter(): nodemailer.Transporter | null {
+function getTransporter(): Transporter | null {
     if (cachedTransporter) return cachedTransporter;
 
     const smtpConfig = getSmtpConfigFromEnv();

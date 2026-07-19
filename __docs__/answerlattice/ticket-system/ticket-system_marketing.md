@@ -1,59 +1,48 @@
-# Ticket System — Marketing & Sales Collateral
+# Answerlattice Support Fallback Marketing Boundary
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Sales, Marketing (Internal)
+> **Internal claim guidance**
+> **Last verified:** July 19, 2026
 
----
+## Safe one-line description
 
-## 1. Elevator Pitch
+When an approved answer or guided workflow is not enough, Answerlattice preserves the question and safe context in a scoped support request for human follow-up.
 
-**One-liner:** "Structured support requests with SLA tracking, real-time updates, and conversation threading — built into your dashboard."
+## Buyer value
 
-**30 seconds:** MenuList's ticket system lets business owners submit structured support requests directly from their dashboard — categorized, prioritized, and tracked with SLA timers. Platform administrators see every ticket in real-time with conversation threading, internal notes, and automatic breach detection. No external tools. No email chains. Everything in one place.
+- The customer does not need to repeat the original question and current product context.
+- The founder gets one durable, workspace-scoped thread instead of an unresolved chatbot dead end.
+- Replies, status changes, and attachments stay attached to the same issue.
+- Repeated or resolved issues can become governed review evidence without becoming automatic truth.
+- Outbound notifications can bring the requester back to the saved thread.
 
----
+## Evidence-backed claims
 
-## 2. Feature Narrative
+- Explicit widget and guided-resolution handoff
+- Scoped ticket creation and real-time workspace updates
+- Conversation replies, status history, private notes/tags, and attachments
+- First-response and resolution target indicators based on recorded timestamps
+- Server-derived outbound ticket email
+- One-time satisfaction after resolution
+- Ticket-to-signal and reviewed knowledge-proposal paths
 
-### For SMB Owners
-When something isn't working, you shouldn't have to figure out where to get help. The ticket system is right there in your dashboard — describe the issue, attach a screenshot, and submit. You'll see your ticket's status update in real-time, and you can continue the conversation right inside the same view. No emails to track, no portals to remember.
+## Required qualifiers
 
-### For Platform Operators
-Every support request is tracked from creation to resolution. SLA timers start automatically based on priority — you see at a glance which tickets are at risk of breaching. Conversation threading keeps all context in one place. Internal notes and tags help your team coordinate without the customer seeing behind the scenes. Browser logs are captured automatically so you can debug without asking "what browser are you using?"
+- “SLA” is an internal operating indicator, not a contractual response guarantee.
+- Email is outbound notification only; reply-by-email is not available.
+- Ticket evidence is not approved product truth.
+- Answerlattice does not replace a mature help desk.
+- Public widget handoff is asynchronous support, not live chat.
 
----
+## Do not claim
 
-## 3. Key Selling Points
+- Guaranteed response or resolution time
+- Automatic routing, assignment, omnichannel support, or inbound email
+- Autonomous ticket resolution
+- Every ticket becomes documentation
+- Attachments are deleted immediately when a chat session is removed
+- Complete Zendesk, Intercom, Freshdesk, or Help Scout replacement
+- Verified deflection merely because a ticket was not created
 
-| Point | Evidence |
-|-------|---------|
-| **Real-time updates** | Firestore `onSnapshot` — owner sees status changes instantly |
-| **SLA tracking** | 3-tier SLA with automatic on_time/at_risk/breached calculation |
-| **Zero-config** | Works out of the box, no setup required |
-| **Browser log capture** | Debugging context captured automatically on ticket creation |
-| **Conversation threading** | Chat-style messaging with system messages for status changes |
-| **Tenant isolation** | Every ticket scoped to tenant + store |
-| **Soft delete** | Tickets can be restored — never permanently lost from UI |
-| **File attachments** | Paste or upload, up to 4 files, tenant-scoped storage |
+## Sales role
 
----
-
-## 4. Competitive Comparison
-
-| Feature | MenuList | Zendesk | Freshdesk | Intercom |
-|---------|:--------:|:-------:|:---------:|:--------:|
-| Built into product | ✅ | ❌ External | ❌ External | ❌ External |
-| Same auth | ✅ | ❌ Separate login | ❌ Separate login | ❌ Separate login |
-| Real-time updates | ✅ | ⚠️ Polling | ⚠️ Polling | ✅ |
-| SLA tracking | ✅ | ✅ (paid) | ✅ (paid) | ❌ |
-| Browser log capture | ✅ | ❌ | ❌ | ❌ |
-| Conversation threading | ✅ | ✅ | ✅ | ✅ |
-| Internal notes | ✅ | ✅ | ✅ | ✅ |
-| Cost | $0/mo | $19-115/agent | $15-79/agent | $39-139/seat |
-
----
-
-## 5. Pricing Context
-
-This feature is included in all MenuList subscriptions as core infrastructure. No separate pricing. The Firestore cost is negligible (~$0.007/month for 10 stores).
+Treat tickets as a trust and recovery requirement supporting the governed-answer product. Do not position the ticket queue itself as Answerlattice's primary differentiator.

@@ -1,7 +1,7 @@
 'use client';
 
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
-import { normalizeHostedHelpArticleSlug } from '@lib/answerlattice/hostedHelpRequest';
+import { buildHostedHelpArticlePath } from '@lib/answerlattice/hostedHelpRequest';
 import { theme } from 'antd';
 import Link from 'next/link';
 import { type CSSProperties, useMemo, useState } from 'react';
@@ -55,6 +55,7 @@ type HostedHelpClientProps = {
     changelogPage: HostedHelpChangelogPage | null;
     faqs: HostedHelpFaq[];
     site: HostedHelpSiteView;
+    unavailableReason?: string | null;
     view: HostedHelpView;
 };
 
@@ -63,7 +64,7 @@ const pathFor = (path: string) => path;
 function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSearchItem[] {
     if (!categories?.categories) return [];
 
-    return Object.values(categories.categories).flatMap(category => {
+    const articles = Object.values(categories.categories).flatMap(category => {
         const rootArticles = (category.articles || []).map(article => ({
             ...article,
             categoryTitle: category.title,
@@ -77,11 +78,11 @@ function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSea
         ));
         return [...rootArticles, ...sectionArticles];
     });
+    return Array.from(new Map(articles.map(article => [article.id, article])).values());
 }
 
 function articleHref(article: Pick<KnowledgeBaseArticleMeta, 'id' | 'url'>) {
-    const slug = normalizeHostedHelpArticleSlug(article.url || article.id) || article.id;
-    return pathFor(`/articles/${encodeURIComponent(slug)}`);
+    return pathFor(buildHostedHelpArticlePath(article.url || article.id) || '/docs');
 }
 
 function entryText(entry: HostedHelpChangelogEntry) {
@@ -101,6 +102,7 @@ export default function HostedHelpClient({
     changelogPage,
     faqs,
     site,
+    unavailableReason,
     view,
 }: HostedHelpClientProps) {
     const { token } = theme.useToken();
@@ -178,12 +180,13 @@ export default function HostedHelpClient({
                         <input
                             aria-label="Search help content"
                             className={styles.searchInput}
+                            disabled={Boolean(unavailableReason)}
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder="Search guides, FAQ, and updates"
                             value={query}
                         />
                     </div>
-                    {query.trim() ? (
+                    {query.trim() && !unavailableReason ? (
                         <div className={styles.list} style={{ marginTop: 14, maxWidth: 720 }}>
                             {results.length > 0 ? results.map(result => (
                                 <Link className={styles.card} href={result.href} key={`${result.href}-${result.label}`}>
@@ -213,7 +216,16 @@ export default function HostedHelpClient({
             </nav>
 
             <main className={`${styles.container} ${styles.main}`}>
-                {view === 'article' && article ? (
+                {unavailableReason ? (
+                    <section className={styles.section}>
+                        <div className={styles.card} role="status">
+                            <h2 className={styles.sectionTitle}>Help is temporarily unavailable</h2>
+                            <p className={styles.muted}>{unavailableReason}</p>
+                        </div>
+                    </section>
+                ) : null}
+
+                {!unavailableReason && view === 'article' && article ? (
                     <div className={styles.articleLayout}>
                         <article className={styles.article}>
                             <p className={styles.muted}>{[article.categoryTitle, article.sectionTitle].filter(Boolean).join(' / ')}</p>
@@ -231,7 +243,7 @@ export default function HostedHelpClient({
                     </div>
                 ) : null}
 
-                {(view === 'home' || view === 'docs') ? (
+                {!unavailableReason && (view === 'home' || view === 'docs') ? (
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2 className={styles.sectionTitle}>Guides</h2>
@@ -252,7 +264,7 @@ export default function HostedHelpClient({
                     </section>
                 ) : null}
 
-                {(view === 'home' || view === 'faq') && site.config.showFaqs ? (
+                {!unavailableReason && (view === 'home' || view === 'faq') && site.config.showFaqs ? (
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2 className={styles.sectionTitle}>FAQ</h2>
@@ -273,7 +285,7 @@ export default function HostedHelpClient({
                     </section>
                 ) : null}
 
-                {(view === 'home' || view === 'changelog') && site.config.showChangelog ? (
+                {!unavailableReason && (view === 'home' || view === 'changelog') && site.config.showChangelog ? (
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2 className={styles.sectionTitle}>What&apos;s New</h2>

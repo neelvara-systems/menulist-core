@@ -1,7 +1,7 @@
 # Answerlattice Hosted Help Center
 
-> Status: Implemented  
-> Scope: Anonymous customer-facing docs/FAQ/changelog domains such as `help.example.com`  
+> Status: Implemented and locally hardened (July 19, 2026)
+> Scope: Anonymous customer-facing docs/FAQ/changelog domains such as `help.example.com`
 > Product boundary: Answerlattice-owned hosted knowledge surface, not MenuList support copy and not a documentation CMS.
 
 ## Purpose
@@ -22,18 +22,30 @@ This is separate from:
 - Answerlattice marketing website routes
 - ticket/chat/feedback operations
 
+## Maintained Documents
+
+- [`hosted-help_spec.md`](./hosted-help_spec.md) - product and runtime contract
+- [`hosted-help_impl.md`](./hosted-help_impl.md) - connected implementation map and failure behavior
+- [`hosted-help_firebase.md`](./hosted-help_firebase.md) - reads, writes, caches, provider operations, and cost
+- [`hosted-help_helpdoc.md`](./hosted-help_helpdoc.md) - owner setup and recovery guidance
+- [`hosted-help_mobile-support.md`](./hosted-help_mobile-support.md) - responsive owner-management boundary
+- [`hosted-help_marketing.md`](./hosted-help_marketing.md) - safe internal positioning
+- [`hosted-help_website.md`](./hosted-help_website.md) - verified public claim boundary
+- [`hosted-help_test-cases.md`](./hosted-help_test-cases.md) - focused verification matrix
+
 ## Runtime Flow
 
 1. Client configures hosted help in `/answerlattice/widget/hosted-help`.
-2. Dashboard save adds new help domains to the shared Vercel project through the same domain-provisioning service used by MenuList custom domains.
-3. Dashboard save writes `stores/{sId}.hostedHelpConfig`.
-4. Dashboard save also writes one Answerlattice registry doc per domain:
+2. Dashboard accepts only domains the middleware can route: `help`, `docs`, `support`, `kb`, `knowledge`, or `answers` hostnames.
+3. The domain ownership is registry-proven. A matching Answerlattice registry document can be reused; a new domain must be added successfully to the configured Vercel project. Vercel `409` is not treated as ownership proof.
+4. Dashboard save writes `stores/{sId}.hostedHelpConfig`.
+5. Dashboard save also writes one Answerlattice registry doc per domain:
    `answerlattice_publicHelpSites/{domain}`.
-5. Owners can check DNS status from the Hosted Help tab; the check refreshes Vercel DNS config and stores compact status fields on the registry doc.
-6. Middleware routes likely help domains such as `help.*`, `docs.*`, and `support.*` to `/answerlattice-hosted-help`, deleting caller-supplied hosted-help routing headers before forwarding middleware-owned request metadata.
-7. The hosted route uses the validated original `Host` as the registry key before rendering; routed headers and query parameters cannot select another public workspace.
-8. Published KB, FAQ, and changelog content is loaded through the existing tenant/store public cache.
-9. Server payloads are compacted before hydration; anonymous clients receive display fields only, not tenant IDs, job IDs, author IDs, embeddings, Firestore objects, or raw changelog document trees. Changelog descriptions become bounded plain text and timestamp-like values become validated ISO strings.
+6. Owners can check DNS status from the Hosted Help tab. Refresh requires every configured registry document to exist and match exact `pId`, `tId`, and `sId`; missing or foreign ownership fails closed.
+7. Middleware routes likely help domains to `/answerlattice-hosted-help`, deleting caller-supplied hosted-help routing headers before forwarding middleware-owned request metadata.
+8. The hosted route uses the validated original `Host` as the registry key before rendering; routed headers and query parameters cannot select another public workspace.
+9. Published KB, FAQ, and changelog content is loaded through the existing tenant/store public cache.
+10. Server payloads are compacted before hydration; anonymous clients receive display fields only, not tenant IDs, job IDs, author IDs, embeddings, Firestore objects, raw provider responses, or raw changelog document trees.
 
 ## Security Rules
 
@@ -44,13 +56,15 @@ This is separate from:
 - Public article body rendering uses `renderPublicTiptapHtml()` in `src/lib/answerlattice/publicRichText.ts`. That server renderer is the sanitizer: it accepts Tiptap JSON, emits a fixed tag/mark set, escapes text and attributes, allows only safe link/image schemes, and drops unknown nodes to escaped children before `HostedHelpClient` renders `safeHtml`.
 - `npm run verify:answerlattice-runtime-truth` guards this boundary by tying the hosted-help `dangerouslySetInnerHTML` call to the server-produced `safeHtml` field and the renderer escape/allowlist helpers.
 - Public page reads are rate-limited per domain/IP.
+- Registry and published-content reads use scoped data caches; full HTML responses are not shared-CDN cached because public admission contains a per-IP rate-limit outcome.
 - Public hosted-help identity is Host-authoritative. `?domain=` is accepted only for a middleware-marked local development rewrite, never for a public hostname, and malformed Host authorities fail closed.
 - Article slug normalization fails closed on malformed percent encoding instead of throwing a public 500.
-- Settings saves and manual DNS refreshes fail closed with a temporary error when rate limiting is enabled but unavailable; public pages show the empty shell instead of reading hosted content during that condition.
+- Settings saves and manual DNS refreshes fail closed with a temporary error when rate limiting is enabled but unavailable; public pages show an explicit temporary-unavailability state instead of reading hosted content during that condition.
 - Vercel provider failures stay in bounded runtime diagnostics with provider code/status and provider-message presence/length only. Browser responses and saved DNS status fields use generic hosted-help messages so provider exception text is not exposed to owners or anonymous users.
 - Widget Management save and DNS-refresh failures show fixed owner-facing copy; route response text, provider exceptions, and browser exception messages are not copied into dashboard notices.
 - Hosted Help settings reads use the shared Answerlattice dashboard `DATA_READ` limiter before permission and store/registry reads.
 - `noIndex` can block SEO indexing during setup.
+- Unknown routes, disabled FAQ/changelog routes, malformed article slugs, and articles absent from published navigation return 404. Article pages use article-specific titles and explicit canonical URLs; sitemap paths use the same encoded article-path helper as the browser.
 - In production, `/answerlattice-hosted-help` is an internal rewrite target only. Direct hits are redirected, and the `?domain=` test override is accepted only in local/dev rewrite mode.
 
 ## Owner Setup
@@ -64,6 +78,8 @@ In Answerlattice dashboard:
 5. Save.
 6. Copy the DNS records shown in the Hosted Help tab into the domain registrar.
 7. Use **Check DNS Status** until the domain shows `Live`.
+
+Do not use a general custom domain such as `care.example.com`; the current edge-routing contract requires one of the supported help-domain labels. MenuList custom-domain setup rejects those labels so the same hostname cannot be routed as both a public menu and Answerlattice hosted help.
 
 ## Domain Model
 
@@ -95,6 +111,8 @@ http://help.example.test:3000/
 - `src/constants/answerlattice/hostedHelp.ts`
 - `src/lib/answerlattice/hostedHelpConfig.ts`
 - `src/lib/answerlattice/hostedHelpServer.ts`
+- `src/lib/answerlattice/hostedHelpRequest.ts`
+- `src/lib/answerlattice/publicContentCache.ts`
 - `src/app/answerlattice-hosted-help/`
 - `src/app/api/answerlattice/hosted-help-settings/route.ts`
 - `src/components/templates/answerlattice/hostedHelp/`

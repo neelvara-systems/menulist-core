@@ -1,8 +1,8 @@
 # Maps Place Check - Documentation Hub
 
 > **Feature:** MenuList Maps Place Check
-> **Status:** Backend prototype, owner/admin only
-> **Last Updated:** July 3, 2026
+> **Status:** Guarded backend and owner-confirmation contract complete; provider activation pending
+> **Last Updated:** July 19, 2026
 
 ## Quick Navigation
 
@@ -34,7 +34,12 @@ This feature supports the MenuList Control Layer by comparing owner-provided sto
 - proposed address/hours/service hints from the grounded answer
 - source links that must be shown by any UI that displays generated content
 
-No canonical MenuList store field is changed by the prototype.
+The provider check itself never changes canonical MenuList truth. The existing
+desktop, mobile, and embedded Official Page Google Maps-link save now mirrors an
+internal owner-confirmed location binding in the same store write. A grounded
+Place-ID candidate can be stored only through the separate explicit-confirmation
+DAL path, and that binding can be replaced or removed without changing menu,
+hours, address, availability, or other provider bindings.
 
 ## Runtime Summary
 
@@ -45,6 +50,17 @@ Authenticated owner/admin callable
   -> calls existing genAIClient with googleMaps tool
   -> returns source-backed evidence
   -> writes nothing
+
+Existing owner Google Maps-link save
+  -> validates the public Google Maps URL
+  -> writes the public directions link
+  -> mirrors one internal owner-confirmed provider binding in the same store write
+
+Explicit grounded-candidate confirmation
+  -> accepts the Place ID and Maps URI only from one grounding source
+  -> checks the current tenant, active owner store, deletion, and block state
+  -> writes only the internal Google Maps binding
+  -> remains excluded from public output and Platform Pull
 ```
 
 ## Related Docs

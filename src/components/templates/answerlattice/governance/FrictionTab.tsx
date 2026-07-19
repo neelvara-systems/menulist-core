@@ -7,7 +7,7 @@
  * Read-only: 2 Firestore reads per page load.
  * 
  * Design: No charts, no filters, no date pickers.
- * Just a prioritized list + trend arrows + health badge + AI summary.
+ * Just a prioritized list + trend arrows + friction level + advisory summary.
  * 
  * Feature-flagged: ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE
  * @see __docs__/answerlattice/product-friction-intelligence/
@@ -17,10 +17,10 @@ import { useFrictionInsights } from '@hook/answerlattice/useFrictionInsights';
 import {
     AnswerlatticeFrictionEmergingTopic,
     AnswerlatticeFrictionEntitySummary,
-    AnswerlatticeFrictionHealth,
+    AnswerlatticeFrictionLevel,
     AnswerlatticeFrictionTrendDirection,
 } from '@type/answerlattice';
-import { Badge, Card, Empty, Skeleton, Space, Table, Tag, Typography, theme } from 'antd';
+import { Badge, Button, Card, Empty, Skeleton, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import {
     LuAlertTriangle,
     LuArrowDown,
@@ -39,22 +39,22 @@ interface FrictionTabProps {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HEALTH BADGE
+// FRICTION LEVEL BADGE
 // ═══════════════════════════════════════════════════════════════
 
-function HealthBadge({ health }: { health: AnswerlatticeFrictionHealth }) {
-    const config: Record<AnswerlatticeFrictionHealth, { status: 'success' | 'warning' | 'error' }> = {
+function FrictionLevelBadge({ level }: { level: AnswerlatticeFrictionLevel }) {
+    const config: Record<AnswerlatticeFrictionLevel, { status: 'success' | 'warning' | 'error' }> = {
         LOW: { status: 'success' },
         MODERATE: { status: 'warning' },
         HIGH: { status: 'error' },
     };
 
-    const { status } = config[health] || config.LOW;
+    const { status } = config[level] || config.LOW;
 
     return (
         <Badge
             status={status}
-            text={<Text strong style={{ fontSize: 16 }}>Friction Level: {health}</Text>}
+            text={<Text strong style={{ fontSize: 16 }}>Friction Level: {level}</Text>}
         />
     );
 }
@@ -112,7 +112,7 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
             ),
         },
         {
-            title: 'Signals (7d)',
+            title: 'Evidence (7d)',
             key: 'signals',
             width: 110,
             render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
@@ -133,7 +133,11 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
             },
         },
         {
-            title: 'Score',
+            title: (
+                <Tooltip title="Evidence count weighted by escalation and canonical-fallback rates. It is not an answer-quality score.">
+                    Weighted load
+                </Tooltip>
+            ),
             key: 'score',
             width: 80,
             render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
@@ -213,13 +217,16 @@ function WeeklySummaryCard({ summary, weekStart, weekEnd }: { summary: string; w
             title={
                 <Space>
                     <LuTrendingUp />
-                    <Text strong>Weekly Friction Summary</Text>
+                    <Text strong>AI-assisted Review Summary</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>({weekStart} — {weekEnd})</Text>
                 </Space>
             }
             style={{ marginTop: 16 }}
         >
             <Paragraph style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{summary}</Paragraph>
+            <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                Advisory only. Review the linked evidence before changing product behavior or approved answers.
+            </Text>
         </Card>
     );
 }
@@ -239,28 +246,35 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
         return <Empty description={`Failed to load friction data: ${error}`} />;
     }
 
-    if (!snapshot || (snapshot.topFrictionEntities?.length === 0 && snapshot.emergingTopics?.length === 0)) {
+    if (!snapshot) {
         return (
             <Empty description="No friction data available yet. Data will appear after signals are collected and the nightly aggregation runs." />
         );
     }
 
+    if (snapshot.topFrictionEntities.length === 0 && snapshot.emergingTopics.length === 0) {
+        return snapshot.unmappedEvidenceCount > 0 ? (
+            <Empty description={`${snapshot.unmappedEvidenceCount} support-evidence events need product-entity mapping before friction can be ranked.`} />
+        ) : (
+            <Empty description="No mapped friction evidence in the latest completed seven-day window." />
+        );
+    }
+
+    const lastUpdatedDate = snapshot.lastUpdated?.toDate?.();
+    const stale = Boolean(lastUpdatedDate && Date.now() - lastUpdatedDate.getTime() > 36 * 60 * 60 * 1000);
+
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Space size="large">
-                    <HealthBadge health={snapshot.overallHealth} />
+                    <FrictionLevelBadge level={snapshot.frictionLevel} />
                     <Text type="secondary">
-                        {snapshot.totalSignals7d} signals · {snapshot.totalEscalations7d} escalations (last 7 days)
+                        {snapshot.totalSignals7d} support-evidence events · {snapshot.totalEscalations7d} escalations ({snapshot.window.currentStartDate} to {snapshot.window.currentEndDate})
                     </Text>
                 </Space>
-                <Text
-                    type="secondary"
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={refresh}
-                >
-                    <LuRefreshCw size={14} /> Refresh
-                </Text>
+                <Tooltip title="Reload the latest completed snapshot">
+                    <Button type="text" icon={<LuRefreshCw size={14} />} onClick={refresh} aria-label="Refresh friction evidence" />
+                </Tooltip>
             </div>
 
             <Title level={5} style={{ marginBottom: 12 }}>Top Friction Areas</Title>
@@ -281,6 +295,9 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
                     Last updated: {snapshot.lastUpdated?.toDate?.()
                         ? snapshot.lastUpdated.toDate().toLocaleString()
                         : 'Unknown'}
+                    {stale ? ' · stale' : ''}
+                    {snapshot.unmappedEvidenceCount > 0 ? ` · ${snapshot.unmappedEvidenceCount} events need entity mapping` : ''}
+                    {snapshot.legacyDailyStatCount > 0 ? ` · ${snapshot.legacyDailyStatCount} legacy daily rows included` : ''}
                 </Text>
             )}
         </div>

@@ -1,24 +1,52 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { PRODUCT_IDS } from '@constant/product';
+import { isAnswerlatticePublicApiCredentialInScope } from '@lib/answerlattice/publicApiContracts';
 import { isAnswerlatticeActiveStoreInScope, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
 import {
+    AnswerlatticeMcpSessionScope,
     canIssueAnswerlatticeMcpSession,
     createAnswerlatticeMcpSessionToken,
 } from '@lib/answerlattice/mcpSession';
 import {
     apiError,
     hashApiKey,
-    hasPublicApiCredentialScope,
     validatePublicApiKey,
 } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
-const MCP_SESSION_TTL_SECONDS = 15 * 60;
+const MCP_SESSION_TTL_SECONDS = 5 * 60;
+const MCP_SESSION_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'Vary': 'X-API-Key, Authorization, Origin',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const mcpSessionError = (
+    code: string,
+    message: string,
+    status: number,
+    headers: Record<string, string> = {},
+) => apiError(code, message, status, {
+    ...MCP_SESSION_RESPONSE_HEADERS,
+    ...headers,
+});
+
+const getRateLimitResponse = (rateLimit: {
+    reason?: 'limit_exceeded' | 'provider_unavailable';
+    resetAt: number;
+}) => mcpSessionError(
+    rateLimit.reason === 'provider_unavailable' ? 'RATE_LIMIT_UNAVAILABLE' : 'RATE_LIMITED',
+    rateLimit.reason === 'provider_unavailable' ? 'MCP temporarily unavailable' : 'Rate limit exceeded',
+    rateLimit.reason === 'provider_unavailable' ? 503 : 429,
+    {
+        'Retry-After': String(Math.max(Math.ceil((rateLimit.resetAt - Date.now()) / 1000), 1)),
+    },
+);
 
 const getMcpSessionLogContext = (tId: number, sId: number) => ({
     ...getBoundedRuntimeStringContext('tenantId', tId),
@@ -36,24 +64,42 @@ const getMcpSessionBundleManifest = async (tId: number, sId: number) => {
 
 export async function POST(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MCP || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES) {
-        return apiError('MCP_DISABLED', 'Answerlattice MCP is not enabled', 404);
+        return mcpSessionError('MCP_DISABLED', 'Answerlattice MCP is not enabled', 404);
     }
     if (!canIssueAnswerlatticeMcpSession()) {
-        return apiError('MCP_NOT_CONFIGURED', 'Answerlattice MCP session signing is not configured', 503);
+        return mcpSessionError('MCP_NOT_CONFIGURED', 'Answerlattice MCP session signing is not configured', 503);
+    }
+    if (request.headers.get('origin')) {
+        return mcpSessionError(
+            'BROWSER_ACCESS_NOT_SUPPORTED',
+            'Create MCP sessions from a trusted server or desktop client',
+            403,
+        );
     }
 
     const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || null;
     if (!apiKey || !apiKey.startsWith('al_')) {
-        return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        return mcpSessionError('INVALID_API_KEY', 'Invalid API key', 401);
+    }
+
+    const preAuthRateLimit = await checkRateLimit({
+        key: `answerlattice-mcp-session-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+        limit: 80,
+        window: 60,
+        failClosedOnProviderError: true,
+    });
+    if (!preAuthRateLimit.allowed) {
+        return getRateLimitResponse(preAuthRateLimit);
     }
 
     const rateLimit = await checkRateLimit({
         key: `answerlattice-mcp-session:${hashApiKey(apiKey).slice(0, 16)}`,
         limit: 20,
         window: 60,
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
-        return apiError('RATE_LIMITED', 'Rate limit exceeded', 429);
+        return getRateLimitResponse(rateLimit);
     }
 
     try {
@@ -61,16 +107,14 @@ export async function POST(request: NextRequest) {
             allowLegacyRawFallback: false,
             includeAnswerlatticeWidgetApi: false,
             includePublicApi: true,
-            cacheTtlMs: 30_000,
+            cacheTtlMs: 0,
         });
         if (
             !auth
-            || (auth.credential?.productId && auth.credential.productId !== PRODUCT_IDS.ANSWERLATTICE)
-            || (auth.credential?.purpose && auth.credential.purpose !== 'answerlattice_public_api')
-            || !hasPublicApiCredentialScope(auth.credential, 'public:read')
-            || !hasPublicApiCredentialScope(auth.credential, 'signals:write')
+            || auth.credentialSource !== 'publicApi'
+            || !isAnswerlatticePublicApiCredentialInScope(auth.credential, 'mcp:read')
         ) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+            return mcpSessionError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
         const tId = normalizeAnswerlatticeScopeDocumentId(auth.storeData.tenantId ?? auth.storeData.tId);
@@ -78,17 +122,31 @@ export async function POST(request: NextRequest) {
             auth.storeData.id ?? auth.storeData.sId ?? auth.storeData.storeId ?? auth.storeId,
         );
         if (!tId || !sId || !isAnswerlatticeActiveStoreInScope(auth.storeData, { tenantId: tId, storeId: sId }, auth.storeId)) {
-            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+            return mcpSessionError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 
         const manifest = await getMcpSessionBundleManifest(tId, sId);
         const bundleVersion = Number(manifest?.activeVersion || manifest?.bundleVersion || 0);
+        if (
+            manifest?.status !== 'ready'
+            || !Number.isSafeInteger(bundleVersion)
+            || bundleVersion <= 0
+        ) {
+            return mcpSessionError(
+                'MCP_CONTEXT_NOT_READY',
+                'Compiled approved context is not ready',
+                503,
+            );
+        }
+        const scope: AnswerlatticeMcpSessionScope[] = ['context:read'];
+        if (isAnswerlatticePublicApiCredentialInScope(auth.credential, 'signals:write')) {
+            scope.push('signals:write');
+        }
         const token = createAnswerlatticeMcpSessionToken({
             tId,
             sId,
-            scope: ['context:read', 'signals:write'],
+            scope,
             bundleVersion,
-            revocationVersion: Number(auth.credential?.revocationVersion || 0),
             ttlSeconds: MCP_SESSION_TTL_SECONDS,
         });
 
@@ -99,12 +157,10 @@ export async function POST(request: NextRequest) {
             bundleVersion,
             bundleStatus: manifest?.status || 'missing',
         }, {
-            headers: {
-                'Cache-Control': 'private, no-store',
-            },
+            headers: MCP_SESSION_RESPONSE_HEADERS,
         });
     } catch (error) {
         logRuntimeFailure('answerlattice_mcp_session_creation_failed', error);
-        return apiError('INTERNAL_ERROR', 'Internal error', 500);
+        return mcpSessionError('INTERNAL_ERROR', 'Internal error', 500);
     }
 }

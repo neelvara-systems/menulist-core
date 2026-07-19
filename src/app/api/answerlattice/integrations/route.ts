@@ -11,13 +11,22 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import {
     buildAnswerlatticeIntegrationConfigIdentity,
     classifyAnswerlatticeIntegrationConfigOwnership,
 } from '@lib/answerlattice/integrationConfigOwnership';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    ANSWERLATTICE_WORKFLOW_INTEGRATION_EVENT_TYPES,
+    AnswerlatticeWorkflowIntegrationEventTypeSchema,
+    AnswerlatticeWorkflowIntegrationsResponseSchema,
+    type AnswerlatticeWorkflowIntegrationEventType,
+} from '@lib/answerlattice/workflowIntegrationContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -28,19 +37,8 @@ import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
-const INTEGRATION_EVENT_TYPES = [
-    'drift_detected',
-    'mutation_proposed',
-    'knowledge_gap_detected',
-    'coverage_drop',
-    'article_approved',
-    'ai_failure_recurring',
-    'nightly_summary',
-] as const;
-
-type IntegrationEventType = typeof INTEGRATION_EVENT_TYPES[number];
-
-const EventFilterSchema = z.enum(INTEGRATION_EVENT_TYPES);
+const INTEGRATION_EVENT_TYPES = ANSWERLATTICE_WORKFLOW_INTEGRATION_EVENT_TYPES;
+const EventFilterSchema = AnswerlatticeWorkflowIntegrationEventTypeSchema;
 const SlackWebhookSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
     z.string()
@@ -77,7 +75,7 @@ const IntegrationsSaveSchema = z.object({
     }).strict().default({ enabled: false, recipients: [], eventFilters: [] }),
 }).strict();
 
-const DEFAULT_EVENT_FILTERS: IntegrationEventType[] = [
+const DEFAULT_EVENT_FILTERS: AnswerlatticeWorkflowIntegrationEventType[] = [
     'nightly_summary',
     'coverage_drop',
     'ai_failure_recurring',
@@ -94,6 +92,10 @@ const getAnswerlatticeDb = () => answerlatticeFirestoreAdmin
     ? answerlatticeFirestoreAdmin
     : null;
 const INTEGRATIONS_SAVE_MAX_BODY_BYTES = 16 * 1024;
+const integrationJsonResponse = (body: unknown, status = 200) => NextResponse.json(body, {
+    status,
+    headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+});
 
 const configDocId = (tenantId: number, storeId: number) => `integrationConfig_${tenantId}_${storeId}`;
 
@@ -132,10 +134,12 @@ const claimScopedSummaryData = async (
     return data;
 });
 
-const normalizeFilters = (value: unknown): IntegrationEventType[] => {
+const normalizeFilters = (value: unknown): AnswerlatticeWorkflowIntegrationEventType[] => {
     if (!Array.isArray(value)) return [];
     const allowed = new Set<string>(INTEGRATION_EVENT_TYPES);
-    return Array.from(new Set(value.filter((item): item is IntegrationEventType => typeof item === 'string' && allowed.has(item))))
+    return Array.from(new Set(value.filter((item): item is AnswerlatticeWorkflowIntegrationEventType => (
+        typeof item === 'string' && allowed.has(item)
+    ))))
         .slice(0, INTEGRATION_EVENT_TYPES.length);
 };
 
@@ -151,8 +155,14 @@ const normalizeRecipientList = (value: unknown): string[] => {
 
 const toIso = (value: any): string | null => {
     if (!value) return null;
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value === 'string') return value;
+    try {
+        if (typeof value.toDate === 'function') return value.toDate().toISOString();
+        if (typeof value === 'string' && Number.isFinite(Date.parse(value))) {
+            return new Date(value).toISOString();
+        }
+    } catch {
+        return null;
+    }
     return null;
 };
 
@@ -162,16 +172,19 @@ const ownerSafeIntegrationError = (value: unknown): string | null => (
 
 const buildSafeHealth = (data: Record<string, any> = {}) => {
     const adapters = data.adapters || {};
+    const safeStatus = (value: unknown): 'success' | 'failed' | 'rate_limited' | null => (
+        value === 'success' || value === 'failed' || value === 'rate_limited' ? value : null
+    );
     return {
         slack: {
-            lastStatus: typeof adapters.slack?.lastStatus === 'string' ? adapters.slack.lastStatus : null,
+            lastStatus: safeStatus(adapters.slack?.lastStatus),
             lastAttemptAt: toIso(adapters.slack?.lastAttemptAt),
             lastSuccessAt: toIso(adapters.slack?.lastSuccessAt),
             lastFailureAt: toIso(adapters.slack?.lastFailureAt),
             lastError: ownerSafeIntegrationError(adapters.slack?.lastError),
         },
         email: {
-            lastStatus: typeof adapters.email?.lastStatus === 'string' ? adapters.email.lastStatus : null,
+            lastStatus: safeStatus(adapters.email?.lastStatus),
             lastAttemptAt: toIso(adapters.email?.lastAttemptAt),
             lastSuccessAt: toIso(adapters.email?.lastSuccessAt),
             lastFailureAt: toIso(adapters.email?.lastFailureAt),
@@ -180,26 +193,28 @@ const buildSafeHealth = (data: Record<string, any> = {}) => {
     };
 };
 
-const buildSafeResponse = (data: Record<string, any> = {}, health: Record<string, any> = {}) => ({
-    slack: {
-        enabled: Boolean(data.slack?.enabled && data.slack?.webhookUrl),
-        webhookConfigured: Boolean(data.slack?.webhookUrl),
-        channel: typeof data.slack?.channel === 'string' ? data.slack.channel : '',
-        eventFilters: normalizeFilters(data.slack?.eventFilters),
-    },
-    email: {
-        enabled: Boolean(data.email?.enabled && normalizeRecipientList(data.email?.recipients).length > 0),
-        recipients: normalizeRecipientList(data.email?.recipients),
-        eventFilters: normalizeFilters(data.email?.eventFilters),
-    },
-    eventTypes: INTEGRATION_EVENT_TYPES,
-    defaultEventFilters: DEFAULT_EVENT_FILTERS,
-    health: buildSafeHealth(health),
-});
+const buildSafeResponse = (data: Record<string, any> = {}, health: Record<string, any> = {}) => (
+    AnswerlatticeWorkflowIntegrationsResponseSchema.parse({
+        slack: {
+            enabled: Boolean(data.slack?.enabled && data.slack?.webhookUrl),
+            webhookConfigured: Boolean(data.slack?.webhookUrl),
+            channel: typeof data.slack?.channel === 'string' ? data.slack.channel.slice(0, 80) : '',
+            eventFilters: normalizeFilters(data.slack?.eventFilters),
+        },
+        email: {
+            enabled: Boolean(data.email?.enabled && normalizeRecipientList(data.email?.recipients).length > 0),
+            recipients: normalizeRecipientList(data.email?.recipients),
+            eventFilters: normalizeFilters(data.email?.eventFilters),
+        },
+        eventTypes: INTEGRATION_EVENT_TYPES,
+        defaultEventFilters: DEFAULT_EVENT_FILTERS,
+        health: buildSafeHealth(health),
+    })
+);
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) {
-        return NextResponse.json({ error: 'Answerlattice integrations are not enabled.' }, { status: 403 });
+        return integrationJsonResponse({ error: 'Answerlattice integrations are not enabled.' }, 403);
     }
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(_request, session, 'integrations');
     if (rateLimitResponse) return rateLimitResponse;
@@ -208,9 +223,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
-    if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+    if (!scope) return integrationJsonResponse({ error: 'Not onboarded' }, 400);
     const db = getAnswerlatticeDb();
-    if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+    if (!db) return integrationJsonResponse({ error: 'Answerlattice Firebase is not configured' }, 503);
 
     try {
         const configRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId));
@@ -219,53 +234,63 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             claimScopedSummaryData(db, configRef, scope),
             claimScopedSummaryData(db, healthRef, scope),
         ]);
-        return NextResponse.json(buildSafeResponse(config, health));
+        return integrationJsonResponse(buildSafeResponse(config, health));
     } catch (error) {
         if (error instanceof IntegrationConfigOwnershipError) {
             logRuntimeFailure('answerlattice_integrations_settings_ownership_mismatch', error, {
                 ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
                 ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             });
-            return NextResponse.json({ error: 'Integration settings require support review.' }, { status: 409 });
+            return integrationJsonResponse({ error: 'Integration settings require support review.' }, 409);
         }
         logRuntimeFailure('answerlattice_integrations_settings_load_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to load integration settings' }, { status: 500 });
+        return integrationJsonResponse({ error: 'Failed to load integration settings' }, 500);
     }
 });
 
 export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) {
-        return NextResponse.json({ error: 'Answerlattice integrations are not enabled.' }, { status: 403 });
+        return integrationJsonResponse({ error: 'Answerlattice integrations are not enabled.' }, 403);
     }
-    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS);
-    if (permission.response) return permission.response;
-
     const scope = resolveSessionScope(session);
-    if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
-    const db = getAnswerlatticeDb();
-    if (!db) return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+    if (!scope) return integrationJsonResponse({ error: 'Not onboarded' }, 400);
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-integrations', scope.storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-integrations',
+                session?.uId || session?.user?.id || session?.user?.email || 'unknown',
+                scope.tenantId,
+                scope.storeId,
+            ),
             limit: 12,
             window: 60,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+            return integrationJsonResponse({ error: 'Too many requests' }, 429);
         }
+
+        const permission = await requireAnswerlatticePermission(
+            request,
+            session,
+            ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS,
+        );
+        if (permission.response) return permission.response;
+
+        const db = getAnswerlatticeDb();
+        if (!db) return integrationJsonResponse({ error: 'Answerlattice Firebase is not configured' }, 503);
 
         const bodyResult = await readBoundedJsonBody(request, INTEGRATIONS_SAVE_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid integration settings',
             tooLargeMessage: 'Request body too large',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return integrationJsonResponse(
                 { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid integration settings' },
-                { status: bodyResult.response.status },
+                bodyResult.response.status,
             );
         }
 
@@ -314,25 +339,25 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             emailRecipientCount: nextConfig.email.recipients.length,
         });
 
-        return NextResponse.json(buildSafeResponse(nextConfig));
+        return integrationJsonResponse(buildSafeResponse(nextConfig));
     } catch (error) {
         if (error instanceof ZodError) {
-            return NextResponse.json({ error: 'Invalid integration settings' }, { status: 400 });
+            return integrationJsonResponse({ error: 'Invalid integration settings' }, 400);
         }
         if (error instanceof IntegrationConfigInputError) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return integrationJsonResponse({ error: error.message }, 400);
         }
         if (error instanceof IntegrationConfigOwnershipError) {
             logRuntimeFailure('answerlattice_integrations_settings_ownership_mismatch', error, {
                 ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
                 ...getBoundedRuntimeStringContext('storeId', scope.storeId),
             });
-            return NextResponse.json({ error: 'Integration settings require support review.' }, { status: 409 });
+            return integrationJsonResponse({ error: 'Integration settings require support review.' }, 409);
         }
         logRuntimeFailure('answerlattice_integrations_settings_save_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to save integration settings' }, { status: 500 });
+        return integrationJsonResponse({ error: 'Failed to save integration settings' }, 500);
     }
 });

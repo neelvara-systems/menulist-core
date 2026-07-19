@@ -1,155 +1,93 @@
-# Answerlattice Email Notifications — Implementation
+# Answerlattice Email Notifications Implementation
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-06-28
-> **Audience:** Developers
+> **Last verified:** July 19, 2026
 
----
+## Runtime map
 
-## File Structure
+| File | Responsibility |
+|---|---|
+| `src/database/tickets/index.ts` | Requests created, reply, and status notifications after successful persistence |
+| `src/lib/notifications/client.ts` | Sends the strict best-effort browser request |
+| `src/app/api/notifications/send/route.ts` | Rate limits, validates, authorizes scope, reads the ticket, and projects the event |
+| `src/lib/notifications/ticketNotificationBoundary.ts` | Converts persisted ticket evidence into a server-owned payload |
+| `src/lib/notifications/index.ts` | Claims, limits, templates, sends, and finalizes direct notification delivery |
+| `src/lib/notifications/deliveryClaim.ts` | Owns the 15-minute transactional delivery lease |
+| `src/lib/notifications/smtpConfig.ts` | Strictly parses the four SMTP environment variables |
+| `src/lib/notifications/templates.ts` | Escapes and bounds the three ticket templates and test template |
+| `src/app/api/answerlattice/notifications/test/route.ts` | Sends the scoped Activation verification event |
 
+## Browser request contract
+
+```ts
+type TriggerNotificationParams = {
+  eventType: 'TICKET_CREATED' | 'TICKET_REPLY' | 'TICKET_STATUS_CHANGED';
+  ticketId: string;
+  messageId?: string;
+  tId: number;
+  sId: number;
+};
 ```
-src/lib/notifications/
-├── index.ts          # Core sender (server-side, firebase-admin, nodemailer)
-├── client.ts         # Client-side fire-and-forget trigger
-└── templates.ts      # Template registry (event type → subject + HTML)
 
-src/app/api/notifications/
-└── send/route.ts     # API route (withAuth, bridges client → server)
+The route schema is strict. It accepts no email address, name, subject, HTML, metadata, product ID, reference ID, or dedupe bypass.
 
-src/app/api/answerlattice/notifications/
-└── test/route.ts     # Answerlattice workspace test-send verification
+## Admission order
 
-src/config/features.ts  # ENABLE_ANSWERLATTICE_NOTIFICATIONS flag
-src/database/tickets/index.ts  # Wired: addTicket, addTicketMessage, updateTicketStatus
+1. `withAuth()` establishes the signed-in session.
+2. A hashed user key is limited to 120 requests per hour and fails closed when the rate provider is unavailable.
+3. The request body is capped at 16 KiB and parsed by the strict schema.
+4. `requireAnswerlatticePermission(...MANAGE_SUPPORT, {tenantId: tId, storeId: sId})` runs before the ticket read.
+5. `supportTickets/{ticketId}` is read from the Answerlattice Admin client.
+6. The ticket parser rejects missing, deleted, malformed, or wrong-scope documents.
+7. The projector validates event-specific persisted evidence.
+8. `sendNotification()` receives only the server-owned projection.
+
+This order is the ticket notification authority hardening boundary.
+
+## Direct delivery state machine
+
+```text
+deterministic log ID
+  -> transaction claim: sending + claimId + claimExpiresAt
+  -> recipient-day sent query
+  -> template resolution
+  -> SMTP send with deterministic Message-ID
+  -> claim-bound finalization: sent | failed | skipped
 ```
 
----
+- Exact sent rows are never reclaimed.
+- An unexpired `sending` row is treated as in flight.
+- A crashed sender may be reclaimed after 15 minutes.
+- Finalization fails if the claim ID no longer owns the row.
+- The sender returns `false` rather than throwing to the caller.
 
-## Component Details
+## Event projection
 
-### 1. Core Sender (`src/lib/notifications/index.ts`)
+| Event | Required persisted evidence | Rejection examples |
+|---|---|---|
+| `TICKET_CREATED` | Requester email and current ticket | Missing recipient or deleted ticket |
+| `TICKET_REPLY` | Exact non-system message and requester email | Missing message, system message, requester self-reply |
+| `TICKET_STATUS_CHANGED` | Latest status history entry | No valid status evidence |
 
-**Runtime:** Server-side only (uses firebase-admin + nodemailer)
-**Main function:** `sendNotification(payload)` → returns `boolean` (sent or not)
+The DAL decides reply eligibility inside the ticket transaction and still relies on the server projector as the final authority.
 
-**Flow:**
-1. Feature flag check (`ENABLE_ANSWERLATTICE_NOTIFICATIONS`)
-2. Input validation (email, eventType, referenceId required)
-3. Transactionally claim the deterministic eventType + referenceId log document
-4. Rate limit check (20/day per recipient email)
-5. Resolve a bounded/escaped template
-6. Send through the deadline-bounded cached SMTP transporter with deterministic Message-ID
-7. Transactionally finalize the same claim in `answerlattice_notificationLogs`
+## SMTP and content safety
 
-**Key properties:**
-- Never throws — always returns boolean
-- SMTP transporter cached (single connection reused)
-- Same SMTP env vars as lifecycle messaging (SMTP_HOST, SMTP_USER, SMTP_PASS)
-- Idempotency: deterministic event/reference plus a transaction-owned delivery lease; callers cannot bypass it
-- Rate limit: 20 emails/day per recipient
-- Answerlattice readiness helper: `getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE)`
-- Runtime diagnostics use `src/lib/notifications/notificationDiagnostics.ts`; missing-template, send, trigger, rate-limit-log, and success contexts record event/product plus bounded reference/recipient metadata only. They do not direct-console raw emails, names, ticket metadata, reference IDs, or provider/browser errors.
+- Required environment: `SMTP_HOST`, numeric `SMTP_PORT` from 1 to 65535, `SMTP_USER`, and non-empty `SMTP_PASS`.
+- Port 465 enables secure mode; all other valid ports use non-secure transport configuration.
+- Transport deadlines are 10s connection, 10s greeting, and 15s socket.
+- Template strings are trimmed, bounded, line-break sanitized for subjects, and HTML escaped.
+- Links render only when they parse as HTTPS and remain under the template limit.
+- Diagnostics record bounded identifiers and error codes, not raw ticket payloads or SMTP secrets.
 
-### 2. Client Trigger (`src/lib/notifications/client.ts`)
+## Activation test path
 
-**Runtime:** Client-side (browser)
-**Main function:** `triggerNotification(params)` → returns `void`
+`/api/answerlattice/notifications/test` resolves the current Answerlattice workspace, limits to three attempts per hour, checks `VIEW_READINESS`, verifies Firebase and SMTP readiness, rereads the exact store, and uses its `supportEmail`.
 
-**Design:** Simple `fetch()` POST to `/api/notifications/send`, wrapped in `.catch()` for non-blocking failure. Intentionally not `await`ed by callers — true fire-and-forget. Development builds record bounded trigger-request diagnostics through `notificationDiagnostics.ts`; production ticket writes are never blocked by email delivery and production client triggers stay silent on request failure.
+`ANSWERLATTICE_NOTIFICATION_TEST` is currently registered in the owner-notification registry. With both owner-notification flags enabled, `sendNotification()` hands that event to the owner-notification pipeline for immediate processing. Ticket-created, reply, and status events are not registered there and continue through `answerlattice_notificationLogs`.
 
-**July 13 ticket notification authority hardening:** the client payload is now only `{eventType,ticketId,messageId?}`. The authenticated route fails the limiter closed, rechecks current Answerlattice support permission, reads/parses the exact scoped ticket, and derives the recipient, product, template fields and deterministic reference. The server sender transactionally claims the deterministic log row before SMTP and claim-checks finalization; SMTP has finite connection/greeting/socket timeouts and deterministic Message-ID. Template subject/HTML values are bounded and escaped, and only HTTPS links render. Browser-supplied recipient, metadata, reference, product and dedupe bypass are retired.
+## Failure semantics
 
-### 3. Templates (`src/lib/notifications/templates.ts`)
-
-**4 templates registered:**
-
-| Event Type | Subject | Content |
-|-----------|---------|---------|
-| `TICKET_CREATED` | "Ticket received: {subject}" | Confirmation with ID, category, priority |
-| `TICKET_REPLY` | "Reply on your ticket: {subject}" | Reply preview (300 chars), replier name |
-| `TICKET_STATUS_CHANGED` | "Ticket updated: {subject} — {status}" | New status, remark |
-| `ANSWERLATTICE_NOTIFICATION_TEST` | "Answerlattice notification test" | Activation verification email for the workspace support inbox |
-
-**Template structure:** Each template is a function `(metadata) => { subject, html }`. HTML uses inline styles matching lifecycle messaging tone (infrastructure-grade, calm, non-marketing).
-
-**Adding new templates:** Add entry to `NOTIFICATION_TEMPLATES` object. Key = event type string. Done.
-
-### 4. API Route (`src/app/api/notifications/send/route.ts`)
-
-**Auth:** `withAuth()` plus fresh `canManageSupport` admission against the current Answerlattice workspace
-**Rate limit:** fail-closed 120 attempts/hour per authenticated user; the limiter key stores a `hashPublicRateLimitValue(userId || 'unknown')` segment, not the raw user id/email. Provider unavailability returns 503; caller quota remains 429.
-**Body limit:** 16KB bounded JSON body before schema validation or dispatch
-**Method:** POST
-**Body:** `{ eventType, ticketId, messageId? }`. The strict route rejects unknown fields. Current workspace permission and the exact persisted ticket determine recipient, template values, product and deterministic reference.
-**Response:** `{ sent: boolean }`
-
-Accepted client events are limited to `TICKET_CREATED`, `TICKET_REPLY`, and `TICKET_STATUS_CHANGED`. The Activation test event uses the dedicated Answerlattice test route instead of the client route. The 16KB body cap and strict identifier-only schema run before current permission/ticket reads; unknown recipient/template/reference/product fields are rejected rather than size-capped and trusted.
-
-Unexpected route failures use `notification_send_route_failed` through `src/lib/notifications/notificationDiagnostics.ts` with bounded user, recipient, reference, product, and metadata counts plus source error name/code/status only. The route no longer raw-logs caught exceptions through `secureError('[Notification API] Error', ...)`.
-
-### 5. Answerlattice Test Route (`src/app/api/answerlattice/notifications/test/route.ts`)
-
-**Auth:** `withAuth()` plus Answerlattice session-scope resolution.
-**Rate limit:** 3 test emails per workspace per hour.
-**Recipient:** `stores/{sId}.supportEmail`.
-**Purpose:** lets an Answerlattice buyer verify sender configuration before paid launch without creating a fake ticket.
-
-The test route applies the workspace rate limit before permission, Firebase readiness, store reads, or SMTP send work. Unexpected route failures use `answerlattice_notification_test_failed` with bounded tenant/store metadata instead of raw `secureError` exception context.
-
-### 6. Ticket DAL Wiring (`src/database/tickets/index.ts`)
-
-| Function | Browser trigger | Server-derived recipient/evidence |
-|----------|-----------------|-----------------------------------|
-| `addTicket()` | `TICKET_CREATED` + ticket ID | Exact ticket `clientDetails.email`; ticket subject/category/priority |
-| `addTicketMessage()` | `TICKET_REPLY` + ticket/message IDs | Exact non-system persisted message; creator email; self-reply suppressed |
-| `updateTicketStatus()` | `TICKET_STATUS_CHANGED` + ticket ID | Exact latest status entry and creator email; status-count reference |
-
-Transient `_notifyEmail`, `_notifyName`, arbitrary metadata, product, reference and `skipDedup` are not notification authority. The route ignores none of them: its strict schema rejects them.
-
----
-
-## Firestore Collection
-
-**Answerlattice collection:** `answerlattice_notificationLogs`
-
-Legacy/non-Answerlattice callers still use `notificationLogs`. Answerlattice ticket and test notifications pass `productId: 'AL'` and write logs in the Answerlattice Firebase project.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `eventType` | string | Event identifier (e.g., 'TICKET_REPLY') |
-| `recipientEmail` | string | Recipient email address |
-| `referenceId` | string | Unique reference for idempotency |
-| `status` | string | Transitional `sending`, then `sent`, `failed`, or `skipped` |
-| `subject` | string | Email subject line |
-| `messageId` | string/null | SMTP message ID (if sent) |
-| `error` | string/null | Error message (if failed) |
-| `reason` | string/null | Skip reason such as `rate_limited` |
-| `createdAt` | Timestamp | When the notification was sent/attempted |
-| `modifiedAt` | Timestamp | Last claim/finalization transition |
-| `claimId` / `claimExpiresAt` | string / Timestamp | Private in-flight lease fields; removed on matching finalization |
-
-**Indexes needed:**
-- `recipientEmail` + `status` + `createdAt` on `answerlattice_notificationLogs` for rate-limit checks.
-- Idempotency uses deterministic document IDs and does not require a composite query.
-
----
-
-## Environment Variables
-
-Same as lifecycle messaging — no new env vars needed:
-- `SMTP_HOST` — SMTP server hostname
-- `SMTP_PORT` — SMTP port (default: 587)
-- `SMTP_USER` — SMTP username
-- `SMTP_PASS` — SMTP password
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-06-28 | 1.1.2 | Moved notification test route rate limiting before permission/readiness/store/send work and switched unexpected failures to bounded runtime diagnostics. |
-| 2026-06-27 | 1.1.1 | Added 16KB bounded request-body admission before schema validation and notification dispatch. |
-| 2026-05-22 | 1.1.0 | Enabled Answerlattice verification, product-aware logs, deterministic idempotency, test-send route, and cost-safe DAL guards. |
-| 2026-03-07 | 1.0.0 | Initial implementation |
+- Ticket creation/reply/status persistence can succeed when browser notification triggering fails.
+- A closed tab or network interruption can prevent the browser request entirely.
+- A server send failure is recorded and returns `sent: false`; there is no inbound retry worker in this feature.
+- SMTP acceptance is not evidence of inbox placement.

@@ -71,13 +71,17 @@ import {
 import { ANSWERLATTICE_FRAMEWORK_SNIPPETS } from '@lib/answerlattice/installContract/contract';
 import {
     AnswerlatticeHostedHelpConfig,
+    type AnswerlatticeHostedHelpDomainVerification,
     DEFAULT_ANSWERLATTICE_HOSTED_HELP_CONFIG,
     normalizeHostedHelpConfig,
     normalizeHostedHelpDomains,
 } from '@lib/answerlattice/hostedHelpConfig';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { normalizeHostedHelpDomain } from '@constant/answerlattice/hostedHelp';
+import {
+    isAnswerlatticeHostedHelpCandidateHostname,
+    normalizeHostedHelpDomain,
+} from '@constant/answerlattice/hostedHelp';
 import type { AnswerlatticeWidgetRuntimeStatus } from '@type/answerlattice';
 import {
     ANSWERLATTICE_DEFAULT_WIDGET_TAB,
@@ -103,7 +107,7 @@ const ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED = 'Could not save widget setting
 const ANSWERLATTICE_WIDGET_ACTIVITY_LOAD_FAILED = 'Could not load widget activity';
 const ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED = 'Could not create widget key';
 const ANSWERLATTICE_WIDGET_KEY_RENAME_FAILED = 'Could not rename widget key';
-const ANSWERLATTICE_WIDGET_KEY_DELETE_FAILED = 'Could not delete widget key';
+const ANSWERLATTICE_WIDGET_KEY_REVOKE_FAILED = 'Could not revoke widget key';
 const ANSWERLATTICE_HOSTED_HELP_SETTINGS_SAVE_FAILED = 'Could not save hosted help settings';
 const ANSWERLATTICE_HOSTED_HELP_DNS_CHECK_FAILED = 'Could not check hosted help DNS';
 const ANSWERLATTICE_WIDGET_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
@@ -178,7 +182,7 @@ type HostedHelpDomainStatus = {
     verified?: boolean;
     verifiedAt?: string | null;
     lastCheckedAt?: string | null;
-    verification?: any;
+    verification?: AnswerlatticeHostedHelpDomainVerification | null;
     error?: string | null;
 };
 
@@ -189,7 +193,7 @@ type WidgetManagementResponseKind =
     | 'widget_config_save'
     | 'widget_key_create'
     | 'widget_key_rename'
-    | 'widget_key_delete'
+    | 'widget_key_revoke'
     | 'hosted_help_settings_save'
     | 'hosted_help_dns_refresh';
 
@@ -255,8 +259,33 @@ const isHostedHelpDomainStatus = (value: unknown): value is HostedHelpDomainStat
         && isOptionalBoolean(value.verified)
         && isOptionalNullableString(value.verifiedAt)
         && isOptionalNullableString(value.lastCheckedAt)
+        && (
+            value.verification === undefined
+            || value.verification === null
+            || isHostedHelpDomainVerification(value.verification)
+        )
         && isOptionalNullableString(value.error);
 };
+
+const isHostedHelpDnsRecord = (value: unknown) => (
+    isRecord(value)
+    && typeof value.type === 'string'
+    && (value.domain === undefined || typeof value.domain === 'string')
+    && (value.name === undefined || typeof value.name === 'string')
+    && (value.value === undefined || typeof value.value === 'string')
+    && (value.reason === undefined || typeof value.reason === 'string')
+);
+
+const isHostedHelpDomainVerification = (value: unknown): value is AnswerlatticeHostedHelpDomainVerification => (
+    isRecord(value)
+    && (value.misconfigured === null || typeof value.misconfigured === 'boolean')
+    && Array.isArray(value.verificationRecords)
+    && value.verificationRecords.length <= 20
+    && value.verificationRecords.every(isHostedHelpDnsRecord)
+    && Array.isArray(value.configuredBy)
+    && value.configuredBy.length <= 20
+    && value.configuredBy.every(isHostedHelpDnsRecord)
+);
 
 const isHostedHelpSettingsResponse = (value: unknown): value is HostedHelpSettingsResponse => (
     isRecord(value)
@@ -380,7 +409,7 @@ const readWidgetManagementResponse = async <T,>(
     return payload;
 };
 
-function normalizeHostedHelpDnsRecords(config: any, domain: string) {
+function normalizeHostedHelpDnsRecords(config: AnswerlatticeHostedHelpDomainVerification | null | undefined, domain: string) {
     const records: { type: string; name: string; value: string }[] = [];
 
     if (Array.isArray(config?.verificationRecords)) {
@@ -488,6 +517,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const searchParams = useSearchParams();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
+    const compactActionStyle = isMobile ? { minWidth: 44, minHeight: 44 } : undefined;
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
     const legacyRequestedTab = searchParams.get('tab');
@@ -510,7 +540,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const [hasWidgetKey, setHasWidgetKey] = useState(false);
     const [widgetKeys, setWidgetKeys] = useState<WidgetKeySummary[]>([]);
     const [keyLimit, setKeyLimit] = useState(10);
-    const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
+    const [revokingKeyId, setRevokingKeyId] = useState<string | null>(null);
     const [renameKey, setRenameKey] = useState<WidgetKeySummary | null>(null);
     const [renameValue, setRenameValue] = useState('');
     const [renamingKey, setRenamingKey] = useState(false);
@@ -730,20 +760,20 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         setRenameValue(key.name);
     }, []);
 
-    const handleDeleteKey = useCallback(async (key: WidgetKeySummary) => {
-        setDeletingKeyId(key.id);
+    const handleRevokeKey = useCallback(async (key: WidgetKeySummary) => {
+        setRevokingKeyId(key.id);
         try {
             const res = await fetch('/api/answerlattice/widget-key', {
                 ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'delete', keyId: key.id }),
+                body: JSON.stringify({ action: 'revoke', keyId: key.id }),
             });
             const data = await readWidgetManagementResponse(
                 res,
-                'widget_key_delete',
+                'widget_key_revoke',
                 isWidgetKeyMutationResponse,
-                ANSWERLATTICE_WIDGET_KEY_DELETE_FAILED,
+                ANSWERLATTICE_WIDGET_KEY_REVOKE_FAILED,
             );
             setWidgetKeys(data.keys);
             setKeyPrefix(data.keyPrefix || null);
@@ -756,18 +786,18 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             if (revealedKeys[key.id] === apiKey) {
                 setApiKey(null);
             }
-            message.success('Widget key deleted');
+            message.success('Widget key revoked');
         } catch {
-            message.error(ANSWERLATTICE_WIDGET_KEY_DELETE_FAILED);
+            message.error(ANSWERLATTICE_WIDGET_KEY_REVOKE_FAILED);
         } finally {
-            setDeletingKeyId(null);
+            setRevokingKeyId(null);
         }
     }, [apiKey, revealedKeys]);
 
     const addOrigin = useCallback(() => {
         const normalized = normalizeWidgetAllowedOrigin(newOrigin);
         if (!normalized) {
-            message.error('Enter a valid URL');
+            message.error('Enter an exact HTTP or HTTPS origin without a path');
             return;
         }
         if (origins.includes(normalized)) {
@@ -814,6 +844,10 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         const normalized = normalizeHostedHelpDomain(newHostedDomain);
         if (!normalized) {
             message.error('Enter a valid help domain, for example https://help.example.com');
+            return;
+        }
+        if (!isAnswerlatticeHostedHelpCandidateHostname(normalized)) {
+            message.error('Use a help, docs, support, kb, knowledge, or answers domain.');
             return;
         }
         if (hostedHelpConfig.domains.includes(normalized)) {
@@ -1787,6 +1821,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     loading={generatingKey}
                                                     disabled={!canCreateWidgetKey}
                                                     onClick={handleGenerateKey}
+                                                    size={isMobile ? 'large' : 'middle'}
                                                 >
                                                     Create widget key
                                                 </Button>
@@ -1802,7 +1837,8 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                                         aria-label="Copy widget key"
                                                                         icon={<LuCopy size={14} />}
                                                                         disabled={!revealedKeys[key.id]}
-                                                                        size="small"
+                                                                        size={isMobile ? 'middle' : 'small'}
+                                                                        style={compactActionStyle}
                                                                         type="text"
                                                                         onClick={() => handleCopyKey(key)}
                                                                     />
@@ -1811,26 +1847,28 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                                     <Button
                                                                         aria-label="Rename API key"
                                                                         icon={<LuPencil size={14} />}
-                                                                        size="small"
+                                                                        size={isMobile ? 'middle' : 'small'}
+                                                                        style={compactActionStyle}
                                                                         type="text"
                                                                         onClick={() => openRenameKey(key)}
                                                                     />
                                                                 </Tooltip>,
                                                                 <Popconfirm
-                                                                    key="delete"
-                                                                    title="Delete widget key?"
+                                                                    key="revoke"
+                                                                    title="Revoke widget key?"
                                                                     description="Installed widgets using this key will stop working."
-                                                                    okText="Delete"
+                                                                    okText="Revoke"
                                                                     okButtonProps={{ danger: true }}
-                                                                    onConfirm={() => handleDeleteKey(key)}
+                                                                    onConfirm={() => handleRevokeKey(key)}
                                                                 >
-                                                                    <Tooltip title="Delete key">
+                                                                    <Tooltip title="Revoke key">
                                                                         <Button
-                                                                            aria-label="Delete API key"
+                                                                            aria-label="Revoke API key"
                                                                             danger
                                                                             icon={<LuTrash2 size={14} />}
-                                                                            loading={deletingKeyId === key.id}
-                                                                            size="small"
+                                                                            loading={revokingKeyId === key.id}
+                                                                            size={isMobile ? 'middle' : 'small'}
+                                                                            style={compactActionStyle}
                                                                             type="text"
                                                                         />
                                                                     </Tooltip>
@@ -1885,7 +1923,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     type="info"
                                                     showIcon
                                                     message="Key limit reached"
-                                                    description="Delete an unused key before creating another."
+                                                    description="Revoke an unused key before creating another."
                                                 />
                                             )}
                                         </Flex>
@@ -1905,7 +1943,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     onPressEnter={addOrigin}
                                                     placeholder="https://app.example.com"
                                                 />
-                                                <Button icon={<LuGlobe size={14} />} onClick={addOrigin}>Add</Button>
+                                                <Button icon={<LuGlobe size={14} />} onClick={addOrigin} size={isMobile ? 'large' : 'middle'}>Add</Button>
                                             </Flex>
                                             {origins.length > 0 ? (
                                                 <Flex gap={8} wrap="wrap">
@@ -1939,7 +1977,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     onPressEnter={addBlockedRoute}
                                                     placeholder="/help-center or /help-center/*"
                                                 />
-                                                <Button icon={<LuEyeOff size={14} />} onClick={addBlockedRoute}>Add</Button>
+                                                <Button icon={<LuEyeOff size={14} />} onClick={addBlockedRoute} size={isMobile ? 'large' : 'middle'}>Add</Button>
                                             </Flex>
                                             {config.blockedRoutes.length > 0 ? (
                                                 <Flex gap={8} wrap="wrap">

@@ -16,6 +16,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getArticlesByIds } from '@database/knowledgeBase/articles';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import {
+    getAnswerlatticeArticleTranslationState,
+    isAnswerlatticeArticleTranslationApproved,
+} from '@lib/answerlattice/articleTranslationContracts';
+import {
     AnswerlatticeArticleTranslation,
     AnswerlatticeSupportedLocale,
     ANSWERLATTICE_SUPPORTED_LOCALES,
@@ -179,7 +183,7 @@ export default function MultiLanguageArticles({
                 if (mounted) setLoadedArticles(summaries);
             } catch {
                 if (mounted) {
-                    setArticlesError('Could not load KB articles for translation coverage.');
+                    setArticlesError('Could not load KB articles for translation draft preparation.');
                     setLoadedArticles([]);
                 }
             } finally {
@@ -203,23 +207,19 @@ export default function MultiLanguageArticles({
         return <Empty description="Multi-language articles is not enabled" />;
     }
 
-    // Compute coverage stats
     const totalArticles = articles.length;
     const targetLocales = effectiveEnabledLocales.filter(l => l !== 'en-US');
-    const totalTranslationsNeeded = totalArticles * targetLocales.length;
-    let totalTranslationsExisting = 0;
+    let totalDrafts = 0;
+    let totalApproved = 0;
     for (const article of articles) {
         if (article.translations) {
             for (const locale of targetLocales) {
-                if (article.translations[locale]) {
-                    totalTranslationsExisting++;
-                }
+                const state = getAnswerlatticeArticleTranslationState(article.translations[locale]);
+                if (state === 'draft') totalDrafts++;
+                if (state === 'approved') totalApproved++;
             }
         }
     }
-    const coveragePercent = totalTranslationsNeeded > 0
-        ? Math.round((totalTranslationsExisting / totalTranslationsNeeded) * 100)
-        : 0;
 
     const handleTranslate = async (articleId: string, locale: string) => {
         if (!onTranslate) return;
@@ -237,7 +237,7 @@ export default function MultiLanguageArticles({
                     setSelectedArticle(prev => prev?.id === articleId ? freshSummary : prev);
                 }
             }
-            message.success(`Translation for ${getLocaleLabel(locale)} saved`);
+            message.success(`${getLocaleLabel(locale)} translation draft saved`);
         } catch {
             message.error(ANSWERLATTICE_ARTICLE_TRANSLATION_FAILED);
         } finally {
@@ -247,7 +247,13 @@ export default function MultiLanguageArticles({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Coverage Stats */}
+            <Alert
+                type="warning"
+                showIcon
+                message="Draft preparation only"
+                description="AI translations remain private drafts. Answerlattice does not currently publish or serve them to customers, and no draft becomes approved without a separate human review workflow."
+            />
+
             <Row gutter={16}>
                 <Col xs={12} md={6}>
                     <Card size="small">
@@ -261,7 +267,7 @@ export default function MultiLanguageArticles({
                 <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
-                            title="Target Locales"
+                            title="Draft Targets"
                             value={targetLocales.length}
                             prefix={<LuGlobe size={16} />}
                         />
@@ -270,9 +276,8 @@ export default function MultiLanguageArticles({
                 <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
-                            title="Translations"
-                            value={totalTranslationsExisting}
-                            suffix={`/ ${totalTranslationsNeeded}`}
+                            title="Drafts"
+                            value={totalDrafts}
                             prefix={<LuLanguages size={16} />}
                         />
                     </Card>
@@ -280,20 +285,15 @@ export default function MultiLanguageArticles({
                 <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
-                            title="Coverage"
-                            value={coveragePercent}
-                            suffix="%"
-                            valueStyle={{
-                                color: coveragePercent >= 80 ? token.colorSuccess :
-                                    coveragePercent >= 50 ? token.colorWarning : token.colorError
-                            }}
+                            title="Approved"
+                            value={totalApproved}
+                            valueStyle={{ color: totalApproved > 0 ? token.colorSuccess : token.colorTextSecondary }}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            {/* Enabled Locales */}
-            <Card size="small" title="Enabled Locales">
+            <Card size="small" title="Available Draft Locales">
                 <Space wrap>
                     <Tag color="blue">en-US (Source)</Tag>
                     {targetLocales.map(locale => (
@@ -302,7 +302,7 @@ export default function MultiLanguageArticles({
                         </Tag>
                     ))}
                     {targetLocales.length === 0 && (
-                        <Text type="secondary">No target locales configured</Text>
+                        <Text type="secondary">No draft target locales available</Text>
                     )}
                 </Space>
             </Card>
@@ -311,7 +311,6 @@ export default function MultiLanguageArticles({
                 <Alert type="warning" showIcon message={articlesError} />
             ) : null}
 
-            {/* Article Translation Status */}
             {articlesLoading ? (
                 <Skeleton active paragraph={{ rows: 5 }} />
             ) : articles.length === 0 ? (
@@ -321,7 +320,7 @@ export default function MultiLanguageArticles({
                     size="small"
                     header={
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Text strong>Article Translation Status</Text>
+                            <Text strong>Article Translation Drafts</Text>
                             <Text type="secondary">{totalArticles} articles</Text>
                         </div>
                     }
@@ -329,8 +328,12 @@ export default function MultiLanguageArticles({
                     dataSource={articles}
                     renderItem={(article) => {
                         const translations = article.translations ?? {};
-                        const translatedCount = targetLocales.filter(l => translations[l]).length;
-                        const isFullyTranslated = translatedCount === targetLocales.length;
+                        const approvedCount = targetLocales.filter(locale => (
+                            isAnswerlatticeArticleTranslationApproved(translations[locale])
+                        )).length;
+                        const draftCount = targetLocales.filter(locale => (
+                            getAnswerlatticeArticleTranslationState(translations[locale]) === 'draft'
+                        )).length;
 
                         return (
                             <List.Item
@@ -350,14 +353,14 @@ export default function MultiLanguageArticles({
                                     title={
                                         <Space>
                                             <Text>{article.title}</Text>
-                                            {isFullyTranslated ? (
-                                                <Tag color="success">All Translated</Tag>
-                                            ) : translatedCount > 0 ? (
+                                            {approvedCount > 0 ? (
+                                                <Tag color="success">{approvedCount} Approved</Tag>
+                                            ) : draftCount > 0 ? (
                                                 <Tag color="warning">
-                                                    {translatedCount}/{targetLocales.length} Translated
+                                                    {draftCount} Draft{draftCount === 1 ? '' : 's'}
                                                 </Tag>
                                             ) : (
-                                                <Tag color="default">English Only</Tag>
+                                                <Tag color="default">No Drafts</Tag>
                                             )}
                                         </Space>
                                     }
@@ -366,7 +369,13 @@ export default function MultiLanguageArticles({
                                             {targetLocales.map(locale => (
                                                 <Badge
                                                     key={locale}
-                                                    status={translations[locale] ? 'success' : 'default'}
+                                                    status={
+                                                        isAnswerlatticeArticleTranslationApproved(translations[locale])
+                                                            ? 'success'
+                                                            : translations[locale]
+                                                                ? 'warning'
+                                                                : 'default'
+                                                    }
                                                     text={
                                                         <Text
                                                             style={{ fontSize: 11 }}
@@ -386,7 +395,6 @@ export default function MultiLanguageArticles({
                 />
             )}
 
-            {/* Article Detail Modal */}
             <Modal
                 title={selectedArticle?.title ?? 'Article Details'}
                 open={!!selectedArticle}
@@ -400,12 +408,15 @@ export default function MultiLanguageArticles({
                         dataSource={targetLocales}
                         renderItem={(locale) => {
                             const translation = selectedArticle.translations?.[locale];
+                            const translationState = getAnswerlatticeArticleTranslationState(translation);
                             return (
                                 <List.Item
                                     actions={[
                                         translation ? (
-                                            <Tag key="status" color="success">
-                                                {translation.translatedBy === 'ai' ? 'AI' : 'Human'}
+                                            <Tag key="status" color={translationState === 'approved' ? 'success' : 'warning'}>
+                                                {translationState === 'approved'
+                                                    ? 'Approved'
+                                                    : `${translation.translatedBy === 'ai' ? 'AI' : 'Human'} Draft`}
                                             </Tag>
                                         ) : (
                                             <Button
@@ -417,7 +428,7 @@ export default function MultiLanguageArticles({
                                                 disabled={Boolean(translatingKey)}
                                                 onClick={() => handleTranslate(selectedArticle.id, locale)}
                                             >
-                                                Translate
+                                                Generate Draft
                                             </Button>
                                         )
                                     ]}
@@ -431,13 +442,13 @@ export default function MultiLanguageArticles({
                                                         Title: {translation.title}
                                                     </Text>
                                                     <Text type="secondary" style={{ fontSize: 11 }}>
-                                                        Translated: {formatTimestamp(translation.translatedAt)}
+                                                        Drafted: {formatTimestamp(translation.translatedAt)}
                                                         {translation.reviewedBy && ` · Reviewed by ${translation.reviewedBy}`}
                                                     </Text>
                                                 </Space>
                                             ) : (
                                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    Not translated
+                                                    No draft
                                                 </Text>
                                             )
                                         }

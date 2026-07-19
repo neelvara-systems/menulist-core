@@ -1,19 +1,24 @@
 # Answerlattice Staff Access Control Test Cases
 
 > Status: Implemented
-> Last updated: 2026-07-13
+> Last updated: 2026-07-19
+> Feature audit: Feature 31 of 44
 
 ## Contract Tests
 
 - Reject null, non-object, duplicate, whitespace-padded, leading-zero, missing-role, and malformed workspace mappings.
 - Duplicate custom role IDs are quarantined as inactive with zero permissions; unknown and implicitly inactive custom roles fail closed.
 - Built-in role projection is byte-stable across different readers and times, with fixed system provenance.
+- `canAssignRoles` without `canManageTeam` normalizes to false, while the valid paired permission remains enabled.
 - Self-target detection succeeds across different project-local IDs when normalized email identity matches.
 - Setup-email admission is true only for a new email-backed create and false for every replay or owner-passcode path.
 - Accept canonical numeric workspace IDs and preserve membership order and primary-workspace selection.
 - Reject tenant or workspace mismatches even when another tenant uses the same numeric workspace ID.
 - Reject explicit non-Answerlattice or contradictory `pId`/`productId` values while retaining the documented legacy-missing-field reader.
 - Claim projection ignores conflicting top-level `storeIds`, rejects duplicate `stores[]`, rejects inactive accounts, and returns only the exact current-workspace role.
+- Claim selection keeps a still-valid current workspace, otherwise uses the affected workspace and then the canonical primary membership.
+- Unsupported or malformed Answerlattice platform roles normalize to `USER`.
+- A maximum bounded Answerlattice singleton-workspace claim projection remains below Firebase Auth's 1,000-byte custom-claim limit.
 - Canonical removal with no memberships writes empty `storeIds/stores`, null root workspace IDs, inactive state, and incremented `accessRevision`.
 
 ## Emulator Tests
@@ -46,7 +51,9 @@
 - Inactive staff claim projection emits role `inactive`, an empty workspace list, no admin claim, and no permissions.
 - Removal projection failure is retryable; replay finishes bridge, claim, and token-revocation work without recreating membership.
 - Create and login-reset projection work uses the same all-settled runner, so a failed default-account bridge cannot prevent the independent Answerlattice claim/revocation attempt.
-- Claim synchronization fails visibly when current user state disappears/becomes malformed or when access revisions keep changing through the bounded retry window; it must not return a false success with stale claims.
+- Claim synchronization fails visibly when current user state disappears/becomes malformed or when access revisions or selected-store role/permission state keep changing through the bounded retry window; it must not return a false success with stale claims.
+- A stale custom-role provider write is detected by the post-write full claim-state signature and retried against current store truth.
+- Answerlattice token `storeIds` contains only the selected canonical workspace; durable multi-workspace membership remains unchanged and switching requests a fresh token.
 - Supplied set-claims UID is verified against the session email before any Answerlattice Auth write, and concurrent Auth identity creation converges on the email winner.
 - Replaying custom-role creation with the same request and payload returns the existing role; changed content with that request ID returns `IDEMPOTENCY_CONFLICT`.
 
@@ -55,12 +62,14 @@
 - Staff responses reject duplicate or misaligned workspace arrays, malformed nested members, and wrong-typed optional mutation fields.
 - Staff responses reject a projected role that disagrees with the current workspace membership, cross-scope user/role objects, and mutation `userId` disagreement.
 - A completed owner-passcode create replay never returns a newly generated but invalid replacement passcode.
+- The role editor enables team access when role assignment is selected and clears role assignment when team access is removed.
+- Access, staff success, staff failure, role, and one-time login-detail responses use the shared private no-store and `nosniff` policy.
 
 ## Commands
 
 ```bash
 npm run test:answerlattice-staff-access-contracts
 npm run test:answerlattice-staff-client-contracts
-npm run test:answerlattice-staff-concurrency:emulator
+env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-staff-concurrency:emulator
 node scripts/verification/verify-answerlattice-runtime-truth.js
 ```

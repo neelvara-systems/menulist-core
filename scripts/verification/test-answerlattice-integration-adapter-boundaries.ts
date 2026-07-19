@@ -6,7 +6,10 @@ import {
     EmailAdapter,
     readAnswerlatticeSmtpRuntimeConfig,
 } from '../../functions-answerlattice/src/integrations/adapters/emailAdapter';
-import { SlackAdapter } from '../../functions-answerlattice/src/integrations/adapters/slackAdapter';
+import {
+    isRetryableSlackStatus,
+    SlackAdapter,
+} from '../../functions-answerlattice/src/integrations/adapters/slackAdapter';
 import {
     INTEGRATION_PROVIDER_FETCH_POLICY,
     INTEGRATION_PROVIDER_JSON_MAX_BYTES,
@@ -58,6 +61,10 @@ const linearConfig: LinearConfig = {
 
 async function main(): Promise<void> {
     assert.equal(INTEGRATION_PROVIDER_FETCH_POLICY.redirect, 'error');
+    assert.equal(isRetryableSlackStatus(429), false, 'Slack Retry-After responses must not use fixed-delay retries');
+    assert.equal(isRetryableSlackStatus(500), true);
+    assert.equal(isRetryableSlackStatus(503), true);
+    assert.equal(isRetryableSlackStatus(400), false);
     assert.deepEqual(readAnswerlatticeSmtpRuntimeConfig({
         ANSWERLATTICE_SMTP_HOST: ' smtp.example.com ',
         ANSWERLATTICE_SMTP_PORT: '465',
@@ -133,6 +140,31 @@ async function main(): Promise<void> {
     }
     assert.equal(String(emailPayload.html).includes('<script>alert(1)</script>'), false);
     assert.equal(String(emailPayload.html).includes('&lt;script&gt;alert(1)&lt;/script&gt;'), true);
+
+    const slackControlEvent: IntegrationEvent = {
+        ...event,
+        eventType: INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING,
+        payload: {
+            entityName: '<!channel> & <https://example.com|open>',
+            entityType: 'support_generation',
+            failureCount: 3,
+            failurePhases: ['draft_generation <!here>'],
+            windowDays: 1,
+        },
+    };
+    const slackControlPayload = new SlackAdapter().formatPayload(slackControlEvent);
+    const slackControlJson = JSON.stringify(slackControlPayload);
+    assert.equal(slackControlJson.includes('<!channel>'), false);
+    assert.equal(slackControlJson.includes('<!here>'), false);
+    assert.equal(slackControlJson.includes('<https://example.com|open>'), false);
+    assert.equal(slackControlJson.includes('&lt;!channel&gt; &amp; &lt;https://example.com|open&gt;'), true);
+    assert.equal(slackControlJson.includes('draft_generation &lt;!here&gt;'), true);
+    assert.equal(slackControlJson.includes('"verbatim":true'), true);
+    const emailControlPayload = new EmailAdapter().formatPayload(slackControlEvent);
+    assert.equal(emailControlPayload.subject.includes('Repeated AI Workflow Failure'), true);
+    assert.equal(emailControlPayload.html.includes('Failed phases:'), true);
+    assert.equal(emailControlPayload.html.includes('draft_generation &lt;!here&gt;'), true);
+    assert.equal(emailControlPayload.html.includes('Common Queries'), false);
 
     await assert.rejects(
         readIntegrationProviderJson(new Response('x'.repeat(INTEGRATION_PROVIDER_JSON_MAX_BYTES + 1))),

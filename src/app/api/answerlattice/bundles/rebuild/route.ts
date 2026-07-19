@@ -19,15 +19,34 @@ const RebuildRequestSchema = z.object({
     force: z.boolean().optional().default(false),
 }).strict();
 const BUNDLE_REBUILD_MAX_BODY_BYTES = 2 * 1024;
+const ANSWERLATTICE_BUNDLE_REBUILD_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const bundleRebuildJson = (
+    body: Record<string, unknown>,
+    status = 200,
+): NextResponse => NextResponse.json(body, {
+    status,
+    headers: ANSWERLATTICE_BUNDLE_REBUILD_RESPONSE_HEADERS,
+});
+
+const withBundleRebuildHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_BUNDLE_REBUILD_RESPONSE_HEADERS).forEach(([key, value]) => {
+        response.headers.set(key, value);
+    });
+    return response;
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_BUNDLE_BUILDER) {
-        return NextResponse.json({ error: 'Compiled context bundles are not enabled.' }, { status: 404 });
+        return bundleRebuildJson({ error: 'Compiled context bundles are not enabled.' }, 404);
     }
 
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope) {
-        return NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 });
+        return bundleRebuildJson({ error: 'Answerlattice workspace is not available.' }, 400);
     }
     const { tenantId, storeId } = scope;
 
@@ -37,11 +56,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         window: 60,
     });
     if (!rateLimit.allowed) {
-        return NextResponse.json({ error: 'Too many rebuild requests.' }, { status: 429 });
+        return bundleRebuildJson({ error: 'Too many rebuild requests.' }, 429);
     }
 
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.REBUILD_CONTEXT);
-    if (permission.response) return permission.response;
+    if (permission.response) return withBundleRebuildHeaders(permission.response);
 
     try {
         const bodyResult = await readOptionalBoundedJsonBody(request, BUNDLE_REBUILD_MAX_BODY_BYTES, {
@@ -49,15 +68,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return bundleRebuildJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid rebuild request.' },
-                { status: bodyResult.response.status },
+                bodyResult.response.status,
             );
         }
 
         const parsedResult = RebuildRequestSchema.safeParse(bodyResult.data);
         if (!parsedResult.success) {
-            return NextResponse.json({ error: 'Invalid rebuild request.' }, { status: 400 });
+            return bundleRebuildJson({ error: 'Invalid rebuild request.' }, 400);
         }
         const parsed = parsedResult.data;
         const manifest = await buildAnswerlatticeContextBundleServer({
@@ -76,7 +95,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             bytesTotal: manifest.stats?.bytesTotal || 0,
         });
 
-        return NextResponse.json({
+        return bundleRebuildJson({
             ok: manifest.status === 'ready',
             manifest: {
                 status: manifest.status,
@@ -93,6 +112,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('tenantId', tenantId),
             ...getBoundedRuntimeStringContext('storeId', storeId),
         });
-        return NextResponse.json({ error: 'Failed to rebuild compiled context.' }, { status: 500 });
+        return bundleRebuildJson({ error: 'Failed to rebuild compiled context.' }, 500);
     }
 });

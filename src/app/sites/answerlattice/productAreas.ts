@@ -7,7 +7,7 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'In-app help widget',
         href: '/product/page-aware-widget',
-        description: 'Install one widget, pass safe page hints, accept explicit screenshot context, control allowed domains, and answer users inside your app.',
+        description: 'Install one widget, pass safe page hints, accept explicit screenshot context, allow exact app origins, and answer users inside your app.',
     },
     {
         label: 'Help center and tickets',

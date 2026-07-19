@@ -7,6 +7,8 @@ import type {
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 
 const MAX_NAVIGATION_INDEX = 1_000_000;
+const MAX_KNOWLEDGE_BASE_CATEGORIES = 500;
+const MAX_KNOWLEDGE_BASE_NAVIGATION_BYTES = 900 * 1024;
 const UNSAFE_NAVIGATION_URL_PATTERN = /(?:^[a-z][a-z\d+.-]*:|^\/\/|\\|[\u0000-\u001f\u007f])/i;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
@@ -104,6 +106,78 @@ const requireOptionalArray = <T>(value: T[] | null | undefined, field: string): 
     return value;
 };
 
+const getCategoryArticleReferences = (category: KnowledgeBaseCategory): KnowledgeBaseArticleMeta[] => [
+    ...requireOptionalArray(category.articles, 'articles_document'),
+    ...requireOptionalArray(category.sections, 'sections_document').flatMap(section => (
+        requireOptionalArray(section.articles, 'articles_document')
+    )),
+];
+
+export const assertKnowledgeBaseCategoriesMapBounds = (
+    categories: KbCategoriesMap,
+): KbCategoriesMap => {
+    if (!isRecord(categories) || Object.keys(categories).length > MAX_KNOWLEDGE_BASE_CATEGORIES) {
+        throw new Error('answerlattice_kb_categories_document_invalid');
+    }
+    const byteLength = new TextEncoder().encode(JSON.stringify({ categories })).length;
+    if (byteLength > MAX_KNOWLEDGE_BASE_NAVIGATION_BYTES) {
+        throw new Error('answerlattice_kb_categories_document_too_large');
+    }
+    return categories;
+};
+
+export const resolveKnowledgeBaseArticlePlacement = (
+    categories: KbCategoriesMap,
+    categoryId: unknown,
+    sectionId?: unknown,
+): {
+    categoryId: string;
+    categoryTitle: string;
+    sectionId: string | null;
+    sectionTitle: string;
+} => {
+    const normalizedCategoryId = requireKnowledgeBaseNavigationId(categoryId);
+    const category = requireStoredCategory(categories, normalizedCategoryId);
+    if (sectionId === undefined || sectionId === null || sectionId === '') {
+        return {
+            categoryId: normalizedCategoryId,
+            categoryTitle: requireText(category.title, 'category_title', 160),
+            sectionId: null,
+            sectionTitle: '',
+        };
+    }
+    const normalizedSectionId = requireKnowledgeBaseNavigationId(sectionId);
+    const section = requireOptionalArray(category.sections, 'sections_document')
+        .find(item => item.id === normalizedSectionId);
+    if (!section) throw new Error('answerlattice_kb_section_not_found');
+    return {
+        categoryId: normalizedCategoryId,
+        categoryTitle: requireText(category.title, 'category_title', 160),
+        sectionId: normalizedSectionId,
+        sectionTitle: requireText(section.title, 'section_title', 160),
+    };
+};
+
+export const removeKnowledgeBaseArticleMetaEverywhere = (
+    categories: KbCategoriesMap,
+    articleId: unknown,
+): KbCategoriesMap => {
+    const normalizedArticleId = requireKnowledgeBaseNavigationId(articleId);
+    return Object.fromEntries(Object.keys(categories).map((categoryId) => {
+        const storedCategory = requireStoredCategory(categories, categoryId);
+        return [categoryId, {
+            ...storedCategory,
+            articles: requireOptionalArray(storedCategory.articles, 'articles_document')
+                .filter(article => article.id !== normalizedArticleId),
+            sections: requireOptionalArray(storedCategory.sections, 'sections_document').map(section => ({
+                ...section,
+                articles: requireOptionalArray(section.articles, 'articles_document')
+                    .filter(article => article.id !== normalizedArticleId),
+            })),
+        }];
+    })) as KbCategoriesMap;
+};
+
 export const addKnowledgeBaseCategory = (
     categories: KbCategoriesMap,
     category: KnowledgeBaseCategory,
@@ -131,7 +205,10 @@ export const deleteKnowledgeBaseCategory = (
     categories: KbCategoriesMap,
     categoryId: string,
 ): KbCategoriesMap => {
-    requireStoredCategory(categories, categoryId);
+    const category = requireStoredCategory(categories, categoryId);
+    if (getCategoryArticleReferences(category).length > 0) {
+        throw new Error('answerlattice_kb_category_not_empty');
+    }
     const next = { ...categories };
     delete next[categoryId];
     return next;
@@ -170,8 +247,12 @@ export const deleteKnowledgeBaseSection = (
 ): KbCategoriesMap => {
     const category = requireStoredCategory(categories, categoryId);
     const sections = requireOptionalArray(category.sections, 'sections_document');
-    if (!sections.some((section) => section.id === sectionId)) {
+    const section = sections.find(item => item.id === sectionId);
+    if (!section) {
         throw new Error('answerlattice_kb_section_not_found');
+    }
+    if (requireOptionalArray(section.articles, 'articles_document').length > 0) {
+        throw new Error('answerlattice_kb_section_not_empty');
     }
     return {
         ...categories,
@@ -188,14 +269,15 @@ export const upsertKnowledgeBaseArticleMeta = (
     article: KnowledgeBaseArticleMeta,
     sectionId?: string | null,
 ): KbCategoriesMap => {
-    const category = requireStoredCategory(categories, categoryId);
+    const withoutExistingReference = removeKnowledgeBaseArticleMetaEverywhere(categories, article.id);
+    const category = requireStoredCategory(withoutExistingReference, categoryId);
     if (!sectionId) {
         const articles = requireOptionalArray(category.articles, 'articles_document');
         const existingIndex = articles.findIndex((item) => item.id === article.id);
         const nextArticles = existingIndex < 0
             ? [...articles, article]
             : articles.map((item, index) => index === existingIndex ? article : item);
-        return { ...categories, [categoryId]: { ...category, articles: nextArticles } };
+        return { ...withoutExistingReference, [categoryId]: { ...category, articles: nextArticles } };
     }
 
     const sections = requireOptionalArray(category.sections, 'sections_document');
@@ -212,7 +294,7 @@ export const upsertKnowledgeBaseArticleMeta = (
                 : articles.map((item, articleIndex) => articleIndex === existingIndex ? article : item),
         };
     });
-    return { ...categories, [categoryId]: { ...category, sections: nextSections } };
+    return { ...withoutExistingReference, [categoryId]: { ...category, sections: nextSections } };
 };
 
 export const deleteKnowledgeBaseArticleMeta = (

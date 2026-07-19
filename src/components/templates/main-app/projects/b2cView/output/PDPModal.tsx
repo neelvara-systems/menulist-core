@@ -15,6 +15,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getLocalizedText } from '@lib/localization/text';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+    getPublicSpiceLevelLabel,
+    type PublicCustomerTranslator,
+} from '@lib/localization/publicCustomerMessages';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from '@lib/menu/itemDecisionFacts';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
@@ -145,13 +151,13 @@ function normalizeDietaryTagKey(tag: string): string {
     return tag.toLowerCase().trim().replace(/_/g, '-').replace(/\s+/g, '-');
 }
 
-function getDietaryTagLabel(tag: string): string {
+function getDietaryTagLabel(tag: string, t: PublicCustomerTranslator): string {
     const key = normalizeDietaryTagKey(tag);
-    if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) return 'Non-veg';
-    if (key === 'vegetarian') return 'Vegetarian';
-    if (key === 'gluten-free') return 'Gluten free';
-    if (key === 'dairy-free') return 'Dairy free';
-    if (key === 'sugar-free') return 'Sugar free';
+    if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) return t('menu.nonVeg');
+    if (key === 'vegetarian') return t('menu.vegetarian');
+    if (key === 'gluten-free') return t('menu.glutenFree');
+    if (key === 'dairy-free') return t('menu.dairyFree');
+    if (key === 'sugar-free') return t('menu.sugarFree');
     return tag.replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
@@ -180,6 +186,8 @@ function PDPModal({
     itemShareUrl,
     onShare,
 }: PDPModalProps) {
+    const t = createPublicCustomerTranslator(language);
+    const languageDirection = getPublicCustomerLanguageDirection(language);
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [displayedImageIndex, setDisplayedImageIndex] = useState(0);
@@ -433,11 +441,11 @@ function PDPModal({
     const nutritionInfo = getNutritionFact(item) as Record<string, unknown> | undefined;
     const nutritionBadges = nutritionInfo
         ? [
-            nutritionInfo.calories ? `${nutritionInfo.calories} cal` : '',
-            nutritionInfo.protein ? `Protein ${nutritionInfo.protein}g` : '',
-            nutritionInfo.carbs ? `Carbs ${nutritionInfo.carbs}g` : '',
-            nutritionInfo.fat ? `Fat ${nutritionInfo.fat}g` : '',
-            nutritionInfo.servingSize ? `Serving ${nutritionInfo.servingSize}` : '',
+            nutritionInfo.calories ? t('menu.calories', { count: String(nutritionInfo.calories) }) : '',
+            nutritionInfo.protein ? t('menu.protein', { value: String(nutritionInfo.protein) }) : '',
+            nutritionInfo.carbs ? t('menu.carbs', { value: String(nutritionInfo.carbs) }) : '',
+            nutritionInfo.fat ? t('menu.fat', { value: String(nutritionInfo.fat) }) : '',
+            nutritionInfo.servingSize ? t('menu.serving', { value: String(nutritionInfo.servingSize) }) : '',
             ].filter(Boolean)
         : [];
     const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -462,7 +470,7 @@ function PDPModal({
     const handleShareItem = async () => {
         if (!itemShareUrl || isSharingItem) return;
 
-        const shareTitle = getModalText(item.name, 'Menu item');
+        const shareTitle = getModalText(item.name, t('menu.menuItem'));
         const description = getCompactShareText(getModalText(item.description, ''));
         const shareData: ShareData = {
             title: shareTitle,
@@ -491,7 +499,7 @@ function PDPModal({
             setIsSharingItem(true);
             await copyTextToClipboard(itemShareUrl);
             onShare?.('copy_link');
-            setShareStatus('Link copied');
+            setShareStatus(t('menu.linkCopied'));
         } catch (error) {
             logRuntimeFailure('public_menu_pdp_item_share_copy_failed', error, {
                 ...getBoundedRuntimeStringContext('itemId', item?.id),
@@ -503,7 +511,7 @@ function PDPModal({
                 hasClipboardWrite: hasPdpItemShareClipboardWrite(),
                 hasCopyFallback: hasPdpItemShareCopyFallback(),
             });
-            setShareStatus('Could not share');
+            setShareStatus(t('menu.couldNotShare'));
         } finally {
             setIsSharingItem(false);
         }
@@ -537,7 +545,7 @@ function PDPModal({
         gap: 6,
         padding: 6,
         position: 'absolute',
-        right: 12,
+        insetInlineEnd: 12,
         zIndex: 4,
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
@@ -564,8 +572,8 @@ function PDPModal({
         display: 'flex',
         gap: 8,
         marginBottom: -44,
-        marginLeft: 'auto',
-        marginRight: 12,
+        marginInlineStart: 'auto',
+        marginInlineEnd: 12,
         marginTop: 12,
         position: 'sticky',
         top: 12,
@@ -611,6 +619,8 @@ function PDPModal({
 
                     {/* Modal */}
                     <motion.div
+                        dir={languageDirection}
+                        lang={language}
                         initial={isMobileSheet ? menuBottomSheetMotion.initial : menuDialogMotion.initial}
                         animate={isMobileSheet ? menuBottomSheetMotion.animate : menuDialogMotion.animate}
                         exit={isMobileSheet ? menuBottomSheetMotion.exit : menuDialogMotion.exit}
@@ -618,7 +628,7 @@ function PDPModal({
                         className="fixed z-[60] flex items-center justify-center"
                         role="dialog"
                         aria-modal="true"
-                        aria-label={getModalText(item.name, 'Menu item details')}
+                        aria-label={getModalText(item.name, t('menu.menuItemDetails'))}
                         style={{
                             position: 'fixed',
                             inset: isMobileSheet
@@ -663,8 +673,8 @@ function PDPModal({
                                         type="button"
                                         onClick={handleShareItem}
                                         className="rounded-full transition-opacity hover:opacity-80"
-                                        aria-label="Share item"
-                                        title="Share item"
+                                        aria-label={t('menu.shareItem')}
+                                        title={t('menu.shareItem')}
                                         disabled={isSharingItem}
                                         style={pdpIconButtonStyle({ position: 'relative' }, isSharingItem)}
                                     >
@@ -675,7 +685,7 @@ function PDPModal({
                                     type="button"
                                     onClick={onClose}
                                     className="rounded-full transition-opacity hover:opacity-80"
-                                    aria-label="Close item details"
+                                    aria-label={t('menu.closeItemDetails')}
                                     style={stickyCloseButtonStyle}
                                 >
                                     <LuX size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
@@ -706,7 +716,7 @@ function PDPModal({
                                             <Image
                                                 key={`${imageUrl}-${imageIndex}`}
                                                 src={imageUrl}
-                                                alt={getMenuItemImageAltText(getModalText(item.name, 'Menu item'))}
+                                                alt={getMenuItemImageAltText(getModalText(item.name, t('menu.menuItem')))}
                                                 fill
                                                 className="object-contain"
                                                 style={{
@@ -736,7 +746,7 @@ function PDPModal({
                                     )}
 
                                     <div
-                                        aria-label="Image controls"
+                                        aria-label={t('menu.imageControls')}
                                         style={imageActionBarStyle}
                                         onClick={(event) => event.stopPropagation()}
                                     >
@@ -744,7 +754,7 @@ function PDPModal({
                                             <button
                                                 type="button"
                                                 onClick={prevImage}
-                                                aria-label="Previous image"
+                                                aria-label={t('menu.previousImage')}
                                                 style={imageActionButtonStyle()}
                                             >
                                                 <LuChevronLeft size={18} color={moodConfig.accentColor} strokeWidth={2.4} />
@@ -759,7 +769,7 @@ function PDPModal({
                                             <button
                                                 type="button"
                                                 onClick={nextImage}
-                                                aria-label="Next image"
+                                                aria-label={t('menu.nextImage')}
                                                 style={imageActionButtonStyle()}
                                             >
                                                 <LuChevronRight size={18} color={moodConfig.accentColor} strokeWidth={2.4} />
@@ -768,7 +778,7 @@ function PDPModal({
                                         <button
                                             type="button"
                                             onClick={() => setIsImageViewerOpen(true)}
-                                            aria-label="Enlarge image"
+                                            aria-label={t('menu.enlargeImage')}
                                             style={imageActionButtonStyle()}
                                         >
                                             <LuMaximize2 size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
@@ -803,7 +813,7 @@ function PDPModal({
                                             lineHeight: '16px',
                                         }}
                                     >
-                                        {unavailableLabel || 'Unavailable'}
+                                        {unavailableLabel || t('menu.unavailable')}
                                     </span>
                                 )}
 
@@ -859,7 +869,7 @@ function PDPModal({
                                             overflowWrap: 'anywhere',
                                         }}
                                     >
-                                        {getModalText(item.name, 'Menu Item')}
+                                        {getModalText(item.name, t('menu.menuItem'))}
                                     </h2>
                                     {showItemPrices && itemListPriceLabel && (
                                         <span
@@ -925,12 +935,14 @@ function PDPModal({
                                     >
                                         {dietaryTags.map((tag: string, idx: number) => (
                                             <span key={`dt-${idx}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, ...getDietaryTagStyle(tag), fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                {getDietaryTagLabel(tag)}
+                                                {getDietaryTagLabel(tag, t)}
                                             </span>
                                         ))}
                                         {spiceLevel && spiceLevel !== 'none' && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#fee2e2', color: '#991b1b', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                🌶️ {spiceLevel.charAt(0).toUpperCase() + spiceLevel.slice(1).replace('-', ' ')}
+                                                🌶️ {t('menu.spice', {
+                                                    value: getPublicSpiceLevelLabel(spiceLevel, t),
+                                                })}
                                             </span>
                                         )}
                                         {allergens.length > 0 && (
@@ -940,7 +952,7 @@ function PDPModal({
                                         )}
                                         {duration && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                ⏱ {duration} min
+                                                ⏱ {t('menu.minutesShort', { count: duration })}
                                             </span>
                                         )}
                                         {targetAudience && (
@@ -960,7 +972,7 @@ function PDPModal({
                                         )}
                                         {warranty && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                Warranty: {warranty}
+                                                {t('menu.warranty', { value: warranty })}
                                             </span>
                                         )}
                                         {nutritionBadges.map((badge) => (
@@ -1000,7 +1012,7 @@ function PDPModal({
                                                 fontWeight: 600,
                                             }}
                                         >
-                                            Need help instead?
+                                            {t('menu.needHelpInstead')}
                                         </h3>
                                         <div
                                             className="flex flex-wrap gap-2"
@@ -1066,7 +1078,7 @@ function PDPModal({
                                                 fontWeight: 600,
                                             }}
                                         >
-                                            Options
+                                            {t('menu.options')}
                                         </h3>
                                         {activePriceAttributes.map((attr: any, idx: number) => (
                                             <div
@@ -1092,7 +1104,7 @@ function PDPModal({
                                                         lineHeight: '20px',
                                                     }}
                                                 >
-                                                    {getModalText(attr.name, 'Option')}
+                                                    {getModalText(attr.name, t('menu.option'))}
                                                 </span>
                                                 {showItemPrices ? (
                                                     <span
@@ -1119,18 +1131,26 @@ function PDPModal({
 
                     <PublicImageViewer
                         accentColor={moodConfig.accentColor}
+                        closeLabel={t('menu.closeImageViewer')}
+                        direction={languageDirection}
                         images={images.map((image: any) => ({
-                            alt: getMenuItemImageAltText(getModalText(item.name, 'Menu item')),
+                            alt: getMenuItemImageAltText(getModalText(item.name, t('menu.menuItem'))),
                             url: image.url,
                         }))}
                         initialIndex={displayedImageIndex}
+                        language={language}
+                        nextLabel={t('menu.nextImage')}
                         onClose={() => setIsImageViewerOpen(false)}
                         onIndexChange={(index) => {
                             setCurrentImageIndex(index);
                             setDisplayedImageIndex(index);
                         }}
                         open={isImageViewerOpen && images.length > 0}
-                        title="Image viewer"
+                        previousLabel={t('menu.previousImage')}
+                        resetZoomLabel={t('menu.resetImageZoom')}
+                        title={t('menu.imageViewer')}
+                        zoomInLabel={t('menu.zoomIn')}
+                        zoomOutLabel={t('menu.zoomOut')}
                     />
                 </>
             )}

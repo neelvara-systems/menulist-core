@@ -1,7 +1,7 @@
 # Answerlattice Support Board
 
-> Status: Implemented
-> Last updated: 2026-06-28
+> Status: Implemented and locally hardened
+> Last updated: 2026-07-19
 > Product area: Support Control
 > Route: `/answerlattice/support-board`
 
@@ -39,15 +39,17 @@ Every missed support question becomes visible work, every card can hold private 
 | Card ID boundary | Implemented | Answerlattice App Support Board Card ID Boundary validates card document IDs before update, status transaction, or note document refs are built |
 | Bounded ticket sync | Implemented, gated | `useSupportBoard.ts` reads recent unresolved tickets and creates cards only when source sync is enabled |
 | Bounded signal sync | Implemented, gated | `useSupportBoard.ts` reads recent actionable signals and creates cards only when source sync is enabled |
-| Source customer display | Implemented | Ticket, feedback, and signal source cards preserve available requester name, email, phone, source path, and widget session metadata when present |
+| Source customer display and redaction | Implemented | Ticket, feedback, and signal source cards preserve bounded requester/source metadata when present; authorized staff can irreversibly clear the copied identity/location fields while retaining the source card and source ID |
+| Deterministic source-card identity | Implemented | Non-manual cards use a tenant/workspace/source hash and transaction so retries and concurrent syncs do not create duplicate cards |
 | Nightly signal-quality sync | Implemented, gated | `functions-answerlattice/src/answerlattice/supportBoardSync.ts` creates deduped cards for repeated misses, negative feedback, drift, and release impact only when enabled |
-| Compact board summary | Implemented, gated | `platformSummary/supportBoardSummary_{tId}_{sId}` is written by nightly sync only when enabled; UI summary-read failures log a bounded diagnostic and do not block the board |
+| Compact board summary | Implemented | `answerlatticeSupportBoardSummaryOnWrite` maintains exact core counts after manual create/status/priority changes; disabled-by-default nightly sync optionally adds bounded status/source/surface breakdowns |
 | Nightly diagnostics | Implemented | Support Board nightly success/failure logs use fixed codes, scope booleans, and source error name/code/status only |
 | Nightly derived-card source-text boundary | Implemented | Support Board nightly derived-card source-text duplication boundary: recurring-miss and signal-cluster cards store source example counts and context only, not raw query/subject/reason/message text |
 | Nightly entity ID boundary | Implemented | Answerlattice Functions signal-source entity ID boundary: nightly sync normalizes stored signal/search/drift entity IDs before entity document reads or derived-card grouping, skipping malformed values |
 | App related entity ID boundary | Implemented | Answerlattice App Support Board Related Entity ID Boundary normalizes card `relatedEntityId` writes, ticket/signal source-card links, card proposal eligibility, and mutation proposal `relatedEntityIds` through the shared resolved-entity helper |
 | Private internal notes | Implemented | Embedded capped notes on board cards |
 | Status history | Implemented | Top-level `status` plus capped `statuses[]` activity history |
+| Direct-write protection | Implemented | Dedicated and shared rules enforce allowed create/update fields, prepend-only notes/history, status/resolution coupling, one-way source redaction, governance-only proposal links, tenant isolation, and denied deletes |
 | Answer proposal action | Implemented | Creates pending mutation proposal when card has a related entity |
 | Auto-publish | Not allowed | Drafts/proposals still require human approval |
 
@@ -64,6 +66,7 @@ Answerlattice App Support Board Related Entity ID Boundary: app-side Support Boa
 | `support-board_spec.md` | Product requirements and workflow |
 | `support-board_impl.md` | Implementation map and code paths |
 | `support-board_firebase.md` | Firestore model, rules, indexes, cost |
+| `support-board_marketing.md` | Commercial claims and evidence boundary |
 | `support-board_helpdoc.md` | Owner-facing help copy |
 | `support-board_website.md` | Public-site claim guidance |
 | `support-board_mobile-support.md` | Responsive/mobile assessment |
@@ -80,8 +83,8 @@ This feature list is the Answerlattice support-work roadmap. Items must stay ins
 | P0 | Needs Answer queue | Implemented as board status |
 | P0 | Ticket-to-answer conversion | Implemented as board card to governed mutation proposal when entity-bound |
 | P0 | Status activity history | Implemented as capped `statuses[]` history |
-| P1 | Weekly Support Review screen | Future: extend Weekly Digest with board summary |
-| P1 | Release Impact Checklist | Future: connect releases to board cards and drift review |
+| P1 | Founder review summary | Core counts are available to Founder Daily Brief; richer Weekly Digest use requires verification in that feature audit |
+| P1 | Release Impact Checklist | Implemented only inside the disabled-by-default nightly preparation path |
 | P1 | Saved replies from canonical answers | Future: ticket reply helper, no auto-send |
 | P1 | Assignee + internal status | Partially implemented; assignee and board status exist |
 | P1 | Support surface health view | Future: summary from surfaces, tickets, signals, and board cards |
@@ -95,3 +98,7 @@ This feature list is the Answerlattice support-work roadmap. Items must stay ins
 Support Board cards and notes are internal only. They must never render in public help center, hosted help, widget responses, public API responses, or customer-facing docs.
 
 Nightly sync diagnostics are operational only. They must not emit raw tenant/store IDs, source IDs, support text, provider/runtime exception text, or customer/requester metadata.
+
+The board list is capped at the newest 120 cards and has no cursor pagination. UI column counts therefore describe the loaded board window; compact summary core counts describe the complete exact workspace scope. Source scans are also bounded and expose saturation/freshness state rather than claiming exhaustive coverage.
+
+Cards are durable and client deletion remains denied. Copied customer/source details can be removed from an individual card, but full workspace erasure and deletion of the original source record belong to their owning retention workflows and are not claimed by this feature.

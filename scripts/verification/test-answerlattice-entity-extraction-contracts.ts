@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { extractEntitiesFromArticles } from '../../src/lib/answerlattice/entityExtraction';
 
@@ -84,6 +86,61 @@ async function run() {
         persistedCandidateCount,
         0,
         'A registry match must reuse the governed entity instead of creating a candidate.',
+    );
+
+    const deferred = await extractEntitiesFromArticles(
+        [article],
+        scope.tId,
+        scope.sId,
+        async () => JSON.stringify({
+            entities: [{
+                name: 'Delivery Recovery',
+                type: 'workflow',
+                confidence: 0.88,
+                description: 'Delivery recovery governs retries after an endpoint failure.',
+                source: 'new',
+            }],
+        }),
+        [],
+        persistCandidate,
+        { persistCandidates: false },
+    );
+    assert.equal(deferred.candidateDrafts?.length, 1);
+    assert.equal(persistedCandidateCount, 0, 'deferred extraction must not write candidates before source revalidation');
+
+    const ambiguous = await extractEntitiesFromArticles(
+        [article],
+        scope.tId,
+        scope.sId,
+        async () => JSON.stringify({
+            entities: [{
+                name: 'Webhook',
+                type: 'integration',
+                confidence: 0.9,
+                description: 'Webhook delivery integration.',
+                source: 'existing',
+            }],
+        }),
+        [
+            { id: 'entity_webhook_a', name: 'Webhook Delivery', slug: 'webhook-delivery', aliases: ['webhook'] },
+            { id: 'entity_webhook_b', name: 'Webhook Events', slug: 'webhook-events', aliases: ['webhook'] },
+        ],
+        persistCandidate,
+        { persistCandidates: false },
+    );
+    assert.deepEqual(ambiguous.matchedEntityIds, []);
+    assert.equal(ambiguous.candidateDrafts?.length, 1, 'ambiguous aliases must become review work instead of an arbitrary link');
+
+    const routeSource = fs.readFileSync(
+        path.resolve(__dirname, '../../src/app/api/answerlattice/articles/extract-entities/route.ts'),
+        'utf8',
+    );
+    assert.match(routeSource, /buildArticleSourceFingerprint\(currentArticle\) !== sourceFingerprint/);
+    assert.match(routeSource, /\{ persistCandidates: false \}/);
+    assert.ok(
+        routeSource.indexOf('const matchedEntityIds = await syncArticleEntityIds')
+            < routeSource.indexOf('for (const candidate of result.candidateDrafts'),
+        'candidate persistence must occur only after the article links pass transaction revalidation',
     );
 }
 

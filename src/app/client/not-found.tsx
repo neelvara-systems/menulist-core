@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Client Menu Not Found Page (Customer Infra Hardening - TASK 8)
  *
@@ -10,10 +12,34 @@
  */
 
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
+import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
+import { useEffect, useState } from 'react';
+import { LuBookX } from 'react-icons/lu';
 
 export default function ClientMenuNotFound() {
+    const [activeLanguage, setActiveLanguage] = useState('en');
+
+    useEffect(() => {
+        const requestedLanguage = new URLSearchParams(window.location.search).get('lang');
+        if (requestedLanguage) setActiveLanguage(requestedLanguage);
+    }, []);
+
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
+    const pageTitle = t('menu.menuNotFound');
+
+    useEffect(() => {
+        document.title = pageTitle;
+    }, [pageTitle]);
+
     return (
         <div
+            dir={direction}
+            lang={activeLanguage}
             style={{
                 minHeight: "100dvh",
                 display: "flex",
@@ -37,10 +63,11 @@ export default function ClientMenuNotFound() {
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "20px",
-                    fontSize: "28px",
+                    color: "#1565c0",
                 }}
+                aria-hidden="true"
             >
-                ML
+                <LuBookX size={28} />
             </div>
 
             <h1
@@ -51,7 +78,7 @@ export default function ClientMenuNotFound() {
                     color: "#1a1a1a",
                 }}
             >
-                Menu not found
+                {pageTitle}
             </h1>
 
             <p
@@ -63,12 +90,11 @@ export default function ClientMenuNotFound() {
                     lineHeight: 1.5,
                 }}
             >
-                This public link does not seem to be active. The business may
-                have updated their MenuList link.
+                {t('menu.publicLinkInactive')}
             </p>
 
             <a
-                href="/"
+                href={appendPublicLanguageParam('/', activeLanguage)}
                 style={{
                     padding: "12px 32px",
                     fontSize: "16px",
@@ -82,7 +108,7 @@ export default function ClientMenuNotFound() {
                     display: "inline-block",
                 }}
             >
-                Go to Homepage
+                {t('menu.goToHomepage')}
             </a>
 
             <p
@@ -92,10 +118,14 @@ export default function ClientMenuNotFound() {
                     margin: 0,
                 }}
             >
-                Please ask the business for the correct link.
+                {t('menu.askBusinessCorrectLink')}
             </p>
 
-            <PublicMenuListAttribution />
+            <PublicMenuListAttribution
+                ariaLabel={t('common.createOfficialCustomerLink')}
+                rightsLabel={t('common.allRightsReserved')}
+                surfaceLabel={t('common.poweredByMenuList')}
+            />
         </div>
     );
 }

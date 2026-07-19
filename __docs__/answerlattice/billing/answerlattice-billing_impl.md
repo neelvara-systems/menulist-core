@@ -1,7 +1,7 @@
 # Answerlattice Billing — Implementation
 
-> **Version:** 1.5.1
-> **Last Updated:** 2026-07-14
+> **Version:** 2.0.1
+> **Last Updated:** 2026-07-19
 > **Audience:** Developers
 
 ## Architecture
@@ -19,7 +19,7 @@ Answerlattice reuses the MenuList Razorpay routes and payment hook through a pro
 - MenuList payments use the existing default Firestore subscription DAL.
 - Answerlattice payments use `answerlatticeFirestoreAdmin`.
 - Answerlattice product-billing create/update/get-by-id, active-subscription store-summary fallback, and entitlement sync normalize subscription document IDs through `src/lib/answerlattice/billingDocumentIdBoundary.ts` before `subscriptions/{subscriptionId}` refs.
-- `src/lib/answerlattice/billingDocumentIdBoundary.ts` owns strict provider/ledger document IDs and exact positive numeric tenant/store request scope for both client and server billing paths. `src/lib/answerlattice/billingScopeBoundary.ts` separately owns persisted financial identity: at least one exact `AL` product field is required, every present product alias must agree, tenant/store ownership fields must be positive safe-integer numbers, and duplicate compact/legacy aliases must agree. Paid intake, AI accounting, active-subscription selection, entitlement sync, and paid-history projection reuse that persisted boundary. Whitespace-mutated, case-folded, conflicting, string-coercible, reserved, path-shaped, decimal, zero, negative, unsafe, or nonnumeric identifiers fail before a financial row is admitted.
+- `src/lib/answerlattice/billingDocumentIdBoundary.ts` owns strict provider/ledger document IDs and exact positive numeric tenant/store request scope for both client and server billing paths. `src/lib/answerlattice/billingScopeBoundary.ts` separately owns persisted financial identity and resolves the authoritative numeric workspace through `getAnswerlatticeBillingRecordScope()`: at least one exact `AL` product field is required, every present product alias must agree, tenant/store ownership fields must be positive safe-integer numbers, and duplicate compact/legacy aliases must agree. Paid intake, AI accounting, direct subscription lookup, payment/lifecycle/webhook transactions, active-subscription selection, entitlement sync, and paid-history projection reuse that persisted boundary. Whitespace-mutated, case-folded, conflicting, string-coercible, reserved, path-shaped, decimal, zero, negative, unsafe, or nonnumeric identifiers fail before a financial row is admitted or mutated.
 - The billing client accepts a store summary only from an exact Answerlattice store. A valid summary ID is used only to load a direct subscription that independently satisfies exact product/workspace/current-state admission. A summary without a usable direct document is accepted only when the summary itself carries exact persisted financial ownership. Firestore document IDs override embedded data fields. Paid history is filtered/ordered/limited in Firestore and rechecked through the same exact product/workspace boundary, so the transactions screen receives at most the latest 25 admitted rows rather than a numerically coerced or arbitrary window.
 - Answerlattice entitlement sync writes a compact `stores/{sId}.answerlatticeSubscription` summary, current monthly/top-up credit balances, and subscription `analyticsEntitlement`.
 - Answerlattice entitlement sync selects the current active subscription inside the same Firestore transaction as the store-summary/subscription audit writes. A stale expiry or old-subscription sync cannot replace the active replacement plan. Grace expiry also re-reads current state and the recovery timestamp transactionally before writing `expired`.
@@ -40,6 +40,21 @@ All shared Razorpay routes accept optional `productId`.
 - Answerlattice uses `canUseAnswerlatticeManagement()` and `productAccounts.AL` scope.
 - Every shared Razorpay mutation additionally resolves the current Answerlattice store, user membership, and persisted role through `canManageAnswerlatticeBillingMutation()`. Only platform authority or a current role with `canManageBilling: true` may create or verify subscriptions/top-ups or cancel, pause, resume, or upgrade a subscription. The broader management gate does not grant billing authority to the default Manager role.
 - Subscription and top-up creation apply their existing product/user/workspace rate limits before the persisted store/membership permission reads. Verification and lifecycle mutations likewise rate-limit before permission and provider/financial work.
+
+### Checkout Response Boundary
+
+`src/lib/billing/paymentCheckoutBoundary.ts` projects provider entities into minimal create responses:
+
+- subscription: `{ subscription: { id: 'sub_...' }, reused?: true }`
+- top-up: `{ order: { id: 'order_...' } }`
+
+The create routes reject malformed provider IDs before responding. `usePaymentHandler` admits only those exact shapes and rejects unknown nested or outer fields. Razorpay provider notes, customer details, status, amount, hosted URL, and future response fields are never required by the browser.
+
+`src/lib/razorpay/checkoutUrl.ts` applies one exact HTTPS `rzp.io` boundary to subscription and invoice links. Subscription persistence, webhook invoice enrichment, and billing-history projection all use it.
+
+### Billing Read Boundary
+
+Answerlattice client fallback subscription and payment-history queries include `pId == 'AL'` and exact tenant/store filters. Dedicated and shared rules require current `canManageBilling`, exact product identity, and current workspace scope for Answerlattice reads. Browser writes remain denied. Shared rules retain legacy MenuList same-scope reads for records without Answerlattice identity.
 
 Webhook events derive product from canonical provider notes when present:
 
@@ -66,6 +81,8 @@ The billing screen reuses shared MenuList billing components where useful:
 - `BillingHistory`
 
 Those components now accept product-aware props for labels, support route, usage route, plans, packs, and checkout names.
+
+The active-subscription DAL distinguishes absence from read failure. A valid empty result may show plan selection, but a rejected store/subscription read is rethrown after bounded diagnostics. The Billing screen then clears unverified subscription/history state, sets `hasBillingLoadError`, disables the plan action, and shows a blocking retry alert. It cannot expose a new checkout from an unconfirmed financial state.
 
 The transactions screen also reads Answerlattice AI operation history through `/api/answerlattice/ai-operations` and displays support-credit usage next to invoice history. The route reads `answerlattice_aiOperations/{tId}/{sId}` from Answerlattice Firestore, exposes owner-safe fields only, and includes:
 
@@ -112,6 +129,8 @@ Answerlattice keeps three layers separate:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-19 | 2.0.1 | Failed active-subscription reads now block plan mutation and exact persisted record scope is enforced on direct reads and transaction-owned mutations |
+| 2026-07-19 | 2.0.0 | Feature 30 audit: minimal checkout responses, strict hosted URLs, product-scoped client queries, dual-mode billing rule tests, bounded Billing diagnostics, and complete docs |
 | 2026-07-14 | 1.4.0 | Added pending checkout reuse/provider compensation, durable replacement finalization, webhook product recovery, and lost-browser support-credit settlement |
 | 2026-07-13 | 1.3.3 | Enforced current persisted billing permission on all shared Answerlattice mutations and moved creation limits ahead of authorization reads |
 | 2026-07-11 | 1.3.1 | Required exact persisted product and numeric workspace ownership for subscription/history reads and entitlement summary selection; conflicting aliases now fail closed |

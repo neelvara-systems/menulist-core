@@ -15,11 +15,12 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, where } from "@firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp, where, writeBatch } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { runAnswerlatticeGovernanceAction } from '@lib/answerlattice/governanceClient';
 import { AnswerlatticeStoredMutationProposalSchema } from '@lib/answerlattice/governanceContracts';
 import { normalizeAnswerlatticeMutationProposalId } from '@lib/answerlattice/governanceIdBoundary';
+import { buildAnswerlatticeManualMutationProposalId } from '@lib/answerlattice/mutationProposalIdentity';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -230,8 +231,58 @@ export const addMutationProposal = async (data: Omit<AnswerlatticeMutationPropos
                 id: 'proposal_validation',
             });
             if (!validation.success) throw new Error('Invalid mutation proposal data');
-            const docRef = await addDoc(getCollectionRef(), submitData);
-            const stored = parseStoredProposal(docRef.id, submitData);
+            const deterministicId = buildAnswerlatticeManualMutationProposalId({
+                tId: submitData.tId,
+                sId: submitData.sId,
+                requestId: submitData.requestId,
+            });
+            const proposalRef = deterministicId ? getDocRef(deterministicId) : doc(getCollectionRef());
+            const auditRef = doc(
+                answerlatticeFirebaseClient,
+                DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS,
+                `manual_created_${proposalRef.id}`,
+            );
+            const now = submitData.createdOn || Timestamp.now();
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            batch.set(proposalRef, submitData);
+            batch.set(auditRef, {
+                pId: submitData.pId,
+                tId: submitData.tId,
+                sId: submitData.sId,
+                action: 'mutation_proposal_created_manual',
+                entityType: 'mutationProposal',
+                entityId: proposalRef.id,
+                previousState: null,
+                newState: {
+                    mutationType: submitData.mutationType,
+                    relatedEntityIds: submitData.relatedEntityIds,
+                    source: submitData.suggestedChange?.draftSource || 'manual_authoring',
+                },
+                performedBy: submitData.createdBy || submitData.uId || 'answerlattice_owner',
+                timestamp: now,
+            });
+            try {
+                await batch.commit();
+            } catch (writeError) {
+                if (!deterministicId) throw writeError;
+                const existingSnapshot = await getDoc(proposalRef);
+                const existing = existingSnapshot.exists()
+                    ? parseStoredProposal(existingSnapshot.id, existingSnapshot.data())
+                    : null;
+                if (
+                    existing
+                    && existing.requestId === submitData.requestId
+                    && existing.tId === submitData.tId
+                    && existing.sId === submitData.sId
+                    && existing.targetAnswerId === submitData.targetAnswerId
+                    && existing.mutationType === submitData.mutationType
+                    && existing.relatedEntityIds.length === submitData.relatedEntityIds.length
+                    && existing.relatedEntityIds.every((entityId, index) => entityId === submitData.relatedEntityIds[index])
+                ) return existing;
+                if (existing) throw new Error('answerlattice_mutation_proposal_replay_conflict');
+                throw writeError;
+            }
+            const stored = parseStoredProposal(proposalRef.id, submitData);
             if (!stored) throw new Error('Invalid stored mutation proposal data');
             return stored;
         },

@@ -14,9 +14,8 @@
 export type EscalationTriggerType =
     | 'low_canonical_confidence'   // S1: canonical miss or confidence='low'
     | 'entity_resolution_failure'  // S2: no entity match
-    | 'repeated_failure'           // S3: 2+ failures in session
-    | 'explicit_user_request'      // S4: user typed escalation intent
-    | 'rag_low_similarity';        // S5: best vector result < 0.5
+    | 'explicit_user_request'      // S3: user typed escalation intent
+    | 'rag_low_similarity';        // S4: best vector result < 0.5
 
 export type EscalationType = 'soft' | 'hard' | 'none';
 
@@ -137,11 +136,5 @@ export const NO_ESCALATION: EscalationMetadata = {
     triggerTypes: [],
 };
 
-/** Max escalations per tenant per day (in-memory cap) */
-export const MAX_ESCALATIONS_PER_TENANT_PER_DAY = 10;
-
 /** RAG similarity threshold below which soft escalation triggers */
 export const RAG_LOW_SIMILARITY_THRESHOLD = 0.5;
-
-/** Minimum session failures before hard escalation */
-export const REPEATED_FAILURE_THRESHOLD = 2;

@@ -17,6 +17,9 @@
 | POI-WEB-011 | Use the prompt CTA on `/pre-onboarding/guide`. | Prompt opens in the same modal flow without navigating away from the guide. |
 | POI-WEB-011A | Simulate an oversized or non-Markdown `/pre-onboarding.md` response. | The modal rejects the preview, shows fixed fallback copy, and keeps the direct Markdown route visible. |
 | POI-WEB-011B | Simulate a rejected Clipboard API write with textarea fallback available. | Copy Prompt falls through to the fallback and shows copied state only after `document.execCommand('copy')` returns true; unavailable or failed fallback support keeps the fixed error state. |
+| POI-WEB-011C | Return Markdown without an allowed `Content-Type`. | Modal fails closed and keeps the direct Markdown route visible. |
+| POI-WEB-011D | Open the prompt modal, navigate with Tab/Shift+Tab, then close it. | Initial focus lands on the in-dialog close button, the backdrop is absent from the tab order, focus stays inside the dialog, and close restores the prompt trigger. |
+| POI-WEB-011E | Inspect every prompt/guide/tool Markdown route. | Each route uses the shared Markdown content type, cache policy, and `nosniff` header. |
 | POI-WEB-012 | Visit Answerlattice homepage. | Hero includes a pre-onboarding source-preparation link and the first-scroll page flow includes the Pre-Onboarding Kit section. |
 | POI-WEB-013 | Inspect desktop and mobile navigation. | Desktop header and mobile drawer include a direct Pre-Onboarding link. |
 | POI-WEB-014 | Visit `/get-started`. | Page offers pre-onboarding before workspace creation for owners with source material. |
@@ -45,6 +48,13 @@
 | POI-PROMPT-017 | AI IDE cannot browse the website or read local files. | Agent asks for exports/access or marks those sources pending; it does not claim complete coverage. |
 | POI-PROMPT-018 | Product has login-only screens and no approved screenshots or recordings. | Agent creates a production confirmation gate and capture plan instead of inventing screen behavior. |
 | POI-PROMPT-019 | Package is ready. | Final report lists source count, CSV row counts, largest source size, product boundary if relevant, source-access limits, asset brief status, and remaining production gates. |
+| POI-PROMPT-020 | Agent builds add-source JSONL for a public page. | Payload uses one singular `originUrl`, a supported source type, and no `sourceUrls` field. |
+| POI-PROMPT-021 | Agent builds API-ready JSONL for a local Markdown/CSV source. | Reviewed `contentText` is present and does not exceed 40,000 characters; review-only skeletons are labeled not ready to send. |
+| POI-PROMPT-022 | Agent includes raw screenshot, audio, or video. | Package directs the owner to authenticated media upload instead of embedding raw media in JSONL. |
+| POI-PROMPT-023 | Source is a ticket, chat, macro, or repeated reply. | Source is marked as a support signal until an authoritative fact is reviewed. |
+| POI-PROMPT-024 | Two sources disagree. | Evidence map preserves both sources, authority, applicability, conflict, and required owner decision. |
+| POI-PROMPT-025 | Private source is supplied without approved AI-tool handling. | Agent excludes it or marks it pending; no private URL/text is marked for public citation. |
+| POI-PROMPT-026 | Agent prepares the package in a product repo. | Only generated package files change unless the owner separately requests and reviews product/source edits. |
 
 ## Live Support Gate
 

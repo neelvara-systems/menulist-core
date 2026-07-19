@@ -1,57 +1,82 @@
-# Answerlattice Public API — Firebase & Cost Notes
+# Answerlattice Public API v1 - Firebase and Cost
 
-> **Status:** Implemented
-> **Last Updated:** 2026-06-16
+> **Status:** Implemented, locally audited, rollout-gated
+> **Last Updated:** 2026-07-20
 
----
+## Data Ownership
 
-## Collections
-
-| Collection | Operation | Endpoint | Notes |
+| Collection/object | Operation | Flow | Boundary |
 | --- | --- | --- | --- |
-| `stores` | Read | All endpoints | API-key hash lookup through `validatePublicApiKey()`; Answerlattice public APIs read only `publicApi` credentials, skip widget credential sources, and skip the legacy raw-key fallback query |
-| `answerlattice_entitySearchIndex` | Read | Answers | Capped search index read by tenant/store |
-| `answerlattice_releases` | Read | Answers | Latest active release when request does not include `currentVersion` |
-| `answerlattice_canonicalAnswers` | Read | Answers | Active answers for matched entities |
-| `answerlattice_entities` | Read | Entities | Capped registry read by tenant/store |
-| `answerlattice_signalEvents` | Write | Signals | One append-only signal event; explicit external/request IDs use deterministic document IDs to avoid duplicate rows on retries |
+| `stores/{sId}.publicApi` | Read/update/delete | Authentication and owner key lifecycle | Hash-only credential; exact AL product, purpose, scopes, prefix, and timestamp. |
+| `answerlattice_auditLogs` | Create | Rotate/revoke | Summary only; no raw key or hash. |
+| `answerlattice_entitySearchIndex` | Read | Answers | Tenant/workspace-scoped entity candidates. |
+| `answerlattice_releases` | Read | Answers | Latest applicable release when version is omitted. |
+| `answerlattice_canonicalAnswers` | Read | Answers | Approved active canonical answers only through canonical retrieval. |
+| private compiled context bundle | Storage read | Entities | Server-only bundle preference when ready and enabled. |
+| `answerlattice_entities` | Read | Entities fallback | Bounded tenant/workspace scan; active/beta public projection only. |
+| `answerlattice_signalEvents` | Create/read-on-replay | Signals | Append-only evidence with TTL and deterministic identity for idempotency. |
 
----
+Firestore browser rules do not grant raw Public API credential management. The authenticated Next.js management route uses Answerlattice Admin after session, scope, rate, and permission admission.
 
-## Expected Cost
+## Normal Operation Cost
 
-| Endpoint | Normal reads | Normal writes | Notes |
+| Operation | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
-| Answers | 2-5 reads | 0 | Hash-only key lookup + entity index + optional latest release + answer queries |
-| Entities | 2 reads to capped page | 0 | Hash-only key lookup + capped entity registry query |
-| Signals | 1 read | 1 write | Hash-only key lookup + explicit `signals:write` scope + append-only signal event; duplicate explicit external/request IDs do not create extra signal documents |
+| Owner key status | 1 | 0 | Exact store read after permission admission. |
+| Create/rotate key | 1 transactional | 2 | Store credential update plus audit create. |
+| Revoke existing key | 1 transactional | 2 | Store field delete plus audit create. Revoking when no credential exists performs no writes. |
+| Public answer request | approximately 2-5 | 0 | Key lookup plus canonical entity/release/answer reads; no AI provider call. |
+| Public entity request, bundle ready | 1 key lookup plus Storage | 0 | Storage metadata/object work follows compiled-context limits. |
+| Public entity request, fallback | 2 | 0 | Key lookup plus capped entity query. |
+| Public signal request | 1 key lookup plus replay transaction work | 1 new event | Exact retry does not append another event; conflicting replay fails. |
 
-All endpoints are rate-limited per API key before expensive work starts.
+Permission admission and rate-limit provider operations are additional to the collection counts above. Public API auth intentionally performs the key lookup for each admitted request so revocation is immediate.
 
-Production answer responses do not return internal entity-resolution debug payloads, keeping public response size and internal retrieval traces bounded to owner-controlled diagnostics.
+## Scale and Abuse Controls
 
-Widget-only credentials live under `stores.answerlatticeWidgetApi` and are not used by these public API endpoints. This avoids broader API authorization from embeddable widget keys while preserving a single store-document lookup pattern.
+- Invalid key shape fails before Firestore.
+- IP pre-auth admission limits random-key rotation attacks.
+- Per-key/endpoint limits protect valid credentials and expensive downstream work.
+- Rate-limit provider failure is fail-closed.
+- JSON body limits run before schema validation and retrieval/write work.
+- Entity fallback reads at most 201 rows and returns `truncated` rather than scanning the collection.
+- Signal metadata, keys, arrays, strings, and idempotency values are bounded.
+- No provider-heavy RAG generation occurs on Public API routes.
+- One active key per workspace bounds credential lookup and owner complexity.
 
-Read-only public API keys must not be allowed to create support signals. `/api/answerlattice/public/v1/signals` requires `signals:write`, while entities/answers continue to require `public:read`.
+## Retention and Deletion
 
----
-
-## Index Notes
-
-The routes intentionally reuse existing tenant/store query patterns.
-
-`GET /entities` filters `type` and `status` after a capped tenant query to avoid creating extra composite indexes for early rollout.
-
----
+- Active credential: durable until rotation, revocation, or workspace lifecycle removal.
+- Credential audit: follows the Answerlattice audit-log retention policy; it contains no secret/hash.
+- Signal events: new rows use the shared signal TTL contract.
+- Public responses: not persisted by these routes; external consumers own their downstream retention.
+- Logs: endpoint identity and bounded scope metadata only; no raw key, request body, ticket PII, or source content.
 
 ## Failure Behavior
 
-| Case | Behavior |
+| Condition | Result |
 | --- | --- |
-| Public API flag disabled | `404 FEATURE_DISABLED` |
-| Missing or invalid key | `401 INVALID_API_KEY` |
-| Disallowed origin | `403 ORIGIN_NOT_ALLOWED` |
-| Rate limit exceeded | `429 RATE_LIMIT_EXCEEDED` with `Retry-After` |
-| Canonical answers disabled | `503 CANONICAL_ANSWERS_DISABLED` |
-| Signal mutation disabled | `503 SIGNAL_MUTATION_DISABLED` |
-| Internal Firestore/API error | `500 INTERNAL_ERROR` with secure server log |
+| Main flag disabled | `404 FEATURE_DISABLED` externally; owner page/navigation hidden. |
+| Key-management cross-origin request | `403 Origin not allowed`. |
+| Missing/invalid/revoked/wrong-purpose key | `401 INVALID_API_KEY`. |
+| Browser-origin external request | `403 BROWSER_ACCESS_NOT_SUPPORTED`. |
+| Rate provider unavailable | `503 RATE_LIMIT_UNAVAILABLE`; no retrieval/write. |
+| Rate exceeded | `429 RATE_LIMIT_EXCEEDED` with `Retry-After`. |
+| Canonical answers disabled | `503 CANONICAL_ANSWERS_DISABLED`. |
+| Signal mutation disabled | `503 SIGNAL_MUTATION_DISABLED`. |
+| Signal idempotency payload conflict | `409 IDEMPOTENCY_REPLAY_CONFLICT`. |
+| Bundle unavailable | Bounded Firestore entity fallback. |
+| Firebase unavailable | Fixed `500/503` public response plus bounded server diagnostic. |
+
+## Deployment Boundary
+
+Feature 35 changes Next.js routes, components, shared TypeScript contracts, dedicated/shared Firestore rules, docs, and verifiers. The rules reserve Public API key audit actions for server writes; shared rules also prevent browser creation, modification, or deletion of `publicApi` and `answerlatticeWidgetApi` credentials while preserving ordinary authorized store updates. No Cloud Function, Storage rule, or index change is part of this feature.
+
+After local emulator verification, both required QA deploys were attempted on 2026-07-20:
+
+```bash
+firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive
+```
+
+Both stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rules revision changed. App/runtime deployment remains subject to the explicit Vercel deploy opt-in rule and was not run.

@@ -6,8 +6,23 @@ export type RazorpayPaymentResponse = Record<string, unknown> & {
     razorpay_subscription_id?: string;
 };
 
+export type RazorpaySubscriptionCheckoutResponse = {
+    subscription: {
+        id: string;
+    };
+    reused?: true;
+};
+
+export type RazorpayTopupCheckoutResponse = {
+    order: {
+        id: string;
+    };
+};
+
 export const PAYMENT_CHECKOUT_DISMISSED_CODE = 'payment_checkout_dismissed';
 export const MAX_SUBSCRIPTION_QUANTITY = 31;
+const RAZORPAY_SUBSCRIPTION_ID_PATTERN = /^sub_[A-Za-z0-9]+$/;
+const RAZORPAY_ORDER_ID_PATTERN = /^order_[A-Za-z0-9]+$/;
 
 export const createPaymentStatusError = (
     message: string,
@@ -55,6 +70,75 @@ const isBoundedProviderString = (value: unknown): value is string => (
     typeof value === 'string'
     && /^[A-Za-z0-9_-]{1,512}$/.test(value)
 );
+
+const hasOnlyKeys = (
+    value: Record<string, unknown>,
+    keys: readonly string[],
+): boolean => Object.keys(value).every((key) => keys.includes(key));
+
+const normalizeRazorpayEntityId = (
+    value: unknown,
+    pattern: RegExp,
+): string | null => (
+    typeof value === 'string'
+    && value.length <= 180
+    && pattern.test(value)
+        ? value
+        : null
+);
+
+export const projectRazorpaySubscriptionCheckoutResponse = (
+    providerSubscription: unknown,
+    reused = false,
+): RazorpaySubscriptionCheckoutResponse | null => {
+    if (!isRecord(providerSubscription)) return null;
+    const id = normalizeRazorpayEntityId(
+        providerSubscription.id,
+        RAZORPAY_SUBSCRIPTION_ID_PATTERN,
+    );
+    if (!id) return null;
+    return {
+        subscription: { id },
+        ...(reused ? { reused: true as const } : {}),
+    };
+};
+
+export const parseRazorpaySubscriptionCheckoutResponse = (
+    value: unknown,
+): RazorpaySubscriptionCheckoutResponse | null => {
+    if (
+        !isRecord(value)
+        || !hasOnlyKeys(value, ['subscription', 'reused'])
+        || !isRecord(value.subscription)
+        || !hasOnlyKeys(value.subscription, ['id'])
+        || (value.reused !== undefined && value.reused !== true)
+    ) return null;
+
+    return projectRazorpaySubscriptionCheckoutResponse(
+        value.subscription,
+        value.reused === true,
+    );
+};
+
+export const projectRazorpayTopupCheckoutResponse = (
+    providerOrder: unknown,
+): RazorpayTopupCheckoutResponse | null => {
+    if (!isRecord(providerOrder)) return null;
+    const id = normalizeRazorpayEntityId(providerOrder.id, RAZORPAY_ORDER_ID_PATTERN);
+    return id ? { order: { id } } : null;
+};
+
+export const parseRazorpayTopupCheckoutResponse = (
+    value: unknown,
+): RazorpayTopupCheckoutResponse | null => {
+    if (
+        !isRecord(value)
+        || !hasOnlyKeys(value, ['order'])
+        || !isRecord(value.order)
+        || !hasOnlyKeys(value.order, ['id'])
+    ) return null;
+    return projectRazorpayTopupCheckoutResponse(value.order);
+};
 
 export const isRazorpayPaymentResponse = (
     value: unknown,

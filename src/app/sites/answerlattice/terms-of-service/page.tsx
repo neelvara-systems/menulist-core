@@ -24,6 +24,13 @@ function getBasePath(): string {
 
 const SECTIONS = [
     {
+        title: 'Operator and Scope',
+        body: [
+            'AnswerLattice is operated by Neelvara Systems, the operating trade name used for the current software product lineup.',
+            'These terms are a product-use summary for the AnswerLattice website, dashboard, widget, hosted help, and support-knowledge features. AnswerLattice is not a replacement help desk, outsourced support team, or unrestricted autonomous support agent.',
+        ],
+    },
+    {
         title: 'Using AnswerLattice',
         body: [
             'AnswerLattice helps SaaS teams manage product support knowledge, approved answers, help widgets, hosted help centers, FAQs, changelogs, tickets, and support-gap review flows.',
@@ -42,6 +49,7 @@ const SECTIONS = [
         body: [
             'AnswerLattice may help draft answers, identify entities, summarize support gaps, or propose knowledge updates. Drafts are not final support guidance until a workspace owner reviews and approves them.',
             'You should review support content before publishing it, especially when it affects billing, account access, legal terms, security, or product-critical workflows.',
+            'You keep ownership of the support content you provide. You allow AnswerLattice and its configured service providers to process that content only as needed to operate, secure, support, and improve the service for your workspace, subject to the Privacy Policy and applicable provider terms.',
         ],
     },
     {
@@ -52,10 +60,32 @@ const SECTIONS = [
         ],
     },
     {
-        title: 'Billing and Availability',
+        title: 'Plans, Support Credits, and Cancellation',
         body: [
-            'Paid plans, support credits, limits, and optional onboarding services are shown on the pricing or checkout flow available at the time of purchase.',
+            'Current public onboarding offers paid monthly plans. The selected plan, currency, monthly support-credit allowance, limits, top-up price, and optional onboarding services are shown on the pricing, setup, Billing, or provider checkout flow available at the time of purchase.',
+            'Support credits are used only by the charged operations identified in current product pricing and runtime accounting. Approved widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and public help browsing are not represented as per-view credit charges.',
+            'A workspace owner can request subscription cancellation through Billing. After provider cancellation succeeds, recorded access remains active until the current cycle end. AnswerLattice does not publish a general automatic-refund promise; refund or billing-dispute requests require case review and any rights required by applicable law.',
+        ],
+    },
+    {
+        title: 'Availability, Changes, and Suspension',
+        body: [
             'AnswerLattice is operated with reasonable care, but no online service can guarantee uninterrupted availability. Maintenance, provider outages, abuse protection, or operational incidents may affect access.',
+            'AnswerLattice may change, limit, suspend, or discontinue a feature when needed for security, legal compliance, provider availability, product integrity, or misuse prevention. Material customer-facing changes should be communicated through the available product or contact channels when practical.',
+        ],
+    },
+    {
+        title: 'Export, Deletion, and Account Closure',
+        body: [
+            'Before closing a workspace, contact AnswerLattice to confirm the requested export or deletion scope, active billing state, retained operational evidence, and any legal or security constraints. AnswerLattice does not currently promise a one-click full-workspace deletion flow.',
+            'Some short-lived operational data expires under the implemented retention controls described in the Privacy Policy and Trust page. Durable workspace knowledge, billing records, and legally required records can have different lifecycles.',
+        ],
+    },
+    {
+        title: 'Answer Reliance and Contract Completion',
+        body: [
+            'AnswerLattice helps organize and deliver customer-provided support knowledge. The customer remains responsible for product behavior, policies, prices, permissions, published answers, and decisions made from support output.',
+            'Contracting identity details beyond the operating trade name, governing law, jurisdiction, negotiated warranties, liability limits, service levels, and any customer-specific refund terms require founder and legal approval. They must not be assumed from this product-use summary.',
         ],
     },
     {
@@ -78,7 +108,7 @@ export default function AnswerlatticeTermsOfServicePage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Terms of Service</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Terms of Service</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 22, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: July 19, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             These terms describe the expected use of AnswerLattice&apos;s website, dashboard, help widget, and
                             support knowledge features.

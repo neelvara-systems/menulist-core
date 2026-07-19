@@ -1,7 +1,7 @@
 # Knowledge Base — Product Specification
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 2.0.0
+> **Last Updated:** 2026-07-18
 > **Audience:** CEO, PM, Clients
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -11,17 +11,17 @@
 
 ### Goal
 
-Provide a hierarchical documentation system where platform administrators create and manage help articles that serve as the data source for the AI QnA Chatbot, and SMB owners browse and read articles for self-service support.
+Provide a tenant/store-scoped support article system where authorized SaaS knowledge managers maintain published guidance used by browsing, retrieval, FAQ, product-context, and support-feedback workflows.
 
 ### Scope
 
 - Three-level content hierarchy: Categories → Sections → Articles
 - Owner-side KB explorer with navigation, breadcrumbs, and article reading
-- Platform admin 3-pane CRUD management (categories, sections, articles)
+- Authorized knowledge-manager 3-pane CRUD management (categories, sections, articles)
 - TipTap rich text editor for article content (JSON format)
 - Vector embeddings stored on each article for semantic search
 - Article status lifecycle (draft → needs_review → published → archived)
-- Article likes/dislikes feedback
+- Server-owned article likes/dislikes feedback with bounded audit history and retention
 - Source provenance tracking (which file generated the article)
 - Integration with AI QnA Chatbot (articles are the RAG data source)
 
@@ -153,8 +153,7 @@ draft → needs_review → published → archived
 - Full CRUD on sections within categories
 - Full CRUD on articles with TipTap rich text editor
 - View article in preview mode
-- Delete cascading (category delete removes all child sections + articles)
-- Section delete removes all child articles
+- Delete an empty category or section; non-empty containers require explicit article move/delete first
 - Trigger article embedding regeneration
 - Preview full KB in modal
 - Open AI search modal to test KB search
@@ -207,11 +206,11 @@ Categories cached via `PlatformGlobalDataContext.cachedKBCategories` — prevent
 - Article select → fetches full article by ID → opens `ArticleModal` with TipTap editor
 - Floating action buttons: Preview KB modal + AI search test
 
-### Delete Cascade Logic
+### Safe Delete Logic
 
-- **Delete article:** Delete from `kb_articles` + remove metadata from parent category/section
-- **Delete section:** Delete all child articles from `kb_articles` + remove section from category
-- **Delete category:** Delete all child articles from `kb_articles` + remove category from categories doc
+- **Delete article:** One exact-scope transaction archives linked active FAQs, removes all navigation references, deletes the article, and advances freshness markers.
+- **Delete section:** Allowed only when no article metadata remains in the section and the scoped article query is empty.
+- **Delete category:** Allowed only when no direct or section article metadata remains and the scoped article query is empty.
 
 All deletes wrapped in `Modal.confirm` for safety.
 
@@ -221,8 +220,10 @@ All deletes wrapped in `Modal.confirm` for safety.
 
 ### Likes/Dislikes
 
-- Stored directly on article document (`likes`, `dislikes` counters)
-- `updateArticleFeedback(articleId, type, increment)` — uses `runTransaction` (atomic)
+- Counters remain on the article document, but mutations go through `/api/answerlattice/content-feedback`.
+- The server transaction updates the counter, bounded idempotency state, audit row, and negative-feedback signal together.
+- Feedback is accepted only for active published articles in the authenticated workspace.
+- Audit rows carry a 365-day expiry and the existing nightly scheduler deletes expired nested feedback documents in bounded tenant-scoped batches.
 - Increment: `likes += 1` or `dislikes += 1`
 - Decrement: `Math.max(0, likes - 1)` (prevents negative)
 
@@ -249,8 +250,8 @@ The normalized source is hashed for reuse. The provider request uses the Embeddi
 
 1. On article creation/publish via KB Generation Pipeline
 2. On manual trigger via `/api/helpCenter/article-embedding` route
-3. On category/section title change via Cloud Function `embedArticleWorker`
-4. On manual re-embed via Cloud Function `regenerateEmbedding`
+3. After a manual article truth edit clears the old vector and returns `embeddingStatus` to `pending`
+4. On manual re-embed through the existing embedding route/worker
 
 Because Answerlattice has not launched with a legacy embedding corpus, article create/update paths write only this canonical vector. No dual-write, migration scheduler, migration-state document, or second vector index is part of the runtime.
 
@@ -263,7 +264,7 @@ Because Answerlattice has not launched with a legacy embedding corpus, article c
 | **KB Articles**    | Tenant+store scoped for non-platform callers; platform admins can perform global administrative reads |
 | **KB Categories**  | Tenant+store scoped document (`categories_{tId}_{sId}`), with platform-only legacy fallback |
 | **Article reads**  | Firestore rules and DAL helpers require readable tenant/store scope unless caller is platform admin |
-| **Article writes** | Platform admin only (no explicit auth check in DAL)     |
+| **Article writes** | `canManageKnowledge` permission or platform administration, enforced by Firestore rules and exact workspace scope |
 | **Vector search**  | Tenant/store-aware through Answerlattice retrieval scope |
 
 **Critical:** KB content is Answerlattice-scoped. Non-platform reads must stay tenant/store filtered; platform admin global reads are operational/admin-only.
@@ -275,12 +276,12 @@ Because Answerlattice has not launched with a legacy embedding corpus, article c
 | #   | Item                                                                         | Status                                                |
 | --- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
 | 1   | No tenant scoping on KB articles                                             | ✅ RESOLVED — non-platform reads are tenant/store scoped |
-| 2   | Non-atomic article feedback (likes/dislikes)                                 | ✅ RESOLVED — actually uses `runTransaction` (atomic) |
+| 2   | Split or unaudited article feedback                                           | ✅ RESOLVED — one authenticated server transaction owns counter, audit, idempotency, signal, and retention |
 | 3   | Deprecated `getArticles()` compatibility helper could read globally          | ✅ RESOLVED — deprecated helper now scopes non-platform reads |
-| 4   | Single categories document could hit 1MB limit with many categories/sections | Low risk — typical KB has <50 categories              |
+| 4   | Single categories document could hit 1MB limit with many categories/sections | ✅ BOUNDED — maximum 500 categories and 900 KiB serialized navigation |
 | 5   | No article revision history                                                  | Not implemented                                       |
 | 6   | `console.log` in platform KB component                                       | ✅ RESOLVED — removed in audit                        |
-| 7   | No explicit `withAuth()` on KB DAL functions                                 | Relies on component-level access control              |
+| 7   | Client DAL requires authoritative authorization                              | ✅ Firestore rules require scoped `canManageKnowledge`; server routes separately authenticate and validate scope |
 
 ---
 
@@ -291,7 +292,7 @@ Because Answerlattice has not launched with a legacy embedding corpus, article c
 - Removed `console.log` from `platform/knowledgeBase/index.tsx`
 - Removed `console.error` from `KnowledgeBaseExplorer/Articles.tsx`
 - Removed 3x `console.log/error` from `article-embedding/route.ts`
-- Fixed doc inaccuracy: `updateArticleFeedback` IS atomic (`runTransaction`)
+- Historical note: the retired direct `updateArticleFeedback` path was transactional, but Feature 5 superseded it with the authenticated server-owned content-feedback transaction.
 
 ### Improvements Implemented
 
@@ -302,3 +303,25 @@ Because Answerlattice has not launched with a legacy embedding corpus, article c
 ### Skipped
 
 - Article revision history — skipped per user decision (overhead of storing full history)
+
+---
+
+## 13. Feature 5 lifecycle contract (2026-07-18)
+
+```text
+authorized manager
+-> scoped categories document
+-> article create/edit/move/status/delete transaction
+-> article document + one navigation reference + FAQ transition where applicable
+-> cache/source/bundle invalidation in the same commit
+-> current-vector generation or explicit pending state
+-> published browsing/retrieval
+-> authenticated feedback transaction
+-> bounded review evidence and 365-day retention cleanup
+```
+
+Live article mutations accept only editable article fields. `categoryTitle` and `sectionTitle` are derived from transaction-current navigation; callers cannot declare them as truth. KB Generation review uses an explicit staging mode so review edits cannot update live navigation before publish.
+
+Platform sessions with selected `tId/sId` use those filters. Global platform reads remain available only when no workspace is selected.
+
+The Deprecated `getArticles()` compatibility helper could read globally in older revisions; current non-platform and selected-platform reads are scoped. Answerlattice KB session lookup diagnostics use `answerlattice_kb_articles_session_lookup_failed` and `answerlattice_kb_categories_session_lookup_failed` rather than silent fallback.

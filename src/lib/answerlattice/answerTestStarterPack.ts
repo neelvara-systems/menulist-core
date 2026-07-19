@@ -1,5 +1,8 @@
 import type { AnswerlatticeAnswerTestCase } from '@lib/answerlattice/answerTestContracts';
-import { isAnswerlatticeProductStarterPackCaseId } from '@lib/answerlattice/firstTrustedAnswerPackContracts';
+import {
+    ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
+    isAnswerlatticeProductStarterPackCaseId,
+} from '@lib/answerlattice/firstTrustedAnswerPackContracts';
 
 type StarterCaseDefinition = Readonly<{
     id: string;
@@ -70,14 +73,60 @@ export const createAnswerlatticeFirstTrustedAnswerCases = (
         }));
 };
 
-export const countAnswerlatticeFirstTrustedAnswerCases = (
-    cases: ReadonlyArray<Pick<AnswerlatticeAnswerTestCase, 'id'>>,
-): number => {
-    const starterIds = new Set<string>(ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS);
-    return cases.filter(testCase => (
-        starterIds.has(testCase.id) || isAnswerlatticeProductStarterPackCaseId(testCase.id)
-    )).length;
+type FirstTrustedAnswerCaseLike = Pick<AnswerlatticeAnswerTestCase, 'id' | 'active' | 'launchPack'>;
+
+const getCasesInRequiredOrder = <T extends FirstTrustedAnswerCaseLike>(
+    cases: ReadonlyArray<T>,
+    requiredIds: readonly string[],
+): T[] => {
+    const casesById = new Map<string, T>();
+    for (const testCase of cases) {
+        if (casesById.has(testCase.id)) return [];
+        casesById.set(testCase.id, testCase);
+    }
+    return requiredIds.flatMap(id => {
+        const testCase = casesById.get(id);
+        return testCase ? [testCase] : [];
+    });
 };
+
+export const getAnswerlatticeFirstTrustedAnswerCases = <T extends FirstTrustedAnswerCaseLike>(
+    cases: ReadonlyArray<T>,
+    options: { activeOnly?: boolean } = {},
+): T[] => {
+    const hasProductPackCase = cases.some(testCase => isAnswerlatticeProductStarterPackCaseId(testCase.id));
+    if (!hasProductPackCase) {
+        return getCasesInRequiredOrder(cases, ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS)
+            .filter(testCase => !options.activeOnly || testCase.active === true);
+    }
+
+    const orderedProductCases = getCasesInRequiredOrder(
+        cases,
+        ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
+    );
+    const validLaunchPacks = orderedProductCases.flatMap(testCase => (
+        testCase.launchPack?.version === 1
+        && /^[a-f0-9]{64}$/.test(testCase.launchPack.sourceHash)
+        && /^kii_[a-f0-9]{28}$/.test(testCase.launchPack.reviewItemId)
+            ? [testCase.launchPack]
+            : []
+    ));
+    const sourceHashes = new Set(validLaunchPacks.map(pack => pack.sourceHash));
+    if (sourceHashes.size !== 1) return [];
+    if (new Set(validLaunchPacks.map(pack => pack.reviewItemId)).size !== validLaunchPacks.length) return [];
+    const [sourceHash] = Array.from(sourceHashes);
+    return orderedProductCases.filter(testCase => (
+        (!options.activeOnly || testCase.active === true)
+        && testCase.launchPack?.version === 1
+        && testCase.launchPack.sourceHash === sourceHash
+        && /^kii_[a-f0-9]{28}$/.test(testCase.launchPack.reviewItemId)
+    ));
+};
+
+export const countAnswerlatticeFirstTrustedAnswerCases = (
+    cases: ReadonlyArray<FirstTrustedAnswerCaseLike>,
+    options: { activeOnly?: boolean } = {},
+): number => getAnswerlatticeFirstTrustedAnswerCases(cases, options).length;
 
 export const replaceAnswerlatticeFirstTrustedAnswerCases = (
     existingCases: AnswerlatticeAnswerTestCase[],

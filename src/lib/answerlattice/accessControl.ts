@@ -55,6 +55,16 @@ export type AnswerlatticeAccessContext = {
     };
 };
 
+export type AnswerlatticeAccessTargetScope = {
+    tenantId: number | string;
+    storeId: number | string;
+};
+
+export const ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
 export const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
@@ -328,18 +338,25 @@ export const hasAnswerlatticePermission = (
     return role?.permissions?.[permission] === true;
 };
 
-export async function getAnswerlatticeAccessContext(session: any): Promise<AnswerlatticeAccessContext | null> {
+export async function getAnswerlatticeAccessContext(
+    session: any,
+    targetScope?: AnswerlatticeAccessTargetScope,
+): Promise<AnswerlatticeAccessContext | null> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) return null;
 
-    const resolvedScope = resolveAnswerlatticeSessionScope(session);
-    if (!resolvedScope) return null;
-    const tenantId = normalizeAnswerlatticeScopeDocumentId(resolvedScope.tenantId);
-    const storeId = normalizeAnswerlatticeScopeDocumentId(resolvedScope.storeId);
+    const resolvedScope = targetScope ? null : resolveAnswerlatticeSessionScope(session);
+    if (!targetScope && !resolvedScope) return null;
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(
+        targetScope?.tenantId ?? resolvedScope?.tenantId,
+    );
+    const storeId = normalizeAnswerlatticeScopeDocumentId(
+        targetScope?.storeId ?? resolvedScope?.storeId,
+    );
     if (!tenantId || !storeId) return null;
     const scope = {
         tenantId,
         storeId,
-        role: resolvedScope.role,
+        role: resolvedScope?.role,
     };
 
     const db = getAnswerlatticeDb();
@@ -411,8 +428,9 @@ export async function requireAnswerlatticePermission(
     request: NextRequest,
     session: any,
     permission: AnswerlatticePermissionKey,
+    targetScope?: AnswerlatticeAccessTargetScope,
 ) {
-    const access = await getAnswerlatticeAccessContext(session);
+    const access = await getAnswerlatticeAccessContext(session, targetScope);
     if (access?.isPlatformAdmin || access?.permissions?.[permission] === true) {
         return { access, response: null };
     }
@@ -429,7 +447,10 @@ export async function requireAnswerlatticePermission(
 
     return {
         access,
-        response: NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 }),
+        response: NextResponse.json(
+            { error: 'Forbidden', code: 'FORBIDDEN' },
+            { headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, status: 403 },
+        ),
     };
 }
 

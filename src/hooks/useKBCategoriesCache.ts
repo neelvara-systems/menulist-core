@@ -1,10 +1,11 @@
 import { fetchAnswerlatticePublicCategories } from '@lib/answerlattice/publicContentClient';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useContext, useMemo } from 'react';
 
-let categoriesFetchInFlight: Promise<KnowledgeBaseCategoriesType | null> | null = null;
+const categoriesFetchInFlight = new Map<string, Promise<KnowledgeBaseCategoriesType | null>>();
 
 const normalizeCategoriesPayload = (value: any): KnowledgeBaseCategoriesType | null => {
     if (value?.categories && typeof value.categories === 'object') {
@@ -16,34 +17,39 @@ const normalizeCategoriesPayload = (value: any): KnowledgeBaseCategoriesType | n
 
 export const useKBCategoriesCache = () => {
     const { cachedKBCategories, setCachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const scopeKey = useAnswerlatticeCacheScope();
 
     const cachedCategories = useMemo(
-        () => normalizeCategoriesPayload(cachedKBCategories?.kBCategories),
-        [cachedKBCategories?.kBCategories]
+        () => cachedKBCategories?.scopeKey === scopeKey
+            ? normalizeCategoriesPayload(cachedKBCategories.kBCategories)
+            : null,
+        [cachedKBCategories, scopeKey]
     );
 
     const setCategoriesCache = useCallback((data: KnowledgeBaseCategoriesType | null) => {
-        if (!data) return;
-        setCachedKBCategories({ cachedOn: Timestamp.now(), kBCategories: data });
-    }, [setCachedKBCategories]);
+        if (!data || !scopeKey) return;
+        setCachedKBCategories({ cachedOn: Timestamp.now(), kBCategories: data, scopeKey });
+    }, [scopeKey, setCachedKBCategories]);
 
     const getCategoriesCached = useCallback(async (options?: { forceRefresh?: boolean }) => {
+        if (!scopeKey) return null;
         if (!options?.forceRefresh && cachedCategories) {
             return cachedCategories;
         }
 
-        if (!categoriesFetchInFlight) {
-            categoriesFetchInFlight = fetchAnswerlatticePublicCategories()
+        if (!categoriesFetchInFlight.has(scopeKey)) {
+            const request = fetchAnswerlatticePublicCategories()
                 .then((result) => normalizeCategoriesPayload(result))
                 .finally(() => {
-                    categoriesFetchInFlight = null;
+                    categoriesFetchInFlight.delete(scopeKey);
                 });
+            categoriesFetchInFlight.set(scopeKey, request);
         }
 
-        const result = await categoriesFetchInFlight;
+        const result = await categoriesFetchInFlight.get(scopeKey)!;
         setCategoriesCache(result);
         return result;
-    }, [cachedCategories, setCategoriesCache]);
+    }, [cachedCategories, scopeKey, setCategoriesCache]);
 
     return {
         categoriesData: cachedCategories,

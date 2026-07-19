@@ -48,6 +48,7 @@ export interface ExistingEntityContext {
 
 export interface ExtractionResult {
     candidates: ExtractedEntityRaw[];
+    candidateDrafts?: ExtractedEntityRaw[];
     articlesProcessed: number;
     extractionTimestamp: Date;
     failedBatchCount: number;
@@ -229,6 +230,7 @@ export async function extractEntitiesFromArticles(
     callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>,
     existingEntities?: ExistingEntityContext[],
     persistCandidate: (candidate: Omit<AnswerlatticeEntityCandidate, 'id'>) => Promise<unknown> = addEntityCandidate,
+    options: { persistCandidates?: boolean } = {},
 ): Promise<ExtractionResult> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) {
         return {
@@ -294,34 +296,37 @@ export async function extractEntitiesFromArticles(
         }
     }
 
-    // Store only genuinely new entities as candidates (pending human review)
-    for (const entity of newCandidates) {
-        try {
-            await persistCandidate({
-                tId,
-                sId,
-                name: entity.name,
-                type: entity.type,
-                confidence: entity.confidence,
-                frequency: {
-                    articles: 1,
-                    tickets: 0,
-                    chat: 0,
-                },
-                description: entity.description,
-                status: 'pending',
-            } as Omit<AnswerlatticeEntityCandidate, 'id'>);
-        } catch (error) {
-            logAnswerlatticeFailure('answerlattice_entity_candidate_store_failed', error, {
-                ...getAnswerlatticeScopeLogContext({ sId, tId }),
-                ...getBoundedAnswerlatticeStringContext('entityName', entity.name),
-                ...getBoundedAnswerlatticeStringContext('entityType', entity.type),
-            });
+    if (options.persistCandidates !== false) {
+        // Store only genuinely new entities as candidates (pending human review).
+        for (const entity of newCandidates) {
+            try {
+                await persistCandidate({
+                    tId,
+                    sId,
+                    name: entity.name,
+                    type: entity.type,
+                    confidence: entity.confidence,
+                    frequency: {
+                        articles: 1,
+                        tickets: 0,
+                        chat: 0,
+                    },
+                    description: entity.description,
+                    status: 'pending',
+                } as Omit<AnswerlatticeEntityCandidate, 'id'>);
+            } catch (error) {
+                logAnswerlatticeFailure('answerlattice_entity_candidate_store_failed', error, {
+                    ...getAnswerlatticeScopeLogContext({ sId, tId }),
+                    ...getBoundedAnswerlatticeStringContext('entityName', entity.name),
+                    ...getBoundedAnswerlatticeStringContext('entityType', entity.type),
+                });
+            }
         }
     }
 
     return {
         candidates: deduplicated,
+        candidateDrafts: newCandidates,
         articlesProcessed: articles.length,
         extractionTimestamp: new Date(),
         failedBatchCount,
@@ -369,20 +374,16 @@ function matchToExistingEntity(
     existingEntities: ExistingEntityContext[]
 ): ExistingEntityContext | null {
     const normalizedName = extracted.name.toLowerCase().trim();
+    const extractedSlug = normalizedName.replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    const matches = existingEntities.filter((existing) => (
+        existing.name.toLowerCase() === normalizedName
+        || existing.slug === extractedSlug
+        || existing.aliases?.some(alias => alias.toLowerCase() === normalizedName)
+    ));
 
-    for (const existing of existingEntities) {
-        // Exact name match (case-insensitive)
-        if (existing.name.toLowerCase() === normalizedName) return existing;
-
-        // Slug match
-        const extractedSlug = normalizedName.replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
-        if (existing.slug === extractedSlug) return existing;
-
-        // Alias match
-        if (existing.aliases?.some(a => a.toLowerCase() === normalizedName)) return existing;
-    }
-
-    return null;
+    // Ambiguous aliases must become review work instead of silently linking to
+    // whichever entity happened to be returned first by Firestore.
+    return matches.length === 1 ? matches[0] : null;
 }
 
 // ═══════════════════════════════════════════════════════════════

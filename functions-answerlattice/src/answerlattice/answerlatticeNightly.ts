@@ -34,11 +34,29 @@ import { createHash } from 'crypto';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+    deriveAutomatedDriftState,
+    evaluateAnswerlatticeAutomatedDrift,
+    type AnswerlatticeDriftAnswer,
+    type AnswerlatticeDriftEntity,
+    type AnswerlatticeDriftSignal,
+} from '../sharedData/answerlatticeDrift';
+import {
+    ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
+    ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS,
+    ANSWERLATTICE_SUPPORT_METRIC_WINDOWS,
+    calculateAnswerlatticeFrictionLoad,
+} from '../sharedData/answerlatticeSupportMetrics';
 import { cleanupExpiredIntegrationData } from '../integrations/deliveryLogger';
 import { hasEnabledIntegrationAdapter } from '../integrations/configStore';
 import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/eventBus';
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
-import { bumpAnswerlatticeCacheVersion, ANSWERLATTICE_CACHE_SOURCES } from './cacheVersionManifest';
+import {
+    bumpAnswerlatticeCacheVersion,
+    getAnswerlatticeCacheVersionBumpData,
+    getAnswerlatticeCacheVersionDocId,
+    ANSWERLATTICE_CACHE_SOURCES,
+} from './cacheVersionManifest';
 import { syncChatAnalyticsNightly } from './chatAnalyticsAggregation';
 import { calculateConfirmedResolutionMetrics } from './confirmedResolution';
 import { syncAnswerlatticeChatIntelligence } from './chatIntelligence';
@@ -49,7 +67,7 @@ import {
 } from './dataRetention';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { generateDraftsForNewProposals } from './draftGenerator';
-import { deriveAutomatedDriftState } from './driftState';
+import { appendCompiledContextSourceChange } from './compiledContextVersions';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
 import { syncKnowledgeIntakeSummary } from './knowledgeIntakeSummary';
@@ -73,6 +91,7 @@ const SCHEDULER_LIMITS = {
     searchIndexEntriesPerTenant: 1000,
     graphRelationsPerTenant: 2000,
     graphAnswersPerTenant: 1000,
+    driftWriteAnswersPerBatch: 200,
 };
 
 const AI_FAILURE_ALERT_THRESHOLD = 3;
@@ -125,6 +144,8 @@ interface AnswerlatticeTenantRun {
     fallbackProposals: number;
     signalsResolved: number;
     coverageRate: number;
+    coverageHits: number;
+    coverageTotal: number;
     signalsArchived: number;
 }
 
@@ -340,12 +361,6 @@ export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
 // DRIFT DETECTION (Server-Side)
 // ═══════════════════════════════════════════════════════════════
 
-const SIGNAL_DRIFT_THRESHOLDS = {
-    negativeFeedbackCount: 5,
-    ticketSpikeMultiplier: 2.0,
-    minSignalCount: 5,
-};
-
 function timestampToMillis(value: unknown): number {
     if (!value || typeof value !== 'object') return 0;
     const candidate = value as { toMillis?: () => number; seconds?: unknown };
@@ -355,12 +370,6 @@ function timestampToMillis(value: unknown): number {
     }
     const seconds = Number(candidate.seconds);
     return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : 0;
-}
-
-function scopeListOverlaps(left: unknown, right: unknown): boolean {
-    const leftIds = normalizeAnswerlatticeFunctionEntityIds(left);
-    const rightIds = normalizeAnswerlatticeFunctionEntityIds(right);
-    return leftIds.length === 0 || rightIds.length === 0 || leftIds.some(id => rightIds.includes(id));
 }
 
 interface DriftResult {
@@ -386,6 +395,9 @@ interface CoverageKpiResult {
     rate: number;
     errors: AnswerlatticeSchedulerDiagnostic[];
     historyRows: AnswerlatticeCoverageHistoryRow[];
+    complete: boolean;
+    windowStartMillis: number;
+    windowEndMillis: number;
 }
 
 interface TrustMetricsResult {
@@ -394,6 +406,7 @@ interface TrustMetricsResult {
     resolutionRate: number;
     driftRate: number;
     entityHealthScore: number;
+    entityAnswerCoverageRate: number;
     topFailingEntities: number;
     errors: AnswerlatticeSchedulerDiagnostic[];
 }
@@ -401,29 +414,26 @@ interface TrustMetricsResult {
 async function runDriftDetection(tId: number, sId: number): Promise<DriftResult> {
     const result: DriftResult = { answersEvaluated: 0, driftDetected: 0, driftCleared: 0 };
 
-    // Load active canonical answers
     const answersQuery = db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
-        .limit(SCHEDULER_LIMITS.activeAnswersPerTenant);
+        .limit(SCHEDULER_LIMITS.activeAnswersPerTenant + 1);
 
-    // Load entities for orphan drift check
     const entitiesQuery = db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .limit(SCHEDULER_LIMITS.entitiesPerTenant);
+        .limit(SCHEDULER_LIMITS.entitiesPerTenant + 1);
 
-    // Signal counts (14-day rolling window)
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const signalsQuery = db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('timestamp', '>=', windowStart)
-        .limit(SCHEDULER_LIMITS.signalEventsPerWindow);
+        .limit(SCHEDULER_LIMITS.signalEventsPerWindow + 1);
 
     const [answersSnap, entitiesSnap, signalsSnap] = await Promise.all([
         answersQuery.get(),
@@ -431,126 +441,158 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
         signalsQuery.get(),
     ]);
 
+    if (
+        answersSnap.size > SCHEDULER_LIMITS.activeAnswersPerTenant
+        || entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant
+        || signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow
+    ) {
+        throw new Error('Answerlattice drift evaluation input exceeded a bounded scheduler limit.');
+    }
     if (answersSnap.empty) return result;
 
-    const entityMap = new Map<string, { status: string; name: string }>();
+    const entitiesById = new Map<string, AnswerlatticeDriftEntity>();
     for (const doc of entitiesSnap.docs) {
         const data = doc.data();
-        if (data.pId !== 'AL') continue;
-        entityMap.set(doc.id, { status: data.status, name: data.name });
+        if (
+            data.pId !== 'AL'
+            || Number(data.tId) !== tId
+            || Number(data.sId) !== sId
+            || typeof data.name !== 'string'
+            || typeof data.status !== 'string'
+        ) {
+            throw new Error('Answerlattice drift evaluation found an invalid stored entity.');
+        }
+        entitiesById.set(doc.id, { id: doc.id, status: data.status, name: data.name });
     }
 
-    // Group bounded recent signal rows by entity. Each answer evaluates only
-    // events newer than its last human validation.
-    const signalsByEntity = new Map<string, Array<{ type: string; timestampMs: number }>>();
+    const signalsByEntity = new Map<string, AnswerlatticeDriftSignal[]>();
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
-        if (data.pId !== 'AL') continue;
+        if (data.pId !== 'AL' || Number(data.tId) !== tId || Number(data.sId) !== sId) {
+            throw new Error('Answerlattice drift evaluation found an out-of-scope signal.');
+        }
         const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
-        if (!entityId) continue;
-        if (data.type !== 'ticket' && data.type !== 'chat_negative' && data.type !== 'escalation') continue;
         const timestampMs = timestampToMillis(data.timestamp);
-        if (timestampMs <= 0) continue;
+        if (!entityId || timestampMs <= 0) {
+            throw new Error('Answerlattice drift evaluation found an invalid stored signal.');
+        }
+        if (data.type !== 'ticket' && data.type !== 'chat_negative') continue;
         const events = signalsByEntity.get(entityId) || [];
-        events.push({ type: data.type, timestampMs });
+        events.push({ entityId, type: data.type, timestampMs });
         signalsByEntity.set(entityId, events);
     }
 
-    const allAnswers = answersSnap.docs
-        .filter(document => document.data().pId === 'AL')
-        .map(document => ({ id: document.id, ...document.data() })) as any[];
-
-    for (const answer of allAnswers) {
-        result.answersEvaluated++;
-        const driftReasons: string[] = [];
-        const previousDriftFlag = answer.governance?.driftFlag || false;
-        const answerEntityIds = normalizeAnswerlatticeFunctionEntityIds(answer.scope?.entityIds);
-
-        // Class B: Signal Drift
-        const primaryEntityId = answerEntityIds[0];
-        if (primaryEntityId) {
-            const validationMillis = timestampToMillis(answer.validation?.lastValidatedOn);
-            const signals = { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
-            for (const event of signalsByEntity.get(primaryEntityId) || []) {
-                if (event.timestampMs <= validationMillis) continue;
-                if (event.type === 'ticket') signals.ticket++;
-                else if (event.type === 'chat_negative') signals.chat_negative++;
-                else if (event.type === 'escalation') signals.escalation++;
-                signals.total++;
-            }
-            if (signals.total >= SIGNAL_DRIFT_THRESHOLDS.minSignalCount) {
-                if (signals.chat_negative >= SIGNAL_DRIFT_THRESHOLDS.negativeFeedbackCount) {
-                    driftReasons.push(`[signal_anomaly] ${signals.chat_negative} negative feedback events occurred after the last validation`);
-                }
-                if (signals.ticket > SIGNAL_DRIFT_THRESHOLDS.minSignalCount * SIGNAL_DRIFT_THRESHOLDS.ticketSpikeMultiplier) {
-                    driftReasons.push(`[signal_anomaly] Ticket count ${signals.ticket} exceeds baseline threshold`);
-                }
-            }
+    const storedAnswers = answersSnap.docs.map(document => {
+        const answer = document.data();
+        const entityIds = normalizeAnswerlatticeFunctionEntityIds(answer.scope?.entityIds);
+        const versionFrom = Number(answer.productBinding?.applicableVersions?.from);
+        const versionToValue = answer.productBinding?.applicableVersions?.to;
+        const versionTo = versionToValue == null ? null : Number(versionToValue);
+        const lastValidatedInVersion = Number(answer.productBinding?.lastValidatedInVersion);
+        const lastValidatedAtMs = timestampToMillis(answer.validation?.lastValidatedOn);
+        if (
+            answer.pId !== 'AL'
+            || Number(answer.tId) !== tId
+            || Number(answer.sId) !== sId
+            || answer.status !== 'active'
+            || entityIds.length === 0
+            || !Number.isSafeInteger(versionFrom)
+            || versionFrom <= 0
+            || (versionTo !== null && (!Number.isSafeInteger(versionTo) || versionTo < versionFrom))
+            || !Number.isSafeInteger(lastValidatedInVersion)
+            || lastValidatedInVersion <= 0
+            || lastValidatedAtMs <= 0
+            || typeof answer.governance?.driftFlag !== 'boolean'
+            || typeof answer.governance?.reviewRequired !== 'boolean'
+        ) {
+            throw new Error('Answerlattice drift evaluation found an invalid stored canonical answer.');
         }
+        const primitive: AnswerlatticeDriftAnswer = {
+            id: document.id,
+            entityIds,
+            planIds: normalizeAnswerlatticeFunctionEntityIds(answer.scope?.planIds),
+            roleIds: normalizeAnswerlatticeFunctionEntityIds(answer.scope?.roleIds),
+            stateIds: normalizeAnswerlatticeFunctionEntityIds(answer.scope?.stateIds),
+            versionFrom,
+            versionTo,
+            lastValidatedInVersion,
+            lastValidatedAtMs,
+        };
+        return { document, answer, primitive };
+    }).sort((left, right) => left.primitive.id.localeCompare(right.primitive.id));
 
-        // Class C: Scope Conflict
-        for (const other of allAnswers) {
-            if (other.id === answer.id || other.status !== 'active') continue;
-            const otherEntityIds = normalizeAnswerlatticeFunctionEntityIds(other.scope?.entityIds);
-            const entityOverlap = answerEntityIds.some((id: string) => otherEntityIds.includes(id));
-            if (!entityOverlap) continue;
-
-            const aFrom = answer.productBinding?.applicableVersions?.from || 0;
-            const aTo = answer.productBinding?.applicableVersions?.to;
-            const bFrom = other.productBinding?.applicableVersions?.from || 0;
-            const bTo = other.productBinding?.applicableVersions?.to;
-            const versionOverlap = (aTo == null || aTo >= bFrom) && (bTo == null || bTo >= aFrom);
-            const planOverlap = scopeListOverlaps(answer.scope?.planIds, other.scope?.planIds);
-            const roleOverlap = scopeListOverlaps(answer.scope?.roleIds, other.scope?.roleIds);
-            const stateOverlap = scopeListOverlaps(answer.scope?.stateIds, other.scope?.stateIds);
-            if (versionOverlap && planOverlap && roleOverlap && stateOverlap) {
-                driftReasons.push(`[scope_conflict] Overlap with answer "${other.id}"`);
-                break;
-            }
-        }
-
-        // Class D: Orphan Drift
-        for (const entityId of answerEntityIds) {
-            const entity = entityMap.get(entityId);
-            if (entity && entity.status === 'deprecated') {
-                driftReasons.push(`[deprecated_entity] Entity "${entity.name}" (${entityId}) is deprecated`);
-            }
-        }
-
-        // Automated evaluation may raise or refresh drift, but it cannot clear
-        // an existing flag. Clearing requires the governed validation action.
-        const automatedState = deriveAutomatedDriftState(
-            previousDriftFlag,
-            answer.governance?.driftReason,
-            driftReasons,
+    const allAnswers = storedAnswers.map(item => item.primitive);
+    const writes = storedAnswers.flatMap(item => {
+        const evaluation = evaluateAnswerlatticeAutomatedDrift(
+            item.primitive,
+            allAnswers,
+            entitiesById,
+            signalsByEntity,
         );
+        const state = deriveAutomatedDriftState(
+            item.answer.governance.driftFlag,
+            item.answer.governance.driftReason,
+            evaluation.driftReasons,
+        );
+        return state.shouldWrite && state.driftReason ? [{ ...item, state }] : [];
+    });
+    result.answersEvaluated = storedAnswers.length;
 
-        if (automatedState.shouldWrite) {
-            await bumpAnswerlatticeCacheVersion(db, ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId, {
-                reason: 'drift_detected',
-                sourceId: answer.id,
-                sourceType: 'canonical_answer',
-            });
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(answer.id).update({
+    for (let offset = 0; offset < writes.length; offset += SCHEDULER_LIMITS.driftWriteAnswersPerBatch) {
+        const chunk = writes.slice(offset, offset + SCHEDULER_LIMITS.driftWriteAnswersPerBatch);
+        const batch = db.batch();
+        const now = Timestamp.now();
+        for (const item of chunk) {
+            batch.update(item.document.ref, {
                 'governance.driftFlag': true,
-                'governance.driftReason': automatedState.driftReason,
+                'governance.driftReason': item.state.driftReason,
                 'governance.reviewRequired': true,
-            });
-
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).add({
+                modifiedOn: now,
+                modifiedBy: 'system:drift_engine_nightly',
+            }, { lastUpdateTime: item.document.updateTime! });
+            const auditId = `drift_nightly_${createHash('sha256')
+                .update(`${tId}:${sId}:${item.document.id}:${item.state.driftReason}`)
+                .digest('hex')
+                .slice(0, 40)}`;
+            batch.create(db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(auditId), {
                 pId: 'AL',
-                tId, sId,
+                tId,
+                sId,
                 action: 'drift_detected',
                 entityType: 'canonicalAnswer',
-                entityId: answer.id,
-                previousState: { driftFlag: previousDriftFlag },
-                newState: { driftFlag: true, driftReason: automatedState.driftReason },
+                entityId: item.document.id,
+                previousState: {
+                    driftFlag: item.answer.governance.driftFlag,
+                    driftReason: item.answer.governance.driftReason || null,
+                },
+                newState: { driftFlag: true, driftReason: item.state.driftReason },
                 performedBy: 'system:drift_engine_nightly',
-                timestamp: Timestamp.now(),
+                timestamp: now,
+                createdOn: now,
             });
-
-            result.driftDetected++;
         }
+        batch.set(
+            db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
+                .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId)),
+            getAnswerlatticeCacheVersionBumpData(
+                ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
+                tId,
+                sId,
+                {
+                    reason: 'drift_detected',
+                    sourceId: `nightly_drift_${offset}`,
+                    sourceType: 'canonical_answer',
+                },
+            ),
+            { merge: true },
+        );
+        appendCompiledContextSourceChange(batch, db, 'canonical', tId, sId, {
+            reason: 'drift_detected',
+            sourceId: `nightly_drift_${offset}`,
+            sourceType: 'canonical_answer',
+        });
+        await batch.commit();
+        result.driftDetected += chunk.length;
     }
 
     return result;
@@ -660,10 +702,13 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
         .where('sId', '==', sId)
         .where('timestamp', '>=', windowStart)
         .orderBy('timestamp', 'desc')
-        .limit(500)
+        .limit(SCHEDULER_LIMITS.signalEventsPerWindow + 1)
         .get();
 
     if (signalsSnap.empty) return result;
+    if (signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow) {
+        throw new Error('Answerlattice signal mutation input exceeded a bounded scheduler limit.');
+    }
 
     // Cluster by entityId
     const clusters = new Map<string, { ticket: number; chat_negative: number; escalation: number; total: number; refs: string[] }>();
@@ -896,20 +941,23 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
 // CANONICAL COVERAGE KPI AGGREGATION
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * Aggregate canonical hit/miss ratio from perf logs.
- * Stores in platformSummary/coverage_{tId}_{sId} for dashboard visibility.
- * 
- * This is THE metric that proves Answerlattice works.
- * Without tracking it, the system's value is invisible.
- */
+/** Canonical-served share for the latest complete rolling 24-hour window. */
 async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageKpiResult> {
-    const result: CoverageKpiResult = { hits: 0, misses: 0, rate: 0, errors: [], historyRows: [] };
+    const windowEndMillis = Date.now();
+    const windowStartMillis = windowEndMillis - 24 * 60 * 60 * 1000;
+    const result: CoverageKpiResult = {
+        hits: 0,
+        misses: 0,
+        rate: 0,
+        errors: [],
+        historyRows: [],
+        complete: false,
+        windowStartMillis,
+        windowEndMillis,
+    };
 
-    // Read the newest bounded 24h sample. Explicit ordering avoids an arbitrary
-    // 500-document subset for high-volume workspaces.
-    const nowMillis = Date.now();
-    const dayAgo = Timestamp.fromMillis(nowMillis - 24 * 60 * 60 * 1000);
+    const dayAgo = Timestamp.fromMillis(windowStartMillis);
+    const sourceLimit = ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS.coverageHistory;
 
     try {
         const historySnap = await db
@@ -919,11 +967,18 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
             .where('sId', '==', sId)
             .where('createdOn', '>=', dayAgo)
             .orderBy('createdOn', 'desc')
-            .limit(500)
+            .limit(sourceLimit + 1)
             .get();
+
+        if (historySnap.size > sourceLimit) {
+            throw new Error(`Coverage source exceeded the complete-window limit of ${sourceLimit}.`);
+        }
 
         for (const doc of historySnap.docs) {
             const data = doc.data();
+            if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
+                throw new Error('Coverage source contained an invalid Answerlattice scope.');
+            }
             result.historyRows.push({
                 canonical: data.canonical === true,
                 canonicalAnswerId: typeof data.canonicalAnswerId === 'string' ? data.canonicalAnswerId : undefined,
@@ -947,11 +1002,23 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
 
         const total = result.hits + result.misses;
         result.rate = total > 0 ? result.hits / total : 0;
+        result.complete = true;
 
-        // Persist to platformSummary for dashboard
         const today = new Date().toISOString().split('T')[0];
         await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`coverage_${tId}_${sId}`).set({
+            pId: 'AL',
+            tId,
+            sId,
+            schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
             lastUpdated: Timestamp.now(),
+            window: {
+                kind: ANSWERLATTICE_SUPPORT_METRIC_WINDOWS.ROLLING_24_HOURS,
+                startAt: Timestamp.fromMillis(windowStartMillis),
+                endAt: Timestamp.fromMillis(windowEndMillis),
+                complete: true,
+                sourceLimit,
+                observedCount: total,
+            },
             coverage: {
                 date: today,
                 hits: result.hits,
@@ -966,6 +1033,7 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
             sId,
             phase: 'coverage_kpi',
             operation: 'aggregate_search_history',
+            details: { sourceLimit },
         });
         result.errors.push(diagnostic);
         logger.error('[Answerlattice Coverage] KPI aggregation failed', getSchedulerDiagnosticLogContext(diagnostic));
@@ -1012,6 +1080,7 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
         resolutionRate: 0,
         driftRate: 0,
         entityHealthScore: 0,
+        entityAnswerCoverageRate: 0,
         topFailingEntities: 0,
         errors: [],
     };
@@ -1019,35 +1088,64 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
     if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS) return result;
 
     try {
-        const dayAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+        if (!coverageResult.complete || coverageResult.errors.length > 0) {
+            throw new Error('Trust metrics require a complete coverage window.');
+        }
+        const dayAgo = Timestamp.fromMillis(coverageResult.windowStartMillis);
 
         const [answersSnap, entitiesSnap, signalsSnap, previousSnap] = await Promise.all([
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'active')
-                .limit(SCHEDULER_LIMITS.activeAnswersPerTenant)
+                .limit(SCHEDULER_LIMITS.activeAnswersPerTenant + 1)
                 .get(),
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'active')
-                .limit(SCHEDULER_LIMITS.entitiesPerTenant)
+                .limit(SCHEDULER_LIMITS.entitiesPerTenant + 1)
                 .get(),
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+                .where('pId', '==', 'AL')
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('timestamp', '>=', dayAgo)
-                .limit(SCHEDULER_LIMITS.signalEventsPerWindow)
+                .orderBy('timestamp', 'desc')
+                .limit(SCHEDULER_LIMITS.signalEventsPerWindow + 1)
                 .get(),
             db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                 .doc(`trustMetrics_${tId}_${sId}`)
                 .get(),
         ]);
 
+        if (
+            answersSnap.size > SCHEDULER_LIMITS.activeAnswersPerTenant
+            || entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant
+            || signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow
+        ) {
+            throw new Error('Trust metric source exceeded a complete-window limit.');
+        }
+
+        const assertSourceScope = (data: Record<string, any>, source: string) => {
+            if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
+                throw new Error(`${source} contained an invalid Answerlattice scope.`);
+            }
+        };
+        for (const doc of answersSnap.docs) assertSourceScope(doc.data(), 'Canonical answer source');
+        for (const doc of entitiesSnap.docs) assertSourceScope(doc.data(), 'Entity source');
+        for (const doc of signalsSnap.docs) assertSourceScope(doc.data(), 'Signal source');
+
         const activeAnswers = answersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         const activeEntities = entitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        const previous = previousSnap.exists ? previousSnap.data() : undefined;
+        const previousData = previousSnap.exists ? previousSnap.data() : undefined;
+        const previous = previousData?.pId === 'AL'
+            && previousData?.tId === tId
+            && previousData?.sId === sId
+            && previousData?.schemaVersion === ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION
+            && previousData?.sourceCompleteness?.complete === true
+            ? previousData
+            : undefined;
 
         const coverageTotal = coverageResult.hits + coverageResult.misses;
         const coverageRate = toPercent(coverageResult.hits, coverageTotal);
@@ -1092,7 +1190,7 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
             signalsByEntity.set(entityId, counts);
         }
 
-        escalationBreakdown.total = escalatedQueries + escalationBreakdown.userRequested;
+        escalationBreakdown.total = escalatedQueries;
 
         const totalQueries = coverageResult.historyRows.length;
         const resolutionRate = totalQueries > 0
@@ -1117,7 +1215,8 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
             }
         }
 
-        const entityHealthScores: number[] = [];
+        let coveredEntityCount = 0;
+        let driftedCoveredEntityCount = 0;
         const topFailingEntities: Array<{
             entityId: string;
             entityName: string;
@@ -1126,6 +1225,10 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
             escalationCount: number;
             reliabilityScore: number;
             failureScore: number;
+            evidenceCount: number;
+            negativeFeedbackCount: number;
+            canonicalMissCount: number;
+            weightedLoad: number;
         }> = [];
 
         for (const entity of activeEntities) {
@@ -1135,25 +1238,18 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
             const misses = missCountByEntity.get(entityId) || 0;
             const totalEntitySignals = signals.total + misses;
 
-            const coverageScore = answerCounts.active > 0 ? 100 : 0;
-            const driftScore = answerCounts.active > 0
-                ? toPercent(answerCounts.active - answerCounts.drifted, answerCounts.active)
-                : 100;
+            if (answerCounts.active > 0) coveredEntityCount++;
+            if (answerCounts.active > 0 && answerCounts.drifted > 0) driftedCoveredEntityCount++;
             const reliabilityFailures = signals.chatNegative + signals.escalation + misses;
             const reliabilityScore = totalEntitySignals > 0
                 ? Math.max(0, toPercent(totalEntitySignals - reliabilityFailures, totalEntitySignals))
-                : 100;
-            const healthScore = Math.max(0, Math.min(100, Math.round(
-                coverageScore * 0.4 +
-                driftScore * 0.3 +
-                reliabilityScore * 0.2 +
-                10 // indexed/active entity bonus
-            )));
-
-            entityHealthScores.push(healthScore);
-
-            const failureScore = signals.escalation * 3 + signals.chatNegative * 2 + misses;
-            if (failureScore > 0) {
+                : 0;
+            const weightedLoad = calculateAnswerlatticeFrictionLoad(
+                totalEntitySignals,
+                signals.escalation,
+                misses,
+            );
+            if (weightedLoad > 0) {
                 topFailingEntities.push({
                     entityId,
                     entityName: entity.name || entityId,
@@ -1161,24 +1257,46 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
                     queryCount: totalEntitySignals,
                     escalationCount: signals.escalation,
                     reliabilityScore,
-                    failureScore,
+                    failureScore: weightedLoad,
+                    evidenceCount: totalEntitySignals,
+                    negativeFeedbackCount: signals.chatNegative,
+                    canonicalMissCount: misses,
+                    weightedLoad,
                 });
             }
         }
 
-        const avgHealth = entityHealthScores.length > 0
-            ? Math.round(entityHealthScores.reduce((sum, score) => sum + score, 0) / entityHealthScores.length)
-            : 0;
-        result.entityHealthScore = avgHealth;
+        const entityAnswerCoverageRate = toPercent(coveredEntityCount, activeEntities.length);
+        result.entityHealthScore = entityAnswerCoverageRate;
+        result.entityAnswerCoverageRate = entityAnswerCoverageRate;
 
         const top5Failing = topFailingEntities
-            .sort((a, b) => b.failureScore - a.failureScore)
+            .sort((a, b) => b.weightedLoad - a.weightedLoad)
             .slice(0, 5);
         result.topFailingEntities = top5Failing.length;
 
         await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`trustMetrics_${tId}_${sId}`).set({
+            pId: 'AL',
+            tId,
+            sId,
+            schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
             lastUpdated: Timestamp.now(),
             date: new Date().toISOString().split('T')[0],
+            window: {
+                kind: ANSWERLATTICE_SUPPORT_METRIC_WINDOWS.ROLLING_24_HOURS,
+                startAt: Timestamp.fromMillis(coverageResult.windowStartMillis),
+                endAt: Timestamp.fromMillis(coverageResult.windowEndMillis),
+                complete: true,
+                sourceLimit: ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS.coverageHistory,
+                observedCount: coverageTotal,
+            },
+            sourceCompleteness: {
+                complete: true,
+                activeAnswers: activeAnswers.length,
+                activeEntities: activeEntities.length,
+                signalEvents: signalsSnap.size,
+                searchHistory: coverageTotal,
+            },
             coverage: {
                 rate: coverageRate,
                 hits: coverageResult.hits,
@@ -1193,6 +1311,13 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
                 total: totalQueries,
                 previousRate: getPreviousMetric(previous, 'resolution.rate'),
             },
+            nonEscalation: {
+                rate: resolutionRate,
+                withoutEscalation: Math.max(totalQueries - escalatedQueries, 0),
+                escalated: escalatedQueries,
+                total: totalQueries,
+                previousRate: getPreviousMetric(previous, 'nonEscalation.rate', getPreviousMetric(previous, 'resolution.rate')),
+            },
             confirmedResolution: {
                 ...confirmedResolution,
                 previousRate: getPreviousMetric(previous, 'confirmedResolution.rate'),
@@ -1204,12 +1329,20 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
                 previousRate: getPreviousMetric(previous, 'drift.rate'),
             },
             entityHealth: {
-                avgScore: avgHealth,
-                healthyCount: entityHealthScores.filter(score => score >= 80).length,
-                attentionCount: entityHealthScores.filter(score => score >= 40 && score < 80).length,
-                criticalCount: entityHealthScores.filter(score => score < 40).length,
-                totalEntities: entityHealthScores.length,
-                previousAvgScore: getPreviousMetric(previous, 'entityHealth.avgScore'),
+                avgScore: entityAnswerCoverageRate,
+                healthyCount: Math.max(coveredEntityCount - driftedCoveredEntityCount, 0),
+                attentionCount: driftedCoveredEntityCount,
+                criticalCount: Math.max(activeEntities.length - coveredEntityCount, 0),
+                totalEntities: activeEntities.length,
+                previousAvgScore: getPreviousMetric(previous, 'entityAnswerCoverage.rate', getPreviousMetric(previous, 'entityHealth.avgScore')),
+            },
+            entityAnswerCoverage: {
+                rate: entityAnswerCoverageRate,
+                coveredCount: coveredEntityCount,
+                uncoveredCount: Math.max(activeEntities.length - coveredEntityCount, 0),
+                driftedCoveredCount: driftedCoveredEntityCount,
+                totalEntities: activeEntities.length,
+                previousRate: getPreviousMetric(previous, 'entityAnswerCoverage.rate', getPreviousMetric(previous, 'entityHealth.avgScore')),
             },
             topFailingEntities: top5Failing,
             escalationBreakdown,
@@ -1343,6 +1476,34 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
  * Check proposals implemented 14+ days ago and compare signal counts
  * before/after to measure impact. Stores delta on the proposal doc.
  */
+const MUTATION_IMPACT_SIGNAL_LIMIT = 200;
+
+async function countMutationImpactSignals(input: {
+    tId: number;
+    sId: number;
+    entityId: string;
+    from: Timestamp;
+    to: Timestamp;
+}): Promise<number> {
+    const snapshot = await db
+        .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+        .where('tId', '==', input.tId)
+        .where('sId', '==', input.sId)
+        .where('entityId', '==', input.entityId)
+        .where('timestamp', '>=', input.from)
+        .where('timestamp', '<', input.to)
+        .limit(MUTATION_IMPACT_SIGNAL_LIMIT + 1)
+        .get();
+    if (snapshot.size > MUTATION_IMPACT_SIGNAL_LIMIT) {
+        throw new Error('Answerlattice mutation impact signal window exceeded a bounded scheduler limit.');
+    }
+    return snapshot.docs.filter(document => {
+        const signal = document.data();
+        return signal.pId === 'AL'
+            && (signal.type === 'ticket' || signal.type === 'chat_negative' || signal.type === 'escalation');
+    }).length;
+}
+
 async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
     const result: { tracked: number; errors: AnswerlatticeSchedulerDiagnostic[] } = { tracked: 0, errors: [] };
 
@@ -1374,35 +1535,51 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]);
             if (!entityId) continue;
 
-            const postSignalsSnap = await db
-                .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
-                .where('tId', '==', tId)
-                .where('sId', '==', sId)
-                .where('entityId', '==', entityId)
-                .where('timestamp', '>=', implementedAt)
-                .where('timestamp', '<', Timestamp.fromMillis(implementedAtMillis + 14 * 24 * 60 * 60 * 1000))
-                .limit(100)
-                .get();
+            try {
+                const windowMillis = 14 * 24 * 60 * 60 * 1000;
+                const [preSignalCount, postSignalCount] = await Promise.all([
+                    countMutationImpactSignals({
+                        tId,
+                        sId,
+                        entityId,
+                        from: Timestamp.fromMillis(implementedAtMillis - windowMillis),
+                        to: implementedAt,
+                    }),
+                    countMutationImpactSignals({
+                        tId,
+                        sId,
+                        entityId,
+                        from: implementedAt,
+                        to: Timestamp.fromMillis(implementedAtMillis + windowMillis),
+                    }),
+                ]);
+                const rawImprovement = preSignalCount > 0
+                    ? Math.round((1 - postSignalCount / preSignalCount) * 100)
+                    : 0;
 
-            const preSignalCount = proposal.signalSummary?.ticketCount + proposal.signalSummary?.chatCount || 0;
-            const postSignalCount = postSignalsSnap.docs.filter(document => {
-                const signal = document.data();
-                return signal.pId === 'AL'
-                    && (signal.type === 'ticket' || signal.type === 'chat_negative' || signal.type === 'escalation');
-            }).length;
-            const improvement = preSignalCount > 0 ? Math.round((1 - postSignalCount / preSignalCount) * 100) : 0;
+                await proposalDoc.ref.update({
+                    impactTracked: true,
+                    impactResult: {
+                        preSignalCount,
+                        postSignalCount,
+                        improvementPercent: Math.max(-10_000, Math.min(100, rawImprovement)),
+                        trackedAt: Timestamp.now(),
+                    },
+                });
 
-            await proposalDoc.ref.update({
-                impactTracked: true,
-                impactResult: {
-                    preSignalCount,
-                    postSignalCount,
-                    improvementPercent: improvement,
-                    trackedAt: Timestamp.now(),
-                },
-            });
-
-            result.tracked++;
+                result.tracked++;
+            } catch (error) {
+                result.errors.push(buildDiagnostic(error, {
+                    tId,
+                    sId,
+                    phase: 'mutation_impact',
+                    operation: 'compare_signal_windows',
+                    details: {
+                        proposalIdPresent: Boolean(proposalDoc.id),
+                        proposalIdLength: proposalDoc.id.length,
+                    },
+                }));
+            }
         }
     } catch (error) {
         const diagnostic = buildDiagnostic(error, {
@@ -1527,14 +1704,20 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
-        .limit(SCHEDULER_LIMITS.entitiesPerTenant)
+        .limit(SCHEDULER_LIMITS.entitiesPerTenant + 1)
         .get();
 
     if (entitiesSnap.empty) return result;
+    if (entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant) {
+        throw new Error('Answerlattice graph entity limit exceeded; existing graph index was preserved.');
+    }
 
     const entityMap = new Map<string, { name: string; type: string }>();
     for (const doc of entitiesSnap.docs) {
         const data = doc.data();
+        if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
+            throw new Error('Answerlattice graph entity scope is invalid; existing graph index was preserved.');
+        }
         entityMap.set(doc.id, { name: data.name, type: data.type });
     }
     result.entityCount = entityMap.size;
@@ -1544,8 +1727,12 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .limit(SCHEDULER_LIMITS.graphRelationsPerTenant)
+        .limit(SCHEDULER_LIMITS.graphRelationsPerTenant + 1)
         .get();
+
+    if (relationsSnap.size > SCHEDULER_LIMITS.graphRelationsPerTenant) {
+        throw new Error('Answerlattice graph relation limit exceeded; existing graph index was preserved.');
+    }
 
     result.relationCount = relationsSnap.size;
 
@@ -1555,12 +1742,19 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
-        .limit(SCHEDULER_LIMITS.graphAnswersPerTenant)
+        .limit(SCHEDULER_LIMITS.graphAnswersPerTenant + 1)
         .get();
+
+    if (answersSnap.size > SCHEDULER_LIMITS.graphAnswersPerTenant) {
+        throw new Error('Answerlattice graph answer limit exceeded; existing graph index was preserved.');
+    }
 
     const answerCountByEntity = new Map<string, number>();
     for (const doc of answersSnap.docs) {
         const data = doc.data();
+        if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
+            throw new Error('Answerlattice graph answer scope is invalid; existing graph index was preserved.');
+        }
         const entityIds = normalizeAnswerlatticeFunctionEntityIds(data.scope?.entityIds);
         for (const entityId of entityIds) {
             answerCountByEntity.set(entityId, (answerCountByEntity.get(entityId) || 0) + 1);
@@ -1590,6 +1784,9 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     // Process relations (bidirectional — both from and to get the related reference)
     for (const doc of relationsSnap.docs) {
         const rel = doc.data();
+        if (rel.pId !== 'AL' || rel.tId !== tId || rel.sId !== sId) {
+            throw new Error('Answerlattice graph relation scope is invalid; existing graph index was preserved.');
+        }
         const fromId = normalizeAnswerlatticeResolvedFunctionEntityId(rel.fromEntityId);
         const toId = normalizeAnswerlatticeResolvedFunctionEntityId(rel.toEntityId);
         const relType: string = rel.relationType;
@@ -1769,7 +1966,6 @@ export interface AnswerlatticeNightlyResult {
     predictiveSuggestionsGenerated: number;
     predictiveTriggersTotal: number;
     predictiveEffectivenessUpdated: number;
-    predictiveAutoDisabled: number;
     // Step 19: Compiled Context Bundle Repair
     compiledContextBundlesRebuilt: number;
     compiledContextBundlesSkipped: number;
@@ -1783,6 +1979,7 @@ export interface AnswerlatticeNightlyResult {
     retentionContactEnquiriesDeleted: number;
     retentionQueryEmbeddingsDeleted: number;
     retentionAiSearchHistoryDeleted: number;
+    retentionContentFeedbackDeleted: number;
     retentionContextBundleObjectsDeleted: number;
     errors: string[];
     errorDetails: AnswerlatticeSchedulerDiagnostic[];
@@ -1866,7 +2063,6 @@ export async function runAnswerlatticeNightly(options: {
         predictiveSuggestionsGenerated: 0,
         predictiveTriggersTotal: 0,
         predictiveEffectivenessUpdated: 0,
-        predictiveAutoDisabled: 0,
         compiledContextBundlesRebuilt: 0,
         compiledContextBundlesSkipped: 0,
         compiledContextBytesGenerated: 0,
@@ -1878,6 +2074,7 @@ export async function runAnswerlatticeNightly(options: {
         retentionContactEnquiriesDeleted: 0,
         retentionQueryEmbeddingsDeleted: 0,
         retentionAiSearchHistoryDeleted: 0,
+        retentionContentFeedbackDeleted: 0,
         retentionContextBundleObjectsDeleted: 0,
         errors: [],
         errorDetails: [],
@@ -1933,6 +2130,7 @@ export async function runAnswerlatticeNightly(options: {
                     retentionContactEnquiriesDeleted: result.retentionContactEnquiriesDeleted,
                     retentionQueryEmbeddingsDeleted: result.retentionQueryEmbeddingsDeleted,
                     retentionAiSearchHistoryDeleted: result.retentionAiSearchHistoryDeleted,
+                    retentionContentFeedbackDeleted: result.retentionContentFeedbackDeleted,
                     retentionContextBundleObjectsDeleted: result.retentionContextBundleObjectsDeleted,
                 },
                 errors: result.errorDetails.slice(0, 100),
@@ -2110,6 +2308,8 @@ export async function runAnswerlatticeNightly(options: {
                 fallbackProposals: 0,
                 signalsResolved: 0,
                 coverageRate: 0,
+                coverageHits: 0,
+                coverageTotal: 0,
                 signalsArchived: 0,
             };
 
@@ -2169,11 +2369,20 @@ export async function runAnswerlatticeNightly(options: {
                     hits: taskResult.hits,
                     misses: taskResult.misses,
                     rate: Math.round(taskResult.rate * 100),
+                    complete: taskResult.complete,
                 })
             );
-            if (coverageResult) tenantRun.coverageRate = coverageResult.rate;
+            if (coverageResult?.complete && coverageResult.errors.length === 0) {
+                tenantRun.coverageRate = coverageResult.rate;
+                tenantRun.coverageHits = coverageResult.hits;
+                tenantRun.coverageTotal = coverageResult.hits + coverageResult.misses;
+            }
 
-            if (FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS && coverageResult) {
+            if (
+                FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS
+                && coverageResult?.complete
+                && coverageResult.errors.length === 0
+            ) {
                 await runTenantTask(
                     tenantRun,
                     'trust_metrics',
@@ -2187,7 +2396,7 @@ export async function runAnswerlatticeNightly(options: {
                         coverageRate: taskResult.coverageRate,
                         resolutionRate: taskResult.resolutionRate,
                         driftRate: taskResult.driftRate,
-                        entityHealthScore: taskResult.entityHealthScore,
+                        entityAnswerCoverageRate: taskResult.entityAnswerCoverageRate,
                         topFailingEntities: taskResult.topFailingEntities,
                         enabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS,
                     })
@@ -2199,7 +2408,9 @@ export async function runAnswerlatticeNightly(options: {
                     durationMs: 0,
                     details: {
                         enabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS,
-                        reason: coverageResult ? 'feature_flag_off' : 'coverage_unavailable',
+                        reason: !FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS
+                            ? 'feature_flag_off'
+                            : 'coverage_incomplete',
                     },
                 });
             }
@@ -2374,6 +2585,8 @@ export async function runAnswerlatticeNightly(options: {
                         needsAnswerCards: taskResult.needsAnswerCards,
                         highPriorityCards: taskResult.highPriorityCards,
                         totalRecentCards: taskResult.totalRecentCards,
+                        sourceWindowsSaturated: taskResult.sourceWindowsSaturated,
+                        breakdownFresh: taskResult.breakdownFresh,
                     })
                 );
             }
@@ -2461,14 +2674,12 @@ export async function runAnswerlatticeNightly(options: {
                         result.predictiveSuggestionsGenerated += taskResult.suggestionsGenerated;
                         result.predictiveTriggersTotal += taskResult.triggerCount;
                         result.predictiveEffectivenessUpdated += taskResult.effectivenessUpdated;
-                        result.predictiveAutoDisabled += taskResult.autoDisabled;
                     },
                     (taskResult) => ({
                         suggestionsGenerated: taskResult.suggestionsGenerated,
                         cacheRebuilt: taskResult.cacheRebuilt,
                         triggerCount: taskResult.triggerCount,
                         effectivenessUpdated: taskResult.effectivenessUpdated,
-                        autoDisabled: taskResult.autoDisabled,
                     })
                 );
             }
@@ -2519,7 +2730,9 @@ export async function runAnswerlatticeNightly(options: {
                 proposals: mutationResult ? `${mutationResult.proposalsCreated}/${mutationResult.clustersAnalyzed}` : 'failed',
                 fallbacks: fallbackResult?.proposalsCreated || 0,
                 impact: impactResult?.tracked || 0,
-                coverage: coverageResult ? Math.round(coverageResult.rate * 100) : null,
+                coverage: coverageResult?.complete && coverageResult.errors.length === 0
+                    ? Math.round(coverageResult.rate * 100)
+                    : null,
                 signalRetention: 'firestore_ttl',
                 drafts: draftResult ? `${draftResult.draftsGenerated}/${draftResult.draftsGenerated + draftResult.draftsFailed}` : 'failed',
                 friction: frictionResult ? `${frictionResult.entitiesProcessed}/${frictionResult.overallHealth}` : 'failed',
@@ -2528,7 +2741,7 @@ export async function runAnswerlatticeNightly(options: {
             });
         }
 
-        const coverageRuns = result.tenantRuns.filter(run => run.coverageRate > 0);
+        const coverageRuns = result.tenantRuns.filter(run => run.coverageTotal > 0);
         result.coverageRate = coverageRuns.length > 0
             ? coverageRuns.reduce((sum, run) => sum + run.coverageRate, 0) / coverageRuns.length
             : 0;
@@ -2554,6 +2767,7 @@ export async function runAnswerlatticeNightly(options: {
             result.retentionContactEnquiriesDeleted += retentionResult.contactEnquiriesDeleted;
             result.retentionQueryEmbeddingsDeleted += retentionResult.queryEmbeddingsDeleted;
             result.retentionAiSearchHistoryDeleted += retentionResult.aiSearchHistoryDeleted;
+            result.retentionContentFeedbackDeleted += retentionResult.contentFeedbackDeleted;
             result.retentionContextBundleObjectsDeleted += retentionResult.contextBundleObjectsDeleted;
 
             for (const errorMessage of retentionResult.errors) {
@@ -2573,6 +2787,7 @@ export async function runAnswerlatticeNightly(options: {
                 contactEnquiriesDeleted: retentionResult.contactEnquiriesDeleted,
                 queryEmbeddingsDeleted: retentionResult.queryEmbeddingsDeleted,
                 aiSearchHistoryDeleted: retentionResult.aiSearchHistoryDeleted,
+                contentFeedbackDeleted: retentionResult.contentFeedbackDeleted,
                 contextBundleObjectsDeleted: retentionResult.contextBundleObjectsDeleted,
                 errorCount: retentionResult.errors.length,
             });
@@ -2692,8 +2907,8 @@ export async function runAnswerlatticeNightly(options: {
                                 currentRate: tenantRun.coverageRate,
                                 previousRate: 0,
                                 threshold: COVERAGE_DROP_THRESHOLD,
-                                totalQueries: 0,
-                                canonicalHits: 0,
+                                totalQueries: tenantRun.coverageTotal,
+                                canonicalHits: tenantRun.coverageHits,
                             },
                         });
                         if (emitted) result.integrationEventsEmitted++;
@@ -2714,7 +2929,7 @@ export async function runAnswerlatticeNightly(options: {
                                 entityType: 'support_generation',
                                 failureCount: aiFailureSummary.failureCount,
                                 windowDays: AI_FAILURE_WINDOW_DAYS,
-                                commonQueries: aiFailureSummary.phases,
+                                failurePhases: aiFailureSummary.phases,
                                 errors: aiFailureSummary.errors,
                             },
                         });

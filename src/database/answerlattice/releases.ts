@@ -141,19 +141,19 @@ export const addRelease = async (data: Omit<AnswerlatticeRelease, 'id'>) => apiC
     'addRelease',
 );
 
-export const activateRelease = async (releaseId: string) => apiCallComposer(
+export const activateRelease = async (releaseId: string, requestId?: string) => apiCallComposer(
     async () => {
         const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);
         if (!normalizedReleaseId) throw new Error('Invalid Answerlattice release ID');
         await getActiveReleaseScope();
         const result = await executeReleaseAction({
             action: 'activate',
-            requestId: createRuntimeId('release_activation'),
+            requestId: requestId || createRuntimeId('release_activation'),
             releaseId: normalizedReleaseId,
         });
         if (result.action !== 'activate') throw new Error('Unexpected release action response');
         return result;
     },
-    { releaseId },
+    { releaseId, hasRequestId: Boolean(requestId) },
     'activateRelease',
 );

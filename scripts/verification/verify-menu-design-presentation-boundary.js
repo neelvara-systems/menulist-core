@@ -226,7 +226,7 @@ forbidToken(mobileDesign, 'note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim()', 'Mo
   'const activePriceAttributes = getActivePublicItemPriceAttributes(item);',
   'const itemListPriceLabel = getPublicItemListPriceLabel(item, currencySymbol);',
   '{showItemPrices && itemListPriceLabel && (',
-  'aria-label="Available option prices"',
+  "aria-label={t('menu.availableOptionPrices')}",
   'activePriceAttributes.map((attribute, attributeIndex)',
   'normalizePublicMenuBackground(backgroundImage, {',
   'allowDataPreview: previewMode,',

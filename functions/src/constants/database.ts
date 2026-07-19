@@ -54,6 +54,9 @@ export const DB_COLLECTIONS = {
     KB_GENERATION_JOBS: 'kb_generation_jobs',
     KB_STAGING_SECTIONS: 'kb_staging_sections',
     KB_STAGING_CHUNKS: 'kb_staging_chunks',
+    CHANGELOG_FEEDBACK: 'changelog_feedback',
+    ARTICLE_FEEDBACK: 'article_feedback',
+    FAQ_FEEDBACK: 'faq_feedback',
     ANSWERLATTICE_CACHE_VERSIONS: 'answerlattice_cacheVersions',
 
     // Monitoring & Telemetry

@@ -20,6 +20,7 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { normalizeBillingTopupDocumentId, normalizeBillingTopupScopeDocumentId } from "@lib/billing/topupDocumentIdBoundary";
 import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { projectRazorpayTopupCheckoutResponse } from '@lib/billing/paymentCheckoutBoundary';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -376,7 +377,11 @@ export const POST = withAuth(async (request, session) => {
             return false;
         });
 
-        return NextResponse.json({ order: razorpayOrder });
+        const responsePayload = projectRazorpayTopupCheckoutResponse(razorpayOrder);
+        if (!responsePayload) {
+            throw new Error('razorpay_topup_checkout_response_invalid');
+        }
+        return NextResponse.json(responsePayload);
 
     } catch (error) {
         if (

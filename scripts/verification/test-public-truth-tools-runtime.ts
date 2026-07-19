@@ -1,8 +1,19 @@
 import assert from 'node:assert/strict';
 
+import {
+  MAX_MAPS_PLACE_ID_LENGTH,
+  normalizeMapsGroundingPlaceId,
+  normalizeMapsGroundingSourceUri,
+} from '../../functions/src/logic/mapsPlaceIdentityBoundary';
 import { buildPrintShareToolReport } from '../../src/lib/public-asset-tools/printShareToolReport';
 import { buildBookingInquiryReadinessReport } from '../../src/lib/public-truth-tools/bookingInquiryReadinessReport';
 import { buildBusinessFactsCopyPackReport } from '../../src/lib/public-truth-tools/businessFactsCopyPackReport';
+import {
+  buildMapsPlaceCheckIdentityBinding,
+  buildOwnerGoogleMapsLinkIdentityBinding,
+  EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
+  normalizeExternalLocationIdentityBinding,
+} from '../../src/lib/public-truth-tools/externalLocationIdentity';
 import {
   isLikelyPhoneNumber,
   normalizePhoneDigits,
@@ -28,6 +39,173 @@ function getCheckResult(
 ): string | undefined {
   return checks.find((check) => check.id === id)?.result;
 }
+
+assert.equal(
+  EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
+  'menulist.external-location-identity.v1',
+);
+const longMapsPlaceId = `E${'a'.repeat(682)}`;
+assert.equal(normalizeMapsGroundingPlaceId(`places/${longMapsPlaceId}`), longMapsPlaceId);
+assert.equal(
+  normalizeMapsGroundingPlaceId(`E${'a'.repeat(MAX_MAPS_PLACE_ID_LENGTH)}`),
+  undefined,
+  'over-cap provider IDs must be rejected instead of truncated',
+);
+assert.equal(
+  normalizeMapsGroundingSourceUri('https://www.google.com/maps/place/example'),
+  'https://www.google.com/maps/place/example',
+);
+assert.equal(normalizeMapsGroundingSourceUri('https://example.com/maps/place/example'), undefined);
+const ownerMapsBinding = buildOwnerGoogleMapsLinkIdentityBinding(
+  ' https://www.google.com/maps/place/example ',
+  '2026-07-19T10:00:00.000Z',
+);
+assert.deepEqual(ownerMapsBinding, {
+  provider: 'google_maps',
+  providerUri: 'https://www.google.com/maps/place/example',
+  resolution: 'provider_uri',
+  confirmationStatus: 'owner_confirmed',
+  source: 'owner_maps_link',
+  confirmedAt: '2026-07-19T10:00:00.000Z',
+});
+assert.equal(
+  buildOwnerGoogleMapsLinkIdentityBinding(
+    'https://example.com/not-google-maps',
+    '2026-07-19T10:00:00.000Z',
+  ),
+  null,
+);
+const placeCheckBinding = buildMapsPlaceCheckIdentityBinding({
+  placeId: 'places/ChIJ_model-text-must-not-win',
+  uri: 'https://maps.google.com/?q=model-text-must-not-win',
+  proposedFacts: { address: 'Provider text is not persisted in the binding.' },
+  sources: [{
+    title: 'Attributable Maps source',
+    placeId: 'places/ChIJ_test-place',
+    uri: 'https://maps.google.com/?q=example',
+  }],
+}, '2026-07-19T10:05:00.000Z');
+assert.deepEqual(placeCheckBinding, {
+  provider: 'google_maps',
+  providerLocationId: 'ChIJ_test-place',
+  providerUri: 'https://maps.google.com/?q=example',
+  resolution: 'provider_location_id',
+  confirmationStatus: 'owner_confirmed',
+  source: 'maps_place_check',
+  confirmedAt: '2026-07-19T10:05:00.000Z',
+});
+assert.equal(
+  Object.prototype.hasOwnProperty.call(placeCheckBinding || {}, 'proposedFacts'),
+  false,
+  'grounded proposed facts must not enter the persisted identity binding',
+);
+assert.equal(
+  buildMapsPlaceCheckIdentityBinding({
+    placeId: 'ChIJ_test-place',
+    uri: 'https://maps.google.com/?q=unattributed',
+    sources: [],
+  }, '2026-07-19T10:05:00.000Z'),
+  null,
+  'model-parsed identity without a matching Maps grounding source must not be persisted',
+);
+assert.deepEqual(
+  normalizeExternalLocationIdentityBinding(placeCheckBinding),
+  placeCheckBinding,
+);
+assert.equal(
+  normalizeExternalLocationIdentityBinding({
+    ...placeCheckBinding,
+    confirmationStatus: 'proposed',
+  }),
+  null,
+);
+assert.equal(
+  normalizeExternalLocationIdentityBinding({
+    ...placeCheckBinding,
+    provider: 'google_business_profile',
+    source: 'maps_place_check',
+  }),
+  null,
+  'provider and confirmation source must remain coherent',
+);
+assert.equal(
+  normalizeExternalLocationIdentityBinding({
+    ...ownerMapsBinding,
+    providerLocationId: 'ChIJ_owner-link-cannot-prove-this',
+    resolution: 'provider_location_id',
+  }),
+  null,
+  'an owner-saved URI must not claim a stable provider location ID',
+);
+assert.equal(
+  normalizeExternalLocationIdentityBinding({
+    provider: 'google_maps',
+    providerUri: 'https://maps.google.com/?q=missing-source-id',
+    resolution: 'provider_uri',
+    confirmationStatus: 'owner_confirmed',
+    source: 'maps_place_check',
+    confirmedAt: '2026-07-19T10:05:00.000Z',
+  }),
+  null,
+  'Maps Place Check confirmation must require an attributable provider ID and URI',
+);
+assert.deepEqual(
+  normalizeExternalLocationIdentityBinding({
+    provider: 'google_business_profile',
+    providerLocationId: '123456789',
+    resolution: 'provider_location_id',
+    confirmationStatus: 'owner_confirmed',
+    source: 'gbp_connection',
+    confirmedAt: '2026-07-19T10:05:00.000Z',
+  }),
+  {
+    provider: 'google_business_profile',
+    providerLocationId: '123456789',
+    resolution: 'provider_location_id',
+    confirmationStatus: 'owner_confirmed',
+    source: 'gbp_connection',
+    confirmedAt: '2026-07-19T10:05:00.000Z',
+  },
+);
+assert.deepEqual(
+  buildMapsPlaceCheckIdentityBinding({
+    proposedFacts: {},
+    sources: [{
+      title: 'Fallback source',
+      placeId: 'places/ChIJ_source-place',
+      uri: 'https://www.google.com/maps/place/source',
+    }],
+  }, '2026-07-19T10:06:00.000Z'),
+  {
+    provider: 'google_maps',
+    providerLocationId: 'ChIJ_source-place',
+    providerUri: 'https://www.google.com/maps/place/source',
+    resolution: 'provider_location_id',
+    confirmationStatus: 'owner_confirmed',
+    source: 'maps_place_check',
+    confirmedAt: '2026-07-19T10:06:00.000Z',
+  },
+);
+assert.deepEqual(
+  buildMapsPlaceCheckIdentityBinding({
+    proposedFacts: {},
+    sources: [{
+      title: 'Long valid provider identity',
+      placeId: `places/${longMapsPlaceId}`,
+      uri: 'https://www.google.com/maps/place/long-identity',
+    }],
+  }, '2026-07-19T10:07:00.000Z'),
+  {
+    provider: 'google_maps',
+    providerLocationId: longMapsPlaceId,
+    providerUri: 'https://www.google.com/maps/place/long-identity',
+    resolution: 'provider_location_id',
+    confirmationStatus: 'owner_confirmed',
+    source: 'maps_place_check',
+    confirmedAt: '2026-07-19T10:07:00.000Z',
+  },
+  'valid long Place IDs must be preserved exactly',
+);
 
 assert.equal(isPublicHttpsUrl('https://example.com/menu'), true);
 assert.equal(isPublicHttpsUrl('example.com/menu'), true);

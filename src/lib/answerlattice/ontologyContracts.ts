@@ -14,6 +14,7 @@ import {
 } from '@type/answerlattice';
 import { z } from 'zod';
 import { normalizeAnswerlatticeEntityCandidateId } from './entityCandidateIdBoundary';
+import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
 import {
     normalizeAnswerlatticeEntityRelationId,
     normalizeAnswerlatticeEntitySearchIndexId,
@@ -27,6 +28,8 @@ const relationIdSchema = z.string().trim().min(1).max(180)
     .refine((value) => normalizeAnswerlatticeEntityRelationId(value) === value);
 const candidateIdSchema = z.string().trim().min(1).max(180)
     .refine((value) => normalizeAnswerlatticeEntityCandidateId(value) === value);
+const articleIdSchema = z.string().trim().min(1).max(180)
+    .refine((value) => normalizeAnswerlatticeKbArticleId(value) === value);
 const searchIndexIdSchema = z.string().trim().min(1).max(180)
     .refine((value) => normalizeAnswerlatticeEntitySearchIndexId(value) === value);
 const entityTypeSchema = z.enum(Object.values(ANSWERLATTICE_ENTITY_TYPES) as [string, ...string[]]);
@@ -201,7 +204,7 @@ export const AnswerlatticeStoredEntityCandidateSchema = z.object({
     description: z.string().trim().min(1).max(4_000),
     status: candidateStatusSchema,
     promotedEntityId: entityIdSchema.optional(),
-    sourceArticleIds: z.array(entityIdSchema).max(50).optional(),
+    sourceArticleIds: z.array(articleIdSchema).max(50).optional(),
     createdOn: z.unknown().optional(),
     modifiedOn: z.unknown().optional(),
 }).passthrough();

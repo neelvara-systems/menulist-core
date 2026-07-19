@@ -11,8 +11,10 @@ export interface PublicImageViewerImage {
 interface PublicImageViewerProps {
     accentColor?: string;
     closeLabel?: string;
+    direction?: 'ltr' | 'rtl';
     images: PublicImageViewerImage[];
     initialIndex?: number;
+    language?: string;
     nextLabel?: string;
     onClose: () => void;
     onIndexChange?: (index: number) => void;
@@ -46,8 +48,10 @@ function getTouchDistance(touches: { length: number; [index: number]: { clientX:
 export default function PublicImageViewer({
     accentColor = '#14b8c4',
     closeLabel = 'Close image viewer',
+    direction = 'ltr',
     images,
     initialIndex = 0,
+    language,
     nextLabel = 'Next image',
     onClose,
     onIndexChange,
@@ -216,6 +220,9 @@ export default function PublicImageViewer({
         }
 
         if (deltaX < 0) {
+            if (direction === 'rtl') showPrevious();
+            else showNext();
+        } else if (direction === 'rtl') {
             showNext();
         } else {
             showPrevious();
@@ -245,12 +252,14 @@ export default function PublicImageViewer({
             }
             if (event.key === 'ArrowRight' && canNavigate) {
                 event.preventDefault();
-                showNext();
+                if (direction === 'rtl') showPrevious();
+                else showNext();
                 return;
             }
             if (event.key === 'ArrowLeft' && canNavigate) {
                 event.preventDefault();
-                showPrevious();
+                if (direction === 'rtl') showNext();
+                else showPrevious();
             }
         };
 
@@ -276,7 +285,7 @@ export default function PublicImageViewer({
             body.style.overscrollBehavior = previousStyles.bodyOverscrollBehavior;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [canNavigate, onClose, open, showNext, showPrevious]);
+    }, [canNavigate, direction, onClose, open, showNext, showPrevious]);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -314,6 +323,8 @@ export default function PublicImageViewer({
         <div
             aria-label={title}
             aria-modal="true"
+            dir={direction}
+            lang={language}
             onClick={onClose}
             role="dialog"
             style={{
@@ -391,7 +402,7 @@ export default function PublicImageViewer({
                         }}
                         style={{
                             ...controlStyle(),
-                            left: 'calc(12px + env(safe-area-inset-left))',
+                            insetInlineStart: `calc(12px + env(safe-area-inset-${direction === 'rtl' ? 'right' : 'left'}))`,
                             position: 'absolute',
                             top: '50%',
                             transform: 'translateY(-50%)',
@@ -399,7 +410,9 @@ export default function PublicImageViewer({
                         }}
                         type="button"
                     >
-                        <LuChevronLeft aria-hidden="true" size={22} strokeWidth={2.7} />
+                        {direction === 'rtl'
+                            ? <LuChevronRight aria-hidden="true" size={22} strokeWidth={2.7} />
+                            : <LuChevronLeft aria-hidden="true" size={22} strokeWidth={2.7} />}
                     </button>
                     <button
                         aria-label={nextLabel}
@@ -410,14 +423,16 @@ export default function PublicImageViewer({
                         style={{
                             ...controlStyle(),
                             position: 'absolute',
-                            right: 'calc(12px + env(safe-area-inset-right))',
+                            insetInlineEnd: `calc(12px + env(safe-area-inset-${direction === 'rtl' ? 'left' : 'right'}))`,
                             top: '50%',
                             transform: 'translateY(-50%)',
                             zIndex: 2,
                         }}
                         type="button"
                     >
-                        <LuChevronRight aria-hidden="true" size={22} strokeWidth={2.7} />
+                        {direction === 'rtl'
+                            ? <LuChevronLeft aria-hidden="true" size={22} strokeWidth={2.7} />
+                            : <LuChevronRight aria-hidden="true" size={22} strokeWidth={2.7} />}
                     </button>
                 </>
             ) : null}
@@ -476,7 +491,7 @@ export default function PublicImageViewer({
                         lineHeight: 1,
                         padding: '8px 10px',
                         position: 'absolute',
-                        right: 'calc(14px + env(safe-area-inset-right))',
+                        insetInlineEnd: `calc(14px + env(safe-area-inset-${direction === 'rtl' ? 'left' : 'right'}))`,
                         top: 'calc(14px + env(safe-area-inset-top))',
                         zIndex: 3,
                     }}

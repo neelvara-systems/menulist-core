@@ -15,6 +15,10 @@ import {
     getBoundedPublicFeedbackStringContext,
     logPublicFeedbackFormFailure,
 } from '@lib/feedback/publicFeedbackDiagnostics';
+import {
+    createPublicCustomerTranslator,
+    type PublicCustomerTranslator,
+} from '@lib/localization/publicCustomerMessages';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
@@ -34,6 +38,7 @@ import { StarRating } from './StarRating';
 import styles from './index.module.scss';
 
 interface GuestFeedbackFormProps {
+    activeLanguage?: string;
     accentColor?: string;
     feedbackDefaults?: FeedbackDefaults;
     onSuccess?: (reviewUrl?: string | null) => void;
@@ -65,7 +70,6 @@ const DEFAULT_FORM_STATE: FormState = {
     website: '',
 };
 
-const GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE = 'Failed to submit feedback';
 const GUEST_FEEDBACK_MESSAGE_MAX_LENGTH = 300;
 const GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY = {
     cache: 'no-store' as RequestCache,
@@ -77,58 +81,51 @@ function createGuestFeedbackSubmissionId(): string {
     return createRuntimeId('feedback');
 }
 
-const RATING_COPY: Record<number, { eyebrow: string; notePrompt: string; placeholder: string; prompt: string }> = {
-    1: {
-        eyebrow: 'Needs attention',
-        prompt: 'Tell the team what needs attention.',
-        notePrompt: 'A short note about what went wrong helps the business fix it.',
-        placeholder: 'What went wrong, and what should the team improve?',
-    },
-    2: {
-        eyebrow: 'Could be better',
-        prompt: 'Tell the team what could be better.',
-        notePrompt: 'Mention the main detail that would have improved your visit.',
-        placeholder: 'What could have been better?',
-    },
-    3: {
-        eyebrow: 'Good',
-        prompt: 'Tell the team what would make it better next time.',
-        notePrompt: 'Share one thing that was good and one thing that could improve.',
-        placeholder: 'What was good, and what would make it better?',
-    },
-    4: {
-        eyebrow: 'Very good',
-        prompt: 'Tell the team what stood out.',
-        notePrompt: 'Your note helps the team repeat what worked well.',
-        placeholder: 'What stood out for you?',
-    },
-    5: {
-        eyebrow: 'Excellent',
-        prompt: 'Tell the team what they should keep doing.',
-        notePrompt: 'A quick note helps the business understand what customers value.',
-        placeholder: 'What should the team keep doing?',
-    },
-};
+function getRatingCopy(
+    rating: number,
+    t: PublicCustomerTranslator,
+): { notePrompt: string; placeholder: string; prompt: string } {
+    const ratingKeys = {
+        1: ['feedback.ratingOnePrompt', 'feedback.ratingOneNote', 'feedback.ratingOnePlaceholder'],
+        2: ['feedback.ratingTwoPrompt', 'feedback.ratingTwoNote', 'feedback.ratingTwoPlaceholder'],
+        3: ['feedback.ratingThreePrompt', 'feedback.ratingThreeNote', 'feedback.ratingThreePlaceholder'],
+        4: ['feedback.ratingFourPrompt', 'feedback.ratingFourNote', 'feedback.ratingFourPlaceholder'],
+        5: ['feedback.ratingFivePrompt', 'feedback.ratingFiveNote', 'feedback.ratingFivePlaceholder'],
+    } as const;
+    const keys = ratingKeys[rating as keyof typeof ratingKeys];
+    if (!keys) {
+        return {
+            notePrompt: t('feedback.defaultNote'),
+            placeholder: t('feedback.defaultPlaceholder'),
+            prompt: t('feedback.defaultPrompt'),
+        };
+    }
+    return {
+        prompt: t(keys[0]),
+        notePrompt: t(keys[1]),
+        placeholder: t(keys[2]),
+    };
+}
 
-function getRatingLabel(rating: number): string {
+function getRatingLabel(rating: number, t: PublicCustomerTranslator): string {
     switch (rating) {
         case 1:
-            return 'Needs attention';
+            return t('feedback.needsAttention');
         case 2:
-            return 'Could be better';
+            return t('feedback.couldBeBetter');
         case 3:
-            return 'Good';
+            return t('feedback.good');
         case 4:
-            return 'Very good';
+            return t('feedback.veryGood');
         case 5:
-            return 'Excellent';
+            return t('feedback.excellent');
         default:
-            return 'Tap a star to rate';
+            return t('feedback.tapStarToRate');
     }
 }
 
-function getGoogleReviewTitle(rating: number): string {
-    return rating >= 4 ? 'Enjoyed your visit?' : 'Want to share more publicly?';
+function getGoogleReviewTitle(rating: number, t: PublicCustomerTranslator): string {
+    return rating >= 4 ? t('feedback.enjoyedVisit') : t('feedback.shareMorePublicly');
 }
 
 function isValidHexColor(value?: string): value is string {
@@ -231,31 +228,35 @@ async function readGuestFeedbackSubmitResponse(
     return payload;
 }
 
-function validateField(field: keyof Omit<FormState, 'website'>, value: string): string {
+function validateField(
+    field: keyof Omit<FormState, 'website'>,
+    value: string,
+    t: PublicCustomerTranslator,
+): string {
     const trimmedValue = value.trim();
 
     if (!trimmedValue) return '';
 
     if (field === 'message') {
         return trimmedValue.length > 0 && trimmedValue.length < 3
-            ? 'Please add a little more detail or leave this blank.'
+            ? t('feedback.messageTooShort')
             : '';
     }
 
     if (field === 'customerName') {
-        if (trimmedValue.length < 2) return 'Please enter at least 2 characters.';
+        if (trimmedValue.length < 2) return t('feedback.nameTooShort');
         return '';
     }
 
     if (field === 'customerEmail') {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue) ? '' : 'Please enter a valid email address.';
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue) ? '' : t('feedback.invalidEmail');
     }
 
     if (field === 'customerPhone') {
         if (trimmedValue.length > 0) {
             const digitsOnly = trimmedValue.replace(/\D/g, '');
-            if (digitsOnly.length < 7) return 'Please enter a valid phone number.';
-            if (!/^[0-9+\-\s()]+$/.test(trimmedValue)) return 'Please enter a valid phone number.';
+            if (digitsOnly.length < 7) return t('feedback.invalidPhone');
+            if (!/^[0-9+\-\s()]+$/.test(trimmedValue)) return t('feedback.invalidPhone');
         }
         return '';
     }
@@ -263,24 +264,29 @@ function validateField(field: keyof Omit<FormState, 'website'>, value: string): 
     return '';
 }
 
-function getFormErrors(values: FormState, settings: FeedbackDefaults): FormErrors {
+function getFormErrors(
+    values: FormState,
+    settings: FeedbackDefaults,
+    t: PublicCustomerTranslator,
+): FormErrors {
     return {
         customerEmail: settings.collectEmail
-            ? (!values.customerEmail.trim() && settings.collectEmailRequired ? 'Email is required.' : validateField('customerEmail', values.customerEmail))
+            ? (!values.customerEmail.trim() && settings.collectEmailRequired ? t('feedback.emailRequired') : validateField('customerEmail', values.customerEmail, t))
             : '',
         customerName: settings.collectName
-            ? (!values.customerName.trim() && settings.collectNameRequired ? 'Name is required.' : validateField('customerName', values.customerName))
+            ? (!values.customerName.trim() && settings.collectNameRequired ? t('feedback.nameRequired') : validateField('customerName', values.customerName, t))
             : '',
         customerPhone: settings.collectPhone
-            ? (!values.customerPhone.trim() && settings.collectPhoneRequired ? 'Phone is required.' : validateField('customerPhone', values.customerPhone))
+            ? (!values.customerPhone.trim() && settings.collectPhoneRequired ? t('feedback.phoneRequired') : validateField('customerPhone', values.customerPhone, t))
             : '',
         message: settings.collectComment
-            ? (!values.message.trim() && settings.collectCommentRequired ? 'Comment is required.' : validateField('message', values.message))
+            ? (!values.message.trim() && settings.collectCommentRequired ? t('feedback.commentRequired') : validateField('message', values.message, t))
             : '',
     };
 }
 
 export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
+    activeLanguage,
     accentColor,
     feedbackDefaults,
     onSuccess,
@@ -293,6 +299,10 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     tagline,
     tId,
 }) => {
+    const t = useMemo(
+        () => createPublicCustomerTranslator(activeLanguage),
+        [activeLanguage],
+    );
     const [formValues, setFormValues] = useState<FormState>(DEFAULT_FORM_STATE);
     const [rating, setRating] = useState<number>(0);
     const [submitState, setSubmitState] = useState<GuestFeedbackSubmitState>('idle');
@@ -305,14 +315,15 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const submissionIdRef = useRef<string | null>(null);
     const captchaRequired = isTurnstileClientEnabled();
 
-    const settings = { ...DEFAULT_FEEDBACK_SETTINGS, ...feedbackDefaults };
-    const ratingCopy = RATING_COPY[rating] || {
-        eyebrow: 'Your feedback goes straight to the business.',
-        notePrompt: 'After choosing a rating, add a short note so the team knows what to act on.',
-        placeholder: 'What stood out, or what could have been better?',
-        prompt: 'Share what stood out, or what could have been better.',
-    };
-    const formErrors = useMemo(() => getFormErrors(formValues, settings), [formValues, settings]);
+    const settings = useMemo(
+        () => ({ ...DEFAULT_FEEDBACK_SETTINGS, ...feedbackDefaults }),
+        [feedbackDefaults],
+    );
+    const ratingCopy = getRatingCopy(rating, t);
+    const formErrors = useMemo(
+        () => getFormErrors(formValues, settings, t),
+        [formValues, settings, t],
+    );
     const hasVisibleErrors = Object.values(formErrors).some(Boolean);
     const moodConfig = useMemo(() => getMoodWithBrandColor(MenuMood.CLEAN, accentColor), [accentColor]);
     const primaryCtaColor = accentColor || moodConfig.accentColor;
@@ -355,7 +366,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
         if (rating === 0) {
             setRatingTouched(true);
-            message.error('Please select a rating');
+            message.error(t('feedback.selectRating'));
             return;
         }
 
@@ -366,12 +377,12 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 customerPhone: true,
                 message: true,
             });
-            message.error('Please check the highlighted fields');
+            message.error(t('feedback.checkHighlightedFields'));
             return;
         }
 
         if (captchaRequired && !captchaToken) {
-            message.error('Complete the security check and try again.');
+            message.error(t('feedback.completeSecurityCheck'));
             return;
         }
 
@@ -418,7 +429,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
             }
 
             setSubmitState('error');
-            message.error(GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE);
+            message.error(t('feedback.submitFailed'));
         } catch (error) {
             logPublicFeedbackFormFailure(
                 'public_guest_feedback_submit_request_failed',
@@ -433,7 +444,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
             );
             resetCaptcha();
             setSubmitState('error');
-            message.error('Network error. Please try again.');
+            message.error(t('feedback.networkError'));
         }
     };
 
@@ -442,6 +453,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const publicFooter = storeDetails ? (
         <div className={styles.menuFooter}>
             <MenuFooter
+                activeLanguage={activeLanguage}
                 storeDetails={storeDetails as StoreDataType}
                 moodConfig={moodConfig}
                 projectId={projectId}
@@ -452,8 +464,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 trackingEnabled={false}
                 footerExtraAction={(
                     <OBPThemeToggle
-                        switchToDarkLabel="Switch to dark theme"
-                        switchToLightLabel="Switch to light theme"
+                        switchToDarkLabel={t('common.switchToDarkTheme')}
+                        switchToLightLabel={t('common.switchToLightTheme')}
                     />
                 )}
             />
@@ -469,13 +481,13 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                             <LuBadgeCheck size={30} strokeWidth={2.4} />
                         </div>
                         <span className={styles.successBadge}>
-                            Feedback received
+                            {t('feedback.feedbackReceived')}
                         </span>
                         <h2 className={styles.successTitle}>
-                            Thank you for sharing.
+                            {t('feedback.thankYou')}
                         </h2>
                         <p className={styles.successText}>
-                            Your note goes directly to {storeName || 'the team'}.
+                            {t('feedback.noteToTeam', { team: storeName || t('common.team') })}
                         </p>
 
                         <div className={styles.successPanel}>
@@ -484,9 +496,9 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                     <LuLock size={18} />
                                 </div>
                                 <div>
-                                    <p className={styles.successPanelTitle}>Private feedback</p>
+                                    <p className={styles.successPanelTitle}>{t('feedback.privateFeedback')}</p>
                                     <p className={styles.successPanelText}>
-                                        No action needed. Your message stays with the business.
+                                        {t('feedback.privateFeedbackHelp')}
                                     </p>
                                 </div>
                             </div>
@@ -494,9 +506,9 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
                         {reviewUrl ? (
                             <div className={`${styles.successPanel} ${styles.successPanelWarm}`}>
-                                <p className={styles.successPanelTitle}>{getGoogleReviewTitle(rating)}</p>
+                                <p className={styles.successPanelTitle}>{getGoogleReviewTitle(rating, t)}</p>
                                 <p className={styles.successPanelText}>
-                                    You can also leave a public review on Google.
+                                    {t('feedback.publicReviewHelp')}
                                 </p>
                                 <a
                                     className={styles.reviewLink}
@@ -504,7 +516,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                     rel="noopener noreferrer"
                                     target="_blank"
                                 >
-                                    Leave a Google review
+                                    {t('feedback.leaveGoogleReview')}
                                     <LuExternalLink size={16} />
                                 </a>
                                 {officialPageUrl ? (
@@ -514,16 +526,16 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                         rel="noopener noreferrer"
                                         target="_blank"
                                     >
-                                        View business page
+                                        {t('feedback.viewBusinessPage')}
                                         <LuExternalLink size={16} />
                                     </a>
                                 ) : null}
                             </div>
                         ) : officialPageUrl ? (
                             <div className={styles.successPanel}>
-                                <p className={styles.successPanelTitle}>Business page</p>
+                                <p className={styles.successPanelTitle}>{t('feedback.businessPage')}</p>
                                 <p className={styles.successPanelText}>
-                                    View the latest menu and business details.
+                                    {t('feedback.businessPageHelp')}
                                 </p>
                                 <a
                                     className={styles.secondaryLink}
@@ -531,7 +543,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                     rel="noopener noreferrer"
                                     target="_blank"
                                 >
-                                    View business page
+                                    {t('feedback.viewBusinessPage')}
                                     <LuExternalLink size={16} />
                                 </a>
                             </div>
@@ -549,13 +561,16 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 <div className={styles.content}>
                     <div className={styles.hero}>
                         <h1 className={styles.heroTitle}>
-                            Share feedback
+                            {t('feedback.shareFeedback')}
                         </h1>
 
                         <p className={styles.heroText}>
                             {tagline?.trim()
-                                ? `${tagline.trim()} Your note goes directly to ${storeName || 'the team'}.`
-                                : `Your note goes directly to ${storeName || 'the team'}.`}
+                                ? t('feedback.taglineAndNote', {
+                                    tagline: tagline.trim(),
+                                    team: storeName || t('common.team'),
+                                })
+                                : t('feedback.noteToTeam', { team: storeName || t('common.team') })}
                         </p>
                     </div>
 
@@ -564,10 +579,10 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                             <section className={`${styles.panel} ${styles.panelSoft}`}>
                                 <div className={styles.ratingIntro}>
                                     <p className={styles.eyebrow}>
-                                        How was your visit?
+                                        {t('feedback.howWasVisit')}
                                     </p>
                                     <p className={styles.ratingTitle}>
-                                        {getRatingLabel(rating)}
+                                        {getRatingLabel(rating, t)}
                                     </p>
                                     <p className={styles.ratingText}>
                                         {ratingCopy.prompt}
@@ -576,6 +591,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
                                 <div className={styles.ratingBox}>
                                     <StarRating
+                                        activeLanguage={activeLanguage}
                                         disabled={submitState === 'submitting'}
                                         onChange={(nextRating) => {
                                             setRating(nextRating);
@@ -588,7 +604,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
                                 {ratingTouched && rating === 0 ? (
                                     <p className={styles.errorText}>
-                                        Please select a rating to continue.
+                                        {t('feedback.selectRatingToContinue')}
                                     </p>
                                 ) : null}
 
@@ -600,7 +616,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             </div>
                                             <div>
                                                 <label className={styles.notePromptTitle} htmlFor="guest-feedback-message">
-                                                    {settings.collectCommentRequired ? 'Add a note' : 'Add a note if you want'}
+                                                    {settings.collectCommentRequired ? t('feedback.addNote') : t('feedback.addOptionalNote')}
                                                 </label>
                                                 <p className={styles.notePromptText} id="guest-feedback-message-prompt">{ratingCopy.notePrompt}</p>
                                             </div>
@@ -632,9 +648,9 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             <span>
                                                 {formValues.message.length > 0
                                                     ? `${formValues.message.length}/${GUEST_FEEDBACK_MESSAGE_MAX_LENGTH}`
-                                                    : `Up to ${GUEST_FEEDBACK_MESSAGE_MAX_LENGTH} characters`}
+                                                    : t('feedback.upToCharacters', { count: GUEST_FEEDBACK_MESSAGE_MAX_LENGTH })}
                                             </span>
-                                            <span>Your feedback stays private.</span>
+                                            <span>{t('feedback.feedbackStaysPrivate')}</span>
                                         </div>
                                     </div>
                                 ) : null}
@@ -647,9 +663,9 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             <LuLock size={18} />
                                         </div>
                                         <div>
-                                            <h2 className={styles.panelTitle}>Contact details</h2>
+                                            <h2 className={styles.panelTitle}>{t('feedback.contactDetails')}</h2>
                                             <p className={styles.panelText}>
-                                                Add your contact details below.
+                                                {t('feedback.contactDetailsHelp')}
                                             </p>
                                         </div>
                                     </div>
@@ -658,11 +674,11 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                         {settings.collectName ? (
                                             <Field
                                                 error={touchedFields.customerName ? formErrors.customerName : ''}
-                                                label="Name"
+                                                label={t('feedback.name')}
                                                 name="customerName"
                                                 onBlur={() => markFieldTouched('customerName')}
                                                 onChange={(value) => updateField('customerName', value)}
-                                                placeholder="Your name"
+                                                placeholder={t('feedback.yourName')}
                                                 type="text"
                                                 value={formValues.customerName}
                                             />
@@ -672,11 +688,11 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             <Field
                                                 icon={<LuPhone size={16} />}
                                                 error={touchedFields.customerPhone ? formErrors.customerPhone : ''}
-                                                label="Phone number"
+                                                label={t('feedback.phoneNumber')}
                                                 name="customerPhone"
                                                 onBlur={() => markFieldTouched('customerPhone')}
                                                 onChange={(value) => updateField('customerPhone', value)}
-                                                placeholder="+1 (555) 000-0000"
+                                                placeholder={t('feedback.phonePlaceholder')}
                                                 type="tel"
                                                 value={formValues.customerPhone}
                                             />
@@ -686,11 +702,11 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                             <Field
                                                 icon={<LuMail size={16} />}
                                                 error={touchedFields.customerEmail ? formErrors.customerEmail : ''}
-                                                label="Email address"
+                                                label={t('feedback.emailAddress')}
                                                 name="customerEmail"
                                                 onBlur={() => markFieldTouched('customerEmail')}
                                                 onChange={(value) => updateField('customerEmail', value)}
-                                                placeholder="name@example.com"
+                                                placeholder={t('feedback.emailPlaceholder')}
                                                 type="email"
                                                 value={formValues.customerEmail}
                                             />
@@ -718,7 +734,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
                             {captchaRequired && captchaStatus === 'error' ? (
                                 <p className={styles.errorText}>
-                                    Security check did not load. Refresh the page and try again.
+                                    {t('feedback.securityCheckLoadFailed')}
                                 </p>
                             ) : null}
 
@@ -733,7 +749,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                     : { background: primaryCtaColor, color: primaryCtaTextColor }}
                                 type="submit"
                             >
-                                {submitState === 'submitting' ? 'Submitting feedback...' : 'Submit feedback'}
+                                {submitState === 'submitting' ? t('feedback.submittingFeedback') : t('feedback.submitFeedback')}
                                 {submitState === 'submitting' ? null : <LuChevronRight size={18} />}
                             </button>
                         </div>

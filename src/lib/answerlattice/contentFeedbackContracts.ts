@@ -6,7 +6,7 @@ const requestIdSchema = z.string().trim().min(8).max(180).regex(/^[A-Za-z0-9][A-
 
 export const AnswerlatticeContentFeedbackRequestSchema = z.object({
     requestId: requestIdSchema,
-    type: z.enum(['article', 'changelog']),
+    type: z.enum(['article', 'changelog', 'faq']),
     contentId: documentIdSchema,
     pageId: documentIdSchema.optional(),
     sentiment: z.enum(['like', 'dislike']),
@@ -24,7 +24,7 @@ export const AnswerlatticeContentFeedbackRequestSchema = z.object({
 
 export type AnswerlatticeContentFeedbackRequest = {
     requestId: string;
-    type: 'article' | 'changelog';
+    type: 'article' | 'changelog' | 'faq';
     contentId: string;
     pageId?: string;
     sentiment: 'like' | 'dislike';

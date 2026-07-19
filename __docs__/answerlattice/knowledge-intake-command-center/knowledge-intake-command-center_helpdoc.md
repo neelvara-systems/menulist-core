@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Owner Helpdoc
 
 > **Status:** IMPLEMENTED — owner help copy for day-one intake
-> **Version:** 1.0.0
+> **Version:** 1.6.0
 > **Created:** 2026-05-31
 > **Audience:** Answerlattice workspace owners and staff
 
@@ -49,9 +49,9 @@ Prepare:
 | CSV/FAQ CSV/JSON | FAQs, support macros, structured exports |
 | Screenshots/images | UI context and troubleshooting evidence |
 | Transcript/video/audio | Workflows and common explanations; transcripts are preferred, short raw media is credit-charged |
-| Changelog/release notes | Stale answer and release-impact review |
+| Changelog/release notes | Source material for reviewed support drafts |
 | Helpdesk export | Repeated questions and support gaps |
-| Policy pack | High-authority owner answers |
+| Policy/owner notes | Important evidence that still requires review before publication |
 
 ---
 
@@ -66,21 +66,19 @@ Answerlattice uses it carefully:
 3. You choose which pages Answerlattice should process.
 4. Only selected pages consume processing allowance and become source material.
 
-The app login URL is different. Answerlattice uses it to help you set up product pages and the widget, but it does not log in, use demo credentials, crawl private screens, or scan customer data.
+The app login URL is different. Answerlattice stores it as intake context, but it does not log in, use demo credentials, crawl private screens, or scan customer data.
 
-If you run the same link again and the page did not change, Answerlattice should update freshness only and skip expensive reprocessing.
+If you add the same selected page with identical extracted text again in the same intake job, Answerlattice reuses the existing source instead of creating duplicate source and review records. It does not currently run background freshness checks.
 
 ---
 
 ## How Answerlattice Uses Sources
 
-Answerlattice does not trust every source equally.
-
-Owner-approved answers and current policy answers are stronger than old PDFs, sales decks, or support chat exports. If sources disagree, Answerlattice asks you to decide.
+Answerlattice keeps source links so you can judge whether a draft is supported. It does not currently assign automatic authority tiers or run a general source-conflict detector inside Knowledge Intake.
 
 Example:
 
-If your pricing page says the Pro plan has API access but an old deck says API access is Enterprise-only, Answerlattice will not guess. It will create a launch decision for you to confirm.
+If your pricing page says the Pro plan has API access but an old deck says API access is Enterprise-only, do not accept a draft until you confirm the correct policy. Use the linked evidence and reject or edit unsupported output.
 
 ---
 
@@ -88,17 +86,9 @@ If your pricing page says the Pro plan has API access but an old deck says API a
 
 Answerlattice tries to keep the first review small.
 
-You may see:
+You may see source-backed KB articles, FAQs, product-surface mappings, and canonical-answer proposals. Each review card can show linked source excerpts and missing-evidence notes.
 
-- missing refund policy
-- billing rule needs confirmation
-- role permission conflict
-- old source disagrees with current docs
-- draft answer for approval
-- product concept to approve
-- safe articles ready for bulk approval
-
-High-risk topics always need owner/admin approval:
+Review especially carefully when the content covers:
 
 - pricing
 - billing
@@ -116,37 +106,24 @@ High-risk topics always need owner/admin approval:
 
 ## What Answerlattice Can Publish
 
-Only after approval, Answerlattice can publish to:
+Only after acceptance, Knowledge Intake can publish to:
 
 - Knowledge Base
 - FAQs
-- approved answers
+- canonical-answer proposals for the separate Governance workflow
 - product page/surface support
-- widget suggestions
-- hosted help
-- support review tasks
 
 Generated drafts do not become official answers automatically.
 
-Publishing also runs the behind-the-scenes refresh work Answerlattice needs for search and the widget: approved articles are prepared for search, FAQs become available to the answer layer, approved answers become eligible for canonical-first retrieval, and page-aware related content is refreshed for mapped product screens.
+Publishing also runs the destination refresh work Answerlattice needs: approved articles attempt search embedding, FAQs become available to the answer layer, product-surface content is refreshed, and canonical proposals wait for the separate Governance approval flow.
 
 ---
 
-## Readiness
+## Intake Status
 
-Readiness shows where Answerlattice can safely help users.
+The current summary shows aggregate intake progress: source count, ready sources, review items, accepted/rejected items, published items, usage units, and latest job status where available. It does not currently certify topic-level readiness.
 
-Examples:
-
-- Onboarding: ready
-- Billing: partial, refund policy missing
-- Team settings: ready
-- API errors: not ready
-- Security: needs review
-
-Do not turn on support for a sensitive topic until it is ready or reviewed.
-
-If an approved article is visible in hosted help but still waiting for search preparation, the topic should stay `partial` until Answerlattice confirms the article can be used by widget/search answers.
+Before relying on support for a sensitive topic, review the published destination, verify its evidence, and test the real question through the deployed answer surface.
 
 ---
 
@@ -167,18 +144,15 @@ Screenshots can contain visible sensitive data. Review them before upload. Answe
 
 For video/audio, use transcripts when possible. Raw media extraction is available for short support recordings, consumes Answerlattice support credits, and stores only extracted support text.
 
-Answerlattice should also scan normalized sources for secrets and private data before building AI drafts. If risky content is found, Answerlattice asks you to review or remove it instead of using it as support truth.
+Answerlattice redacts supported common secret and personal-data patterns from extracted text and bounded metadata before storage. This is a safeguard, not a guarantee; review source material before upload and review every draft before acceptance.
 
 ---
 
 ## Deleting Sources
 
-You can remove a source. When you do:
+Source-level deletion is not available in the current Knowledge Intake screen. Do not assume that deleting one source would safely delete dependent drafts or published answers.
 
-- unapproved drafts created from that source are removed or marked stale
-- approved content keeps lineage but may need review
-- original files can be deleted depending on retention settings
-- Answerlattice updates readiness and source-version summaries
+Until a governed deletion lifecycle is implemented, owners should reject unapproved review items, edit or retire published destination content through its owning workflow, and use the established workspace/privacy request process when broader data removal is required. Raw screenshot, audio, and video files are not retained by the current intake flow after support text is extracted.
 
 ---
 
@@ -198,15 +172,15 @@ Yes. Screenshots/images use OCR and short audio/video can be transcribed into so
 
 **Can Answerlattice scan my whole site?**
 
-No. Answerlattice scans selected support-relevant pages within your plan limits.
+No. Answerlattice returns a bounded candidate list from the starting page and sitemap. Only pages you select are fetched into source records.
 
 **Will Answerlattice crawl my app after I paste the app URL?**
 
-No. The app URL helps with widget setup and product surface mapping. Private app screens should be added as page names, route patterns, screenshots, or safe context examples.
+No. The app URL is stored as intake context only. Private app screens should be added as reviewed page names, route patterns, screenshots, or safe context examples.
 
 **Can I approve everything at once?**
 
-Only safe low-risk groups can be bulk approved. High-risk answers require explicit owner/admin review.
+The current screen supports deliberate item-by-item review. Do not assume an automatic low-risk/high-risk bulk-approval policy.
 
 **Will Answerlattice answer from unapproved drafts?**
 
@@ -227,3 +201,5 @@ Check the linked source excerpt, where the answer applies, and any missing-evide
 | 2026-05-31 | 1.2.0 | Added owner-facing privacy filter expectation before AI draft generation. |
 | 2026-05-31 | 1.3.0 | Added plain-language runtime readiness note for search, widget, FAQs, canonical answers, and hosted-help publishing. |
 | 2026-07-17 | 1.4.0 | Added the linked-source evidence review rule for accept/reject decisions. |
+| 2026-07-18 | 1.5.0 | Corrected source-deletion and raw-media retention guidance to current runtime behavior. |
+| 2026-07-18 | 1.6.0 | Removed unimplemented authority, conflict, topic-readiness, widget-setup, and bulk-approval claims. |

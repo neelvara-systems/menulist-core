@@ -6,6 +6,7 @@
  */
 
 import LiveIndicator from '@atoms/LiveIndicator';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { DeviceTypes } from '../types';
@@ -36,6 +37,7 @@ function MenuHeader({
 }: MenuHeaderProps) {
     const isMobile = activeDeviceType === 'mobile';
     const isBottomPlacement = placement === 'bottom';
+    const t = createPublicCustomerTranslator(activeLanguage);
 
     return (
         <header
@@ -67,8 +69,9 @@ function MenuHeader({
                     }}
                 >
                     <LiveIndicator
+                        activeLanguage={activeLanguage}
                         modifiedOn={(projectData as any)?.modifiedOn}
-                        label={isBottomPlacement ? 'Published' : 'Live'}
+                        label={isBottomPlacement ? t('menu.published') : t('menu.live')}
                         style={{
                             maxWidth: '100%',
                             fontSize: isMobile ? 11 : 12,

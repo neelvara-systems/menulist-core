@@ -1,40 +1,29 @@
-# Changelog System — Website Content
+# Releases and Changelog Website Guidance
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Public website visitors
+## Public positioning
 
----
+Describe this capability as release-aware answer governance, not a generic changelog publisher.
 
-## SEO Meta
+Recommended concise copy:
 
-```
-Title: Release Notes & Changelog | MenuList
-Description: Stay updated with new features, improvements, and fixes. Rich timeline view with search, tag filtering, and feedback.
-Keywords: changelog, release notes, product updates, what's new
-OG Title: What's New in MenuList
-OG Description: Browse release notes in a timeline view. Search, filter by tag, give feedback.
-```
+> Ship a release note, identify the approved answers it may affect, and publish only after the governed release check completes.
 
----
+## Demonstration sequence
 
-## Feature Block
+1. Founder drafts version `2.4.1` and selects Billing and Permissions.
+2. The note remains Draft while Answerlattice evaluates linked approved answers.
+3. One answer is marked Review required with release evidence.
+4. The linked note becomes Published.
+5. A customer sees the public note without internal IDs or governance metadata.
 
-### Headline
-**Stay updated.**
+## Do not imply
 
-### Subheadline
-New features, improvements, and fixes — organized in a timeline with search, filtering, and feedback. No email newsletters to dig through.
+- autonomous answer correction;
+- customer-visible internal audits;
+- public incident management;
+- support-ticket truth becoming approved automatically;
+- release-note publication without human-selected changed product areas.
 
-### How It Works
+## Evidence status
 
-**Browse the timeline** — Release notes displayed chronologically with version numbers, dates, and color-coded tags.
-
-**Search and filter** — Find specific updates by keyword or filter by tag (New Feature, Improvement, Bug Fix, etc.).
-
-**Give feedback** — Like or dislike entries. Add comments to tell us what matters most.
-
-### Trust Indicators
-- Rich content with file attachments and video embeds
-- Links to related help articles for deeper context
-- Paginated for performance — loads older entries on scroll
+The source lifecycle and local emulator evidence are verified. Do not present hosted reliability, customer outcomes, or deployment completion as verified until QA readback exists.

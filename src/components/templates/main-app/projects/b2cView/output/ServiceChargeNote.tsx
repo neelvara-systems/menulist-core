@@ -14,11 +14,15 @@
  * This is infrastructure text, not UI decoration.
  */
 
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+
 interface ServiceChargeNoteProps {
+    activeLanguage?: string;
     note?: string;
 }
 
-export default function ServiceChargeNote({ note }: ServiceChargeNoteProps) {
+export default function ServiceChargeNote({ activeLanguage, note }: ServiceChargeNoteProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
     // Silent if empty - no fallback boilerplate
     if (!note || note.trim() === '') {
         return null;
@@ -37,7 +41,7 @@ export default function ServiceChargeNote({ note }: ServiceChargeNoteProps) {
                 textAlign: 'center',
                 width: '100%',
             }}
-            aria-label="Menu special note"
+            aria-label={t('menu.menuSpecialNote')}
         >
             {note}
         </p>

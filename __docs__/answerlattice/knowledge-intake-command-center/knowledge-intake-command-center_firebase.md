@@ -1,9 +1,9 @@
 # Knowledge Intake Command Center — Firebase Cost & Operations Contract
 
 > **Status:** IMPLEMENTED — day-one cost-first contract
-> **Version:** 2.1.2
+> **Version:** 2.1.6
 > **Created:** 2026-05-31
-> **Last Updated:** 2026-07-11
+> **Last Updated:** 2026-07-18
 > **Audience:** Engineering / Firebase / Ops
 
 ---
@@ -39,6 +39,10 @@ Repeated reply import is an implemented low-cost subpath. It writes one existing
 
 The repeated-reply entity selector is search-gated. It does not load the ontology on page open. Search requests go through a protected, rate-limited Knowledge Intake API route, query the existing `answerlattice_entitySearchIndex` by tenant/store and prefix token, then read only the matched entity docs needed for labels and active/beta filtering. Older index rows without prefix tokens use a capped tenant/store search-index fallback; the route never fetches the full `answerlattice_entities` list for this form.
 
+### Current-versus-reserved boundary
+
+Unless a section below explicitly says implemented, retained Storage artifacts, discovery/evidence/draft/publish manifests, intake-specific source-version counters, source deletion, retention choices, cancellation, background workers, and scheduler repair directories are reserved architecture. The current runtime stores capped extracted text and bounded/redacted metadata in Firestore, does not retain raw media, returns discovery candidates without persisting them, and relies on existing destination cache/source-version invalidation after approved publishing.
+
 Owner review evidence is projected from the sources already returned in the bounded active-job bundle. Showing up to three excerpts and applicability tags adds 0 Firestore reads, 0 writes, 0 listeners, 0 provider calls, and no new evidence collection.
 
 ---
@@ -59,16 +63,12 @@ Owner review evidence is projected from the sources already returned in the boun
 
 | Collection | Use |
 | --- | --- |
-| `kb_articles` | Approved article output with `knowledgeLineage`. |
+| `kb_articles` | Approved article output with intake job/review/source ID lineage fields. |
 | `kb_categories` | Approved KB navigation output. |
 | `answerlattice_faqs` | Approved short Q&A output. |
-| `answerlattice_entityCandidates` | Product concepts needing review. |
-| `answerlattice_entities` | Approved product ontology concepts. |
-| `answerlattice_canonicalAnswers` | Approved support answers. |
 | `answerlattice_mutationProposals` | Reviewable answer/update proposals. |
 | `answerlattice_productSurfaces` | Page/workflow support mappings. |
-| `answerlattice_supportBoardCards` | Only selected gaps/tasks, never raw facts. |
-| `platformSummary` | Compact workspace summary, bucketed intake directory, source versions, readiness rollups, and repair state. |
+| `platformSummary` | Compact workspace intake summary plus existing runtime destination source versions. Bucketed intake directories and intake-specific source-version counters are reserved. |
 
 ---
 
@@ -313,31 +313,33 @@ Summary writes must be deterministic and sparse:
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
-| Reserve allowance ledger | 0-1 | 1 | 0 | 0 |
+| Read current workspace intake summary in transaction | 1 | 0 | 0 | 0 |
 | Create job doc | 0 | 1 | 0 | 0 |
-| Write workspace summary + directory entry | 0 | 1-2 | 0 | 0 |
+| Merge workspace intake summary | 0 | 1 | 0 | 0 |
 
-### 5.3 Lease And Credit Reservation
+Job creation does not reserve support credits. Credit reservation occurs only for the provider-backed media-extraction and first-trusted-answer-pack paths that declare a supported intake action.
+
+### 5.3 Current Leases And Credit Reservation
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
-| Acquire workspace intake lease | 1 | 1 | 0 | 0 |
-| Reserve estimated processing credits | 1 | 1 | 0 | 0 |
-| Reject competing active expensive job | 1 | 0 | 0 | 0 |
+| Claim media source processing run | transactional source/job reads | source processing-run write | 0 | 0 |
+| Claim analysis, launch-pack, or publish run | transactional job read | job run-state write | 0 | 0 |
+| Reserve credits for media extraction or launch pack | subscription/ledger transaction reads | bounded subscription + ledger writes | 0 | 0 |
+| Reject overlapping unexpired run | job/source read already required | 0 | 0 | 0 |
 
-One workspace should run one expensive intake job at a time by default. This avoids duplicate provider calls, write bursts, and accidental parallel imports.
+The runtime serializes overlapping work through source-level or job-level run leases. It does not maintain a separate workspace-wide intake lock collection or reserve credits for deterministic analysis/publish work.
 
 ### 5.4 Website Link Discovery
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
 | Read job/subscription/cap summary | 1-3 | 0 | 0 | 0 |
-| Fetch robots/sitemap/llms.txt/root pages | 0 | 0 | bounded network fetches | 0 |
-| Write candidate manifest and fetch log | 0 | 0 | 1-2 writes | 0 |
-| Update job counters, summary, directory | 0 | 1-3 | 0 | 0 |
+| Fetch starting page and same-origin `/sitemap.xml` | 0 | 0 | bounded network fetches | 0 |
+| Return bounded candidate list | 0 | 0 | 0 | 0 |
 | Create source docs for skipped URLs | 0 | 0 | 0 | 0 |
 
-Discovery is paid processing. It is cheaper than extraction, but it still performs network and Storage work, so it must respect plan caps.
+Discovery is paid-gated processing. It performs bounded network work but does not write a discovery manifest to Storage.
 
 ### 5.5 Add N Selected Sources
 
@@ -357,11 +359,11 @@ The deterministic source id is derived from `{jobId}:{contentHash}`. URL content
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
 | Read job + source metadata | 1 + N | 0 | 0 | 0 |
-| Read original source artifacts | 0 | 0 | N reads | 0 |
-| Write normalized manifests/chunks | 0 | 0 | N writes | 0 |
+| Read capped source text/metadata | N bounded | 0 | 0 | 0 |
+| Write normalized source fields when changed | 0 | N bounded writes | 0 | 0 |
 | Update source status/counters | 0 | N bounded writes | 0 | 0 |
-| Update changed source summary/version | 0 | 0-2 | 0 | 0 |
-| OCR/transcription where selected | 1 duplicate source precheck | usage ledger + source writes only for new media | artifact reads/writes | paid provider calls only for new media |
+| Update changed source/job summary | 0 | bounded writes | 0 | 0 |
+| OCR/transcription where selected | 1 duplicate source precheck | usage ledger + source writes only for new media | 0 | paid provider calls only for new media |
 
 ### 5.7 Privacy Filter
 
@@ -374,25 +376,25 @@ The deterministic source id is derived from `{jobId}:{contentHash}`. URL content
 
 Text-friendly sources do not call a provider during draft generation. Media files are hash-checked before credit reservation; duplicates return the existing source without ledger writes or provider work. New media files are sent to the provider only for owner-triggered OCR/transcription after credit reservation; extracted text is redacted again before storage. Raw media is not retained.
 
-### 5.8 Source Audit + Product Map
+### 5.8 Deterministic Source-To-Review Analysis
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
 | Read source metadata | N bounded | 0 | 0 | 0 |
-| Read normalized manifests | 0 | 0 | N storage reads | 0 |
-| LLM classification/extraction | 0 | 0 | 0 | bounded calls |
-| Write product map/evidence manifests | 0 | 0 | 1-3 writes | 0 |
+| Read capped normalized source records | N bounded | 0 | 0 | 0 |
+| Deterministic source-to-review analysis | 0 | 0 | 0 | 0 |
+| Write bounded review evidence/source links | 0 | capped review-item writes | 0 | 0 |
 | Create review items | 0 | capped writes | 0 | 0 |
-| Update job + summary + directory | 0 | 2-3 | 0 | 0 |
+| Update job + summary | 0 | bounded writes | 0 | 0 |
 
 ### 5.9 Draft Generation
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
 | Read selected review/source metadata | capped | 0 | 0 | 0 |
-| Read selected evidence manifests | 0 | 0 | capped storage reads | 0 |
-| Generate drafts | 0 | 0 | 0 | bounded LLM calls |
-| Store draft bodies | 0 | 0 | 1 JSONL write | 0 |
+| Read selected bounded source/review evidence | capped | 0 | 0 | 0 |
+| Generate deterministic review drafts | 0 | 0 | 0 | 0 |
+| Store review-item draft bodies | 0 | capped writes | 0 | 0 |
 | Create/update review items | 0 | capped writes | 0 | 0 |
 
 ### 5.10 Publish
@@ -400,11 +402,11 @@ Text-friendly sources do not call a provider during draft generation. Media file
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
 | Read job + selected review items | capped | 0 | 0 | 0 |
-| Read draft manifest | 0 | 0 | 1 read | 0 |
+| Read accepted review items and destination state | capped | 0 | 0 | 0 |
 | Write approved outputs | 0 | bounded by selected items | 0 | 0 |
 | Embedding for published KB article outputs | 0 | one update/article | 0 | embedding calls |
-| Update source versions/cache manifests | 0 | 1-3 | 0 | 0 |
-| Update summary/readiness/directory if changed | 0 | 1-2 | 0 | 0 |
+| Update existing destination cache/source versions | 0 | bounded writes | 0 | 0 |
+| Update summary/readiness if changed | 0 | bounded writes | 0 | 0 |
 
 ### 5.11 Runtime Destination Post-Write Cost
 
@@ -412,12 +414,11 @@ Approved output must pay the small deterministic write cost needed to make the o
 
 | Destination changed | Required low-cost follow-up | Cost control |
 | --- | --- | --- |
-| KB article body/title/category/section | Bump KB cache version, update `kb_categories`, mark `kb`/`docsNav`, enqueue/perform embedding, invalidate `kb`/`context` public cache. | Batch article/category writes; embed only changed article text hash; skip cache/source writes when publish manifest hash is unchanged. |
+| KB article body/title/category/section | Bump KB cache version, update `kb_categories`, mark `kb`/`docsNav`, enqueue/perform embedding, invalidate `kb`/`context` public cache. | Batch article/category writes; embed only changed article text hash; deterministic destination IDs prevent duplicate records on retry. |
 | FAQ/custom Q&A | Bump KB cache version, invalidate `faqs`/`kb`/`context`, mark surface summary stale. | Use existing FAQ cache pattern instead of adding a FAQ cache source; batch FAQ writes by publish selection. |
 | Canonical answer | Bump canonical cache version, mark `canonical`. | Only owner-approved active answers bump canonical runtime; drafts/proposals do not. |
 | Product surface | Mark `surfaces`, rebuild or mark stale `contextContent_{tId}_{sId}`. | Rebuild summary once per publish batch, not once per surface. |
 | Release-note source context | No changelog or release-timeline writes from intake. Use release notes only to prepare support drafts. | Owner-managed changelog writes own the `changelog`/`context` invalidation and release activation path. |
-| Entity/relation | Mark `entities`/`entityRelations`, update search index and graph summaries only when relevant flags are enabled. | Write entity candidates first; only approved ontology changes touch runtime indexes. |
 
 Product-surface summary rebuild is intentionally bounded by the existing caps for active surfaces, published articles, published FAQs, recent changelog pages, and recent tickets. The intake publisher should call it once after a publish batch that affects related content, or mark it stale for scheduler repair when immediate rebuild is not needed.
 
@@ -480,18 +481,20 @@ Firestore rules:
 - lease/worker fields are server-write only
 - credit reservation/settlement fields are server-write only
 
-Storage rules:
+Future retained-artifact Storage rules:
 
 - restrict `answerlattice_intake/AL/{tId}/{sId}/...` to authorized workspace users
 - enforce size/content-type where rules can help
 - block public reads
-- delete requires owner/admin or source owner with permission
+- deletion would require owner/admin or source owner with permission; no current intake source-delete path depends on this rule
 
 Expensive processing routes/functions must enforce server-side auth regardless of rules.
 
 ---
 
-## 9. Retention And TTL
+## 9. Retention And TTL — Reserved
+
+The current Knowledge Intake feature has no source-level delete/cancel API or per-source retention selector. Raw media is discarded after extraction. The rules below are a future lifecycle contract and must not be presented as implemented behavior.
 
 Owner choices:
 
@@ -536,46 +539,31 @@ Server-side URL fetch must:
 
 No background full-site crawl.
 
-### 10.1 Link Refresh Cost Rules
+### 10.1 Current Re-Import Cost Rules
 
-Selected website pages are checked only when the owner triggers refresh or when a source-version workflow explicitly asks for freshness.
-
-Refresh checks must:
-
-- read only the compact source metadata needed for selected URLs
-- use ETag/Last-Modified and content hash to skip unchanged sources
-- update freshness metadata only when unchanged
-- avoid source audit, product map extraction, draft generation, embeddings, and AI/provider calls when unchanged
-- never refresh discovered-but-skipped URLs
+No selected-link freshness poll or source-version refresh workflow is implemented. An owner-triggered selected-page import fetches the page, normalizes/caps/redacts the text, and derives a deterministic source ID from the job and content hash. Identical content returns the existing source without counter/review duplication; changed content creates a distinct source for review. Discovered-but-skipped URLs are never refreshed or persisted.
 
 ---
 
 ## 11. Firebase Cost Estimate
 
-Illustrative Launch-plan intake:
+Do not publish fixed per-intake read/write estimates until production telemetry is available. Current cost is bounded by the documented source, review-item, publish-item, and list caps:
 
-- 1 product context
-- 1 website/docs scan with 20 selected pages
-- 5 uploaded files
-- 12 review items
-- 20 draft outputs
-- 10 published articles/FAQs/answers
+- job creation: one summary read plus one job write and one summary write
+- each new source: bounded job/source transaction reads plus one source write and job/summary counter updates
+- identical source re-import: bounded job/source reads and no new source/counter write
+- analysis: bounded ready-source and existing-review reads plus capped review/job/summary writes
+- publish: bounded job/review/destination reads plus selected destination writes, destination cache/source-version updates, and one article embedding attempt per published KB article
+- Storage uploads/downloads: zero for the current Knowledge Intake path
+- provider calls: owner-triggered media extraction, first trusted answer pack generation, and published article embeddings only
 
-Expected Firestore:
+The expensive part is provider work and repeated destination writes, not raw-file Storage. Paid preflight, deterministic IDs, leases, and caps are mandatory.
 
-- Reads: ~60-120
-- Writes: ~80-180
-- Storage uploads/downloads: depends on file count and normalized artifacts
-- Provider calls: bounded classification/extraction/draft/embedding only
+Scheduler/ops cost:
 
-The expensive part is AI/transcription/storage size, not Firestore. That is why paid preflight and processing caps are mandatory.
-
-Scheduler/ops discovery cost:
-
-- Small scale: read 32 bucket directory docs, then process only dirty/active entries.
-- Workspace UI: read one workspace summary doc.
-- Summary repair: read one workspace summary, bounded recent job/source/review docs only for dirty workspaces, write summary only if hash changed.
-- No scheduler collection scan of jobs, sources, discovered URLs, or review items.
+- Workspace UI reads one workspace summary doc before bounded detail lists.
+- Nightly analytics receives already-known tenant/store scope, reads bounded recent job docs, and writes only when the summary hash changes.
+- No scheduler collection scan of sources, discovered URLs, or review items.
 
 ---
 
@@ -585,11 +573,7 @@ Use the existing Answerlattice master scheduler pattern. Do not create a separat
 
 Allowed scheduler work:
 
-- repair summaries for dirty directory entries
-- release expired intake leases
-- settle cancelled/failed credit reservations
-- mark stale summaries when source versions changed
-- verify source-version manifests and skip unchanged work
+- refresh the compact intake summary from bounded recent job docs
 
 Not allowed scheduler work by default:
 
@@ -599,7 +583,7 @@ Not allowed scheduler work by default:
 - source extraction for dormant workspaces
 - collection scans over all intake jobs/sources/review items
 
-If selected-link freshness checks are added for paid plans, scheduler must discover candidates from the directory/source-version manifests and respect per-run caps. It must still skip unchanged URLs before extraction/provider work.
+If selected-link freshness checks are added for paid plans, they require a new approved discovery contract and per-run caps. The current scheduler does not inspect sources or manifests.
 
 ---
 
@@ -614,16 +598,16 @@ When implemented with this contract:
 - no realtime listener is needed for job/history/review lists
 - active progress can use polling or one short-lived active-job listener only
 - no scheduler crawl runs by default
-- discovered-but-skipped website URLs live in Storage manifests, not Firestore
+- discovered-but-skipped website URLs are not persisted as Storage manifests or Firestore source documents
 - selected URL fetch bodies are streamed and capped before text normalization; non-streaming responses fail closed unless they declare a safe content length
-- unchanged selected URLs skip AI/provider work and most writes
-- one active expensive job per workspace avoids accidental provider/function fanout
+- identical selected-page sources avoid duplicate source/counter/review writes after the bounded fetch/hash step
+- source/job run leases reject overlapping unexpired work for the same media source or job operation
 - credit reservation/settlement prevents hidden overrun and releases unused reserved credits
-- privacy filtering keeps unsafe raw source material out of provider prompts by default
+- bounded redaction keeps supported common secret/PII patterns out of stored extracted text and metadata; owners must still avoid uploading sensitive raw media
 - runtime output writes reuse existing KB/canonical/source-version/cache paths instead of creating duplicate retrieval collections
-- intake-only freshness counters are excluded from public bundle equality, so readiness-only changes do not rebuild Storage bundles
+- intake summary counters do not rebuild public bundles because no intake-only compiled source-version keys are written
 - product-surface summary rebuild happens once per affected publish batch, not once per output item
-- nightly jobs use source-version manifests only when a source changed
+- nightly intake analytics use bounded recent job docs and do not inspect source-version manifests
 
 Knowledge Intake client response validation and request-policy hardening add no Firestore reads, writes, deletes, listeners, API routes, provider calls, Storage operations, scheduler work, cache invalidations, or support-credit ledger changes. The browser calls now pin no-store cache, same-origin credentials, and manual redirect handling, then reject malformed, oversized, rejected, or wrong-shape responses before local intake state, entity-option cache, bundle refresh, or success copy advances.
 
@@ -645,3 +629,5 @@ Knowledge Intake route ID admission and shared service ref helper normalization 
 | 2026-05-31 | 1.3.0 | Added summary-first read model, bucketed intake directory, source-version manifest, and scheduler repair contract. |
 | 2026-05-31 | 1.4.0 | Added runtime destination post-write cost matrix and clarified that intake-only counters must not force public bundle rebuilds. |
 | 2026-05-31 | 1.5.0 | Added runtime fallback signal alignment and deterministic intake publish IDs to reduce duplicate writes and unresolved-signal repair work. |
+| 2026-07-18 | 2.1.5 | Reconciled cost/storage tables with the current no-manifest, no-raw-retention, bounded-Firestore runtime and marked deletion, cancellation, intake-specific source versions, and retained artifacts as reserved. |
+| 2026-07-18 | 2.1.6 | Corrected job creation, run leases, URL discovery/re-import, provider, Storage, and scheduler cost claims to the current implementation. |

@@ -16,6 +16,8 @@ The end-user guide is admitted on mobile because it helps complete an immediate 
 - Scroll-to-target respects reduced-motion preference.
 - `100dvh` widget sizing and existing safe-area behavior remain unchanged.
 - A missing target falls back to written instructions.
+- The host allows a bounded 800 ms for asynchronously rendered mobile controls before reporting a target missing.
+- **Still stuck** opens the same explicit support form and does not claim escalation until ticket creation succeeds.
 - Route/context changes clear the guide rather than pointing at stale mobile UI.
 
 ## MenuList Reference State

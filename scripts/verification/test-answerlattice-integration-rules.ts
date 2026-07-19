@@ -64,8 +64,11 @@ async function run(): Promise<void> {
         await assertFails(getDoc(doc(otherDb, eventPath)));
         await assertFails(updateDoc(doc(ownerDb, healthPath), { modifiedOn: Timestamp.now() }));
         await assertFails(getDoc(doc(otherDb, healthPath)));
-        await assertSucceeds(getDoc(doc(platformDb, configPath)));
-        await assertSucceeds(updateDoc(doc(platformDb, configPath), { modifiedOn: Timestamp.now() }));
+        await assertFails(getDoc(doc(platformDb, configPath)));
+        await assertFails(updateDoc(doc(platformDb, configPath), { modifiedOn: Timestamp.now() }));
+        await assertFails(setDoc(doc(platformDb, 'platformSummary/integrationConfig_1_102'), {
+            pId: 'AL', tId: 1, sId: 102, slack: {}, modifiedOn: Timestamp.now(),
+        }));
 
         console.log(`Answerlattice integration secret rules passed for ${RULES_FILE}.`);
     } finally {

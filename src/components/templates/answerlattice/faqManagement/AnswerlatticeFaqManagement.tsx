@@ -9,6 +9,7 @@ import {
     getFaqsForSession,
     saveFaq,
 } from '@database/answerlattice/faqs';
+import { getContentFeedbackForEntry, type ContentFeedbackItem } from '@database/contentFeedback';
 import {
     getProductSurfacesForSession,
     rebuildProductSurfaceContentSummary,
@@ -17,7 +18,6 @@ import { getCategories } from '@database/knowledgeBase/categories';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
-    ANSWERLATTICE_FAQ_SOURCE,
     ANSWERLATTICE_FAQ_STATUS,
     type AnswerlatticeEntity,
     type AnswerlatticeFaq,
@@ -48,15 +48,13 @@ import {
     Typography,
     theme,
 } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArchive, LuHelpCircle, LuPlus, LuRefreshCw, LuSave } from 'react-icons/lu';
 
 const { Paragraph, Text, Title } = Typography;
 
 const DEFAULT_FAQ_VALUES = {
     status: ANSWERLATTICE_FAQ_STATUS.DRAFT,
-    source: ANSWERLATTICE_FAQ_SOURCE.MANUAL,
-    active: true,
     sortOrder: 100,
     tags: [],
     contextKeys: [],
@@ -66,6 +64,7 @@ const DEFAULT_FAQ_VALUES = {
 const ANSWERLATTICE_FAQS_LOAD_FAILED = 'Could not load FAQs';
 const ANSWERLATTICE_FAQ_SAVE_FAILED = 'Could not save FAQ';
 const ANSWERLATTICE_FAQ_ARCHIVE_FAILED = 'Could not archive FAQ';
+const ANSWERLATTICE_FAQ_FEEDBACK_LOAD_FAILED = 'Could not load FAQ reaction details';
 
 const STATUS_COLORS: Record<string, string> = {
     [ANSWERLATTICE_FAQ_STATUS.DRAFT]: 'default',
@@ -132,6 +131,10 @@ export default function AnswerlatticeFaqManagement() {
     const [entities, setEntities] = useState<AnswerlatticeEntity[]>([]);
     const [categoriesData, setCategoriesData] = useState<KnowledgeBaseCategoriesType | null>(null);
     const [selectedFaqId, setSelectedFaqId] = useState<string | null>(null);
+    const [feedbackEvents, setFeedbackEvents] = useState<ContentFeedbackItem[]>([]);
+    const [feedbackLoading, setFeedbackLoading] = useState(false);
+    const [feedbackError, setFeedbackError] = useState<string | null>(null);
+    const feedbackRequestRef = useRef(0);
 
     const selectedFaq = useMemo(
         () => faqs.find(faq => faq.id === selectedFaqId) || null,
@@ -195,6 +198,34 @@ export default function AnswerlatticeFaqManagement() {
         });
     }, [form, selectedFaq]);
 
+    const loadSelectedFaqFeedback = useCallback(async () => {
+        const requestId = feedbackRequestRef.current + 1;
+        feedbackRequestRef.current = requestId;
+        if (!selectedFaq?.id) {
+            setFeedbackEvents([]);
+            setFeedbackError(null);
+            setFeedbackLoading(false);
+            return;
+        }
+        setFeedbackLoading(true);
+        setFeedbackError(null);
+        try {
+            const events = await getContentFeedbackForEntry('faq', selectedFaq.id);
+            if (feedbackRequestRef.current === requestId) setFeedbackEvents(events);
+        } catch {
+            if (feedbackRequestRef.current === requestId) {
+                setFeedbackEvents([]);
+                setFeedbackError(ANSWERLATTICE_FAQ_FEEDBACK_LOAD_FAILED);
+            }
+        } finally {
+            if (feedbackRequestRef.current === requestId) setFeedbackLoading(false);
+        }
+    }, [selectedFaq?.id]);
+
+    useEffect(() => {
+        void loadSelectedFaqFeedback();
+    }, [loadSelectedFaqFeedback]);
+
     const handleNew = useCallback(() => {
         setSelectedFaqId(null);
         form.resetFields();
@@ -205,15 +236,18 @@ export default function AnswerlatticeFaqManagement() {
         setSaving(true);
         try {
             const values = await form.validateFields();
-            const linkedArticle = articleOptions.find(option => option.value === values.articleId);
             const wasPublished = selectedFaq?.status === ANSWERLATTICE_FAQ_STATUS.PUBLISHED && selectedFaq.active !== false;
             const willBePublished = values.status === ANSWERLATTICE_FAQ_STATUS.PUBLISHED;
             const saved = await saveFaq({
-                ...selectedFaq,
-                ...values,
                 id: selectedFaq?.id,
-                active: values.status !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
-                articleTitle: linkedArticle?.title || values.articleTitle || null,
+                question: values.question,
+                answer: values.answer,
+                status: values.status,
+                articleId: values.articleId || null,
+                contextKeys: values.contextKeys || [],
+                entityIds: values.entityIds || [],
+                tags: values.tags || [],
+                sortOrder: values.sortOrder,
             });
             assertAnswerlatticeFaqWriteSucceeded(
                 saved,
@@ -377,7 +411,7 @@ export default function AnswerlatticeFaqManagement() {
                                                     <Input.TextArea rows={5} maxLength={2000} placeholder="Short answer customers can understand immediately" />
                                                 </Form.Item>
                                                 <Row gutter={12}>
-                                                    <Col xs={24} md={8}>
+                                                    <Col xs={24} md={12}>
                                                         <Form.Item name="status" label="Status">
                                                             <Select
                                                                 options={Object.values(ANSWERLATTICE_FAQ_STATUS).map(status => ({
@@ -387,17 +421,7 @@ export default function AnswerlatticeFaqManagement() {
                                                             />
                                                         </Form.Item>
                                                     </Col>
-                                                    <Col xs={24} md={8}>
-                                                        <Form.Item name="source" label="Source">
-                                                            <Select
-                                                                options={Object.values(ANSWERLATTICE_FAQ_SOURCE).map(source => ({
-                                                                    label: source.replace('_', ' '),
-                                                                    value: source,
-                                                                }))}
-                                                            />
-                                                        </Form.Item>
-                                                    </Col>
-                                                    <Col xs={24} md={8}>
+                                                    <Col xs={24} md={12}>
                                                         <Form.Item name="sortOrder" label="Display order">
                                                             <InputNumber min={0} max={9999} style={{ width: '100%' }} />
                                                         </Form.Item>
@@ -455,9 +479,40 @@ export default function AnswerlatticeFaqManagement() {
                                                         <Text>{toDateLabel(selectedFaq?.reviewRequestedOn)}</Text>
                                                     </Col>
                                                 </Row>
+                                                <Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 8 }}>
+                                                    Origin: <Text>{selectedFaq?.source?.replace('_', ' ') || 'manual'}</Text>. Origin and generation lineage are system-owned and cannot be changed from this editor.
+                                                </Paragraph>
                                                 <Paragraph type="secondary" style={{ marginTop: 16 }}>
                                                     When a linked article changes, Answerlattice marks related FAQs as needs review so owners can confirm the short answer is still correct.
                                                 </Paragraph>
+                                                <Flex justify="space-between" align="center" gap={8} style={{ marginTop: 16, marginBottom: 8 }}>
+                                                    <Text strong>Recent reactions</Text>
+                                                    <Button
+                                                        size="small"
+                                                        icon={<LuRefreshCw />}
+                                                        loading={feedbackLoading}
+                                                        disabled={!selectedFaq}
+                                                        onClick={() => void loadSelectedFaqFeedback()}
+                                                    >
+                                                        Refresh
+                                                    </Button>
+                                                </Flex>
+                                                {feedbackError ? <Alert type="warning" showIcon message={feedbackError} style={{ marginBottom: 8 }} /> : null}
+                                                <List
+                                                    size="small"
+                                                    loading={feedbackLoading}
+                                                    dataSource={feedbackEvents.slice(0, 20)}
+                                                    locale={{ emptyText: 'No reaction details yet' }}
+                                                    renderItem={(item) => (
+                                                        <List.Item>
+                                                            <Space direction="vertical" size={0}>
+                                                                <Text>{item.sentiment === 'like' ? 'Helpful' : 'Not helpful'}{item.action === 'removed' ? ' removed' : ''}</Text>
+                                                                {item.comment ? <Text>{item.comment}</Text> : <Text type="secondary">No comment provided</Text>}
+                                                                <Text type="secondary">{toDateLabel(item.createdOn)}</Text>
+                                                            </Space>
+                                                        </List.Item>
+                                                    )}
+                                                />
                                             </Card>
                                         ),
                                     },

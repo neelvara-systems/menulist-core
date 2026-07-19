@@ -22,6 +22,7 @@ import {
   normalizeOwnerNotificationNumericScopeDocumentId,
   normalizeOwnerNotificationReferenceId,
 } from '@data/shared/ownerNotificationDeliveryBoundary';
+import nodemailer, { type Transporter } from '@lib/email/nodemailerRuntime';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import {
   getBoundedNotificationStringContext,
@@ -31,7 +32,6 @@ import {
 import { getSmtpConfigFromEnv } from '@lib/notifications/smtpConfig';
 import { Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'crypto';
-import * as nodemailer from 'nodemailer';
 
 const db = admin.firestore();
 const MESSAGE_LOGS = 'messageLogs';
@@ -234,9 +234,9 @@ async function isRateLimited(storeId: string): Promise<boolean> {
 // SEND VIA SMTP (nodemailer)
 // ================================================================
 
-let cachedTransporter: nodemailer.Transporter | null = null;
+let cachedTransporter: Transporter | null = null;
 
-function getTransporter(): nodemailer.Transporter | null {
+function getTransporter(): Transporter | null {
   if (cachedTransporter) return cachedTransporter;
   const smtpConfig = getSmtpConfigFromEnv();
   if (!smtpConfig) return null;

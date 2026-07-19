@@ -11,7 +11,7 @@ Do not add a broad autonomous-support claim. The implementation is workspace opt
 
 **Guided resolution**
 
-Turn an approved procedure into step-by-step help inside your product. Answerlattice can point to a client-declared control, wait for a verified product event, and escalate when the user remains blocked. It does not click controls or publish new answers automatically.
+Turn an approved procedure into step-by-step help inside your product. Answerlattice can point to a client-declared control, wait for a verified product event, and open an explicit support handoff when the user remains blocked. It does not click controls or publish new answers automatically.
 
 ## Prohibited Copy
 

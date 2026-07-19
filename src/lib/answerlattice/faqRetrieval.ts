@@ -191,6 +191,19 @@ const loadPublishedFaqs = async (tId: number, sId: number, sourceVersion?: numbe
     return faqs;
 };
 
+const loadPublishedFaqById = async (
+    faqId: string,
+    scope: { tId: number; sId: number },
+): Promise<AnswerlatticeFaq | null> => {
+    const snap = await answerlatticeFirestoreAdmin
+        .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+        .doc(faqId)
+        .get();
+    return snap.exists
+        ? normalizeAnswerlatticeRetrievalFaq(snap.data(), snap.id, scope)
+        : null;
+};
+
 const scoreFaqCandidate = (
     query: string,
     faq: FaqCandidate,
@@ -289,29 +302,12 @@ const loadLinkedArticleReference = async (
     const articleId = normalizeAnswerlatticeKbArticleId(faq.articleId);
     if (!articleId) return [];
 
-    if (!includeFullArticleReference) {
-        return [{
-            id: articleId,
-            title: faq.articleTitle || 'Related article',
-            url: undefined,
-            sourceType: 'faq',
-            similarityScore: 1,
-        }];
-    }
-
     try {
         const snap = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.KB_ARTICLES)
             .doc(articleId)
             .get();
-        if (!snap.exists) {
-            return [{
-                id: articleId,
-                title: faq.articleTitle || 'Related article',
-                sourceType: 'faq',
-                similarityScore: 1,
-            }];
-        }
+        if (!snap.exists) return [];
 
         const article = { ...snap.data(), id: snap.id } as KnowledgeBaseArticleType;
         const articleRecord = article as any;
@@ -322,9 +318,13 @@ const loadLinkedArticleReference = async (
             || article.status !== 'published'
             || article.active === false
         ) {
+            return [];
+        }
+
+        if (!includeFullArticleReference) {
             return [{
                 id: articleId,
-                title: faq.articleTitle || 'Related article',
+                title: cleanReferenceText(article.title, 240) || 'Related article',
                 sourceType: 'faq',
                 similarityScore: 1,
             }];
@@ -347,12 +347,7 @@ const loadLinkedArticleReference = async (
         };
         return [reference];
     } catch {
-        return [{
-            id: articleId,
-            title: faq.articleTitle || 'Related article',
-            sourceType: 'faq',
-            similarityScore: 1,
-        }];
+        return [];
     }
 };
 
@@ -380,15 +375,18 @@ export const attemptFaqAnswerRetrieval = async (
 
     const relatedMatch = chooseBestFaq(query, relatedFaqCandidates, options.context);
     if (relatedMatch) {
-        const faq = relatedMatch.faq as AnswerlatticeFaq;
-        return {
-            found: true,
-            faq,
-            score: relatedMatch.score,
-            confidence: relatedMatch.score >= 110 ? 'high' : 'medium',
-            references: await loadLinkedArticleReference(faq, options.includeFullArticleReference !== false),
-            matchReason: `related_${relatedMatch.reason}`,
-        };
+        const currentFaq = await loadPublishedFaqById(relatedMatch.faq.id, { tId, sId });
+        const currentMatch = currentFaq ? chooseBestFaq(query, [currentFaq], options.context) : null;
+        if (currentMatch) {
+            return {
+                found: true,
+                faq: currentFaq,
+                score: currentMatch.score,
+                confidence: currentMatch.score >= 110 ? 'high' : 'medium',
+                references: await loadLinkedArticleReference(currentFaq, options.includeFullArticleReference !== false),
+                matchReason: `related_verified_${currentMatch.reason}`,
+            };
+        }
     }
 
     const faqs = await loadPublishedFaqs(tId, sId, sourceVersion);

@@ -104,7 +104,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         const answer = answerSnapshot.data() || {};
         const audit = auditSnapshot.data() || {};
-        const inScope = normalizeAnswerlatticeScopeDocumentId(answer.tId) === access.scope.tenantId
+        const inScope = answer.pId === PRODUCT_IDS.ANSWERLATTICE
+            && audit.pId === PRODUCT_IDS.ANSWERLATTICE
+            && normalizeAnswerlatticeScopeDocumentId(answer.tId) === access.scope.tenantId
             && normalizeAnswerlatticeScopeDocumentId(answer.sId) === access.scope.storeId
             && normalizeAnswerlatticeScopeDocumentId(audit.tId) === access.scope.tenantId
             && normalizeAnswerlatticeScopeDocumentId(audit.sId) === access.scope.storeId;
@@ -151,59 +153,85 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const actor = String(access.user.email || access.user.name || access.user.id || 'unknown').slice(0, 180);
         const result = await db.runTransaction(async transaction => {
             const existing = await transaction.get(proposalRef);
+            const existingAudit = await transaction.get(proposalAuditRef);
             if (existing.exists) {
                 const data = existing.data() || {};
                 if (
-                    normalizeAnswerlatticeScopeDocumentId(data.tId) !== access.scope.tenantId
+                    data.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || normalizeAnswerlatticeScopeDocumentId(data.tId) !== access.scope.tenantId
                     || normalizeAnswerlatticeScopeDocumentId(data.sId) !== access.scope.storeId
+                    || data.targetAnswerId !== answerId
+                    || data.mutationType !== 'version_update'
+                    || data.suggestedChange?.rollbackAuditLogId !== auditLogId
                 ) {
                     throw new Error('rollback_proposal_scope_conflict');
                 }
-                return { id: existing.id, created: false };
+            }
+            if (existingAudit.exists) {
+                const data = existingAudit.data() || {};
+                if (
+                    data.pId !== PRODUCT_IDS.ANSWERLATTICE
+                    || normalizeAnswerlatticeScopeDocumentId(data.tId) !== access.scope.tenantId
+                    || normalizeAnswerlatticeScopeDocumentId(data.sId) !== access.scope.storeId
+                    || data.action !== 'answer_rollback_proposed'
+                    || data.entityType !== 'mutationProposal'
+                    || data.entityId !== proposalId
+                ) {
+                    throw new Error('rollback_proposal_scope_conflict');
+                }
             }
 
             const timestamp = FieldValue.serverTimestamp();
-            transaction.create(proposalRef, {
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                tId: access.scope.tenantId,
-                sId: access.scope.storeId,
-                targetAnswerId: answerId,
-                relatedEntityIds,
-                mutationType: 'version_update',
-                signalSummary: {
-                    ticketCount: 0,
-                    chatCount: 0,
-                    negativeFeedbackRate: 0,
-                    exampleReferences: [`answer_version:${auditLogId}`],
-                },
-                suggestedChange,
-                confidenceScore: 1,
-                status: 'pending_review',
-                createdOn: timestamp,
-                modifiedOn: timestamp,
-                createdBy: actor,
-                modifiedBy: actor,
-            });
-            transaction.create(proposalAuditRef, {
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                tId: access.scope.tenantId,
-                sId: access.scope.storeId,
-                action: 'answer_rollback_proposed',
-                entityType: 'mutationProposal',
-                entityId: proposalId,
-                previousState: { answerId, auditLogId },
-                newState: { mutationType: 'version_update', status: 'pending_review' },
-                performedBy: actor,
-                timestamp,
-                createdOn: timestamp,
-            });
-            return { id: proposalId, created: true };
+            if (!existing.exists) {
+                transaction.create(proposalRef, {
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: access.scope.tenantId,
+                    sId: access.scope.storeId,
+                    targetAnswerId: answerId,
+                    relatedEntityIds,
+                    mutationType: 'version_update',
+                    signalSummary: {
+                        ticketCount: 0,
+                        chatCount: 0,
+                        negativeFeedbackRate: 0,
+                        exampleReferences: [`answer_version:${auditLogId}`],
+                    },
+                    suggestedChange,
+                    confidenceScore: 1,
+                    status: 'pending_review',
+                    createdOn: timestamp,
+                    modifiedOn: timestamp,
+                    createdBy: actor,
+                    modifiedBy: actor,
+                });
+            }
+            if (!existingAudit.exists) {
+                transaction.create(proposalAuditRef, {
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: access.scope.tenantId,
+                    sId: access.scope.storeId,
+                    action: 'answer_rollback_proposed',
+                    entityType: 'mutationProposal',
+                    entityId: proposalId,
+                    previousState: { answerId, auditLogId },
+                    newState: { mutationType: 'version_update', status: 'pending_review' },
+                    performedBy: actor,
+                    timestamp,
+                    createdOn: timestamp,
+                });
+            }
+            const existingStatus = existing.exists ? String(existing.data()?.status || '') : 'pending_review';
+            return {
+                id: proposalId,
+                created: !existing.exists,
+                status: existingStatus || 'pending_review',
+            };
         });
 
         return NextResponse.json({
             proposalId: result.id,
             created: result.created,
-            status: 'pending_review',
+            status: result.status,
         }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         if (error instanceof Error && error.message === 'rollback_proposal_scope_conflict') {

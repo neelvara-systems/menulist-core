@@ -1,7 +1,7 @@
 # Answerlattice Guided Workflows
 
 > **Status:** Implemented, workspace opt-in
-> **Version:** 2.1.0
+> **Version:** 2.2.0
 > **Created:** 2026-03-08
 > **Last verified:** 2026-07-18
 > **Flags:** `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`, `ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION`
@@ -22,6 +22,7 @@ The runtime is an **Explain + Guide** layer. It does not click controls, execute
 
 - Procedure data remains embedded in an existing canonical answer.
 - Only a canonical widget search result may start a guided session.
+- The exact validated procedure snapshot is retained on that widget search history and terminal evidence must match it.
 - Existing answers without procedures remain unchanged.
 - `target` maps to `data-answerlattice-target="<semantic-id>"`.
 - `expectedEvent` maps to `AnswerlatticeWidget.emitWorkflowEvent("<semantic-id>")`.
@@ -30,9 +31,11 @@ The runtime is an **Explain + Guide** layer. It does not click controls, execute
 - Highlight overlays use `pointer-events: none`.
 - Route/context changes, widget hide, and widget close clear the active highlight.
 - Missing targets fall back to the written instruction.
+- Target lookup retries for a bounded 800 ms so asynchronously rendered controls are not declared missing immediately.
 - Owner configuration defaults to disabled per workspace.
 - The widget response never exposes tenant or store identifiers.
 - Guided outcomes do not become approved knowledge. Escalation enters the existing governed signal path.
+- **Still stuck** opens the existing explicit support form; an escalated guide outcome is recorded only after the support request succeeds.
 - MenuList is the first source-integrated reference client for menu import, import recovery, publish, share, and public-link verification.
 - Reference procedure templates are non-authoritative code fixtures. They become live only when an owner creates or imports a matching draft and approves it through the existing intake, mutation-proposal, and governance path; Answerlattice never seeds client truth automatically.
 - MenuList mobile controls carry the same semantic contracts, but the MenuList widget remains intentionally suppressed on mobile.
@@ -81,3 +84,4 @@ This is not:
 | 2026-07-17 | 2.0.0 | Controlled Explain + Guide runtime, semantic targets/events, owner opt-in, and bounded terminal outcomes |
 | 2026-07-18 | 2.0.0 | Cross-check aligned the owner toggle and install option with the parent and child feature-flag dependency |
 | 2026-07-18 | 2.1.0 | Added the MenuList reference client, intake-to-governance procedure preservation, typed SDK parity, and focused regression coverage |
+| 2026-07-18 | 2.2.0 | Bound terminal evidence to the served procedure snapshot and widget session, rejected expired histories, added bounded async target lookup, and connected Still stuck to the real support handoff |

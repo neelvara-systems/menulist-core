@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Mobile Support Assessment
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Mobile team, Product
 
 ---
@@ -19,7 +19,7 @@
 
 This is a platform-admin-only feature with complex file management, content review, and editing workflows. Desktop remains the primary environment.
 
-**Updated 2026-05-19:** the real KB Generation product screen is still exposed to `PLATFORM` users from MenuList Mobile More -> Answerlattice -> KB Generation. It mounts the existing platform template through `MobilePlatformInternalScreen`, not a separate overview page.
+**Current boundary:** the screen is internal-platform-only. The Answerlattice owner route redirects to Knowledge Intake. Any mobile access is an internal responsive mounting of the platform template, not an owner feature or a separate mobile product surface.
 
 ---
 

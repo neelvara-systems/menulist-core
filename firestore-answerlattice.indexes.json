@@ -1502,6 +1502,24 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "priority",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_supportBoardCards",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "status",
           "order": "ASCENDING"
         },
@@ -1665,6 +1683,10 @@
       "collectionGroup": "payment_transactions",
       "queryScope": "COLLECTION",
       "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "event",
           "order": "ASCENDING"

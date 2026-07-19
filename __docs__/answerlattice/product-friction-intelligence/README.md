@@ -1,107 +1,54 @@
-# Product Friction Intelligence — Answerlattice Expansion Item #5
+# Product Friction Evidence
 
-> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-06-28
-> **Expansion Tracker:** `__docs__/answerlattice/answerlattice-expansion-tracker.md` (Item #5)
-> **Doctrine Compliance:** Freeze-compliant (additive fields, 1 new collection, extends existing scheduler)
+**Status:** Implemented and Feature 13 source-hardened on July 18, 2026. QA deployment and hosted readback remain pending authenticated Firebase access.
 
----
+Product Friction Evidence turns bounded support events and canonical-answer fallbacks into a compact review queue for active product entities. It helps a founder decide which product areas and approved answers need investigation. It does not measure product health, customer satisfaction, answer accuracy, or verified resolution.
 
-## What Is This?
+## Governed Flow
 
-Product Friction Intelligence converts Answerlattice's existing support signals into actionable product friction insights for SaaS founders. It answers: **"Where is my product confusing users?"**
+1. Answerlattice records privacy-filtered support signals and canonical misses.
+2. The nightly scheduler reads today's bounded workspace evidence.
+3. Stored entity IDs are resolved against exact-scope active product entities.
+4. Daily per-entity evidence rows are written idempotently.
+5. A complete UTC seven-day window ending yesterday is compared with the prior seven days.
+6. All admitted entities contribute to totals; the owner view retains the top ten review areas and up to five emerging topics.
+7. An optional weekly provider call can write an advisory review summary after strict output validation and a source-snapshot recheck.
+8. The owner reviews underlying evidence before changing product behavior or approved answers.
 
-Instead of building dashboards or analytics tools, this system generates a **prioritized insight feed** — structured, severity-ranked friction signals derived from support interactions. Think "automated product advisor" not "analytics software."
+## Metric Meaning
 
-Friction aggregation and insight-generation diagnostics use fixed failure codes with source error name/code/status and tenant/store scope booleans. Failed weekly insight results return fixed skipped-reason codes instead of raw exception text.
+- **Evidence count:** admitted support signals plus canonical misses linked to an active entity. It is a count of events, not unique customers or questions.
+- **Weighted load:** `evidence * (1 + escalation rate + canonical-miss rate)`.
+- **Friction level:** a volume-sensitive label derived from total weighted load across every admitted entity.
+- **Trend:** current completed seven-day weighted load compared with the previous completed seven days.
+- **Emerging topic:** at least 10 current-window events and fewer than 3 previous-window events.
+- **Unmapped evidence:** valid support evidence whose entity is missing, inactive, malformed, or outside the workspace.
 
----
+## Safety Boundaries
 
-## Architecture Position
+- Source caps use cap-plus-one and fail closed; a truncated window is not published.
+- Wrong product or tenant scope fails the task.
+- Browser writes to daily stats and summaries are denied.
+- Client readers parse schema version 2 and exact scope before rendering.
+- AI output is advisory, cannot define metrics or friction level, and cannot introduce unknown entity IDs.
+- Daily evidence is retained for 90 days by the existing cleanup task.
 
-```
-Existing Answerlattice Signal Pipeline (built):
-  signalEmitter → answerlattice_signalEvents → signalMutation → mutationProposals
+## Important Files
 
-Friction Intelligence Layer:
-  answerlattice_signalEvents ──→ frictionAggregation (nightly) ──→ answerlattice_frictionDailyStats
-                                                                      ↓
-  answerlattice_frictionDailyStats ──→ frictionInsightGenerator (weekly) ──→ platformSummary/friction_{tId}_{sId}
-                                                                      ↓
-  platformSummary/friction_{tId}_{sId} ──→ GovernanceHub "Friction" tab (UI)
-```
+- `src/data/shared/answerlatticeSupportMetrics.ts`
+- `functions-answerlattice/src/sharedData/answerlatticeSupportMetrics.ts`
+- `functions-answerlattice/src/answerlattice/frictionAggregation.ts`
+- `functions-answerlattice/src/answerlattice/frictionInsight.ts`
+- `src/lib/answerlattice/analyticsIntelligenceContracts.ts`
+- `src/database/answerlattice/frictionStats.ts`
+- `src/hooks/answerlattice/useFrictionInsights.ts`
+- `src/components/templates/answerlattice/governance/FrictionTab.tsx`
+- `scripts/verification/test-answerlattice-support-metrics-contracts.ts`
 
----
+## Verification
 
-## Key Design Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Topic taxonomy | Reuse entity graph (entities ARE topics) | Answerlattice already has 7 entity types. No separate clustering needed. |
-| New collections | 1 only: `answerlattice_frictionDailyStats` | Insights stored in existing `platformSummary`. Minimal Firestore footprint. |
-| Clustering method | Entity-based (NOT embedding-based) | Answerlattice doctrine: deterministic > LLM. Entity graph is the taxonomy. |
-| Processing cadence | Nightly batch (extends answerlatticeNightly.ts) | Industry standard: Intercom uses weekly, we use nightly for faster signals. |
-| External services | ZERO (no BigQuery, no Vector DB, no Pub/Sub) | Firebase-only architecture. Signal TTL (12mo) handles retention. |
-| Insight generation | Weekly Gemini call (same pattern as weekly narrative) | Cost-effective: 1 AI call/week/tenant. |
-| UI surface | New tab in existing GovernanceHub | No new routes, no separate dashboards. |
-| Workflow step failure | DEFERRED to v2 | Low ROI for v1. Procedure steps exist but step-level failure detection needs more signal data. |
-
----
-
-## Document Index
-
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| `README.md` (this file) | Everyone | Index, architecture overview, key decisions |
-| `product-friction-intelligence_spec.md` | CEO/PM | Business requirements, user stories, ICP alignment |
-| `product-friction-intelligence_impl.md` | Developers | Technical blueprint, data model, pipelines, file structure |
-| `product-friction-intelligence_firebase.md` | Developers | Firestore operations, cost analysis, indexes |
-| `product-friction-intelligence_marketing.md` | Sales/Marketing | Pitch deck, positioning, competitive |
-| `product-friction-intelligence_website.md` | Public | Landing page content, SEO |
-| `product-friction-intelligence_helpdoc.md` | Customers | Customer-facing help documentation |
-| `product-friction-intelligence_mobile-support.md` | Mobile | Mobile admission test, mobile UX |
-| `_archive/chatgpt-review.md` | Internal | ChatGPT conversation analysis + accuracy rating |
-
----
-
-## ChatGPT Accuracy Rating: ~45%
-
-ChatGPT proposed 6 components with 68 capability blocks. After deep codebase audit:
-
-- **~55% was already built** — Signal aggregation, entity clustering, mutation engine, coverage KPI, drift detection, nightly scheduler all exist
-- **~20% was correctly identified as missing** — Daily aggregation, friction scoring, trend detection, founder insight feed
-- **~25% was wrong or over-engineered** — BigQuery export, Vector DB, separate `supportSignals` collection (already exists), `workspaceId` model (should be tId/sId), real-time processing
-
----
-
-## Dependencies
-
-- **Required:** `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION: true` (signal events must be flowing)
-- **Required:** `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS: true` (for hit/miss coverage data)
-- **Optional:** `ENABLE_ANSWERLATTICE_CONTEXT_AWARE: true` (enriches signals with page/feature context)
-- **Extends:** `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` (adds Step 9 + Step 10)
-
-## Current Runtime Guardrails
-
-- Enabled in both frontend and Answerlattice functions flags.
-- Runs inside the existing `answerlatticeNightly` scheduler, not a separate scheduled job.
-- Uses capped daily signal/search-history windows and writes compact `platformSummary/frictionSnapshot_*` / `platformSummary/friction_*` documents for UI reads.
-- Governance UI reads summaries only; it does not scan `answerlattice_signalEvents` or `aiSearchHistory` on page load.
-- Friction is product support intelligence only. It does not track session replay, product analytics, or user behavior telemetry.
-
----
-
-## What Must NOT Be Built
-
-Per Answerlattice doctrine and this feature's scope:
-
-- ❌ Analytics dashboards with charts/filters/queries
-- ❌ Session replay or user product telemetry
-- ❌ Feature adoption funnels
-- ❌ Cohort analysis
-- ❌ Real-time streaming processing
-- ❌ External Vector DB or BigQuery
-- ❌ Cross-tenant intelligence (v1 = per-workspace only)
-- ❌ Embedding-based topic clustering (entity graph IS the taxonomy)
+- Focused support-metrics contract test.
+- Answerlattice scoped typecheck.
+- Answerlattice Functions TypeScript build.
+- Dedicated and shared platform-summary rules tests.
+- Full `verify:answerlattice-runtime-truth` gate.

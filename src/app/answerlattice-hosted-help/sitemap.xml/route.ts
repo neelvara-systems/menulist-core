@@ -1,6 +1,9 @@
 import { getCachedKnowledgeBaseCategories } from '@lib/answerlattice/publicContentCache';
 import { resolveHostedHelpSiteByDomain } from '@lib/answerlattice/hostedHelpServer';
-import { resolveHostedHelpRequestDomain } from '@lib/answerlattice/hostedHelpRequest';
+import {
+    buildHostedHelpArticlePath,
+    resolveHostedHelpRequestDomain,
+} from '@lib/answerlattice/hostedHelpRequest';
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -35,20 +38,25 @@ export async function GET(request: NextRequest) {
 
     const baseUrl = `https://${site.config.primaryDomain || site.domain}`;
     const categories = await getCachedKnowledgeBaseCategories({ tId: site.tId, sId: site.sId });
-    const articleUrls = categories?.categories
+    const articlePaths = categories?.categories
         ? Object.values(categories.categories).flatMap(category => [
             ...(category.articles || []),
             ...(category.sections || []).flatMap(section => section.articles || []),
-        ]).slice(0, 500).map(article => `${baseUrl}/articles/${article.url || article.id}`)
+        ])
+            .map(article => buildHostedHelpArticlePath(article.url || article.id))
+            .filter((path): path is string => Boolean(path))
         : [];
+    const articleUrls = Array.from(new Set(articlePaths))
+        .slice(0, 500)
+        .map(path => `${baseUrl}${path}`);
 
-    const urls = [
+    const urls = Array.from(new Set([
         baseUrl,
         `${baseUrl}/docs`,
         ...(site.config.showFaqs ? [`${baseUrl}/faq`] : []),
         ...(site.config.showChangelog ? [`${baseUrl}/changelog`] : []),
         ...articleUrls,
-    ];
+    ]));
 
     const body = [
         '<?xml version="1.0" encoding="UTF-8"?>',

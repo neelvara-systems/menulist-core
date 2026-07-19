@@ -40,14 +40,19 @@ export function useFrictionInsights(tId: number, sId: number): UseFrictionInsigh
         setLoading(true);
         setError(null);
 
-        Promise.all([
+        Promise.allSettled([
             getFrictionSnapshot(tId, sId),
             getFrictionInsight(tId, sId),
         ])
-            .then(([snapshotData, insightData]) => {
+            .then(([snapshotResult, insightResult]) => {
                 if (cancelled) return;
-                setSnapshot(snapshotData);
-                setInsight(insightData);
+                if (snapshotResult.status === 'rejected') {
+                    setError(ANSWERLATTICE_FRICTION_DATA_LOAD_FAILED);
+                    setSnapshot(null);
+                } else {
+                    setSnapshot(snapshotResult.value);
+                }
+                setInsight(insightResult.status === 'fulfilled' ? insightResult.value : null);
             })
             .catch(() => {
                 if (cancelled) return;

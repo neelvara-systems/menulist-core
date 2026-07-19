@@ -4,6 +4,11 @@ import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import {
+    ANSWERLATTICE_TICKET_DOCUMENT_LIMIT,
+    ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
+    ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT,
+} from '@lib/answerlattice/supportTicketLifecycle';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_RULES_FILE || 'firestore-answerlattice.rules';
@@ -18,6 +23,13 @@ const message = (id: string, type: 'user' | 'system' = 'user') => ({
     type,
     sender: actor,
     timestamp: NOW,
+});
+const ticketDocument = (index: number) => ({
+    name: `file-${index}.txt`,
+    size: 1,
+    type: 'text/plain',
+    uid: `upload-${index}`,
+    url: `https://firebasestorage.googleapis.com/v0/b/demo/o/supportTickets%2Fdocuments%2F${index}?alt=media`,
 });
 const ticket = (overrides: Record<string, unknown> = {}) => ({
     pId: 'AL',
@@ -63,6 +75,19 @@ async function run(): Promise<void> {
             storeId: '202',
             uId: 'owner-2',
         }).firestore();
+        const noSupportDb = testEnv.authenticatedContext('viewer-1', {
+            role: 'VIEWER',
+            tenantId: '1',
+            storeId: '101',
+            uId: 'viewer-1',
+        }).firestore();
+        const supportDb = testEnv.authenticatedContext('support-1', {
+            canManageSupport: true,
+            role: 'CUSTOM',
+            tenantId: '1',
+            storeId: '101',
+            uId: 'support-1',
+        }).firestore();
         const platformDb = testEnv.authenticatedContext('platform-1', {
             platformRole: 'PLATFORM',
             role: 'PLATFORM',
@@ -70,20 +95,80 @@ async function run(): Promise<void> {
             storeId: '0',
             uId: 'platform-1',
         }).firestore();
+        const platformSupportDb = testEnv.authenticatedContext('platform-support-1', {
+            platformRole: 'PLATFORM_SUPPORT',
+            role: 'PLATFORM_SUPPORT',
+            uId: 'platform-support-1',
+        }).firestore();
         const ticketRef = doc(ownerDb, 'supportTickets', 'ticket-1');
 
-        const longMessages = Array.from({ length: 450 }, (_, index) => message(`history-${index}`));
+        const maximumStatuses = Array.from(
+            { length: ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT },
+            () => statusEntry('Open'),
+        );
+        const appendableMessages = Array.from(
+            { length: ANSWERLATTICE_TICKET_MESSAGE_LIMIT - 1 },
+            (_, index) => message(`history-${index}`),
+        );
         await testEnv.withSecurityRulesDisabled(async (context) => {
-            await setDoc(doc(context.firestore(), 'supportTickets', 'long-ticket'), ticket({ messages: longMessages }));
+            await setDoc(doc(context.firestore(), 'supportTickets', 'message-limit-ticket'), ticket({
+                messages: appendableMessages,
+                statuses: maximumStatuses,
+            }));
         });
-        await assertSucceeds(updateDoc(doc(ownerDb, 'supportTickets', 'long-ticket'), {
-            messages: [...longMessages, message('history-450')],
+        await assertSucceeds(updateDoc(doc(ownerDb, 'supportTickets', 'message-limit-ticket'), {
+            messages: [...appendableMessages, message('history-last')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await assertFails(updateDoc(doc(ownerDb, 'supportTickets', 'message-limit-ticket'), {
+            messages: [...appendableMessages, message('history-last'), message('history-over-limit')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+
+        const appendableStatuses = Array.from(
+            { length: ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT - 1 },
+            () => statusEntry('Open'),
+        );
+        const statusMessages = Array.from(
+            { length: ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT - 1 },
+            (_, index) => message(`status-history-${index}`, 'system'),
+        );
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'supportTickets', 'status-limit-ticket'), ticket({
+                messages: statusMessages,
+                statuses: appendableStatuses,
+            }));
+        });
+        await assertSucceeds(updateDoc(doc(ownerDb, 'supportTickets', 'status-limit-ticket'), {
+            status: 'In Progress',
+            statuses: [...appendableStatuses, statusEntry('In Progress')],
+            messages: [...statusMessages, message('status-history-last', 'system')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await assertFails(updateDoc(doc(ownerDb, 'supportTickets', 'status-limit-ticket'), {
+            status: 'Resolved',
+            statuses: [
+                ...appendableStatuses,
+                statusEntry('In Progress'),
+                statusEntry('Resolved'),
+            ],
+            messages: [
+                ...statusMessages,
+                message('status-history-last', 'system'),
+                message('status-history-over-limit', 'system'),
+            ],
             modifiedBy: 'Owner',
             modifiedOn: NOW,
         }));
 
         await assertSucceeds(setDoc(ticketRef, ticket()));
         await assertSucceeds(getDoc(ticketRef));
+        await assertFails(getDoc(doc(noSupportDb, 'supportTickets', 'ticket-1')));
+        await assertSucceeds(getDoc(doc(supportDb, 'supportTickets', 'ticket-1')));
+        await assertSucceeds(getDoc(doc(platformSupportDb, 'supportTickets', 'ticket-1')));
         await assertFails(getDoc(doc(otherDb, 'supportTickets', 'ticket-1')));
         await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'wrong-product'), ticket({ pId: 'ML' })));
         await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'empty-subject'), ticket({ subject: '' })));
@@ -96,15 +181,18 @@ async function run(): Promise<void> {
         await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'preloaded-message'), ticket({
             messages: [message('forged-initial-message')],
         })));
-        await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'too-many-documents'), ticket({
-            documents: Array.from({ length: 21 }, (_, index) => ({
-                name: `file-${index}`,
-                size: 1,
-                type: 'text/plain',
-                url: `https://example.com/${index}`,
-            })),
+        await assertSucceeds(setDoc(doc(ownerDb, 'supportTickets', 'maximum-documents'), ticket({
+            documents: Array.from(
+                { length: ANSWERLATTICE_TICKET_DOCUMENT_LIMIT },
+                (_, index) => ticketDocument(index),
+            ),
         })));
-
+        await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'too-many-documents'), ticket({
+            documents: Array.from(
+                { length: ANSWERLATTICE_TICKET_DOCUMENT_LIMIT + 1 },
+                (_, index) => ticketDocument(index),
+            ),
+        })));
         await assertSucceeds(updateDoc(ticketRef, {
             messages: [message('reply-1')],
             modifiedBy: 'Owner',
@@ -162,6 +250,7 @@ async function run(): Promise<void> {
         }));
         await assertFails(updateDoc(ticketRef, { tId: 2, sId: 202, modifiedOn: NOW }));
         await assertFails(deleteDoc(ticketRef));
+        await assertFails(deleteDoc(doc(platformSupportDb, 'supportTickets', 'ticket-1')));
         await assertSucceeds(deleteDoc(doc(platformDb, 'supportTickets', 'ticket-1')));
     } finally {
         await testEnv.cleanup();

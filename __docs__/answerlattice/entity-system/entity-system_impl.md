@@ -1,9 +1,9 @@
 # Entity System — Implementation Blueprint
 
-> **Version:** 2.0.2
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Developers
-> **Status:** MAINTAINED — Entity loop implemented; best-effort extraction and rollout gates documented
+> **Status:** LOCAL SOURCE COMPLETE — Feature 7 audited; best-effort extraction and rollout gates documented
 
 ---
 
@@ -39,6 +39,8 @@
 | File                                     | Purpose                                          |
 | ---------------------------------------- | ------------------------------------------------ |
 | `src/lib/answerlattice/entityExtraction.ts`   | AI entity extraction from KB articles            |
+| `src/lib/answerlattice/ontologyServer.ts` | Server-owned entity, relation, index, candidate, and deprecation transactions |
+| `src/lib/answerlattice/governanceServer.ts` | Bounded dependency-preserving entity merge transaction |
 | `src/lib/answerlattice/canonicalRetrieval.ts` | 3-layer canonical-first retrieval                |
 | `src/lib/answerlattice/driftDetection.ts`     | 4-class drift governance                         |
 | `src/lib/answerlattice/signalMutation.ts`     | Signal → mutation proposal pipeline              |
@@ -141,7 +143,7 @@ When aliases are updated on an entity, also sync to the entity's search index `s
 - Minimum 2 characters per alias
 - Maximum 20 aliases per entity
 - No duplicate aliases within same entity
-- No alias can match another entity's canonical name or alias within same tenant
+- Cross-entity alias uniqueness is not enforced as a separate registry scan. Owners should avoid duplicates; extraction refuses ambiguous matches and leaves them for review.
 
 ---
 
@@ -221,7 +223,9 @@ export async function extractEntitiesFromArticles(
     systemPrompt: string,
     userPrompt: string,
   ) => Promise<string | null>,
-  existingEntities?: { name: string; slug: string; aliases?: string[] }[], // NEW
+  existingEntities?: { id: string; name: string; slug: string; aliases?: string[] }[],
+  persistCandidate?: (candidate: CandidateDraft) => Promise<unknown>,
+  options?: { persistCandidates?: boolean },
 ): Promise<ExtractionResult>;
 ```
 
@@ -287,23 +291,20 @@ function matchToExisting(
 ): { matched: boolean; entityId?: string } {
   const normalizedName = extracted.name.toLowerCase().trim();
 
-  // Exact name match
-  const exactMatch = existingEntities.find(
-    (e) =>
-      e.name.toLowerCase() === normalizedName ||
-      e.slug === normalizedName.replace(/\s+/g, "-"),
+  const normalizedSlug = normalizedName.replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+  const matches = existingEntities.filter((entity) =>
+    entity.name.toLowerCase() === normalizedName ||
+    entity.slug === normalizedSlug ||
+    entity.aliases?.some((alias) => alias.toLowerCase() === normalizedName),
   );
-  if (exactMatch) return { matched: true, entityId: exactMatch.id };
 
-  // Alias match
-  const aliasMatch = existingEntities.find((e) =>
-    e.aliases?.some((a) => a.toLowerCase() === normalizedName),
-  );
-  if (aliasMatch) return { matched: true, entityId: aliasMatch.id };
-
-  return { matched: false };
+  return matches.length === 1
+    ? { matched: true, entityId: matches[0].id }
+    : { matched: false };
 }
 ```
+
+An ambiguous match is deliberately returned as unmatched so it becomes review work. Firestore return order must never decide ontology truth.
 
 ---
 
@@ -314,7 +315,9 @@ function matchToExisting(
 ### 5.1 Current Integration Boundary
 
 - The browser trigger runs only after the article write succeeds and never blocks that write.
-- The route re-reads the stored article, validates exact product/tenant/workspace scope, loads at most 500 scoped rows, keeps only active Answerlattice entities, performs registry-guided extraction, records AI usage, writes governed new candidates, and replaces the article link set with at most 10 normalized matched `entityIds` after a confirmed extraction.
+- The route re-reads the stored article, validates exact product/tenant/workspace scope, fingerprints the persisted extraction fields, loads at most 500 scoped rows, keeps only active Answerlattice entities, performs registry-guided extraction, and records AI usage.
+- After provider latency, one Firestore transaction re-reads the article and matched entities. A changed/deleted article or inactive/cross-scope entity returns conflict; otherwise changed links and KB cache/source/bundle invalidation commit together.
+- Candidate drafts persist only after source revalidation. Candidate upserts remain review work and a failed candidate write is logged without turning the article update into unapproved truth.
 - A confirmed empty match clears stale links. Provider, parsing, or incomplete-batch failure preserves existing links and returns failure. Unchanged links avoid an article write and cache invalidation.
 - The trigger is best effort. Browser interruption or network failure may leave an article unmapped, so coverage review and explicit retry remain necessary.
 - New candidate entities still require human review; the extraction path does not auto-approve product truth.
@@ -351,11 +354,11 @@ The DAL sends `{ action: 'merge_entities', requestId, survivorId, mergedId }` to
 The Admin Firestore transaction:
 
 1. Validates same-type active entities inside the authenticated workspace.
-2. Loads bounded canonical references, KB article references, survivor active answers, inbound/outbound relations, and entity-search rows.
-3. Rewrites canonical and article entity references and rejects a merge that would create overlapping active answer scopes/version windows.
-4. Rewrites or removes relations, merges aliases, updates/removes search-index rows, and deprecates the merged entity.
+2. Loads bounded canonical references, KB article references, the capped workspace FAQ and product-surface sets, survivor active answers, inbound/outbound relations for both entities, and entity-search rows.
+3. Rewrites canonical, article, FAQ, and product-surface entity references and rejects a merge that would create overlapping active answer scopes/version windows.
+4. Rewrites or removes relations, removes self/duplicate edges, merges aliases, rebuilds the complete survivor search index, removes duplicate/merged index rows, and deprecates the merged entity.
 5. Writes before/after canonical audit snapshots plus one idempotent `entity_merged` audit.
-6. Increments affected canonical/KB/entity/relation source versions and marks compiled context stale.
+6. Increments the affected canonical/KB/FAQ/surface/entity/relation source versions and marks compiled context stale.
 
 Reference and write caps stop the operation before Firestore transaction limits; larger migrations require a controlled server migration.
 
@@ -363,24 +366,29 @@ Reference and write caps stop the operation before Firestore transaction limits;
 
 **File:** `src/hooks/answerlattice/useEntities.ts`
 
-The hook calls the server-backed DAL and reports transferred answer/article/relation counts:
+The hook calls the server-backed DAL and reports transferred answer/article/FAQ/product-surface/relation counts. Mutation helpers return booleans so modals close only after confirmed server success; browser exception text is not exposed in toasts.
 
 ```typescript
 const merge = useCallback(
-  async (survivorId: string, mergedId: string) => {
+  async (survivorId: string, mergedId: string): Promise<boolean> => {
     try {
       const result = await mergeEntities(survivorId, mergedId, tId, sId);
       if (result?.success) {
         const transferred = Number(result.transferredAnswers || 0)
           + Number(result.transferredArticles || 0)
+          + Number(result.transferredFaqs || 0)
+          + Number(result.transferredSurfaces || 0)
           + Number(result.transferredRelations || 0);
         message.success(
           `Entities merged. ${transferred} reference(s) transferred.`,
         );
         await refresh();
+        return true;
       }
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : "Merge failed");
+      return false;
+    } catch {
+      message.error("Could not merge entities");
+      return false;
     }
   },
   [tId, sId, refresh],
@@ -461,6 +469,9 @@ export function buildEntityContextBlock(
 | E4 — Post-save extraction | Complete, best effort | Instrument failures and unmapped-article coverage |
 | E5 — Entity merge | Complete | Keep server-owned governance and audit |
 | E6 — Entity-enriched RAG | Complete | Measure answer-quality impact |
+| Deprecation guard | Complete | Reassign answer/content/surface/relation dependencies first |
+| Nightly graph rebuild | Complete, bounded | Preserve prior graph on cap or scope failure; monitor summary size |
+| Workspace relation dashboard | Complete to 500 rows | Add pagination or selected-entity loading before larger graph administration |
 
 ---
 
@@ -475,6 +486,8 @@ export function buildEntityContextBlock(
 | `src/database/knowledgeBase/articles.ts` | Best-effort post-save trigger |
 | `src/database/answerlattice/entities.ts` | Alias synchronization and entity merge DAL |
 | `src/lib/answerlattice/governanceServer.ts` | Server-owned governed merge transaction |
+| `src/lib/answerlattice/ontologyServer.ts` | Server-owned entity/relation/index/candidate/deprecation transactions |
+| `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` | Cap-safe compact graph rebuild |
 | `src/lib/search/searchCore.ts` | Entity-enriched fallback and default-off exact technical evidence lane |
 
 ## 10. Type Check Verification

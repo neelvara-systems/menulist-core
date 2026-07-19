@@ -19,7 +19,29 @@ import { getNotificationReadiness, sendNotification } from '@lib/notifications';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
+
+const AnswerlatticeNotificationRecipientSchema = z.string().trim().email().max(320);
+const ANSWERLATTICE_NOTIFICATION_TEST_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const notificationTestJson = (
+    body: Record<string, unknown>,
+    status = 200,
+): NextResponse => NextResponse.json(body, {
+    status,
+    headers: ANSWERLATTICE_NOTIFICATION_TEST_RESPONSE_HEADERS,
+});
+
+const withNotificationTestHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_NOTIFICATION_TEST_RESPONSE_HEADERS).forEach(([key, value]) => {
+        response.headers.set(key, value);
+    });
+    return response;
+};
 
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
@@ -39,7 +61,7 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const scope = resolveSessionScope(session);
     if (!scope) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return notificationTestJson({ error: 'Not onboarded' }, 400);
     }
 
     try {
@@ -49,39 +71,40 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             window: 60 * 60,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many test emails. Try again later.' }, { status: 429 });
+            return notificationTestJson({ error: 'Too many test emails. Try again later.' }, 429);
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
-        if (permission.response) return permission.response;
+        if (permission.response) return withNotificationTestHeaders(permission.response);
 
         const db = getAnswerlatticeDb();
         if (!db) {
-            return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
+            return notificationTestJson({ error: 'Answerlattice Firebase is not configured' }, 503);
         }
 
         const readiness = getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE);
         if (!readiness.enabled) {
-            return NextResponse.json({ error: 'Answerlattice notifications are not enabled', readiness }, { status: 403 });
+            return notificationTestJson({ error: 'Answerlattice notifications are not enabled', readiness }, 403);
         }
         if (!readiness.smtpConfigured) {
-            return NextResponse.json({ error: 'SMTP sender is not configured', readiness }, { status: 503 });
+            return notificationTestJson({ error: 'SMTP sender is not configured', readiness }, 503);
         }
 
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get();
         if (!storeSnap.exists) {
-            return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+            return notificationTestJson({ error: 'Store not found' }, 404);
         }
 
         const storeData = storeSnap.data() || {};
         if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return notificationTestJson({ error: 'Forbidden' }, 403);
         }
 
-        const supportEmail = typeof storeData.supportEmail === 'string' ? storeData.supportEmail.trim() : '';
-        if (!supportEmail || !supportEmail.includes('@')) {
-            return NextResponse.json({ error: 'Add a valid support email before testing notifications' }, { status: 400 });
+        const supportEmailResult = AnswerlatticeNotificationRecipientSchema.safeParse(storeData.supportEmail);
+        if (!supportEmailResult.success) {
+            return notificationTestJson({ error: 'Add a valid support email before testing notifications' }, 400);
         }
+        const supportEmail = supportEmailResult.data;
 
         const sent = await sendNotification({
             productId: PRODUCT_IDS.ANSWERLATTICE,
@@ -99,15 +122,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
         if (!sent) {
-            return NextResponse.json({ error: 'Notification test could not be delivered. Check sender config and logs.', readiness }, { status: 502 });
+            return notificationTestJson({ error: 'Notification test could not be delivered. Check sender config and logs.', readiness }, 502);
         }
 
-        return NextResponse.json({ sent: true, recipientEmail: supportEmail, readiness });
+        return notificationTestJson({ sent: true, recipientEmail: supportEmail, readiness });
     } catch (error) {
         logRuntimeFailure('answerlattice_notification_test_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', scope.storeId),
         });
-        return NextResponse.json({ error: 'Failed to send test notification' }, { status: 500 });
+        return notificationTestJson({ error: 'Failed to send test notification' }, 500);
     }
 });

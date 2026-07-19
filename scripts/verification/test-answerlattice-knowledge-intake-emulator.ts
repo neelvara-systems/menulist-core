@@ -8,6 +8,7 @@ import {
     updateKnowledgeIntakeReviewItem,
 } from '../../src/lib/answerlattice/knowledgeIntake';
 import { generateAnswerlatticeProductStarterPack } from '../../src/lib/answerlattice/firstTrustedAnswerPackServer';
+import { normalizeAnswerlatticeRetrievalFaq } from '../../src/lib/answerlattice/faqContent';
 import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
@@ -130,12 +131,45 @@ async function run(): Promise<void> {
         modifiedOn: Timestamp.now(),
     }, { merge: true });
 
+    const corroboratingSourceId = `kis_${'e'.repeat(28)}`;
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES).doc(corroboratingSourceId).set({
+            id: corroboratingSourceId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            jobId,
+            type: 'faq',
+            title: 'Billing failures',
+            status: 'ready',
+            contentText: 'Question: Why did my invoice fail?\nAnswer: Open Billing, inspect the failed invoice, and retry with an active payment method.',
+            contentExcerpt: 'Question: Why did my invoice fail?',
+            contentHash: 'c'.repeat(64),
+            tags: ['payments'],
+            contextKeys: ['invoice'],
+            entityIds: [],
+            metadata: {},
+            errorMessage: null,
+            createdOn,
+            modifiedOn: createdOn,
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(jobId).set({
+            sourceCount: 2,
+            readySourceCount: 2,
+            modifiedOn: Timestamp.now(),
+        }, { merge: true }),
+    ]);
+
     const second = await analyzeKnowledgeIntakeJob(scope, jobId, actor);
     assert.equal(second.created, 0, 're-analysis must not rewrite deterministic drafts');
     const secondBundle = await getKnowledgeIntakeBundle(scope, jobId);
     const preserved = secondBundle.reviewItems.find(item => item.id === ownerEdited.id);
     assert.equal(preserved?.status, 'accepted', 'owner review status must survive re-analysis');
     assert.equal(preserved?.title, 'Owner-approved billing answer', 'owner edits must survive re-analysis');
+    assert.deepEqual(
+        preserved?.sourceIds,
+        [sourceId, corroboratingSourceId],
+        're-analysis must add corroborating evidence without rewriting owner content',
+    );
     assert.equal(secondBundle.job?.acceptedItemCount, 1, 'job counters must be rebuilt from current review state');
 
     const faqItem = secondBundle.reviewItems.find(item => item.target === 'faq');
@@ -156,6 +190,11 @@ async function run(): Promise<void> {
     const publishedFaq = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(publishResult.published[0].id).get();
     assert.equal(publishedFaq.exists, true);
     assert.equal(publishedFaq.data()?.intakeReviewItemId, faqItem.id);
+    assert.deepEqual(publishedFaq.data()?.intakeSourceIds, [sourceId, corroboratingSourceId]);
+    assert.ok(
+        normalizeAnswerlatticeRetrievalFaq(publishedFaq.data(), publishedFaq.id, scope),
+        'intake-published FAQs must remain eligible for FAQ retrieval',
+    );
     const publishedBundle = await getKnowledgeIntakeBundle(scope, jobId);
     assert.equal(publishedBundle.job?.status, 'published');
     assert.equal(
@@ -223,6 +262,18 @@ async function run(): Promise<void> {
             },
         };
     };
+    await assert.rejects(
+        () => generateAnswerlatticeProductStarterPack(
+            scope,
+            packJobId,
+            'bad',
+            actor,
+            { generateContent: validProvider },
+        ),
+        /request is invalid/,
+        'direct product-pack calls must enforce the same bounded request identity as the API',
+    );
+    assert.equal(providerCalls, 0, 'an invalid product-pack request must fail before provider work');
     const generatedPack = await generateAnswerlatticeProductStarterPack(
         scope,
         packJobId,
@@ -235,7 +286,11 @@ async function run(): Promise<void> {
     assert.equal(generatedPack.cases.length, 10);
     assert.equal(generatedPack.usage.unitsConsumed, 1);
     assert.equal(providerCalls, 1);
-    assert.ok(generatedPack.reviewItems.every(item => item.status === 'draft' && item.launchPack?.sourceIds[0] === packSourceId));
+    assert.ok(generatedPack.reviewItems.every(item => (
+        item.status === 'draft'
+        && item.sourceIds?.[0] === packSourceId
+        && item.launchPack?.sourceIds[0] === packSourceId
+    )));
     const unsupportedPackItem = generatedPack.reviewItems[9];
     assert.equal(unsupportedPackItem?.answer, undefined, 'missing evidence must not be stored as an answer');
     assert.equal(unsupportedPackItem?.body, undefined, 'missing evidence must not be stored in the canonical proposal body');
@@ -376,6 +431,22 @@ async function run(): Promise<void> {
     const concurrentPack = await runningGeneration;
     assert.equal(concurrentPack.reviewItems.length, 10);
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 2);
+
+    const canonicalPackItem = concurrentPack.reviewItems[0];
+    await updateKnowledgeIntakeReviewItem(scope, packJobId, canonicalPackItem.id, {
+        status: 'accepted',
+    }, actor);
+    const canonicalPublishResult = await publishKnowledgeIntakeJob(scope, packJobId, [canonicalPackItem.id], actor);
+    assert.equal(canonicalPublishResult.published.length, 1);
+    assert.equal(canonicalPublishResult.published[0]?.target, 'canonical_proposal');
+    const canonicalProposal = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+        .doc(canonicalPublishResult.published[0].id)
+        .get();
+    assert.deepEqual(
+        canonicalProposal.data()?.suggestedChange?.proposedEvidence,
+        { sourceIds: [packSourceId], citations: [] },
+        'canonical intake proposals must preserve private source evidence for governance review',
+    );
 
     const wrongProductJobId = 'ZYXWVUTSRQPONMLKJIHG';
     await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(wrongProductJobId).set({

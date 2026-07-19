@@ -1,7 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { helpCenterArticleRouting } from '@constant/navigations';
+import { helpCenterArticleRouting, helpCenterTabRouting } from '@constant/navigations';
 import { updateFaqFeedbackGeneric } from '@database/feedback/genericFeedback';
 import { useFeedback } from '@hook/useFeedback';
 import { fetchAnswerlatticePublicFaqs } from '@lib/answerlattice/publicContentClient';
@@ -29,6 +29,7 @@ const FallbackFaqs = () => {
 };
 
 const FaqAnswer = ({ faq }: { faq: AnswerlatticePublicFaq }) => {
+    const t = useTranslations('HelpCenter');
     const feedback = useFeedback(
         {
             contentType: 'faq',
@@ -37,8 +38,8 @@ const FaqAnswer = ({ faq }: { faq: AnswerlatticePublicFaq }) => {
             initialDislikes: faq.dislikes || 0,
         },
         {
-            updateFeedback: async (contentId, type, increment) => {
-                return await updateFaqFeedbackGeneric(contentId, type, increment);
+            updateFeedback: async (contentId, type, increment, _pageId, comment, action) => {
+                return await updateFaqFeedbackGeneric(contentId, type, increment, comment, action);
             },
             storeFeedback: (scope, userId, contentId, type) => {
                 storeContentFeedback('faq', scope, userId, contentId, type);
@@ -67,7 +68,7 @@ const FaqAnswer = ({ faq }: { faq: AnswerlatticePublicFaq }) => {
                     icon={<LuBookOpen />}
                     style={{ alignSelf: 'flex-start', paddingInline: 0 }}
                 >
-                    Read full article
+                    {t('readFaq')}
                 </Button>
             )}
             <FeedbackSection
@@ -79,13 +80,15 @@ const FaqAnswer = ({ faq }: { faq: AnswerlatticePublicFaq }) => {
                 onFeedback={feedback.handleFeedback}
                 onFeedbackSubmit={feedback.handleFeedbackSubmit}
                 onModalClose={() => feedback.setIsFeedbackModalVisible(false)}
-                contentLabel="FAQ"
+                contentLabel={t('typeFaq')}
             />
         </Flex>
     );
 };
 
 const FaqView = () => {
+    const t = useTranslations('HelpCenter');
+    const common = useTranslations('Common');
     const [loading, setLoading] = useState(Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT));
     const [faqs, setFaqs] = useState<AnswerlatticePublicFaq[]>([]);
     const [failed, setFailed] = useState(false);
@@ -119,8 +122,19 @@ const FaqView = () => {
         [faqs],
     );
 
-    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT || failed) {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) {
         return <FallbackFaqs />;
+    }
+
+    if (failed) {
+        return (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={common('error')}>
+                <Flex justify="center" wrap gap={8}>
+                    <Button href={helpCenterTabRouting('kb')}>{t('knowledgeBase')}</Button>
+                    <Button type="primary" href={helpCenterTabRouting('ticket')}>{t('submitTicket')}</Button>
+                </Flex>
+            </Empty>
+        );
     }
 
     if (loading) {
@@ -128,7 +142,7 @@ const FaqView = () => {
     }
 
     if (faqs.length === 0) {
-        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No FAQs published yet" />;
+        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('readFaqDesc')} />;
     }
 
     return <Collapse accordion items={items} />;

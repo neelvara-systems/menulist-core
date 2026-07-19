@@ -130,11 +130,16 @@
     // ===== STATE =====
     var isOpen = false;
     var forceHidden = false;
+    var runtimeDenied = false;
     var container = null;
     var iframe = null;
     var launcher = null;
     var productContext = null;
     var pendingSuggestion = null;
+    var pendingSuggestionContext = null;
+    var pendingSuggestionContextKey = null;
+    var pendingSuggestionInteractionId = null;
+    var pendingSuggestionClicked = false;
     var predictiveRequestTimer = null;
     var predictiveSuggestionCache = {};
     var predictiveSuggestionCacheTtlMs = 60000;
@@ -152,6 +157,8 @@
     var activeGuidance = null;
     var activeGuidanceTarget = null;
     var guidanceOverlay = null;
+    var guidanceTargetLookupTimer = null;
+    var predictiveSessionId = null;
 
     function isValidChoice(value, allowed) {
         return allowed.indexOf(value) !== -1;
@@ -184,7 +191,7 @@
             route = route.slice(0, -1);
         }
         if (route.length > 180) return null;
-        if (route.indexOf('*') !== -1 && route.slice(-1) !== '*') return null;
+        if (route.indexOf('*') !== -1 && route.slice(-2) !== '/*') return null;
         return route;
     }
 
@@ -214,9 +221,6 @@
         if (pattern.slice(-2) === '/*') {
             var base = pattern.slice(0, -2) || '/';
             return path === base || path.indexOf(base + '/') === 0;
-        }
-        if (pattern.slice(-1) === '*') {
-            return path.indexOf(pattern.slice(0, -1)) === 0;
         }
         return path === pattern;
     }
@@ -329,6 +333,7 @@
     }
 
     function applyConfig(config) {
+        var wasPredictiveEnabled = predictiveEnabled;
         var merged = {};
         Object.keys(defaultConfig).forEach(function (key) {
             merged[key] = explicitConfig[key] !== undefined
@@ -354,12 +359,17 @@
         mobileVisibility = merged.mobileVisibility;
         poweredByVisible = merged.poweredByVisible;
         blockedRoutes = normalizeBlockedRoutes(merged.blockedRoutes);
-        predictiveEnabled = Boolean(merged.predictiveEnabled);
+        var nextPredictiveEnabled = Boolean(merged.predictiveEnabled);
+        if (predictiveEnabled && !nextPredictiveEnabled) clearPendingSuggestion(true);
+        predictiveEnabled = nextPredictiveEnabled;
         guidedResolutionEnabled = Boolean(merged.guidedResolutionEnabled);
         s = sizes[size] || sizes.medium;
 
         updateWidgetChrome();
         syncRouteAvailability();
+        if (!wasPredictiveEnabled && predictiveEnabled && productContext && !runtimeDenied && !forceHidden) {
+            requestPredictiveHelp(productContext);
+        }
     }
 
     function sanitizeContextString(value, maxLength) {
@@ -393,7 +403,17 @@
         if (route.charAt(0) !== '/') route = '/' + route;
         route = route.replace(/\/{2,}/g, '/');
         if (route.length > 1 && route.slice(-1) === '/') route = route.slice(0, -1);
+        if (route.indexOf('*') !== -1) return null;
         return route.slice(0, 180);
+    }
+
+    function sanitizeContextVersion(value) {
+        if (typeof value !== 'string') return null;
+        var normalized = value.trim().replace(/^v/i, '');
+        if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(normalized)) return null;
+        var parts = normalized.split('.');
+        if (Number(parts[0]) <= 0 || Number(parts[1] || 0) > 999 || Number(parts[2] || 0) > 999) return null;
+        return normalized;
     }
 
     function getPayloadByteLength(value) {
@@ -407,14 +427,13 @@
     function sanitizeContextPayload(ctx) {
         if (!ctx || typeof ctx !== 'object' || Array.isArray(ctx)) return null;
         var output = {};
-        ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].forEach(function (key) {
+        ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state'].forEach(function (key) {
             var value = sanitizeContextString(ctx[key], 100);
             if (value) output[key] = value;
         });
         var path = normalizeContextPath(ctx.path);
         if (path) {
             output.path = path;
-            if (!output.page) output.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home', 100);
         }
         var title = sanitizeContextTitle(ctx.title, 120);
         if (title) output.title = title;
@@ -425,6 +444,8 @@
         }
         var locale = sanitizeContextString(ctx.locale, 24);
         if (locale) output.locale = locale;
+        var version = sanitizeContextVersion(ctx.version);
+        if (version) output.version = version;
         if (typeof ctx.contextVersion === 'number' && ctx.contextVersion >= 1 && ctx.contextVersion <= 10) {
             output.contextVersion = Math.floor(ctx.contextVersion);
         }
@@ -434,7 +455,7 @@
                 .map(function (hint) { return sanitizeContextString(hint, 64); })
                 .filter(Boolean);
         }
-        var hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'path', 'title', 'role', 'locale'].some(function (key) {
+        var hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state', 'version', 'path', 'title', 'role', 'locale'].some(function (key) {
             return Boolean(output[key]);
         }) || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
         if (!hasMeaningfulContext) return null;
@@ -473,6 +494,150 @@
         return getPayloadByteLength(output) <= maxVisitorPayloadBytes ? output : null;
     }
 
+    function createPredictiveRuntimeId(prefix) {
+        var bytes = new Uint8Array(12);
+        try {
+            if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                window.crypto.getRandomValues(bytes);
+            } else {
+                for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+            }
+        } catch (_) {
+            for (var j = 0; j < bytes.length; j++) bytes[j] = Math.floor(Math.random() * 256);
+        }
+        return prefix + '_' + Array.prototype.map.call(bytes, function (value) {
+            return value.toString(16).padStart(2, '0');
+        }).join('');
+    }
+
+    function getPredictiveSessionId() {
+        if (predictiveSessionId) return predictiveSessionId;
+        var storageKey = 'answerlattice-predictive-session:' + apiKey.slice(0, 14);
+        try {
+            var stored = window.sessionStorage && window.sessionStorage.getItem(storageKey);
+            if (typeof stored === 'string' && /^[A-Za-z0-9_.:-]{8,120}$/.test(stored)) {
+                predictiveSessionId = stored;
+                return predictiveSessionId;
+            }
+        } catch (_) {}
+        predictiveSessionId = createPredictiveRuntimeId('aps');
+        try {
+            if (window.sessionStorage) window.sessionStorage.setItem(storageKey, predictiveSessionId);
+        } catch (_) {}
+        return predictiveSessionId;
+    }
+
+    function sanitizePredictiveText(value, maxLength, allowEmpty) {
+        if (typeof value !== 'string') return allowEmpty ? '' : null;
+        var normalized = value.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, maxLength);
+        return normalized || (allowEmpty ? '' : null);
+    }
+
+    function sanitizePredictiveTriggerId(value) {
+        if (typeof value !== 'string') return null;
+        var normalized = value.trim();
+        if (!normalized || normalized.length > 180 || normalized === '.' || normalized === '..' || normalized.indexOf('/') !== -1) return null;
+        return normalized;
+    }
+
+    function sanitizePredictivePublicHttpsUrl(value) {
+        if (typeof value !== 'string' || value.length > 500) return null;
+        try {
+            var parsed = new URL(value);
+            var host = parsed.hostname.toLowerCase();
+            if (
+                parsed.protocol !== 'https:'
+                || parsed.username
+                || parsed.password
+                || host === 'localhost'
+                || host.endsWith('.localhost')
+                || host.endsWith('.local')
+                || /^(?:0|10|127|169\.254|172\.(?:1[6-9]|2\d|3[01])|192\.168)\./.test(host)
+            ) return null;
+            return parsed.toString();
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function sanitizePredictiveProcedure(value) {
+        if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.steps)) return null;
+        if (value.steps.length < 1 || value.steps.length > 12) return null;
+        var allowedActions = ['open', 'navigate', 'click', 'select', 'enter', 'toggle', 'submit', 'confirm', 'download', 'upload', 'copy', 'paste', 'scroll', 'expand', 'collapse'];
+        var steps = value.steps.map(function (step) {
+            if (!step || typeof step !== 'object' || Array.isArray(step)) return null;
+            var instruction = sanitizePredictiveText(step.instruction, 80, false);
+            var target = step.target === undefined ? null : normalizeGuidanceSemanticId(step.target);
+            var expectedEvent = step.expectedEvent === undefined ? null : normalizeGuidanceSemanticId(step.expectedEvent);
+            if (!Number.isInteger(step.stepOrder) || step.stepOrder < 1 || step.stepOrder > 12 || allowedActions.indexOf(step.action) === -1 || !instruction) return null;
+            if (step.target !== undefined && !target) return null;
+            if (step.expectedEvent !== undefined && !expectedEvent) return null;
+            return {
+                stepOrder: step.stepOrder,
+                action: step.action,
+                instruction: instruction,
+                ...(target ? { target: target } : {}),
+                ...(expectedEvent ? { expectedEvent: expectedEvent } : {}),
+                ...(sanitizePredictiveText(step.expectedResult, 120, false) ? { expectedResult: sanitizePredictiveText(step.expectedResult, 120, false) } : {}),
+                ...(sanitizePredictiveText(step.troubleshootingHint, 200, false) ? { troubleshootingHint: sanitizePredictiveText(step.troubleshootingHint, 200, false) } : {}),
+            };
+        });
+        if (steps.some(function (step) { return !step; })) return null;
+        steps.sort(function (left, right) { return left.stepOrder - right.stepOrder; });
+        if (!steps.every(function (step, index) { return step.stepOrder === index + 1; })) return null;
+        var procedureSlug = value.procedureSlug === undefined ? null : normalizeGuidanceSemanticId(value.procedureSlug);
+        if (value.procedureSlug !== undefined && (!procedureSlug || procedureSlug.indexOf('.') !== -1 || procedureSlug.indexOf(':') !== -1 || procedureSlug.indexOf('-') !== -1)) return null;
+        return {
+            ...(procedureSlug ? { procedureSlug: procedureSlug } : {}),
+            steps: steps,
+        };
+    }
+
+    function sanitizePredictiveSuggestion(value) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        var triggerId = sanitizePredictiveTriggerId(value.triggerId);
+        var title = sanitizePredictiveText(value.title, 160, false);
+        var summary = sanitizePredictiveText(value.summary, 600, true);
+        var allowedTypes = ['help_card', 'workflow_guide', 'link_article', 'known_issue'];
+        if (!triggerId || !title || allowedTypes.indexOf(value.type) === -1) return null;
+        var articles = Array.isArray(value.articles) ? value.articles.slice(0, 3).map(function (article) {
+            if (!article || typeof article !== 'object' || Array.isArray(article)) return null;
+            var id = sanitizePredictiveTriggerId(article.id);
+            var articleTitle = sanitizePredictiveText(article.title, 160, false);
+            return id && articleTitle ? { id: id, title: articleTitle } : null;
+        }).filter(Boolean) : [];
+        var procedure = value.type === 'workflow_guide' ? sanitizePredictiveProcedure(value.procedure) : null;
+        var knownIssue = null;
+        if (value.type === 'known_issue') {
+            if (!value.knownIssue || typeof value.knownIssue !== 'object' || Array.isArray(value.knownIssue)) return null;
+            var severity = ['info', 'degraded', 'outage'].indexOf(value.knownIssue.severity) !== -1 ? value.knownIssue.severity : null;
+            if (!severity) return null;
+            var statusPageUrl = sanitizePredictivePublicHttpsUrl(value.knownIssue.statusPageUrl);
+            knownIssue = {
+                severity: severity,
+                ...(statusPageUrl ? { statusPageUrl: statusPageUrl } : {}),
+            };
+        }
+        return {
+            triggerId: triggerId,
+            type: value.type,
+            title: title,
+            summary: summary,
+            ...(articles.length > 0 ? { articles: articles } : {}),
+            ...(procedure ? { procedure: procedure } : {}),
+            ...(knownIssue ? { knownIssue: knownIssue } : {}),
+        };
+    }
+
+    function readPredictiveResponse(response) {
+        var contentLength = Number(response.headers && response.headers.get('content-length') || 0);
+        if (Number.isFinite(contentLength) && contentLength > 32768) return Promise.resolve(null);
+        return response.text().then(function (body) {
+            if (!body || body.length > 32768) return null;
+            try { return JSON.parse(body); } catch (_) { return null; }
+        });
+    }
+
     function readInitialContextFromAttributes() {
         var ctx = {
             contextVersion: 1,
@@ -486,6 +651,8 @@
             role: script.getAttribute('data-role'),
             locale: script.getAttribute('data-locale'),
             plan: script.getAttribute('data-plan'),
+            state: script.getAttribute('data-state'),
+            version: script.getAttribute('data-version'),
         };
         var hints = script.getAttribute('data-entity-hints');
         if (hints) {
@@ -510,6 +677,10 @@
         if (iframe && iframe.contentWindow) {
             iframe.contentWindow.postMessage(message, widgetHost);
         }
+    }
+
+    function sendBootstrapToIframe() {
+        postToIframe({ type: 'answerlattice-widget-bootstrap', apiKey: apiKey });
     }
 
     function normalizeGuidanceSemanticId(value) {
@@ -589,6 +760,11 @@
         guidanceOverlay = null;
     }
 
+    function clearGuidanceTargetLookupTimer() {
+        if (guidanceTargetLookupTimer) window.clearTimeout(guidanceTargetLookupTimer);
+        guidanceTargetLookupTimer = null;
+    }
+
     function showGuidanceHighlight(target) {
         clearGuidanceHighlight();
         activeGuidanceTarget = target;
@@ -626,8 +802,41 @@
     }
 
     function clearGuidance() {
+        clearGuidanceTargetLookupTimer();
         clearGuidanceHighlight();
         activeGuidance = null;
+    }
+
+    function reportGuidanceStepResult(sessionId, stepOrder, targetId, expectedEvent, attempt) {
+        if (
+            !activeGuidance
+            || activeGuidance.sessionId !== sessionId
+            || activeGuidance.stepOrder !== stepOrder
+        ) return;
+
+        var target = targetId ? findGuidanceTarget(targetId) : null;
+        if (!target && targetId && attempt < 4) {
+            guidanceTargetLookupTimer = window.setTimeout(function () {
+                reportGuidanceStepResult(sessionId, stepOrder, targetId, expectedEvent, attempt + 1);
+            }, 200);
+            return;
+        }
+        guidanceTargetLookupTimer = null;
+        if (target) showGuidanceHighlight(target);
+        postToIframe({
+            type: 'answerlattice-guidance-step-result',
+            sessionId: sessionId,
+            stepOrder: stepOrder,
+            targetId: targetId,
+            targetFound: Boolean(target),
+            waitingForEvent: Boolean(expectedEvent),
+        });
+        emitEvent('guidance:step', {
+            stepOrder: stepOrder,
+            targetId: targetId,
+            targetFound: Boolean(target),
+            waitingForEvent: Boolean(expectedEvent),
+        });
     }
 
     function resetGuidanceFromHost(reason) {
@@ -650,6 +859,7 @@
         var expectedEvent = step.expectedEvent ? normalizeGuidanceSemanticId(step.expectedEvent) : null;
         if ((step.target && !targetId) || (step.expectedEvent && !expectedEvent)) return;
 
+        clearGuidanceTargetLookupTimer();
         clearGuidanceHighlight();
         activeGuidance = {
             sessionId: sessionId,
@@ -659,22 +869,7 @@
             routePath: getCurrentRoutePath(),
         };
 
-        var target = targetId ? findGuidanceTarget(targetId) : null;
-        if (target) showGuidanceHighlight(target);
-        postToIframe({
-            type: 'answerlattice-guidance-step-result',
-            sessionId: sessionId,
-            stepOrder: stepOrder,
-            targetId: targetId,
-            targetFound: Boolean(target),
-            waitingForEvent: Boolean(expectedEvent),
-        });
-        emitEvent('guidance:step', {
-            stepOrder: stepOrder,
-            targetId: targetId,
-            targetFound: Boolean(target),
-            waitingForEvent: Boolean(expectedEvent),
-        });
+        reportGuidanceStepResult(sessionId, stepOrder, targetId, expectedEvent, 0);
     }
 
     function emitWorkflowEvent(eventName) {
@@ -730,7 +925,7 @@
     }
 
     function shouldHideLauncher() {
-        return forceHidden || isCurrentRouteBlocked() || launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
+        return runtimeDenied || forceHidden || isCurrentRouteBlocked() || launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
     }
 
     function getLauncherStyles() {
@@ -854,9 +1049,10 @@
         }
 
         iframe = document.createElement('iframe');
-        iframe.src = widgetHost + '/widget/' + encodeURIComponent(apiKey);
+        iframe.src = widgetHost + '/widget/embed';
         iframe.setAttribute('title', 'Help Widget');
         iframe.setAttribute('allow', 'clipboard-write');
+        iframe.setAttribute('referrerpolicy', 'no-referrer');
         Object.assign(iframe.style, { width: '100%', height: '100%', border: 'none', borderRadius: '16px' });
 
         container.appendChild(iframe);
@@ -869,10 +1065,14 @@
     function toggleWidget() { isOpen ? closeWidget() : openWidget(); }
 
     function openWidget() {
-        if (forceHidden) return;
+        if (forceHidden || runtimeDenied) return;
         if (isCurrentRouteBlocked()) return;
         if (isMobile && mobileVisibility === 'hide') return;
         if (!container) createWidget();
+        if (pendingSuggestion && !pendingSuggestionClicked) {
+            pendingSuggestionClicked = true;
+            reportPredictiveInteraction('suggestion_clicked');
+        }
         isOpen = true;
         container.style.display = 'block';
         requestAnimationFrame(function () {
@@ -907,9 +1107,7 @@
     }
 
     function sendSuggestionToIframe() {
-        if (pendingSuggestion && iframe && iframe.contentWindow) {
-            postToIframe({ type: 'answerlattice-predictive-suggestion', suggestion: pendingSuggestion });
-        }
+        postToIframe({ type: 'answerlattice-predictive-suggestion', suggestion: pendingSuggestion });
     }
 
     function sendConfigToIframe() {
@@ -926,6 +1124,7 @@
     }
 
     function syncIframeState() {
+        sendBootstrapToIframe();
         if (isOpen) {
             postToIframe({ type: 'answerlattice-widget-visibility', state: 'open', historyMode: historyMode });
         }
@@ -940,6 +1139,91 @@
         syncIframeState();
         window.setTimeout(syncIframeState, 100);
         window.setTimeout(syncIframeState, 500);
+    }
+
+    function resetPredictiveLauncherCue() {
+        if (!launcher) return;
+        launcher.setAttribute('aria-label', 'Open help widget');
+        launcher.removeAttribute('title');
+        launcher.style.boxShadow = '0 4px 24px rgba(0,0,0,0.15)';
+    }
+
+    function reportPredictiveInteraction(type) {
+        if (
+            !pendingSuggestion
+            || !pendingSuggestionInteractionId
+            || !pendingSuggestionContext
+            || !window.fetch
+        ) return;
+        var page = sanitizeContextString(pendingSuggestionContext.page || pendingSuggestionContext.contextKey, 100);
+        if (!page) return;
+        var payload = {
+            contractVersion: 'answerlattice.predictive.v1',
+            interactionId: pendingSuggestionInteractionId,
+            sessionId: getPredictiveSessionId(),
+            triggerId: pendingSuggestion.triggerId,
+            type: type,
+            page: page,
+        };
+        ['feature', 'workflow', 'plan', 'userRole', 'contextKey'].forEach(function (key) {
+            var value = sanitizeContextString(pendingSuggestionContext[key], 100);
+            if (value) payload[key] = value;
+        });
+        fetch(widgetHost + '/api/answerlattice/predictive-interaction', {
+            method: 'POST',
+            cache: 'no-store',
+            credentials: 'omit',
+            redirect: 'error',
+            referrerPolicy: 'no-referrer',
+            keepalive: type === 'suggestion_dismissed',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey,
+                ...(runtimeAuthorizationToken && runtimeAuthorizationExpiresAt > Date.now()
+                    ? { 'X-Answerlattice-Widget-Runtime': runtimeAuthorizationToken }
+                    : {}),
+            },
+            body: JSON.stringify(payload),
+        }).catch(function () {
+            // Interaction evidence is optional and must never affect the host app.
+        });
+    }
+
+    function clearPendingSuggestion(reportDismissed) {
+        if (reportDismissed && pendingSuggestion && !pendingSuggestionClicked) {
+            reportPredictiveInteraction('suggestion_dismissed');
+        }
+        if (pendingSuggestionContextKey) delete predictiveSuggestionCache[pendingSuggestionContextKey];
+        pendingSuggestion = null;
+        pendingSuggestionContext = null;
+        pendingSuggestionContextKey = null;
+        pendingSuggestionInteractionId = null;
+        pendingSuggestionClicked = false;
+        resetPredictiveLauncherCue();
+        postToIframe({ type: 'answerlattice-predictive-suggestion', suggestion: null });
+    }
+
+    function installPredictiveSuggestion(suggestion, ctx, contextKey) {
+        var normalized = sanitizePredictiveSuggestion(suggestion);
+        if (!normalized) return false;
+        clearPendingSuggestion(false);
+        pendingSuggestion = normalized;
+        pendingSuggestionContext = ctx;
+        pendingSuggestionContextKey = contextKey;
+        pendingSuggestionInteractionId = createPredictiveRuntimeId('api');
+        pendingSuggestionClicked = false;
+        predictiveSuggestionCache[contextKey] = {
+            expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
+            suggestion: normalized,
+        };
+        if (launcher && !isOpen) {
+            launcher.setAttribute('aria-label', 'Open help suggestion');
+            launcher.setAttribute('title', normalized.title || 'Help suggestion');
+            launcher.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.18), 0 4px 24px rgba(0,0,0,0.15)';
+        }
+        reportPredictiveInteraction('suggestion_shown');
+        sendSuggestionToIframe();
+        return true;
     }
 
     function closeWidget() {
@@ -966,17 +1250,27 @@
         if (activeGuidance && activeGuidance.routePath !== getCurrentRoutePath()) {
             resetGuidanceFromHost('route_changed');
         }
-        if ((forceHidden || isCurrentRouteBlocked()) && isOpen) {
+        if ((runtimeDenied || forceHidden || isCurrentRouteBlocked()) && isOpen) {
             closeWidget();
         }
-        if (forceHidden || isCurrentRouteBlocked()) {
+        if (runtimeDenied || forceHidden || isCurrentRouteBlocked()) {
             clearGuidance();
+            clearPendingSuggestion(true);
         }
         updateWidgetChrome();
     }
 
+    function denyWidgetRuntime() {
+        runtimeDenied = true;
+        runtimeAuthorizationRequired = true;
+        runtimeAuthorizationToken = null;
+        runtimeAuthorizationExpiresAt = 0;
+        syncRouteAvailability();
+    }
+
     function hideWidget() {
         forceHidden = true;
+        clearPendingSuggestion(true);
         closeWidget();
         if (container) {
             container.style.display = 'none';
@@ -1024,20 +1318,12 @@
         setContext: function (ctx) {
             var sanitizedContext = sanitizeContextPayload(ctx);
             if (activeGuidance) resetGuidanceFromHost('context_changed');
+            clearPendingSuggestion(true);
             productContext = sanitizedContext;
-            pendingSuggestion = null;
-            if (launcher) {
-                launcher.setAttribute('aria-label', 'Open help widget');
-                launcher.removeAttribute('title');
-                launcher.style.boxShadow = '0 4px 24px rgba(0,0,0,0.15)';
-            }
-            if (!sanitizedContext) {
-                sendSuggestionToIframe();
-            }
             emitEvent('context', { context: sanitizedContext });
             sendContextToIframe();
             syncRouteAvailability();
-            if (sanitizedContext && !forceHidden && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
+            if (sanitizedContext && !runtimeDenied && !forceHidden && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
         identify: function (visitor) {
@@ -1106,14 +1392,16 @@
 
     function requestPredictiveHelp(ctx) {
         if (!predictiveEnabled) return;
-        if (forceHidden) return;
-        if (!ctx || !ctx.page || !window.fetch) return;
+        if (forceHidden || runtimeDenied) return;
+        if (!ctx || !window.fetch) return;
+        var predictivePage = sanitizeContextString(ctx.page || ctx.contextKey, 100);
+        if (!predictivePage) return;
         if (isCurrentRouteBlocked()) return;
         if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);
 
         var contextKey = JSON.stringify({
             contextKey: ctx.contextKey || '',
-            page: ctx.page || '',
+            page: predictivePage,
             feature: ctx.feature || '',
             workflow: ctx.workflow || '',
             plan: ctx.plan || '',
@@ -1122,26 +1410,32 @@
         });
         var cachedSuggestion = predictiveSuggestionCache[contextKey];
         if (cachedSuggestion && cachedSuggestion.expiresAt > Date.now()) {
-            pendingSuggestion = cachedSuggestion.suggestion || null;
-            if (pendingSuggestion && launcher && !isOpen) {
-                launcher.setAttribute('aria-label', 'Open help suggestion');
-                launcher.setAttribute('title', pendingSuggestion.title || 'Help suggestion');
-                launcher.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.18), 0 4px 24px rgba(0,0,0,0.15)';
-            }
-            sendSuggestionToIframe();
+            if (cachedSuggestion.suggestion) installPredictiveSuggestion(cachedSuggestion.suggestion, ctx, contextKey);
             return;
         }
 
         predictiveRequestTimer = window.setTimeout(function () {
-            var predictivePayload = Object.assign({}, ctx);
-            if (visitorContext && visitorContext.id) {
-                predictivePayload.userId = visitorContext.id;
-            }
+            var predictivePayload = {
+                page: predictivePage,
+                userId: getPredictiveSessionId(),
+            };
+            ['feature', 'workflow', 'plan', 'userRole'].forEach(function (key) {
+                var value = sanitizeContextString(ctx[key], key === 'plan' || key === 'userRole' ? 80 : 100);
+                if (value) predictivePayload[key] = value;
+            });
+            if (Array.isArray(ctx.entityHints)) predictivePayload.entityHints = ctx.entityHints.slice(0, 5);
             fetch(widgetHost + '/api/answerlattice/predictive-help', {
                 method: 'POST',
+                cache: 'no-store',
+                credentials: 'omit',
+                redirect: 'error',
+                referrerPolicy: 'no-referrer',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
+                    ...(runtimeAuthorizationToken && runtimeAuthorizationExpiresAt > Date.now()
+                        ? { 'X-Answerlattice-Widget-Runtime': runtimeAuthorizationToken }
+                        : {}),
                 },
                 body: JSON.stringify(predictivePayload),
             }).then(function (response) {
@@ -1152,20 +1446,15 @@
                     };
                     return null;
                 }
-                return response.json();
+                return readPredictiveResponse(response);
             }).then(function (data) {
                 if (!data || !data.suggestion) return;
-                predictiveSuggestionCache[contextKey] = {
-                    expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
-                    suggestion: data.suggestion,
-                };
-                pendingSuggestion = data.suggestion;
-                if (launcher && !isOpen) {
-                    launcher.setAttribute('aria-label', 'Open help suggestion');
-                    launcher.setAttribute('title', data.suggestion.title || 'Help suggestion');
-                    launcher.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.18), 0 4px 24px rgba(0,0,0,0.15)';
+                if (!installPredictiveSuggestion(data.suggestion, ctx, contextKey)) {
+                    predictiveSuggestionCache[contextKey] = {
+                        expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
+                        suggestion: null,
+                    };
                 }
-                sendSuggestionToIframe();
             }).catch(function () {
                 // Predictive help is optional and must never affect the host app.
             });
@@ -1212,12 +1501,17 @@
     function applyRuntimeAuthorization(value) {
         var authorization = sanitizeRuntimeAuthorization(value);
         if (!authorization) return false;
+        var tokenChanged = runtimeAuthorizationToken !== authorization.token;
         runtimeAuthorizationRequired = authorization.required;
         runtimeAuthorizationToken = authorization.token;
         runtimeAuthorizationExpiresAt = authorization.expiresAt;
+        if (tokenChanged) predictiveSuggestionCache = {};
         remoteConfigRetryCount = 0;
         scheduleRuntimeAuthorizationRefresh();
         sendSecurityContextToIframe();
+        if (predictiveEnabled && productContext && !runtimeDenied && !forceHidden) {
+            requestPredictiveHelp(productContext);
+        }
         return true;
     }
 
@@ -1255,20 +1549,16 @@
     }
 
     function buildRemoteConfigUrl() {
-        var params = [];
-        function addParam(key, value) {
-            if (!value || typeof value !== 'string') return;
-            params.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
-        }
-
-        addParam('path', getCurrentRoutePath());
+        var url = new URL(widgetHost + '/api/widget/config');
+        var runtimePath = normalizeContextPath(window.location && window.location.pathname);
+        if (runtimePath) url.searchParams.set('path', runtimePath);
         if (productContext) {
-            addParam('contextKey', productContext.contextKey || '');
-            addParam('feature', productContext.feature || '');
-            addParam('page', productContext.page || '');
+            ['contextKey', 'feature', 'page'].forEach(function (key) {
+                var value = sanitizeContextString(productContext[key], 120);
+                if (value) url.searchParams.set(key, value);
+            });
         }
-
-        return widgetHost + '/api/widget/config' + (params.length ? '?' + params.join('&') : '');
+        return url.toString();
     }
 
     function loadRemoteConfig(forceRefresh) {
@@ -1285,6 +1575,10 @@
         remoteConfigRequestInFlight = true;
         fetch(buildRemoteConfigUrl(), {
             method: 'GET',
+            cache: 'no-store',
+            credentials: 'omit',
+            redirect: 'error',
+            referrerPolicy: 'no-referrer',
             headers: { 'X-API-Key': apiKey },
         }).then(function (response) {
             if (response.status === 401 || response.status === 403 || response.status === 404) {
@@ -1293,7 +1587,10 @@
             if (response.status !== 200) return null;
             return response.json();
         }).then(function (data) {
-            if (data && data.terminal) return;
+            if (data && data.terminal) {
+                denyWidgetRuntime();
+                return;
+            }
             if (!data || !data.config || !applyRuntimeAuthorization(data.runtimeAuthorization)) {
                 scheduleRemoteConfigRetry();
                 return;

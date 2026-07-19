@@ -29,7 +29,7 @@ const CRITERIA = [
     { label: 'Your SaaS app is live, beta, or close to launch', description: 'A working product with billing, onboarding, settings, release notes, or other user-facing flows to support.' },
     { label: 'You know the first support questions', description: 'The same setup, billing, role, release, or error questions already appear, or are predictable before launch.' },
     { label: 'Your support knowledge is scattered', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, common answers, or founder replies exist but are not yet organized.' },
-    { label: 'You can install one script', description: 'You can add the widget, allow domains, block routes, and pass safe page context.' },
+    { label: 'You can install one script', description: 'You can add the widget, allow exact app origins, hide it on selected routes, and pass safe page context.' },
     { label: 'You want answer approval', description: 'You want to approve answers before they become official support guidance.' },
 ];
 
@@ -130,7 +130,11 @@ export default function AnswerlatticeGetStartedPage({ searchParams }: Answerlatt
                             </div>
 
                             {/* Right: Self-service signup form */}
-                            <OnboardingForm initialCurrency={initialCurrency} initialPlanId={initialPlanId} />
+                            <OnboardingForm
+                                basePath={basePath}
+                                initialCurrency={initialCurrency}
+                                initialPlanId={initialPlanId}
+                            />
                         </div>
                     </div>
                 </section>

@@ -22,10 +22,9 @@ interface SearchKnowledgeBaseParams {
     conversationHistory?: ChatMessage[];
     image?: UserUploadedFileType;
     productContext?: Record<string, any> | null;
-    sessionFailureCount?: number;
 }
 
-export async function searchKnowledgeBase({ query, mode, conversationHistory, image, productContext, sessionFailureCount }: SearchKnowledgeBaseParams): Promise<SearchAPIResponseType> {
+export async function searchKnowledgeBase({ query, mode, conversationHistory, image, productContext }: SearchKnowledgeBaseParams): Promise<SearchAPIResponseType> {
     // Strip unnecessary fields from conversation history before sending to AI.
     // Prior image URLs are intentionally not replayed; each image is context for
     // the single question it was attached to.
@@ -50,7 +49,6 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
             context: cleanContext, // Send cleaned conversation history
             productContext: productContext || undefined,
             imageUrl: image?.url?.startsWith('https://') ? image.url : undefined,
-            sessionFailureCount, // AI Failure Escalation (Item #8) — S3 trigger
         })
     });
 

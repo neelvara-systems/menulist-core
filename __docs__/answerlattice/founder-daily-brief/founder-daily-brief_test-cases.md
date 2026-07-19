@@ -17,6 +17,11 @@
 | FDB-013 | More than four candidate actions | Response keeps one primary and at most three secondary actions. |
 | FDB-014 | Confirmed resolution low or same-session recontact high | Brief adds a governed Answer Tests review action without reading raw conversations. |
 | FDB-015 | Founder selects `I shipped a change` | Existing changelog create form opens once; no write occurs until Save. |
+| FDB-016 | Support-only caller lacks governance/readiness/knowledge permission | Brief omits those routes, launch verification, product-change control, and prepared review card. |
+| FDB-017 | One summary is missing, malformed, or older than 48 hours | Source health names the source, unavailable metrics remain unavailable, and status is not falsely healthy. |
+| FDB-018 | All six documents exist but contain no useful evidence | Brief remains `insufficient_data`. |
+| FDB-019 | Summary timestamp is more than five minutes in the future | Source is invalid and cannot support a confident action. |
+| FDB-020 | Browser receives malformed, oversized, redirected, or wrong-enum response | Fixed retry state renders; no server payload is trusted. |
 
 ## Regression Checks
 
@@ -25,3 +30,6 @@
 - focused ESLint on Support Assistant and ownerSupportAssistant server file
 - `npm run verify:answerlattice-founder-daily-brief`
 - `npm run verify:answerlattice-founder-support-controls`
+- `npm run test:answerlattice-owner-support-assistant-contracts`
+- `npm run test:answerlattice-chat-analytics-contracts`
+- `npm run test:answerlattice-chat-analytics:scheduler`

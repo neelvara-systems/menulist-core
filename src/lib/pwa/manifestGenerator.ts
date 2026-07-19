@@ -13,6 +13,11 @@
  */
 
 import { APP_THEME_COLOR } from '@constant/common';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
+import { normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
 import { deriveCustomerAppShortName, getCustomerAppIconUrl } from './customerAppAssets';
 import { buildStoreManifestId } from './manifestIdentity';
 import { buildShortcuts, type ShortcutStoreInfo } from './shortcutsBuilder';
@@ -32,6 +37,8 @@ export interface ManifestStoreInput {
     origin?: string;
     /** Store-level launch URL path, defaults to '/'. */
     startUrl?: string;
+    /** Owner-controlled public language used by install and shortcut chrome. */
+    language?: string;
     /** Shortcut info (phone / mapsUrl) — omit to render only the Menu shortcut. */
     shortcutInfo?: ShortcutStoreInfo;
     /** Short description rendered by Android Chrome's install dialog and PWA listings. */
@@ -60,7 +67,7 @@ export interface WebAppManifest {
     theme_color: string;
     background_color: string;
     lang: string;
-    dir: 'ltr';
+    dir: 'ltr' | 'rtl';
     /**
      * Categories — helps PWA listings (Android "Installed Apps" / curated PWA
      * directories) classify the app. Restaurant-specific defaults.
@@ -100,6 +107,8 @@ export interface WebAppManifest {
 
 export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const startUrl = input.startUrl && input.startUrl.length > 0 ? input.startUrl : '/';
+    const activeLanguage = normalizePublicLanguageCode(input.language) || 'en';
+    const t = createPublicCustomerTranslator(activeLanguage);
     const shortName = deriveCustomerAppShortName(input.displayName, input.shortName);
     const themeColor = input.themeColor || APP_THEME_COLOR;
     const backgroundColor = input.backgroundColor || '#ffffff';
@@ -122,8 +131,8 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     ];
 
     const shortcuts = input.shortcutInfo
-        ? buildShortcuts(input.shortcutInfo)
-        : buildShortcuts({ menuPath: startUrl });
+        ? buildShortcuts(input.shortcutInfo, activeLanguage)
+        : buildShortcuts({ menuPath: startUrl }, activeLanguage);
 
     // Screenshots — one narrow (phone) and one wide (desktop) sourced from our
     // dynamic screenshot endpoint. Android Chrome uses `narrow` for the richer
@@ -135,14 +144,14 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
             sizes: '1080x1920',
             type: 'image/png',
             form_factor: 'narrow',
-            label: `${input.displayName} — digital menu`,
+            label: `${input.displayName} — ${t('menu.menuOffering')}`,
         },
         {
             src: `${screenshotBase}/wide`,
             sizes: '1920x1080',
             type: 'image/png',
             form_factor: 'wide',
-            label: `${input.displayName} — digital menu`,
+            label: `${input.displayName} — ${t('menu.menuOffering')}`,
         },
     ];
 
@@ -166,8 +175,8 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
         orientation: 'portrait-primary',
         theme_color: themeColor,
         background_color: backgroundColor,
-        lang: 'en',
-        dir: 'ltr',
+        lang: activeLanguage,
+        dir: getPublicCustomerLanguageDirection(activeLanguage),
         categories,
         ...(input.description ? { description: input.description } : {}),
         icons,

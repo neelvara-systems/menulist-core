@@ -8,6 +8,7 @@ import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentCom
 import {
     ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
     ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT,
+    getAnswerlatticeSupportTicketDisplayId,
     isAnswerlatticeTicketStatusTransitionAllowed,
     normalizeAnswerlatticeSupportTicketId,
     parseAnswerlatticeSupportTicketDocument,
@@ -54,7 +55,7 @@ const getDocRef = (docId: string) => {
     return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId)
 }
 
-const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase()
+const getDisplayId = getAnswerlatticeSupportTicketDisplayId;
 
 export type SupportTicketCreateResult = SupportTicketType & {
     id: string;
@@ -196,6 +197,17 @@ const isPlatformTicketSession = (session: any): boolean => {
     return platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
 };
 
+const isPlatformTicketAdminSession = (session: any): boolean => {
+    const platformRole = String(
+        session?.platformRole
+        || session?.user?.platformRole
+        || session?.role
+        || session?.user?.role
+        || ''
+    ).toUpperCase();
+    return platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+};
+
 const getSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope | undefined => {
     const scope = resolveAnswerlatticeSessionScope(session);
     return scope ? { tId: scope.tenantId, sId: scope.storeId } : undefined;
@@ -305,7 +317,12 @@ const buildDeletedSupportTicketsQuery = async (maxResults = 100) => {
  * @param data - File data with base64 content
  * @param type - File category (e.g., 'documents', 'messages')
  */
-const uploadImage = async (data: SupportTicketAttachmentUpload, type = 'documents', stableId?: string) => {
+const uploadImage = async (
+    data: SupportTicketAttachmentUpload,
+    type: 'documents' | 'messages',
+    scope: NormalizedSupportTicketScope,
+    stableId?: string,
+) => {
 
     let uploadedUrl: any = '';
     const docId = buildSupportTicketAttachmentFileId({
@@ -314,14 +331,11 @@ const uploadImage = async (data: SupportTicketAttachmentUpload, type = 'document
         uid: data.uid,
     });
 
-    // Get fresh session for tenant-scoped storage paths
-    const session = await getActiveSession();
-
     // Generate tenant/store-scoped path for multi-tenancy isolation
     const path = generateStoragePath({
         collection: COLLECTION,
         fileType: type,
-        session,
+        session: scope,
         fileId: docId
     });
 
@@ -353,6 +367,11 @@ export const addTicket = async (data: SupportTicketType) => {
                 ...(clientDebugContext ? { clientDebugContext } : {}),
             }, { isNew: true });
             delete submitData.documents;
+            const ticketScope = normalizeSupportTicketScope({
+                tId: submitData.tId,
+                sId: submitData.sId,
+            });
+            if (!ticketScope) throw new Error('answerlattice_ticket_create_scope_invalid');
             const files = Array.isArray(data.documents)
                 ? data.documents.map(parseSupportTicketAttachmentUpload)
                 : [];
@@ -363,17 +382,18 @@ export const addTicket = async (data: SupportTicketType) => {
                 if (files.length) {
                     submitData.documents = files.map((document) => ({ ...document }));
                     for (let i = 0; i < files.length; i++) {
-                        submitData.documents[i].url = await uploadImage(files[i], 'documents');
+                        submitData.documents[i].url = await uploadImage(
+                            files[i],
+                            'documents',
+                            ticketScope,
+                        );
                         uploadedTicketUrls.push(submitData.documents[i].url);
                     }
                 }
                 if (!parseAnswerlatticeSupportTicketDocument({
                     id: 'pending-ticket-validation',
                     value: submitData,
-                    scope: {
-                        tId: normalizeSupportTicketScopeValue(submitData.tId) || 0,
-                        sId: normalizeSupportTicketScopeValue(submitData.sId) || 0,
-                    },
+                    scope: ticketScope,
                 })) {
                     throw new Error('answerlattice_ticket_create_payload_invalid');
                 }
@@ -431,6 +451,8 @@ export const addTicket = async (data: SupportTicketType) => {
                 triggerNotification({
                     eventType: 'TICKET_CREATED',
                     ticketId: docRef.id,
+                    tId: submitData.tId,
+                    sId: submitData.sId,
                 });
             }
 
@@ -471,7 +493,7 @@ export const updateTicket = async (data: any) => {
             const changedAt = Timestamp.now();
             const statusMessageId = createTimestampedRuntimeId('ticket_status', 12);
 
-            return runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+            const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const ticketRef = getDocRef(ticketId);
                 const ticketSnapshot = await transaction.get(ticketRef);
                 if (!ticketSnapshot.exists()) throw new Error('answerlattice_ticket_not_found');
@@ -522,12 +544,26 @@ export const updateTicket = async (data: any) => {
 
                 transaction.update(ticketRef, updateData);
                 return {
-                    ...currentTicket,
-                    ...updateData,
-                    id: ticketId,
-                    displayId: getDisplayId(ticketId),
-                } as SupportTicketType;
+                    statusChanged: mutation.status !== undefined && mutation.status !== currentTicket.status,
+                    ticket: {
+                        ...currentTicket,
+                        ...updateData,
+                        id: ticketId,
+                        displayId: getDisplayId(ticketId),
+                    } as SupportTicketType,
+                };
             });
+
+            if (transactionResult.statusChanged) {
+                triggerNotification({
+                    eventType: 'TICKET_STATUS_CHANGED',
+                    ticketId,
+                    tId: transactionResult.ticket.tId,
+                    sId: transactionResult.ticket.sId,
+                });
+            }
+
+            return transactionResult.ticket;
         },
         data,
         "updateTicket"
@@ -627,6 +663,7 @@ export const addTicketMessage = async (
                         const uploadedUrl = await uploadImage(
                             attachment,
                             'messages',
+                            mutationContext.scope,
                             `${normalizedTicketId}-${messageId}`,
                         );
                         uploadedAttachmentUrls.push(uploadedUrl);
@@ -646,6 +683,7 @@ export const addTicketMessage = async (
 
             let inserted = false;
             let messageCount = 0;
+            let shouldNotify = false;
             try {
                 const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                     const ticketRef = getDocRef(normalizedTicketId);
@@ -660,7 +698,12 @@ export const addTicketMessage = async (
                     const currentMessages = Array.isArray(currentTicket.messages) ? currentTicket.messages : [];
                     const existingMessage = currentMessages.find((item) => item.id === messageId);
                     if (existingMessage) {
-                        return { inserted: false, message: existingMessage, messageCount: currentMessages.length };
+                        return {
+                            inserted: false,
+                            message: existingMessage,
+                            messageCount: currentMessages.length,
+                            shouldNotify: false,
+                        };
                     }
                     if (currentMessages.length >= ANSWERLATTICE_TICKET_MESSAGE_LIMIT) {
                         throw new Error('answerlattice_ticket_message_limit_reached');
@@ -674,10 +717,22 @@ export const addTicketMessage = async (
                         modifiedBy: actor.name,
                         modifiedOn: Timestamp.now(),
                     });
-                    return { inserted: true, message: persistedMessage, messageCount: updatedMessages.length };
+                    const recipientEmail = String(currentTicket.clientDetails?.email || '').trim().toLowerCase();
+                    return {
+                        inserted: true,
+                        message: persistedMessage,
+                        messageCount: updatedMessages.length,
+                        shouldNotify: Boolean(
+                            recipientEmail
+                            && actor.email
+                            && recipientEmail !== actor.email
+                            && persistedMessage.type !== 'system'
+                        ),
+                    };
                 });
                 inserted = transactionResult.inserted;
                 messageCount = transactionResult.messageCount;
+                shouldNotify = transactionResult.shouldNotify;
                 if (!inserted && uploadedAttachmentUrls.length > 0) {
                     const existingUrls = new Set((transactionResult.message.attachments || []).map((item) => item.url));
                     await cleanupTicketAttachmentUrls(
@@ -692,11 +747,13 @@ export const addTicketMessage = async (
 
             // Notification: ticket reply (fire-and-forget)
             // Only notify when the sender is NOT the ticket creator (i.e., support agent replied)
-            if (inserted && persistedMessage.sender?.email && persistedMessage.type !== 'system') {
+            if (inserted && shouldNotify) {
                 triggerNotification({
                     eventType: 'TICKET_REPLY',
                     ticketId,
                     messageId: persistedMessage.id,
+                    tId: mutationContext.scope.tId,
+                    sId: mutationContext.scope.sId,
                 });
             }
 
@@ -736,13 +793,6 @@ export const updateTicketStatus = async (
                 throw new Error('answerlattice_ticket_status_update_missing_history');
             }
 
-            // Notification: ticket status changed (fire-and-forget)
-            // _notifyEmail is set by the calling component with the ticket creator's email
-            triggerNotification({
-                eventType: 'TICKET_STATUS_CHANGED',
-                ticketId,
-            });
-
             return {
                 ticketId,
                 success: true,
@@ -762,7 +812,7 @@ export const deleteTicket = async (data: any) => {
             const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
             if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
             const mutationContext = await requireSupportTicketMutationContext(data, 'support_ticket_delete');
-            if (!isPlatformTicketSession(mutationContext.session)) {
+            if (!isPlatformTicketAdminSession(mutationContext.session)) {
                 throw new Error('answerlattice_ticket_hard_delete_forbidden');
             }
             let persistedTicket: SupportTicketType | null = null;

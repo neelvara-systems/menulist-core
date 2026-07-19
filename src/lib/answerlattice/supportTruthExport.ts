@@ -1,7 +1,12 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
+import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS } from '@type/answerlattice';
+import { FieldValue } from 'firebase-admin/firestore';
+import { normalizeAnswerlatticePublicCitationUrl } from './publicAnswerContracts';
 
 export const ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_SCHEMA_VERSION = 1;
 export const ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_MAX_BYTES = 8 * 1024 * 1024;
+export const ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_TYPE = 'governed_support_truth' as const;
 
 export const ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_LIMITS = {
     entities: 500,
@@ -76,6 +81,14 @@ const compactBoolean = (value: unknown, fallback = false): boolean => (
     typeof value === 'boolean' ? value : fallback
 );
 
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const compareStableStrings = (left: string, right: string): number => (
+    left < right ? -1 : left > right ? 1 : 0
+);
+
 const sanitizePortableContent = (value: unknown, depth = 0): unknown => {
     if (depth > 20 || value === null || value === undefined) return null;
     if (typeof value === 'string') return value.slice(0, 200_000);
@@ -137,6 +150,26 @@ const projectEntity = (entity: Record<string, any>) => ({
     currentVersion: compactNumber(entity.currentVersion),
 });
 
+const projectCanonicalCitations = (value: unknown) => {
+    if (!Array.isArray(value)) return [];
+    const seenUrls = new Set<string>();
+    return value
+        .slice(0, ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS)
+        .flatMap((citation) => {
+            if (!isRecord(citation)) return [];
+            const id = compactString(citation.id, 180);
+            const title = compactString(
+                citation.title,
+                ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_TITLE_LENGTH,
+            );
+            const url = normalizeAnswerlatticePublicCitationUrl(citation.url);
+            if (!id || !title || !url || seenUrls.has(url)) return [];
+            seenUrls.add(url);
+            const sourceId = compactNullableString(citation.sourceId, 180);
+            return [{ id, title, url, ...(sourceId ? { sourceId } : {}) }];
+        });
+};
+
 const projectCanonicalAnswer = (answer: Record<string, any>) => ({
     id: compactString(answer.id, 160),
     title: compactString(answer.title, 300),
@@ -160,12 +193,49 @@ const projectCanonicalAnswer = (answer: Record<string, any>) => ({
         },
     },
     content: sanitizePortableContent(answer.content),
+    evidence: {
+        sourceIds: compactStrings(answer.evidence?.sourceIds, 20, 180),
+        citations: projectCanonicalCitations(answer.evidence?.citations),
+    },
     validation: {
         confidenceScore: compactNumber(answer.validation?.confidenceScore),
         validationSource: compactString(answer.validation?.validationSource, 80),
         lastValidatedOn: toIsoString(answer.validation?.lastValidatedOn),
     },
 });
+
+const projectArticleTranslations = (value: unknown) => {
+    if (!isRecord(value)) return {};
+    return Object.fromEntries(
+        Object.entries(value)
+            .sort(([left], [right]) => compareStableStrings(left, right))
+            .slice(0, 50)
+            .flatMap(([localeKey, translation]) => {
+                if (!isRecord(translation)) return [];
+                const locale = compactString(translation.locale || localeKey, 40);
+                const translatedBy = translation.translatedBy === 'human'
+                    ? 'human'
+                    : translation.translatedBy === 'ai'
+                        ? 'ai'
+                        : null;
+                const reviewedAt = toIsoString(translation.reviewedAt);
+                if (
+                    !locale
+                    || !translatedBy
+                    || translation.status !== 'approved'
+                    || !reviewedAt
+                ) return [];
+                return [[locale, {
+                    locale,
+                    title: compactString(translation.title, 300),
+                    content: sanitizePortableContent(translation.content),
+                    translatedBy,
+                    translatedAt: toIsoString(translation.translatedAt),
+                    reviewedAt,
+                }]];
+            }),
+    );
+};
 
 const projectProductSurface = (surface: Record<string, any>) => ({
     id: compactString(surface.id, 160),
@@ -203,7 +273,7 @@ const projectArticle = (article: Record<string, any>) => ({
     entityIds: compactStrings(article.entityIds, 100, 160),
     contextKeys: compactStrings(article.contextKeys, 100, 160),
     faqIds: compactStrings(article.faqIds, 100, 160),
-    translations: sanitizePortableContent(article.translations),
+    translations: projectArticleTranslations(article.translations),
 });
 
 const projectFaq = (faq: Record<string, any>) => ({
@@ -249,10 +319,12 @@ const projectChangelogEntry = (entry: Record<string, any>, pageId: string) => ({
         : [],
     contextKeys: compactStrings(entry.contextKeys, 100, 160),
     youtubeLinks: compactStrings(entry.youtubeLinks, 20, 500),
+    entityChanges: compactStrings(entry.entityChanges, 25, 180),
+    releaseId: compactNullableString(entry.releaseId, 180),
 });
 
 const sortByString = <T>(values: T[], selector: (value: T) => string): T[] => (
-    [...values].sort((left, right) => selector(left).localeCompare(selector(right)))
+    [...values].sort((left, right) => compareStableStrings(selector(left), selector(right)))
 );
 
 const queryScoped = (
@@ -260,6 +332,7 @@ const queryScoped = (
     collectionName: string,
     scope: AnswerlatticeSupportTruthExportScope,
 ) => db.collection(collectionName)
+    .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
     .where('tId', '==', scope.tId)
     .where('sId', '==', scope.sId);
 
@@ -284,7 +357,7 @@ export async function buildAnswerlatticeSupportTruthExport(
             .get(),
         queryScoped(db, DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS, { tId, sId })
             .where('status', '==', 'active')
-            .select('title', 'slug', 'status', 'answerType', 'scope', 'productBinding', 'content', 'validation', 'governance.reviewRequired')
+            .select('title', 'slug', 'status', 'answerType', 'scope', 'productBinding', 'content', 'evidence', 'validation', 'governance.reviewRequired')
             .limit(limits.canonicalAnswers + 1)
             .get(),
         queryScoped(db, DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES, { tId, sId })
@@ -360,10 +433,31 @@ export async function buildAnswerlatticeSupportTruthExport(
 
     const payload = {
         schemaVersion: ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_SCHEMA_VERSION,
+        exportType: ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_TYPE,
         generatedAt: new Date().toISOString(),
         product: {
             name: compactString(productName, 120) || 'Answerlattice workspace',
         },
+        selectionPolicy: {
+            entities: ['active', 'beta'],
+            canonicalAnswers: ['active', 'review_not_required'],
+            productSurfaces: ['active'],
+            articles: ['published', 'active'],
+            articleTranslations: ['human', 'ai_human_reviewed'],
+            faqs: ['published', 'active'],
+            changelogEntries: ['published'],
+            releases: ['active'],
+        },
+        excludedData: [
+            'tickets',
+            'conversations',
+            'feedback',
+            'embeddings',
+            'secrets',
+            'audit_logs',
+            'user_identifiers',
+            'draft_or_review_required_content',
+        ],
         counts: {
             entities: entities.length,
             canonicalAnswers: canonicalAnswers.length,
@@ -380,11 +474,11 @@ export async function buildAnswerlatticeSupportTruthExport(
         articles: sortByString(articles.map(projectArticle), value => `${value.categoryTitle}:${value.sectionTitle || ''}:${String(value.index).padStart(8, '0')}:${value.id}`),
         faqs: sortByString(faqs.map(projectFaq), value => `${String(value.sortOrder).padStart(8, '0')}:${value.question}:${value.id}`),
         changelogEntries: [...changelogEntries].sort((left, right) => (
-            String(right.releasedOn || '').localeCompare(String(left.releasedOn || ''))
-            || left.id.localeCompare(right.id)
+            compareStableStrings(String(right.releasedOn || ''), String(left.releasedOn || ''))
+            || compareStableStrings(left.id, right.id)
         )),
         releases: [...releases.map(projectRelease)].sort((left, right) => (
-            right.versionNormalized - left.versionNormalized || left.id.localeCompare(right.id)
+            right.versionNormalized - left.versionNormalized || compareStableStrings(left.id, right.id)
         )),
     };
 
@@ -394,4 +488,51 @@ export async function buildAnswerlatticeSupportTruthExport(
     }
 
     return { json, payload };
+}
+
+type AnswerlatticeSupportTruthExportPayload = Awaited<
+    ReturnType<typeof buildAnswerlatticeSupportTruthExport>
+>['payload'];
+
+export async function recordAnswerlatticeSupportTruthExportAudit(params: {
+    actorId: string;
+    db: FirebaseFirestore.Firestore;
+    json: string;
+    payload: AnswerlatticeSupportTruthExportPayload;
+    sId: number;
+    tId: number;
+}) {
+    const {
+        actorId,
+        db,
+        json,
+        payload,
+        sId,
+        tId,
+    } = params;
+    const performedBy = compactString(actorId, 180);
+    if (!performedBy) {
+        throw new Error('answerlattice_support_truth_export_actor_required');
+    }
+
+    const timestamp = FieldValue.serverTimestamp();
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc().create({
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId,
+        sId,
+        action: 'support_truth_export_generated',
+        entityType: 'support_truth_export',
+        entityId: String(sId),
+        newState: {
+            schemaVersion: payload.schemaVersion,
+            exportType: payload.exportType,
+            generatedAt: payload.generatedAt,
+            counts: payload.counts,
+            complete: payload.complete,
+            byteSize: Buffer.byteLength(json, 'utf8'),
+        },
+        performedBy,
+        timestamp,
+        createdOn: timestamp,
+    });
 }

@@ -1,9 +1,9 @@
 # Entity System — Specification
 
-> **Version:** 2.0.0
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** CEO, PM, Product
-> **Status:** MAINTAINED — Six entity-loop capabilities are implemented; post-save extraction is best effort and hybrid retrieval remains rollout-gated
+> **Status:** LOCAL SOURCE COMPLETE — Feature 7 audited on 2026-07-18; post-save extraction is best effort and hybrid retrieval remains rollout-gated
 
 ---
 
@@ -15,7 +15,9 @@ Current boundaries:
 - Post-save extraction is best effort and feature-flagged; it never blocks the article write.
 - Existing entity matches may update article `entityIds`; new concepts remain candidates for review.
 - Canonical answers retain priority over entity-linked fallback retrieval.
-- Entity merge must preserve canonical, relation, search-index, and article references transactionally.
+- Entity merge must preserve canonical, article, FAQ, product-surface, relation, and search-index references transactionally.
+- Entity deprecation must fail closed while any approved answer, support content, product surface, or relation still depends on the entity.
+- A nightly graph rebuild must preserve the last valid graph instead of publishing a truncated or cross-scope summary.
 
 ---
 
@@ -51,7 +53,7 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 **Invariants:**
 - Aliases are lowercase, trimmed, deduplicated
 - Maximum 20 aliases per entity
-- Aliases must be unique across the tenant's entity registry (no two entities share an alias)
+- Aliases are deduplicated within one entity. Owners should avoid cross-entity duplicates; extraction treats a multi-entity name/slug/alias match as review work instead of silently selecting one entity.
 
 ---
 
@@ -116,9 +118,10 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 1. Author saves article in KB editor
 2. The browser starts a best-effort request to the protected extraction route.
 3. The route re-reads the stored article, verifies product and workspace ownership, and attempts extraction.
-4. A confirmed successful extraction replaces the article's entity IDs, including clearing stale links when no current match remains, and invalidates KB-backed retrieval only when links changed.
-5. New concepts become candidates for governance review.
-6. Failure is logged without rolling back the article save.
+4. After provider output, the route re-reads the article and matched entities. A changed/deleted article or inactive/cross-scope entity returns conflict without applying stale links.
+5. A confirmed successful extraction replaces the article's entity IDs, including clearing stale links when no current match remains, and commits KB cache/source/bundle invalidation in the same transaction only when links changed.
+6. New concepts become candidates for governance review after source revalidation; they do not become approved truth.
+7. Failure is logged without rolling back the article save.
 
 **Invariants:**
 - Extraction is async — never blocks article save
@@ -139,7 +142,7 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 **User Flow:**
 1. Owner selects two entities in governance UI
 2. Chooses which entity survives (canonical)
-3. System transfers: article entityIds, canonical answer scope.entityIds, search index entries, relations
+3. System transfers: article, FAQ, and product-surface `entityIds`, canonical answer `scope.entityIds`, search-index entries, and relations
 4. Surviving entity gains merged entity's name as alias
 5. Merged entity marked `deprecated` (soft delete)
 6. Audit log records the merge
@@ -147,7 +150,15 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 **Invariants:**
 - Cannot merge entities of different types
 - Merged entity is never hard-deleted (audit trail)
-- Bounded canonical, article, relation, and search-index references are transferred atomically; an over-limit merge is rejected for controlled migration.
+- Bounded canonical, article, FAQ, product-surface, relation, and search-index references are transferred atomically; an over-limit merge is rejected for controlled migration.
+- Equivalent or self-referential relations created by the merge are removed instead of leaving duplicate graph edges.
+- The survivor search index is rebuilt from the survivor name, description, and merged aliases even when no prior survivor index exists.
+
+### Deprecation and Graph Safety
+
+- Deprecation is rejected while the entity appears in an active canonical answer, KB article, FAQ, product surface, incoming relation, or outgoing relation.
+- The nightly graph builder reads one document beyond each configured entity, relation, and active-answer cap. If a cap is exceeded or a stored row fails exact `AL`/tenant/workspace scope, it throws before the graph write so the previous valid summary remains available.
+- The governance dashboard loads at most 500 workspace relation rows. Pagination or selected-entity relation loading should be added before a workspace needs broader graph administration.
 - Merge is irreversible (by design — owner can always create new entities)
 
 ---

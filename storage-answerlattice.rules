@@ -18,6 +18,11 @@ service firebase.storage {
              && request.auth.token.get('platformRole', null) == 'PLATFORM';
     }
 
+    function isPlatformSupport() {
+      return isAuthenticated()
+             && request.auth.token.get('platformRole', null) == 'PLATFORM_SUPPORT';
+    }
+
     function belongsToTenant(tId) {
       return isAuthenticated()
              && string(request.auth.token.get('tenantId', null)) == string(tId);
@@ -41,6 +46,25 @@ service firebase.storage {
              || request.auth.token.get('role', null) == 'owner'
              || request.auth.token.get('role', null) == 'MANAGER'
              || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function hasSupportManagementPermission() {
+      return isPlatformAdmin()
+             || isPlatformSupport()
+             || request.auth.token.get('canManageSupport', false) == true
+             || request.auth.token.get('canManageWidget', false) == true
+             || request.auth.token.get('role', null) == 'OWNER'
+             || request.auth.token.get('role', null) == 'owner'
+             || request.auth.token.get('role', null) == 'MANAGER'
+             || request.auth.token.get('role', null) == 'manager'
+             || request.auth.token.get('role', null) == 'STAFF'
+             || request.auth.token.get('role', null) == 'staff';
+    }
+
+    function canAccessSupportMedia(tId, sId) {
+      return isPlatformAdmin()
+             || isPlatformSupport()
+             || (belongsToStore(tId, sId) && hasSupportManagementPermission());
     }
 
     function hasValidKnowledgeSourceMetadata() {
@@ -76,21 +100,21 @@ service firebase.storage {
     }
 
     match /chatSessions/chatimages/{tId}/{sId}/{imageId} {
-      allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
-      allow delete: if belongsToStore(tId, sId);
+      allow read: if canAccessSupportMedia(tId, sId);
+      allow write: if canAccessSupportMedia(tId, sId) && isValidImageUpload();
+      allow delete: if canAccessSupportMedia(tId, sId);
     }
 
     match /supportTickets/documents/{tId}/{sId}/{fileId} {
-      allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
-      allow delete: if belongsToStore(tId, sId);
+      allow read: if canAccessSupportMedia(tId, sId);
+      allow write: if canAccessSupportMedia(tId, sId) && isValidImageOrDocumentUpload();
+      allow delete: if canAccessSupportMedia(tId, sId);
     }
 
     match /supportTickets/messages/{tId}/{sId}/{fileId} {
-      allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
-      allow delete: if belongsToStore(tId, sId);
+      allow read: if canAccessSupportMedia(tId, sId);
+      allow write: if canAccessSupportMedia(tId, sId) && isValidImageOrDocumentUpload();
+      allow delete: if canAccessSupportMedia(tId, sId);
     }
 
     match /changelog/files/{tId}/{sId}/{fileId} {

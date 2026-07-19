@@ -1,132 +1,69 @@
-# Ticket → Knowledge Loop — Feature Hub
+# Answerlattice Ticket-to-Knowledge Loop
 
-> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
-> **Version:** 1.1.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-06-28
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
-> **Expansion Tracker:** Item #9
-> **Depends On:** Item #4 (Automatic Knowledge Creation) — ✅ IMPLEMENTED
-> **Doctrine Check:** ✅ Allowed — converts operational data into canonical knowledge (Pillars 2+4)
+> **Status:** Implemented; Feature 12 hardening verified locally on 2026-07-18
+> **Flag:** `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
+> **Authority:** Resolved tickets are evidence for proposals, never approved truth
+> **Deployment:** Scoped QA rule and nightly Function deploys were attempted on 2026-07-18 and stopped before upload because Firebase CLI authentication is unavailable
 
----
+The Ticket-to-Knowledge Loop captures bounded resolution evidence when a ticket enters Resolved or Closed, groups repeated evidence by a known product entity, and creates or updates a human-reviewed mutation proposal.
 
-## What This Feature Does
+## Runtime Flow
 
-Converts resolved support ticket conversations into canonical knowledge. When tickets cluster around the same product entity and get resolved, the system extracts the resolution pattern and proposes a canonical answer draft for founder approval.
-
-Extractor diagnostics use fixed failure codes and bounded source-error/scope metadata. Scheduler-facing extractor errors do not include raw entity IDs, entity names, or exception text.
-
-**The self-improving loop:**
-
-```
-Tickets resolved → Resolution extracted → Knowledge proposed → Founder approves → Better AI answers → Fewer tickets
+```text
+ticket status transition
+-> lifecycle-specific deterministic signal identity
+-> sanitized resolution evidence signal
+-> bounded 14-day entity cluster
+-> safe canonical target resolution
+-> exact compatible proposal merge or deterministic proposal create
+-> validated extraction draft
+-> owner review
+-> governed canonical mutation
 ```
 
-## Architecture Position
+## Current Rules
 
-This is a **surgical extension** of two existing systems — NOT a new system:
+- A resolution event includes the persisted status and status timestamp so reopen/re-resolve cycles can produce separate evidence.
+- The known canonical retrieval entity is propagated when available; unresolved entity signals are not drafted into truth.
+- Stored evidence excludes resolver name/email and redacts obvious credentials and contact data.
+- At least three unique substantive ticket resolutions are required for a candidate cluster.
+- The signal query is capped at 500 plus one sentinel row and fails closed if saturated.
+- At most 50 clusters are inspected and at most 5 new ticket-derived proposals are created per tenant run.
+- Zero active canonical answers means `new_answer_required`.
+- Exactly one active canonical answer means `content_refinement`.
+- Multiple active canonical answers remain owner triage.
+- A merge is allowed only for the same entity, mutation type, and target answer.
+- New evidence invalidates stale generated content and resets the extractor score until regeneration.
+- Another pending proposal for the entity blocks automatic creation instead of absorbing unrelated evidence.
+- Ticket content is prompt-delimited as untrusted evidence; generated procedures are locally validated.
+- Nothing auto-publishes.
 
-1. **Signal Mutation Engine (Pillar 4)** — Enhanced to detect ticket resolution patterns
-2. **Automatic Knowledge Creation (Item #4)** — Enhanced to generate drafts from ticket resolutions
+## Primary Files
 
-```
-Existing Answerlattice Architecture:
-┌──────────────────────────────────────────────────────────┐
-│ Pillar 1: Product Ontology                                │
-│ Pillar 2: Canonical Answer Engine                         │
-│ Pillar 3: Drift Governance                                │
-│ Pillar 4: Signal Mutation Engine ← ENHANCED HERE          │
-│   └─ Item #4: Auto Knowledge Creation ← ENHANCED HERE    │
-│ Pillar 5: API & Integration                               │
-└──────────────────────────────────────────────────────────┘
-```
+- `src/components/templates/platform/supportTickets/TicketDetailView.tsx`
+- `src/lib/answerlattice/signalEmitter.ts`
+- `src/data/shared/answerlatticeSupportEvidencePrivacy.ts`
+- `functions-answerlattice/src/answerlattice/resolutionExtractor.ts`
+- `functions-answerlattice/src/answerlattice/ticketKnowledgePrompt.ts`
+- `src/components/templates/answerlattice/MutationProposalReview.tsx`
+- `firestore-answerlattice.rules`
 
-## Key Design Decisions
+## Verification
 
-| Decision                                    | Rationale                                                                                       |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Zero new Firestore collections**          | Reuse existing `answerlattice_mutationProposals` + `answerlattice_signalEvents` + `answerlattice_auditLogs`    |
-| **Accumulation over per-ticket extraction** | Intercom research proves: wait for 3+ tickets on same entity before extracting (prevents noise) |
-| **Nightly batch processing**                | Existing nightly batch is the queue — no separate processing queue needed                       |
-| **Entity-based clustering (not vector)**    | Already built in signal mutation engine — no external vector DB needed                          |
-| **Suggestion-only, never auto-publish**     | Answerlattice doctrine: signals propose, humans approve                                              |
-| **Additive type changes only**              | 3-year freeze compliance — new optional fields, no breaking changes                             |
+- `npm run test:answerlattice-ticket-knowledge-contracts`
+- `npm run test:answerlattice-signal-contracts`
+- `npm run test:answerlattice-signals:rules`
+- `npm run test:answerlattice-signals:shared-rules`
+- `npm run test:answerlattice-governance:rules`
+- `npm run test:answerlattice-governance:shared-rules`
+- `node scripts/verification/verify-answerlattice-runtime-truth.js`
 
-## Industry Validation
+## Documents
 
-**Intercom "Suggestions" (May 2025):**
-
-- Same architecture pattern (accumulation → extraction → dedup → generation → approval)
-- 60% approval rate at scale
-- 1.2% absolute resolution rate improvement
-- 3-layer deduplication eliminates ~31% of noise
-- "Companies with <500 conversations/month get fewer suggestions" — matches our variable triggering
-
-## New Firestore Collections
-
-**None.** All data lives on existing collections with additive fields.
-
-## Feature Flag
-
-```typescript
-ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE: true; // in src/config/features.ts
-ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE: true; // in functions-answerlattice/src/constants/features.ts
-```
-
-Requires: `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true`
-
-Current production guardrails:
-
-- Only resolved/closed ticket signals are eligible.
-- Creation signals and resolution signals use separate dedupe keys so one does not suppress the other.
-- Nightly extraction waits for 3+ resolved tickets on the same entity before proposing knowledge.
-- Draft generation remains capped at 5 proposals per nightly run.
-- Nothing is auto-published; founders still review and approve canonical answers.
-
-## Document Set
-
-| Document                                                                             | Audience        | Purpose                     |
-| ------------------------------------------------------------------------------------ | --------------- | --------------------------- |
-| [README.md](./README.md)                                                             | All             | This hub document           |
-| [ticket-knowledge-loop_spec.md](./ticket-knowledge-loop_spec.md)                     | CEO/PM          | Business requirements       |
-| [ticket-knowledge-loop_impl.md](./ticket-knowledge-loop_impl.md)                     | Developers      | Technical blueprint         |
-| [ticket-knowledge-loop_firebase.md](./ticket-knowledge-loop_firebase.md)             | Developers      | Firebase cost & operations  |
-| [ticket-knowledge-loop_marketing.md](./ticket-knowledge-loop_marketing.md)           | Sales/Marketing | Sales collateral            |
-| [ticket-knowledge-loop_website.md](./ticket-knowledge-loop_website.md)               | Marketing       | Landing page content        |
-| [ticket-knowledge-loop_helpdoc.md](./ticket-knowledge-loop_helpdoc.md)               | Customers       | Help documentation          |
-| [ticket-knowledge-loop_mobile-support.md](./ticket-knowledge-loop_mobile-support.md) | Engineering     | Mobile assessment           |
-| [\_archive/chatgpt-review.md](./_archive/chatgpt-review.md)                          | Internal        | ChatGPT conversation review |
-
-## ChatGPT Accuracy Assessment
-
-**Overall: ~55%**
-
-| Category                 | Accuracy | Details                                                                            |
-| ------------------------ | -------- | ---------------------------------------------------------------------------------- |
-| Pipeline concept         | ✅ 90%   | Correct that ticket→knowledge is a self-improving loop                             |
-| Component design         | ⚠️ 40%   | Proposed 9+ new collections, per-ticket processing — both wrong for Answerlattice       |
-| Infrastructure hardening | ⚠️ 30%   | Most "missing" components already exist in Answerlattice (idempotency, queue, dedup)    |
-| Accumulation insight     | ❌ 0%    | Completely missed — Intercom's key finding. ChatGPT proposed per-ticket extraction |
-| Cost awareness           | ⚠️ 50%   | Mentioned cost optimization but proposed expensive per-ticket LLM calls            |
-
-## Key Files (Implemented)
-
-| Component                  | Location                                                                | Status      |
-| -------------------------- | ----------------------------------------------------------------------- | ----------- |
-| Resolution extractor       | `functions-answerlattice/src/answerlattice/resolutionExtractor.ts`                | ✅ NEW      |
-| Ticket knowledge prompt    | `functions-answerlattice/src/answerlattice/ticketKnowledgePrompt.ts`              | ✅ NEW      |
-| Feature flag (frontend)    | `src/config/features.ts`                                                | ✅ MODIFIED |
-| Feature flag (CF)          | `functions-answerlattice/src/constants/features.ts`                          | ✅ MODIFIED |
-| Types (additive fields)    | `src/types/answerlattice/index.ts`                                           | ✅ MODIFIED |
-| Signal emitter enhancement | `src/lib/answerlattice/signalEmitter.ts`                                     | ✅ MODIFIED |
-| Nightly batch step         | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`                    | ✅ MODIFIED |
-| UI wiring                  | `src/components/templates/platform/supportTickets/TicketDetailView.tsx` | ✅ MODIFIED |
-
-## Cross-References
-
-- **Item #4 (Auto Knowledge Creation):** `__docs__/answerlattice/automatic-knowledge-creation/`
-- **Ticket System:** `__docs__/answerlattice/ticket-system/`
-- **AI Escalation (Item #8):** `__docs__/answerlattice/ai-failure-escalation/`
-- **Answerlattice Doctrine:** `__docs__/answerlattice/doctrine/`
-- **Expansion Tracker:** `__docs__/answerlattice/answerlattice-expansion-tracker.md`
+- [Specification](./ticket-knowledge-loop_spec.md)
+- [Implementation](./ticket-knowledge-loop_impl.md)
+- [Firebase](./ticket-knowledge-loop_firebase.md)
+- [Help](./ticket-knowledge-loop_helpdoc.md)
+- [Mobile](./ticket-knowledge-loop_mobile-support.md)
+- [Marketing](./ticket-knowledge-loop_marketing.md)
+- [Website](./ticket-knowledge-loop_website.md)

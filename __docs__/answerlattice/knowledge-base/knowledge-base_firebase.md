@@ -1,7 +1,7 @@
 # Knowledge Base — Firebase Cost & Operations Tracking
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-17
+> **Version:** 2.0.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -58,9 +58,10 @@
 
 | Step                  | Reads | Writes | Notes                       |
 | --------------------- | :---: | :----: | --------------------------- |
-| Read current article  |   1   |   0    | Get current likes/dislikes  |
-| Update feedback count |   0   |   1    | Merge update                |
-| **Total**             | **1** | **1**  | Atomic via `runTransaction` |
+| Server transaction reads article + audit row | 2 | 0 | Exact workspace, active published article only |
+| Counter + audit row | 0 | 2 | Audit write may stop at 200 items while counter remains idempotent |
+| Negative-feedback signal | 0 | 0-1 | Deterministic signal only for a new dislike operation |
+| **Direct total** | **2** | **2-3** | One authenticated server transaction |
 
 ### 2.4 Admin: Load KB Management
 
@@ -87,34 +88,32 @@
 
 | Step                   | Reads | Writes |      Gemini Calls      |
 | ---------------------- | :---: | :----: | :--------------------: |
-| Save article content   |   0   |   1    |           0            |
+| Read article + scoped navigation | 2 | 0 | Existing article edit; create reads navigation only |
+| Save article content + navigation | 0 | 2 | Same transaction |
 | Generate active embedding |   0   |   1    | 1 (`gemini-embedding-2`) |
-| Update parent metadata |   1   |   1    |           0            |
-| **Direct content total** | **1** | **3**  |         **1**          |
+| **Direct content total** | **1-2** | **3** | **1** |
 
 The Article Modal FAQ suggestion and embedding browser POSTs use no-store cache, same-origin credentials, and manual redirect handling before the existing 64 KB bounded response reader. This changes no Firestore, Gemini, cache-version, or write count; it only prevents cached or followed-redirect responses from being accepted before the documented acknowledgement shape is validated.
 
-### 2.8 Admin: Delete Category (Cascade)
+### 2.8 Admin: Delete Category (Non-Destructive)
 
 | Step                         | Reads | Writes  | Notes                                    |
 | ---------------------------- | :---: | :-----: | ---------------------------------------- |
-| Get all articles in category | up to 500 | 0 | `getArticlesByCategoryId()` scoped by `tId+sId` when session exists |
-| Delete each article          | at least `2N` plus linked FAQ reads | `N` deletes plus linked FAQ archive writes | Each delete pre-reads and transaction-rechecks the article; linked FAQs are bounded |
-| Delete category from doc     |   1   |    1    | Transaction removes only the current category key |
-| **Direct content minimum**   | **3N+1** | **N+1** | Excludes bounded linked FAQ reads/writes and cache/source-version invalidation |
+| Check scoped article query | up to 500 | 0 | Any article blocks deletion |
+| Delete empty category from doc | 1 | 1 | Pure mutation boundary also rejects stored article references |
+| **Direct content total** | **1-501** | **1** | No article cascade |
 
-### 2.9 Admin: Delete Section (Cascade)
+### 2.9 Admin: Delete Section (Non-Destructive)
 
 | Step                             | Reads | Writes  | Notes                         |
 | -------------------------------- | :---: | :-----: | ----------------------------- |
-| Get all articles in section      | up to 500 | 0 | `getArticlesBySectionId()` scoped by `tId+sId` when session exists |
-| Delete each article              | at least `2N` plus linked FAQ reads | `N` deletes plus linked FAQ archive writes | Each delete pre-reads and transaction-rechecks the article; linked FAQs are bounded |
-| Remove section from category     |   1   |    1    | `deleteSectionFromCategory()` transaction |
-| **Direct content minimum**       | **3N+1** | **N+1** | Excludes bounded linked FAQ reads/writes and cache/source-version invalidation |
+| Check scoped article query | up to 500 | 0 | Any article blocks deletion |
+| Remove empty section from category | 1 | 1 | Pure mutation boundary also rejects stored article references |
+| **Direct content total** | **1-501** | **1** | No article cascade |
 
-Article acknowledgement hardening is cost-neutral. `addArticle()`, `updateArticle()`, and `deleteArticle()` still use the same existing writes and cache revalidation paths, but UI callers now require explicit article write/delete acknowledgements before local article, category, or ingestion-job state advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+Feature 5 intentionally adds the scoped categories-document read/write to article create, edit, delete, and bulk status transactions. This removes the prior split-write failure mode and avoids later repair reads. It also adds `expiresAt` and `retentionDays` to content-feedback audit documents and bounded cleanup reads/deletes inside the existing nightly scheduler.
 
-Bulk article status acknowledgement hardening is cost-neutral. `bulkUpdateArticleStatus()` still uses the existing `writeBatch` status update and cache revalidation path, but `ArticlePane` now requires `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before success copy, selected-id clearing, or bulk-mode exit. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+Bulk status changes read all selected articles plus one categories document, update every article, update one navigation document, and write the existing freshness markers. Publishing fails before writes if any article lacks the current embedded vector.
 
 July 13 category navigation concurrency hardening adds one scoped categories-document read to each category, section, or article-navigation mutation. The existing one categories-document write remains. The read lets a Firestore transaction apply an operation-specific mutation to the latest map and retry without dropping another editor's category, section, or article-link change. No collection, Storage object, route, rule, index, schema field, Cloud Function, owner setting, Firebase deployment, or Vercel deployment is added.
 
@@ -179,23 +178,23 @@ The runtime writes one `gemini-embedding-2` vector to `embedding` and maintains 
 
 | DAL Function              | Collection      | Operation              |
 | ------------------------- | --------------- | ---------------------- |
-| `getArticles`             | `kb_articles`   | getDocs (all)          |
-| `addArticle`              | `kb_articles`   | addDoc                 |
-| `updateArticle`           | `kb_articles`   | setDoc merge           |
-| `deleteArticle`           | `kb_articles`   | deleteDoc              |
+| `getArticles`             | `kb_articles`   | scoped bounded query   |
+| `addArticle`              | `kb_articles` + `kb_categories` | transaction create + navigation update |
+| `updateArticle`           | `kb_articles` + `kb_categories` | transaction merge + navigation move/update |
+| `deleteArticle`           | `kb_articles` + `kb_categories` | transaction delete + global navigation-reference removal |
 | `getArticlesByCategoryId` | `kb_articles`   | getDocs (query)        |
 | `getArticlesBySectionId`  | `kb_articles`   | getDocs (query)        |
 | `getArticlesByIds`        | `kb_articles`   | getDocs (query)        |
 | `getArticleById`          | `kb_articles`   | getDoc                 |
-| `updateArticleFeedback`   | `kb_articles`   | getDoc + setDoc        |
+| `updateContentFeedbackWithAudit` | authenticated API | server transaction across article/changelog + nested feedback audit + optional signal |
 | `getCategories`           | `kb_categories` | getDoc                 |
 | `deleteCategory`          | `kb_categories` | transaction read + update |
 | `addCategory`             | `kb_categories` | transaction read + set/update |
 | `updateCategory`          | `kb_categories` | transaction read + update |
 | `upsertSectionInCategory` | `kb_categories` | transaction read + update |
 | `deleteSectionFromCategory` | `kb_categories` | transaction read + update |
-| `updateArticleInParent`   | `kb_categories` | transaction read + update |
-| `deleteArticleFromParent` | `kb_categories` | transaction read + update |
+| `updateArticleInParent`   | `kb_categories` | compatibility-only transaction |
+| `deleteArticleFromParent` | `kb_categories` | compatibility-only transaction |
 
 ---
 
@@ -222,3 +221,9 @@ The runtime writes one `gemini-embedding-2` vector to `embedding` and maintains 
 |     900 KB+     |   3 KB    | 903 KB+ | ⚠️ Near limit |
 
 **Mitigation:** Individual articles rarely exceed 50KB. TipTap JSON is compact.
+
+## 7. Feedback retention and cleanup
+
+`article_feedback/{tId}/{sId}/{docId}` and `changelog_feedback/{tId}/{sId}/{docId}` contain customer identity snapshots and optional comments. New or updated audit rows receive a 365-day `expiresAt`. These paths use dynamic tenant/store collection names, so the maintained cleanup is a bounded query/delete pass inside `answerlatticeNightly`, not a new standalone scheduler. Each nightly run deletes at most the configured retention batch limit across discovered tenants and records `retentionContentFeedbackDeleted`.
+
+Dedicated and shared Firestore rules keep these documents read-only from clients. Reads require exact tenant/store membership plus `canManageKnowledge` or support-control permission; platform administrators retain operational access.

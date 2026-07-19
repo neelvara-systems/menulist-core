@@ -1,15 +1,15 @@
 # Knowledge Base — Customer Help Documentation
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** SMB Owners (MenuList dashboard users)
+> **Version:** 2.0.0
+> **Last Updated:** 2026-07-18
+> **Audience:** SaaS customers and support users
 > **Tone:** Zero jargon, step-by-step, calm
 
 ---
 
 ## Browsing the Knowledge Base
 
-The Knowledge Base contains organized help articles covering every part of the platform. You can browse by topic or let the AI search find what you need.
+The Knowledge Base contains published help articles supplied by the SaaS company you are using. Browse by topic or use the available support search. Search wording may summarize an article; open the source article when exact steps, plan limits, or version details matter.
 
 ---
 
@@ -42,13 +42,13 @@ For longer articles, a sidebar on the right shows section headings. Click any he
 
 ## Giving Feedback on Articles
 
-Found an article helpful? Click the thumbs up icon. Not helpful? Click thumbs down. Your feedback helps us improve the documentation.
+Found an article helpful? Click thumbs up. If it did not help, click thumbs down and add a short explanation when requested. Feedback does not change the article automatically. It creates evidence for the support or knowledge team to review.
 
 ---
 
 ## Tips
 
-- **Use the AI search first** — It finds the most relevant article automatically
+- **Use support search when the wording is known** — Check the cited article before relying on plan, policy, or version-sensitive details
 - **Browse categories** when you're exploring what's available
 - **Check related sections** — Similar topics are usually grouped together
 - **Bookmark important articles** — Use your browser bookmarks for articles you reference often

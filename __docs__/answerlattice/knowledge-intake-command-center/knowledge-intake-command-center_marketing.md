@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Marketing Notes
 
 > **Status:** READY — claims aligned to implemented day-one intake
-> **Version:** 1.0.0
+> **Version:** 1.4.0
 > **Created:** 2026-05-31
 > **Audience:** Website / Sales / Product
 
@@ -30,7 +30,7 @@ Answerlattice intake helps first-time founders and solo SaaS builders turn produ
 | I launched fast and support is messy. | Add the product link and anything you already have. Answerlattice turns it into a support layer. |
 | I have no full docs yet. | Start with product URL, app URL, starter surfaces, and policy questions. |
 | I only have a marketing site. | Answerlattice finds candidate pricing, docs, FAQ, legal, security, changelog, and API pages, then processes only what you select. |
-| I do not want AI guessing. | Answerlattice shows sources, conflicts, and owner approval before answers become official. |
+| I do not want AI guessing. | Answerlattice shows linked source evidence and requires owner review before drafts become official. |
 | I cannot review 100 drafts. | Answerlattice groups drafts by destination so the owner can accept, edit, reject, and publish intentionally. |
 | My product changes quickly. | Intake uses release notes as source context and publishes through the same KB, FAQ, surface, and canonical-proposal paths that the runtime already reads. Changelog entries stay owner-managed. |
 | I worry about cost. | Mutating and processing actions require an active Answerlattice beta or subscription and stay bounded by source/review caps. |
@@ -43,7 +43,7 @@ Use first:
 
 - product link
 - sources
-- product map
+- source coverage
 - launch decisions
 - approved answers
 - source-backed drafts
@@ -58,23 +58,22 @@ Use after the buyer understands the value, or internally:
 - canonical answer engine
 - drift detection
 - signal mutation
-- evidence manifest
-- source version
+- source evidence
+- freshness state
 - embedding
 - RAG
 
 ---
 
-## Claims To Make Only After Implementation
+## Verified Current Claims
 
 - Answerlattice can scan selected website/docs pages.
 - Answerlattice can discover candidate product website pages without turning every discovered URL into a Firestore source document.
-- Answerlattice can skip expensive reprocessing when selected website pages are unchanged.
+- Answerlattice deduplicates an identical selected-page source within the same intake job instead of creating duplicate source and review records.
 - Answerlattice can import selected URLs, TXT, Markdown, CSV, JSON, DOCX, text-based PDF, screenshots/images, and short audio/video evidence. XLSX, PPTX, ZIP docs, and native connector imports are not public claims until implemented.
-- Answerlattice builds a product map before generating drafts.
-- Answerlattice flags source conflicts and missing launch info.
-- Answerlattice generates source-backed article, FAQ, approved-answer, and widget-suggestion drafts.
-- Answerlattice shows topic readiness before launch.
+- Answerlattice keeps bounded source evidence on review drafts and can surface missing evidence before approval.
+- Answerlattice generates source-backed article, FAQ, product-surface, and canonical-proposal drafts.
+- Answerlattice shows aggregate intake progress; topic-level readiness is not a current Knowledge Intake claim.
 - Answerlattice keeps source lineage on published content.
 
 ---
@@ -105,7 +104,7 @@ Add your product link, choose the support-worthy pages Answerlattice finds, add 
 
 Proof strip:
 
-Paid processing · Source-backed drafts · Product map · Owner approval · Topic readiness
+Paid processing · Source-backed drafts · Evidence review · Owner approval · Safe publish
 
 CTA:
 
@@ -128,9 +127,8 @@ Generic import tools:
 Answerlattice intake:
 
 - collects sources
-- ranks authority
-- detects conflicts
-- builds product map
+- preserves corroborating source evidence
+- shows missing evidence before approval
 - drafts multiple support outputs
 - requires owner approval
 - publishes to widget/help/FAQ/approved answers
@@ -152,10 +150,9 @@ The first product moment should be:
 
 1. Founder pastes the product URL.
 2. Answerlattice finds support-worthy public pages.
-3. Answerlattice shows a product map.
-4. Answerlattice says: "7 decisions before launch."
-5. Founder approves answers.
-6. Widget and hosted help use the approved support knowledge.
+3. Answerlattice shows source-backed review drafts and missing evidence.
+4. Founder accepts, edits, or rejects each important output.
+5. Approved destinations become available to the existing widget/help/search runtime.
 
 ---
 
@@ -166,3 +163,5 @@ The first product moment should be:
 | 2026-05-31 | 1.0.0 | Initial marketing notes for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added selected-page product link story and unchanged-source cost claim boundaries. |
 | 2026-05-31 | 1.2.0 | Added sales boundary for widget/search readiness after approved content publish. |
+| 2026-07-18 | 1.3.0 | Removed unverified product-map, source-authority ranking, and broad conflict-detection claims; aligned marketing to evidence review and current destinations. |
+| 2026-07-18 | 1.4.0 | Removed topic-readiness, conflict-display, and background freshness claims; aligned re-import messaging to deterministic source dedupe. |

@@ -6,38 +6,58 @@ export type AnswerlatticeBillingScope = {
     sId: unknown;
 };
 
+export type AnswerlatticeBillingRecordScope = {
+    tId: number;
+    sId: number;
+};
+
 const hasExactProductIdentity = (record: Record<string, unknown>): boolean => {
     const productValues = [record.pId, record.productId].filter((value) => value !== undefined);
     return productValues.length > 0
         && productValues.every((value) => value === PRODUCT_IDS.ANSWERLATTICE);
 };
 
-const hasExactNumericScope = (
+const getExactNumericScope = (
     record: Record<string, unknown>,
     fields: readonly [string, string],
-    expected: number,
-): boolean => {
+): number | null => {
     const values = fields.map((field) => record[field]).filter((value) => value !== undefined);
-    return values.length > 0
-        && values.every((value) => typeof value === 'number'
+    if (
+        values.length === 0
+        || !values.every((value) => typeof value === 'number'
             && Number.isSafeInteger(value)
-            && value > 0
-            && value === expected);
+            && value > 0)
+    ) return null;
+
+    const [first] = values as number[];
+    return values.every((value) => value === first) ? first : null;
+};
+
+export const getAnswerlatticeBillingRecordScope = (
+    value: unknown,
+): AnswerlatticeBillingRecordScope | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    if (!hasExactProductIdentity(record)) return null;
+
+    const tId = getExactNumericScope(record, ['tId', 'tenantId']);
+    const sId = getExactNumericScope(record, ['sId', 'storeId']);
+    return tId && sId ? { tId, sId } : null;
 };
 
 const isAnswerlatticeBillingRecordInScope = (
     value: unknown,
     scope: AnswerlatticeBillingScope,
 ): boolean => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    const record = value as Record<string, unknown>;
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
     if (!tenantScope || !storeScope) return false;
 
-    return hasExactProductIdentity(record)
-        && hasExactNumericScope(record, ['tId', 'tenantId'], tenantScope.numericId)
-        && hasExactNumericScope(record, ['sId', 'storeId'], storeScope.numericId);
+    const recordScope = getAnswerlatticeBillingRecordScope(value);
+    if (!recordScope) return false;
+
+    return recordScope.tId === tenantScope.numericId
+        && recordScope.sId === storeScope.numericId;
 };
 
 export const isAnswerlatticeSubscriptionInScope = (

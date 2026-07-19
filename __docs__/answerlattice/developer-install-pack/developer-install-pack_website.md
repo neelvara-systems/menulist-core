@@ -31,11 +31,12 @@
 
 ## Copy Boundaries
 
-- Answerlattice does not present a public SDK, typed helper, or npm package as an end-user install option.
+- Answerlattice presents the v1 loader and constrained browser global as its supported first-party browser SDK. It does not present a separately installed npm package, typed general-purpose helper, or broad public SDK.
 - Agent files are described as coding-agent context and acceptance checks, not a guarantee that every external tool will obey them.
 - The frozen contract is Answerlattice's v1 widget/context/verification contract, not a freeze around third-party AI IDE behavior.
 - New installs use `https://answerlattice.com/widget/v1/answerlattice-widget.js`.
 - Allowed origins and blocked routes are dashboard-owned settings; public install copy must not ask owners to maintain duplicate variables.
+- Generated script snippets HTML-escape copied attribute values; workspace-specific packet and ZIP responses are private and are never public website assets.
 - The ROI calculator is illustrative and avoids guaranteed savings claims.
 - Proof pack examples are labeled as example workloads, not customer case studies.
 - Security one-pager does not replace the full security page.

@@ -1,6 +1,6 @@
 # Canonical Truth Infrastructure — Firebase Cost Tracking
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-07-19
 **Feature Flag:** `ENABLE_MCE`, `ENABLE_MENU_OBSERVATION`, `ENABLE_MENU_SNAPSHOTS`
 
 ---
@@ -12,6 +12,7 @@
 | `menuChangeLog` | `menuChangeLog/{tId}/{sId}/{entryId}` | Append-only change log (MOL) | No (existing) |
 | `menuSnapshots` | `menuSnapshots/{tId}/{sId}/{snapshotId}` | Immutable publish snapshots | **Yes** |
 | `projects` | `projects/{tId}/{sId}/{projectId}` | `menuVersion` + `lastPublishedAt` fields | No (existing, new fields) |
+| `stores` | `stores/{storeId}` | Optional embedded external location identity binding | No |
 
 ---
 
@@ -71,6 +72,20 @@
 | Price/availability/active changes | Every `updateProject()` with changes | 1 per change type per item | Debounced 5s |
 
 **Estimate:** 100 stores × 10 changes/day = 1,000 writes/day = 30,000/month = **$0.054/month**
+
+### 6. External Location Identity
+
+This boundary reuses the existing store document and is owned in detail by
+[`maps-place-check_firebase.md`](../menulist-tools/maps-place-check/maps-place-check_firebase.md).
+
+- Saving or removing the existing Official Page Google Maps link adds **0**
+  reads and **0** writes beyond the store update already being performed.
+- Explicit Place-ID confirmation or removal performs **1** transaction read and
+  **1** store write so exact tenant/store identity and current availability can
+  fail closed before mutation.
+- No collection, index, summary, history document, listener, Storage object, or
+  scheduled refresh job is added.
+- Existing saved links are not bulk backfilled.
 
 ---
 

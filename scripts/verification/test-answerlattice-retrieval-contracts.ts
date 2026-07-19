@@ -18,6 +18,11 @@ import {
     parseAnswerlatticeRetrievalRelease,
     parseAnswerlatticeRetrievalSearchIndex,
 } from '../../src/lib/answerlattice/retrievalContracts';
+import {
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticePublicFallbackReason,
+    normalizeAnswerlatticeScopeClarification,
+} from '../../src/lib/answerlattice/publicAnswerContracts';
 import { isHelpCenterSearchResponse } from '../../src/lib/search/helpCenterSearchResponse';
 import { SearchRequestSchema } from '../../src/lib/validation/chatSchemas';
 
@@ -83,6 +88,15 @@ const canonical = {
         structuredSummary: 'Review the failed invoice and retry with an active payment method.',
         detailedExplanation: 'Open Billing, inspect the failure reason, and retry the payment.',
     },
+    evidence: {
+        sourceIds: ['source-billing-doc'],
+        citations: [{
+            id: 'citation-billing-doc',
+            title: 'Failed invoice documentation',
+            url: 'https://docs.example.com/billing/failed-invoices',
+            sourceId: 'source-billing-doc',
+        }],
+    },
     validation: {
         confidenceScore: 0.95,
         validationSource: 'manual',
@@ -97,6 +111,64 @@ assert.throws(
     () => parseAnswerlatticeRetrievalCanonicalAnswer({ ...canonical, governance: { driftFlag: 'false', reviewRequired: false } }, scope),
     /Expected boolean|Invalid input/,
 );
+assert.throws(
+    () => parseAnswerlatticeRetrievalCanonicalAnswer({
+        ...canonical,
+        evidence: {
+            sourceIds: ['source-billing-doc'],
+            citations: [{
+                id: 'citation-private-url',
+                title: 'Private URL',
+                url: 'https://owner:secret@docs.example.com/private',
+            }],
+        },
+    }, scope),
+    /citation URL|Invalid input/i,
+);
+assert.deepEqual(
+    normalizeAnswerlatticePublicCitations(canonical.evidence.citations),
+    [{
+        id: 'citation-billing-doc',
+        title: 'Failed invoice documentation',
+        url: 'https://docs.example.com/billing/failed-invoices',
+    }],
+    'Public citation projection must remove internal source IDs.',
+);
+assert.equal(normalizeAnswerlatticePublicFallbackReason('canonical_retrieval_unavailable'), 'canonical_retrieval_unavailable');
+assert.equal(normalizeAnswerlatticePublicFallbackReason('entity_match_below_threshold: best_score=1'), null);
+assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+    id: 'citation-private-host',
+    title: 'Private host',
+    url: 'http://127.0.0.1/internal',
+}]), []);
+assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+    id: 'citation-tokenized-url',
+    title: 'Tokenized URL',
+    url: 'https://docs.example.com/private?access_token=secret',
+}]), []);
+assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+    id: 'citation-valid-fd-host',
+    title: 'Valid public documentation host',
+    url: 'https://fdocs.example.com/support',
+}]), [{
+    id: 'citation-valid-fd-host',
+    title: 'Valid public documentation host',
+    url: 'https://fdocs.example.com/support',
+}], 'normal public DNS names beginning with fd must not be treated as private IPv6 hosts');
+assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+    id: 'citation-mapped-loopback',
+    title: 'Mapped loopback address',
+    url: 'http://[::ffff:127.0.0.1]/internal',
+}]), [], 'IPv4-mapped private IPv6 hosts must be rejected');
+assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+    id: 'citation-documentation-network',
+    title: 'Reserved documentation network',
+    url: 'http://203.0.113.10/internal',
+}]), [], 'reserved IPv4 documentation ranges must be rejected');
+assert.deepEqual(
+    normalizeAnswerlatticeScopeClarification({ type: 'scope_context', requiredContext: ['plan', 'role', 'plan'] }),
+    { type: 'scope_context', requiredContext: ['plan', 'role'] },
+);
 
 assert.equal(SearchRequestSchema.parse({ requestId: 'request_123', query: 'Why did billing fail?' }).mode, 'qna');
 assert.equal(SearchRequestSchema.safeParse({ query: 'Why did billing fail?' }).success, false);
@@ -109,12 +181,22 @@ const safeResponse = {
     suggestedQuestions: ['How do I retry it?'],
     imageProcessed: false,
     answerSource: 'canonical',
+    citations: normalizeAnswerlatticePublicCitations(canonical.evidence.citations),
+    confidence: 'high',
 };
 assert.equal(isHelpCenterSearchResponse(safeResponse), true);
 assert.equal(isHelpCenterSearchResponse({ ...safeResponse, tId: scope.tId }), false);
 assert.equal(isHelpCenterSearchResponse({ ...safeResponse, references: [{ ...safeResponse.references[0], embedding: [1, 2] }] }), false);
 assert.equal(isHelpCenterSearchResponse({ ...safeResponse, references: [{ ...safeResponse.references[0], embeddingV2: [1, 2] }] }), false);
 assert.equal(isHelpCenterSearchResponse({ ...safeResponse, references: Array.from({ length: 9 }, () => safeResponse.references[0]) }), false);
+assert.equal(isHelpCenterSearchResponse({
+    ...safeResponse,
+    citations: [{ ...safeResponse.citations[0], sourceId: 'source-billing-doc' }],
+}), false);
+assert.equal(isHelpCenterSearchResponse({
+    ...safeResponse,
+    citations: [{ ...safeResponse.citations[0], url: 'javascript:alert(1)' }],
+}), false);
 
 assert.equal(isCanonicalGovernedFallbackReason('canonical_retrieval_unavailable'), true);
 assert.equal(Boolean(CANONICAL_GOVERNED_FALLBACK_MESSAGES.canonical_retrieval_unavailable), true);
@@ -251,6 +333,7 @@ assert.equal(
 
 const root = path.resolve(__dirname, '../..');
 const searchCoreSource = fs.readFileSync(path.join(root, 'src/lib/search/searchCore.ts'), 'utf8');
+const publicAnswerRouteSource = fs.readFileSync(path.join(root, 'src/app/api/answerlattice/public/v1/answers/route.ts'), 'utf8');
 const featureSource = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf8');
 assert.equal(
     featureSource.includes('ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL: false'),
@@ -272,6 +355,8 @@ assert.equal(
     true,
     'Enabled hybrid retrieval must use a distinct response-cache version.',
 );
+assert.equal(publicAnswerRouteSource.includes('evidenceReferenceIds'), false, 'Public answer API must not expose internal evidence IDs.');
+assert.equal(publicAnswerRouteSource.includes('sourceId:'), false, 'Public answer API must not serialize internal source IDs.');
 
 for (const indexPath of ['firestore.indexes.json', 'firestore-answerlattice.indexes.json']) {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, indexPath), 'utf8')) as {

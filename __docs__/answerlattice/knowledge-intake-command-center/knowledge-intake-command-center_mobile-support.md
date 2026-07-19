@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Mobile Support
 
 > **Status:** IMPLEMENTED — responsive owner-screen contract
-> **Version:** 1.0.0
+> **Version:** 1.2.2
 > **Created:** 2026-05-31
 > **Audience:** Mobile / Frontend / QA
 
@@ -9,7 +9,7 @@
 
 ## Mobile Decision
 
-Mobile support is required for monitoring, review, and lightweight approvals. Bulk file management, ZIP uploads, multi-source selection, and complex publish manifests are desktop-preferred.
+Mobile support is required for monitoring, review, and lightweight approvals. Bulk file management, ZIP uploads, multi-source selection, and large multi-destination publish review are desktop-preferred.
 
 Rationale:
 
@@ -26,7 +26,7 @@ Rationale:
 | --- | --- |
 | Frequency | Owners may check progress and approve decisions often during launch. Mobile supported. |
 | Speed | Summary and review item reads must be bounded. Mobile supported. |
-| Touch | Review cards, approve/reject, source status, and readiness must use 44px targets. |
+| Touch | Review cards, accept/edit/reject, source status, and publish controls must use 44px targets. |
 | Owner value | Mobile is useful for decisions, not bulk import setup. Partial action set accepted. |
 
 ---
@@ -35,14 +35,13 @@ Rationale:
 
 - View intake summary
 - View current job status
-- View source audit summary
-- View readiness by topic
+- View bounded source list and status
 - Review one decision at a time
-- Approve/reject/defer low-risk decisions
-- Approve high-risk decisions only with explicit confirmation
+- Accept, edit, or reject a review item when authorized
 - View source evidence excerpts
-- Retry failed source normalization when safe
-- Delete a source only with confirmation
+- Publish accepted items when authorized
+
+Source deletion, deferred review status, automatic risk-tier approvals, and topic readiness are not current Knowledge Intake actions.
 
 ---
 
@@ -54,7 +53,7 @@ Rationale:
 - mapping many product surfaces
 - reviewing large draft batches
 - editing long article content
-- publish manifest review for many destinations
+- large multi-destination publish review
 
 Mobile UI can show "Continue on desktop" for these actions.
 
@@ -66,12 +65,11 @@ Mobile route:
 
 - sticky header
 - summary cards first
-- tabs become segmented controls or stacked sections
-- source table becomes cards
+- current single-screen sections stack vertically
+- source and review rows must remain readable without horizontal overflow
 - review queue is a single-column list
-- readiness by topic is a compact list
-- evidence drawer uses full-screen sheet
-- destructive actions require modal confirmation
+- evidence/details use the existing responsive modal/drawer behavior
+- publish and review actions require clear confirmation/state feedback
 
 No horizontal overflow.
 
@@ -122,3 +120,5 @@ No horizontal overflow.
 | 2026-05-31 | 1.1.0 | Added summary-first mobile loading and urgent-review preview rules. |
 | 2026-06-11 | 1.1.1 | Added the mobile-friendly file selection requirement and aligned the implemented intake screen with a visible 44px file chooser plus clearer first-run empty states. |
 | 2026-07-17 | 1.2.0 | Required bounded source evidence and applicability to appear before 44px review decision controls on mobile. |
+| 2026-07-18 | 1.2.1 | Removed the unimplemented persisted publish-manifest implication from the mobile contract. |
+| 2026-07-18 | 1.2.2 | Removed unimplemented topic-readiness, delete, defer, and risk-tier mobile actions; aligned to the shared responsive review flow. |

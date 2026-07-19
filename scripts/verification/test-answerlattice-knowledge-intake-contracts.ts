@@ -6,6 +6,7 @@ import {
     AnswerlatticeKnowledgeSourceSchema,
     parseAnswerlatticeKnowledgeIntakeJob,
 } from '../../src/lib/answerlattice/knowledgeIntakeContracts';
+import { sanitizeAnswerlatticeIntakeMetadata } from '../../src/lib/answerlattice/knowledgeIntakePrivacy';
 
 const timestamp = '2026-07-11T00:00:00.000Z';
 const job = {
@@ -83,11 +84,31 @@ const reviewItem = {
     question: 'Why did billing fail?',
     answer: 'Open Billing and review the failed invoice.',
     confidenceScore: 0.8,
+    sourceIds: [processingSource.id],
 };
 assert.equal(AnswerlatticeIntakeReviewItemSchema.safeParse(reviewItem).success, true);
 assert.equal(
     AnswerlatticeIntakeReviewItemSchema.safeParse({ ...reviewItem, confidenceScore: 1.5 }).success,
     false,
 );
+assert.equal(
+    AnswerlatticeIntakeReviewItemSchema.safeParse({
+        ...reviewItem,
+        sourceIds: Array.from({ length: 6 }, (_, index) => `kis_${String(index).repeat(28)}`),
+    }).success,
+    false,
+    'review evidence must stay within the bounded source set',
+);
+
+const sanitizedMetadata = sanitizeAnswerlatticeIntakeMetadata({
+    contact: 'founder@example.com',
+    nested: {
+        authorization: 'authorization=sk-abcdefghijklmnopqrstuvwxyz123456',
+        notes: ['safe', 'password: super-secret-password'],
+    },
+});
+assert.equal(sanitizedMetadata.contact, '[redacted-email]');
+assert.equal(String(sanitizedMetadata.nested.authorization).includes('abcdefghijklmnopqrstuvwxyz123456'), false);
+assert.equal(String(sanitizedMetadata.nested.notes[1]).includes('super-secret-password'), false);
 
 process.stdout.write('Answerlattice Knowledge Intake contract tests passed.\n');

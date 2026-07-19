@@ -17,6 +17,7 @@ import {
     rejectMutationProposal,
 } from '@database/answerlattice/mutationProposals';
 import type { AnswerlatticeGovernanceEditedContent } from '@lib/answerlattice/governanceContracts';
+import { AnswerlatticeGovernanceClientError } from '@lib/answerlattice/governanceClient';
 import { checkAnswerlatticeProposalImpact } from '@lib/answerlattice/proposalImpactClient';
 import type { AnswerlatticeProposalImpactResponse } from '@lib/answerlattice/proposalImpactContracts';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
@@ -31,6 +32,10 @@ const ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED = 'Could not publish canonical
 const ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED = 'Could not generate draft';
 const ANSWERLATTICE_MUTATION_PROPOSAL_IMPACT_FAILED = 'Could not check proposed answer';
 const ANSWERLATTICE_WORKSPACE_SCOPE_MISSING = 'Answerlattice workspace scope is missing';
+
+const getGovernanceActionMessage = (error: unknown, fallback: string) => (
+    error instanceof AnswerlatticeGovernanceClientError ? error.message : fallback
+);
 
 type DraftApprovalContent = AnswerlatticeGovernanceEditedContent;
 
@@ -81,8 +86,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
                 ? 'Proposal approved and answer updated'
                 : 'Proposal approved');
             await refresh();
-        } catch {
-            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED);
+        } catch (error) {
+            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED));
         }
     }, [refresh]);
 
@@ -91,8 +96,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await rejectMutationProposal(proposalId);
             message.success('Proposal rejected');
             await refresh();
-        } catch {
-            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED);
+        } catch (error) {
+            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED));
         }
     }, [refresh]);
 
@@ -101,8 +106,8 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await markMutationImplemented(proposalId);
             message.success('Proposal marked as implemented');
             await refresh();
-        } catch {
-            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED);
+        } catch (error) {
+            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED));
         }
     }, [refresh]);
 
@@ -111,9 +116,10 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             await approveDraftAsCanonicalAnswer(proposalId, editedContent, tId, sId, approvedBy);
             message.success('Canonical answer published');
             await refresh();
-        } catch {
-            message.error(ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED);
-            throw new Error(ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED);
+        } catch (error) {
+            const errorMessage = getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED);
+            message.error(errorMessage);
+            throw new Error(errorMessage);
         }
     }, [refresh, sId, tId]);
 

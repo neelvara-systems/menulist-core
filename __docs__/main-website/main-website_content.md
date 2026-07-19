@@ -776,10 +776,13 @@ Key FAQ topics:
 
 **Source map visual:**
 
-- Left side: menu inputs (`Photo`, `PDF`, `Existing link`, `Typed text`).
+- Left side: supported public setup inputs (`Photo`, `Public PDF or image link`, `Existing link`, `Service-list link`).
 - Center: official MenuList mark plus owner-review gate.
 - Right side: customer surfaces (`QR`, `Menu link`, `Screens`, `Print files`, `Official page`, `Saved shortcut`).
 - Desktop output connector paths start under the center logo/ring and visually emerge from the core boundary, matching the homepage source-map alignment.
+- From 521px through 768px, the compact source map uses four input cards, the centered review gate, and two rows of three output cards.
+- At 520px and below, a dedicated phone connector network follows the two-column source and output grids through the empty center gutter. The connectors remain behind the cards and keep the source -> review -> output sequence visible without crossing labels.
+- Reduced-motion mode keeps the static dotted network visible and removes the moving pulse.
 - The center ring ripple is intentionally visible in light mode so the MenuList core feels active without adding extra copy or decoration.
 - The visual must stay restrained and product-specific. Do not use generic SaaS node graphics.
 

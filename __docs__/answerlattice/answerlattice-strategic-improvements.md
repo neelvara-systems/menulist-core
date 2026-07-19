@@ -70,11 +70,11 @@ Doctrine says: "Post-mutation impact tracked (14-day window)." Not implemented.
 
 ## 5. Drift Optimization Ideas
 
-| Idea                                              | Impact                                                                                                                                            | Complexity                                                                |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Skip signal drift for entities with 0 signals** | Eliminates unnecessary `getSignalCountsForEntity` calls for quiet entities                                                                        | Low — add early return in drift loop                                      |
-| **Batch signal count queries**                    | Currently fetches signal counts per-entity in a loop (N reads). Could batch with `in` query for up to 30 entities                                 | Medium — reduces reads by 10-30x for large tenants                        |
-| **Cache entity list during drift evaluation**     | `evaluateDriftForTenant` already loads all entities once. But `evaluateOrphanDrift` creates a new Map per answer. Move Map creation outside loop. | Low — already partially done (Map is per-answer but entities loaded once) |
+| Idea | Current verdict | Revalidation trigger |
+| --- | --- | --- |
+| **Partition drift evaluation above current caps** | Monitor. Current manual/nightly evaluation uses one bounded answer query, one entity query, and one recent-signal query, then evaluates all bound entities in memory. | A customer needs more than 500 active answers, 1,000 entities, or 1,000 recent signals in one workspace. |
+| **Reviewer false-positive feedback** | Validate before building. The current queue records drift reasons and human validation but does not yet retain a separate false-positive classification. | Real reviewers repeatedly clear drift without changing answer truth and need reason-quality tuning. |
+| **Additional drift classes** | Do not add now. The taxonomy is frozen to version, negative feedback, scope conflict, and ticket/deprecation evidence. | Representative customer evidence shows a distinct, actionable failure that cannot be expressed by the four current classes. |
 
 ---
 

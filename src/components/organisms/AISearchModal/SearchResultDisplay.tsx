@@ -5,7 +5,7 @@ import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterT
 import ArticleView from '@organisms/ArticleView';
 import { Button, Divider, List, theme, Typography } from 'antd';
 import { useState } from 'react';
-import { LuArrowRight } from 'react-icons/lu';
+import { LuArrowRight, LuExternalLink } from 'react-icons/lu';
 import { TbLayoutBottombarCollapse, TbLayoutNavbarCollapse } from 'react-icons/tb';
 import ActionButtons from './ActionButtons';
 import BlinkingCursor from './BlinkingCursor';
@@ -50,6 +50,24 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                 <div style={{ marginTop: '16px', textAlign: 'right' }}>
                     <Button onClick={handleSkipTyping}>Skip</Button>
                 </div>
+            )}
+
+            {state.data.citations && state.data.citations.length > 0 && (
+                <>
+                    <Divider style={{ margin: '8px 0' }}>Approved sources</Divider>
+                    <List
+                        size="small"
+                        dataSource={state.data.citations}
+                        renderItem={(citation) => (
+                            <List.Item>
+                                <a href={citation.url} target="_blank" rel="noopener noreferrer">
+                                    <LuExternalLink size={13} aria-hidden style={{ marginRight: 6 }} />
+                                    {citation.title}
+                                </a>
+                            </List.Item>
+                        )}
+                    />
+                </>
             )}
 
             {/* Display references */}

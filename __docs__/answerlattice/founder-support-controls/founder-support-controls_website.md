@@ -8,6 +8,8 @@
 
 Save the questions your users ask most. Answerlattice shows which approved answer, FAQ/owner answer, provider fallback, escalation, or no-answer path would run for each page and customer context, then checks required claims and supporting article references.
 
+These deterministic checks validate the rules you configured. They are regression evidence, not an automatic guarantee of factual correctness, completeness, or customer resolution.
+
 - Reusable question sets.
 - Exact source and answer version.
 - Required/forbidden claims and bounded evidence-reference checks.
@@ -27,6 +29,9 @@ For plan- or role-sensitive support, your server can sign a short-lived context 
 
 **Do answer tests affect analytics?**
 No. Test runs are excluded from production search history, support signals, friction, and coverage.
+
+**Do passing answer tests guarantee that every answer is correct?**
+No. They verify configured source, ID, phrase, confidence, abstention, and evidence rules. Representative questions still require human review for factual correctness, completeness, and usefulness.
 
 **Can Answerlattice roll back an answer automatically?**
 No. It prepares a rollback proposal for owner review through the existing governance flow.

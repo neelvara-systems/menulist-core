@@ -9,11 +9,18 @@ import {
     isAllowedAnswerlatticeChatImageMimeType,
     normalizeAnswerlatticeChatImageMimeType,
 } from '@lib/answerlattice/chatImagePolicy';
+import {
+    getAnswerlatticeHelpChatDraftKeys,
+    getLegacyHelpChatDraftKeys,
+    parseAnswerlatticeHelpChatDraft,
+    purgeForeignAnswerlatticeHelpChatDrafts,
+    serializeAnswerlatticeHelpChatDraft,
+} from '@lib/answerlattice/helpChatDrafts';
 import { UserUploadedFileType } from '@type/common';
 import { getBase64 } from '@util/utils';
 import { Button, Flex, Image, Input, message, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import { RcFile } from 'antd/es/upload';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage, LuMessageSquarePlus, LuSend, LuX } from 'react-icons/lu';
 import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
 import { ChatMode } from './types';
@@ -30,6 +37,7 @@ interface ChatInputProps {
     mode: ChatMode;
     disabled?: boolean;
     sessionId?: string | null; // Used to detect session changes
+    draftScope?: string | null;
     value?: string; // External control from parent (for clearing on New Chat)
     hasMessages?: boolean; // Whether conversation has started
     // QnA Post-Answer Actions
@@ -39,17 +47,23 @@ interface ChatInputProps {
     isMobile?: boolean;
 }
 
-const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, mode, disabled, sessionId, value, hasMessages = false, showQnAActions = false, onStartFollowUp, onNewQuestion, isMobile = false }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, mode, disabled, sessionId, draftScope, value, hasMessages = false, showQnAActions = false, onStartFollowUp, onNewQuestion, isMobile = false }: ChatInputProps) => {
     const { token } = theme.useToken();
     const [inputValue, setInputValue] = useState('');
     const [selectedImage, setSelectedImage] = useState<UserUploadedFileType | null>(null);
     const inputRef = useRef<any>(null);
     const hasShownLimitWarning = useRef(false);
     const previousValueRef = useRef<string | undefined>(value);
+    const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
 
-    // Generate draft key based on session
-    const draftKey = `chat-draft-${sessionId || 'new'}`;
-    const imageDraftKey = `chat-draft-image-${sessionId || 'new'}`;
+    const draftKeys = useMemo(
+        () => getAnswerlatticeHelpChatDraftKeys(draftScope, sessionId),
+        [draftScope, sessionId],
+    );
+    const legacyDraftKeys = useMemo(
+        () => getLegacyHelpChatDraftKeys(sessionId),
+        [sessionId],
+    );
 
     const validateImageFile = (file: File): { valid: boolean; error?: string } => {
         if (file.size > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
@@ -94,8 +108,12 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
             
             // Clear draft after sending
             try {
-                localStorage.removeItem(draftKey);
-                localStorage.removeItem(imageDraftKey);
+                if (draftKeys) {
+                    localStorage.removeItem(draftKeys.draftKey);
+                    localStorage.removeItem(draftKeys.imageDraftKey);
+                }
+                localStorage.removeItem(legacyDraftKeys.draftKey);
+                localStorage.removeItem(legacyDraftKeys.imageDraftKey);
             } catch (error) {
                 logHelpChatFailure('help_chat_draft_clear_failed', error, {
                     ...getBoundedHelpChatStringContext('sessionId', sessionId),
@@ -221,43 +239,64 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
             setInputValue('');
             setSelectedImage(null);
             // Clear drafts from localStorage
-            localStorage.removeItem(draftKey);
-            localStorage.removeItem(imageDraftKey);
+            if (draftKeys) {
+                localStorage.removeItem(draftKeys.draftKey);
+                localStorage.removeItem(draftKeys.imageDraftKey);
+            }
+            localStorage.removeItem(legacyDraftKeys.draftKey);
+            localStorage.removeItem(legacyDraftKeys.imageDraftKey);
         }
         
         // Update ref for next comparison
         previousValueRef.current = value;
-    }, [value, draftKey, imageDraftKey]);
+    }, [value, draftKeys, legacyDraftKeys]);
 
     // Load draft from localStorage when component mounts or session changes
     useEffect(() => {
-        try {
-            const savedDraft = localStorage.getItem(draftKey);
-            const savedImage = localStorage.getItem(imageDraftKey);
+        if (!draftKeys) {
+            setInputValue('');
+            setHydratedDraftKey(null);
+            return;
+        }
 
-            if (savedDraft) {
-                setInputValue(savedDraft);
+        try {
+            const storedDraft = localStorage.getItem(draftKeys.draftKey);
+            const savedDraft = parseAnswerlatticeHelpChatDraft(storedDraft);
+            const savedImage = localStorage.getItem(draftKeys.imageDraftKey);
+            setInputValue(savedDraft || '');
+
+            if (storedDraft && !savedDraft) {
+                localStorage.removeItem(draftKeys.draftKey);
             }
 
             if (savedImage) {
-                localStorage.removeItem(imageDraftKey);
+                localStorage.removeItem(draftKeys.imageDraftKey);
             }
+            setHydratedDraftKey(draftKeys.draftKey);
         } catch (error) {
+            setHydratedDraftKey(draftKeys.draftKey);
             logHelpChatFailure('help_chat_draft_load_failed', error, {
                 ...getBoundedHelpChatStringContext('sessionId', sessionId),
             });
         }
         // Only load on mount or session change, NOT on value changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [draftKey, imageDraftKey]);
+    }, [draftKeys, sessionId]);
 
     // Auto-save draft to localStorage when input changes
     useEffect(() => {
+        if (!draftKeys || hydratedDraftKey !== draftKeys.draftKey) return;
+
         try {
             if (inputValue.trim()) {
-                localStorage.setItem(draftKey, inputValue);
+                const serializedDraft = serializeAnswerlatticeHelpChatDraft(inputValue);
+                if (serializedDraft) {
+                    localStorage.setItem(draftKeys.draftKey, serializedDraft);
+                } else {
+                    localStorage.removeItem(draftKeys.draftKey);
+                }
             } else {
-                localStorage.removeItem(draftKey);
+                localStorage.removeItem(draftKeys.draftKey);
             }
         } catch (error) {
             logHelpChatFailure('help_chat_draft_save_failed', error, {
@@ -265,17 +304,22 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 inputLength: inputValue.length,
             });
         }
-    }, [inputValue, draftKey, sessionId]);
+    }, [inputValue, draftKeys, hydratedDraftKey, sessionId]);
 
     // Image screenshots can contain private customer data, so they are never
-    // persisted as base64 drafts. Keep a cleanup path for legacy drafts.
+    // persisted as base64 drafts. Also purge drafts from prior users/workspaces.
     useEffect(() => {
         try {
-            localStorage.removeItem(imageDraftKey);
+            purgeForeignAnswerlatticeHelpChatDrafts(localStorage, draftScope);
+            if (draftKeys) {
+                localStorage.removeItem(draftKeys.imageDraftKey);
+            }
+            localStorage.removeItem(legacyDraftKeys.draftKey);
+            localStorage.removeItem(legacyDraftKeys.imageDraftKey);
         } catch {
             // Draft cleanup is best-effort only.
         }
-    }, [selectedImage, imageDraftKey]);
+    }, [selectedImage, draftKeys, draftScope, legacyDraftKeys]);
 
     // QnA Post-Answer Actions View
     if (showQnAActions) {

@@ -103,7 +103,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Compiled context bundles',
-                detail: 'Approved public widget context and private server context are generated into versioned bundles so runtime paths avoid repeated source-data fanout.',
+                detail: 'Approved public-safe context and private server context can be generated into bounded versioned bundles for enabled readers. The widget currently remains on the governed server path.',
             },
             {
                 title: 'Workspace-local review',

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 import { getSafePwaGoogleMapsUrl } from '../shortcutHandoffUrl';
 
 interface Props {
@@ -11,6 +15,7 @@ interface Props {
     storeName: string;
     trackingEnabled: boolean;
     locationTrackingEnabled?: boolean;
+    activeLanguage?: string | null;
 }
 
 export default function PwaDirectionsHandoffClient({
@@ -20,7 +25,10 @@ export default function PwaDirectionsHandoffClient({
     storeName,
     trackingEnabled,
     locationTrackingEnabled = true,
+    activeLanguage,
 }: Props) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
     const [ready, setReady] = useState(false);
     const safeMapsUrl = getSafePwaGoogleMapsUrl(mapsUrl);
 
@@ -42,6 +50,8 @@ export default function PwaDirectionsHandoffClient({
 
     return (
         <div
+            dir={direction}
+            lang={activeLanguage || 'en'}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -56,15 +66,17 @@ export default function PwaDirectionsHandoffClient({
             }}
         >
             <h1 style={{ fontSize: 20, margin: '0 0 12px', fontWeight: 600 }}>
-                Directions to {storeName}
+                {t('menu.directionsToBusiness', { businessName: storeName })}
             </h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? (safeMapsUrl ? 'Opening maps…' : 'This shortcut is unavailable.') : 'Preparing…'}
+                {ready
+                    ? (safeMapsUrl ? t('menu.openingMaps') : t('menu.shortcutUnavailable'))
+                    : t('menu.preparing')}
             </p>
             {safeMapsUrl ? (
                 <noscript>
                     <p style={{ marginTop: 16 }}>
-                        <a href={safeMapsUrl}>Open in Maps</a>
+                        <a href={safeMapsUrl}>{t('menu.openInMaps')}</a>
                     </p>
                 </noscript>
             ) : null}

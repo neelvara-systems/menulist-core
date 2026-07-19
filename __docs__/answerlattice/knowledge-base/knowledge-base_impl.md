@@ -1,7 +1,7 @@
 # Knowledge Base — Technical Implementation Blueprint
 
-> **Version:** 1.0.1
-> **Last Updated:** 2026-07-06
+> **Version:** 2.0.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -11,7 +11,7 @@
 
 The Knowledge Base is a **client-side DAL feature** with no dedicated API routes (embedding generation uses the shared `/api/helpCenter/article-embedding` route). All CRUD operations use Firestore client SDK via standard DAL pattern.
 
-**Key architectural decision:** All categories stored in a **single Firestore document** (`kb_categories/categories`). Articles stored separately in `kb_articles` collection with embeddings.
+**Key architectural decision:** Each workspace stores bounded navigation in `kb_categories/categories_{tId}_{sId}`. Full articles live in `kb_articles`. Live article lifecycle mutations own both documents in one transaction.
 
 ---
 
@@ -40,7 +40,7 @@ The Knowledge Base is a **client-side DAL feature** with no dedicated API routes
 
 | File | Lines | Purpose |
 |------|:-----:|---------|
-| `index.tsx` | 369 | Main management panel — 3-pane `Splitter` layout (33% each, min 300px). Manages: categoriesData, selectedCategory/Section/Article, all CRUD modals. Delete cascade: category→sections+articles, section→articles. Floating action buttons for KB preview + AI search test. Sorts categories/sections by index. Fetches full article by ID on select (lazy loading). |
+| `index.tsx` | — | Main management panel. Consumes transaction-authoritative navigation after article saves, deletes, and bulk status changes. Refuses category/section deletion while articles remain. |
 | `CategoryPane.tsx` | — | Category list with add/edit/delete actions |
 | `SectionPane.tsx` | — | Section list with add/edit/delete actions |
 | `ArticlePane.tsx` | — | Article list with add/edit/delete actions, loading state |
@@ -55,7 +55,7 @@ The Knowledge Base is a **client-side DAL feature** with no dedicated API routes
 
 `ArticleModal.tsx` keeps FAQ suggestion refresh and article embedding failures on fixed owner-safe copy. It does not show raw `/api/answerlattice/faqs/generate-from-article` or `/api/helpCenter/article-embedding` response text, provider text, or browser exception messages when those support actions fail. It sends both support-action POSTs with no-store cache, same-origin credentials, and manual redirect handling, then parses both route responses through a 64 KB bounded response reader and requires the expected FAQ suggestion or embedding acknowledgement shape before updating local FAQ options, linked FAQ IDs, or embedding success copy. Article update/delete now owns linked FAQ review/archive state in the same exact-scope transaction, so success cannot precede the required public-truth transition.
 
-Article create/update/delete and bulk publish/archive UI paths must require `assertKnowledgeBaseArticleWriteSucceeded()`, `assertKnowledgeBaseArticleDeleteSucceeded()`, or `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before local article, category, selection, or ingestion-job state advances. Category, section, article-parent, and category-delete navigation writes must require `assertKnowledgeBaseCategoryWriteSucceeded()` or `assertKnowledgeBaseCategoriesMutationSucceeded()` before local category/section/navigation state advances. Rejected acknowledgements use `platform_kb_article_create_rejected`, `platform_kb_article_update_rejected`, `platform_kb_article_delete_rejected`, `platform_kb_section_article_delete_rejected`, `platform_kb_category_article_delete_rejected`, `platform_kb_bulk_article_status_update_rejected`, `platform_kb_category_create_rejected`, `platform_kb_category_update_rejected`, `platform_kb_section_create_rejected`, `platform_kb_section_update_rejected`, `platform_kb_article_parent_update_rejected`, `platform_kb_article_parent_delete_rejected`, `platform_kb_section_delete_category_update_rejected`, `platform_kb_category_delete_rejected`, `kb_generation_review_article_update_rejected`, or `kb_generation_reconciliation_article_delete_rejected`.
+Article create/update/delete and bulk publish/archive paths require explicit acknowledgement before local state advances. Article results include `navigationCategories`, so the UI no longer performs a second parent-navigation write. Category and section mutations retain their acknowledgement guards. KB Generation review calls `updateArticle(..., { mode: 'generation_review' })`; this preserves staged edits without touching live navigation.
 
 When Answerlattice product surfaces are enabled, KB article create/update and approved KB-generation publish paths must await `rebuildProductSurfaceContentSummaryWithDiagnostics()` after the confirmed write. Refresh failures log `answerlattice_article_summary_refresh_after_create_failed`, `answerlattice_article_summary_refresh_after_update_failed`, or `answerlattice_kb_generation_summary_refresh_after_publish_failed` with bounded article/job metadata and show fixed contextual-help refresh warning copy. The primary article/job write remains successful; embedding failures are also caught inside `ArticleModal.tsx` so a post-write embedding failure cannot be reported as a failed article save.
 
@@ -73,7 +73,7 @@ Answerlattice KB owner content scope boundary (July 6, 2026): category document 
 | `addArticle(data)` | 0 | 1 | Uses `requestBodyComposer` |
 | `updateArticle(data)` | 0 | 1 | Merge update, returns acknowledged article |
 | `deleteArticle(id)` | 2+N | 1+N | Exact stored-scope transaction archives linked FAQs and hard-deletes article, then returns `{ success: true, id }` |
-| `bulkUpdateArticleStatus(ids, status)` | 2N | N | Transactional one-workspace publish/archive for at most 100 exact IDs; returns `{ success: true, ids, updatedCount, status }` |
+| `bulkUpdateArticleStatus(ids, status)` | 2N + 1 categories read | N + 1 categories write | One-workspace publish/archive for at most 100 exact IDs; publish requires an embedded active vector and returns authoritative navigation |
 | `getArticlesByCategoryId(categoryId)` | N | 0 | Query by categoryId |
 | `getArticlesBySectionId(sectionId)` | N | 0 | Query by sectionId |
 | `getArticlesByIds(ids)` | N | 0 | `__name__ in ids` query |
@@ -90,8 +90,8 @@ Answerlattice KB owner content scope boundary (July 6, 2026): category document 
 | `updateCategory(category)` | 1 | 1 | Transaction updates category metadata while preserving transaction-current sections/article links |
 | `upsertSectionInCategory(categoryId, section)` | 1 | 1 | Transaction creates/updates one section while preserving transaction-current article links |
 | `deleteSectionFromCategory(categoryId, sectionId)` | 1 | 1 | Transaction removes one current section and preserves unrelated navigation state |
-| `updateArticleInParent(categoriesData, categoryId, article, sectionId)` | 1 | 1 | Caller snapshot is compatibility-only; transaction upserts bounded article metadata into current navigation |
-| `deleteArticleFromParent(categoriesData, categoryId, articleId, sectionId)` | 1 | 1 | Caller snapshot is compatibility-only; transaction removes the article link from current navigation |
+| `updateArticleInParent(...)` | Compatibility only | Compatibility only | No longer used by the live platform article save path |
+| `deleteArticleFromParent(...)` | Compatibility only | Compatibility only | No longer used by the live platform article delete path |
 
 **Key implementation details:**
 - Each mutation captures the active Answerlattice tenant/store once and uses that scope for cache versioning, the transaction document, and public-cache revalidation.
@@ -156,7 +156,7 @@ Edit Article:
   → ArticleModal with TipTap editor → form submit
   → updateArticle(data) → 1 write to kb_articles
   → assertKnowledgeBaseArticleWriteSucceeded()
-  → updateArticleInParent() → 1 transaction read + 1 write to kb_categories (metadata sync)
+  → addArticle()/updateArticle() transaction writes article + authoritative navigation + freshness markers
   → assertKnowledgeBaseCategoriesMutationSucceeded()
 
 Delete Category:
@@ -277,15 +277,33 @@ The model, vector field, dimensions, request format, and cache version are selec
 | `getCategories` | KnowledgeBaseExplorer, PlatformKnowledgeBase, useChatData | ✅ |
 | `addArticle` | ArticleModal | ✅ |
 | `updateArticle` | ArticleModal | ✅ |
-| `deleteArticle` | PlatformKnowledgeBase (cascade delete) | ✅ |
+| `deleteArticle` | PlatformKnowledgeBase explicit article delete | ✅ |
 | `deleteMultipleArticles` | No caller | Removed because its session-derived scope and unverified IDs could not safely own a multi-workspace mutation |
-| `getArticlesByCategoryId` | PlatformKnowledgeBase (cascade delete) | ✅ |
-| `getArticlesBySectionId` | PlatformKnowledgeBase (cascade delete) | ✅ |
+| `getArticlesByCategoryId` | PlatformKnowledgeBase non-empty delete guard | ✅ |
+| `getArticlesBySectionId` | PlatformKnowledgeBase non-empty delete guard | ✅ |
 | `getArticlesByIds` | Not directly used from UI | ⚠️ Available |
 | `getArticleById` | PlatformKnowledgeBase (article select) | ✅ |
-| `updateArticleFeedback` | ArticleView (likes/dislikes) | ✅ |
+| `/api/answerlattice/content-feedback` | ArticleView/ChangelogPreview via `updateContentFeedbackWithAudit` | ✅ |
 | `addCategory` | CategoryModal | ✅ |
 | `updateCategory` | CategoryModal, PlatformKnowledgeBase (section delete) | ✅ |
 | `deleteCategory` | PlatformKnowledgeBase | ✅ |
-| `updateArticleInParent` | PlatformKnowledgeBase (article save) | ✅ |
-| `deleteArticleFromParent` | PlatformKnowledgeBase (article delete) | ✅ |
+| `updateArticleInParent` | Compatibility API only; live save no longer calls it | ⚠️ |
+| `deleteArticleFromParent` | Compatibility API only; live delete no longer calls it | ⚠️ |
+
+## 8. Feature 5 hardening (2026-07-18)
+
+### Atomic article lifecycle
+
+`addArticle`, live `updateArticle`, `deleteArticle`, and `bulkUpdateArticleStatus` read the exact scoped categories document and mutate article truth, one navigation reference, linked FAQ state where applicable, and cache/source/bundle freshness in one Firestore transaction. Article moves first remove the ID from all category and section arrays. Live truth edits delete the active vector field and vector metadata before returning `embeddingStatus: pending`.
+
+### Category and section lifecycle
+
+The pure mutation boundary validates IDs, strings, URLs, indexes, active state, category count, and the 900 KiB document limit. Non-empty category/section deletion fails closed. Category and section label changes update referenced article `categoryTitle`/`sectionTitle` in a transaction capped at 100 articles; larger operations require a deliberate migration workflow rather than an unbounded client write.
+
+### Feedback lifecycle
+
+The authenticated server route admits feedback only for an active published article or an existing changelog entry in the exact workspace. Its transaction owns counters, bounded recent-operation idempotency, up to 200 audit items, and deterministic negative-feedback signals. Audit documents receive `expiresAt` and `retentionDays: 365`. `answerlatticeNightly` deletes expired article/changelog feedback documents from their nested tenant/store paths with a bounded batch.
+
+### Permission boundary
+
+Dedicated and shared rules keep feedback writes server-owned. Reads require platform administration, `canManageKnowledge`, or support-control permission. Shared `kb_categories` create/update now requires `canManageKnowledge`; a generic team-management role is insufficient.

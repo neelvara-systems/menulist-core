@@ -100,12 +100,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
     const stats = useMemo(() => {
         const active = predictiveTriggers.filter(t => t.status === 'active').length;
         const suggested = predictiveTriggers.filter(t => t.status === 'suggested').length;
-        const disabled = predictiveTriggers.filter(t => t.status === 'disabled').length;
-        const avgEffectiveness = predictiveTriggers
-            .filter(t => t.effectiveness && t.effectiveness.impressions > 0)
-            .reduce((sum, t) => sum + (t.effectiveness?.score || 0), 0) /
-            (predictiveTriggers.filter(t => t.effectiveness && t.effectiveness.impressions > 0).length || 1);
-        return { active, suggested, disabled, total: predictiveTriggers.length, avgEffectiveness };
+        return { active, suggested, total: predictiveTriggers.length };
     }, [predictiveTriggers]);
 
     const handleCreate = useCallback(async () => {
@@ -135,8 +130,8 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                     customTitle: values.customTitle || undefined,
                     customSummary: values.customSummary || undefined,
                 },
-                priority: values.priority || 50,
-                cooldownHours: values.cooldownHours || 24,
+                priority: values.priority ?? 50,
+                cooldownHours: values.cooldownHours ?? 24,
                 status: 'active',
                 source: ANSWERLATTICE_TRIGGER_SOURCE.MANUAL,
             });
@@ -162,7 +157,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 editForm.setFields([{ name: 'page', errors: ['Use letters, numbers, underscores, or hyphens.'] }]);
                 return;
             }
-            await update({
+            const updated = await update({
                 id: editingTrigger.id,
                 name: values.name,
                 description: values.description,
@@ -177,11 +172,16 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 priority: values.priority,
                 cooldownHours: values.cooldownHours,
             });
+            if (!updated) return;
+            if (editingTrigger.status === 'suggested') {
+                const activated = await activate(editingTrigger.id);
+                if (!activated) return;
+            }
             setEditingTrigger(null);
         } catch {
             // form validation
         }
-    }, [editingTrigger, editForm, update]);
+    }, [activate, editingTrigger, editForm, update]);
 
     const openEdit = useCallback((trigger: AnswerlatticePredictiveTrigger) => {
         setEditingTrigger(trigger);
@@ -263,20 +263,21 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
             render: (hours: number) => <Text type="secondary">{hours}h</Text>,
         },
         {
-            title: 'Effectiveness',
+            title: 'Engagement evidence',
             key: 'effectiveness',
-            width: 120,
+            width: 170,
             render: (_: any, record: AnswerlatticePredictiveTrigger) => {
                 if (!record.effectiveness || record.effectiveness.impressions === 0) {
-                    return <Text type="secondary">No data</Text>;
+                    return <Text type="secondary">No evidence</Text>;
                 }
-                const { impressions, clicks, score } = record.effectiveness;
-                const pct = Math.round(score * 100);
-                const color = pct >= 15 ? token.colorSuccess : pct >= 0 ? token.colorWarning : token.colorError;
+                const { impressions, clicks, dismissals } = record.effectiveness;
+                const openRate = Math.round((clicks / impressions) * 100);
                 return (
                     <Space direction="vertical" size={0}>
-                        <Text style={{ color, fontWeight: 600 }}>{pct}%</Text>
-                        <Text type="secondary" style={{ fontSize: 11 }}>{clicks}/{impressions} clicks</Text>
+                        <Text strong>{openRate}% opened</Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                            {clicks} opened · {dismissals} dismissed · {impressions} shown
+                        </Text>
                     </Space>
                 );
             },
@@ -288,15 +289,25 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
             render: (_: any, record: AnswerlatticePredictiveTrigger) => (
                 <Space size="small">
                     {record.status === 'suggested' && (
-                        <Button type="text" icon={<LuCheck />} onClick={() => activate(record.id)} size="small" title="Activate" />
+                        <Button
+                            type="text"
+                            icon={<LuPencil />}
+                            onClick={() => openEdit(record)}
+                            size="small"
+                            title="Set the page and review before activation"
+                        />
                     )}
                     {record.status === 'active' && (
                         <Button type="text" icon={<LuPause />} onClick={() => disable(record.id)} size="small" title="Disable" />
                     )}
                     {record.status === 'disabled' && (
-                        <Button type="text" icon={<LuCheck />} onClick={() => activate(record.id)} size="small" title="Re-activate" />
+                        record.conditions.page
+                            ? <Button type="text" icon={<LuCheck />} onClick={() => activate(record.id)} size="small" title="Re-activate" />
+                            : <Button type="text" icon={<LuPencil />} onClick={() => openEdit(record)} size="small" title="Set the page before activation" />
                     )}
-                    <Button type="text" icon={<LuPencil />} onClick={() => openEdit(record)} size="small" title="Edit" />
+                    {record.status !== 'suggested' && (
+                        <Button type="text" icon={<LuPencil />} onClick={() => openEdit(record)} size="small" title="Edit" />
+                    )}
                     <Popconfirm
                         title="Delete this trigger?"
                         onConfirm={() => remove(record.id)}
@@ -339,7 +350,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 </Form.Item>
             </Flex>
             <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>Action</Title>
-            <Form.Item name="actionType" label="Type" initialValue="help_card">
+            <Form.Item name="actionType" label="Type" initialValue="help_card" rules={[{ required: true }]}>
                 <Select options={Object.entries(ACTION_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
             </Form.Item>
             <Flex gap={12}>
@@ -358,10 +369,10 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
             </Form.Item>
             <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>Behavior</Title>
             <Flex gap={12}>
-                <Form.Item name="priority" label="Priority (0-100)" initialValue={50} style={{ flex: 1 }}>
+                <Form.Item name="priority" label="Priority (0-100)" initialValue={50} rules={[{ required: true }]} style={{ flex: 1 }}>
                     <InputNumber min={ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_PRIORITY} max={ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_PRIORITY} style={{ width: '100%' }} />
                 </Form.Item>
-                <Form.Item name="cooldownHours" label="Cooldown (hours)" initialValue={24} style={{ flex: 1 }}>
+                <Form.Item name="cooldownHours" label="Cooldown (hours)" initialValue={24} rules={[{ required: true }]} style={{ flex: 1 }}>
                     <InputNumber min={ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_COOLDOWN_HOURS} max={ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_COOLDOWN_HOURS} style={{ width: '100%' }} />
                 </Form.Item>
             </Flex>
@@ -429,12 +440,12 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
 
             {/* Edit Modal */}
             <Modal
-                title="Edit Trigger"
+                title={editingTrigger?.status === 'suggested' ? 'Review Suggested Trigger' : 'Edit Trigger'}
                 open={!!editingTrigger}
                 onOk={handleEdit}
                 onCancel={() => setEditingTrigger(null)}
                 width={isMobile ? 'calc(100vw - 24px)' : 600}
-                okText="Save"
+                okText={editingTrigger?.status === 'suggested' ? 'Save and activate' : 'Save'}
             >
                 <Form form={editForm} layout="vertical" size="small">
                     <TriggerForm form={editForm} />

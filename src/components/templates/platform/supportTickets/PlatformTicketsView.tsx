@@ -4,7 +4,7 @@ import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tick
 import { useAppDispatch } from '@hook/useAppDispatch';
 import AddSupportTicket from '@organisms/addSupportTicket';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { calculateSLAStatus, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import { calculateSupportTicketSLAStatus, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { updateList } from '@util/utils';
 import { Flex, message, Table, theme, Typography } from 'antd';
 import { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
@@ -91,10 +91,8 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
             // SLA Status filter
             let matchesSLA = true;
             if (filters.slaStatus && ticket.createdOn) {
-                const hasResponse = ticket.messages && ticket.messages.length > 1;
-                const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
-                const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-                matchesSLA = sla.resolutionStatus === filters.slaStatus;
+                const sla = calculateSupportTicketSLAStatus(ticket);
+                matchesSLA = sla?.resolutionStatus === filters.slaStatus;
             }
 
             // Long-running filter (>3 days old and not resolved)

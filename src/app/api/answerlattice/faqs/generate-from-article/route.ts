@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { createHash } from 'node:crypto';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
@@ -45,6 +46,13 @@ type BoundedFaqProviderResponseText = {
     truncated: boolean;
 };
 
+class FaqGenerationConflictError extends Error {
+    constructor(public readonly publicMessage: string) {
+        super(publicMessage);
+        this.name = 'FaqGenerationConflictError';
+    }
+}
+
 const normalizeQuestionKey = (value: unknown): string => (
     typeof value === 'string'
         ? value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -86,6 +94,19 @@ const getResponseText = (response: any): BoundedFaqProviderResponseText => {
         truncated: rawText.length > FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS,
     };
 };
+
+const getArticleFaqSourceFingerprint = (article: KnowledgeBaseArticleType): string => createHash('sha256')
+    .update(JSON.stringify({
+        title: article.title || '',
+        content: extractPlainTextFromEditorContent(article.content || ''),
+        categoryTitle: article.categoryTitle || '',
+        sectionTitle: article.sectionTitle || '',
+        tags: Array.isArray(article.tags) ? article.tags : [],
+        contextKeys: Array.isArray(article.contextKeys) ? article.contextKeys : [],
+        entityIds: Array.isArray(article.entityIds) ? article.entityIds : [],
+        jobId: article.jobId || null,
+    }))
+    .digest('hex');
 
 const buildFaqPrompt = (article: KnowledgeBaseArticleType, text: string) => {
     const tags = Array.isArray(article.tags) ? article.tags.filter(Boolean).slice(0, 12).join(', ') : '';
@@ -197,7 +218,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const articleTenantId = normalizeAnswerlatticeScopeDocumentId(articleRecord.tId ?? articleRecord.tenantId);
         const articleStoreId = normalizeAnswerlatticeScopeDocumentId(articleRecord.sId ?? articleRecord.storeId);
         if (
-            !articleTenantId ||
+            articleRecord.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || !articleTenantId ||
             !articleStoreId ||
             articleTenantId !== tenantId ||
             articleStoreId !== storeId
@@ -209,6 +231,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!article.title || articleText.trim().length < 80) {
             return NextResponse.json({ error: 'Add more article content before generating FAQ suggestions.' }, { status: 400 });
         }
+        const sourceFingerprint = getArticleFaqSourceFingerprint(article);
 
         const existingSnapshot = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
@@ -228,12 +251,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 message: 'This article already has the maximum linked FAQs.',
             });
         }
-
-        const existingQuestions = new Set(
-            existingSnapshot.docs
-                .map(item => normalizeQuestionKey(item.data()?.question))
-                .filter(Boolean),
-        );
 
         const operationStart = Date.now();
         const response = await answerlatticeGenAIClient.models.generateContent({
@@ -257,60 +274,96 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const parsed = extractJsonObject(responseText.text);
         const normalizedFaqs = normalizeGeneratedFaqs(parsed?.faqs);
-        const uniqueFaqs = normalizedFaqs.filter((faq) => {
-            const key = normalizeQuestionKey(faq.question);
-            if (!key || existingQuestions.has(key)) return false;
-            existingQuestions.add(key);
-            return true;
-        }).slice(0, Math.max(0, ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT - existingSnapshot.size));
+        const linkedFaqQuery = db
+            .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+            .where('tId', '==', tenantId)
+            .where('sId', '==', storeId)
+            .where('articleId', '==', articleId)
+            .where('active', '==', true)
+            .limit(ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT);
+        const createdFaqs = await db.runTransaction(async (transaction) => {
+            const currentArticleSnapshot = await transaction.get(articleRef);
+            if (!currentArticleSnapshot.exists) {
+                throw new FaqGenerationConflictError('The article changed or was removed. Refresh before generating FAQ suggestions again.');
+            }
+            const currentArticle = {
+                ...currentArticleSnapshot.data(),
+                id: currentArticleSnapshot.id,
+            } as KnowledgeBaseArticleType;
+            const currentArticleRecord = currentArticle as unknown as Record<string, unknown>;
+            const currentTenantId = normalizeAnswerlatticeScopeDocumentId(currentArticleRecord.tId ?? currentArticleRecord.tenantId);
+            const currentStoreId = normalizeAnswerlatticeScopeDocumentId(currentArticleRecord.sId ?? currentArticleRecord.storeId);
+            if (
+                currentArticleRecord.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || currentTenantId !== tenantId
+                || currentStoreId !== storeId
+                || getArticleFaqSourceFingerprint(currentArticle) !== sourceFingerprint
+            ) {
+                throw new FaqGenerationConflictError('The article changed while FAQ suggestions were being generated. Review the article and try again.');
+            }
 
-        const now = Timestamp.now();
-        const createdFaqs: Array<Record<string, any>> = uniqueFaqs.map((faq, index) => {
-            const ref = db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc();
-            return {
-                id: ref.id,
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                tId: tenantId,
-                sId: storeId,
-                question: faq.question,
-                answer: faq.answer,
-                status: ANSWERLATTICE_FAQ_STATUS.NEEDS_REVIEW,
-                source: ANSWERLATTICE_FAQ_SOURCE.ARTICLE,
-                active: true,
-                articleId,
-                articleTitle: article.title,
-                canonicalAnswerId: null,
-                entityIds: normalizeAnswerlatticeResolvedEntityIds([...(article.entityIds || []), ...(faq.entityIds || [])], 25),
-                contextKeys: Array.from(new Set([...(article.contextKeys || []), ...(faq.contextKeys || [])])).slice(0, 20),
-                tags: Array.from(new Set([...(article.tags || []), ...(faq.tags || [])])).slice(0, 20),
-                likes: 0,
-                dislikes: 0,
-                sortOrder: existingSnapshot.size + index + 1,
-                publishedOn: null,
-                lastReviewedOn: null,
-                reviewRequestedOn: now,
-                jobId: article.jobId || null,
-                generatedFromArticleId: articleId,
-                createdOn: now,
-                modifiedOn: now,
-                createdBy: session.user?.name || session.user?.email || session.user?.id,
-                modifiedBy: session.user?.name || session.user?.email || session.user?.id,
-                uId: session.user?.id as any,
-            };
-        });
+            const currentLinkedFaqs = await transaction.get(linkedFaqQuery);
+            const remainingSlots = Math.max(0, ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT - currentLinkedFaqs.size);
+            if (remainingSlots === 0 || normalizedFaqs.length === 0) return [];
 
-        if (createdFaqs.length > 0) {
-            const batch = db.batch();
-            const createdIds = createdFaqs.map(faq => faq.id);
-            createdFaqs.forEach((faq) => {
-                batch.set(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(faq.id), faq, { merge: true });
+            const existingQuestions = new Set(
+                currentLinkedFaqs.docs
+                    .map(item => normalizeQuestionKey(item.data()?.question))
+                    .filter(Boolean),
+            );
+            const uniqueFaqs = normalizedFaqs.filter((faq) => {
+                const key = normalizeQuestionKey(faq.question);
+                if (!key || existingQuestions.has(key)) return false;
+                existingQuestions.add(key);
+                return true;
+            }).slice(0, remainingSlots);
+            if (uniqueFaqs.length === 0) return [];
+
+            const now = Timestamp.now();
+            const actor = String(session.user?.name || session.user?.email || userIdForLog || 'unknown');
+            const actorId = String(session.user?.id || userIdForLog || 'unknown');
+            const nextFaqs = uniqueFaqs.map((faq, index) => {
+                const ref = db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc();
+                return {
+                    id: ref.id,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: tenantId,
+                    sId: storeId,
+                    question: faq.question,
+                    answer: faq.answer,
+                    status: ANSWERLATTICE_FAQ_STATUS.NEEDS_REVIEW,
+                    source: ANSWERLATTICE_FAQ_SOURCE.ARTICLE,
+                    active: true,
+                    articleId,
+                    articleTitle: currentArticle.title,
+                    canonicalAnswerId: null,
+                    entityIds: normalizeAnswerlatticeResolvedEntityIds([...(currentArticle.entityIds || []), ...(faq.entityIds || [])], 25),
+                    contextKeys: Array.from(new Set([...(currentArticle.contextKeys || []), ...(faq.contextKeys || [])])).slice(0, 20),
+                    tags: Array.from(new Set([...(currentArticle.tags || []), ...(faq.tags || [])])).slice(0, 20),
+                    likes: 0,
+                    dislikes: 0,
+                    sortOrder: currentLinkedFaqs.size + index + 1,
+                    publishedOn: null,
+                    lastReviewedOn: null,
+                    reviewRequestedOn: now,
+                    jobId: currentArticle.jobId || null,
+                    generatedFromArticleId: articleId,
+                    createdOn: now,
+                    modifiedOn: now,
+                    createdBy: actor,
+                    modifiedBy: actor,
+                    uId: actorId,
+                };
             });
-            batch.set(articleRef, {
-                faqIds: FieldValue.arrayUnion(...createdIds),
+            nextFaqs.forEach((faq) => {
+                transaction.create(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(faq.id), faq);
+            });
+            transaction.update(articleRef, {
+                faqIds: FieldValue.arrayUnion(...nextFaqs.map(faq => faq.id)),
                 modifiedOn: now,
-            }, { merge: true });
-            await batch.commit();
-        }
+            });
+            return nextFaqs;
+        });
 
         recordAnswerlatticeAiOperation({
             tId: tenantId,
@@ -363,6 +416,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     } catch (error) {
         if (error instanceof ZodError) {
             return NextResponse.json({ error: 'Invalid FAQ generation request.' }, { status: 400 });
+        }
+        if (error instanceof FaqGenerationConflictError) {
+            return NextResponse.json({ error: error.publicMessage }, { status: 409 });
         }
         if (isAIProviderRateLimitError(error)) {
             const retryAfter = getAIProviderRetryAfter(error) || 60;

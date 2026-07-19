@@ -14,7 +14,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getTrustMetrics } from '@database/answerlattice/trustMetrics';
 import { AnswerlatticeTrustMetrics } from '@type/answerlattice';
-import { Card, Empty, Flex, Progress, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import { Card, Empty, Flex, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import {
     LuActivity,
@@ -22,7 +22,7 @@ import {
     LuArrowRight,
     LuArrowUp,
     LuBarChart3,
-    LuHeart,
+    LuListChecks,
     LuShieldAlert,
     LuShieldCheck,
     LuTarget,
@@ -63,13 +63,6 @@ function getTrend(current: number, previous: number, token: ReturnType<typeof th
         : { icon: <LuArrowDown />, color: token.colorError, label: `${delta}%` };
 }
 
-function getHealthLabel(score: number): string {
-    if (score >= 80) return 'Healthy';
-    if (score >= 60) return 'Fair';
-    if (score >= 40) return 'Attention';
-    return 'Critical';
-}
-
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
@@ -78,6 +71,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
     const { token } = theme.useToken();
     const [data, setData] = useState<AnswerlatticeTrustMetrics | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
 
     useEffect(() => {
         if (!tId || !sId) {
@@ -87,10 +81,11 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
 
         (async () => {
             try {
+                setLoadFailed(false);
                 const result = await getTrustMetrics(tId, sId);
                 setData(result);
             } catch {
-                // Silent fail — dashboard is informational only
+                setLoadFailed(true);
             } finally {
                 setLoading(false);
             }
@@ -115,20 +110,40 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
     if (!data) {
         return (
             <Empty
-                description="No trust data yet. Metrics will appear after the next nightly run."
+                description={loadFailed
+                    ? 'Could not load answer evidence metrics.'
+                    : 'No complete answer-evidence window yet. Metrics will appear after the next nightly run.'}
                 style={{ padding: 48 }}
             />
         );
     }
 
-    const coverageTrend = getTrend(data.coverage.rate, data.coverage.previousRate, token);
-    const resolutionTrend = getTrend(data.resolution.rate, data.resolution.previousRate, token);
+    const hasCoverageQuestions = data.coverage.total > 0;
+    const hasNonEscalationQuestions = data.nonEscalation.total > 0;
+    const hasActiveAnswers = data.drift.activeCount > 0;
+    const hasActiveEntities = data.entityAnswerCoverage.totalEntities > 0;
+    const coverageTrend = hasCoverageQuestions
+        ? getTrend(data.coverage.rate, data.coverage.previousRate, token)
+        : null;
+    const resolutionTrend = hasNonEscalationQuestions
+        ? getTrend(data.nonEscalation.rate, data.nonEscalation.previousRate, token)
+        : null;
     const hasConfirmedResolution = Boolean(data.confirmedResolution && data.confirmedResolution.explicitOutcomeTotal > 0);
     const confirmedResolutionTrend = hasConfirmedResolution && data.confirmedResolution
         ? getTrend(data.confirmedResolution.rate, data.confirmedResolution.previousRate, token)
         : null;
-    const driftTrend = getTrend(data.drift.rate, data.drift.previousRate, token, true);
-    const healthTrend = getTrend(data.entityHealth.avgScore, data.entityHealth.previousAvgScore, token);
+    const driftTrend = hasActiveAnswers
+        ? getTrend(data.drift.rate, data.drift.previousRate, token, true)
+        : null;
+    const entityCoverageTrend = hasActiveEntities
+        ? getTrend(
+            data.entityAnswerCoverage.rate,
+            data.entityAnswerCoverage.previousRate,
+            token,
+        )
+        : null;
+    const lastUpdatedDate = data.lastUpdated?.toDate?.();
+    const stale = Boolean(lastUpdatedDate && Date.now() - lastUpdatedDate.getTime() > 36 * 60 * 60 * 1000);
 
     const failingColumns = [
         {
@@ -145,26 +160,25 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
             ),
         },
         {
-            title: 'Reliability',
-            dataIndex: 'reliabilityScore',
-            key: 'reliabilityScore',
-            width: 120,
-            render: (score: number) => (
-                <Progress
-                    percent={score}
-                    size="small"
-                    strokeColor={getMetricColor('standard', score, token)}
-                    style={{ width: 80 }}
-                    format={pct => `${pct}%`}
-                />
-            ),
+            title: 'Evidence',
+            dataIndex: 'evidenceCount',
+            key: 'evidenceCount',
+            width: 90,
+            render: (count: number) => <Text>{count}</Text>,
         },
         {
-            title: 'Queries',
-            dataIndex: 'queryCount',
-            key: 'queryCount',
-            width: 80,
+            title: 'Canonical fallbacks',
+            dataIndex: 'canonicalMissCount',
+            key: 'canonicalMissCount',
+            width: 130,
             render: (count: number) => <Text>{count}</Text>,
+        },
+        {
+            title: <Tooltip title="Evidence count weighted by escalation and canonical-fallback rates. It is not an accuracy score.">Weighted load</Tooltip>,
+            dataIndex: 'weightedLoad',
+            key: 'weightedLoad',
+            width: 110,
+            render: (value: number) => <Text>{Math.round(value)}</Text>,
         },
         {
             title: 'Escalations',
@@ -180,9 +194,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
     const escalationItems = data.escalationBreakdown && escalationTotal > 0 ? [
         { label: 'Knowledge Gap', count: data.escalationBreakdown.knowledgeGap, color: token.colorError },
         { label: 'Low Confidence', count: data.escalationBreakdown.lowConfidence, color: token.colorWarning },
-        { label: 'Entity Mismatch', count: data.escalationBreakdown.entityMismatch, color: token.colorInfo },
         { label: 'Retrieval Failure', count: data.escalationBreakdown.retrievalFailure, color: token.colorError },
-        { label: 'User Requested', count: data.escalationBreakdown.userRequested, color: token.colorTextSecondary },
     ].filter(item => item.count > 0) : [];
 
     return (
@@ -191,10 +203,10 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
             <Flex justify="space-between" align="center">
                 <Space>
                     <LuShieldCheck size={20} />
-                    <Title level={5} style={{ margin: 0 }}>System Trust</Title>
+                    <Title level={5} style={{ margin: 0 }}>Answer Evidence</Title>
                 </Space>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Last updated: {data.date}
+                    Complete rolling 24-hour window · updated {data.date}{stale ? ' · stale' : ''}
                 </Text>
             </Flex>
 
@@ -203,17 +215,26 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 {/* Coverage */}
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <Statistic
-                        title={<Space><LuTarget size={14} /> Coverage</Space>}
-                        value={data.coverage.rate}
-                        suffix="%"
-                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.coverage.rate, token) }}
+                        title={<Space><LuTarget size={14} /> Canonical coverage</Space>}
+                        value={hasCoverageQuestions ? data.coverage.rate : 'Not available'}
+                        suffix={hasCoverageQuestions ? '%' : undefined}
+                        valueStyle={{
+                            fontSize: hasCoverageQuestions ? 28 : 18,
+                            color: hasCoverageQuestions
+                                ? getMetricColor('standard', data.coverage.rate, token)
+                                : token.colorTextSecondary,
+                        }}
                     />
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
-                        <span style={{ color: coverageTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
-                            {coverageTrend.icon} {coverageTrend.label}
-                        </span>
+                        {coverageTrend ? (
+                            <span style={{ color: coverageTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
+                                {coverageTrend.icon} {coverageTrend.label}
+                            </span>
+                        ) : null}
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {data.coverage.hits} hits / {data.coverage.total} total
+                            {hasCoverageQuestions
+                                ? `${data.coverage.hits} approved serves / ${data.coverage.total} questions`
+                                : 'No questions in this window'}
                         </Text>
                     </Flex>
                 </Card>
@@ -251,16 +272,25 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <Statistic
                         title={<Space><LuBarChart3 size={14} /> No escalation</Space>}
-                        value={data.resolution.rate}
-                        suffix="%"
-                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.resolution.rate, token) }}
+                        value={hasNonEscalationQuestions ? data.nonEscalation.rate : 'Not available'}
+                        suffix={hasNonEscalationQuestions ? '%' : undefined}
+                        valueStyle={{
+                            fontSize: hasNonEscalationQuestions ? 28 : 18,
+                            color: hasNonEscalationQuestions
+                                ? getMetricColor('standard', data.nonEscalation.rate, token)
+                                : token.colorTextSecondary,
+                        }}
                     />
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
-                        <span style={{ color: resolutionTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
-                            {resolutionTrend.icon} {resolutionTrend.label}
-                        </span>
+                        {resolutionTrend ? (
+                            <span style={{ color: resolutionTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
+                                {resolutionTrend.icon} {resolutionTrend.label}
+                            </span>
+                        ) : null}
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {data.resolution.resolved} without escalation / {data.resolution.total} total
+                            {hasNonEscalationQuestions
+                                ? `${data.nonEscalation.withoutEscalation} without escalation / ${data.nonEscalation.total} questions`
+                                : 'No questions in this window'}
                         </Text>
                     </Flex>
                 </Card>
@@ -270,49 +300,66 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                     <Tooltip title="Lower is better — shows % of answers that may be outdated">
                         <Statistic
                             title={<Space><LuShieldAlert size={14} /> Drift</Space>}
-                            value={data.drift.rate}
-                            suffix="%"
-                            valueStyle={{ fontSize: 28, color: getMetricColor('drift', data.drift.rate, token) }}
+                            value={hasActiveAnswers ? data.drift.rate : 'Not available'}
+                            suffix={hasActiveAnswers ? '%' : undefined}
+                            valueStyle={{
+                                fontSize: hasActiveAnswers ? 28 : 18,
+                                color: hasActiveAnswers
+                                    ? getMetricColor('drift', data.drift.rate, token)
+                                    : token.colorTextSecondary,
+                            }}
                         />
                     </Tooltip>
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
-                        <span style={{ color: driftTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
-                            {driftTrend.icon} {driftTrend.label}
-                        </span>
+                        {driftTrend ? (
+                            <span style={{ color: driftTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
+                                {driftTrend.icon} {driftTrend.label}
+                            </span>
+                        ) : null}
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {data.drift.driftedCount} drifted / {data.drift.activeCount} active
+                            {hasActiveAnswers
+                                ? `${data.drift.driftedCount} drifted / ${data.drift.activeCount} active`
+                                : 'No active canonical answers'}
                         </Text>
                     </Flex>
                 </Card>
 
-                {/* Entity Health */}
+                {/* Entity answer coverage */}
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <Statistic
-                        title={<Space><LuHeart size={14} /> Entity Health</Space>}
-                        value={data.entityHealth.avgScore}
-                        suffix={<Text type="secondary" style={{ fontSize: 14 }}>/ 100</Text>}
-                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.entityHealth.avgScore, token) }}
+                        title={<Space><LuListChecks size={14} /> Entity answer coverage</Space>}
+                        value={hasActiveEntities ? data.entityAnswerCoverage.rate : 'Not available'}
+                        suffix={hasActiveEntities ? '%' : undefined}
+                        valueStyle={{
+                            fontSize: hasActiveEntities ? 28 : 18,
+                            color: hasActiveEntities
+                                ? getMetricColor('standard', data.entityAnswerCoverage.rate, token)
+                                : token.colorTextSecondary,
+                        }}
                     />
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
-                        <span style={{ color: healthTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
-                            {healthTrend.icon} {healthTrend.label}
-                        </span>
+                        {entityCoverageTrend ? (
+                            <span style={{ color: entityCoverageTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
+                                {entityCoverageTrend.icon} {entityCoverageTrend.label}
+                            </span>
+                        ) : null}
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {getHealthLabel(data.entityHealth.avgScore)} · {data.entityHealth.totalEntities} entities
+                            {hasActiveEntities
+                                ? `${data.entityAnswerCoverage.coveredCount} covered / ${data.entityAnswerCoverage.totalEntities} active entities`
+                                : 'No active product entities'}
                         </Text>
                     </Flex>
                 </Card>
             </Flex>
 
-            {/* Entity Health Summary */}
-            {data.entityHealth.totalEntities > 0 && (
+            {data.entityAnswerCoverage.totalEntities > 0 && (
                 <Flex gap={12}>
-                    <Tag color="success">{data.entityHealth.healthyCount} Healthy</Tag>
-                    {data.entityHealth.attentionCount > 0 && (
-                        <Tag color="warning">{data.entityHealth.attentionCount} Attention</Tag>
+                    <Tag color="success">{data.entityAnswerCoverage.coveredCount} Covered</Tag>
+                    {data.entityAnswerCoverage.driftedCoveredCount > 0 && (
+                        <Tag color="warning">{data.entityAnswerCoverage.driftedCoveredCount} Covered but drifted</Tag>
                     )}
-                    {data.entityHealth.criticalCount > 0 && (
-                        <Tag color="error">{data.entityHealth.criticalCount} Critical</Tag>
+                    {data.entityAnswerCoverage.uncoveredCount > 0 && (
+                        <Tag color="error">{data.entityAnswerCoverage.uncoveredCount} Uncovered</Tag>
                     )}
                 </Flex>
             )}
@@ -320,7 +367,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
             {/* Top Failing Entities */}
             {data.topFailingEntities && data.topFailingEntities.length > 0 && (
                 <Card
-                    title={<Space><LuActivity size={16} /> Top Failing Areas</Space>}
+                    title={<Space><LuActivity size={16} /> Top Review Areas</Space>}
                     size="small"
                 >
                     <Table
@@ -354,6 +401,11 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                             </Flex>
                         ))}
                     </Flex>
+                    {data.escalationBreakdown.userRequested > 0 && (
+                        <Text type="secondary" style={{ display: 'block', marginTop: 12 }}>
+                            Explicit human-help requests: {data.escalationBreakdown.userRequested}. This is a separate signal count, not part of the query escalation denominator.
+                        </Text>
+                    )}
                 </Card>
             )}
         </Flex>

@@ -41,6 +41,21 @@ const malformedAction = AnswerlatticeGovernanceActionSchema.safeParse({
 });
 assert.equal(malformedAction.success, false, 'unknown governance actions must fail closed');
 
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({ action: 'evaluate_drift' }).success,
+    true,
+    'drift evaluation must be admitted without accepting a client-authored reason',
+);
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({
+        action: 'record_drift',
+        answerId: 'answer_123',
+        driftReason: '[scope_conflict] forged client reason',
+    }).success,
+    false,
+    'clients must not be able to submit authoritative drift reasons',
+);
+
 const storedProposal = {
     id: 'proposal_123',
     pId: 'AL',
@@ -58,8 +73,18 @@ const storedProposal = {
     suggestedChange: {
         draftTitle: 'Billing failed',
         draftStatus: 'generated',
+        baseAnswerFingerprint: 'a'.repeat(64),
         structuredSummary: 'Check the failed invoice and retry the payment method.',
         detailedExplanation: 'Open Billing, inspect the failed invoice, and retry with an active payment method.',
+        proposedEvidence: {
+            sourceIds: ['source_123'],
+            citations: [{
+                id: 'citation_123',
+                title: 'Failed invoice documentation',
+                url: 'https://docs.example.com/billing/failed-invoices',
+                sourceId: 'source_123',
+            }],
+        },
     },
     confidenceScore: 0.9,
     status: 'pending_review',
@@ -79,6 +104,48 @@ assert.equal(
     false,
     'stored proposal confidence must stay within its declared range',
 );
+assert.equal(
+    AnswerlatticeStoredMutationProposalSchema.safeParse({
+        ...storedProposal,
+        suggestedChange: { ...storedProposal.suggestedChange, baseAnswerFingerprint: 'not-a-fingerprint' },
+    }).success,
+    false,
+    'stored proposal base-answer fingerprints must use the full SHA-256 contract',
+);
+assert.equal(
+    AnswerlatticeStoredMutationProposalSchema.safeParse({
+        ...storedProposal,
+        suggestedChange: {
+            ...storedProposal.suggestedChange,
+            proposedEvidence: {
+                sourceIds: ['source_123'],
+                citations: [{
+                    title: 'Private documentation',
+                    url: 'https://owner:secret@docs.example.com/private',
+                }],
+            },
+        },
+    }).success,
+    false,
+    'review proposals must reject citation URLs containing credentials',
+);
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({
+        action: 'approve_proposal',
+        proposalId: 'proposal_123',
+        editedContent: {
+            title: 'Billing failed',
+            structuredSummary: 'Check the failed invoice.',
+            detailedExplanation: 'Open Billing and review the failed invoice.',
+            citations: [{
+                title: 'Failed invoice documentation',
+                url: 'https://docs.example.com/billing/failed-invoices',
+            }],
+        },
+    }).success,
+    true,
+    'reviewers must be able to approve bounded public citations explicitly',
+);
 
 const validResult = AnswerlatticeGovernanceActionResultSchema.safeParse({
     success: true,
@@ -88,6 +155,16 @@ const validResult = AnswerlatticeGovernanceActionResultSchema.safeParse({
     status: 'implemented',
 });
 assert.equal(validResult.success, true, 'valid governance responses must be admitted');
+assert.equal(
+    AnswerlatticeGovernanceActionResultSchema.safeParse({
+        success: true,
+        action: 'evaluate_drift',
+        evaluatedAnswers: 12,
+        updatedAnswers: 3,
+    }).success,
+    true,
+    'drift evaluation results must expose bounded evaluation and update counts',
+);
 assert.equal(
     AnswerlatticeGovernanceActionResultSchema.safeParse({
         success: true,
@@ -144,9 +221,11 @@ const mergeResult = AnswerlatticeGovernanceActionResultSchema.safeParse({
     action: 'merge_entities',
     transferredAnswers: 2,
     transferredArticles: 3,
+    transferredFaqs: 1,
     transferredRelations: 1,
+    transferredSurfaces: 2,
 });
-assert.equal(mergeResult.success, true, 'entity merge results must report transferred article references');
+assert.equal(mergeResult.success, true, 'entity merge results must report every governed reference class');
 
 const root = path.resolve(__dirname, '../..');
 const governanceServerSource = fs.readFileSync(
@@ -162,6 +241,21 @@ assert.equal(
     governanceServerSource.includes('kb: changedArticles.length > 0'),
     true,
     'entity merge must invalidate KB-backed retrieval when article links change',
+);
+assert.equal(
+    governanceServerSource.includes('faqs: changedFaqs.length > 0'),
+    true,
+    'entity merge must invalidate compiled FAQ truth when FAQ links change',
+);
+assert.equal(
+    governanceServerSource.includes('surfaces: changedSurfaces.length > 0'),
+    true,
+    'entity merge must invalidate compiled product-surface truth when surface links change',
+);
+assert.equal(
+    governanceServerSource.includes('prefixTokens: buildAnswerlatticeEntityPrefixTokens'),
+    true,
+    'entity merge must rebuild the survivor search index instead of changing synonyms alone',
 );
 
 for (const indexPath of ['firestore.indexes.json', 'firestore-answerlattice.indexes.json']) {

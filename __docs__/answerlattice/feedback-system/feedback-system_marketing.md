@@ -1,7 +1,7 @@
 # Feedback System — Marketing & Sales Collateral
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.8.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Sales, Marketing (Internal)
 
 ---
@@ -10,7 +10,7 @@
 
 **One-liner:** "Customer feedback becomes owner-reviewed support signals."
 
-**30 seconds:** Answerlattice's Feedback System collects support feedback through the Help Center: general satisfaction, product-area issues, and feature requests or suggestions. Owners review the items inside Answerlattice under their tenant/workspace, group them by Product Surface, and turn important rows into Support Board cards or answer proposals. It also includes unified content feedback for likes/dislikes on articles and changelog entries.
+**30 seconds:** Answerlattice's Feedback System collects support feedback through the Help Center: general satisfaction, product-area issues, and feature requests or suggestions. Owners review the items inside their workspace, group them by Product Surface, and turn important rows into Support Board cards or answer proposals. Published article, changelog, and FAQ reactions add governed evidence without automatically changing product truth.
 
 ---
 
@@ -25,7 +25,9 @@
 | **Owner review** | `/answerlattice/feedback` shows tenant-scoped feedback stats, list, and details |
 | **Product Surface sorting** | Owners can assign, change, clear, and filter feedback by Product Surface without asking users to classify it |
 | **Signal path** | Help Center feedback emits `feedback` support signals for Support Board review |
-| **Content feedback** | Unified likes/dislikes for articles and changelog entries |
+| **Content feedback** | Authenticated likes/dislikes for published articles, changelog entries, and FAQs |
 | **Detailed comments** | Sanitized feedback comments with sentiment tracking |
 | **Per-user tracking** | Latest feedback displayed after submission |
 | **Cost** | One feedback write plus one optional signal write per submission |
+
+Do not claim public voting, automatic feature prioritization, autonomous content improvement, or verified resolution from a reaction alone.

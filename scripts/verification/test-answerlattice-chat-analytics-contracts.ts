@@ -8,6 +8,7 @@ import {
 } from '../../src/lib/answerlattice/chatAnalyticsContracts';
 import {
     getAnswerlatticeCompletedWeeklyWindows,
+    getAnswerlatticeWeeklySummaryFreshness,
     parseAnswerlatticeFeedbackIntelligence,
     parseAnswerlatticeWeeklySummary,
 } from '../../src/lib/answerlattice/analyticsIntelligenceContracts';
@@ -153,16 +154,69 @@ const validWeekly = {
         satisfactionChange: -1,
         topCategory: 'Billing',
     },
+    sourceCompleteness: {
+        currentDays: 7,
+        previousDays: 7,
+        currentWeekComplete: true,
+        comparisonComplete: true,
+    },
     generatedAt,
+    generationMode: 'deterministic',
 };
-assert.equal(parseAnswerlatticeWeeklySummary(validWeekly, scope)?.narrative, 'A useful weekly summary.');
+const parsedWeekly = parseAnswerlatticeWeeklySummary(validWeekly, scope);
+assert.equal(parsedWeekly?.narrative, 'A useful weekly summary.');
+assert.equal(parsedWeekly?.sourceCompleteness.comparisonComplete, true);
 assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, pId: 'ML' }, scope), null);
 assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, tId: '12' }, scope), null);
+assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, weekEnd: '2026-07-08' }, scope), null);
+assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, generationMode: 'model_assisted' }, scope), null);
+const parsedWeeklyWithoutComparison = parseAnswerlatticeWeeklySummary({
+    ...validWeekly,
+    sourceCompleteness: {
+        currentDays: 7,
+        previousDays: 0,
+        currentWeekComplete: true,
+        comparisonComplete: false,
+    },
+}, scope);
+assert.equal(parsedWeeklyWithoutComparison?.sourceCompleteness.currentWeekComplete, true);
+assert.equal(parsedWeeklyWithoutComparison?.sourceCompleteness.comparisonComplete, false);
+assert.equal(parseAnswerlatticeWeeklySummary({
+    ...validWeekly,
+    sourceCompleteness: {
+        currentDays: 6,
+        previousDays: 7,
+        currentWeekComplete: true,
+        comparisonComplete: true,
+    },
+}, scope), null);
 assert.equal(parseAnswerlatticeWeeklySummary({
     ...validWeekly,
     keyMetrics: { ...validWeekly.keyMetrics, volumeChange: Number.NaN },
 }, scope), null);
 assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, generatedAt: {} }, scope), null);
+const legacyDeterministicWeekly = parseAnswerlatticeWeeklySummary({
+    ...validWeekly,
+    sourceCompleteness: undefined,
+}, scope);
+assert.deepEqual(legacyDeterministicWeekly?.sourceCompleteness, {
+    currentDays: null,
+    previousDays: null,
+    currentWeekComplete: false,
+    comparisonComplete: false,
+});
+assert.equal(getAnswerlatticeWeeklySummaryFreshness({
+    ...parsedWeekly!,
+    generatedAt: '2026-07-08T12:00:00.000Z',
+}, new Date('2026-07-11T12:00:00.000Z')).state, 'current');
+assert.equal(getAnswerlatticeWeeklySummaryFreshness({
+    ...parsedWeekly!,
+    generatedAt: '2026-06-01T12:00:00.000Z',
+}, new Date('2026-07-11T12:00:00.000Z')).state, 'stale');
+assert.equal(getAnswerlatticeWeeklySummaryFreshness({
+    ...parsedWeekly!,
+    generatedAt: '2026-07-12T12:00:00.000Z',
+}, new Date('2026-07-11T12:00:00.000Z')).state, 'future');
 
 const validFeedback = {
     pId: 'AL',

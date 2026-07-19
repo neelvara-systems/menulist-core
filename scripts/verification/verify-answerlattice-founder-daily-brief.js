@@ -32,6 +32,7 @@ const dashboardPage = read('src/app/(answerlattice)/answerlattice/dashboard/page
 const activationPage = read('src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx');
 const answerlatticeBasePage = read('src/app/(answerlattice)/answerlattice/page.tsx');
 const assistantLib = read('src/lib/answerlattice/ownerSupportAssistant.ts');
+const assistantContracts = read('src/lib/answerlattice/ownerSupportAssistantContracts.ts');
 const assistantUi = read('src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx');
 const assistantPage = read('src/app/(answerlattice)/answerlattice/support-assistant/page.tsx');
 const supportBoardUi = read('src/components/templates/answerlattice/supportBoard/AnswerlatticeSupportBoard.tsx');
@@ -92,7 +93,8 @@ assertIncludes(answerlatticeBasePage, "key?: unknown }).key === 'priority-answer
 assertIncludes(answerlatticeBasePage, 'redirect(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)', 'launched-owner Daily Brief redirect');
 assertIncludes(answerlatticeBasePage, 'redirect(ANSWERLATTICE_ROUTES.ACTIVATION)', 'incomplete launch fail-safe redirect');
 
-assertIncludes(assistantLib, 'export type AnswerlatticeFounderDailyBrief', 'Founder Daily Brief type');
+assertIncludes(assistantContracts, 'export type AnswerlatticeFounderDailyBrief', 'Founder Daily Brief contract type');
+assertIncludes(assistantLib, 'AnswerlatticeFounderDailyBrief,', 'Founder Daily Brief runtime type re-export');
 assertIncludes(assistantLib, 'buildFounderDailyBrief', 'Founder Daily Brief builder');
 assertIncludes(assistantLib, 'ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF', 'Founder Daily Brief flag gate');
 assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`coverage_${tId}_${sId}`)", 'coverage summary read');
@@ -161,7 +163,7 @@ assertIncludes(ownerAssistantFirebase, 'six reads on a cold packet and zero read
 assertIncludes(founderDailyBriefReadme, 'No new Firestore collection.', 'Founder Daily Brief README boundary');
 assertIncludes(founderDailyBriefSpec, 'New assistant task queue', 'Founder Daily Brief spec boundary');
 assertIncludes(founderDailyBriefImpl, 'no new route', 'Founder Daily Brief implementation boundary');
-assertIncludes(founderDailyBriefFirebase, 'adds one compact activation-summary read', 'Founder Daily Brief Firebase cost boundary');
+assertIncludes(founderDailyBriefFirebase, 'uses the existing six-document Support Assistant packet', 'Founder Daily Brief Firebase cost boundary');
 assertIncludes(changelog, 'Answerlattice Founder Daily Brief', 'changelog entry');
 assertIncludes(changelog, 'six compact summary reads on an uncached brief request', 'changelog cost boundary');
 

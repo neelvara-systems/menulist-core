@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import * as admin from 'firebase-admin';
+import type { Transaction, WriteBatch } from 'firebase-admin/firestore';
 
 export const ANSWERLATTICE_TENANT_SUMMARY_DOC_ID = 'answerlatticeTenantsSummary';
 export const ANSWERLATTICE_TENANT_SUMMARY_SHARD_COUNT = 64;
@@ -73,7 +74,7 @@ export async function readAnswerlatticeTenantSummaryDataAdmin(
     };
 }
 
-export async function upsertAnswerlatticeTenantSummaryAdmin(params: {
+type AnswerlatticeTenantSummaryWriteParams = {
     tId: number;
     sId: number;
     source: string;
@@ -82,7 +83,12 @@ export async function upsertAnswerlatticeTenantSummaryAdmin(params: {
     timeZone?: string;
     businessDayEndTime?: string;
     schedulerHour?: number;
-}): Promise<{ skipped: boolean }> {
+};
+
+export function appendAnswerlatticeTenantSummaryAdmin(
+    writer: WriteBatch | Transaction,
+    params: AnswerlatticeTenantSummaryWriteParams,
+): { skipped: boolean } {
     const scope = normalizeTenantStore(params.tId, params.sId);
     if (!scope) {
         throw new Error('Cannot update Answerlattice tenant summary without valid tId and sId.');
@@ -111,16 +117,37 @@ export async function upsertAnswerlatticeTenantSummaryAdmin(params: {
         entry.schedulerHour = Number(params.schedulerHour);
     }
 
-    await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+    const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
         getAnswerlatticeTenantSummaryShardId(scope.tId, scope.sId),
-    ).set({
+    );
+    const summaryData = {
         summaryType: ANSWERLATTICE_TENANT_SUMMARY_SHARD_TYPE,
         shardVersion: 1,
         tenants: {
             [key]: entry,
         },
         updatedAt: now,
-    }, { merge: true });
+    };
+
+    if ('commit' in writer) {
+        writer.set(summaryRef, summaryData, { merge: true });
+    } else {
+        writer.set(summaryRef, summaryData, { merge: true });
+    }
 
     return { skipped: false };
+}
+
+export async function upsertAnswerlatticeTenantSummaryAdmin(
+    params: AnswerlatticeTenantSummaryWriteParams,
+): Promise<{ skipped: boolean }> {
+    const db = answerlatticeFirestoreAdmin as any;
+    if (!db || typeof db.collection !== 'function') {
+        return { skipped: true };
+    }
+    const batch = db.batch();
+    const result = appendAnswerlatticeTenantSummaryAdmin(batch, params);
+    if (result.skipped) return result;
+    await batch.commit();
+    return result;
 }

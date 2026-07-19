@@ -35,8 +35,12 @@ interface Props {
 
 const ACTION_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
     'drift_detected': { label: 'Drift Detected', color: 'orange', icon: <LuShieldAlert /> },
+    'drift_manually_resolved': { label: 'Drift Resolved', color: 'green', icon: <LuCheckCircle /> },
     'drift_cleared': { label: 'Drift Cleared', color: 'green', icon: <LuCheckCircle /> },
+    'canonical_answer_updated': { label: 'Canonical Answer Updated', color: 'geekblue', icon: <LuFileEdit /> },
+    'draft_approved_as_canonical_answer': { label: 'Canonical Answer Approved', color: 'purple', icon: <LuFileEdit /> },
     'mutation_proposal_generated': { label: 'Mutation Proposed', color: 'blue', icon: <LuGitBranch /> },
+    'mutation_proposal_approved': { label: 'Mutation Approved', color: 'green', icon: <LuCheckCircle /> },
     'mutation_approved': { label: 'Mutation Approved', color: 'green', icon: <LuCheckCircle /> },
     'mutation_rejected': { label: 'Mutation Rejected', color: 'red', icon: <LuXCircle /> },
     'mutation_implemented': { label: 'Mutation Implemented', color: 'cyan', icon: <LuFileEdit /> },

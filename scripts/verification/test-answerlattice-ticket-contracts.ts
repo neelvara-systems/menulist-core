@@ -3,10 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import { Timestamp } from 'firebase/firestore';
 import {
+    ANSWERLATTICE_TICKET_DOCUMENT_LIMIT,
+    ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
+    ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT,
     isAnswerlatticeTicketStatusTransitionAllowed,
     parseAnswerlatticeSupportTicketDocument,
     parseAnswerlatticeTicketMutation,
 } from '@lib/answerlattice/supportTicketLifecycle';
+import { calculateSupportTicketSLAStatus } from '@type/supportTicket';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const NOW = Timestamp.fromMillis(1_700_000_000_000);
@@ -45,6 +49,40 @@ assert.equal(isAnswerlatticeTicketStatusTransitionAllowed('Open', 'Resolved'), t
 assert.equal(isAnswerlatticeTicketStatusTransitionAllowed('Open', 'Re-Opened'), false);
 assert.equal(isAnswerlatticeTicketStatusTransitionAllowed('Closed', 'Re-Opened'), true);
 assert.equal(isAnswerlatticeTicketStatusTransitionAllowed('Closed', 'Open'), false);
+assert.equal(ANSWERLATTICE_TICKET_MESSAGE_LIMIT, 50);
+assert.equal(ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT, 25);
+assert.equal(ANSWERLATTICE_TICKET_DOCUMENT_LIMIT, 4);
+
+const lateSla = calculateSupportTicketSLAStatus({
+    ...baseTicket,
+    createdOn: NOW,
+    priority: 'High',
+    messages: [{
+        id: 'staff-reply',
+        text: 'Reply',
+        type: 'user',
+        sender: { id: 'support-1', name: 'Support', email: 'support@example.com' },
+        timestamp: Timestamp.fromMillis(NOW.toMillis() + (3 * 60 * 60 * 1000)),
+    }],
+    statuses: [
+        ...baseTicket.statuses,
+        {
+            status: 'Resolved',
+            timestamp: Timestamp.fromMillis(NOW.toMillis() + (25 * 60 * 60 * 1000)),
+            createdBy: { id: 'support-1', name: 'Support', email: 'support@example.com' },
+            remark: 'Resolved',
+        },
+    ],
+    clientDetails: {
+        storeName: 'Workspace',
+        tenantName: 'Tenant',
+        email: actor.email,
+        phone: '',
+    },
+    uId: actor.id,
+}, NOW.toMillis() + (26 * 60 * 60 * 1000));
+assert.equal(lateSla?.responseStatus, 'breached');
+assert.equal(lateSla?.resolutionStatus, 'breached');
 
 assert.ok(parseAnswerlatticeSupportTicketDocument({
     id: 'ticket-1',
@@ -58,6 +96,42 @@ assert.equal(parseAnswerlatticeSupportTicketDocument({
 }), null);
 assert.equal(parseAnswerlatticeSupportTicketDocument({
     id: 'ticket-1',
+    value: {
+        ...baseTicket,
+        documents: Array.from({ length: ANSWERLATTICE_TICKET_DOCUMENT_LIMIT + 1 }, (_, index) => ({
+            name: `file-${index}.txt`,
+            type: 'text/plain',
+            size: 1,
+            url: `https://firebasestorage.googleapis.com/file-${index}`,
+        })),
+    },
+}), null);
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'ticket-1',
+    value: {
+        ...baseTicket,
+        documents: [{
+            name: '',
+            type: 'text/plain',
+            size: 1,
+            url: 'https://firebasestorage.googleapis.com/file',
+        }],
+    },
+}), null);
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'ticket-1',
+    value: {
+        ...baseTicket,
+        documents: [{
+            name: 'too-large.txt',
+            type: 'text/plain',
+            size: (10 * 1024 * 1024) + 1,
+            url: 'https://firebasestorage.googleapis.com/file',
+        }],
+    },
+}), null);
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'ticket-1',
     value: baseTicket,
     scope: { tId: 2, sId: 202 },
 }), null);
@@ -65,7 +139,7 @@ assert.equal(parseAnswerlatticeSupportTicketDocument({
     id: 'ticket-1',
     value: {
         ...baseTicket,
-        messages: Array.from({ length: 501 }, (_, index) => ({
+        messages: Array.from({ length: ANSWERLATTICE_TICKET_MESSAGE_LIMIT + 1 }, (_, index) => ({
             id: `message-${index}`,
             text: 'Reply',
             type: 'user',
@@ -78,6 +152,10 @@ assert.equal(parseAnswerlatticeSupportTicketDocument({
 const ticketDal = fs.readFileSync(path.join(ROOT, 'src/database/tickets/index.ts'), 'utf8');
 assert.ok(ticketDal.includes('runTransaction(answerlatticeFirebaseClient'), 'ticket mutations must use transactions');
 assert.ok(ticketDal.includes("where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)"), 'ticket queries must filter the Answerlattice product');
+assert.ok(ticketDal.includes('session: scope,'), 'ticket uploads must use the verified target ticket scope');
+assert.ok(ticketDal.includes('mutationContext.scope,'), 'ticket reply uploads must preserve the target ticket scope');
+assert.ok(ticketDal.includes('if (transactionResult.statusChanged)'), 'all effective status mutations must trigger notification centrally');
+assert.ok(ticketDal.includes('recipientEmail !== actor.email'), 'customer self-replies must not trigger a support-reply notification');
 assert.ok(!ticketDal.includes('const updatedMessages = [...currentMessages, message]'), 'ticket replies must not rebuild from caller state');
 assert.ok(!ticketDal.includes('const updatedStatuses = [...currentStatuses'), 'ticket statuses must not rebuild from caller state');
 
@@ -95,4 +173,3 @@ for (const indexFile of ['firestore-answerlattice.indexes.json', 'firestore.inde
 }
 
 console.log('Answerlattice ticket lifecycle contracts passed.');
-

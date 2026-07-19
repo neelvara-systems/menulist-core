@@ -24,15 +24,17 @@ The Developer Install Pack turns Answerlattice's existing widget/runtime, produc
 
 ## Product Boundary
 
-This pack does not create a second widget, a second ingestion pipeline, a public SDK, a public API promise, MCP access, or a separate support product. It packages the existing Answerlattice runtime so buyers can hand one agent packet to their coding agent, install the widget, verify runtime status, seed starter surfaces, and evaluate support knowledge faster.
+This pack does not create a second widget, a second ingestion pipeline, a separately versioned npm SDK, a broad public API promise, MCP access, or a separate support product. It packages the existing Answerlattice runtime so buyers can hand one agent packet to their coding agent, install the widget, verify runtime status, seed starter surfaces, and evaluate support knowledge faster.
 
-The frozen public contract is the v1 browser contract: `https://answerlattice.com/widget/v1/answerlattice-widget.js`, `al_*` widget key, `window.AnswerlatticeWidget`, `setContext()`, and `page()`. Answerlattice does not support a public SDK or npm install path.
+The frozen first-party browser SDK contract is `https://answerlattice.com/widget/v1/answerlattice-widget.js`, the public `al_*` widget key, `window.AnswerlatticeWidget`, `setContext()`, and `page()`. Answerlattice does not support a separately installed npm package or a broad general-purpose public SDK.
 
 ## Key Handling
 
 Workspace-specific packets and ZIPs include an explicit full-key placeholder, a saved-key identifier for dashboard lookup, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework hints, install checklist, and env placeholders by default. They must not include the raw widget key unless the user explicitly reveals or copies the key through the existing key flow. The saved-key identifier is not installable.
 
 Allowed origins and blocked routes are configured in Answerlattice dashboard UI. Generated prompts must not ask owners to maintain separate `ALLOWED_ORIGINS` or `BLOCKED_ROUTES` variables in the client product.
+
+Generated HTML snippets escape widget-key and blocked-route attribute values before copy. Workspace packet and ZIP responses are private, `no-store`, `nosniff`, actor/workspace rate-limited, permission checked, and exact-scope checked. The Install Center downloads the ZIP through a same-origin no-store request, requires a successful ZIP response, and enforces a 2 MiB response cap before saving it.
 
 ## Client Env Guidance
 

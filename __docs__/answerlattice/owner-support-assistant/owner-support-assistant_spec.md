@@ -130,7 +130,7 @@ Every answer must include:
 
 | Field | Requirement |
 | --- | --- |
-| Status | One of `healthy`, `needs_review`, `at_risk`, `insufficient_data`, `partial`, `unsupported`. |
+| Status | Runtime values are `healthy`, `needs_review`, `at_risk`, `insufficient_data`, or `unsupported`; partial evidence is represented by `summaryHealth` and answer limits. |
 | Direct answer | Short owner-readable answer. |
 | Evidence | Source cards with collection/source type, record label, freshness, and route link where safe. |
 | Priority | Plain priority reason based on severity, user impact, freshness, and confidence. |
@@ -176,7 +176,7 @@ Blocked actions:
 3. A disabled flag returns a calm unavailable state and performs no assistant reads.
 4. A cold brief reads exactly six compact summaries and never opens a realtime listener.
 5. The summary packet is cached for 60 seconds and the process cache is capped at 300 workspaces.
-6. Owner questions are classified into attention, answer risk, friction, readiness, intake, or unsupported.
+6. Owner questions are classified into attention, answer risk, friction, readiness, intake, release, install, reply, cost, or unsupported.
 7. Query handling validates input with Zod and applies a workspace/user rate limit before the Firestore-backed permission check.
 8. Answers are deterministic and make no LLM/provider call.
 9. Questions perform no detail, raw ticket, conversation, signal-event, or search-history reads.

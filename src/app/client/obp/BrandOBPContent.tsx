@@ -23,7 +23,7 @@ import {
     shouldExposePublicLanguageSwitcher,
 } from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
-import { getBusinessCoverAltText, getBusinessLogoAltText } from "@lib/media/altText";
+import { createPublicCustomerTranslator } from "@lib/localization/publicCustomerMessages";
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
@@ -134,6 +134,7 @@ function localizeOutletStatusText(value: string | undefined, t: (key: string, va
 
 export default async function BrandOBPContent({ store, baseUrl, requestedLanguage }: BrandOBPContentProps) {
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
+    const publicCustomerT = createPublicCustomerTranslator(contentLanguage);
     const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
     const allOutlets = await getOutletsForTenant(store.tenantId);
     // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): only outlets with a safe, real
@@ -152,6 +153,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const languageOptions = getPublicLanguageOptions(store);
     const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
+    const activeLanguageDirection = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.direction || 'ltr';
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const brandName = getBrandName(store, t('publicFallbackBusiness'));
     const logo = store?.logo;
@@ -159,7 +161,13 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const firstLetter = brandName.charAt(0);
 
     return (
-        <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
+        <main
+            className={styles.page}
+            data-obp-page="true"
+            dir={activeLanguageDirection}
+            lang={contentLanguage}
+            style={{ '--obp-accent': accentColor } as any}
+        >
             <OBPAnalytics
                 tenantId={store?.tenantId}
                 storeId={store?.storeId}
@@ -184,7 +192,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 {businessCover ? (
                     <div className={styles.businessCover}>
                         <img
-                            alt={getBusinessCoverAltText(brandName)}
+                            alt={brandName}
                             src={businessCover}
                             loading="eager"
                         />
@@ -196,7 +204,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 {logo ? (
                     <img
                         src={logo}
-                        alt={getBusinessLogoAltText(brandName)}
+                        alt={brandName}
                         className={styles.logo}
                         width={80}
                         height={80}
@@ -303,6 +311,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                     <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
                         <PublicMenuListAttribution
                             activePlanType={(store as any)?.activePlanType}
+                            ariaLabel={publicCustomerT('common.createOfficialCustomerLink')}
                             mode="compact"
                             surfaceLabel={t('publicPoweredBy')}
                             rightsLabel={t('publicAllRightsReserved')}

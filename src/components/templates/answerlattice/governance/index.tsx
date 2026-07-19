@@ -91,6 +91,7 @@ const ANSWERLATTICE_ADVANCED_GOVERNANCE_TABS = new Set<string>([
 type GovernanceTranslationResponse = {
     articleId: string;
     locale: string;
+    status: 'draft';
     translatedTitle: string;
     translatedBy: 'ai';
 };
@@ -103,6 +104,7 @@ const isGovernanceTranslationResponse = (value: unknown): value is GovernanceTra
     isRecord(value)
     && typeof value.articleId === 'string'
     && typeof value.locale === 'string'
+    && value.status === 'draft'
     && typeof value.translatedTitle === 'string'
     && value.translatedBy === 'ai'
 );
@@ -280,7 +282,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_TRUST_METRICS) {
             items.push({
                 key: ANSWERLATTICE_GOVERNANCE_TABS.TRUST,
-                label: tabLabel(LuShieldCheck, 'System Trust', 'Trust'),
+                label: tabLabel(LuShieldCheck, 'Answer Evidence', 'Evidence'),
                 children: <FounderTrustDashboard tId={tId} sId={sId} />,
             });
         }
@@ -289,7 +291,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
             items.push({
                 key: ANSWERLATTICE_GOVERNANCE_TABS.BRANDING,
                 label: tabLabel(LuPaintbrush, 'Branding'),
-                children: <WhiteLabelBranding tId={tId} sId={sId} initialConfig={brandingConfig} onSave={handleSaveBranding} />,
+                children: <WhiteLabelBranding initialConfig={brandingConfig} onSave={handleSaveBranding} />,
             });
         }
 

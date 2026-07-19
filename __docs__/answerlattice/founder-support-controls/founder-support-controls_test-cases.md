@@ -6,7 +6,8 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 
 - rate limiting precedes the Firestore-backed permission check on save, run, release-check, and rollback
 - full-runtime SAFE_MODE precedes suite/preload reads and provider-capable execution
-- persisted summary, release, answer, audit, and existing rollback-proposal scope uses exact shared normalizers
+- persisted summary uses exact ID/product/numeric scope/schema/revision/case admission; stored releases use the strict release schema; answer, audit, rollback proposal, and rollback audit ownership fail closed
+- run idempotency binds request ID to run kind, mode, suite revision, ordered selected case IDs, and release ID
 - release IDs are normalized before Firestore document reads
 - answer-test execution does not write search history or instant cache state
 - browser responses are bounded and owner actions preserve 44px targets
@@ -41,6 +42,15 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 24. Editing a launch case or changing governed sources makes the current-proof banner stale while preserving the historical latest-run result for diagnosis.
 25. A source-version change during test execution prevents the post-run current-proof response from reporting the new run as current.
 26. Standard regression-suite load, save, and post-run responses omit the launch-proof projection and its extra source-version read; only exact `includeLaunchProof=1` requests opt in.
+27. Wrong product ID, deterministic document ID, loose string scope, future schema, loose revision, invalid case, or duplicate persisted case ID throws an integrity error instead of silently loading partial truth.
+28. Duplicate expected reference IDs, duplicate required/blocked phrases, and a phrase present in both required and blocked lists are rejected.
+29. Reusing a request ID with a different mode, selected case set, suite revision, run kind, or release ID returns a conflict; an exact retry returns the existing completed run.
+30. A suite edit between route load and reservation returns `suite_changed` before execution.
+31. Saving a retained run removes its reservation without incrementing the test-suite revision.
+32. A retained run whose `suiteRevision` differs from the current summary remains historical, is labelled stale, and cannot satisfy Activation proof.
+33. Legacy retained runs without suite revision remain visible but cannot be presented as current proof; legacy reservations without request fingerprints do not block new work.
+34. The deterministic evaluator remains provider-free and the UI states that its result is regression evidence rather than an independent factual-correctness guarantee.
+35. **Adopt current route and evidence** updates source, answer/FAQ IDs, confidence, and evidence while preserving required and blocked phrase checks.
 
 ## Release Safety
 
@@ -49,6 +59,8 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 3. Propose rollback reads a prior version, creates one pending `version_update` proposal, and leaves the active answer unchanged.
 4. Cross-workspace answer, release, audit event, or proposal IDs are rejected.
 5. A release check retains its evidence and proof status using the same capped summary document and no additional collection read.
+6. A malformed, wrong-product, or cross-scope stored release is rejected before test selection.
+7. Repeating rollback validates the deterministic proposal and audit pair. A valid missing half is repaired; conflicting target answer, mutation type, source audit, product, scope, action, or entity identity fails closed.
 
 ## Proposal Impact Preview
 
@@ -109,6 +121,11 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 5. Exceeding any cap returns 409 and no partial export body; exactly-at-cap data remains exportable.
 6. Export rate limits fail closed when the limiter is unavailable.
 7. More than two export attempts for the same user/workspace within one hour are rejected before the Firestore-backed permission lookup.
+8. Canonical approved source IDs/citations survive the explicit projection while nested source context, tenant identity, embeddings, actor fields, tickets, chats, and raw audit rows remain absent.
+9. Successful generation creates exactly one metadata-only audit row before delivery; audit failure returns a generic export failure and no file.
+10. Deterministic ordering, the `complete: true` marker, collection cap-plus-one behavior, and the 8 MiB serialized response ceiling are covered by `test:answerlattice-support-truth-export-contracts`.
+11. Non-`AL` rows sharing tenant/store IDs are excluded, unreviewed AI translations and reviewer identity are removed, and changelog release/entity linkage survives.
+12. GET is rejected, POST generates the file, and both dedicated/shared rules deny forged `support_truth_export_generated` audit rows.
 
 ## Owner Support Assistant
 

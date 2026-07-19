@@ -1,7 +1,7 @@
 # Feedback System — Website Content
 
-> **Version:** 1.4.0
-> **Last Updated:** 2026-05-31
+> **Version:** 1.8.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Public website visitors
 
 ---
@@ -43,10 +43,13 @@ Users can rate their experience, flag product-area issues, and suggest improveme
 
 **Step 4 — Review as support work** — Owners open `/answerlattice/feedback`, assign Product Surfaces when useful, and move important rows into Support Board when needed.
 
+Published articles, changelog entries, and FAQs can also collect authenticated helpful/not-helpful reactions. Those reactions become review evidence; they never publish an answer change by themselves.
+
 ### Trust Indicators
 - Direct submit per feedback category
 - Previous feedback visible after submission
 - Owner-scoped review under Answerlattice `pId/tId/sId`
 - Optional Product Surface sorting for owner triage
 - Feedback signal path into Support Board and owner-approved knowledge proposals
+- Server-owned content reactions with bounded audit history
 - No public roadmap, no auto-publishing, no ticket spam

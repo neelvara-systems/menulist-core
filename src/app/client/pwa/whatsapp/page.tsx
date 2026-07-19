@@ -14,6 +14,8 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { resolveStorePublicLanguage } from '@lib/localization/publicRenderLanguage';
 import PwaWhatsAppHandoffClient from './PwaWhatsAppHandoffClient';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +30,11 @@ function buildWaUrl(waNumber: string | undefined, fallbackPhone?: string, countr
     return phoneParam ? `https://wa.me/${phoneParam}` : null;
 }
 
-export default async function PwaWhatsAppHandoffPage() {
+export default async function PwaWhatsAppHandoffPage({
+    searchParams,
+}: {
+    searchParams?: { lang?: string | string[] };
+}) {
     const tenant = await getTenantFromHeaders('PwaWhatsAppHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)
@@ -49,11 +55,14 @@ export default async function PwaWhatsAppHandoffPage() {
     );
     if (!waUrl) return notFound();
 
+    const activeLanguage = resolveStorePublicLanguage(store, searchParams?.lang);
+    const t = createPublicCustomerTranslator(activeLanguage);
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
-    const storeName = getStoreContextName(store, 'Restaurant');
+    const storeName = getStoreContextName(store, t('common.business'));
 
     return (
         <PwaWhatsAppHandoffClient
+            activeLanguage={activeLanguage}
             storeId={store.id}
             tenantId={store.tenantId}
             waUrl={waUrl}

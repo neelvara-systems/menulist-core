@@ -51,14 +51,65 @@ export function normalizeHostedHelpArticleSlug(value?: string | null): string {
         return '';
     }
 
-    const normalized = decodedValue
-        .trim()
-        .replace(/[?#].*$/, '')
-        .replace(/^\/+|\/+$/g, '');
+    const normalized = decodedValue.trim();
+    if (
+        !normalized
+        || normalized.length > 300
+        || /[\u0000-\u001f\u007f\\?#]/.test(normalized)
+    ) {
+        return '';
+    }
 
-    return normalized
+    const slug = normalized
+        .replace(/^\/+|\/+$/g, '')
         .replace(/^(articles|help|docs)\//, '')
         .replace(/^\/+|\/+$/g, '');
+    const segments = slug.split('/');
+    return segments.length > 0
+        && segments.every(segment => segment && segment !== '.' && segment !== '..')
+        ? slug
+        : '';
+}
+
+export function buildHostedHelpArticlePath(value?: string | null): string | null {
+    const slug = normalizeHostedHelpArticleSlug(value);
+    return slug ? `/articles/${encodeURIComponent(slug)}` : null;
+}
+
+export type HostedHelpPublicRoute = {
+    view: 'home' | 'docs' | 'article' | 'faq' | 'changelog';
+    canonicalPath: string;
+    articleSlug?: string;
+};
+
+export function resolveHostedHelpPublicRoute(
+    segments: string[] | null | undefined,
+    options: { showFaqs: boolean; showChangelog: boolean },
+): HostedHelpPublicRoute | null {
+    const routeSegments = Array.isArray(segments) ? segments : [];
+    if (routeSegments.length === 0) {
+        return { view: 'home', canonicalPath: '/' };
+    }
+
+    const route = routeSegments[0];
+    if (routeSegments.length === 1 && route === 'docs') {
+        return { view: 'docs', canonicalPath: '/docs' };
+    }
+    if (routeSegments.length === 1 && route === 'faq' && options.showFaqs) {
+        return { view: 'faq', canonicalPath: '/faq' };
+    }
+    if (routeSegments.length === 1 && route === 'changelog' && options.showChangelog) {
+        return { view: 'changelog', canonicalPath: '/changelog' };
+    }
+    if (route === 'articles' && routeSegments.length > 1) {
+        const articleSlug = normalizeHostedHelpArticleSlug(routeSegments.slice(1).join('/'));
+        const canonicalPath = buildHostedHelpArticlePath(articleSlug);
+        return articleSlug && canonicalPath
+            ? { view: 'article', articleSlug, canonicalPath }
+            : null;
+    }
+
+    return null;
 }
 
 const HOSTED_HELP_CHANGELOG_TEXT_LIMIT = 2_000;

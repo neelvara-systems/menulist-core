@@ -16,6 +16,7 @@
  */
 
 import { z } from 'zod';
+import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
 
 const MAX_STRING_LENGTH = 100;
 const MAX_ENTITY_HINTS = 5;
@@ -74,8 +75,15 @@ const ContextPathSchema = z.string()
         message: 'Context path must not contain personal contact details',
     })
     .transform(normalizeContextPath)
-    .refine(Boolean, {
+    .refine((value) => Boolean(value) && !value.includes('*'), {
         message: 'Context path must be a route path',
+    });
+
+const ContextVersionLabelSchema = z.string()
+    .max(32)
+    .transform((value) => normalizeAnswerlatticeVersionLabel(value)?.label || '')
+    .refine(Boolean, {
+        message: 'Context version must be a numeric product version',
     });
 
 /**
@@ -105,12 +113,10 @@ export const AnswerlatticeContextSchema = z.object({
     userRole: ContextStringSchema.optional(),
     plan: ContextStringSchema.optional(),
     state: ContextStringSchema.optional(),
+    version: ContextVersionLabelSchema.optional(),
 }).strip().transform((value) => {
     const normalized = { ...value };
     if (normalized.role && !normalized.userRole) normalized.userRole = normalized.role;
-    if (normalized.path && !normalized.page) {
-        normalized.page = sanitizeContextString(normalized.path.replace(/^\/+/, '').replace(/\//g, '_') || 'home');
-    }
     return normalized;
 }).superRefine((value, ctx) => {
     const payloadBytes = new TextEncoder().encode(JSON.stringify(value)).length;

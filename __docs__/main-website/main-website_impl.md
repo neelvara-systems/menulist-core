@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.115 Website Truth and Owner Journey Audit
-**Last Updated:** July 18, 2026
+**Status:** IMPLEMENTED — v3.6.116 How It Works Mobile Source Map Repair
+**Last Updated:** July 19, 2026
 **Audience:** Developers
 
 ---
@@ -9,6 +9,8 @@
 ## 1. Architecture Overview
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
+
+The v3.6.116 `/how-it-works` source-map repair keeps separate connector networks for each layout topology instead of stretching one SVG across incompatible card grids. `ProductPage.tsx` retains the existing desktop network, uses the established compact network from 521px through 768px, and adds a phone-specific network at 520px and below. The phone paths meet source and output card edges through the empty center gutter, remain behind the cards, and preserve the source -> owner review -> customer outputs story. CSS makes exactly one responsive connector network visible at a time. Reduced-motion behavior continues to suppress the pulse overlay while leaving the static path available.
 
 The v3.6.115 audit aligns the complete acquisition journey with current runtime: homepage and How It Works advertise only the public photo/image or owned-link intake; `/ml/create-menu` and its preview retain the product alias; the seven-day setup explains that the starter URL/QR can be used during setup and needs a paid plan before the deadline to stay live; pricing comparison language preserves entitlement values while removing unsupported posting, search, speed, and accuracy claims. Contact success now means “recorded,” not guaranteed team delivery. The footer exposes About and Contact and uses real route/anchor targets. Protected owner pages emit `noindex, nofollow, nocache`.
 

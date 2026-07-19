@@ -30,6 +30,7 @@ import {
 import { logger } from "@lib/monitoring/logger";
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getFounderSubscriptionMrrPaise } from '@lib/ops/founderRevenueReadModel';
+import { projectRazorpaySubscriptionCheckoutResponse } from '@lib/billing/paymentCheckoutBoundary';
 import {
     clearOwnerReferralCookie,
     readOwnerReferralCookie,
@@ -41,6 +42,7 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { getRazorpayManagedSubscriptionId } from '@lib/billing/subscriptionProviderSync';
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -360,7 +362,14 @@ export const POST = withAuth(async (request, session) => {
             }
             const providerPendingSubscription = await razorpayClient.subscriptions.fetch(pendingProviderId);
             if (providerPendingSubscription.status === 'created') {
-                const response = NextResponse.json({ subscription: providerPendingSubscription, reused: true });
+                const responsePayload = projectRazorpaySubscriptionCheckoutResponse(
+                    providerPendingSubscription,
+                    true,
+                );
+                if (!responsePayload) {
+                    throw new Error('razorpay_subscription_checkout_response_invalid');
+                }
+                const response = NextResponse.json(responsePayload);
                 if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
                 return response;
             }
@@ -573,7 +582,7 @@ export const POST = withAuth(async (request, session) => {
             monthlyCredits: monthlyCredits,
             topUpCredits: 0,
             creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
-            shortUrl: razorpaySubscription.short_url,
+            shortUrl: normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || '',
             paymentMethod: {
                 type: "",
                 brand: "",
@@ -656,7 +665,11 @@ export const POST = withAuth(async (request, session) => {
         });
 
         // 5. Response
-        const response = NextResponse.json({ subscription: razorpaySubscription });
+        const responsePayload = projectRazorpaySubscriptionCheckoutResponse(razorpaySubscription);
+        if (!responsePayload) {
+            throw new Error('razorpay_subscription_checkout_response_invalid');
+        }
+        const response = NextResponse.json(responsePayload);
         if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
         return response;
     } catch (error) {

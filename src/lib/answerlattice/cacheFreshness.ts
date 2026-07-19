@@ -175,7 +175,7 @@ export const isCachedSearchResultFresh = async (
 
     const references = Array.isArray(cachedResult.references) ? cachedResult.references : [];
     if (references.length === 0) {
-        return true;
+        return false;
     }
 
     const manifestFresh = await isVersionManifestFresh(

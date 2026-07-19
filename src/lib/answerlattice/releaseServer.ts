@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { buildAnswerlatticeVersionDriftReason } from '@data/shared/answerlatticeDrift';
 import type { AnswerlatticeAccessContext } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_CACHE_SOURCES,
+    getAnswerlatticeCacheVersionDocId,
+} from '@lib/answerlattice/cacheVersionManifest';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -290,10 +295,18 @@ async function finishReleaseActivation(
                 throw new AnswerlatticeReleaseError(409, 'An affected approved answer has an invalid stored shape.');
             }
             if (lastValidated >= release.versionNormalized) continue;
-            const affected = entityIds.filter((entityId) => release.entityChanges.includes(entityId));
-            if (affected.length === 0) continue;
-
-            const releaseReason = `[version_mismatch] ${affected.join(', ')} changed in ${release.versionLabel}; answer was last validated at version ${lastValidated}`;
+            const releaseReason = buildAnswerlatticeVersionDriftReason(
+                {
+                    entityIds,
+                    lastValidatedInVersion: lastValidated,
+                },
+                {
+                    versionLabel: release.versionLabel,
+                    versionNormalized: release.versionNormalized,
+                    changedEntityIds: release.entityChanges,
+                },
+            );
+            if (!releaseReason) continue;
             const previousReason = typeof answer.governance.driftReason === 'string'
                 ? answer.governance.driftReason.trim()
                 : '';
@@ -303,6 +316,7 @@ async function finishReleaseActivation(
             transaction.update(answerSnapshot.ref, {
                 'governance.driftFlag': true,
                 'governance.driftReason': driftReason,
+                'governance.reviewRequired': true,
                 modifiedOn: FieldValue.serverTimestamp(),
                 modifiedBy: actor.label,
             });
@@ -319,7 +333,7 @@ async function finishReleaseActivation(
                         driftFlag: Boolean(answer.governance.driftFlag),
                         driftReason: previousReason || null,
                     },
-                    newState: { driftFlag: true, driftReason, releaseId },
+                    newState: { driftFlag: true, driftReason, reviewRequired: true, releaseId },
                     performedBy: actor.id,
                     timestamp: FieldValue.serverTimestamp(),
                     createdOn: FieldValue.serverTimestamp(),
@@ -360,6 +374,7 @@ async function finishReleaseActivation(
                 tId: access.scope.tenantId,
                 sId: access.scope.storeId,
                 releases: FieldValue.increment(1),
+                ...(driftedAnswers > 0 ? { canonical: FieldValue.increment(1) } : {}),
                 updatedAt: now,
                 lastReason: 'release_activate',
                 lastSourceId: releaseId,
@@ -367,6 +382,28 @@ async function finishReleaseActivation(
             },
             { merge: true },
         );
+        if (driftedAnswers > 0) {
+            transaction.set(
+                db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
+                    .doc(getAnswerlatticeCacheVersionDocId(
+                        ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
+                        access.scope.tenantId,
+                        access.scope.storeId,
+                    )),
+                {
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: access.scope.tenantId,
+                    sId: access.scope.storeId,
+                    source: ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
+                    version: FieldValue.increment(1),
+                    modifiedOn: now,
+                    lastReason: 'release_drift_detected',
+                    lastSourceId: releaseId,
+                    lastSourceType: RELEASES,
+                },
+                { merge: true },
+            );
+        }
         transaction.set(
             db.collection(PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(access.scope.tenantId, access.scope.storeId)),
             {

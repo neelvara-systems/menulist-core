@@ -1,99 +1,58 @@
 # Compiled Context Distribution Spec
 
-## Purpose
+**Version:** 2.0
 
-Answerlattice needs a durable read architecture that can serve widget runtime, public API, gated MCP, owner readiness screens, and scheduler checks without repeated Firestore collection fanout.
+**Last updated:** July 18, 2026
 
-The feature introduces:
+**Flags:** `ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES`, `ENABLE_ANSWERLATTICE_BUNDLE_BUILDER`
 
-- `platformSummary/sourceVersions_{tId}_{sId}` as the compact input version control plane.
-- `platformSummary/bundleManifest_{tId}_{sId}` as the active compiled bundle pointer.
-- Immutable Firebase Storage JSON bundles under public and private paths.
-- Owner-visible bundle readiness and manual rebuild from Activation.
-- Widget config bundle pointers and context-bundle capability.
-- Bundle-first public entity reads with Firestore fallback.
-- MCP session and JSON-RPC tool endpoint backed by private bundles.
+## Customer problem
 
-## Doctrine Fit
+Approved support context is read repeatedly by customer and agent surfaces, but those reads must not require a broad Firestore fan-out or weaken governance. Distribution must remain tenant-isolated, current enough for the use case, bounded in cost, and reversible when a build fails.
 
-Answerlattice remains the Governed Answer Infrastructure. Bundles are compiled approved truth, not a second database, chatbot memory, CMS, helpdesk replacement, or autonomous publisher.
+## Required behavior
 
-Draft answers, mutation proposals, raw tickets, chat sessions, raw signals, audit logs, API keys, and billing internals must never be bundled.
+1. A governed source mutation increments the applicable source version and marks the manifest stale in the same domain write/batch when supported by that writer.
+2. A manual or scheduled builder validates exact `AL` product and numeric tenant/workspace scope.
+3. The builder transactionally claims a lease and a unique positive bundle version.
+4. Every source collection is read with an explicit maximum plus one overflow row.
+5. Only approved/public-safe fields enter public objects. Tickets, chats, raw signals, drafts, audit logs, secrets, billing data, private URLs, and private evidence IDs are excluded.
+6. Every serialized object is checked by UTF-8 byte size before upload.
+7. Source versions are re-read after generation. A changed source snapshot makes the new build superseded instead of active.
+8. The Firestore manifest is published only by the worker that still owns the lease.
+9. Failure preserves the previous ready version and records a bounded failure state.
+10. Readers derive the expected immutable Storage path from the validated manifest; they never trust an arbitrary stored path.
 
-## Source Of Truth
+## Limits
 
-Firestore owns:
+| Boundary | Limit |
+| --- | ---: |
+| Public `widget-bootstrap.json` | 50 KB |
+| Public `routes/*` object | 50 KB |
+| Other public object | 512 KiB |
+| Private object | 2 MiB |
+| MCP response | 24 KB |
+| MCP calls | 60/minute per scoped session |
+| Manifest memory cache | 60 seconds |
+| Bundle-object memory cache | 10 minutes |
 
-- `stores`, `tenants`, `subscriptions`, `users`
-- `kb_articles`, `kb_categories`
-- `answerlattice_entities`, `answerlattice_entityRelations`, `answerlattice_entitySearchIndex`
-- `answerlattice_canonicalAnswers`
-- `answerlattice_productSurfaces`
-- `answerlattice_faqs`
-- `answerlattice_releases`
-- `answerlattice_signalEvents`
-- `answerlattice_mutationProposals`
-- `answerlattice_auditLogs`
-- `supportTickets`, `chatSessions`, `aiSearchHistory`
-- `platformSummary/*`
+Source collection limits are defined beside the builders. Crossing a limit is a build failure, not a partial-success state.
 
-Storage owns generated read models only.
+## Rollout truth
 
-## Bundle Audiences
+- Manual and nightly bundle builders: enabled.
+- Public API bundle preference: implemented, but the Public API itself is rollout-gated.
+- MCP bundle reads: implemented, but MCP is disabled by default.
+- Widget bundle bootstrap: disabled until the widget consumes and verifies the files.
 
-Public widget bundles may contain product name, safe widget config, route labels, public docs metadata, safe suggested questions, public-safe entity summaries, approved canonical previews, and public release summaries.
+## Success measures
 
-Private MCP bundles may contain richer approved answer bodies, route/entity relationships, procedures, warnings, release context, and install-safe product context.
+- percentage of due stale manifests returning to ready;
+- failed and superseded build rate;
+- source-limit saturation rate;
+- public/private object-limit rejection rate;
+- fallback rate by consumer;
+- time from governed source change to a ready active bundle;
+- incorrect or cross-scope ref acceptance: zero.
 
-Private MCP bundles still must not contain customer PII, raw support transcripts, audit logs, API keys, unapproved drafts, mutation proposals, raw signal events, or billing internals.
-
-## Runtime Read Budgets
-
-Widget config:
-
-- Authenticates the widget key and origin.
-- Reads at most the store auth path plus one bundle manifest/cache entry.
-- Returns small config, capability flags, and public bundle pointers.
-
-MCP session:
-
-- Validates API key once.
-- Issues short-lived signed session token.
-- Reads the bundle manifest/version for the session response and token context.
-- Logs a fixed runtime diagnostic when manifest loading fails before returning the existing missing-bundle status.
-
-MCP tool call:
-
-- Hot path: memory lookup only.
-- Cold path: Storage metadata check, capped Storage bundle download, and cache.
-- Freshness path: one manifest read per TTL window.
-
-Public API read:
-
-- Authenticates API key.
-- Reads bundled approved context first.
-- Falls back to bounded Firestore query only if bundle is missing or disabled.
-- Logs fixed runtime diagnostics before fallback when bundle manifest/object reads fail.
-- Treats oversized private bundle objects as unavailable instead of parsing them.
-
-## Rebuild Triggers
-
-Mark bundle stale when approved source context changes:
-
-- Workspace profile or widget config changes.
-- KB article publish/update/archive.
-- FAQ publish/update/archive.
-- Entity create/update/deprecate/merge.
-- Entity relation create/delete.
-- Canonical answer create/update/archive/governance change.
-- Product surface create/update/archive.
-- Release publish/activate.
-- Predictive trigger summary changes.
-
-Do not rebuild or mark stale for ordinary runtime reads, chat messages, ticket messages, feedback clicks, public API reads, or MCP read tools.
-
-## Failure Behavior
-
-If a build fails, keep serving `lastReadyVersion`. Set manifest status to `failed` or `stale`, persist a short error, and show the issue only on owner/admin surfaces.
-
-Runtime widget/API/MCP should return current data from existing fallback paths when the bundle is unavailable.
+No latency, hit-rate, cost-savings, or zero-staleness target is a public promise until measured in a configured environment.

@@ -1,72 +1,30 @@
-import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
-import {
-    getAnswerlatticeScopeLogContext,
-    logAnswerlatticeDiagnostic,
-    logAnswerlatticeFailure,
-} from '@lib/answerlattice/diagnostics';
 import {
     normalizeAnswerlatticeFeedbackDocumentId,
     normalizeAnswerlatticeFeedbackRecord,
     normalizeAnswerlatticeFeedbackSubmission,
+    normalizeAnswerlatticeFeedbackSubmitResult,
+    parseAnswerlatticeFeedbackSubmitRequest,
 } from '@lib/answerlattice/feedbackBoundary';
-import { normalizeExactAnswerlatticeSignalScopeId } from '@lib/answerlattice/signalIdentity';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
-import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
+import { createRuntimeId } from '@lib/runtime/randomId';
+import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Feedback } from '@type/feedback';
-import { addDoc, collection, doc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.FEEDBACK;
 const MAX_FEEDBACK_RESULTS = 200;
+const FEEDBACK_RESPONSE_MAX_BYTES = 64 * 1024;
+const MAX_PENDING_FEEDBACK_REQUESTS = 100;
+const pendingFeedbackRequests = new Map<string, { fingerprint: string; requestId: string }>();
 
 const getCollectionRef = () => {
     return collection(answerlatticeFirebaseClient, COLLECTION);
 };
-
-const FEEDBACK_SIGNAL_TEXT_LIMIT = 360;
-
-const FEEDBACK_TYPE_LABELS: Record<string, string> = {
-    general: 'General feedback',
-    feature_usage: 'Feature usage feedback',
-    feature_request: 'Feature request',
-    feature_requests: 'Feature request',
-};
-
-const toSignalText = (value: unknown, maxLength = FEEDBACK_SIGNAL_TEXT_LIMIT) => {
-    const text = String(value || '').replace(/\s+/g, ' ').trim();
-    return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
-};
-
-const toSignalList = (value: unknown, maxItems = 8) => (
-    Array.isArray(value)
-        ? value.map((item) => toSignalText(item, 120)).filter(Boolean).slice(0, maxItems)
-        : []
-);
-
-const toSignalVotes = (value: unknown) => (
-    Array.isArray(value)
-        ? value
-            .map((item) => ({
-                feature: toSignalText(
-                    item && typeof item === 'object' && !Array.isArray(item)
-                        ? (item as Record<string, unknown>).feature
-                        : undefined,
-                    160,
-                ),
-                interested: Boolean(
-                    item && typeof item === 'object' && !Array.isArray(item)
-                    && (item as Record<string, unknown>).interested === true,
-                ),
-            }))
-            .filter((item) => item.feature)
-            .slice(0, 8)
-        : []
-);
 
 const cleanNullableText = (value: unknown, maxLength = 160) => {
     const text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -90,75 +48,16 @@ const getActiveFeedbackScope = async (expected?: { tId: number; sId: number }) =
     return { session, tId: scope.tenantId, sId: scope.storeId };
 };
 
-const getFeedbackContextKeys = (feedback: Partial<Feedback> & Record<string, unknown>) => {
-    const contextKey = cleanNullableText(feedback.contextKey, 140);
-    const featureIssues = toSignalList(feedback.featureIssues);
-    return Array.from(new Set([
-        contextKey,
-        ...featureIssues,
-    ].filter(Boolean) as string[]));
-};
-
-const buildFeedbackSignalMetadata = (feedback: Partial<Feedback> & Record<string, unknown>, feedbackId: string) => {
-    const feedbackType = String(feedback.type || 'general');
-    const rating = Number(feedback.rating);
-    const commentPreview = toSignalText(feedback.comment);
-    const featureCommentPreview = toSignalText(feedback.featureComment);
-    const featureRequest = toSignalText(feedback.featureRequest);
-    const featureIssues = toSignalList(feedback.featureIssues);
-    const votedPopularRequests = toSignalVotes(feedback.votedPopularRequests);
-    const contextKey = cleanNullableText(feedback.contextKey, 140);
-    const summary = [
-        rating > 0 ? `Rating ${rating}/5` : '',
-        featureRequest || commentPreview || featureCommentPreview,
-        featureIssues.length ? `Issues: ${featureIssues.join(', ')}` : '',
-    ].filter(Boolean).join(' · ') || `${FEEDBACK_TYPE_LABELS[feedbackType] || feedbackType} submitted`;
-
-    return {
-        source: 'help_center_feedback',
-        feedbackId,
-        feedbackType,
-        feedbackLabel: FEEDBACK_TYPE_LABELS[feedbackType] || feedbackType,
-        rating: Number.isFinite(rating) && rating > 0 ? rating : null,
-        summary: toSignalText(summary, 500),
-        message: toSignalText(summary, 500),
-        commentPreview: commentPreview || null,
-        featureCommentPreview: featureCommentPreview || null,
-        featureRequest: featureRequest || null,
-        featureIssues,
-        votedPopularRequests,
-        hasComment: Boolean(commentPreview || featureCommentPreview),
-        hasFeatureRequest: Boolean(featureRequest || votedPopularRequests.length),
-        contextKey,
-        surfaceId: cleanNullableText(feedback.surfaceId, 180),
-        surfaceLabel: cleanNullableText(feedback.surfaceLabel, 180),
-        relatedContextKeys: getFeedbackContextKeys(feedback),
-        sourceContext: feedback.sourceContext || null,
-        userId: feedback.uId ? String(feedback.uId) : null,
-    };
-};
-
-const emitFeedbackSignal = async (feedback: Partial<Feedback> & Record<string, unknown>, feedbackId: string) => {
-    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return;
-
-    const tId = normalizeExactAnswerlatticeSignalScopeId(feedback.tId);
-    const sId = normalizeExactAnswerlatticeSignalScopeId(feedback.sId);
-    if (feedback.pId !== PRODUCT_IDS.ANSWERLATTICE || tId === null || sId === null) {
-        logAnswerlatticeDiagnostic('answerlattice_feedback_signal_invalid_scope_skipped', {
-            ...getAnswerlatticeScopeLogContext({ tId: feedback.tId, sId: feedback.sId }),
-            hasAnswerlatticeProduct: feedback.pId === PRODUCT_IDS.ANSWERLATTICE,
-        });
-        return;
+const getFeedbackRequestId = (key: string, fingerprint: string) => {
+    const pending = pendingFeedbackRequests.get(key);
+    if (pending?.fingerprint === fingerprint) return pending.requestId;
+    if (pendingFeedbackRequests.size >= MAX_PENDING_FEEDBACK_REQUESTS) {
+        const oldest = pendingFeedbackRequests.keys().next().value;
+        if (oldest) pendingFeedbackRequests.delete(oldest);
     }
-
-    const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
-    await emitAnswerlatticeSignal({
-        type: ANSWERLATTICE_SIGNAL_TYPE.FEEDBACK,
-        entityId: 'unresolved',
-        tId,
-        sId,
-        metadata: buildFeedbackSignalMetadata(feedback, feedbackId),
-    });
+    const requestId = createRuntimeId('feedback');
+    pendingFeedbackRequests.set(key, { fingerprint, requestId });
+    return requestId;
 };
 
 export const addFeedback = async (data: unknown) => {
@@ -166,16 +65,31 @@ export const addFeedback = async (data: unknown) => {
         async () => {
             const normalized = normalizeAnswerlatticeFeedbackSubmission(data);
             if (!normalized) throw new Error('Invalid feedback submission');
-            const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
-            const docRef = await addDoc(getCollectionRef(), submitData);
-            void emitFeedbackSignal(submitData as Partial<Feedback> & Record<string, unknown>, docRef.id)
-                .catch((error) => logAnswerlatticeFailure('answerlattice_feedback_signal_dispatch_failed', error, {
-                    ...getAnswerlatticeScopeLogContext({
-                        tId: (submitData as Record<string, unknown>).tId,
-                        sId: (submitData as Record<string, unknown>).sId,
-                    }),
-                }));
-            return { ...submitData, id: docRef.id };
+            const session = await getActiveSession();
+            const scope = resolveAnswerlatticeSessionScope(session);
+            const actorId = String(session?.uId || session?.user?.id || '').trim();
+            if (!scope || !actorId) throw new Error('Answerlattice feedback scope is required');
+            const fingerprint = JSON.stringify(normalized);
+            const requestKey = `${scope.tenantId}:${scope.storeId}:${actorId}:${normalized.type}`;
+            const requestId = getFeedbackRequestId(requestKey, fingerprint);
+            const request = parseAnswerlatticeFeedbackSubmitRequest({ requestId, submission: normalized });
+            if (!request) throw new Error('Invalid feedback submission');
+
+            const response = await fetch('/api/answerlattice/feedback', {
+                method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+            });
+            const payload = await readJsonResponseWithLimit<unknown>(response, FEEDBACK_RESPONSE_MAX_BYTES)
+                .catch(() => null);
+            if (!response.ok) throw new Error('Feedback could not be saved');
+            const result = normalizeAnswerlatticeFeedbackSubmitResult(payload);
+            if (!result) throw new Error('Feedback returned an invalid response');
+            pendingFeedbackRequests.delete(requestKey);
+            return result.feedback;
         },
         data,
         'addFeedback'

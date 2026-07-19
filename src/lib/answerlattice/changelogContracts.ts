@@ -54,7 +54,7 @@ const youtubeUrlSchema = z.string().url().max(2_000).refine((value) => {
     }
 });
 
-const changelogEntrySchema = z.object({
+const changelogEntryBaseSchema = z.object({
     title: boundedString(300),
     description: tiptapDocumentSchema,
     tags: z.array(z.enum(CHANGELOG_TAG_OPTIONS as [string, ...string[]])).max(20).default([]),
@@ -69,11 +69,27 @@ const changelogEntrySchema = z.object({
         if (new Set(values).size !== values.length) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Changed entities must be unique' });
     }).default([]),
     releaseId: documentIdSchema.nullable().optional(),
-}).strict().superRefine((value, context) => {
+}).strict();
+
+const changelogEntrySchema = changelogEntryBaseSchema.superRefine((value, context) => {
     if (value.published && value.version && value.entityChanges.length === 0) {
         context.addIssue({ code: z.ZodIssueCode.custom, path: ['entityChanges'], message: 'Published versioned entries require changed entities' });
     }
+    if (value.published && value.version && !value.releaseId) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ['releaseId'], message: 'Published versioned entries require an active release link' });
+    }
+    if (value.releaseId && !value.version) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ['releaseId'], message: 'Release links require a versioned entry' });
+    }
 });
+
+export const isAnswerlatticeChangelogEntryPublished = (value: unknown): boolean => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    if (record.published !== true) return false;
+    const hasVersion = typeof record.version === 'string' && record.version.trim().length > 0;
+    return !hasVersion || documentIdSchema.safeParse(record.releaseId).success;
+};
 
 export const AnswerlatticeChangelogActionSchema = z.discriminatedUnion('action', [
     z.object({ action: z.literal('create'), requestId: requestIdSchema, entry: changelogEntrySchema }).strict(),
@@ -158,12 +174,13 @@ const normalizeStoredEntry = (value: unknown): ChangelogEntry | null => {
     const record = value as Record<string, unknown>;
     const releasedOnTimestamp = normalizeStoredTimestamp(record.releasedOn);
     const releasedOn = releasedOnTimestamp ? toIsoTimestamp(releasedOnTimestamp) : null;
-    const entry = releasedOn ? changelogEntrySchema.safeParse({
+    const storedPublished = isAnswerlatticeChangelogEntryPublished(record);
+    const entry = releasedOn ? changelogEntryBaseSchema.safeParse({
         title: record.title,
         description: record.description,
         tags: record.tags ?? [],
         releasedOn,
-        published: record.published === true,
+        published: storedPublished,
         version: record.version ?? null,
         contextKeys: record.contextKeys ?? [],
         kbSources: record.kbSources ?? [],

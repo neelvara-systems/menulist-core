@@ -37,7 +37,7 @@ const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED]: 'Knowledge Gap Detected',
     [INTEGRATION_EVENT_TYPES.COVERAGE_DROP]: 'Coverage Drop',
     [INTEGRATION_EVENT_TYPES.ARTICLE_APPROVED]: 'Article Approved',
-    [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Recurring AI Failure',
+    [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Repeated AI Workflow Failure',
     [INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY]: 'Nightly Summary',
 };
 
@@ -92,8 +92,8 @@ function formatIssueDescription(event: IntegrationEvent): string {
             lines.push(
                 `**Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
                 `**Failure Count:** ${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days`,
-                `**Common Queries:**`,
-                ...safePayloadStringArray(p.commonQueries, 5, 160).map(q => `- ${q}`),
+                `**Failed Phases:**`,
+                ...safePayloadStringArray(p.failurePhases || p.commonQueries, 5, 160).map(q => `- ${q}`),
             );
             break;
 

@@ -2,7 +2,7 @@
 
 > **Location:** `__docs__/answerlattice/help-center/`
 > **Purpose:** Documents MenuList's owner-facing support client and its scoped Answerlattice runtime boundary
-> **Last Updated:** 2026-07-16
+> **Last Updated:** 2026-07-18
 
 ---
 
@@ -17,6 +17,7 @@
 | `help-center_website.md` | Current website/content decision |
 | `help-center_helpdoc.md` | Owner instructions and failure fallbacks |
 | `help-center_mobile-support.md` | MobileShell routing and touch behavior |
+| `help-center_test-cases.md` | Focused source, runtime, privacy and release checks |
 | `help-center_decoupling-analysis.md` | Historical pre-separation assessment; not current architecture authority |
 
 ## Current Boundary
@@ -31,7 +32,7 @@ Current local source gate:
 npm run verify:help-center-boundary
 ```
 
-The gate covers authenticated/bounded search, response normalization, internal related-content links, desktop and MobileShell routing, scoped ticket reads and transactions, attachment admission/opening, append-only Firestore history, immutable satisfaction, current footer routes and maintained docs. Dedicated and shared Firestore rule emulator suites remain required because the repository supports a separate active Answerlattice target plus an explicit local shared-mode compatibility target.
+The gate covers authenticated/bounded search, response normalization, internal related-content links, exact workspace/audience cache separation, workspace-and-user-scoped 24-hour Help Chat drafts, visible managed-FAQ failure, translated customer labels, desktop and MobileShell routing, scoped ticket reads and transactions, attachment admission/opening, append-only Firestore history, immutable satisfaction, current footer routes and maintained docs. Dedicated and shared Firestore rule emulator suites remain required because the repository supports a separate active Answerlattice target plus an explicit local shared-mode compatibility target.
 
 ## Release Boundary
 

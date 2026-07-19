@@ -1,7 +1,7 @@
 # Help Center — Firebase Cost & Operations Tracking
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-17
+> **Version:** 1.4.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -30,6 +30,8 @@
 | 17 | `article_feedback/{tId}/{sId}` | `doc1_{entryId}` | Subcollection | 0.5-5 KB | Per-feedback |
 
 Chat session acknowledgement hardening is cost-neutral. `saveChatSession()` still performs one `chatSessions` create, but HelpChat now requires a persisted session object before selecting the new conversation. `updateChatSession()` still performs one merge write, but returns `{ success, sessionId, updatedFields }`; HelpChat append/retry/rename and platform metadata saves require that acknowledgement or route through the existing bounded failure path. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, or deployment requirement.
+
+Help Center cache and draft hardening is also Firebase-cost neutral. Category, article, changelog and ticket caches now carry exact workspace/audience keys, and category/changelog request coalescing is keyed by workspace. A mismatch becomes a normal cache miss; no new preflight Firestore read or write is introduced. Help Chat text drafts stay in browser local storage as a strict 24-hour, 2,000-character workspace/user envelope; screenshots are never persisted as drafts. This adds no Firestore, Storage, Function, index, rule, provider or scheduler operation.
 
 Chat session delete acknowledgement hardening keeps one transaction read and one `chatSessions` delete. HelpChat requires `{ success, sessionId, deleted, storageFilesDeleted }` before showing delete success; `storageFilesDeleted` is now zero because tenant/store-scoped images can be shared across sessions and one deleted row cannot prove scope-wide non-reference. Failed or malformed delete results reload session state and restore the previous active-session/search snapshot. This removes immediate persisted-image Storage deletes without adding reads, writes, indexes, rules, Cloud Functions, routes, schema fields, or deployment requirements.
 
@@ -124,17 +126,19 @@ Each stopped at `firebaserules.googleapis.com ... :test` with HTTP 403, `The cal
 
 | Operation | Reads | Writes | External API |
 |-----------|-------|--------|-------------|
-| Scope, safe mode, and rate-limit checks before permission/body/provider work | 0 | 0 | 1 Upstash when enabled |
-| Read target article and verify `tId+sId` | 1 | 0 | — |
+| Safe-mode check | 0 when cost protection is off / 1 existing ops-config read when on | 0 | — |
+| Fail-closed rate admission before permission/body/provider work | 0 | 0 | 1 Upstash when enabled |
+| Read target article, verify exact `pId: AL` plus `tId+sId`, source, and absent target locale | 1 | 0 | — |
 | Gemini translation call, capped at 8,000 source characters | 0 | 0 | 1 Gemini |
-| Bump KB cache/context version | 0 | 2 | — |
-| Write `kb_articles/{articleId}.translations.{locale}` | 0 | 1 | — |
+| Transactionally re-read product/source/scope/target locale | 1 | 0 | — |
+| Write one source-fingerprinted private draft field | 0 | 1 | — |
+| Best-effort existing AI operation accounting | 0 | up to 1 | — |
 | UI refreshes only the translated article | 1 | 0 | — |
-| **Total** | **2** | **3** | **1 Upstash + 1 Gemini** |
+| **Successful generation and refresh** | **3 article reads plus an optional safe-mode read** | **1 draft + up to 1 accounting row** | **1 Upstash + 1 Gemini** |
 
-The Languages tab is feature-flagged and does not create a realtime listener. It defaults to the supported Answerlattice locale list when no tenant-level locale setting exists.
+The Languages tab is feature-flagged and does not create a realtime listener. It offers the static supported-locale list only for draft preparation because no tenant-level locale setting exists. Drafts do not bump KB/context versions and are not projected to public content, widget search, hosted help, or compiled bundles.
 
-Translation route guard changes on 2026-06-28 added no Firestore reads/writes. Unexpected translation and operation-log failures use fixed-code bounded tenant/store/article/locale metadata. The Governance Hub browser caller validates translation responses with a 16 KB bounded reader and the documented article/locale/title response shape before returning to the translation tab. The June 30 provider-output pass caps Gemini translation response text before JSON parsing and fails closed with the existing fixed translation failure response if the provider output exceeds the route ceiling; this adds no reads, writes, cache updates, provider calls, indexes, or Cloud Functions. Article embedding, article entity extraction, FAQ generation, translation, and public-content article reads normalize KB article IDs through the shared Firestore document-ID boundary before any `kb_articles` document access; this adds no reads, writes, provider calls, indexes, or Cloud Functions.
+Feature 38 hardening adds one post-provider transaction read and removes two public cache/context-version writes. Both article reads require exact Answerlattice product and workspace identity. Strict JSON failures, changed sources, and existing locale records write no draft. Provider-completed attempts still enter existing AI accounting. Unexpected failures use fixed-code bounded tenant/store/article/locale metadata. Safe-mode rejection and the Governance Hub's validated 16 KB draft acknowledgement remain private/no-store. Article embedding, entity extraction, FAQ generation, translation, and public-content reads retain the shared KB article-ID boundary.
 
 ### 2.3 Support Ticket Operations
 

@@ -6,7 +6,7 @@
 
 ## Answerlattice Answer Tests Runtime Boundary
 
-The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId}` document, exact persisted scope checks, normalized release IDs, cheap-first route limiting, and SAFE_MODE for full-runtime runs. The same summary holds at most five 15-minute run reservations so duplicate/in-flight requests cannot repeat provider work; successful runs remove their reservation, failed runs attempt a cleanup transaction, and expired reservations are pruned on the next claim. Summary writes are measured and rejected above 480 KiB. Version 3 adds bounded risk, evidence-policy, reference-ID, proof-status, and governed-source-version evidence inside this document. No Answer Tests listener, scheduled run, per-case document, search-history write, signal write, or instant-cache write is added.
+The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId}` document with exact ID, product, numeric scope, supported schema, suite revision, valid-case, and unique-case admission. Stored releases use the strict release schema. The same summary holds at most five 15-minute run reservations whose SHA-256 request fingerprints bind run kind, mode, suite revision, selected case IDs, and release ID; successful runs remove their reservation, failed pre-execution runs attempt cleanup, and expired reservations are pruned on the next claim. Summary writes are measured and rejected above 480 KiB. Version 4 retains bounded risk, evidence policy, reference IDs, proof status, governed-source versions, request fingerprint, and suite revision. No Answer Tests listener, scheduled run, per-case document, search-history write, signal write, or instant-cache write is added.
 
 | Data | Location | Growth control |
 | --- | --- | --- |
@@ -45,6 +45,7 @@ The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId
 - Active canonical answers are cached per matched entity for the duration of the run; each unique matched entity uses one bounded query of at most 200 answers.
 - 1 transaction read + 1 write to reserve the request ID before execution.
 - 1 transaction read + 1 write to save the retained run and remove its reservation.
+- Retaining a run does not increment the suite revision; only the existing case-save transaction changes it.
 - A failed run may add 1 transaction read + 1 write to release its reservation.
 - No AI operation, search history, signal, feedback, conversation, or friction write.
 
@@ -70,8 +71,8 @@ The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId
 
 - 1 canonical-answer read.
 - 1 exact audit-history document read for the selected normalized version ID.
-- 1 mutation-proposal write.
-- 1 audit-log write.
+- The idempotency transaction reads the deterministic mutation-proposal record and its deterministic audit record: 2 additional reads.
+- New pair: up to 2 writes. Valid existing pair: 0 writes. Valid partial pair: 1 repair write. Conflicting product, scope, target answer, mutation type, source audit, or audit identity fails closed.
 
 ### Proposal Impact Preview
 
@@ -118,9 +119,12 @@ The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId
 
 - Owner-triggered reads only.
 - Maximum 2 attempts per user/workspace per hour; the limiter runs before the Firestore-backed permission read.
+- Limiter-provider failure blocks the export rather than bypassing the bulk-read control.
 - Per collection caps: entities 500, canonical answers 1000, surfaces 500, articles 1000, FAQs 1000, 10 changelog page documents / 1000 entries, and releases 500.
 - The API fails if a cap is reached, avoiding silent truncation.
-- No write, no Storage upload, no scheduler.
+- A successful package build creates 1 existing `answerlattice_auditLogs` document containing generation metadata only. Audit-write failure prevents file delivery.
+- Dedicated and shared Firestore rules reserve `support_truth_export_generated` for server authority; client-created copies are denied.
+- No new collection, Storage upload, listener, scheduler, Function, or model call.
 
 ### Owner Support Assistant
 

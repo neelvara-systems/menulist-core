@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Product Specification
 
 > **Status:** IMPLEMENTED — day-one owner-triggered product contract
-> **Version:** 1.0.0
+> **Version:** 1.6.0
 > **Created:** 2026-05-31
 > **Audience:** CEO / PM / Product / Clients
 
@@ -17,7 +17,7 @@ The owner should experience this as:
 2. Paste product website and app URL.
 3. Add docs, files, policy answers, changelog, support exports, screenshots, or transcripts if available.
 4. Answerlattice shows what it found and what it trusts.
-5. Answerlattice builds a product map and asks only important launch decisions.
+5. Answerlattice shows source-backed review drafts and missing evidence.
 6. Answerlattice generates source-backed drafts.
 7. Owner approves what becomes official.
 8. Answerlattice publishes KB, FAQ, approved answers, product page help, and readiness summaries.
@@ -34,7 +34,7 @@ Primary owner-facing promise:
 | --- | --- |
 | Founder-first | Hide enterprise governance language. The owner should see sources, decisions, drafts, approval, and readiness. |
 | Paid-first | Every real workspace processing action requires active paid entitlement or paid processing allowance. |
-| Source-backed | Drafts and published outputs must point to source ids, source versions, and evidence manifests. |
+| Source-backed | Drafts and supported published destinations must retain bounded intake job, review item, and source ID lineage. Intake-specific source-version/evidence manifests are a future governance option, not a current requirement. |
 | Review-gated | High-risk or authoritative content cannot become live without owner/admin approval. |
 | Cost-bounded | No full website crawl, no full nightly crawl, no per-fact Firestore docs, no realtime listener for intake lists. |
 | Single engine | Website, files, policies, media, tickets, changelog, and surfaces normalize into one source contract. |
@@ -65,11 +65,11 @@ Not the default buyer:
 
 ---
 
-## 4. Current Runtime Baseline
+## 4. Historical Pre-Implementation Runtime Baseline
 
-Current Answerlattice import is mounted through `/answerlattice/kb-generation`, which reuses the shared `platform/KBGeneration` component. It supports file upload, pasted URL text, starter text templates, AI-generated articles, article review, duplicate reconciliation, publishing, generated FAQs, and embeddings.
+Before the dedicated intake route shipped, Answerlattice import was mounted through `/answerlattice/kb-generation` and reused the shared `platform/KBGeneration` component. The gaps below are historical planning evidence, not a statement about the current `/answerlattice/knowledge-intake` runtime.
 
-Current gaps:
+Historical gaps at that time:
 
 - starts with files instead of product context
 - pasted URLs are not crawled/classified
@@ -92,15 +92,16 @@ Day-one means one permanent intake contract supports these inputs. Individual ad
 
 | Source family | Supported inputs | Processing rule |
 | --- | --- | --- |
-| Product context | product name, website, app URL, support email, product category, billing model, launch policy answers | Highest-value starting point. Required before expensive processing. |
-| Website link pack | product website, pricing, feature pages, FAQ, docs/help URL, changelog URL, API docs URL, sitemap.xml, robots.txt, llms.txt when present | Capped source discovery first. Only owner-selected pages become knowledge sources. No full crawl by default. |
+| Intake context | intake name, product website, app URL, description, and target audience | Creates the bounded intake job context; these fields are not automatically authoritative support truth. |
+| Website link pack | product website, pricing, feature pages, FAQ, docs/help URL, changelog URL, API docs URL | Capped starting-page and `/sitemap.xml` discovery. Only owner-selected pages become knowledge sources. No full crawl by default. |
 | Uploaded docs | Text-based PDF, DOCX, TXT, Markdown, CSV, FAQ CSV, JSON | Client preflight + server validation. Normalize to source evidence before drafts. XLSX, PPTX, YAML, HTML files, and ZIP docs are not public claims until implemented. |
 | Images/screenshots | PNG, JPG/JPEG, WebP, GIF | OCR/visual evidence only. Warn about secrets. Costs support credits and never creates automatic authoritative answers. |
 | Video/audio/transcripts | MP4, MOV, WebM, M4A, MP3, WAV, OGG, uploaded transcript text | Transcript-first. Raw media transcription is owner-triggered, support-credit charged, byte-capped, and explicitly visible. |
-| Changelog/releases | changelog entries, release notes, GitHub release export, release email text | Connects to product surfaces, affected answers, and stale-answer review. |
+| Changelog/releases | pasted or uploaded changelog entries, release notes, GitHub release export, release email text | Source evidence for KB/FAQ/surface/canonical-proposal review; intake does not publish changelog or release records. |
 | Helpdesk history | Zendesk/Intercom/Freshdesk/Help Scout exports, ticket CSV/JSON, support email exports, macros, canned replies, chat transcripts | Export upload path only for day-one. Native OAuth connectors are not required for launch because of credential and privacy risk. |
-| Product surfaces | app routes, page names, workflows, roles, plans, error states, starter surface templates | Feeds page-aware widget support and product readiness. |
-| Policy pack | refund, cancellation, billing, pricing, security, privacy, data deletion, roles, permissions, API limits | High-authority owner answers. Always high-risk review before publishing. |
+| Repeated replies | one repeated customer question, reusable reply, optional route/context/entity hints | Creates focused FAQ and canonical-proposal review drafts without treating the historical reply as approved truth. |
+| Product-surface evidence | app routes, page names, workflows, roles, plans, and error-state notes | Can produce a product-surface review item for page-aware support. |
+| Policy/owner notes | refund, cancellation, billing, pricing, security, privacy, deletion, roles, permissions, API limits | Stored as review evidence. Authority and approval remain human-governed. |
 
 ---
 
@@ -112,21 +113,21 @@ Owner-facing flow:
 
 1. Owner pastes the main product website link.
 2. Owner may optionally add docs/help, pricing, changelog, status, terms, privacy, API docs, and app login URL.
-3. Answerlattice runs a cheap discovery pass using sitemap, robots, canonical links, llms.txt, and selected public pages.
+3. Answerlattice runs a bounded discovery pass over the starting page and same-origin `/sitemap.xml`.
 4. Answerlattice shows candidate pages grouped as product overview, pricing, docs, FAQ, changelog, legal/security, API, and low-value pages.
 5. Owner confirms the pages to process.
 6. Only confirmed pages become knowledge sources and consume extraction/draft credits.
 
 Rules:
 
-- app login URL seeds product surfaces and widget setup; it is not crawled behind authentication
-- discovered URLs are stored in a Storage manifest, not one Firestore document per URL
+- app login URL is stored as job context; it is not crawled behind authentication
+- discovered URLs are returned as bounded candidates and are not persisted unless the owner selects them
 - selected pages receive compact source metadata and source lineage
-- homepage and marketing pages can explain product positioning, but cannot override pricing, legal, security, policy, or owner-approved answers
+- discovered page classification is an owner-selection aid, not an authority decision
 - URL query tracking parameters are stripped before dedupe and source hashing
 - fetched URL bodies must be streamed and capped; non-streaming responses are accepted only with a trustworthy safe content length
-- repeated imports compare source hash, ETag, Last-Modified, canonical URL, and normalized text hash before running extraction again
-- if unchanged, Answerlattice updates freshness metadata only and skips AI/provider work
+- an identical normalized URL and extracted-text import resolves to the existing deterministic source within the job
+- changed page text creates a distinct source for review; no ETag/Last-Modified poll or silent source replacement is implemented
 
 The first screen should say:
 
@@ -134,7 +135,9 @@ The first screen should say:
 
 ---
 
-## 7. Source Authority
+## 7. Recommended Source Authority — Separate Governance Contract
+
+The hierarchy below is the intended source-governance model, not a current first-class field or automatic conflict resolver in Knowledge Intake. Current intake preserves source IDs and requires human review; the later drift/conflict feature audit owns the broader authority lifecycle.
 
 AI confidence never outranks source authority.
 
@@ -153,7 +156,7 @@ Default authority order:
 11. Videos, demos, transcripts
 12. Sales decks, old PDFs, unstructured notes
 
-If sources conflict, Answerlattice creates a review item instead of guessing.
+When a reviewer detects conflicting evidence, the safe product behavior is to hold the draft for review rather than guess. Automatic source-conflict detection is not a current Knowledge Intake claim.
 
 Example:
 
@@ -161,7 +164,9 @@ Pricing page says API access is Enterprise-only. Old sales deck says API access 
 
 ---
 
-## 8. Risk Domains
+## 8. Risk Domains — Governance Principle
+
+These topics should remain owner-reviewed across Answerlattice. Current Knowledge Intake does not infer a complete risk policy from arbitrary source text; canonical proposals still pass through Governance before becoming authoritative.
 
 High-risk topics always require explicit owner/admin approval:
 
@@ -201,58 +206,44 @@ Static demo and sample preview remain allowed without processing customer data.
 
 ### 9.2 Product Context First
 
-First form asks:
+The current first form asks:
 
-- product name
+- intake name
 - product website
 - app URL
-- docs/help URL
-- pricing URL
-- changelog URL
-- terms/privacy/security URLs when available
-- support email
-- billing model
-- most important support pages
-- what Answerlattice should not answer
-- escalation rules
+- a short description of what Answerlattice should learn
 
-If the owner has no docs, they continue with policy pack + product surface templates.
+The owner then adds selected URLs, pasted source content, supported files/media, or one repeated question and reusable reply.
 
 ### 9.3 Source Preflight
 
-Before processing, Answerlattice shows:
+Current source admission shows or enforces:
 
 - source type
-- expected processing cost/credits
-- page/file/media cap
-- privacy warnings
-- secret/private-data warnings
-- authority default
-- retention choice
+- page/file/media caps
+- media credit cost
+- privacy and secret-data warnings
 - what will be extracted
 - candidate website pages and selected page count
 
 Owner explicitly confirms expensive or private sources.
 
-Before any provider prompt is created, normalized source material must pass a secret/private-data classification and redaction step. If risky content remains, Answerlattice creates a review item instead of sending that material to drafting prompts by default.
+Pasted/fetched text and metadata pass bounded deterministic redaction before Firestore persistence. Raw screenshot/audio/video bytes necessarily reach the configured extraction provider after explicit owner action, file-signature/size checks, entitlement, and credit reservation; the extraction prompt requests redaction and returned text passes deterministic redaction before storage. Owners must not upload secrets or private customer data.
 
 ### 9.4 Source Audit
 
-After normalization, Answerlattice shows:
+The current intake screen shows:
 
-- sources found
-- usable sources
-- duplicates
-- unsupported files
-- stale/old sources
-- high-risk sources
-- conflicting sources
-- missing launch-critical areas
-- selected website pages and skipped low-value pages
+- bounded source records and status
+- aggregate source, ready, accepted, published, and credit-used counts
+- selected website candidates before source creation
+- source excerpts and missing-evidence warnings on review cards
 
-### 9.5 Product Map
+It does not currently claim a generalized stale-source, source-conflict, or launch-gap audit.
 
-Answerlattice builds a product map:
+### 9.5 Product Map — Reserved
+
+The following remains a long-term ontology/surface projection, not a current Knowledge Intake screen or persisted manifest:
 
 - features
 - subfeatures
@@ -266,64 +257,47 @@ Answerlattice builds a product map:
 - product pages/surfaces
 - gaps and unknowns
 
-Owner sees a plain-language preview:
-
-**Answerlattice found 28 product concepts, 6 workflows, 4 plans, and 9 launch decisions.**
-
-### 9.6 Launch Decision Queue
+### 9.6 Current Review Queue
 
 The owner does not review every extracted fact.
 
-Queue buckets:
+Current review targets are:
 
-- critical blockers
-- source conflicts
-- missing launch info
-- high-risk draft
-- product concept
-- approved answer draft
-- safe bulk approval
-- resolved
+- KB article draft
+- FAQ draft
+- product-surface draft
+- canonical mutation proposal
 
-Target first-launch review burden: 5-15 decisions.
+Each item is accepted, edited, rejected, or published intentionally. Changelog, entity, Support Board, and direct canonical-answer publishing are not intake targets.
 
 ### 9.7 Draft Generation
 
-After audit and product map, Answerlattice generates:
+From selected ready source evidence, current deterministic analysis generates:
 
 - KB article drafts
 - FAQs and custom Q&A
-- canonical answer drafts
-- guided workflow drafts when the guided workflow flag is enabled
+- canonical mutation proposals
 - product-surface suggestions
-- widget suggested prompts
-- ticket macro drafts
-- changelog-linked support review items
-- support gap tasks
 
 Drafts stay pending until approval.
 
 ### 9.8 Safe Publish
 
-Owner chooses destinations:
+Current destinations are:
 
 - Knowledge Base
 - FAQ layer
-- Canonical answers
-- Product ontology / entity candidates
+- Canonical answer proposals
 - Product surfaces
-- Widget suggestions
-- Hosted help
-- Support Board / review tasks
+
+The canonical destination creates a mutation proposal, not active canonical truth. KB/FAQ/surface output becomes visible to the existing widget/help/search runtimes through their normal destination paths; those are not separate intake publish targets.
 
 Publish validates:
 
 - selected items approved
-- high-risk items explicitly approved
-- conflicts resolved or excluded
 - destination plan limits available
 - source lineage attached
-- cache/source-version manifests updated
+- existing destination cache/source versions updated where the published destination requires them; no intake-specific publish manifest is required
 
 ### 9.9 Runtime Output Contract
 
@@ -332,13 +306,13 @@ Publishing is not complete when draft documents are written. Publishing is compl
 Runtime requirements:
 
 - Help center articles are written to `kb_articles` and `kb_categories` with tenant/store scope, lineage, tags, context keys, and entity ids where available.
-- Published article text is embedded before the related topic is marked search-ready. If embedding fails, the article may remain visible in hosted help, but widget/search readiness is `partial` until embedding succeeds or an owner excludes that source from search.
+- Published article text attempts embedding in the publish path. If embedding fails, the article remains visible in hosted help with `embeddingStatus: failed`; no current topic-level partial-readiness record is written.
 - FAQ/custom Q&A output is written to `answerlattice_faqs` as `published` and `active`, linked to articles, entities, tags, and context keys when available.
 - Canonical answers remain the first retrieval path. Intake can create drafts and mutation proposals, but an answer becomes `active` only after owner/admin approval and destination validation.
 - Product surface suggestions write existing `answerlattice_productSurfaces` records with route patterns, feature/page/workflow labels, visibility, entity ids, tags, and lineage.
 - Article, FAQ, ticket, and surface changes refresh or mark stale the compact product-surface content summary used for page-aware related content.
 - Intake can use release notes or existing changelog entries as source context for support drafts, but it does not write changelog pages or `answerlattice_releases`. Owners publish release notes through the Changelog workflow.
-- Published outputs mark existing runtime source versions stale: `kb`, `docsNav`, `canonical`, `surfaces`, `entities`, and `entityRelations` as applicable.
+- Published KB/FAQ/surface outputs mark only their existing destination cache/source-version paths. Canonical proposals do not mark canonical runtime freshness until the normal governance workflow approves active truth.
 - Intake-only source/readiness counters do not by themselves rebuild public context bundles. Runtime bundles rebuild only when approved runtime destinations changed.
 
 End-user result:
@@ -353,7 +327,9 @@ End-user result:
 
 ### 9.10 Readiness
 
-Readiness is topic-specific, not generic.
+Current Knowledge Intake readiness is aggregate job/source/review/publish state. Topic-specific readiness belongs to the broader Activation and product-surface summary flows and must not be inferred from source count alone.
+
+The following topic-specific readiness model is a future Activation/governance direction, not a current Knowledge Intake output:
 
 Example:
 
@@ -363,13 +339,13 @@ Example:
 - API troubleshooting: not ready
 - Security: needs owner review
 
-Readiness rules:
+Possible future readiness inputs:
 
 - product profile complete
 - paid entitlement active
 - trusted source imported
-- product map accepted
-- critical conflicts resolved
+- applicable product/surface mapping reviewed
+- material evidence conflicts resolved
 - high-risk topics reviewed
 - at least one approved answer or article exists for the surface
 - embeddings are ready for published article content that should power search
@@ -383,26 +359,21 @@ Readiness rules:
 
 The owner dashboard should feel instant even when the workspace has many sources.
 
-First screen reads:
+The compact summary currently provides:
 
 - active intake job status
 - source counts
-- selected website page counts
-- open/critical launch decisions
-- top urgent review items
-- topic readiness
-- remaining allowance
+- ready source count
+- review, accepted, rejected, and published counts
+- usage units consumed and latest job status where available
 
 This comes from `platformSummary/knowledgeIntakeSummary_{tId}_{sId}`.
 
-Detailed lists open only when the owner clicks a tab:
+Detailed intake state is loaded through bounded job bundles and owner actions:
 
-- source registry
-- selected product links
-- review queue
-- generated drafts
-- publish manifest
-- usage ledger
+- source registry and selected links
+- review drafts and destination status
+- scoped usage/credit evidence in the platform monitor
 
 Intake processing is owner-triggered. Scheduler/ops do not discover active intake work for retries or imports. The existing Answerlattice nightly scheduler may refresh compact intake analytics from the latest bounded job docs and must skip provider calls, failed-job retry, crawling, and publishing.
 
@@ -412,19 +383,18 @@ Intake processing is owner-triggered. Scheduler/ops do not discover active intak
 
 | Metric | Target |
 | --- | --- |
-| Time to first useful source audit | <3 minutes for small URL/docs import |
-| Time to first product map | <7 minutes for starter import |
-| Owner launch decisions | 5-15 decisions for first launch |
+| Time to first ready source | <3 minutes for a small pasted-text or selected-URL import |
+| Time to first review drafts | One focused setup session for a small starter import |
+| Owner review decisions | 5-15 decisions for the first focused support pack |
 | Time to first approved answer | One focused setup session for small starter imports, after human review |
 | Source coverage | At least top 2-5 product pages mapped in first session |
-| High-risk unresolved count | Zero before support is marked ready for that topic |
 | Draft approval rate | >60% approved with minor edits |
 | Fallback reduction after launch | Tracked through existing signal/trust metrics |
 | Cost overrun | 0 jobs exceed configured plan/cap limits |
 | Unselected URL Firestore writes | 0 source documents for skipped/discovered-only URLs |
-| Unchanged link reprocess | 0 AI/provider calls when source hashes are unchanged |
+| Identical source re-import | 0 duplicate source/counter/review writes within the same job |
 | First dashboard read | 1 summary doc before detailed tabs are opened |
-| Scheduler discovery | Bucketed summary docs, no collection scan over intake jobs/sources/review items |
+| Scheduler analytics | Latest bounded job reads and one compact summary write only when changed |
 
 ---
 
@@ -445,28 +415,28 @@ Intake processing is owner-triggered. Scheduler/ops do not discover active intak
 
 ---
 
-## 13. Acceptance Criteria
+## 13. Current Implementation Acceptance Criteria
 
 The implementation is complete only when:
 
 - paid entitlement blocks every expensive job before work begins
 - only one expensive intake job per workspace runs at a time unless an explicit plan/concurrency cap allows more
 - source registry exists and all adapters write through it
-- raw/heavy source artifacts are stored in Storage, not Firestore
+- capped extracted source text and metadata are stored in Firestore; raw/heavy source artifacts are not retained by the current intake path
 - source metadata and summary reads are bounded and scoped by `pId`, `tId`, `sId`
-- source authority and high-risk domains are enforced
+- high-risk destinations remain review-gated; first-class intake source authority, ownership, effective-date, and expiry fields are deferred to the source-governance audit
 - review queue is unified and founder-friendly
 - generated outputs retain source lineage
 - publishing uses existing Answerlattice destination systems instead of duplicate content models
-- readiness is updated from compact summary docs
+- aggregate intake progress is updated in compact summary docs; topic readiness is separate work
 - dashboard and activation use the workspace intake summary before detailed list queries
-- scheduler/ops discovery uses bucketed intake directory summaries
-- source delete/retention controls exist
-- website link intake stores discovered candidates in Storage and creates Firestore source docs only for owner-selected pages
-- unchanged selected links skip extraction/drafting and update freshness metadata only
-- app URL is treated as product surface/setup context, not as a credentialed crawler target
-- provider prompts use redacted, selected evidence only; raw source bodies and private data are not sent by default
-- test workspaces prove clean docs, no-docs, conflicts, media, helpdesk exports, and large import limits
+- scheduler analytics use already-known tenant/store scope and bounded recent job reads; no intake directory is required today
+- source-level delete/retention controls are explicitly unavailable until a governed lifecycle is implemented
+- website link intake returns discovered candidates without persisting a manifest and creates Firestore source docs only for owner-selected pages
+- identical selected-page content deduplicates within the same job; no background freshness metadata workflow is claimed
+- app URL is stored as intake context, not used as a credentialed crawler target
+- text/metadata is redacted before persistence; raw media reaches the configured extraction provider only after explicit owner action and bounded safety/entitlement checks
+- focused tests prove current URL/file/media/repeated-reply intake, evidence lineage, review/publish destinations, privacy bounds, retrieval eligibility, rules, and summary behavior; future connectors/deletion/cancellation remain separate validation work
 
 ---
 
@@ -479,3 +449,5 @@ The implementation is complete only when:
 | 2026-05-31 | 1.2.0 | Added privacy preflight and bounded job orchestration requirements. |
 | 2026-05-31 | 1.3.0 | Added summary-first owner experience and scheduler discovery requirements. |
 | 2026-05-31 | 1.4.0 | Added end-to-end runtime output contract for hosted help, FAQ, canonical-first retrieval, vector search, surface summaries, changelog, and compiled context source versions. |
+| 2026-07-18 | 1.5.0 | Reconciled historical planning language with the current evidence-lineage, URL discovery, raw-media, source-governance, deletion, and manifest boundaries. |
+| 2026-07-18 | 1.6.0 | Removed unimplemented product-map, topic-readiness, freshness-poll, app-setup, and pre-provider raw-media claims. |

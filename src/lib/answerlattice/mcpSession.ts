@@ -4,16 +4,20 @@ export type AnswerlatticeMcpSessionScope = 'context:read' | 'signals:write';
 
 export type AnswerlatticeMcpSessionPayload = {
     sub: 'answerlattice_mcp_session';
+    aud: 'answerlattice_mcp';
     tId: number;
     sId: number;
     scope: AnswerlatticeMcpSessionScope[];
     bundleVersion: number;
-    revocationVersion?: number;
     iat: number;
     exp: number;
 };
 
-const getSecret = () => process.env.ANSWERLATTICE_MCP_SESSION_SECRET || '';
+const getSecret = () => process.env.ANSWERLATTICE_MCP_SESSION_SECRET?.trim() || '';
+
+const ANSWERLATTICE_MCP_SESSION_TOKEN_MAX_LENGTH = 4096;
+const ANSWERLATTICE_MCP_SESSION_PAYLOAD_MAX_LENGTH = 3072;
+const ANSWERLATTICE_MCP_SESSION_SIGNATURE_MAX_LENGTH = 128;
 
 const base64url = (value: string) => Buffer.from(value, 'utf8').toString('base64url');
 
@@ -30,9 +34,10 @@ export const hasAnswerlatticeMcpSessionScope = (
 const parseMcpSessionPayload = (value: unknown): AnswerlatticeMcpSessionPayload | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const payload = value as Record<string, unknown>;
-    const allowedKeys = new Set(['sub', 'tId', 'sId', 'scope', 'bundleVersion', 'revocationVersion', 'iat', 'exp']);
+    const allowedKeys = new Set(['sub', 'aud', 'tId', 'sId', 'scope', 'bundleVersion', 'iat', 'exp']);
     if (Object.keys(payload).some(key => !allowedKeys.has(key))) return null;
     if (payload.sub !== 'answerlattice_mcp_session') return null;
+    if (payload.aud !== 'answerlattice_mcp') return null;
     if (
         typeof payload.tId !== 'number'
         || typeof payload.sId !== 'number'
@@ -51,12 +56,7 @@ const parseMcpSessionPayload = (value: unknown): AnswerlatticeMcpSessionPayload 
     if (
         typeof payload.bundleVersion !== 'number'
         || !Number.isSafeInteger(payload.bundleVersion)
-        || payload.bundleVersion < 0
-        || (payload.revocationVersion !== undefined && (
-            typeof payload.revocationVersion !== 'number'
-            || !Number.isSafeInteger(payload.revocationVersion)
-            || payload.revocationVersion < 0
-        ))
+        || payload.bundleVersion <= 0
         || typeof payload.iat !== 'number'
         || typeof payload.exp !== 'number'
         || !Number.isSafeInteger(payload.iat)
@@ -68,36 +68,33 @@ const parseMcpSessionPayload = (value: unknown): AnswerlatticeMcpSessionPayload 
         return null;
     }
 
-    const revocationVersion = typeof payload.revocationVersion === 'number'
-        ? payload.revocationVersion
-        : undefined;
     return {
         sub: payload.sub,
+        aud: payload.aud,
         tId: payload.tId,
         sId: payload.sId,
         scope: payload.scope as AnswerlatticeMcpSessionScope[],
         bundleVersion: payload.bundleVersion,
-        ...(revocationVersion === undefined ? {} : { revocationVersion }),
         iat: payload.iat,
         exp: payload.exp,
     };
 };
 
-export const canIssueAnswerlatticeMcpSession = () => Boolean(getSecret());
+export const canIssueAnswerlatticeMcpSession = () => getSecret().length >= 32;
 
 export const createAnswerlatticeMcpSessionToken = (
-    input: Omit<AnswerlatticeMcpSessionPayload, 'sub' | 'iat' | 'exp'> & { ttlSeconds?: number },
+    input: Omit<AnswerlatticeMcpSessionPayload, 'sub' | 'aud' | 'iat' | 'exp'> & { ttlSeconds?: number },
 ): string => {
     const secret = getSecret();
-    if (!secret) throw new Error('ANSWERLATTICE_MCP_SESSION_SECRET is not configured.');
+    if (secret.length < 32) throw new Error('ANSWERLATTICE_MCP_SESSION_SECRET must contain at least 32 characters.');
     const now = Math.floor(Date.now() / 1000);
     const payload: AnswerlatticeMcpSessionPayload = {
         sub: 'answerlattice_mcp_session',
+        aud: 'answerlattice_mcp',
         tId: input.tId,
         sId: input.sId,
         scope: input.scope,
         bundleVersion: input.bundleVersion,
-        revocationVersion: input.revocationVersion,
         iat: now,
         exp: now + Math.min(Math.max(Number(input.ttlSeconds || 900), 60), 900),
     };
@@ -109,11 +106,18 @@ export const createAnswerlatticeMcpSessionToken = (
 
 export const verifyAnswerlatticeMcpSessionToken = (token: string | null | undefined): AnswerlatticeMcpSessionPayload | null => {
     const secret = getSecret();
-    if (!secret || !token) return null;
+    if (secret.length < 32 || !token || token.length > ANSWERLATTICE_MCP_SESSION_TOKEN_MAX_LENGTH) return null;
     const tokenParts = token.split('.');
     if (tokenParts.length !== 2) return null;
     const [payloadPart, signature] = tokenParts;
-    if (!payloadPart || !signature) return null;
+    if (
+        !payloadPart
+        || !signature
+        || payloadPart.length > ANSWERLATTICE_MCP_SESSION_PAYLOAD_MAX_LENGTH
+        || signature.length > ANSWERLATTICE_MCP_SESSION_SIGNATURE_MAX_LENGTH
+        || !/^[A-Za-z0-9_-]+$/.test(payloadPart)
+        || !/^[A-Za-z0-9_-]+$/.test(signature)
+    ) return null;
     const expected = signPayload(payloadPart, secret);
     const actualBuffer = Buffer.from(signature);
     const expectedBuffer = Buffer.from(expected);

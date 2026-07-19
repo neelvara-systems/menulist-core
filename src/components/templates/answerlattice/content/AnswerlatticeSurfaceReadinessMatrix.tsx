@@ -78,7 +78,11 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description="No product surfaces are mapped yet."
                     >
-                        <Button type="primary" onClick={() => onOpen(ANSWERLATTICE_ROUTES.PRODUCT_SURFACES)}>
+                        <Button
+                            type="primary"
+                            onClick={() => onOpen(ANSWERLATTICE_ROUTES.PRODUCT_SURFACES)}
+                            style={{ minHeight: 44 }}
+                        >
                             Map Product Surfaces
                         </Button>
                     </Empty>
@@ -120,8 +124,8 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
                                                 </Flex>
                                             </Flex>
                                             <Button
-                                                size="small"
                                                 onClick={() => onOpen(meta.actionRoute)}
+                                                style={{ minHeight: 44 }}
                                             >
                                                 {meta.actionLabel}
                                             </Button>

@@ -1,7 +1,7 @@
 # Feedback System — Mobile Support Assessment
 
-> **Version:** 1.7.0
-> **Last Updated:** 2026-07-11
+> **Version:** 1.8.0
+> **Last Updated:** 2026-07-19
 > **Audience:** Mobile team, Product
 
 ---
@@ -19,11 +19,13 @@
 
 Feedback collection is an infrequent, deliberate task that benefits from desktop screen space. The shared responsive form is acceptable because users can now submit the selected category directly without completing unrelated categories.
 
-The shared form and DAL use the same 1,000-character text cap and canonical issue/request lists. Feature-usage submission requires at least one selected area or a comment on every viewport; this is validation parity, not a separate mobile business rule.
+The shared form and DAL use the same 1,000-character text cap and canonical issue/request lists. Feature-usage choices use one column on narrow screens and two from `sm`; labels and vote controls retain 44px minimum touch height. Submission requires at least one selected area or a comment on every viewport.
 
 Content feedback (likes/dislikes) on articles and changelog is already simple enough to work on mobile without dedicated components (single tap on icon).
 
-Reaction buttons and the dislike modal share an in-flight lock/loading state, so repeated taps cannot create duplicate counter/audit mutations before the first acknowledgement returns.
+Help Center submit/navigation controls share a ref-backed in-flight lock so rapid taps cannot create duplicate rows. Feature-request votes derive from form state, so Cancel and successful reset clear both the hidden value and visible selection.
+
+Reaction buttons and the dislike modal share an in-flight lock/loading state. Failed detailed reactions retain the comment for retry, optimistic counters never render below zero, and acknowledged mutations reconcile to authoritative server counts.
 
 Mobile browser acknowledgement is partitioned by Answerlattice tenant, store and user and resets on a workspace/content switch; another workspace cannot inherit the previous like/dislike state.
 
@@ -31,7 +33,7 @@ Mobile browser acknowledgement is partitioned by Answerlattice tenant, store and
 
 ## 2. Content Feedback on Mobile
 
-Article and changelog likes/dislikes are **single-tap actions** that work on any screen size. No dedicated mobile component needed — the existing icons are touch-friendly (>44px tap targets).
+Article, changelog, and FAQ likes/dislikes are **single-tap actions** that work on any screen size. No dedicated mobile component is needed; reaction and modal actions have at least 44px targets.
 
 ## 3. Platform Feedback Admin on Mobile
 

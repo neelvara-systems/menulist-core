@@ -1,55 +1,37 @@
-# Changelog System — Customer Help Documentation
+# Publish a Release Note Safely
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** SMB Owners (MenuList dashboard users)
-> **Tone:** Zero jargon, step-by-step, calm
+## Create a normal announcement
 
----
+1. Open Changelog Management.
+2. Add a title, description, date, and optional tags, media, related articles, or product surfaces.
+3. Leave Version empty when the note is not tied to a product release.
+4. Choose Published and save.
 
-## What's New
+## Create a versioned release note
 
-The "What's New" section shows you all the latest updates, new features, and fixes to the platform. You can find it in your Help Center.
+1. Enter a numeric version such as `2.4.1`.
+2. Select every changed product area.
+3. Choose Published and save.
+4. Answerlattice first saves the note privately.
+5. It registers and activates the release, checks affected approved answers, and then publishes the linked note.
 
----
+The note is visible to customers only after the release check succeeds.
 
-## Browsing Updates
+## If publication does not finish
 
-1. Open the **Help Center** from your dashboard menu
-2. Click **What's New** tab (or scroll to the "What's New" section on the home page)
-3. Browse entries in the timeline — newest at the top
-4. Scroll down to load older entries automatically
+The entry is saved as a draft. Reopen it and save again. Answerlattice reuses the same release identity where possible and does not create a second version.
 
-Each entry shows:
-- **Date and version** on the left
-- **Tags** indicating the type of change (new feature, improvement, fix, etc.)
-- **Description** with full details
-- **Attachments** — screenshots or documents if included
-- **Videos** — embedded YouTube videos when available
-- **Related articles** — links to help articles about this update
+Do not create a different version to work around a failed activation. Review the changed product areas and any malformed affected answer reported by the owner workflow.
 
----
+## What customers can see
 
-## Searching Updates
+- Published title, description, version, date, tags, approved media, related public KB links, and feedback counts.
 
-Use the search bar in the sidebar to find specific updates by keyword. The search checks both titles and descriptions.
+They cannot see internal release IDs, entity mappings, context keys, workspace IDs, author identity, audits, or draft entries.
 
----
+## Important boundaries
 
-## Filtering by Tag
-
-In the sidebar, click any tag to show only entries with that tag. Click again to remove the filter. You can select multiple tags.
-
----
-
-## Giving Feedback
-
-Each entry has like and dislike buttons. Your feedback helps the team understand which updates matter most to you.
-
----
-
-## Tips
-
-- **Check regularly** — New entries appear at the top of the timeline
-- **Use tags** to quickly find the type of change you're looking for
-- **Click related articles** to learn more about new features
+- A changelog entry does not approve or update a canonical answer.
+- Drifted answers require human review.
+- Version, release date, and changed product areas are fixed after release linkage in the editor.
+- Search in the management view covers loaded pages; it is not a global changelog index.

@@ -2,6 +2,7 @@ const STORE_NESTED_PATCH_FIELDS = new Set([
     'analytics',
     'businessAttributes',
     'businessCopyMeta',
+    'externalLocationIdentity',
     'feedbackDefaults',
     'geo',
     'keywords',

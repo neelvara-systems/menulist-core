@@ -3,13 +3,15 @@ import {
     ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS,
     countAnswerlatticeFirstTrustedAnswerCases,
     createAnswerlatticeFirstTrustedAnswerCases,
+    getAnswerlatticeFirstTrustedAnswerCases,
     replaceAnswerlatticeFirstTrustedAnswerCases,
 } from '../../src/lib/answerlattice/answerTestStarterPack';
 import { AnswerlatticeAnswerTestCaseSchema } from '../../src/lib/answerlattice/answerTestContracts';
 import {
-    ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX,
+    ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
     AnswerlatticeProductStarterPackModelResponseSchema,
+    isAnswerlatticeProductStarterPackCaseId,
 } from '../../src/lib/answerlattice/firstTrustedAnswerPackContracts';
 import { calculateConfirmedResolutionMetrics } from '../../functions-answerlattice/src/answerlattice/confirmedResolution';
 import {
@@ -51,10 +53,12 @@ const productCandidates = {
 };
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse(productCandidates).success, true, 'a ten-candidate product pack must satisfy the strict model contract');
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse({ candidates: productCandidates.candidates.slice(0, 9) }).success, false, 'a partial product pack must fail closed');
+assert.equal(isAnswerlatticeProductStarterPackCaseId('product_launch_11'), false, 'a prefixed case outside the exact ten slots must not impersonate the launch pack');
+assert.equal(isAnswerlatticeProductStarterPackCaseId('product_launch_custom'), false, 'a custom prefixed case must not impersonate the launch pack');
 
 const productCases = starters.map((testCase, index) => ({
     ...testCase,
-    id: `${ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX}${String(index + 1).padStart(2, '0')}`,
+    id: ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS[index],
     launchPack: {
         version: 1 as const,
         sourceHash: 'a'.repeat(64),
@@ -71,6 +75,37 @@ const replacedCases = replaceAnswerlatticeFirstTrustedAnswerCases([...starters, 
 assert.equal(replacedCases.length, 11, 'product-specific cases must replace the generic ten without removing custom tests');
 assert.equal(replacedCases.some(testCase => testCase.id === customCase.id), true, 'custom Answer Tests must survive product-pack replacement');
 assert.equal(countAnswerlatticeFirstTrustedAnswerCases(productCases), 10, 'product-specific slots must satisfy launch progress');
+assert.equal(
+    countAnswerlatticeFirstTrustedAnswerCases(
+        productCases.map((testCase, index) => index === 0 ? { ...testCase, active: false } : testCase),
+        { activeOnly: true },
+    ),
+    9,
+    'inactive launch questions must not count toward runnable First 10 proof',
+);
+assert.equal(
+    getAnswerlatticeFirstTrustedAnswerCases([...starters, productCases[0]]).length,
+    1,
+    'a mixed generic and product set must select one coherent product pack rather than combine both identities',
+);
+assert.equal(
+    countAnswerlatticeFirstTrustedAnswerCases(productCases.map((testCase, index) => (
+        index === 0
+            ? { ...testCase, launchPack: { ...testCase.launchPack, sourceHash: 'b'.repeat(64) } }
+            : testCase
+    ))),
+    0,
+    'product launch slots from different source snapshots must fail closed',
+);
+assert.equal(
+    countAnswerlatticeFirstTrustedAnswerCases(productCases.map((testCase, index) => (
+        index === 0
+            ? { ...testCase, launchPack: { ...testCase.launchPack, reviewItemId: productCases[1].launchPack.reviewItemId } }
+            : testCase
+    ))),
+    0,
+    'product launch slots with duplicate review provenance must fail closed',
+);
 const editedProductCases = productCases.map((testCase, index) => index === 0 ? { ...testCase, title: 'Owner-edited title' } : testCase);
 const sameSourceRefresh = replaceAnswerlatticeFirstTrustedAnswerCases(editedProductCases, productCases);
 assert.equal(sameSourceRefresh[0]?.title, 'Owner-edited title', 'cached pack reuse must preserve owner edits');

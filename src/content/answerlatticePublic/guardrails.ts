@@ -14,7 +14,6 @@ export const ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS = {
     allowedClaims: [
         'safe page context',
         'approved answers before fallback',
-        'safe page context',
         'reviewable support gaps',
         'human-reviewed answer changes',
         'support knowledge layer',
@@ -27,6 +26,7 @@ export const ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS = {
         'never stale',
         'replaces your helpdesk',
         'fully autonomous support',
+        'the first 24/7 support layer',
         'guaranteed ticket reduction',
         'guaranteed AI search visibility',
         'trusted by',

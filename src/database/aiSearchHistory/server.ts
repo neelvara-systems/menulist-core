@@ -1,6 +1,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
+import {
+    normalizeAnswerlatticePublicCitations,
+    normalizeAnswerlatticeScopeClarification,
+} from '@lib/answerlattice/publicAnswerContracts';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
@@ -13,6 +18,7 @@ const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 const MAX_QUERY_CHARS = 500;
 const MAX_ANSWER_CHARS = 12000;
 const MAX_REFERENCE_COUNT = 8;
+const MAX_CITATION_COUNT = 8;
 
 type AiSearchHistoryWritePayload = Omit<AiSearchHistory, 'id'> & {
     pId: typeof PRODUCT_IDS.ANSWERLATTICE;
@@ -90,9 +96,16 @@ const compactAiSearchHistoryPayload = (
         query: typeof query === 'string' ? query : '',
         craftedAnswer: typeof craftedAnswer === 'string' ? craftedAnswer : '',
         references: Array.isArray(data.references) ? data.references : [],
+        citations: Array.isArray(data.citations) ? data.citations : [],
         ...(typeof generatedQueryFromImage === 'string' ? { generatedQueryFromImage } : {}),
         ...(typeof imageUrl === 'string' ? { imageUrl } : {}),
     };
+
+    delete payload.guidedProcedure;
+    if (data.guidedProcedure !== undefined) {
+        const guidedProcedure = AnswerlatticeProcedureSchema.safeParse(data.guidedProcedure);
+        if (guidedProcedure.success) payload.guidedProcedure = guidedProcedure.data;
+    }
 
     if (Array.isArray(data.references)) {
         payload.references = data.references
@@ -100,6 +113,13 @@ const compactAiSearchHistoryPayload = (
             .map(compactSearchReference)
             .filter((reference): reference is AiSearchHistoryReference => Boolean(reference));
     }
+
+    if (Array.isArray(data.citations)) {
+        payload.citations = normalizeAnswerlatticePublicCitations(data.citations);
+    }
+
+    const clarification = normalizeAnswerlatticeScopeClarification(data.clarification);
+    if (clarification) payload.clarification = clarification;
 
     if (Array.isArray(data.matchedEntityIds)) {
         payload.matchedEntityIds = data.matchedEntityIds
@@ -173,6 +193,17 @@ export const findCachedSearchByCacheKeyServer = async (
     const references = Array.isArray(data.references)
         ? data.references.map(compactSearchReference).filter((reference): reference is AiSearchHistoryReference => Boolean(reference))
         : [];
+    const citations = normalizeAnswerlatticePublicCitations(data.citations);
+    const clarification = normalizeAnswerlatticeScopeClarification(data.clarification);
+    const guidedProcedure = AnswerlatticeProcedureSchema.safeParse(data.guidedProcedure);
+    let expiresAtMs = 0;
+    try {
+        expiresAtMs = typeof data.expiresAt?.toMillis === 'function'
+            ? Number(data.expiresAt.toMillis())
+            : 0;
+    } catch {
+        expiresAtMs = 0;
+    }
     if (
         data.pId !== PRODUCT_IDS.ANSWERLATTICE
         || Number(data.tId) !== scope.tId
@@ -183,9 +214,14 @@ export const findCachedSearchByCacheKeyServer = async (
         || typeof data.craftedAnswer !== 'string'
         || !data.craftedAnswer.trim()
         || data.craftedAnswer.length > MAX_ANSWER_CHARS
+        || !Number.isFinite(expiresAtMs)
+        || expiresAtMs <= Date.now()
         || !Array.isArray(data.references)
         || data.references.length > MAX_REFERENCE_COUNT
         || references.length !== data.references.length
+        || (data.citations !== undefined && (!Array.isArray(data.citations)
+            || data.citations.length > MAX_CITATION_COUNT
+            || citations.length !== data.citations.length))
     ) {
         return null;
     }
@@ -196,6 +232,7 @@ export const findCachedSearchByCacheKeyServer = async (
         cacheKey: storedCacheKey,
         craftedAnswer: data.craftedAnswer,
         references,
+        ...(citations.length > 0 ? { citations } : {}),
         tId: scope.tId,
         sId: scope.sId,
         ...(typeof data.uId === 'string' ? { uId: data.uId } : {}),
@@ -203,9 +240,13 @@ export const findCachedSearchByCacheKeyServer = async (
         ...(data.modifiedOn ? { modifiedOn: data.modifiedOn } : {}),
         ...(typeof data.canonical === 'boolean' ? { canonical: data.canonical } : {}),
         ...(typeof data.canonicalAnswerId === 'string' ? { canonicalAnswerId: data.canonicalAnswerId } : {}),
+        ...(guidedProcedure.success
+            ? { guidedProcedure: guidedProcedure.data }
+            : {}),
         ...(typeof data.faqAnswerId === 'string' ? { faqAnswerId: data.faqAnswerId } : {}),
         ...(typeof data.answerSource === 'string' ? { answerSource: data.answerSource } : {}),
         ...(typeof data.fallbackReason === 'string' ? { fallbackReason: data.fallbackReason } : {}),
+        ...(clarification ? { clarification } : {}),
         ...(typeof data.confidence === 'string' ? { confidence: data.confidence } : {}),
         ...(Array.isArray(data.matchedEntityIds)
             ? { matchedEntityIds: data.matchedEntityIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 50) }

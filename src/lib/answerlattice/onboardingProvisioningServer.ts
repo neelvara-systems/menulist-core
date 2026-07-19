@@ -15,7 +15,12 @@ import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export class AnswerlatticeOnboardingConflictError extends Error {
-    readonly code: 'ANSWERLATTICE_ACCOUNT_EXISTS' | 'ANSWERLATTICE_SETUP_IN_PROGRESS' | 'ANSWERLATTICE_SETUP_REQUEST_CHANGED';
+    readonly code:
+        | 'ANSWERLATTICE_ACCOUNT_EXISTS'
+        | 'ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED'
+        | 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING'
+        | 'ANSWERLATTICE_SETUP_IN_PROGRESS'
+        | 'ANSWERLATTICE_SETUP_REQUEST_CHANGED';
 
     constructor(code: AnswerlatticeOnboardingConflictError['code']) {
         super(code);
@@ -38,7 +43,7 @@ const requireScopeId = (value: unknown, field: 'storeId' | 'tenantId'): number =
     return scopeId;
 };
 
-const provisioningOwnershipMatches = (
+export const answerlatticeProvisioningOwnershipMatches = (
     data: Record<string, unknown>,
     scope: AnswerlatticeProvisioningScope,
 ): boolean => {
@@ -58,7 +63,7 @@ const assertProvisioningOwnership = (
     scope: AnswerlatticeProvisioningScope,
     label: string,
 ) => {
-    if (!provisioningOwnershipMatches(data, scope)) {
+    if (!answerlatticeProvisioningOwnershipMatches(data, scope)) {
         throw new Error(`answerlattice_onboarding_${label}_ownership_mismatch`);
     }
 };
@@ -126,19 +131,86 @@ export async function persistAnswerlatticePendingSubscription(params: {
             active: true,
             answerlatticeSubscription: params.storeSubscriptionSummary,
             answerlatticeWidgetApi: params.widgetApiState,
+            onboardingProviderCancellationPending: false,
+            onboardingProviderRecoveryAvailableAt: null,
+            onboardingProviderRecoveryReason: null,
+            onboardingProviderSubscriptionId: subscriptionId,
             onboardingStatus: status,
             modifiedOn: now,
         }, { merge: true });
         transaction.set(tenantRef, {
             active: true,
+            onboardingProviderCancellationPending: false,
+            onboardingProviderRecoveryAvailableAt: null,
+            onboardingProviderRecoveryReason: null,
+            onboardingProviderSubscriptionId: subscriptionId,
             onboardingStatus: status,
             modifiedOn: now,
         }, { merge: true });
         transaction.set(userRef, {
             active: true,
+            onboardingProviderCancellationPending: false,
+            onboardingProviderRecoveryAvailableAt: null,
+            onboardingProviderRecoveryReason: null,
+            onboardingProviderSubscriptionId: subscriptionId,
             onboardingStatus: status,
             modifiedOn: now,
         }, { merge: true });
+    });
+}
+
+export async function markAnswerlatticeOnboardingProviderRecoveryPending(params: {
+    db: FirebaseFirestore.Firestore;
+    providerSubscriptionId?: string | null;
+    reason: string;
+    recoveryAvailableAtMillis: number;
+    scope: AnswerlatticeProvisioningScope;
+}): Promise<void> {
+    const tenantId = requireScopeId(params.scope.tenantId, 'tenantId');
+    const storeId = requireScopeId(params.scope.storeId, 'storeId');
+    const userId = requireAnswerlatticeOnboardingUserId(params.scope.userId);
+    const providerSubscriptionId = params.providerSubscriptionId
+        ? normalizeAnswerlatticeSubscriptionId(params.providerSubscriptionId)
+        : null;
+    if (params.providerSubscriptionId && !providerSubscriptionId) {
+        throw new Error('answerlattice_onboarding_provider_subscription_id_invalid');
+    }
+    if (!Number.isFinite(params.recoveryAvailableAtMillis) || params.recoveryAvailableAtMillis <= 0) {
+        throw new Error('answerlattice_onboarding_recovery_time_invalid');
+    }
+
+    await params.db.runTransaction(async (transaction) => {
+        const tenantRef = params.db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
+        const storeRef = params.db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+        const userRef = params.db.collection(DB_COLLECTIONS.USERS).doc(userId);
+        const [tenantSnap, storeSnap, userSnap] = await Promise.all([
+            transaction.get(tenantRef),
+            transaction.get(storeRef),
+            transaction.get(userRef),
+        ]);
+        if (!tenantSnap.exists || !storeSnap.exists || !userSnap.exists) {
+            throw new Error('answerlattice_onboarding_provisional_scope_missing');
+        }
+        assertProvisioningOwnership(tenantSnap.data() || {}, params.scope, 'tenant');
+        assertProvisioningOwnership(storeSnap.data() || {}, params.scope, 'store');
+        assertProvisioningOwnership(userSnap.data() || {}, params.scope, 'user');
+
+        const now = Timestamp.now();
+        const recoveryFields = {
+            active: true,
+            modifiedOn: now,
+            onboardingProviderCancellationPending: false,
+            onboardingProviderRecoveryAvailableAt: Timestamp.fromMillis(params.recoveryAvailableAtMillis),
+            onboardingProviderRecoveryReason: String(
+                params.reason || 'answerlattice_onboarding_provider_result_unconfirmed',
+            ).slice(0, 80),
+            onboardingProviderSubscriptionId: providerSubscriptionId,
+            onboardingRecoveryMarkedAt: now,
+            onboardingStatus: ANSWERLATTICE_ONBOARDING_STATUS.PROVIDER_RECOVERY_PENDING,
+        };
+        transaction.set(tenantRef, recoveryFields, { merge: true });
+        transaction.set(storeRef, recoveryFields, { merge: true });
+        transaction.set(userRef, recoveryFields, { merge: true });
     });
 }
 
@@ -183,10 +255,10 @@ export async function compensateAnswerlatticeOnboardingProvisioning(params: {
             onboardingStatus: status,
         };
 
-        if (tenantSnap.exists && provisioningOwnershipMatches(tenantSnap.data() || {}, params.scope)) {
+        if (tenantSnap.exists && answerlatticeProvisioningOwnershipMatches(tenantSnap.data() || {}, params.scope)) {
             transaction.set(tenantRef, failureFields, { merge: true });
         }
-        if (storeSnap.exists && provisioningOwnershipMatches(storeSnap.data() || {}, params.scope)) {
+        if (storeSnap.exists && answerlatticeProvisioningOwnershipMatches(storeSnap.data() || {}, params.scope)) {
             transaction.set(storeRef, failureFields, { merge: true });
             transaction.set(storesSummaryRef, {
                 lastUpdated: now,
@@ -215,7 +287,7 @@ export async function compensateAnswerlatticeOnboardingProvisioning(params: {
                 updatedAt: now,
             }, { merge: true });
         }
-        if (userSnap.exists && provisioningOwnershipMatches(userSnap.data() || {}, params.scope)) {
+        if (userSnap.exists && answerlatticeProvisioningOwnershipMatches(userSnap.data() || {}, params.scope)) {
             transaction.set(userRef, {
                 modifiedOn: now,
                 onboardingCompensatedAt: now,

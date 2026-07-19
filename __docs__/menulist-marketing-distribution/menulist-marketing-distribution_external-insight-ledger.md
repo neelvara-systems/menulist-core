@@ -188,6 +188,73 @@ No installation, dependency, generated `.hallmark/` files, or workflow replaceme
 
 - July 18, 2026 - Reviewed the official Hallmark site, GitHub repository, skill source, package metadata, and roadmap; compared them with the repo's current frontend and asset skills; retained Hallmark as an already-covered reference rather than an installation candidate.
 
+### ML-MKT-EXT-003 - Agent-Readable Local Business Truth and Location Identity
+
+- **Status:** `DEFERRED_REFERENCE`
+- **Shared:** July 19, 2026
+- **Source:** Founder-supplied ChatGPT weekly strategy brief, validated against [Google Maps Grounding Lite](https://developers.google.com/maps/ai/grounding-lite), [Google Maps attribution requirements](https://developers.google.com/maps/ai/grounding-lite/attribution), [Google Places fields](https://developers.google.com/maps/documentation/places/web-service/place-details), [the German media regulators' July 14 decision](https://www.die-medienanstalten.de/presse/pressemitteilungen/zak-bescheide-ki-angebote-google-perplexity/), [the European Commission's July 16 DMA guidance](https://digital-strategy.ec.europa.eu/en/news/commission-provides-guidance-google-ai-interoperability-android-and-sharing-google-search-data), [California SB 68](https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=202520260SB68), and [Constant Contact's 2026 consumer research](https://www.constantcontact.com/news/2026-06-10-the-rise-of-the-smb-creator-how-small-businesses-are-leveraging-social-media-and-ai-to-capture-consumer-attention)
+- **Source type:** AI output with primary-source verification
+- **Topics:** ai-discovery, maps-grounding-lite, place-id, location-identity, platform-pull-api, public-json, claim-provenance, allergens, multi-location, social-discovery, agent-truth-audit, schema-org
+- **Use when:** Reviewing an external place-identity contract, a Maps Grounding research pilot, Platform Pull API versioning, regulated item facts, or a chain-business allergen requirement.
+- **Revalidate:** Google Maps Grounding Lite and Resolution API status, eligibility, terms, pricing, storage and attribution rules; current provider certification; EU implementation milestones and eligibility; applicable allergen law and legal advice for the owner's jurisdiction; and India-specific discovery evidence.
+
+**Source idea**
+
+As place discovery moves into AI agents and structured tools, MenuList should own an owner-approved, location-specific public truth record and project it into pages, QR destinations, machine-readable feeds, and future adapters. The brief recommends a versioned public truth contract, external location identity, claim provenance, an internal agent-truth audit, regulated menu-data primitives, master-and-location overrides, public trust signals, and portable official links. It correctly rejects a consumer discovery engine, premature public MCP server, Google-shaped canonical model, automatic AI allergen publication, QR-only compliance, and a social marketing suite.
+
+**MenuList verdict**
+
+The platform boundary is correct, but most of the proposed foundation is already shipped or governed:
+
+- MenuList doctrine already defines the owner-controlled canonical public-offer record and platform-neutral projections.
+- The read-only, versioned Platform Pull API already exposes stable store, project, category, item, and variant identities with ETag and rate-limit handling. Public pages also expose schema.org JSON-LD and durable canonical URLs. Creating another anonymous JSON contract would duplicate the existing boundary and introduce a new security, cache, cost, and compatibility obligation.
+- Menu versioning, publish timestamps, public freshness, item/category deep links, localized feedback, share previews, UTM attribution, and master-plus-outlet overrides already cover much of the proposed trust, portability, and multi-location work.
+- Item `decisionFacts` already support source, confirmation, and update time. Provenance should be extended only for a demonstrated high-risk consumer or regulated fact, not by replacing every existing domain field with a generic `canonicalClaim` model.
+- AI image extraction is explicitly prohibited from returning allergens, nutrition, or other owner-verification-only facts. The current top-level allergen model is suitable for owner-entered facts but does not yet represent ingredient-level evidence, variant overrides, `contains` versus `may contain`, effective periods, or jurisdiction-specific compliance. Those additions require a real customer/legal trigger, not speculative UI.
+
+One meaningful gap existed around reversible external location identity.
+MenuList now has a bounded, provider-neutral binding embedded on the exact store
+document, same-write URI mirroring for the existing owner Maps-link flow, and a
+separate attributable-source confirmation path for stable Place IDs. This does
+not justify match-confidence scores, alias history, collision queues, ownership
+status, or a separate registry. Those remain evidence-gated extensions.
+
+The dated factual claims also need qualification:
+
+- Google Maps Grounding Lite, its MCP tools, the experimental Resolution API, exact-answer warning, and Maps attribution obligation are confirmed.
+- The German regulatory signal is real, but the July 14 regulator decision and the separate Munich court case concern media/news output. They do not create an immediate restaurant-listing or MenuList compliance requirement.
+- The EU measures are real, but the brief compresses their timelines. Most Android AI interoperability is due with Android 18 and no later than August 1, 2027; concurrent hotword access follows later. January 2027 is a search-data pricing-offer milestone for qualifying search providers, not general availability of search-optimization data.
+- California SB 68 took effect July 1, 2026 and permits QR-linked disclosure only with an alternative written method, but it applies to covered chain food facilities already subject to the federal nutrition-disclosure regime. It is not evidence for forcing a compliance workflow onto MenuList's current India-first SMB owners.
+- Constant Contact's `49% social` versus `40% search` result is correctly quoted, but its sample covers the United States, United Kingdom, Canada, Australia, and New Zealand rather than India. Use it as a portability signal, not a local-market sizing fact.
+
+**Current decision**
+
+Do not add a public MCP server, duplicate public JSON endpoint, discovery engine, generalized claim collection, provider-specific canonical schema, allergen compliance UI, social suite, or new Firebase hot path.
+
+Keep the existing Platform Pull API and public schema.org output as the
+machine-readable contract, and keep the new embedded identity binding internal.
+When provider access, terms, cost, and a concrete distribution consumer are
+approved, conduct a small zero-write internal location-resolution and
+agent-answer audit. Use observed collisions and disagreements to decide whether
+the binding ever needs aliases, match confidence, collision review, or ownership
+status. Keep all external facts proposed-only until an authorized owner confirms
+them.
+
+**Related MenuList truth**
+
+- [Infrastructure compounding doctrine](../constitution/17-infrastructure-compounding-doctrine.md)
+- [Public truth indexing policy](../discovery-infrastructure/public-truth-indexing-policy.md)
+- [Platform Pull API](../platform-pull-api/README.md)
+- [Canonical truth infrastructure](../canonical-truth-infrastructure/README.md)
+- [Multi-outlet consistency](../multi-outlet-consistency/README.md)
+- [MenuList marketing and distribution operating pack](./README.md)
+
+**Outcome history**
+
+- July 19, 2026 - Verified the time-sensitive platform, regulatory, legal, and survey claims against primary sources; compared every recommendation with current doctrine, APIs, public output, item truth, extraction safety, multi-outlet behavior, feedback, social metadata, and analytics; retained only the external-location identity and controlled agent-audit directions as deferred research triggers.
+- July 19, 2026 - Applied the bounded internal identity foundation without enabling the provider: added an optional provider-neutral store binding, same-write mirroring for the existing owner Google Maps-link flow, explicit owner-confirmed Place-ID persistence/removal helpers, public-output exclusion, and focused source/runtime tests. Provider smoke, activation, grounded-candidate UI, and the controlled agent-answer pilot remain deferred to their named gates.
+- July 19, 2026 - Cross-check against current Google documentation removed the old 160/180-character Place-ID truncation risk, bound accepted IDs without partial storage, switched top-level identity to validated grounding-source metadata only, corrected Gemini 3.5 multi-search cost wording, and added transactional store-state revalidation. The existing `confirmedAt` field is sufficient for future 12-month Place-ID freshness checks; no refresh scheduler was added.
+
 ## Maintenance
 
 - Add entries sequentially as `ML-MKT-EXT-001`, `ML-MKT-EXT-002`, and so on.

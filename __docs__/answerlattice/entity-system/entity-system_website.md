@@ -1,6 +1,6 @@
 # Entity System — Website Content
 
-> **Version:** 2.0.0
+> **Version:** 2.1.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Public (answerlattice.com)
 > **Language Governance:** Enforced — no "AI-powered," "Smart," "Dynamic"
@@ -15,7 +15,7 @@
 
 ### Subheadline
 
-Answerlattice builds a knowledge graph of your product's features, integrations, and error codes. Support queries resolve through product concepts — not keyword guessing.
+Answerlattice builds a governed map of your product's features, plans, roles, workflows, integrations, states, and error codes. Those concepts help determine which approved answer or bounded evidence applies.
 
 ### Body
 
@@ -30,7 +30,7 @@ When users ask questions, Answerlattice can resolve approved aliases such as "to
 - **Assisted entity extraction.** Match known product concepts after save and review genuinely new candidates.
 - **Alias resolution.** Users say "token." Your docs say "API Keys." Same concept. Resolved automatically.
 - **Knowledge coverage.** See which product areas have strong documentation and which need more content.
-- **Entity governance.** Rename, merge, or deprecate entities as your product evolves. Governed bounded merges update their dependent answer, article, relation, and search-index references together.
+- **Entity governance.** Rename, relate, merge, or deprecate entities as your product evolves. Governed bounded merges update dependent answers, articles, FAQs, product surfaces, relationships, and search indexes together; deprecation stops while dependencies remain.
 - **Version-aware answers.** Approved answers can carry explicit product-version windows instead of treating every source as universally current.
 
 ### CTA
@@ -63,7 +63,7 @@ Answerlattice resolves governed product concepts before it uses bounded knowledg
 
 ```html
 <title>Product Ontology — Answerlattice</title>
-<meta name="description" content="Answerlattice builds a structured knowledge graph of your product. Support queries resolve through product concepts, not keyword search.">
+<meta name="description" content="Answerlattice maps product concepts to approved answers and bounded support evidence with governed review and dependency handling.">
 <meta property="og:title" content="Product Ontology — Answerlattice">
 <meta property="og:description" content="Entity-first retrieval for consistent support answers.">
 ```

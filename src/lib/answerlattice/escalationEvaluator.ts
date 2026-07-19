@@ -4,12 +4,11 @@
  * Pure function that evaluates whether a search result should trigger escalation.
  * Called at the END of coreSearch() pipeline (after answer generation).
  * 
- * 5 Escalation Signals:
+ * 4 Escalation Signals:
  * S1 — Low canonical confidence (canonical miss or confidence='low')
  * S2 — Entity resolution failure (no entity match + no/poor RAG)
- * S3 — Repeated failure (2+ low-confidence answers in session)
- * S4 — Explicit user request (handled in frontend, not here)
- * S5 — RAG low similarity (best vector result < threshold)
+ * S3 — Explicit user request (handled in the rollout-gated Help Chat UI)
+ * S4 — RAG low similarity (best vector result < threshold)
  * 
  * Feature-flagged: ENABLE_ANSWERLATTICE_AI_ESCALATION
  * Non-blocking: errors return NO_ESCALATION
@@ -26,8 +25,19 @@ import {
     EscalationType,
     NO_ESCALATION,
     RAG_LOW_SIMILARITY_THRESHOLD,
-    REPEATED_FAILURE_THRESHOLD,
 } from './escalationTypes';
+
+const ESCALATION_QUERY_MAX_CHARS = 500;
+const ESCALATION_CONTEXT_VALUE_MAX_CHARS = 180;
+const ESCALATION_DOCUMENT_ID_MAX_CHARS = 180;
+const ESCALATION_DOCUMENT_TITLE_MAX_CHARS = 240;
+const ESCALATION_RAG_DOCUMENT_LIMIT = 5;
+const ESCALATION_RAG_INPUT_LIMIT = 50;
+const ESCALATION_ENTITY_ID_LIMIT = 20;
+const ESCALATION_ENTITY_ID_INPUT_LIMIT = 100;
+const ESCALATION_ENTITY_TOKEN_LIMIT = 20;
+const ESCALATION_ENTITY_CANDIDATE_LIMIT = 3;
+const CANONICAL_CONFIDENCE_VALUES = new Set(['high', 'medium', 'low', 'none']);
 
 // ═══════════════════════════════════════════════════════════════
 // EVALUATOR INPUT
@@ -43,9 +53,6 @@ export interface EscalationEvaluatorInput {
     /** The user's search query */
     searchQuery: string;
 
-    /** Number of previous low-confidence results in this chat session */
-    sessionFailureCount?: number;
-
     /** Product context at time of query */
     productContext?: AnswerlatticeContextPayload;
 
@@ -55,6 +62,77 @@ export interface EscalationEvaluatorInput {
     /** Whether the final answer was empty/generic */
     answerWasEmpty?: boolean;
 }
+
+type NormalizedEscalationInput = Omit<EscalationEvaluatorInput, 'canonicalResult' | 'ragDocuments' | 'searchQuery' | 'effectiveQuery'> & {
+    canonicalResult: CanonicalRetrievalResult;
+    ragDocuments: Array<{ id: string; title: string; similarityScore: number }>;
+    searchQuery: string;
+    effectiveQuery?: string;
+};
+
+const cleanText = (value: unknown, maxChars: number): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const cleaned = value.replace(/\s+/g, ' ').trim();
+    return cleaned ? cleaned.slice(0, maxChars) : undefined;
+};
+
+const normalizeEscalationInput = (input: EscalationEvaluatorInput): NormalizedEscalationInput | null => {
+    if (
+        !input
+        || typeof input !== 'object'
+        || !input.canonicalResult
+        || typeof input.canonicalResult.found !== 'boolean'
+        || !CANONICAL_CONFIDENCE_VALUES.has(input.canonicalResult.confidence)
+        || !Array.isArray(input.canonicalResult.matchedEntityIds)
+        || !Array.isArray(input.ragDocuments)
+        || input.ragDocuments.length > ESCALATION_RAG_INPUT_LIMIT
+        || input.canonicalResult.matchedEntityIds.length > ESCALATION_ENTITY_ID_INPUT_LIMIT
+    ) {
+        return null;
+    }
+
+    const searchQuery = cleanText(input.searchQuery, ESCALATION_QUERY_MAX_CHARS);
+    if (!searchQuery) return null;
+
+    const ragDocuments: NormalizedEscalationInput['ragDocuments'] = [];
+    for (const document of input.ragDocuments) {
+        const id = cleanText(document?.id, ESCALATION_DOCUMENT_ID_MAX_CHARS);
+        const title = cleanText(document?.title, ESCALATION_DOCUMENT_TITLE_MAX_CHARS);
+        const similarityScore = Number(document?.similarityScore);
+        if (!id || !Number.isFinite(similarityScore) || similarityScore < 0 || similarityScore > 1) {
+            return null;
+        }
+        ragDocuments.push({
+            id,
+            title: title || 'Untitled',
+            similarityScore,
+        });
+    }
+    ragDocuments.sort((left, right) => right.similarityScore - left.similarityScore);
+    ragDocuments.splice(ESCALATION_RAG_DOCUMENT_LIMIT);
+
+    const matchedEntityIds = Array.from(new Set(
+        input.canonicalResult.matchedEntityIds
+            .map((entityId) => cleanText(entityId, ESCALATION_DOCUMENT_ID_MAX_CHARS))
+            .filter((entityId): entityId is string => Boolean(entityId)),
+    )).slice(0, ESCALATION_ENTITY_ID_LIMIT);
+
+    return {
+        ...input,
+        searchQuery,
+        effectiveQuery: cleanText(input.effectiveQuery, ESCALATION_QUERY_MAX_CHARS),
+        ragDocuments,
+        canonicalResult: {
+            ...input.canonicalResult,
+            matchedEntityIds,
+            fallbackReason: cleanText(
+                input.canonicalResult.fallbackReason,
+                ESCALATION_CONTEXT_VALUE_MAX_CHARS,
+            ),
+        },
+        answerWasEmpty: input.answerWasEmpty === true,
+    };
+};
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN EVALUATOR (Pure Function)
@@ -69,45 +147,40 @@ export interface EscalationEvaluatorInput {
  */
 export function evaluateEscalation(input: EscalationEvaluatorInput): EscalationMetadata {
     try {
+        const normalizedInput = normalizeEscalationInput(input);
+        if (!normalizedInput) return NO_ESCALATION;
+
         const triggers: EscalationTriggerType[] = [];
 
         // ── S1: Low Canonical Confidence ──
         if (
-            !input.canonicalResult.found &&
-            (input.canonicalResult.confidence === 'low' || input.canonicalResult.confidence === 'none') &&
-            input.canonicalResult.fallbackReason
+            !normalizedInput.canonicalResult.found &&
+            (normalizedInput.canonicalResult.confidence === 'low' || normalizedInput.canonicalResult.confidence === 'none') &&
+            normalizedInput.canonicalResult.fallbackReason
         ) {
             triggers.push('low_canonical_confidence');
         }
 
         // ── S2: Entity Resolution Failure ──
-        if (input.canonicalResult.matchedEntityIds.length === 0) {
-            if (input.ragDocuments.length === 0 || input.answerWasEmpty) {
+        if (normalizedInput.canonicalResult.matchedEntityIds.length === 0) {
+            if (normalizedInput.ragDocuments.length === 0 || normalizedInput.answerWasEmpty) {
                 // No entity match AND no RAG results → hard escalation candidate
                 triggers.push('entity_resolution_failure');
-            } else if (input.ragDocuments.length > 0 && input.ragDocuments[0].similarityScore < RAG_LOW_SIMILARITY_THRESHOLD) {
+            } else if (normalizedInput.ragDocuments[0].similarityScore < RAG_LOW_SIMILARITY_THRESHOLD) {
                 // No entity match AND weak RAG → soft escalation
                 triggers.push('entity_resolution_failure');
             }
         }
 
-        // ── S3: Repeated Failure ──
-        if (
-            input.sessionFailureCount !== undefined &&
-            input.sessionFailureCount >= REPEATED_FAILURE_THRESHOLD
-        ) {
-            triggers.push('repeated_failure');
-        }
-
-        // ── S4: Explicit User Request ──
-        // Handled in frontend (useChatHandlers.ts) BEFORE calling coreSearch.
+        // ── S3: Explicit User Request ──
+        // Handled in the rollout-gated Help Chat UI before calling coreSearch.
         // Not evaluated here.
 
-        // ── S5: RAG Low Similarity ──
+        // ── S4: RAG Low Similarity ──
         if (
-            !input.canonicalResult.found &&
-            input.ragDocuments.length > 0 &&
-            input.ragDocuments[0].similarityScore < RAG_LOW_SIMILARITY_THRESHOLD
+            !normalizedInput.canonicalResult.found &&
+            normalizedInput.ragDocuments.length > 0 &&
+            normalizedInput.ragDocuments[0].similarityScore < RAG_LOW_SIMILARITY_THRESHOLD
         ) {
             triggers.push('rag_low_similarity');
         }
@@ -118,10 +191,10 @@ export function evaluateEscalation(input: EscalationEvaluatorInput): EscalationM
         }
 
         // ── Determine escalation type (highest urgency wins) ──
-        const escalationType = resolveEscalationType(triggers, input);
+        const escalationType = resolveEscalationType(triggers, normalizedInput);
 
         // ── Build escalation context ──
-        const escalationContext = buildEscalationContext(input, triggers);
+        const escalationContext = buildEscalationContext(normalizedInput, triggers);
 
         return {
             escalationSuggested: true,
@@ -142,17 +215,12 @@ export function evaluateEscalation(input: EscalationEvaluatorInput): EscalationM
 /**
  * Resolve escalation type from triggers.
  * HARD > SOFT > NONE
- * Priority: S3 (repeated) > S2 (entity fail + no RAG) > S1/S5 (soft)
+ * Priority: S2 (entity fail + no RAG) > S1/S4 (soft)
  */
 function resolveEscalationType(
     triggers: EscalationTriggerType[],
-    input: EscalationEvaluatorInput
+    input: NormalizedEscalationInput
 ): EscalationType {
-    // S3: Repeated failure → always HARD
-    if (triggers.includes('repeated_failure')) {
-        return 'hard';
-    }
-
     // S2: Entity failure with no useful RAG → HARD
     if (
         triggers.includes('entity_resolution_failure') &&
@@ -174,20 +242,36 @@ function resolveEscalationType(
  * Uses only data already available — zero additional Firestore reads.
  */
 function buildEscalationContext(
-    input: EscalationEvaluatorInput,
+    input: NormalizedEscalationInput,
     triggers: EscalationTriggerType[]
 ): EscalationContext {
+    const cleanContextValue = (value: unknown) => cleanText(value, ESCALATION_CONTEXT_VALUE_MAX_CHARS);
+    const productContext = input.productContext ? {
+        contextKey: cleanContextValue(input.productContext.contextKey),
+        page: cleanContextValue(input.productContext.page),
+        feature: cleanContextValue(input.productContext.feature),
+        workflow: cleanContextValue(input.productContext.workflow),
+        plan: cleanContextValue(input.productContext.plan),
+        userRole: cleanContextValue(input.productContext.userRole),
+    } : undefined;
+    const entityDebug = input.canonicalResult.entityDebug;
+    const candidates = entityDebug?.candidates
+        .slice(0, ESCALATION_ENTITY_CANDIDATE_LIMIT)
+        .flatMap((candidate) => {
+            const entityId = cleanText(candidate.entityId, ESCALATION_DOCUMENT_ID_MAX_CHARS);
+            const score = Number(candidate.score);
+            if (!entityId || !Number.isFinite(score)) return [];
+            return [{
+                entityId,
+                entityName: cleanText(candidate.entityName, ESCALATION_CONTEXT_VALUE_MAX_CHARS),
+                score: Math.round(score * 1000) / 1000,
+            }];
+        });
+
     return {
         triggerTypes: triggers,
         query: input.searchQuery,
-        productContext: input.productContext ? {
-            contextKey: input.productContext.contextKey,
-            page: input.productContext.page,
-            feature: input.productContext.feature,
-            workflow: input.productContext.workflow,
-            plan: input.productContext.plan,
-            userRole: input.productContext.userRole,
-        } : undefined,
+        ...(productContext ? { productContext } : {}),
         retrievalDebug: {
             canonicalResult: {
                 found: input.canonicalResult.found,
@@ -195,19 +279,31 @@ function buildEscalationContext(
                 fallbackReason: input.canonicalResult.fallbackReason,
                 matchedEntityIds: input.canonicalResult.matchedEntityIds,
             },
-            ragResults: input.ragDocuments.slice(0, 5).map(d => ({
+            ragResults: input.ragDocuments.map(d => ({
                 docId: d.id,
-                title: d.title || 'Untitled',
+                title: d.title,
                 similarityScore: Math.round(d.similarityScore * 1000) / 1000,
             })),
             effectiveQuery: input.effectiveQuery,
         },
-        entityDebug: input.canonicalResult.entityDebug ? {
-            queryTokens: input.canonicalResult.entityDebug.queryTokens,
-            candidates: input.canonicalResult.entityDebug.candidates.slice(0, 3),
-            resolvedEntityId: input.canonicalResult.entityDebug.resolvedEntityId,
-            confidence: input.canonicalResult.entityDebug.confidence,
-        } : undefined,
+        ...(entityDebug ? {
+            entityDebug: {
+                queryTokens: Array.from(new Set(
+                    entityDebug.queryTokens
+                        .slice(0, ESCALATION_ENTITY_TOKEN_LIMIT)
+                        .map((token) => cleanText(token, ESCALATION_CONTEXT_VALUE_MAX_CHARS))
+                        .filter((token): token is string => Boolean(token)),
+                )).slice(0, ESCALATION_ENTITY_TOKEN_LIMIT),
+                candidates: candidates || [],
+                resolvedEntityId: cleanText(
+                    entityDebug.resolvedEntityId,
+                    ESCALATION_DOCUMENT_ID_MAX_CHARS,
+                ),
+                confidence: Number.isFinite(Number(entityDebug.confidence))
+                    ? Math.max(0, Math.min(1, Number(entityDebug.confidence)))
+                    : 0,
+            },
+        } : {}),
         escalatedAt: new Date().toISOString(),
     };
 }

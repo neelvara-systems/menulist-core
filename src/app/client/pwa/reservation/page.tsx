@@ -13,12 +13,18 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import { normalizeOBPExternalHttpsUrl } from '@lib/obp/publicLinks';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { resolveStorePublicLanguage } from '@lib/localization/publicRenderLanguage';
 import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function PwaReservationHandoffPage() {
+export default async function PwaReservationHandoffPage({
+    searchParams,
+}: {
+    searchParams?: { lang?: string | string[] };
+}) {
     const tenant = await getTenantFromHeaders('PwaReservationHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)
@@ -31,16 +37,19 @@ export default async function PwaReservationHandoffPage() {
     const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl);
     if (!reservationUrl) return notFound();
 
+    const activeLanguage = resolveStorePublicLanguage(store, searchParams?.lang);
+    const t = createPublicCustomerTranslator(activeLanguage);
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
-    const storeName = getStoreContextName(store, 'Restaurant');
+    const storeName = getStoreContextName(store, t('common.business'));
 
     return (
         <PwaExternalRedirectClient
+            activeLanguage={activeLanguage}
             storeId={store.id}
             tenantId={store.tenantId}
             targetUrl={reservationUrl}
-            title={`Book a table at ${storeName}`}
-            message="Opening reservations…"
+            title={t('menu.bookAtBusiness', { businessName: storeName })}
+            message={t('menu.openingReservations')}
             trackingEnabled={analyticsPreferences.trackCustomerApp}
             locationTrackingEnabled={analyticsPreferences.trackLocation}
         />

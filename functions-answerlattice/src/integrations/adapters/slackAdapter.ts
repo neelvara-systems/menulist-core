@@ -21,7 +21,7 @@ import {
     safePayloadCount,
     safePayloadRatio,
     safePayloadStringArray,
-    safeText,
+    safeSlackMrkdwnText,
 } from '../safety';
 import { validateNetworkTargetUrl } from '../../utils/networkTarget';
 import { INTEGRATION_PROVIDER_FETCH_POLICY } from './providerJson';
@@ -49,7 +49,7 @@ const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED]: 'Knowledge Gap Detected',
     [INTEGRATION_EVENT_TYPES.COVERAGE_DROP]: 'Coverage Drop',
     [INTEGRATION_EVENT_TYPES.ARTICLE_APPROVED]: 'Article Approved',
-    [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Recurring AI Failure',
+    [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Repeated AI Workflow Failure',
     [INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY]: 'Nightly Summary',
 };
 
@@ -84,22 +84,22 @@ function formatEventDetails(event: IntegrationEvent): string {
 
     switch (event.eventType) {
         case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:
-            return `*Answer:* ${safeText(p.answerTitle || 'Unknown')}\n*Drift Class:* ${safeText(p.driftClass)}\n*Reason:* ${safeText(p.driftReason, 220)}\n*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})`;
+            return `*Answer:* ${safeSlackMrkdwnText(p.answerTitle || 'Unknown')}\n*Drift Class:* ${safeSlackMrkdwnText(p.driftClass)}\n*Reason:* ${safeSlackMrkdwnText(p.driftReason, 220)}\n*Entity:* ${safeSlackMrkdwnText(p.entityName)} (${safeSlackMrkdwnText(p.entityType, 60)})`;
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
-            return `*Type:* ${safeText(p.mutationType)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}\n*Signals:* ${safePayloadCount(p.signalCount)}\n*Confidence:* ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`;
+            return `*Type:* ${safeSlackMrkdwnText(p.mutationType)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).map(item => safeSlackMrkdwnText(item, 80)).join(', ')}\n*Signals:* ${safePayloadCount(p.signalCount)}\n*Confidence:* ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`;
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
-            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Fallbacks:* ${safePayloadCount(p.fallbackCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Sample queries:* ${safePayloadStringArray(p.sampleQueries, 2, 120).join(', ')}`;
+            return `*Entity:* ${safeSlackMrkdwnText(p.entityName)} (${safeSlackMrkdwnText(p.entityType, 60)})\n*Fallbacks:* ${safePayloadCount(p.fallbackCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Sample queries:* ${safePayloadStringArray(p.sampleQueries, 2, 120).map(item => safeSlackMrkdwnText(item, 120)).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.COVERAGE_DROP:
             return `*Current:* ${Math.round(safePayloadRatio(p.currentRate) * 100)}%\n*Previous:* ${Math.round(safePayloadRatio(p.previousRate) * 100)}%\n*Threshold:* ${Math.round(safePayloadRatio(p.threshold) * 100)}%\n*Queries:* ${safePayloadCount(p.totalQueries)} total, ${safePayloadCount(p.canonicalHits)} canonical`;
 
         case INTEGRATION_EVENT_TYPES.ARTICLE_APPROVED:
-            return `*Answer:* ${safeText(p.answerTitle)}\n*Type:* ${safeText(p.mutationType)}\n*Approved by:* ${safeText(p.approvedBy, 80)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}`;
+            return `*Answer:* ${safeSlackMrkdwnText(p.answerTitle)}\n*Type:* ${safeSlackMrkdwnText(p.mutationType)}\n*Approved by:* ${safeSlackMrkdwnText(p.approvedBy, 80)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).map(item => safeSlackMrkdwnText(item, 80)).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING:
-            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Failures:* ${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Common queries:* ${safePayloadStringArray(p.commonQueries, 2, 120).join(', ')}`;
+            return `*Entity:* ${safeSlackMrkdwnText(p.entityName)} (${safeSlackMrkdwnText(p.entityType, 60)})\n*Failures:* ${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Failed phases:* ${safePayloadStringArray(p.failurePhases || p.commonQueries, 2, 120).map(item => safeSlackMrkdwnText(item, 120)).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY: {
             const lines = [
@@ -117,8 +117,12 @@ function formatEventDetails(event: IntegrationEvent): string {
         }
 
         default:
-            return safeText(JSON.stringify(p, null, 2), 500);
+            return safeSlackMrkdwnText(JSON.stringify(p, null, 2), 500);
     }
+}
+
+export function isRetryableSlackStatus(status: number): boolean {
+    return Number.isInteger(status) && status >= 500 && status <= 599;
 }
 
 export class SlackAdapter implements IIntegrationAdapter {
@@ -144,6 +148,7 @@ export class SlackAdapter implements IIntegrationAdapter {
                     text: {
                         type: 'mrkdwn',
                         text: details,
+                        verbatim: true,
                     },
                 },
                 {
@@ -209,7 +214,7 @@ export class SlackAdapter implements IIntegrationAdapter {
 
             return {
                 success: false,
-                retryable: response.status === 429 || response.status >= 500,
+                retryable: isRetryableSlackStatus(response.status),
                 statusCode: response.status,
                 error: 'Slack delivery returned bad status',
                 durationMs,

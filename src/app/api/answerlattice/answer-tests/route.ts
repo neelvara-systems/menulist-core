@@ -10,6 +10,7 @@ import {
     ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     getAnswerlatticeAnswerTestSummaryId,
     prepareAnswerlatticeAnswerTestCasesForWrite,
+    projectAnswerlatticeAnswerTestSummaryForClient,
 } from '@lib/answerlattice/answerTestContracts';
 import {
     AnswerlatticeAnswerTestSummaryTooLargeError,
@@ -30,25 +31,38 @@ import { withAuth } from '../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const ANSWER_TEST_SAVE_MAX_BODY_BYTES = 256 * 1024;
+const PRIVATE_NO_STORE_HEADERS = {
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+};
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
+    response.headers.set('X-Content-Type-Options', PRIVATE_NO_STORE_HEADERS['X-Content-Type-Options']);
+    return response;
+};
 
 const featureUnavailable = () => NextResponse.json(
     { error: 'Answer tests are not enabled.' },
-    { status: 403, headers: { 'Cache-Control': 'private, no-store' } },
+    { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
 );
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS) return featureUnavailable();
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'answer-tests');
-    if (rateLimitResponse) return rateLimitResponse;
+    if (rateLimitResponse) return withPrivateHeaders(rateLimitResponse);
 
     const permission = await requireAnswerlatticePermission(
         request,
         session,
         ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
     );
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateHeaders(permission.response);
     const access = permission.access;
-    if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!access) return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+    );
 
     try {
         const scope = {
@@ -63,8 +77,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 : Promise.resolve(null),
         ]);
         if (!sourceVersions) {
-            return NextResponse.json({ summary }, {
-                headers: { 'Cache-Control': 'private, no-store' },
+            return NextResponse.json({
+                summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
+            }, {
+                headers: PRIVATE_NO_STORE_HEADERS,
             });
         }
         const launchProof = buildAnswerlatticeActivationAnswerTestSummary(
@@ -73,15 +89,21 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             scope.sId,
             sourceVersions,
         );
-        return NextResponse.json({ summary, launchProof }, {
-            headers: { 'Cache-Control': 'private, no-store' },
+        return NextResponse.json({
+            summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
+            launchProof,
+        }, {
+            headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
         logRuntimeFailure('answerlattice_answer_tests_load_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', access.scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', access.scope.storeId),
         });
-        return NextResponse.json({ error: 'Could not load answer tests.' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Could not load answer tests.' },
+            { status: 500, headers: PRIVATE_NO_STORE_HEADERS },
+        );
     }
 });
 
@@ -91,7 +113,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!sessionScope) {
         return NextResponse.json(
             { error: 'Not onboarded' },
-            { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
+            { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
     const userId = session.uId || session.user?.id || 'unknown';
@@ -109,7 +131,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         if (!rateLimit.allowed) {
             return NextResponse.json(
                 { error: 'Too many changes. Please try again shortly.' },
-                { status: 429, headers: { 'Cache-Control': 'private, no-store' } },
+                { status: 429, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
     } catch (error) {
@@ -119,7 +141,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         });
         return NextResponse.json(
             { error: 'Could not save answer tests.' },
-            { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+            { status: 500, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
 
@@ -128,9 +150,12 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         session,
         ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
     );
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateHeaders(permission.response);
     const access = permission.access;
-    if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!access) return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+    );
 
     try {
         const bodyResult = await readBoundedJsonBody(request, ANSWER_TEST_SAVE_MAX_BODY_BYTES, {
@@ -140,17 +165,23 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         if (bodyResult.ok === false) {
             return NextResponse.json(
                 { error: bodyResult.response.status === 413 ? 'Answer test data is too large.' : 'Invalid answer test data.' },
-                { status: bodyResult.response.status },
+                { status: bodyResult.response.status, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
 
         const parsed = AnswerlatticeAnswerTestSaveSchema.safeParse(bodyResult.data);
         if (!parsed.success) {
-            return NextResponse.json({ error: 'Invalid answer test data.' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Invalid answer test data.' },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
         const uniqueIds = new Set(parsed.data.cases.map(testCase => testCase.id));
         if (uniqueIds.size !== parsed.data.cases.length) {
-            return NextResponse.json({ error: 'Each answer test must have a unique ID.' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Each answer test must have a unique ID.' },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
 
         const scope = { tId: access.scope.tenantId, sId: access.scope.storeId };
@@ -183,8 +214,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         });
         const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
         if (!includeLaunchProof) {
-            return NextResponse.json({ summary }, {
-                headers: { 'Cache-Control': 'private, no-store' },
+            return NextResponse.json({
+                summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
+            }, {
+                headers: PRIVATE_NO_STORE_HEADERS,
             });
         }
         const sourceVersions = await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId);
@@ -195,23 +228,32 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             sourceVersions,
         );
 
-        return NextResponse.json({ summary, launchProof }, {
-            headers: { 'Cache-Control': 'private, no-store' },
+        return NextResponse.json({
+            summary: projectAnswerlatticeAnswerTestSummaryForClient(summary),
+            launchProof,
+        }, {
+            headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
         if (error instanceof Error && error.message === 'answer_test_revision_conflict') {
             return NextResponse.json(
                 { error: 'These tests changed in another session. Reload before saving.' },
-                { status: 409 },
+                { status: 409, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
         if (error instanceof AnswerlatticeAnswerTestSummaryTooLargeError) {
-            return NextResponse.json({ error: error.message }, { status: 413 });
+            return NextResponse.json(
+                { error: error.message },
+                { status: 413, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
         logRuntimeFailure('answerlattice_answer_tests_save_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', access.scope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', access.scope.storeId),
         });
-        return NextResponse.json({ error: 'Could not save answer tests.' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Could not save answer tests.' },
+            { status: 500, headers: PRIVATE_NO_STORE_HEADERS },
+        );
     }
 });

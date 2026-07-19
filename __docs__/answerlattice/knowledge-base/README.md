@@ -1,15 +1,26 @@
 # Knowledge Base — Feature Documentation
 
-> **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
+> **Status:** FEATURE 5 LOCAL SOURCE COMPLETE
+> **Last Updated:** 2026-07-18
 > **Parent Feature:** Help Center
-> **Audit Type:** Codebase-first, every file read
+> **Feature audit:** Feature 5 of 44
 
 ---
 
 ## What Is This
 
-The Knowledge Base (KB) is MenuList's **hierarchical documentation system** — a three-level content structure (Categories → Sections → Articles) that serves as the data source for the AI QnA Chatbot's RAG pipeline. It has two interfaces: an **owner-side explorer** for browsing and reading articles, and a **platform admin management panel** for full CRUD operations on categories, sections, and articles with TipTap rich text editing.
+The Answerlattice Knowledge Base is a tenant/store-scoped article system and governed retrieval source. A bounded category document provides the browse/navigation read model; full article documents hold approved content, provenance, feedback counters, entity/surface links, and the active search vector. Authorized knowledge managers maintain it, while customer and support surfaces consume only applicable published content.
+
+## Current invariants
+
+- Article create, live update, delete, and bulk publish/archive atomically update the article document, navigation metadata, and cache/source/bundle invalidation markers.
+- A live truth edit clears the old active vector and marks the article `pending` until the server re-embeds the current stored content.
+- KB Generation review edits use `mode: 'generation_review'` and cannot mutate live navigation before approved publication.
+- Article moves remove every prior navigation reference before inserting one authoritative target reference.
+- Non-empty categories and sections cannot be deleted. The operator must move or delete their articles explicitly.
+- Category and section title edits propagate denormalized article display titles in a bounded transaction.
+- Article feedback is server-owned, idempotent, accepted only for active published content, permission-scoped for readers, and retained for 365 days.
+- Platform sessions with a selected workspace read that workspace rather than silently mixing global tenant results.
 
 ---
 
@@ -55,7 +66,7 @@ The Knowledge Base (KB) is MenuList's **hierarchical documentation system** — 
 - `src/components/templates/platform/knowledgeBase/SectionCardPreview.tsx` — Section card
 
 ### Database Layer
-- `src/database/knowledgeBase/articles.ts` — 9 DAL functions (183 lines)
+- `src/database/knowledgeBase/articles.ts` — scoped article lifecycle and atomic navigation ownership
 - `src/database/knowledgeBase/categories.ts` — scoped transactional category, section, and article-navigation mutations
 - `src/lib/answerlattice/knowledgeBaseCategoryMutations.ts` — deterministic navigation validation and lost-update-safe map operations
 
@@ -66,12 +77,12 @@ The Knowledge Base (KB) is MenuList's **hierarchical documentation system** — 
 
 ## Architecture: Single-Document Categories
 
-**Critical design:** All categories are stored in a **single Firestore document** (`kb_categories/categories`) as a nested map. Sections are arrays within categories. Article metadata references are arrays within sections/categories. Full article content lives in separate `kb_articles` documents.
+**Critical design:** Each workspace stores categories in `kb_categories/categories_{tId}_{sId}` as a bounded nested map. Sections are arrays within categories. Article metadata references are arrays within sections/categories. Full article content lives in separate `kb_articles` documents.
 
 This means:
 - **1 read** loads the entire KB navigation structure
-- Categories, sections, and article metadata are always in sync
-- Category/section mutations are field-path updates on a single document
+- Article lifecycle transactions keep navigation metadata synchronized with full article documents
+- Category/section mutations apply to transaction-current state and enforce the 900 KiB navigation boundary
 - Full articles are fetched individually on demand (lazy loading)
 
 ---
@@ -80,4 +91,5 @@ This means:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-18 | 2.0.0 | Feature 5 audit: atomic article/navigation lifecycle, safe deletion, vector invalidation, title propagation, scoped feedback permissions, and feedback retention |
 | 2026-03-02 | 1.0.0 | Initial forensic documentation — 20 component files, 15 DAL functions |

@@ -1,14 +1,25 @@
+import {
+    getAnswerlatticeHelpChatDraftKeys,
+    getLegacyHelpChatDraftKeys,
+} from '@lib/answerlattice/helpChatDrafts';
 import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
 
 /**
  * Helper: Clear localStorage draft for current session
  */
-export function clearDraft(sessionId: string | null | undefined): void {
+export function clearDraft(
+    sessionId: string | null | undefined,
+    draftScope?: string | null,
+): void {
     try {
-        const draftKey = `chat-draft-${sessionId || 'new'}`;
-        const imageDraftKey = `chat-draft-image-${sessionId || 'new'}`;
-        localStorage.removeItem(draftKey);
-        localStorage.removeItem(imageDraftKey);
+        const scopedKeys = getAnswerlatticeHelpChatDraftKeys(draftScope, sessionId);
+        const legacyKeys = getLegacyHelpChatDraftKeys(sessionId);
+        if (scopedKeys) {
+            localStorage.removeItem(scopedKeys.draftKey);
+            localStorage.removeItem(scopedKeys.imageDraftKey);
+        }
+        localStorage.removeItem(legacyKeys.draftKey);
+        localStorage.removeItem(legacyKeys.imageDraftKey);
     } catch (error) {
         logHelpChatFailure('help_chat_draft_clear_failed', error, {
             ...getBoundedHelpChatStringContext('sessionId', sessionId),

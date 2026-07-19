@@ -107,24 +107,58 @@ export async function filterEmailRecipientsByDailyLimit(
         throw new Error('Answerlattice integration email rate-limit scope is invalid');
     }
     const bucket = dayBucket();
-    const allowed: string[] = [];
     const normalizedRecipients = Array.from(new Set(
         recipients
             .filter((recipient): recipient is string => typeof recipient === 'string')
             .map((recipient) => recipient.trim().toLowerCase())
             .filter(Boolean),
-    ));
+    )).slice(0, INTEGRATION_LIMITS.MAX_EMAIL_RECIPIENTS);
+    if (normalizedRecipients.length === 0) return [];
 
-    for (const normalized of normalizedRecipients) {
-        const ok = await consumeCounter({
-            docId: `integrationEmailDaily_${tId}_${sId}_${hashValue(normalized)}_${bucket}`,
-            limit: INTEGRATION_LIMITS.MAX_EMAIL_PER_DAY_PER_RECIPIENT,
-            expiresAt: expiryFromNow(36 * 60 * 60 * 1000),
-            metadata: { pId: 'AL', tId, sId, bucket, recipientHash: hashValue(normalized) },
+    const entries = normalizedRecipients.map((recipient) => {
+        const recipientHash = hashValue(recipient);
+        return {
+            recipient,
+            metadata: { pId: 'AL', tId, sId, bucket, recipientHash },
+            ref: db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_RATE_LIMITS)
+                .doc(`integrationEmailDaily_${tId}_${sId}_${recipientHash}_${bucket}`),
+        };
+    });
+    const expiresAt = expiryFromNow(36 * 60 * 60 * 1000);
+
+    return db.runTransaction(async (transaction) => {
+        const snapshots = [];
+        for (const entry of entries) {
+            snapshots.push(await transaction.get(entry.ref));
+        }
+
+        const counts = snapshots.map((snapshot, index) => {
+            const existing = snapshot.exists ? snapshot.data() || {} : {};
+            for (const [key, expected] of Object.entries(entries[index].metadata)) {
+                if (snapshot.exists && existing[key] !== expected) {
+                    throw new Error('Answerlattice integration rate counter ownership mismatch');
+                }
+            }
+            const currentCount = snapshot.exists ? existing.count : 0;
+            if (!Number.isSafeInteger(currentCount) || Number(currentCount) < 0) {
+                throw new Error('Answerlattice integration rate counter is invalid');
+            }
+            return Number(currentCount);
         });
 
-        if (ok) allowed.push(normalized);
-    }
+        if (counts.some((count) => count >= INTEGRATION_LIMITS.MAX_EMAIL_PER_DAY_PER_RECIPIENT)) {
+            return [];
+        }
 
-    return allowed;
+        const modifiedOn = Timestamp.now();
+        entries.forEach((entry, index) => {
+            transaction.set(entry.ref, {
+                ...entry.metadata,
+                count: counts[index] + 1,
+                expiresAt,
+                modifiedOn,
+            }, { merge: true });
+        });
+        return entries.map((entry) => entry.recipient);
+    });
 }

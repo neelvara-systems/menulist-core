@@ -1,735 +1,165 @@
-# Predictive Support — Technical Implementation Blueprint
+# Predictive Support And Known Issues Implementation
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-05-24
-> **Status:** ✅ IMPLEMENTED — Enabled with guards
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`
+**Status:** Current implementation truth
+**Last verified:** July 18, 2026
 
----
+## Connected files
 
-## §1 — Architecture Overview
+### Contracts and evaluation
 
-### 1.1 — System Position Inside Answerlattice
+- `src/lib/answerlattice/predictiveSupportContracts.ts`
+- `src/lib/answerlattice/predictiveTriggerIdBoundary.ts`
+- `src/lib/answerlattice/predictiveEngine.ts`
+- `src/lib/answerlattice/runtimeSummaryContracts.ts`
+- `src/types/answerlattice/index.ts`
 
-Predictive Support sits **above** the retrieval layer and **beside** the widget:
+### Owner management
 
-```
-┌────────────────────────────────────────────────────┐
-│                 ANSWERLATTICE STACK                       │
-├────────────────────────────────────────────────────┤
-│                                                     │
-│  ┌─────────────┐    ┌──────────────────────┐       │
-│  │ Widget API   │───▶│ Predictive Help API  │       │
-│  │  (page ctx)  │    │ /api/answerlattice/       │       │
-│  └──────┬───────┘    │ predictive-help      │       │
-│         │            └──────────┬───────────┘       │
-│         │                       │                   │
-│         │            ┌──────────▼───────────┐       │
-│         │            │  Predictive Engine   │       │
-│         │            │  (rule evaluation)   │       │
-│         │            └──────────┬───────────┘       │
-│         │                       │                   │
-│  ┌──────▼───────┐    ┌──────────▼───────────┐       │
-│  │  coreSearch   │    │  Trigger Rules      │       │
-│  │  (reactive)   │    │  (platformSummary)  │       │
-│  └──────┬───────┘    └──────────┬───────────┘       │
-│         │                       │                   │
-│  ┌──────▼───────────────────────▼───────────┐       │
-│  │     Entity Index + Canonical Answers      │       │
-│  │     + Friction Stats + Knowledge Graph    │       │
-│  └───────────────────────────────────────────┘       │
-│                                                     │
-│  ┌───────────────────────────────────────────┐       │
-│  │     Nightly Batch (auto-trigger gen)      │       │
-│  └───────────────────────────────────────────┘       │
-└────────────────────────────────────────────────────┘
-```
+- `src/database/answerlattice/predictiveTriggers.ts`
+- `src/hooks/answerlattice/usePredictiveTriggers.ts`
+- `src/components/templates/answerlattice/governance/PredictiveTriggerManager.tsx`
+- `src/components/templates/answerlattice/knownIssues/AnswerlatticeKnownIssues.tsx`
 
-### 1.2 — Data Flow
+### Public runtime
 
-```
-0. Widget config → /api/widget/config
-   Response includes capabilities.predictiveSupport.
-   The public widget does not call predictive help unless active triggers exist.
+- `src/app/api/answerlattice/predictive-help/route.ts`
+- `src/app/api/answerlattice/predictive-interaction/route.ts`
+- `public/widget/answerlattice-widget.js`
+- `src/app/widget/[apiKey]/WidgetClient.tsx`
+- `src/app/api/widget/config/route.ts`
+- `src/lib/answerlattice/widgetRuntimeTokenServer.ts`
 
-1. Widget browser contract → POST /api/answerlattice/predictive-help
-   Payload: { path, title, feature, workflow, role, locale }
+### Signals and scheduled review evidence
 
-2. API Route → predictiveEngine.evaluateTriggers()
-   Loads trigger rules from platformSummary (cached; empty/no-active summaries use a longer 5-minute negative cache)
-   Evaluates conditions against context
-   Checks cooldown in Upstash Redis
+- `src/lib/answerlattice/signalEmitter.ts`
+- `functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts`
+- `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`
 
-3. predictiveEngine → pre-resolved suggestion first
-   Uses trigger.resolvedSuggestion from the summary doc. Canonical-answer reads
-   are fallback only for stale or legacy summary docs.
+### Security and tests
 
-4. API Route → Returns suggestion payload
-   { type, title, summary, articles[], actionType, triggerId }
+- `firestore-answerlattice.rules`
+- `firestore.rules`
+- `scripts/verification/test-answerlattice-predictive-support.ts`
+- `scripts/verification/test-answerlattice-predictive-rules.ts`
+- `scripts/verification/verify-answerlattice-runtime-truth.js`
 
-5. Widget runtime → Renders context card / tooltip / workflow helper
-   Logs suggestion_shown signal (fire-and-forget)
+## Shared contract
 
-6. User interaction → Logs suggestion_clicked or suggestion_dismissed
-   Fire-and-forget to signal events
-```
+`predictiveSupportContracts.ts` is the common admission and projection layer. It validates:
 
----
+- exact workspace ownership;
+- valid trigger ID, status, source, kind, conditions, action, numeric limits, and timestamps;
+- correct `known_issue` kind/action pairing;
+- public HTTPS known-issue URL;
+- strict interaction body and contract version;
+- active applicability window and context matching;
+- public suggestion and runtime trigger projections.
 
-## §2 — Data Model
+Legacy records without `kind` derive it from the action. The client update path and Firestore rules permit only a one-time migration from missing `kind` to the derived value; later kind changes are rejected.
 
-### 2.1 — Trigger Rule Type
+## Owner mutation flow
 
-```typescript
-// Additive to src/types/answerlattice/index.ts
+Every create, update, activate, disable, or delete operation:
 
-export const ANSWERLATTICE_TRIGGER_ACTION_TYPES = {
-  HELP_CARD: "help_card",
-  WORKFLOW_GUIDE: "workflow_guide",
-  LINK_ARTICLE: "link_article",
-} as const;
+1. normalizes the trigger/document ID;
+2. verifies exact stored scope;
+3. validates only owner-editable fields;
+4. requires `source: manual` for browser-created triggers;
+5. requires an exact page before active status;
+6. writes through the Answerlattice document composer;
+7. rebuilds the bounded predictive summary;
+8. marks compiled context source truth changed.
 
-export type AnswerlatticeTriggerActionType =
-  (typeof ANSWERLATTICE_TRIGGER_ACTION_TYPES)[keyof typeof ANSWERLATTICE_TRIGGER_ACTION_TYPES];
+The update patch starts empty. It does not spread caller metadata or accept effectiveness, friction evidence, creator, or source changes.
 
-export const ANSWERLATTICE_TRIGGER_STATUS = {
-  ACTIVE: "active",
-  SUGGESTED: "suggested", // Auto-generated, pending founder review
-  DISABLED: "disabled",
-  ARCHIVED: "archived",
-} as const;
+## Summary flow
 
-export type AnswerlatticeTriggerStatus =
-  (typeof ANSWERLATTICE_TRIGGER_STATUS)[keyof typeof ANSWERLATTICE_TRIGGER_STATUS];
+The app and Functions summary builders query at most 201 rows to detect the 200-trigger ceiling. If more than 200 rows exist, the rebuild fails and does not replace the previous valid summary.
 
-export const ANSWERLATTICE_TRIGGER_SOURCE = {
-  MANUAL: "manual", // Founder-created
-  FRICTION_AUTO: "friction_auto", // Auto-generated from friction patterns
-  SYSTEM: "system", // System-generated (e.g., onboarding)
-} as const;
+The summary stores only the runtime projection in:
 
-export type AnswerlatticeTriggerSource =
-  (typeof ANSWERLATTICE_TRIGGER_SOURCE)[keyof typeof ANSWERLATTICE_TRIGGER_SOURCE];
-
-export interface AnswerlatticePredictiveTrigger {
-  id: string;
-  tId: number;
-  sId: number;
-
-  // Identification
-  name: string; // Human-readable trigger name (≤100 chars)
-  description?: string; // Optional description (≤300 chars)
-
-  // Conditions (ALL must match — AND logic)
-  conditions: {
-    page?: string; // Page identifier (e.g., "webhook_setup")
-    feature?: string; // Feature identifier (e.g., "api_keys")
-    workflow?: string; // Workflow identifier (e.g., "connect_integration")
-    plan?: string; // Plan filter (e.g., "free", "pro")
-    userRole?: string; // Role filter (e.g., "admin", "viewer")
-  };
-
-  // Action (what to show)
-  action: {
-    type: AnswerlatticeTriggerActionType;
-    entityId?: string; // Entity to resolve canonical answer for
-    articleId?: string; // Direct KB article link (alternative to entity)
-    customTitle?: string; // Override title (optional)
-    customSummary?: string; // Override summary (optional, ≤200 chars)
-  };
-
-  // Behavior
-  priority: number; // 0-100 (highest wins on conflict)
-  cooldownHours: number; // Minimum hours between showing to same user (1-720)
-  maxImpressionsPerUser?: number; // Optional lifetime cap per user
-
-  // Metadata
-  status: AnswerlatticeTriggerStatus;
-  source: AnswerlatticeTriggerSource;
-
-  // Effectiveness (updated by nightly learning job)
-  effectiveness?: {
-    impressions: number;
-    clicks: number;
-    dismissals: number;
-    score: number; // (clicks - dismissals) / impressions
-    lastEvaluated?: Timestamp;
-  };
-
-  // Provenance (for auto-generated triggers)
-  frictionSource?: {
-    entityId: string;
-    entityName: string;
-    frictionScore: number;
-    signalCount: number;
-  };
-
-  createdOn?: Timestamp;
-  modifiedOn?: Timestamp;
-  createdBy?: string;
-}
+```text
+platformSummary/predictiveTriggers_{tId}_{sId}
 ```
 
-### 2.2 — Suggestion Payload Type (API Response)
+The server parser repeats product, scope, trigger, window, and projection checks before the result can enter the in-memory cache.
 
-```typescript
-export interface AnswerlatticePredictiveSuggestion {
-  triggerId: string;
-  type: AnswerlatticeTriggerActionType;
-  title: string;
-  summary: string;
-  articles?: Array<{
-    id: string;
-    title: string;
-  }>;
-  procedure?: AnswerlatticeProcedure; // If workflow_guide type
-  relatedEntities?: Array<{
-    entityId: string;
-    entityName: string;
-  }>;
-}
+## Predictive request admission
+
+`POST /api/answerlattice/predictive-help` performs this order:
+
+```text
+feature gate
+-> al_ key shape
+-> fail-closed IP pre-auth limit
+-> fail-closed API-key limit
+-> key validation
+-> product/purpose/scope checks
+-> exact workspace derivation
+-> origin/runtime-token authorization
+-> 4 KiB bounded body
+-> strict page/context validation
+-> deterministic trigger evaluation
+-> 32 KiB-bounded public response consumption
 ```
 
-### 2.3 — Signal Types Extension
+The server hashes the API-key rate identity with the widget's non-PII session ID before cooldown evaluation. It never trusts body-supplied tenant/workspace scope.
 
-Extend existing `ANSWERLATTICE_SIGNAL_TYPE` (additive, freeze-compliant):
+## Interaction admission
 
-```typescript
-// Add to ANSWERLATTICE_SIGNAL_TYPE
-SUGGESTION_SHOWN: 'suggestion_shown',
-SUGGESTION_CLICKED: 'suggestion_clicked',
-SUGGESTION_DISMISSED: 'suggestion_dismissed',
-```
+`POST /api/answerlattice/predictive-interaction` accepts only:
 
-Signal metadata for suggestion events:
+- `suggestion_shown`;
+- `suggestion_clicked`;
+- `suggestion_dismissed`.
 
-```typescript
-metadata: {
-    triggerId: string;
-    page: string;
-    entityId?: string;
-    actionType: AnswerlatticeTriggerActionType;
-}
-```
+The route repeats the widget credential, scope, origin, runtime-token, rate-limit, and 4 KiB body checks. It then reloads the current summary and proves that the trigger is active, in-window, and still matches the submitted context. Signal mutation can be disabled independently.
 
----
+## Loader and iframe behavior
 
-## §3 — Storage Architecture
+The public loader:
 
-### 3.1 — Trigger Rules Storage
+- derives a normalized page from `context.page` or `contextKey`;
+- sends only allowlisted structured context;
+- assigns a per-tab non-PII session ID;
+- debounces requests and caches a context result for 60 seconds;
+- clears cache when runtime authorization changes;
+- clears stale suggestions when context, visibility, authorization, or capability changes;
+- reports shown, opened, and dismissed evidence;
+- never sends raw DOM, unrestricted state, email, or customer identifiers.
 
-**Location:** `platformSummary/predictiveTriggers_{tId}_{sId}`
+The iframe normalizes the suggestion and any attached governed procedure again. A null message removes a stale predictive notice.
 
-The app DAL treats predictive-trigger product/workspace identity as exact persisted truth. Caller and stored `tId`/`sId` values must be positive safe integers; numeric strings, fractions and non-finite values do not enter query keys, summary document IDs or runtime cache keys. Updates first load and validate the existing `AL` trigger, reject caller attempts to change product/tenant/store ownership, construct an empty allowlisted patch from the validated owner-editable fields, and write the exact stored scope back with update/activation/disable changes.
+## Known issues
 
-Summary rebuilds do not copy raw trigger documents. Each row must pass exact `AL` product/scope, ID, status/source/action and bounded numeric/text checks, then a field allowlist omits composer metadata such as source context, actor, trace/request IDs and timestamps before the public read model is written. The server summary parser repeats exact scope/product/ID/enum/numeric admission and reconstructs an allowlisted trigger object before predictive evaluation.
+Known issues use `kind: known_issue` and `action.type: known_issue`. The owner supplies:
 
-**Why platformSummary, not a separate collection?**
+- an exact page;
+- title and bounded summary;
+- severity;
+- optional start and end time;
+- optional public HTTPS status URL.
 
-- Trigger rules are bounded (~500 rules max per tenant)
-- Loaded as a single document (1 read)
-- Cached in-memory by trigger workers
-- Same pattern as `entityGraphIndex_{tId}_{sId}` (proven)
+The runtime enforces the time window. Known issues are excluded from ordinary cooldown and from the scheduled engagement aggregation used for predictive prompts.
 
-**Document structure:**
+## Scheduled behavior
 
-```typescript
-{
-  tId: number;
-  sId: number;
-  lastUpdated: Timestamp;
-  version: number;
-  triggerCount: number;
-  activeTriggerCount: number;
-  sourceHash: string;
-  triggers: Record<string, AnswerlatticePredictiveTrigger>; // triggerId → trigger
-}
-```
+The existing nightly predictive task may:
 
-Active entity-bound triggers may include `resolvedSuggestion` with title, summary, source answer ID/version, related article IDs, and procedure metadata. This keeps runtime predictive calls to one summary read in the common path.
+- generate up to five friction-based `suggested` records;
+- rebuild the summary;
+- aggregate shown/opened/dismissed evidence into advisory fields.
 
-**Size estimate:** 500 triggers × ~500-900 bytes = ~250-450KB (well within Firestore 1MB doc limit)
+It does not activate, approve, reprioritize, auto-disable, or publish a trigger. Failure diagnostics use bounded codes and scope-presence metadata rather than raw exception or tenant data.
 
-### 3.2 — Individual Trigger Documents (for CRUD)
+## Answerlattice App Predictive Trigger ID Boundary
 
-**Collection:** `answerlattice_predictiveTriggers`
+Every browser DAL, hook, summary parser, interaction route, and rule mutation uses the shared Firestore document-ID boundary. Raw IDs are not used to construct predictive trigger document references.
 
-**Purpose:** CRUD operations on individual triggers. Nightly batch rebuilds the platformSummary cache from this collection.
+## External dependencies
 
-Answerlattice App Predictive Trigger ID Boundary: app-side trigger actions validate and normalize trigger document IDs through `src/lib/answerlattice/predictiveTriggerIdBoundary.ts` before individual trigger refs are built. Update, activate, disable, delete, and single-trigger reads use the normalized ID; hook audit entries also write the normalized trigger ID so action history matches the document touched. Malformed, reserved, empty, or path-shaped trigger IDs fail through the fixed owner-facing action messages before Firestore document access.
+- Upstash Redis is used for ordinary prompt cooldown when configured.
+- Firebase Auth/session permissions govern owner surfaces.
+- Firestore stores triggers, compact summaries, audit history, and optional signals.
 
-**Why both?**
-
-- platformSummary doc = **read-optimized** (1 read loads all triggers)
-- Collection = **write-optimized** (CRUD on individual triggers)
-- Same dual-storage pattern as entity graph index
-
-### 3.3 — Cooldown State
-
-**Location:** Upstash Redis (existing infrastructure)
-
-**Key format:** `canon:cooldown:{userId}:{triggerId}`
-
-**TTL:** `cooldownHours` from trigger rule
-
-**Why Redis, not Firestore?**
-
-- TTL auto-expiry (no cleanup needed)
-- Zero Firestore writes for cooldown tracking
-- Already deployed for rate limiting
-- Sub-millisecond reads
-
-### 3.4 — Suggestion Signals
-
-**Location:** Existing `answerlattice_signalEvents` collection
-
-**Why reuse, not new collection?**
-
-- Same append-only pattern
-- Same 12-month Firestore TTL (`expiresAt`) as other Answerlattice signal events
-- Same nightly aggregation
-- Existing batched signal counts can include new types
-
----
-
-## §4 — File Structure
-
-### 4.1 — New Files
-
-```
-src/types/answerlattice/index.ts                          — +3 interfaces, +3 const objects (additive)
-src/lib/answerlattice/predictiveEngine.ts                 — Core evaluation engine (~250 lines)
-src/database/answerlattice/predictiveTriggers.ts           — DAL for trigger CRUD (~150 lines)
-src/app/api/answerlattice/predictive-help/route.ts        — API route (~120 lines)
-src/hooks/answerlattice/usePredictiveTriggers.ts          — Admin hook for trigger management (~100 lines)
-src/components/templates/answerlattice/governance/PredictiveTriggerManager.tsx  — Admin UI (~200 lines)
-functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts  — Nightly: auto-gen + cache rebuild (~200 lines)
-```
-
-`src/hooks/answerlattice/usePredictiveTriggers.ts` uses fixed local failure copy for trigger load/create/update/activate/disable/delete paths. Route, Firestore, provider, or browser exception text must not be copied into trigger manager toasts or error state.
-
-### 4.2 — Modified Files
-
-```
-src/config/features.ts                               — +1 feature flag (×2: frontend + CF)
-functions-answerlattice/src/constants/features.ts          — +1 feature flag
-src/constants/database.ts                            — +1 collection constant
-functions-answerlattice/src/constants/database.ts          — +1 collection constant
-src/types/answerlattice/index.ts                          — +signal types, +trigger types
-src/lib/answerlattice/signalEmitter.ts                    — +emitSuggestionSignal helper
-functions-answerlattice/src/answerlattice/answerlatticeNightly.ts   — +Step 16 (trigger sync + auto-gen)
-src/components/templates/answerlattice/governance/index.tsx — +Triggers tab
-```
-
----
-
-## §5 — Predictive Engine Design
-
-### 5.1 — Core Algorithm
-
-```typescript
-// src/lib/answerlattice/predictiveEngine.ts
-
-export async function evaluateTriggers(
-  context: AnswerlatticeContextPayload,
-  tId: number,
-  sId: number,
-  userId: string,
-): Promise<AnswerlatticePredictiveSuggestion | null> {
-  // 0. Public widget only calls this route when /api/widget/config reports
-  // capabilities.predictiveSupport=true for the tenant.
-
-  // 1. Load trigger rules (platformSummary doc — 1 read, cached)
-  const triggerDoc = await loadTriggerIndex(tId, sId);
-  if (!triggerDoc || triggerDoc.triggerCount === 0) return null;
-
-  // 2. Filter triggers by page match
-  const pageTriggers = filterByPage(triggerDoc.triggers, context.page);
-  if (pageTriggers.length === 0) return null;
-
-  // 3. Evaluate conditions for each matching trigger
-  const matchedTriggers = pageTriggers
-    .filter((t) => evaluateConditions(t.conditions, context))
-    .filter((t) => t.status === "active")
-    .sort((a, b) => b.priority - a.priority);
-
-  if (matchedTriggers.length === 0) return null;
-
-  // 4. Check cooldown for top-priority trigger
-  for (const trigger of matchedTriggers) {
-    const cooledDown = await checkCooldown(
-      userId,
-      trigger.id,
-      trigger.cooldownHours,
-    );
-    if (cooledDown) continue; // Skip — recently shown
-
-    // 5. Resolve content for this trigger.
-    // Common path uses trigger.resolvedSuggestion from the nightly summary.
-    // Canonical-answer lookup is a stale/legacy summary fallback only.
-    const suggestion = await resolveSuggestion(trigger, tId, sId);
-    if (!suggestion) continue;
-
-    // 6. Set cooldown
-    await setCooldown(userId, trigger.id, trigger.cooldownHours);
-
-    return suggestion;
-  }
-
-  return null; // All triggers on cooldown
-}
-```
-
-### 5.2 — Condition Evaluation
-
-```typescript
-function evaluateConditions(
-  conditions: AnswerlatticePredictiveTrigger["conditions"],
-  context: AnswerlatticeContextPayload,
-): boolean {
-  // ALL conditions must match (AND logic)
-  if (conditions.page && context.page !== conditions.page) return false;
-  if (conditions.feature && context.feature !== conditions.feature)
-    return false;
-  if (conditions.workflow && context.workflow !== conditions.workflow)
-    return false;
-  if (conditions.plan && context.plan !== conditions.plan) return false;
-  if (conditions.userRole && context.userRole !== conditions.userRole)
-    return false;
-  return true;
-}
-```
-
-### 5.3 — Suggestion Resolution
-
-```typescript
-async function resolveSuggestion(
-  trigger: AnswerlatticePredictiveTrigger,
-  tId: number,
-  sId: number,
-): Promise<AnswerlatticePredictiveSuggestion | null> {
-  let title = trigger.action.customTitle || trigger.name;
-  let summary = trigger.action.customSummary || "";
-  let procedure: AnswerlatticeProcedure | undefined;
-  let articles: Array<{ id: string; title: string }> = [];
-
-  // Resolve from entity → canonical answer
-  if (trigger.action.entityId) {
-    const answers = await getActiveAnswersForEntity(
-      tId,
-      sId,
-      trigger.action.entityId,
-    );
-    if (answers && answers.length > 0) {
-      const best = answers[0];
-      title = trigger.action.customTitle || best.title;
-      summary = trigger.action.customSummary || best.content.structuredSummary;
-      procedure = best.content.procedure;
-      articles.push({ id: best.id, title: best.title });
-    }
-  }
-
-  // Resolve from direct article link
-  if (trigger.action.articleId) {
-    articles.push({ id: trigger.action.articleId, title: title });
-  }
-
-  if (!title) return null;
-
-  return {
-    triggerId: trigger.id,
-    type: trigger.action.type,
-    title,
-    summary,
-    articles: articles.length > 0 ? articles : undefined,
-    procedure: trigger.action.type === "workflow_guide" ? procedure : undefined,
-  };
-}
-```
-
-### 5.4 — Cooldown via Upstash Redis
-
-```typescript
-import { Redis } from "@upstash/redis";
-
-const COOLDOWN_PREFIX = "canon:cooldown:";
-
-async function checkCooldown(
-  userId: string,
-  triggerId: string,
-  cooldownHours: number,
-): Promise<boolean> {
-  if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) return false;
-  if (!isRedisConfigured()) return true; // fail closed if cooldown storage is unavailable
-  const key = `${COOLDOWN_PREFIX}${userId}:${triggerId}`;
-  const exists = await redis.exists(key);
-  return exists === 1; // true = on cooldown, skip
-}
-
-async function setCooldown(
-  userId: string,
-  triggerId: string,
-  cooldownHours: number,
-): Promise<void> {
-  const key = `${COOLDOWN_PREFIX}${userId}:${triggerId}`;
-  await redis.set(key, "1", { ex: cooldownHours * 3600 });
-}
-```
-
----
-
-## §6 — API Route
-
-### 6.1 — POST /api/answerlattice/predictive-help
-
-```
-POST /api/answerlattice/predictive-help
-Content-Type: application/json
-X-API-Key: al_<api_key>
-
-Request Body:
-{
-    "page": "webhook_setup",
-    "feature": "webhooks",
-    "workflow": "connect_webhook",
-    "plan": "pro",
-    "userRole": "admin",
-    "entityHints": ["webhooks"],
-    "userId": "user_123"
-}
-
-Response (200 — suggestion found):
-{
-    "suggestion": {
-        "triggerId": "trigger_abc",
-        "type": "help_card",
-        "title": "Webhook Signature Verification",
-        "summary": "Verify webhook signatures using HMAC-SHA256...",
-        "articles": [
-            { "id": "article_xyz", "title": "Webhook Signature Guide" }
-        ]
-    }
-}
-
-Response (204 — no suggestion / auth failure / rate limited):
-No body.
-```
-
-### 6.2 — Authentication
-
-- **Auth method:** API key via `X-API-Key` header (same as `/api/widget/search`)
-- **Validation:** `validatePublicApiKey(apiKey)` — same as widget search route
-- **Tenant isolation:** `tId`/`sId` extracted from auth result, **never** from request body
-- **Origin control:** Reuses `widgetAllowedOrigins`; if configured, missing or unlisted origins return 204
-- **Body admission:** 4KB bounded JSON body after API key, rate-limit, product, purpose, scope, and origin checks
-- **Context normalization:** Request context is parsed through `AnswerlatticeContextSchema` before trigger evaluation, and stored trigger conditions are normalized at read time for backward compatibility
-- **Diagnostics:** Invalid workspace context and unexpected route failures log fixed runtime codes with bounded metadata only
-- **Graceful failure:** All auth/validation failures return 204 (not error JSON) — widget must never show errors
-
----
-
-## §7 — Nightly Batch Integration
-
-### Step 16 — Predictive Trigger Sync
-
-Added to `answerlatticeNightly.ts` after existing 15 steps.
-
-```
-Step 16: Predictive Trigger Sync
-  16a. Auto-generate suggested triggers from friction patterns
-  16b. Rebuild platformSummary cache from collection
-  16c. Compute effectiveness scores for active triggers
-  16d. Auto-disable low-performing triggers (score < -0.3 after 100+ impressions)
-```
-
-Predictive trigger sync failures use fixed `ANSWERLATTICE_PREDICTIVE_TRIGGER_*` codes. Auto-generation, cache rebuild, and effectiveness update logs include source error name/code/status and tenant/store scope booleans only; valid trigger suggestions, summary rebuilds, source-hash skips, compiled-context invalidation, and effectiveness updates are unchanged.
-
-### Auto-Trigger Generation Logic
-
-```typescript
-// For each top friction entity NOT already covered by a trigger:
-// → Generate a suggested trigger rule
-// → Status: 'suggested' (pending founder approval)
-// → Priority: derived from friction score
-// → Cooldown: 24 hours (default)
-// → Action: help_card pointing to entity's canonical answer
-
-for (const entity of frictionSnapshot.topFrictionEntities) {
-  if (entity.frictionScore < 5) continue; // Low friction, skip
-  if (existingTriggerEntities.has(entity.entityId)) continue; // Already covered
-
-  await addPredictiveTrigger({
-    tId,
-    sId,
-    name: `Help for ${entity.entityName}`,
-    conditions: { page: undefined }, // Founder must set page
-    action: {
-      type: "help_card",
-      entityId: entity.entityId,
-    },
-    priority: Math.min(Math.round(entity.last7d.frictionScore * 10), 100),
-    cooldownHours: 24,
-    status: "suggested",
-    source: "friction_auto",
-    frictionSource: {
-      entityId: entity.entityId,
-      entityName: entity.entityName,
-      frictionScore: entity.last7d.frictionScore,
-      signalCount: entity.last7d.queryCount,
-    },
-  });
-}
-```
-
----
-
-## §8 — Widget Browser Contract Integration
-
-### 8.1 — Page Entry Hook
-
-The widget runtime uses the v1 browser contract on page navigation:
-
-```typescript
-window.AnswerlatticeWidget?.page({
-  path: "/settings/webhooks",
-  title: "Webhook setup",
-  feature: "webhooks",
-  workflow: "connect_webhook",
-});
-```
-
-This triggers:
-
-1. POST to `/api/answerlattice/predictive-help` with context
-2. If suggestion returned → render pre-emptive help UI
-3. Log `suggestion_shown` signal
-
-### 8.2 — Backwards Compatibility
-
-Older installs that do not call `window.AnswerlatticeWidget.page()` simply do not provide predictive context. No breaking change. Predictive support is an enhancement, not a requirement.
-
----
-
-## §9 — Governance Rules
-
-1. **Trigger rules are human-governed** — Auto-generated triggers start as `suggested` status. Never auto-activate.
-2. **Maximum 500 triggers per tenant** — Hard cap to prevent explosion.
-3. **Priority 0-100** — Strictly bounded.
-4. **Cooldown minimum 1 hour** — Prevents annoyance.
-5. **Cooldown maximum 720 hours (30 days)** — Prevents stale triggers from never showing.
-6. **Auto-disable threshold** — Triggers with score < -0.3 after 100+ impressions are auto-disabled.
-7. **Audit logged** — All trigger create/update/delete/auto-disable events logged.
-8. **Multi-tenant isolation** — Triggers scoped to tId+sId. Never cross-tenant.
-
----
-
-## §10 — Edge Cases & Failure Handling
-
-| Scenario                              | Handling                                                   |
-| ------------------------------------- | ---------------------------------------------------------- |
-| Trigger rules doc not found           | Return 204 (no suggestion). Silent.                        |
-| No triggers match context             | Return 204 (no suggestion). Silent.                        |
-| All matching triggers on cooldown     | Return 204 (no suggestion). Silent.                        |
-| Canonical answer not found for entity | Use trigger title/summary if present; otherwise skip trigger and try next. |
-| Redis unavailable for cooldown        | Fail closed and skip proactive suggestions to avoid repeated prompts. |
-| Trigger doc exceeds 1MB               | Log error. Hard limit of 500 triggers plus bounded snippets prevents this. |
-| API route error                       | Return 204. Never block product. Never throw to widget.    |
-| Nightly batch fails                   | Triggers remain unchanged. No operational risk.            |
-
----
-
-## §11 — Performance Constraints
-
-| Operation              | Target    | Actual (Estimated)             |
-| ---------------------- | --------- | ------------------------------ |
-| Trigger rule loading   | <20ms     | ~5ms (single doc read, cached) |
-| Condition evaluation   | <5ms      | ~1ms (simple string matching)  |
-| Cooldown check         | <10ms     | ~3ms (Upstash Redis)           |
-| Answer resolution      | <30ms     | ~0ms common path via `resolvedSuggestion`; 1 Firestore read only for stale/legacy summaries |
-| **Total API response** | **<50ms** | **~30ms**                      |
-
----
-
-## §12 — Feature Flags
-
-### Frontend (`src/config/features.ts`)
-
-```typescript
-ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT: true,
-// Requires: ENABLE_ANSWERLATTICE_CONTEXT_AWARE = true
-// Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
-```
-
-### Cloud Functions (`functions-answerlattice/src/constants/features.ts`)
-
-```typescript
-ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT: true,
-```
-
----
-
-## §13 — Backwards Compatibility
-
-| Concern                  | Resolution                                                     |
-| ------------------------ | -------------------------------------------------------------- |
-| Existing widget installs | No change needed. Predictive help is opt-in via `window.AnswerlatticeWidget.page()` |
-| Existing search pipeline | Untouched. Predictive help is a separate API route             |
-| Existing signal events   | New signal types are additive. Existing queries unaffected     |
-| Existing nightly batch   | New step 16 appended. All prior steps unchanged                |
-| Existing types           | Additive fields only. No breaking changes                      |
-
----
-
-## §14 — ADRs (Architecture Decision Records)
-
-### ADR-1: platformSummary Cache vs Separate Collection Query
-
-**Decision:** Use BOTH — collection for CRUD, platformSummary doc for read-hot-path.
-
-**Rationale:** Same proven pattern as `entityGraphIndex_{tId}_{sId}`. Single doc read loads all triggers. CRUD operates on individual collection docs. Nightly batch syncs collection → platformSummary.
-
-### ADR-2: Upstash Redis for Cooldowns vs Firestore
-
-**Decision:** Upstash Redis.
-
-**Rationale:** TTL auto-expiry. Zero cleanup needed. Sub-millisecond reads. Already deployed. Firestore alternative would require: writes on every impression + cleanup job = more expensive and slower.
-
-### ADR-3: Reuse Signal Events vs New Collection
-
-**Decision:** Reuse existing `answerlattice_signalEvents` with new signal types.
-
-**Rationale:** Same append-only pattern. Same TTL. Same nightly aggregation. Adding 3 new signal types is freeze-compliant (additive). Avoids collection proliferation.
-
-### ADR-4: API Call on Page Entry vs Event Streaming
-
-**Decision:** Simple API call per page entry. No Pub/Sub, no Cloud Run, no event streaming.
-
-**Rationale:** Answerlattice's scale (<1000 tenants initially) doesn't justify streaming infrastructure. An API call per page entry is: simpler, cheaper, easier to debug, sufficient for sub-50ms response. If scale demands streaming later, the trigger evaluation engine is already stateless and can be moved to a Cloud Function subscriber.
-
-### ADR-5: AND Logic Only (No OR Conditions)
-
-**Decision:** All trigger conditions use AND logic. No OR, no nested conditions.
-
-**Rationale:** Simplicity. Zendesk supports OR/nested but it creates complex UX and error-prone rules. AND-only covers 95% of use cases. If OR is needed later, create two separate triggers (same result, simpler model).
-
-### ADR-6: Maximum 500 Triggers Per Tenant
-
-**Decision:** Hard cap at 500 triggers per tenant.
-
-**Rationale:** 500 triggers with pre-resolved snippets remains within Firestore's 1MB document limit for the intended trigger shape. Most tenants will have 10-50 active triggers. The cap prevents runaway widget/runtime cost while keeping room for larger products.
-
-### ADR-7: Auto-Generated Triggers Require Approval
-
-**Decision:** Auto-generated triggers start as `suggested` status. Never auto-activate.
-
-**Rationale:** Answerlattice doctrine: "Signals propose mutations. Humans approve." Same principle applies to trigger rules. Auto-activation could cause annoying/incorrect proactive help.
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-05-24 | 1.1.1 | Added longer negative cache for empty/no-active trigger summaries. |
-| 2026-05-24 | 1.1.0 | Added widget capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed behavior. |
-| 2026-03-10 | 1.0.0 | Initial implementation blueprint. |
+Predictive help remains non-blocking. Provider or cache failures do not prevent normal host-product or widget operation.

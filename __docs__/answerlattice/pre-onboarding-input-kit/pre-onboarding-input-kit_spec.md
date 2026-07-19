@@ -37,6 +37,10 @@ As a SaaS founder, I want to run one master prompt in my AI IDE so it inspects t
 | POI-13 | Include a confidence standard that separates available-source coverage from production-runtime confirmation. | P0 |
 | POI-14 | Keep the process product-agnostic and usable for any SaaS product. | P0 |
 | POI-15 | State source-access and AI IDE capability limits clearly, including no universal guarantee across every agent, private source, or product shape. | P0 |
+| POI-16 | Keep generated JSONL aligned with the authenticated Knowledge Intake API: singular `originUrl`, supported source types, reviewed `contentText` for API-ready non-website sources, and no client-authored tenant identity. | P0 |
+| POI-17 | Require source authority, approval status, access scope, citation eligibility, applicability, and conflict metadata. | P0 |
+| POI-18 | Treat tickets, chats, macros, repeated replies, and support exports as signals until an authoritative source or owner review confirms the facts. | P0 |
+| POI-19 | Require owner permission before private sources are processed in an external AI tool and prohibit public citation of private source URLs or text. | P0 |
 
 ## Required Output Folder
 
@@ -98,6 +102,10 @@ Pre-onboarding is successful when:
 - blocked, private, login-only, or unsupported sources are marked pending instead of treated as covered;
 - source files are small enough for Answerlattice intake limits;
 - upload payloads match source files;
+- review-only payload skeletons are clearly separated from API-ready payloads;
+- source authority, approval status, visibility, citation eligibility, applicability, and conflicts are explicit;
+- support records remain signals until their facts are approved;
+- private-source use in the selected AI tool is authorized;
 - risky topics are escalation-gated;
 - live support test questions cover routine and risky user questions;
 - screenshot usage rules prevent private data leakage;

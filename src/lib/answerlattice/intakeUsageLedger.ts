@@ -12,6 +12,7 @@ import {
     isAnswerlatticeIntakeLedgerInScope,
     resolveAnswerlatticeIntakeRefundAllocation,
 } from '@lib/answerlattice/intakeUsageSettlement';
+import { sanitizeAnswerlatticeIntakeMetadata } from '@lib/answerlattice/knowledgeIntakePrivacy';
 import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
 import { getBillingPeriodKey, isValidBillingPeriodKey } from '@lib/billing/billingPeriod';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -78,29 +79,6 @@ const cleanText = (value: unknown, max = 300) => String(value || '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
-
-const stringifyMetadataValue = (value: unknown): string => {
-    try {
-        return JSON.stringify(value);
-    } catch {
-        return String(value);
-    }
-};
-
-const sanitizeMetadata = (value: unknown): Record<string, any> => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-    return Object.fromEntries(Object.entries(value as Record<string, any>)
-        .slice(0, 24)
-        .map(([key, nested]) => [
-            cleanText(key, 80),
-            typeof nested === 'string'
-                ? cleanText(nested, 500)
-                : typeof nested === 'number' || typeof nested === 'boolean' || nested === null
-                    ? nested
-                    : cleanText(stringifyMetadataValue(nested).slice(0, 500), 500),
-        ])
-        .filter(([key]) => Boolean(key)));
-};
 
 const toMillis = (value: any): number | null => {
     if (!value) return null;
@@ -308,7 +286,7 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
                 topUpCredits: nextTopUpCredits,
                 totalCredits: nextMonthlyCredits + nextTopUpCredits,
             },
-            metadata: sanitizeMetadata(input.metadata),
+            metadata: sanitizeAnswerlatticeIntakeMetadata(input.metadata, { maxEntries: 24 }),
             createdOn: timestamp,
             modifiedOn: timestamp,
             reservedOn: timestamp,
@@ -379,8 +357,8 @@ export async function finalizeAnswerlatticeIntakeUsage(
             tokenCountSource: input.tokenCountSource || 'none',
             totalTokenCount: Number(input.totalTokenCount || 0),
             metadata: {
-                ...sanitizeMetadata(ledger.metadata),
-                ...sanitizeMetadata(input.metadata),
+                ...sanitizeAnswerlatticeIntakeMetadata(ledger.metadata, { maxEntries: 24 }),
+                ...sanitizeAnswerlatticeIntakeMetadata(input.metadata, { maxEntries: 24 }),
             },
             settledOn: timestamp,
             modifiedOn: timestamp,

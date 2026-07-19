@@ -36,6 +36,7 @@ export interface AnswerlatticeRetentionCleanupResult {
     contactEnquiriesDeleted: number;
     queryEmbeddingsDeleted: number;
     aiSearchHistoryDeleted: number;
+    contentFeedbackDeleted: number;
     contextBundleObjectsDeleted: number;
     errors: string[];
 }
@@ -49,6 +50,7 @@ const emptyResult = (): AnswerlatticeRetentionCleanupResult => ({
     contactEnquiriesDeleted: 0,
     queryEmbeddingsDeleted: 0,
     aiSearchHistoryDeleted: 0,
+    contentFeedbackDeleted: 0,
     contextBundleObjectsDeleted: 0,
     errors: [],
 });
@@ -117,6 +119,35 @@ async function deleteDocsOlderThan(params: {
     snap.docs.forEach((doc) => batch.delete(doc.ref));
     await batch.commit();
     return snap.size;
+}
+
+async function cleanupTenantContentFeedback(
+    tenant: AnswerlatticeRetentionTenantScope,
+    limit: number,
+): Promise<number> {
+    const scope = parseExactAnswerlatticeScope(tenant.tId, tenant.sId);
+    if (!scope || limit <= 0) return 0;
+    let deleted = 0;
+    for (const collectionName of [
+        DB_COLLECTIONS.ARTICLE_FEEDBACK,
+        DB_COLLECTIONS.CHANGELOG_FEEDBACK,
+        DB_COLLECTIONS.FAQ_FEEDBACK,
+    ]) {
+        if (deleted >= limit) break;
+        const snapshot = await db
+            .collection(collectionName)
+            .doc(String(scope.tId))
+            .collection(String(scope.sId))
+            .where('expiresAt', '<=', Timestamp.now())
+            .limit(limit - deleted)
+            .get();
+        if (snapshot.empty) continue;
+        const batch = db.batch();
+        snapshot.docs.forEach(document => batch.delete(document.ref));
+        await batch.commit();
+        deleted += snapshot.size;
+    }
+    return deleted;
 }
 
 const extractBundleVersion = (path: string): number | null => {
@@ -301,6 +332,22 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             retentionKey: 'aiSearchHistory',
             limit: batchLimit,
         });
+    });
+
+    await runCleanup('contentFeedback', async () => {
+        const seen = new Set<string>();
+        for (const tenant of options.tenants || []) {
+            if (result.contentFeedbackDeleted >= batchLimit) break;
+            const scope = parseExactAnswerlatticeScope(tenant.tId, tenant.sId);
+            if (!scope) continue;
+            const key = `${scope.tId}:${scope.sId}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            result.contentFeedbackDeleted += await cleanupTenantContentFeedback(
+                scope,
+                batchLimit - result.contentFeedbackDeleted,
+            );
+        }
     });
 
     await runCleanup('contextBundleVersions', async () => {

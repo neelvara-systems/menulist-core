@@ -18,6 +18,7 @@ import { unstable_cache } from 'next/cache';
 const PUBLIC_CACHE_REVALIDATE_SECONDS = 60;
 const PUBLIC_FAQ_LIMIT = 80;
 const PUBLIC_ARTICLE_LIMIT = 500;
+const PUBLIC_CHANGELOG_PAGE_SCAN_LIMIT = 25;
 
 type Scope = {
     tId: number;
@@ -43,7 +44,14 @@ const filterPublicCategories = (data: KnowledgeBaseCategoriesType | null): Knowl
         Object.entries(data.categories)
             .filter(([, category]) => category?.active !== false)
             .map(([categoryId, category]) => {
-                const sections = (category.sections || []).filter(section => section.active !== false);
+                const sections = (category.sections || [])
+                    .filter(section => section.active !== false)
+                    .map(section => ({
+                        ...section,
+                        articles: (section.articles || [])
+                            .filter(article => article.active !== false)
+                            .slice(0, PUBLIC_ARTICLE_LIMIT),
+                    }));
 
                 return [categoryId, {
                     ...category,
@@ -110,15 +118,18 @@ const fetchLatestChangelogPage = async (scope: Scope): Promise<AnswerlatticePubl
     const snapshot = await getAnswerlatticeDb()
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`)
         .orderBy('pageNumber', 'desc')
-        .limit(1)
+        .limit(PUBLIC_CHANGELOG_PAGE_SCAN_LIMIT)
         .get();
 
     if (snapshot.empty) {
         return null;
     }
 
-    const doc = snapshot.docs[0];
-    return projectAnswerlatticePublicChangelogPage(doc.data(), doc.id);
+    for (const doc of snapshot.docs) {
+        const page = projectAnswerlatticePublicChangelogPage(doc.data(), doc.id, scope);
+        if (page && page.entries.length > 0) return page;
+    }
+    return null;
 };
 
 const fetchOlderChangelogPage = async (scope: Scope, beforePageNumber: number): Promise<AnswerlatticePublicChangelogPage | null> => {
@@ -126,15 +137,18 @@ const fetchOlderChangelogPage = async (scope: Scope, beforePageNumber: number): 
         .collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`)
         .where('pageNumber', '<', beforePageNumber)
         .orderBy('pageNumber', 'desc')
-        .limit(1)
+        .limit(PUBLIC_CHANGELOG_PAGE_SCAN_LIMIT)
         .get();
 
     if (snapshot.empty) {
         return null;
     }
 
-    const doc = snapshot.docs[0];
-    return projectAnswerlatticePublicChangelogPage(doc.data(), doc.id);
+    for (const doc of snapshot.docs) {
+        const page = projectAnswerlatticePublicChangelogPage(doc.data(), doc.id, scope);
+        if (page && page.entries.length > 0) return page;
+    }
+    return null;
 };
 
 export const getCachedPublishedFaqs = async (

@@ -7,10 +7,11 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { SourceContext } from '@type/multiProduct';
 import { ANSWERLATTICE_CHANGELOG_PAGE_MAX_BYTES } from './changelogContracts';
 import type { AnswerlatticeContentFeedbackRequest } from './contentFeedbackContracts';
-import { getAnswerlatticeRetentionExpiry } from './dataRetention';
+import { getAnswerlatticeRetentionExpiry, getAnswerlatticeRetentionFields } from './dataRetention';
 
 const MAX_AUDIT_EVENTS = 200;
 const MAX_RECENT_OPERATIONS = 20;
+const MAX_ACTIVE_FEEDBACK_ACTORS = 5_000;
 
 export type AnswerlatticeContentFeedbackActor = {
     id: string;
@@ -57,6 +58,24 @@ const withRecentOperation = (current: string[], operation: string) => (
     [...current.filter((item) => item !== operation), operation].slice(-MAX_RECENT_OPERATIONS)
 );
 
+export const buildAnswerlatticeContentFeedbackStateDocumentId = (input: {
+    type: AnswerlatticeContentFeedbackRequest['type'];
+    contentId: string;
+    pageId?: string;
+}) => `state1_${sha(`${input.type}:${input.pageId || ''}:${input.contentId}`).slice(0, 40)}`;
+
+const normalizeActiveFeedbackActors = (value: unknown): Record<string, 'like' | 'dislike'> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new AnswerlatticeContentFeedbackError(409, 'Content feedback actor state is invalid.');
+    }
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length > MAX_ACTIVE_FEEDBACK_ACTORS
+        || entries.some(([key, sentiment]) => !/^[a-f0-9]{40}$/.test(key) || (sentiment !== 'like' && sentiment !== 'dislike'))) {
+        throw new AnswerlatticeContentFeedbackError(409, 'Content feedback actor state is invalid.');
+    }
+    return Object.fromEntries(entries) as Record<string, 'like' | 'dislike'>;
+};
+
 export const executeAnswerlatticeContentFeedback = async (
     input: AnswerlatticeContentFeedbackRequest,
     scope: { tId: number; sId: number },
@@ -74,29 +93,43 @@ export const executeAnswerlatticeContentFeedback = async (
     })).slice(0, 24);
     const operation = `${operationId}.${fingerprint}`;
     const feedbackId = `doc1_${input.contentId}`;
-    const feedbackRef = db.collection(input.type === 'article' ? DB_COLLECTIONS.ARTICLE_FEEDBACK : DB_COLLECTIONS.CHANGELOG_FEEDBACK)
+    const feedbackCollection = input.type === 'article'
+        ? DB_COLLECTIONS.ARTICLE_FEEDBACK
+        : input.type === 'faq'
+            ? DB_COLLECTIONS.FAQ_FEEDBACK
+            : DB_COLLECTIONS.CHANGELOG_FEEDBACK;
+    const feedbackRef = db.collection(feedbackCollection)
         .doc(String(scope.tId))
         .collection(String(scope.sId))
         .doc(feedbackId);
+    const stateRef = db.collection(feedbackCollection)
+        .doc(String(scope.tId))
+        .collection(String(scope.sId))
+        .doc(buildAnswerlatticeContentFeedbackStateDocumentId(input));
     const contentRef = input.type === 'article'
         ? db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(input.contentId)
-        : db.collection(DB_COLLECTIONS.CHANGELOG).doc(String(scope.tId)).collection(String(scope.sId)).doc(input.pageId!);
+        : input.type === 'faq'
+            ? db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(input.contentId)
+            : db.collection(DB_COLLECTIONS.CHANGELOG).doc(String(scope.tId)).collection(String(scope.sId)).doc(input.pageId!);
 
     let result = { likes: 0, dislikes: 0, feedbackLogged: false, replayed: false };
     await db.runTransaction(async (transaction) => {
-        const [contentSnapshot, feedbackSnapshot] = await Promise.all([
+        const [contentSnapshot, feedbackSnapshot, stateSnapshot] = await Promise.all([
             transaction.get(contentRef),
             transaction.get(feedbackRef),
+            transaction.get(stateRef),
         ]);
         if (!contentSnapshot.exists) throw new AnswerlatticeContentFeedbackError(404, 'Feedback content was not found.');
         const content = contentSnapshot.data() as Record<string, any>;
 
         let target: Record<string, any>;
         let entryIndex = -1;
-        if (input.type === 'article') {
+        if (input.type === 'article' || input.type === 'faq') {
             if (content.pId !== PRODUCT_IDS.ANSWERLATTICE
                 || Number(content.tId) !== scope.tId
-                || Number(content.sId) !== scope.sId) {
+                || Number(content.sId) !== scope.sId
+                || content.active !== true
+                || content.status !== 'published') {
                 throw new AnswerlatticeContentFeedbackError(404, 'Feedback content was not found.');
             }
             target = content;
@@ -130,16 +163,61 @@ export const executeAnswerlatticeContentFeedback = async (
             return;
         }
 
+        const stateData = stateSnapshot.exists ? stateSnapshot.data() as Record<string, any> : null;
+        if (stateData && (
+            stateData.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || Number(stateData.tId) !== scope.tId
+            || Number(stateData.sId) !== scope.sId
+            || stateData.type !== input.type
+            || stateData.contentId !== input.contentId
+            || (stateData.pageId || null) !== (input.pageId || null)
+        )) {
+            throw new AnswerlatticeContentFeedbackError(409, 'Content feedback actor state is invalid.');
+        }
+        const activeActors = stateData ? normalizeActiveFeedbackActors(stateData.actors) : {};
+        if (stateData && Number(stateData.actorCount) !== Object.keys(activeActors).length) {
+            throw new AnswerlatticeContentFeedbackError(409, 'Content feedback actor state is invalid.');
+        }
+        const actorKey = sha(`${scope.tId}:${scope.sId}:${actor.id}`).slice(0, 40);
+        const currentSentiment = activeActors[actorKey] || null;
+        if (input.increment && currentSentiment === input.sentiment) {
+            result = {
+                likes: safeCounter(target.likes),
+                dislikes: safeCounter(target.dislikes),
+                feedbackLogged: false,
+                replayed: true,
+            };
+            return;
+        }
+        if (!input.increment && currentSentiment === null) {
+            result = {
+                likes: safeCounter(target.likes),
+                dislikes: safeCounter(target.dislikes),
+                feedbackLogged: false,
+                replayed: true,
+            };
+            return;
+        }
+        if (currentSentiment && currentSentiment !== input.sentiment) {
+            throw new AnswerlatticeContentFeedbackError(409, 'Remove the current feedback before selecting a different response.');
+        }
+        if (input.increment && Object.keys(activeActors).length >= MAX_ACTIVE_FEEDBACK_ACTORS) {
+            throw new AnswerlatticeContentFeedbackError(409, 'This content has reached the current feedback capacity.');
+        }
+
         const counters = { likes: safeCounter(target.likes), dislikes: safeCounter(target.dislikes) };
         const counter = input.sentiment === 'like' ? 'likes' : 'dislikes';
         counters[counter] = input.increment ? counters[counter] + 1 : Math.max(0, counters[counter] - 1);
         if (!Number.isSafeInteger(counters[counter])) throw new AnswerlatticeContentFeedbackError(409, 'Content feedback counter overflow.');
+        const nextActiveActors = { ...activeActors };
+        if (input.increment) nextActiveActors[actorKey] = input.sentiment;
+        else delete nextActiveActors[actorKey];
         const nextTarget = {
             ...target,
             ...counters,
             recentFeedbackOperations: withRecentOperation(recentOperations, operation),
         };
-        if (input.type === 'article') {
+        if (input.type === 'article' || input.type === 'faq') {
             transaction.update(contentRef, {
                 ...counters,
                 recentFeedbackOperations: nextTarget.recentFeedbackOperations,
@@ -152,6 +230,25 @@ export const executeAnswerlatticeContentFeedback = async (
             }
             transaction.update(contentRef, {
                 entries,
+            });
+        }
+        const stateNow = Timestamp.now();
+        if (Object.keys(nextActiveActors).length === 0) {
+            transaction.delete(stateRef);
+        } else {
+            transaction.set(stateRef, {
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: scope.tId,
+                sId: scope.sId,
+                type: input.type,
+                contentId: input.contentId,
+                pageId: input.pageId || null,
+                actors: nextActiveActors,
+                actorCount: Object.keys(nextActiveActors).length,
+                createdOn: stateData?.createdOn || stateNow,
+                createdBy: stateData?.createdBy || 'system:content_feedback',
+                modifiedOn: stateNow,
+                modifiedBy: 'system:content_feedback',
             });
         }
 
@@ -172,6 +269,7 @@ export const executeAnswerlatticeContentFeedback = async (
             throw new AnswerlatticeContentFeedbackError(409, 'Content feedback audit history is invalid.');
         }
         let feedbackLogged = false;
+        const retentionFields = getAnswerlatticeRetentionFields('contentFeedback');
         if (!feedbackSnapshot.exists) {
             transaction.create(feedbackRef, {
                 list: [feedbackItem],
@@ -187,6 +285,7 @@ export const executeAnswerlatticeContentFeedback = async (
                 createdBy: actor.name,
                 modifiedOn: FieldValue.serverTimestamp(),
                 modifiedBy: actor.name,
+                ...retentionFields,
             });
             feedbackLogged = true;
         } else if (currentList.length < MAX_AUDIT_EVENTS) {
@@ -194,6 +293,7 @@ export const executeAnswerlatticeContentFeedback = async (
                 list: [...currentList, feedbackItem],
                 modifiedOn: FieldValue.serverTimestamp(),
                 modifiedBy: actor.name,
+                ...retentionFields,
             });
             feedbackLogged = true;
         }

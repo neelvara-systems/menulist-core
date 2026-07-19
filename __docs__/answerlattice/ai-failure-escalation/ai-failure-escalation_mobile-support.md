@@ -1,64 +1,26 @@
-# AI Failure Escalation — Mobile Support Assessment
+# AI Failure Escalation - Mobile Support
 
-> **Version:** 1.0.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
-> **Audience:** Developers
+> **Last Updated:** 2026-07-18
 
----
+## End-User Widget
 
-## §1 — Feature Admission Test (4 Gates)
+The explicit support-request flow is part of the responsive embedded widget. It does not require a separate mobile route.
 
-| Gate | Question | Answer | Pass? |
-|------|----------|--------|-------|
-| **Frequency** | Used daily/multiple times per day? | No — escalation is rare (3-5% of conversations). End users create tickets occasionally. | ❌ |
-| **Speed** | Completes in <5 seconds? | Yes — one-click ticket creation from pre-filled form. | ✅ |
-| **Touch** | Works with thumb-only? | Yes — button tap + optional text edit + submit. | ✅ |
-| **Value** | Needed away from desk? | Partial — end users may hit escalation on mobile, but founders review tickets on desktop. | 🟡 |
+Required behavior:
 
-**Verdict: PARTIAL MOBILE** — End-user escalation button works on mobile web (help widget is responsive). Founder ticket review is desktop-primary.
+- **Solved** and **Still need help** controls meet the 44px touch target;
+- support-request fields stack without horizontal overflow;
+- reply email is required; name and details are optional;
+- submission has a stable loading state and cannot duplicate the ticket;
+- success shows the created request reference;
+- failure preserves the form and displays retryable copy;
+- internal debug data is never shown to the end user;
+- screenshot-processing failure is visible as text-only answering.
 
----
+## Founder Review
 
-## §2 — Mobile Applicability
+The created item uses the existing support-ticket workflow. Founder/mobile support for ticket handling belongs to the ticket feature audit and is not reimplemented here.
 
-### End User Side (Help Widget)
-The escalation UI components ("Still need help?" button, pre-filled ticket form) will render in the help widget, which is already responsive. No dedicated mobile screen needed.
+## External Verification
 
-**Requirements:**
-- Escalation button must be touch-friendly (44px min height)
-- Ticket form must work on mobile viewport (no horizontal scroll)
-- Pre-filled fields must be readable on small screens
-
-### Founder Side (Ticket Review)
-Founders reviewing escalation tickets with debug context (retrieval logs, entity debug) is a desktop activity. Debug data visualization requires screen real estate.
-
-**No mobile screen needed** for founder-side escalation ticket review.
-
----
-
-## §3 — Shared Components
-
-| Component | Desktop | Mobile | Shared? |
-|-----------|---------|--------|---------|
-| `escalationEvaluator.ts` | ✅ | ✅ | Yes (backend logic) |
-| `escalationTypes.ts` | ✅ | ✅ | Yes (types) |
-| `EscalationTicketModal.tsx` | ✅ | N/A | Desktop only |
-| Escalation button in chat | ✅ | ✅ (via widget) | Widget is responsive |
-| Ticket creation DAL | ✅ | ✅ | Yes (same DAL) |
-
----
-
-## §4 — Mobile-Specific Requirements
-
-1. **Touch target**: Escalation "Still need help?" button must be ≥ 44px height
-2. **Form layout**: Ticket form fields stack vertically on mobile
-3. **Loading state**: Show spinner during ticket submission (mobile networks slower)
-4. **Success feedback**: Toast confirmation after ticket created
-5. **No debug data on mobile**: Escalation context is attached but NOT displayed to end users
-
----
-
-## §5 — Conclusion
-
-AI Failure Escalation is primarily a **backend + desktop** feature. The end-user touch point (escalation button in help widget) inherits mobile support from the widget's existing responsive design. No dedicated mobile screen is required.
+Hosted narrow-viewport proof on a real allowed origin remains required. Source contracts and the widget control dimensions are covered by the Feature 16 verifier set.

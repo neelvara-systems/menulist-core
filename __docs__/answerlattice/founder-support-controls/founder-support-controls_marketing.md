@@ -4,7 +4,7 @@
 
 ## Positioning
 
-Founder Support Controls prove that approved support remains correct as a SaaS product changes.
+Founder Support Controls provide repeatable evidence that configured priority support behavior remains stable as a SaaS product changes.
 
 ## Buyer Outcomes
 
@@ -29,6 +29,7 @@ Founder Support Controls prove that approved support remains correct as a SaaS p
 ## Forbidden Claims
 
 - Automatic quality guarantee.
+- Independent factual-correctness, completeness, or verified-resolution guarantee from deterministic tests alone.
 - Automatic rollback or incident resolution.
 - Provider-backed simulation of unapproved answer content.
 - Full status page or subscriber notification system.
@@ -38,4 +39,4 @@ Founder Support Controls prove that approved support remains correct as a SaaS p
 
 ## Sales One-Liner
 
-Prove priority support answers before users rely on them, then keep the right message visible when the product changes.
+Test priority support contracts before users rely on them, then review regressions and stale proof when the product changes.

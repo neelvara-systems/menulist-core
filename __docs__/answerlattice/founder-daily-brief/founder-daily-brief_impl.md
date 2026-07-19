@@ -30,6 +30,8 @@
 6. Server builds ranked Founder Daily Brief actions when `ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF` is enabled.
 7. UI renders the first action as the primary decision, up to three secondary actions, launch verification, and explicit outcome/recontact evidence before the question box.
 8. Navigation labels the route as `Daily Brief` so the owner starts support control from the daily plan instead of a generic assistant label.
+9. Server filters every action, evidence link, and prepared-card capability against the caller's current permission map.
+10. Browser validates the complete brief shape, source health, action enums, route allowlist, capabilities, and read-model counters before rendering.
 
 ## Placement Rules
 
@@ -62,8 +64,13 @@ The brief may mention AI-prepared work when existing systems have prepared draft
 ## Failure Behavior
 
 - Missing summaries produce an `insufficient_data` status and launch verification actions.
+- Missing, invalid, stale, and future-dated source states remain explicit in `summaryHealth`; unavailable metrics remain `null`.
+- Scheduled summaries older than 48 hours are stale. Timestamps more than five minutes in the future are invalid.
+- A complete but empty six-source packet remains `insufficient_data`; document presence is not treated as useful evidence.
+- Actions and evidence for routes outside the caller's permissions are removed server-side.
 - Cache hit reports zero reads.
 - Disabled daily brief omits the `dailyBrief` payload but leaves Support Assistant usable.
+- Unknown, oversized, malformed, redirected, or failed browser responses produce fixed local retry states and never render raw server errors.
 - API errors return generic private no-store errors.
 
 ## Product Boundary

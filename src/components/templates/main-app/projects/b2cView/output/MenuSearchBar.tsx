@@ -13,6 +13,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import {
+    createPublicCustomerTranslator,
+    type PublicCustomerTranslator,
+} from '@lib/localization/publicCustomerMessages';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { MenuMoodConfig } from '../designSystem';
 
@@ -27,41 +31,50 @@ interface MenuSearchBarProps {
     containerStyle?: React.CSSProperties;
     expanded?: boolean;
     onFocusChange?: (isFocused: boolean) => void;
+    activeLanguage?: string;
 }
 
-const getSearchAriaLabel = (businessType?: string, businessCategory?: string): string => {
+const getSearchAriaLabel = (
+    t: PublicCustomerTranslator,
+    businessType?: string,
+    businessCategory?: string,
+): string => {
     switch (resolveBusinessCategory(businessType, businessCategory)) {
         case 'food':
-            return 'Search menu items';
+            return t('menu.searchMenuItems');
         case 'service':
         case 'health':
         case 'professional':
         case 'specialty':
-            return 'Search services';
+            return t('menu.searchServices');
         case 'retail':
-            return 'Search products';
+            return t('menu.searchProducts');
         case 'creative':
-            return 'Search offerings';
+            return t('menu.searchOfferings');
         default:
-            return 'Search menu';
+            return t('menu.searchMenu');
     }
 };
 
-const getSearchPlaceholder = (businessType?: string, businessCategory?: string): string => {
+const getSearchPlaceholder = (
+    t: PublicCustomerTranslator,
+    businessType?: string,
+    businessCategory?: string,
+): string => {
     switch (resolveBusinessCategory(businessType, businessCategory)) {
         case 'food':
-            return 'Search menu...';
+            return t('menu.searchMenuPlaceholder');
         case 'service':
         case 'health':
         case 'professional':
         case 'specialty':
-            return 'Search services...';
+            return t('menu.searchServicesPlaceholder');
         case 'retail':
-            return 'Search products...';
+            return t('menu.searchProductsPlaceholder');
         case 'creative':
-            return 'Search offerings...';
+            return t('menu.searchOfferingsPlaceholder');
         default:
-            return 'Search menu...';
+            return t('menu.searchMenuPlaceholder');
     }
 };
 
@@ -99,6 +112,7 @@ const logMenuSearchFocusFailure = (
 };
 
 function MenuSearchBar({
+    activeLanguage,
     searchTerm,
     onSearchChange,
     moodConfig,
@@ -110,6 +124,7 @@ function MenuSearchBar({
     expanded = false,
     onFocusChange,
 }: MenuSearchBarProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
     const inputRef = useRef<HTMLInputElement>(null);
     const [isFocused, setIsFocused] = useState(false);
 
@@ -206,7 +221,7 @@ function MenuSearchBar({
                 size={18}
                 style={{
                     position: 'absolute',
-                    left: 12,
+                    insetInlineStart: 12,
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: isFocused ? moodConfig.accentColor : moodConfig.bodyColor,
@@ -218,7 +233,7 @@ function MenuSearchBar({
             <input
                 ref={inputRef}
                 type="text"
-                placeholder={getSearchPlaceholder(businessType, businessCategory)}
+                placeholder={getSearchPlaceholder(t, businessType, businessCategory)}
                 value={searchTerm}
                 onChange={handleChange}
                 onPointerDown={handleSearchPointerDown}
@@ -244,17 +259,17 @@ function MenuSearchBar({
                     touchAction: 'manipulation',
                     transition: 'border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease',
                 }}
-                aria-label={getSearchAriaLabel(businessType, businessCategory)}
+                aria-label={getSearchAriaLabel(t, businessType, businessCategory)}
             />
             {searchTerm && (
                 <button
                     onClick={clearSearch}
                     onMouseDown={(event) => event.preventDefault()}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:opacity-70 transition-opacity"
-                    aria-label="Clear search"
+                    aria-label={t('menu.clearSearch')}
                     style={{
                         position: 'absolute',
-                        right: 9,
+                        insetInlineEnd: 9,
                         top: '50%',
                         transform: 'translateY(-50%)',
                         width: 32,

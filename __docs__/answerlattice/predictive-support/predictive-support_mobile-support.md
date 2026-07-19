@@ -1,38 +1,35 @@
-# Predictive Support — Mobile Support Assessment
+# Predictive Support Mobile Support
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-10
+**Status:** Shared responsive widget runtime; external device proof pending
+**Last verified:** July 18, 2026
 
----
+## Customer runtime
 
-## Feature Admission Test (4 Gates)
+Predictive support uses the existing responsive Answerlattice widget iframe. The same strict suggestion, context, runtime-token, and interaction contracts apply on desktop and mobile browsers.
 
-| Gate | Question | Answer | Pass? |
-|------|----------|--------|-------|
-| **Frequency** | Used daily/multiple times per day? | No — Trigger management is occasional (weekly at most). End-user proactive help is passive (system-driven, not user-initiated). | ❌ |
-| **Speed** | Completes in <5 seconds? | N/A — Founder trigger management involves reviewing and configuring rules. Not a quick action. | ❌ |
-| **Touch** | Works with thumb-only? | Partially — Creating trigger rules requires form inputs that benefit from keyboard. | ❌ |
-| **Value** | Needed away from desk? | No — Trigger rule management is an admin task done at a desk. | ❌ |
+The host can suppress the widget through its existing mobile visibility configuration. When hidden, denied, disabled, or moved to a new context, the loader clears the pending suggestion.
 
-**Result: 0/4 gates pass → NO mobile UI for trigger management.**
+## Mobile requirements
 
----
+- Do not render a second predictive overlay outside the widget.
+- Keep the cue dismissible and non-blocking.
+- Do not cover host navigation or primary actions.
+- Clear stale cues on single-page-app route/workflow changes.
+- Preserve 44px touch targets through the existing widget controls.
+- Never require hover.
+- Do not send raw mobile screen, clipboard, form, or account state.
 
-## End-User Side (Widget)
+## Owner management
 
-The **widget** itself already handles mobile rendering — it's a web component embedded in the SaaS product. Proactive help (context cards, tooltips) will render within the existing widget's responsive layout.
+Predictive trigger and known-issue management remain management workflows. The current source reuses responsive Answerlattice surfaces; no separate native mobile mutation contract was added.
 
-No separate mobile screen needed.
+## External proof still required
 
----
+- real iOS Safari and Android Chrome host behavior;
+- keyboard and viewport changes;
+- safe-area and small-screen overlap;
+- touch dismissal/opening;
+- route changes in real mobile single-page apps;
+- accessibility and reduced-motion review.
 
-## Summary
-
-| Component | Mobile UI? | Reason |
-|-----------|-----------|--------|
-| Trigger rule management (admin) | ❌ No | Fails all 4 gates |
-| Trigger suggestions review (admin) | ❌ No | Low frequency, desk task |
-| Predictive help display (end-user) | ✅ Via widget | Widget is already responsive |
-| Effectiveness dashboard (admin) | ❌ No | Analytics viewing is desk task |
-
-**Decision:** No mobile screens required. End-user proactive help renders through the existing widget, which already supports mobile viewports.
+MenuList mobile intentionally suppresses its widget, so it is not evidence for general mobile-host support.

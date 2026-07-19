@@ -1,7 +1,7 @@
 # MenuList Help Center — Owner Guide
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-16
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-18
 > **Audience:** MenuList owners
 > **Tone:** Calm, plain language
 
@@ -26,6 +26,8 @@ You can use each option separately:
 4. Continue in Assistant mode for the same topic, or start a new question.
 
 You may attach one supported screenshot to the question. If search is unavailable or an answer does not resolve the issue, browse the Knowledge Base or submit a ticket. Generated wording is a support aid, not a digitally verified record.
+
+An unfinished text question may be restored in the same browser for up to one day. Drafts are separated by your support workspace and account. Screenshots are not kept as drafts. When the approved FAQ list cannot be loaded, use the Knowledge Base or submit a ticket instead of relying on substituted answers.
 
 ## Submit a Ticket
 

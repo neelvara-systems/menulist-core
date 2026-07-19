@@ -13,7 +13,7 @@ interface FeedbackSectionProps {
     isFeedbackModalVisible: boolean;
     isSubmitting?: boolean;
     onFeedback: (type: FeedbackType) => void;
-    onFeedbackSubmit: (comment: string) => void;
+    onFeedbackSubmit: (comment: string) => Promise<boolean>;
     onModalClose: () => void;
     contentLabel?: string; // e.g., "article", "changelog entry", "FAQ"
 }
@@ -36,9 +36,9 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
     const { token } = theme.useToken();
     const [form] = Form.useForm();
 
-    const handleSubmit = (values: { comment: string }) => {
-        onFeedbackSubmit(values.comment);
-        form.resetFields();
+    const handleSubmit = async (values: { comment: string }) => {
+        const saved = await onFeedbackSubmit(values.comment);
+        if (saved) form.resetFields();
     };
 
     return (
@@ -48,9 +48,10 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                 justify="flex-end"
                 align="center"
                 gap={16}
+                wrap
                 style={{ padding: 16, borderTop: `1px solid ${token.colorBorderSecondary}` }}
             >
-                <Text type="secondary">Was this {contentLabel} helpful?</Text>
+                <Text type="secondary" style={{ flex: '1 1 180px' }}>Was this {contentLabel} helpful?</Text>
                 <Button
                     shape="round"
                     icon={<LuThumbsUp />}
@@ -60,6 +61,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                     type={feedbackGiven === 'like' ? 'primary' : 'default'}
                     aria-label={`Like this ${contentLabel}`}
                     title={feedbackGiven === 'like' ? 'Click to remove your like' : `Like this ${contentLabel}`}
+                    style={{ minWidth: 44, minHeight: 44 }}
                 >
                     {likes}
                 </Button>
@@ -73,6 +75,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                     danger={feedbackGiven === 'dislike'}
                     aria-label={`Dislike this ${contentLabel}`}
                     title={feedbackGiven === 'dislike' ? 'Click to remove your dislike' : `Dislike this ${contentLabel}`}
+                    style={{ minWidth: 44, minHeight: 44 }}
                 >
                     {dislikes}
                 </Button>
@@ -84,10 +87,10 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                 open={isFeedbackModalVisible}
                 onCancel={onModalClose}
                 footer={[
-                    <Button key="back" onClick={onModalClose} disabled={isSubmitting}>
+                    <Button key="back" onClick={onModalClose} disabled={isSubmitting} style={{ minHeight: 44 }}>
                         Skip
                     </Button>,
-                    <Button key="submit" type="primary" onClick={() => form.submit()} loading={isSubmitting} disabled={isSubmitting}>
+                    <Button key="submit" type="primary" onClick={() => form.submit()} loading={isSubmitting} disabled={isSubmitting} style={{ minHeight: 44 }}>
                         Send
                     </Button>,
                 ]}

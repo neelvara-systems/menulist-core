@@ -24,7 +24,7 @@ const SupportTickets = () => {
     const dispatch = useAppDispatch();
     const ticketsViewRef = useRef<PlatformTicketsViewRef>(null);
     const deletedTicketsViewRef = useRef<PlatformTicketsViewRef>(null);
-    const { cachedItems, setAllItems } = useTicketCache();
+    const { cachedItems, setAllItems } = useTicketCache({ audience: 'platform' });
     const cachedTicketsOnMountRef = useRef<SupportTicketType[]>(cachedItems || []);
 
     // Helper function to update both state and cache

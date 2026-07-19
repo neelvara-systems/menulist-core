@@ -13,17 +13,12 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { doc, getDoc } from "@firebase/firestore";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import {
+    AnswerlatticeCoverageData,
+    parseAnswerlatticeCoverageData,
+} from "@lib/answerlattice/analyticsIntelligenceContracts";
 
-export interface AnswerlatticeCoverageData {
-    lastUpdated: any;
-    coverage: {
-        date: string;       // YYYY-MM-DD
-        hits: number;       // Canonical answer served
-        misses: number;     // Fell through to RAG
-        rate: number;       // 0-100 (percentage)
-        total: number;      // hits + misses
-    } | null;
-}
+export type { AnswerlatticeCoverageData } from "@lib/answerlattice/analyticsIntelligenceContracts";
 
 /**
  * Get canonical coverage KPI for a tenant+store.
@@ -33,7 +28,7 @@ export const getAnswerlatticeCoverage = async (tId: number, sId: number): Promis
     const docRef = doc(answerlatticeFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `coverage_${tId}_${sId}`);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-        return docSnap.data() as AnswerlatticeCoverageData;
+        return parseAnswerlatticeCoverageData(docSnap.data(), { tenantId: tId, storeId: sId });
     }
     return null;
 };

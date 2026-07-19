@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import {
     buildAnswerlatticeSignalDocumentId,
+    buildAnswerlatticeSignalPayloadFingerprint,
     hashAnswerlatticeSignalIdentity,
     normalizeExactAnswerlatticeSignalScopeId,
 } from '@lib/answerlattice/signalIdentity';
@@ -28,6 +29,24 @@ assert.notEqual(first, buildAnswerlatticeSignalDocumentId({
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: ' 1', sId: 101, deduplicationKey: 'x' }), null);
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: 1, sId: 101, deduplicationKey: '' }), null);
 assert.equal(hashAnswerlatticeSignalIdentity('same'), hashAnswerlatticeSignalIdentity('same'));
+const payloadFingerprint = buildAnswerlatticeSignalPayloadFingerprint({
+    type: 'ticket',
+    entityId: 'entity-1',
+    deduplicationKey: 'ticket:ticket-1',
+    metadata: { subject: 'Need help', nested: { b: 2, a: 1 } },
+});
+assert.equal(payloadFingerprint, buildAnswerlatticeSignalPayloadFingerprint({
+    type: 'ticket',
+    entityId: 'entity-1',
+    deduplicationKey: 'ticket:ticket-1',
+    metadata: { nested: { a: 1, b: 2 }, subject: 'Need help' },
+}));
+assert.notEqual(payloadFingerprint, buildAnswerlatticeSignalPayloadFingerprint({
+    type: 'ticket',
+    entityId: 'entity-1',
+    deduplicationKey: 'ticket:ticket-1',
+    metadata: { subject: 'Changed payload' },
+}));
 assert.equal(normalizeExactAnswerlatticeSignalScopeId(1), 1);
 assert.equal(normalizeExactAnswerlatticeSignalScopeId(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
 for (const value of ['1', '01', '1e0', 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, true, null]) {
@@ -39,8 +58,16 @@ const publicSignalRoute = fs.readFileSync(path.join(ROOT, 'src/app/api/answerlat
 const signalDal = fs.readFileSync(path.join(ROOT, 'src/database/answerlattice/signalEvents.ts'), 'utf8');
 assert.ok(emitter.includes('buildAnswerlatticeSignalDocumentId'));
 assert.ok(emitter.includes('dedupKey: persistentDedupKey'));
+assert.ok(emitter.includes('answerlattice_signal_replay_conflict'));
+assert.ok(emitter.includes('AnswerlatticeSignalReplayConflictError'));
+assert.ok(emitter.includes('resolutionEventId'));
+assert.ok(signalDal.includes('answerlattice_signal_replay_conflict'));
+assert.ok(signalDal.includes('buildAnswerlatticeSignalPayloadFingerprint'));
 assert.ok(emitter.includes('Promise<boolean>'));
 assert.ok(publicSignalRoute.includes("request.headers.get('idempotency-key')"));
+assert.ok(publicSignalRoute.includes('IDEMPOTENCY_KEY_CONFLICT'));
+assert.ok(publicSignalRoute.includes('IDEMPOTENCY_REPLAY_CONFLICT'));
+assert.ok(publicSignalRoute.includes("failureMode: 'throw'"));
 assert.ok(publicSignalRoute.includes('SIGNAL_PERSISTENCE_UNAVAILABLE'));
 assert.ok(signalDal.includes("where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)"));
 assert.ok(signalDal.includes('MAX_BATCH_SIGNAL_ENTITIES = 300'));

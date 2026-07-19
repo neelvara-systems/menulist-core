@@ -42,6 +42,8 @@ Public consumers:
 
 The public pull API hides expired temporary status values. Browser/client store payloads omit inactive truth rather than serializing the raw field.
 
+Standard public status types (`closed_today`, `kitchen_closed`, `opening_late`, `closing_early`, and `special_menu`) resolve through the shared public-customer message bundle on OBP, menu, and Guest Feedback. `custom` messages remain owner-authored truth and render verbatim. Localization uses the already-resolved public language and adds no status read/write, translation provider call, listener, or cleanup job.
+
 ## Structured Data
 
 `buildTempStatusSchema()` uses the same active-status evaluator and store timezone. Only `closed_today` produces `specialOpeningHoursSpecification`, limited to the current store-local calendar day. Kitchen-only, late-open, early-close, special-menu, and custom banners do not claim that the whole LocalBusiness is closed. Invalid timezones or dates omit the status schema safely.

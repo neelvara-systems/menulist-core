@@ -7,10 +7,12 @@ import {
     ANSWERLATTICE_GUIDANCE_MAX_BODY_BYTES,
     AnswerlatticeGuidanceOutcomeSchema,
     buildAnswerlatticeGuidanceOutcomeIdempotencyKey,
+    matchAnswerlatticeGuidanceOutcomeToHistory,
 } from '@lib/answerlattice/guidedResolutionContracts';
 import { normalizeAnswerlatticeCanonicalAnswerId } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
 import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
 import { normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import {
@@ -180,8 +182,13 @@ export async function POST(request: NextRequest) {
             || historyData.mountContext !== 'widget'
             || historyData.canonical !== true
             || !canonicalAnswerId
+            || !isAnswerlatticeSearchHistoryAvailableForInteraction(historyData)
         ) {
             return jsonResponse(request, { error: 'Search record not found' }, { status: 404 });
+        }
+        const outcomeEvidence = matchAnswerlatticeGuidanceOutcomeToHistory(outcome, historyData);
+        if (!outcomeEvidence) {
+            return jsonResponse(request, { error: 'Guidance outcome does not match the served procedure' }, { status: 409 });
         }
 
         const matchedEntityId = Array.isArray(historyData.matchedEntityIds)
@@ -204,15 +211,15 @@ export async function POST(request: NextRequest) {
                 procedureSessionId: outcome.procedureSessionId,
                 searchHistoryId: normalizedSearchHistoryId,
                 canonicalAnswerId,
-                procedureSlug: outcome.procedureSlug || null,
+                procedureSlug: outcomeEvidence.procedureSlug,
                 outcome: outcome.outcome,
                 totalSteps: outcome.totalSteps,
                 completedSteps: outcome.completedSteps,
                 blockedStepOrder: outcome.blockedStepOrder || null,
-                targetId: outcome.targetId || null,
-                expectedEvent: outcome.expectedEvent || null,
+                targetId: outcomeEvidence.targetId,
+                expectedEvent: outcomeEvidence.expectedEvent,
                 widgetSessionId: outcome.widgetSessionId,
-                contextKey: outcome.contextKey || null,
+                contextKey: outcomeEvidence.contextKey,
                 query: typeof historyData.query === 'string' ? historyData.query.slice(0, 220) : null,
                 answerSource: typeof historyData.answerSource === 'string' ? historyData.answerSource.slice(0, 80) : null,
             },

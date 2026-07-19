@@ -20,12 +20,13 @@ if (process.env.FUNCTIONS_EMULATOR === 'true') {
     require('firebase-functions/logger').info('[Answerlattice Dev] Loaded .env.local for emulator');
 }
 
-import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentUpdated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runAnswerlatticeMasterScheduler } from './answerlattice/answerlatticeMasterScheduler';
+import { refreshAnswerlatticeSupportBoardLiveSummary } from './answerlattice/supportBoardSummary';
 import {
     acquireChatAnalyticsBackfillLease,
     backfillChatAnalyticsDays,
@@ -83,6 +84,25 @@ const ANSWERLATTICE_EMBED_TASK_OPTIONS = {
         maxDispatchesPerSecond: 3,
     },
 };
+
+export const answerlatticeSupportBoardSummaryOnWrite = onDocumentWritten(
+    {
+        region: 'us-central1',
+        document: `${DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS}/{cardId}`,
+        retry: true,
+        timeoutSeconds: 60,
+        memory: '256MiB',
+        maxInstances: 3,
+    },
+    async (event) => {
+        await refreshAnswerlatticeSupportBoardLiveSummary({
+            before: event.data?.before.exists ? event.data.before.data() || null : null,
+            after: event.data?.after.exists ? event.data.after.data() || null : null,
+            eventId: event.id,
+            eventTime: event.time,
+        });
+    },
+);
 
 export const backfillChatAnalytics = onCall(
     {

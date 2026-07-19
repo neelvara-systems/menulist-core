@@ -1,7 +1,7 @@
 # Knowledge Base — Mobile Support Assessment
 
-> **Version:** 1.0.1
-> **Last Updated:** 2026-07-13
+> **Version:** 2.0.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Mobile team, Product
 
 ---
@@ -23,9 +23,9 @@ The AI QnA Chatbot (which uses KB articles) is the primary mobile use case. Dire
 
 ## 2. Current Mobile Implementation
 
-- No dedicated mobile KB screen exists
-- Desktop `KnowledgeBaseExplorer` is responsive (sidebar/on-this-page hidden below `lg` breakpoint)
-- Content area works reasonably well on mobile already (single column layout)
+- Customer Help Center browsing uses the existing responsive Knowledge Base explorer.
+- The platform management template stacks category, section, and article panes on narrow screens.
+- The shared Article modal is responsive and reports search readiness only when `embeddingStatus === 'embedded'` and the active vector exists.
 
 ---
 
@@ -44,7 +44,7 @@ The AI QnA Chatbot (which uses KB articles) is the primary mobile use case. Dire
 - **DAL:** Same `src/database/knowledgeBase/` functions
 - **Cache:** Same `PlatformGlobalDataContext.cachedKBCategories`
 - **Types:** Same `src/types/knowledgeBase.ts`
-- **UI:** antd-mobile components
+- **UI:** current shared Ant Design platform template and existing mobile shell; do not add `antd-mobile` without an explicit dependency decision
 - **Icons:** react-icons/lu (Lucide) only
 
 ---
@@ -63,4 +63,4 @@ Mobile support expectation:
 - modals and drawers fit the viewport;
 - large content authoring remains better on desktop through the desktop-tools shortcut.
 
-The canonical Embedding 2 contract adds no separate mobile flow or navigation. The shared responsive article modal derives “Search ready” from the same `embedding` field used by retrieval, so desktop and mobile administration report one consistent readiness state.
+The canonical Embedding 2 contract adds no separate mobile flow or navigation. Destructive category/section cascade is blocked on every viewport. Bulk status changes consume the transaction-authoritative navigation map so mobile and desktop do not display stale article links after archive or publish.

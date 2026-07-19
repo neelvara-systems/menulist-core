@@ -8,15 +8,16 @@
  * @see __docs__/answerlattice/instant-response-infrastructure/
  */
 
-import { AnswerlatticeProcedure } from '@type/answerlattice';
+import { AnswerlatticeProcedure, AnswerlatticePublicCitation } from '@type/answerlattice';
 import type { AnswerlatticeCacheSourceVersions } from './cacheVersionManifest';
 
 export interface CachedCanonicalAnswer {
     craftedAnswer: string;
     canonicalAnswerId: string;
-    confidence: 'high' | 'medium';
+    confidence: 'high' | 'medium' | 'low';
     answerType: string;
     matchedEntityIds: string[];
+    citations?: AnswerlatticePublicCitation[];
     procedure?: AnswerlatticeProcedure | null;
     cachedAt: number;
     answerVersion: number;

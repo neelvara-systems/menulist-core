@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * POST /api/answerlattice/predictive-help
  * Body: { page, feature?, workflow?, plan?, userRole?, entityHints?, userId }
  *
- * Auth: API key (widget) or withAuth (help center)
+ * Auth: scoped widget API key plus allowed-origin/runtime-token authorization
  * Feature-flagged: ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT
  *
  * @see __docs__/answerlattice/predictive-support/
@@ -18,9 +18,17 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { PRODUCT_IDS } from '@constant/product';
 import { evaluateTriggers } from '@lib/answerlattice/predictiveEngine';
+import {
+    ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN,
+    ANSWERLATTICE_PREDICTIVE_MAX_BODY_BYTES,
+} from '@lib/answerlattice/predictiveSupportContracts';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
+    isAnswerlatticeWidgetRuntimeRequestAuthorized,
+} from '@lib/answerlattice/widgetRuntimeTokenServer';
 import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
-import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey, withPublicApiCors } from '@lib/publicApi/auth';
+import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, validatePublicApiKey, withPublicApiCors } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -28,17 +36,18 @@ import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import type { AnswerlatticeContextPayload } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-
-const PREDICTIVE_HELP_MAX_BODY_BYTES = 4 * 1024;
+import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const PredictiveHelpRequestSchema = z.object({
-    page: z.string().trim().min(1).max(200),
-    feature: z.string().trim().max(200).optional(),
-    workflow: z.string().trim().max(200).optional(),
-    plan: z.string().trim().max(80).optional(),
-    userRole: z.string().trim().max(80).optional(),
-    entityHints: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
-    userId: z.string().trim().max(160).optional(),
+    page: z.string().trim().min(1).max(100).regex(ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN),
+    feature: z.string().trim().min(1).max(100).regex(ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN).optional(),
+    workflow: z.string().trim().min(1).max(100).regex(ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN).optional(),
+    plan: z.string().trim().min(1).max(100).regex(ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN).optional(),
+    userRole: z.string().trim().min(1).max(100).regex(ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN).optional(),
+    entityHints: z.array(
+        z.string().trim().min(1).max(64).regex(ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN),
+    ).max(5).optional(),
+    userId: z.string().trim().min(8).max(160).regex(/^[A-Za-z0-9_.:-]+$/),
 }).strict();
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
@@ -68,9 +77,22 @@ export async function POST(request: NextRequest) {
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
+        const preAuthRateLimit = await checkRateLimit({
+            key: `canon-predict-preauth:${hashPublicRateLimitValue(getClientIp(request))}`,
+            limit: Math.max(rateLimitConfig.limit * 4, 60),
+            window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
+        });
+        if (!preAuthRateLimit.allowed) {
+            return emptyCorsResponse(request, {
+                status: 204,
+                headers: { 'Cache-Control': 'no-store' },
+            });
+        }
         const rateLimitResult = await checkRateLimit({
             key: `canon-predict:${apiKeyRateLimitId}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (
             rateLimitResult.allowed
@@ -122,12 +144,18 @@ export async function POST(request: NextRequest) {
             return emptyCorsResponse(request, { status: 204 });
         }
 
-        const requestOrigin = request.headers.get('origin');
-        if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
+        if (!isAnswerlatticeWidgetRuntimeRequestAuthorized({
+            requestOrigin: request.headers.get('origin'),
+            allowedOrigins: storeData.widgetAllowedOrigins,
+            runtimeToken: request.headers.get(ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER),
+            apiKey,
+            tId,
+            sId,
+        })) {
             return emptyCorsResponse(request, { status: 204 });
         }
 
-        const bodyResult = await readBoundedJsonBody(request, PREDICTIVE_HELP_MAX_BODY_BYTES);
+        const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_PREDICTIVE_MAX_BODY_BYTES);
         if (bodyResult.ok === false) {
             return emptyCorsResponse(request, { status: 204 });
         }
@@ -155,14 +183,16 @@ export async function POST(request: NextRequest) {
             context,
             tId,
             sId,
-            hashApiKey(`${apiKeyRateLimitId}:${userId || 'anonymous'}`).slice(0, 24)
+            hashApiKey(`${apiKeyRateLimitId}:${userId}`).slice(0, 24)
         );
 
         if (!suggestion) {
             return emptyCorsResponse(request, { status: 204 });
         }
 
-        return withPublicApiCors(NextResponse.json({ suggestion }), request);
+        const response = NextResponse.json({ suggestion });
+        response.headers.set('Cache-Control', 'no-store');
+        return withPublicApiCors(response, request);
 
     } catch (error) {
         logRuntimeFailure('answerlattice_predictive_help_failed', error);

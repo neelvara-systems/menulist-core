@@ -1437,7 +1437,6 @@ const menuCardDesignAdvisorRoute = read('src/app/api/menu-card-export/design-adv
 const reviewSuggestRoute = read('src/app/api/reviews/suggest/route.ts');
 const seoRoute = read('src/app/api/seo/route.ts');
 const translationsRoute = read('src/app/api/translations/route.ts');
-const weeklyNarrativeLocalRoute = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
 const projectEditModal = read('src/components/templates/main-app/projects/ProjectDetails/ProjectEditModal.tsx');
 const aiImageGenerator = read('src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx');
 const imageUploadModal = read('src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx');
@@ -2476,20 +2475,11 @@ assertOrder(
     ],
     'AI pack status route must check billing permission before capacity reads',
 );
-assertIncludes(weeklyNarrativeLocalRoute, 'ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS', 'Weekly narrative local route must require Answerlattice readiness permission.');
-assertOrder(
-    weeklyNarrativeLocalRoute,
-    [
-        'const rateLimit = await checkRateLimit({',
-        'if (!rateLimit.allowed) {',
-        'const permission = await requireAnswerlatticePermission(',
-        'if (permission.response) return permission.response;',
-        "logger.info('[Weekly Narrative Local] Generating weekly narrative'",
-        'answerlatticeFirestoreAdmin',
-        'answerlatticeGenAIClient.models.generateContent({',
-    ],
-    'Weekly narrative route must check analytics permission before provider/firestore work',
-);
+const weeklyNarrativeLocalRoute = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
+assertIncludes(weeklyNarrativeLocalRoute, 'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT', 'Weekly narrative refresh must require support management.');
+assertIncludes(weeklyNarrativeLocalRoute, "generationMode: 'deterministic'", 'Weekly narrative refresh must remain deterministic.');
+assert(!weeklyNarrativeLocalRoute.includes('answerlatticeGenAIClient'), 'Weekly narrative refresh must not call a model provider.');
+assert(!exists('src/app/api/analytics/weekly-narrative/regenerate/route.ts'), 'Retired weekly narrative regeneration wrapper must stay absent.');
 assert(!todayView.includes('This feature is coming soon.'), 'Today view must not show future-promise feature copy.');
 assertIncludes(todayView, 'Today is not available for this location.', 'Today disabled state must use stable availability copy.');
 assert(!ownerDashboardTypes.includes('Monthly summary coming soon'), 'Owner dashboard summary copy must not promise future work.');
@@ -2558,8 +2548,12 @@ assertIncludes(templateRegistryDal, '"Template storage is not available for this
 assertIncludes(templateRegistryDal, '"Template storage is full. Clear storage or upgrade Firebase Storage, then try again."', 'Template registry DAL must keep fixed quota failure copy.');
 assertIncludes(platformJobActionMenu, 'platform_kb_job_delete_failed', 'Platform KB job action menu must code delete failures.');
 assertIncludes(platformWeeklyDigest, 'platform_weekly_digest_load_failed', 'Platform weekly digest must code load failures.');
-assertIncludes(platformWeeklyDigest, 'platform_weekly_digest_generate_failed', 'Platform weekly digest must code generation failures.');
-assertIncludes(platformWeeklyDigest, 'WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE', 'Platform weekly digest must use fixed generation failure copy.');
+assert(!platformWeeklyDigest.includes('platform_weekly_digest_generate_failed'), 'Platform weekly digest must not retain the retired provider-generation failure path.');
+assert(!platformWeeklyDigest.includes('WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE'), 'Platform weekly digest must not retain retired generation copy.');
+assertIncludes(platformWeeklyDigest, 'getAnswerlatticeWeeklySummaryFreshness', 'Platform weekly digest must expose bounded freshness evidence.');
+assertIncludes(platformWeeklyDigest, 'digest.sourceCompleteness.comparisonComplete', 'Platform weekly digest must hide incomplete comparisons.');
+assert(!platformWeeklyDigest.includes('/api/analytics/weekly-narrative/'), 'Platform weekly digest must remain a read-only scheduled-summary surface.');
+assert(!platformWeeklyDigest.includes('Regenerate'), 'Platform weekly digest must not expose manual regeneration.');
 assert(!platformWeeklyDigest.includes('errorData.details ||'), 'Platform weekly digest must not surface raw API details in generation errors.');
 assert(!platformWeeklyDigest.includes('message.error(error instanceof Error ? error.message'), 'Platform weekly digest must not surface raw exception messages in failure toasts.');
 assertIncludes(platformUsers, 'platform_user_verify_request_rejected', 'Platform users dashboard must code rejected verification responses.');
@@ -3736,7 +3730,8 @@ assertIncludes(answerlatticeOnboardingForm, 'ANSWERLATTICE_ONBOARDING_FAILED_MES
 assert(!answerlatticeOnboardingForm.includes('throw new Error(data.error'), 'Answerlattice onboarding form must not throw raw onboard API response text.');
 assert(!answerlatticeOnboardingForm.includes('setError(err.message'), 'Answerlattice onboarding form must not show raw exception messages.');
 assertIncludes(feedbackForm, 'captchaToken: captchaToken || undefined', 'Guest feedback form must submit captchaToken.');
-assertIncludes(feedbackForm, 'GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE', 'Guest feedback form must use fixed submit failure copy.');
+assertIncludes(feedbackForm, "t('feedback.submitFailed')", 'Guest feedback form must use allowlisted localized submit failure copy.');
+assertIncludes(feedbackForm, "t('feedback.networkError')", 'Guest feedback form must use allowlisted localized network failure copy.');
 assert(!feedbackForm.includes('validationMessage || data.error'), 'Guest feedback form must not show raw feedback API response text.');
 assertIncludes(loginPage, 'CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE', 'Login claim setup must use fixed failure copy.');
 assertIncludes(loginPage, 'LOGIN_FAILED_MESSAGE', 'Login credentials failure must use fixed failure copy.');

@@ -1,146 +1,62 @@
-# Automatic Knowledge Creation — Specification
+# Automatic Knowledge Creation - Specification
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
-> **Audience:** CEO / PM / Clients
+> **Status:** Implemented and locally hardened
+> **Last verified:** 2026-07-18
 
----
+## Problem
 
-## §1 — Problem Statement
+Repeated tickets, negative chat outcomes, escalations, and recurring fallbacks reveal support friction, but they do not establish the correct product answer. A solo founder needs the system to organize that evidence and prepare review work without silently turning observed conversation into product truth.
 
-Knowledge bases decay. Products evolve. Documentation falls behind. Support tickets increase.
+## Required Outcome
 
-In the current Answerlattice system:
-- Signal events are collected (ticket, chat_negative, escalation)
-- Nightly batch clusters signals by entity
-- When an entity has friction signals but NO canonical answer → a `new_answer_required` mutation proposal is created
-- **But the proposal is empty** — `suggestedChange: {}` — the founder must write the answer from scratch
+For an admitted entity-scoped signal cluster, Answerlattice may create a mutation proposal and prepare a draft. The founder must be able to inspect the reason, evidence summary, target answer, proposed content, and review state before a server-owned action changes canonical truth.
 
-This creates a bottleneck: the system detects knowledge gaps perfectly, but the founder must do 100% of the writing work.
+## Functional Requirements
 
-**The gap:** The last mile between "we know what's missing" and "here's a draft to review."
+1. Signal admission is tenant scoped, append only, bounded, sanitized, and feature flagged.
+2. Reused persistent signal identities are accepted only when the stored payload fingerprint matches.
+3. Signal mutation fails closed when its bounded evidence window is saturated.
+4. Clustering uses resolved product entity identity; unresolved signals are not mutated into truth.
+5. Existing pending proposals prevent duplicate work for the same governed target.
+6. Proposal creation remains deterministic where a stable source request exists.
+7. Draft generation supports `new_answer_required` and `content_refinement` only.
+8. Draft generation is capped at ten successful drafts per tenant scheduler run.
+9. Draft claim leases prevent concurrent duplicate provider work and allow recovery after expiry.
+10. Invalid, missing, or unparsable model output marks the draft failed; it does not publish or remove the proposal.
+11. The review UI must call model-derived values an extractor or signal score, not answer confidence or accuracy.
+12. Approval, rejection, and implementation are server owned and audited.
+13. Impact tracking compares like-for-like 14-day pre/post signal windows and fails closed if a window exceeds its bound.
 
----
+## Human Review Requirements
 
-## §2 — Solution Overview
+The reviewer must confirm:
 
-Add AI-generated draft content to `new_answer_required` mutation proposals. Transform the founder workflow from:
+- the canonical question and intended user job;
+- the product entity and target answer;
+- the factual content and missing caveats;
+- plan, role, state, region, and version applicability;
+- evidence and citations where material;
+- whether the proposal should create, refine, scope, or version an answer.
 
-**Before:** "34 signals about API Keys — please write an answer" (todo item)
-**After:** "34 signals about API Keys — here's a draft answer to review" (review-and-publish item)
+## Non-Goals
 
----
+- Automatic publication or approval.
+- Treating ticket repetition as verified truth.
+- Generic document generation.
+- Semantic clustering infrastructure for its own sake.
+- A replacement help desk or ticketing system.
+- A single opaque answer-quality score.
 
-## §3 — User Stories
+## Success Measures
 
-### US-1: AI Draft on New Answer Proposal
-**As a** SaaS founder using Answerlattice,
-**I want** the system to generate a draft canonical answer when it detects a knowledge gap,
-**So that** I can review and publish documentation instead of writing from scratch.
+- Median proposal-to-reviewed-answer time.
+- Percentage of priority gaps with an approved canonical answer.
+- Draft edit and rejection rates.
+- Repeated unresolved-question rate after implementation.
+- Human correction rate.
+- Like-for-like pre/post support-signal change.
+- Stale or invalid draft blocked before approval.
 
-**Acceptance Criteria:**
-- When a `new_answer_required` proposal is created (nightly batch or recurring fallback), the system generates a draft
-- Draft follows `CanonicalAnswerSchema`: title, structuredSummary, detailedExplanation, edgeCases, constraints
-- If `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS` is on, draft includes procedure steps when appropriate
-- Draft is stored on the proposal's `suggestedChange` field
-- Draft is visible in the MutationProposalReview UI
-- Draft generation failure does NOT block proposal creation (graceful degradation)
+## Rejection Conditions
 
-### US-2: Founder Reviews and Publishes Draft
-**As a** SaaS founder,
-**I want** to review, edit, and approve an AI-generated draft,
-**So that** the answer becomes a canonical answer after my review.
-
-**Acceptance Criteria:**
-- Governance UI shows the draft content alongside signal evidence (signal count, example questions, entity context)
-- Founder can edit any field before approving
-- "Approve" creates a real canonical answer from the draft
-- "Reject" marks the proposal as rejected (no answer created)
-- Published answers have `validation.validationSource: 'signal_cluster'`
-
-### US-3: Knowledge Gap Metrics
-**As a** SaaS founder,
-**I want** to see how many knowledge gaps exist and how many have been resolved,
-**So that** I can track documentation completeness over time.
-
-**Acceptance Criteria:**
-- Governance dashboard shows: total proposals, pending drafts, approved, rejected
-- Coverage KPI already exists — this extends it with proposal-specific metrics
-- No new dashboard required — extends existing governance hub
-
-### US-4: Content Refinement Drafts
-**As a** SaaS founder,
-**I want** the system to suggest improvements for existing answers that have high friction signals,
-**So that** I can improve unclear documentation.
-
-**Acceptance Criteria:**
-- When a `content_refinement` proposal is created, the system generates a suggested improvement
-- Improvement references the existing answer content + signal evidence
-- Founder sees side-by-side: current answer vs suggested improvement
-- This is lower priority than US-1 (new answers) — implementation can be deferred
-
----
-
-## §4 — Scope
-
-### In Scope (v1)
-1. AI draft generation for `new_answer_required` proposals
-2. Draft storage on existing `suggestedChange` field
-3. Draft visible in governance UI
-4. Approve draft → create canonical answer flow
-5. Feature flag: `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
-6. Gemini 2.5 Flash for generation (existing AI infrastructure)
-
-### Out of Scope (v1)
-1. Content refinement drafts (US-4) — deferred to v2
-2. Auto-publish (violates doctrine)
-3. New Firestore collections (use existing proposal docs)
-4. External integrations (Slack, Linear, etc.) — separate expansion item #7
-5. Semantic embedding clustering — entity-based clustering is correct
-6. Support analytics dashboards — Answerlattice is infrastructure, not analytics
-7. Ticket management UI — Answerlattice observes signals, not manages tickets
-
----
-
-## §5 — Doctrine Compliance
-
-### ⚠️ Critical Doctrine Rules
-
-| Doctrine | Rule | Compliance |
-|----------|------|------------|
-| Non-Goals §III | "LLM assists the control plane. It never becomes the control plane." | ✅ AI generates DRAFTS. Human approves. Never auto-publish. |
-| Freeze §2 | "Additive metadata fields on existing schemas allowed" | ✅ Draft content uses existing `suggestedChange` field |
-| Freeze §2 | "No new collections without RFC" | ✅ Zero new collections |
-| Core Doctrine §5 | "Signals propose mutations. Humans approve." | ✅ Draft is a richer proposal, still requires human approval |
-| Architecture §6 | "All derived state recomputable from primitives" | ✅ Draft is computed from signals + entities + KB context |
-
-### Guardrails
-1. **No auto-publish** — Drafts are always `pending_review`. Never skip human approval.
-2. **No hallucination risk** — Draft generation uses signal examples + existing KB + entity context. No invented features.
-3. **Graceful degradation** — If Gemini fails, proposal is created without draft (current behavior). System never blocks.
-4. **Cost cap** — Draft generation runs max 10 proposals per nightly batch. Estimated cost: <$0.02/run.
-
----
-
-## §6 — Success Metrics
-
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Draft approval rate | >60% of drafts approved (with edits) | Proposal status tracking |
-| Time to publish | <5 minutes from draft to published answer | Compare draft timestamp to approval timestamp |
-| Knowledge gap closure | Pending proposals decrease over time | Proposal count trend |
-| Founder effort reduction | 80% less writing time per new answer | Qualitative feedback |
-
----
-
-## §7 — Risks and Mitigations
-
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| AI generates incorrect steps | Medium | Founder review is mandatory. Draft is clearly marked as AI-generated. |
-| Draft quality too low | Medium | Use signal examples + entity context + existing KB for grounding. Quality improves with more KB content. |
-| Gemini cost spike | Low | Max 10 drafts/nightly run. Each draft ~100 tokens input, ~500 tokens output. Cost: ~$0.001 per draft. |
-| Founder ignores drafts | Low | Show impact score (signal count). Weekly summary of pending drafts. |
-| Doctrine violation | High | Hard-coded: no auto-publish path exists in code. Feature flag gated. |
+Do not expand automatic drafting if real customer tests show that review effort is not lower than authoring from scratch, generated drafts frequently require factual reconstruction, or proposal volume creates more maintenance work than it removes.

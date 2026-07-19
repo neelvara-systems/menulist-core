@@ -44,13 +44,28 @@ async function run(): Promise<void> {
         const otherDb = testEnv.authenticatedContext('owner-2', {
             role: 'OWNER', tenantId: '2', storeId: '202', uId: 'owner-2',
         }).firestore();
+        const noSupportDb = testEnv.authenticatedContext('viewer-1', {
+            role: 'VIEWER', tenantId: '1', storeId: '101', uId: 'viewer-1',
+        }).firestore();
+        const supportOnlyDb = testEnv.authenticatedContext('support-1', {
+            role: 'STAFF', tenantId: '1', storeId: '101', uId: 'support-1',
+            canManageSupport: true,
+        }).firestore();
+        const platformSupportDb = testEnv.authenticatedContext('platform-support-1', {
+            platformRole: 'PLATFORM_SUPPORT', role: 'PLATFORM_SUPPORT', uId: 'platform-support-1',
+        }).firestore();
         const analyticsRef = doc(ownerDb, 'chatAnalytics', '1_101_2026-07-10');
         await assertSucceeds(getDoc(analyticsRef));
+        await assertFails(getDoc(doc(noSupportDb, 'chatAnalytics', '1_101_2026-07-10')));
+        await assertSucceeds(getDoc(doc(platformSupportDb, 'chatAnalytics', '1_101_2026-07-10')));
         await assertFails(getDoc(doc(ownerDb, 'chatAnalytics', '2_202_2026-07-10')));
         await assertFails(setDoc(analyticsRef, { pId: 'AL', tId: 1, sId: 101 }, { merge: true }));
 
         const weeklyInsightRef = doc(ownerDb, 'insights', '1', 'stores', '101', 'ai', 'weekly');
         await assertSucceeds(getDoc(weeklyInsightRef));
+        await assertFails(getDoc(doc(noSupportDb, 'insights', '1', 'stores', '101', 'ai', 'weekly')));
+        await assertFails(getDoc(doc(supportOnlyDb, 'insights', '1', 'stores', '101', 'ai', 'weekly')));
+        await assertSucceeds(getDoc(doc(platformSupportDb, 'insights', '1', 'stores', '101', 'ai', 'weekly')));
         await assertFails(getDoc(doc(ownerDb, 'insights', '2', 'stores', '202', 'ai', 'weekly')));
         await assertFails(getDoc(doc(ownerDb, 'insights', '1', 'stores', '101', 'ai', 'forged')));
         await assertFails(setDoc(weeklyInsightRef, { narrative: 'Forged' }, { merge: true }));

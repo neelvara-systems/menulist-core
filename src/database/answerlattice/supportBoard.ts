@@ -8,7 +8,7 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, Timestamp, where, writeBatch } from '@firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, Timestamp, where } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
@@ -87,13 +87,6 @@ export type UpdateAnswerlatticeSupportBoardCardInput = Partial<Pick<
     | 'description'
     | 'status'
     | 'priority'
-    | 'sourceCustomerName'
-    | 'sourceCustomerEmail'
-    | 'sourceCustomerPhone'
-    | 'sourceCustomerUserId'
-    | 'sourceOrigin'
-    | 'sourcePath'
-    | 'sourceSessionId'
     | 'assigneeId'
     | 'assigneeName'
     | 'dueDate'
@@ -106,8 +99,6 @@ export type UpdateAnswerlatticeSupportBoardCardInput = Partial<Pick<
     | 'relatedSurfaceId'
     | 'relatedEntityId'
     | 'relatedContextKeys'
-    | 'resolvedOn'
-    | 'resolvedBy'
 >> & {
     statusActorId?: string | null;
     statusActorName?: string | null;
@@ -119,21 +110,51 @@ const makeLocalId = (prefix: string) => {
     return createRuntimeId(prefix);
 };
 
-const cleanText = (value: unknown, maxLength: number) => (
-    String(value || '').trim().slice(0, maxLength)
-);
+const normalizeScopeId = (value: unknown, label: string) => {
+    const normalized = Number(value);
+    if (!Number.isSafeInteger(normalized) || normalized <= 0) {
+        throw new Error(`Invalid support board ${label}`);
+    }
+    return normalized;
+};
 
-const cleanTags = (tags?: string[]) => (
-    Array.from(new Set((tags || [])
-        .map((tag) => cleanText(tag, 48))
-        .filter(Boolean)))
-        .slice(0, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_TAGS_PER_CARD)
-);
+const cleanText = (value: unknown, maxLength: number) => {
+    if (typeof value !== 'string' && typeof value !== 'number') return '';
+    return String(value).trim().slice(0, maxLength);
+};
 
 const cleanNullableText = (value: unknown, maxLength: number) => {
     const cleaned = cleanText(value, maxLength);
     return cleaned || null;
 };
+
+const cleanDueDate = (value: unknown) => {
+    const cleaned = cleanText(value, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_DUE_DATE_LENGTH);
+    return /^\d{4}-\d{2}-\d{2}$/.test(cleaned) ? cleaned : null;
+};
+
+const buildSourceCardDocumentId = async (
+    tId: number,
+    sId: number,
+    sourceType: AnswerlatticeSupportBoardCard['sourceType'],
+    sourceId?: string | null,
+) => {
+    const normalizedSourceId = cleanText(sourceId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH);
+    if (sourceType === ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.MANUAL || !normalizedSourceId) return null;
+    if (!globalThis.crypto?.subtle) throw new Error('Secure source-card identity is unavailable');
+
+    const input = JSON.stringify({ sId, sourceId: normalizedSourceId, sourceType, tId });
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+    const hex = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('');
+    return `sb_source_${tId}_${sId}_${hex.slice(0, 24)}`;
+};
+
+const cleanTags = (tags?: string[]) => (
+    Array.from(new Set((tags || [])
+        .map((tag) => cleanText(tag, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_TAG_LENGTH))
+        .filter(Boolean)))
+        .slice(0, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_TAGS_PER_CARD)
+);
 
 const cleanRelatedEntityId = (value: unknown) => normalizeAnswerlatticeResolvedEntityId(value);
 
@@ -157,6 +178,13 @@ const normalizeSourceType = (sourceType?: string): AnswerlatticeSupportBoardCard
         : ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.MANUAL;
 };
 
+const normalizeNoteStatus = (status?: string): AnswerlatticeSupportBoardNote['status'] => {
+    const values = Object.values(ANSWERLATTICE_SUPPORT_BOARD_NOTE_STATUS);
+    return values.includes(status as AnswerlatticeSupportBoardNote['status'])
+        ? status as AnswerlatticeSupportBoardNote['status']
+        : ANSWERLATTICE_SUPPORT_BOARD_NOTE_STATUS.OPEN;
+};
+
 const buildStatusEntry = (
     status: AnswerlatticeSupportBoardCard['status'],
     meta: {
@@ -171,9 +199,9 @@ const buildStatusEntry = (
     createdBy: {
         id: cleanText(meta.statusActorId, 100) || 'system',
         name: cleanText(meta.statusActorName, 100) || 'Answerlattice',
-        email: cleanText(meta.statusActorEmail, 160) || 'system@answerlattice.internal',
+        email: cleanText(meta.statusActorEmail, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_EMAIL_LENGTH) || 'system@answerlattice.internal',
     },
-    remark: cleanText(meta.statusRemark, 240) || 'Status set',
+    remark: cleanText(meta.statusRemark, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_STATUS_REMARK_LENGTH) || 'Status set',
 });
 
 const stripCreateMeta = (data: CreateAnswerlatticeSupportBoardCardInput) => {
@@ -216,33 +244,48 @@ const stripUpdateMeta = (patch: UpdateAnswerlatticeSupportBoardCardInput) => {
 
 const normalizeCardInput = (data: CreateAnswerlatticeSupportBoardCardInput) => {
     const { cardData, statusMeta } = stripCreateMeta(data);
+    const tId = normalizeScopeId(cardData.tId, 'tenant scope');
+    const sId = normalizeScopeId(cardData.sId, 'workspace scope');
     const status = normalizeStatus(cardData.status);
-
+    const sourceType = normalizeSourceType(cardData.sourceType);
+    const sourceId = sourceType === ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.MANUAL
+        ? null
+        : cleanNullableText(cardData.sourceId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH);
+    if (!sourceId && sourceType !== ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.MANUAL) {
+        throw new Error('Support board source id is required');
+    }
+    const isResolved = status === ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED;
+    if (isResolved) {
+        throw new Error('Create the support card before resolving it');
+    }
     return {
-        ...cardData,
+        tId,
+        sId,
         title: cleanText(cardData.title, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_TITLE_LENGTH),
         description: cleanText(cardData.description, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_DESCRIPTION_LENGTH),
         status,
         priority: normalizePriority(cardData.priority),
-        sourceType: normalizeSourceType(cardData.sourceType),
-        sourceId: cardData.sourceId || null,
-        sourceCustomerName: cleanNullableText(cardData.sourceCustomerName, 160),
-        sourceCustomerEmail: cleanNullableText(cardData.sourceCustomerEmail, 180),
-        sourceCustomerPhone: cleanNullableText(cardData.sourceCustomerPhone, 80),
-        sourceCustomerUserId: cleanNullableText(cardData.sourceCustomerUserId, 120),
-        sourceOrigin: cleanNullableText(cardData.sourceOrigin, 180),
-        sourcePath: cleanNullableText(cardData.sourcePath, 180),
-        sourceSessionId: cleanNullableText(cardData.sourceSessionId, 120),
-        dueDate: cardData.dueDate || null,
-        assigneeId: cleanNullableText(cardData.assigneeId, 100),
-        assigneeName: cleanNullableText(cardData.assigneeName, 100),
+        sourceType,
+        sourceId,
+        sourceCustomerName: cleanNullableText(cardData.sourceCustomerName, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_CUSTOMER_NAME_LENGTH),
+        sourceCustomerEmail: cleanNullableText(cardData.sourceCustomerEmail, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_CUSTOMER_EMAIL_LENGTH),
+        sourceCustomerPhone: cleanNullableText(cardData.sourceCustomerPhone, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_CUSTOMER_PHONE_LENGTH),
+        sourceCustomerUserId: cleanNullableText(cardData.sourceCustomerUserId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_SOURCE_USER_ID_LENGTH),
+        sourceOrigin: cleanNullableText(cardData.sourceOrigin, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_SOURCE_LOCATION_LENGTH),
+        sourcePath: cleanNullableText(cardData.sourcePath, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_SOURCE_LOCATION_LENGTH),
+        sourceSessionId: cleanNullableText(cardData.sourceSessionId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_SOURCE_SESSION_ID_LENGTH),
+        sourceIdentityRedactedAt: null,
+        sourceIdentityRedactedBy: null,
+        dueDate: cleanDueDate(cardData.dueDate),
+        assigneeId: cleanNullableText(cardData.assigneeId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_ID_LENGTH),
+        assigneeName: cleanNullableText(cardData.assigneeName, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_NAME_LENGTH),
         tags: cleanTags(cardData.tags),
-        relatedTicketId: cardData.relatedTicketId || null,
-        relatedConversationId: cardData.relatedConversationId || null,
-        relatedAnswerId: cardData.relatedAnswerId || null,
-        relatedProposalId: cardData.relatedProposalId || null,
-        relatedReleaseId: cardData.relatedReleaseId || null,
-        relatedSurfaceId: cardData.relatedSurfaceId || null,
+        relatedTicketId: cleanNullableText(cardData.relatedTicketId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH),
+        relatedConversationId: cleanNullableText(cardData.relatedConversationId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH),
+        relatedAnswerId: cleanNullableText(cardData.relatedAnswerId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH),
+        relatedProposalId: cleanNullableText(cardData.relatedProposalId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH),
+        relatedReleaseId: cleanNullableText(cardData.relatedReleaseId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH),
+        relatedSurfaceId: cleanNullableText(cardData.relatedSurfaceId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH),
         relatedEntityId: cleanRelatedEntityId(cardData.relatedEntityId),
         relatedContextKeys: cleanTags(cardData.relatedContextKeys),
         notes: [],
@@ -261,29 +304,21 @@ const normalizeUpdatePatch = (patch: UpdateAnswerlatticeSupportBoardCardInput) =
     const { cardPatch, statusMeta } = stripUpdateMeta(patch);
     return {
         updatePatch: {
-            ...cardPatch,
             ...(cardPatch.title !== undefined ? { title: cleanText(cardPatch.title, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_TITLE_LENGTH) } : {}),
             ...(cardPatch.description !== undefined ? { description: cleanText(cardPatch.description, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_DESCRIPTION_LENGTH) } : {}),
-            ...(cardPatch.status ? { status: normalizeStatus(cardPatch.status) } : {}),
-            ...(cardPatch.priority ? { priority: normalizePriority(cardPatch.priority) } : {}),
-            ...(cardPatch.sourceCustomerName !== undefined ? { sourceCustomerName: cleanNullableText(cardPatch.sourceCustomerName, 160) } : {}),
-            ...(cardPatch.sourceCustomerEmail !== undefined ? { sourceCustomerEmail: cleanNullableText(cardPatch.sourceCustomerEmail, 180) } : {}),
-            ...(cardPatch.sourceCustomerPhone !== undefined ? { sourceCustomerPhone: cleanNullableText(cardPatch.sourceCustomerPhone, 80) } : {}),
-            ...(cardPatch.sourceCustomerUserId !== undefined ? { sourceCustomerUserId: cleanNullableText(cardPatch.sourceCustomerUserId, 120) } : {}),
-            ...(cardPatch.sourceOrigin !== undefined ? { sourceOrigin: cleanNullableText(cardPatch.sourceOrigin, 180) } : {}),
-            ...(cardPatch.sourcePath !== undefined ? { sourcePath: cleanNullableText(cardPatch.sourcePath, 180) } : {}),
-            ...(cardPatch.sourceSessionId !== undefined ? { sourceSessionId: cleanNullableText(cardPatch.sourceSessionId, 120) } : {}),
-            ...(cardPatch.assigneeId !== undefined ? { assigneeId: cleanNullableText(cardPatch.assigneeId, 100) } : {}),
-            ...(cardPatch.assigneeName !== undefined ? { assigneeName: cleanNullableText(cardPatch.assigneeName, 100) } : {}),
-            ...(cardPatch.dueDate !== undefined ? { dueDate: cardPatch.dueDate || null } : {}),
-            ...(cardPatch.tags ? { tags: cleanTags(cardPatch.tags) } : {}),
-            ...(cardPatch.relatedContextKeys ? { relatedContextKeys: cleanTags(cardPatch.relatedContextKeys) } : {}),
-            ...(cardPatch.relatedTicketId !== undefined ? { relatedTicketId: cardPatch.relatedTicketId || null } : {}),
-            ...(cardPatch.relatedConversationId !== undefined ? { relatedConversationId: cardPatch.relatedConversationId || null } : {}),
-            ...(cardPatch.relatedAnswerId !== undefined ? { relatedAnswerId: cardPatch.relatedAnswerId || null } : {}),
-            ...(cardPatch.relatedProposalId !== undefined ? { relatedProposalId: cardPatch.relatedProposalId || null } : {}),
-            ...(cardPatch.relatedReleaseId !== undefined ? { relatedReleaseId: cardPatch.relatedReleaseId || null } : {}),
-            ...(cardPatch.relatedSurfaceId !== undefined ? { relatedSurfaceId: cardPatch.relatedSurfaceId || null } : {}),
+            ...(cardPatch.status !== undefined ? { status: normalizeStatus(cardPatch.status) } : {}),
+            ...(cardPatch.priority !== undefined ? { priority: normalizePriority(cardPatch.priority) } : {}),
+            ...(cardPatch.assigneeId !== undefined ? { assigneeId: cleanNullableText(cardPatch.assigneeId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_ID_LENGTH) } : {}),
+            ...(cardPatch.assigneeName !== undefined ? { assigneeName: cleanNullableText(cardPatch.assigneeName, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_NAME_LENGTH) } : {}),
+            ...(cardPatch.dueDate !== undefined ? { dueDate: cleanDueDate(cardPatch.dueDate) } : {}),
+            ...(cardPatch.tags !== undefined ? { tags: cleanTags(cardPatch.tags) } : {}),
+            ...(cardPatch.relatedContextKeys !== undefined ? { relatedContextKeys: cleanTags(cardPatch.relatedContextKeys) } : {}),
+            ...(cardPatch.relatedTicketId !== undefined ? { relatedTicketId: cleanNullableText(cardPatch.relatedTicketId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH) } : {}),
+            ...(cardPatch.relatedConversationId !== undefined ? { relatedConversationId: cleanNullableText(cardPatch.relatedConversationId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH) } : {}),
+            ...(cardPatch.relatedAnswerId !== undefined ? { relatedAnswerId: cleanNullableText(cardPatch.relatedAnswerId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH) } : {}),
+            ...(cardPatch.relatedProposalId !== undefined ? { relatedProposalId: cleanNullableText(cardPatch.relatedProposalId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH) } : {}),
+            ...(cardPatch.relatedReleaseId !== undefined ? { relatedReleaseId: cleanNullableText(cardPatch.relatedReleaseId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH) } : {}),
+            ...(cardPatch.relatedSurfaceId !== undefined ? { relatedSurfaceId: cleanNullableText(cardPatch.relatedSurfaceId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH) } : {}),
             ...(cardPatch.relatedEntityId !== undefined ? { relatedEntityId: cleanRelatedEntityId(cardPatch.relatedEntityId) } : {}),
         },
         statusMeta,
@@ -300,17 +335,22 @@ export const listAnswerlatticeSupportBoardCards = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const normalizedTId = normalizeScopeId(tId, 'tenant scope');
+            const normalizedSId = normalizeScopeId(sId, 'workspace scope');
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('tId', '==', normalizedTId),
+                where('sId', '==', normalizedSId),
                 orderBy('modifiedOn', 'desc'),
                 limit(clampBoardLimit(maxResults)),
             );
             const snapshot = await getDocs(q);
             const cards: AnswerlatticeSupportBoardCard[] = [];
             snapshot.forEach((item) => {
-                cards.push({ ...item.data(), id: item.id } as AnswerlatticeSupportBoardCard);
+                const data = item.data();
+                if (data.pId !== 'AL' || data.tId !== normalizedTId || data.sId !== normalizedSId) return;
+                if (typeof data.title !== 'string' || !Object.values(ANSWERLATTICE_SUPPORT_BOARD_STATUS).includes(data.status)) return;
+                cards.push({ ...data, id: item.id } as AnswerlatticeSupportBoardCard);
             });
             return cards;
         },
@@ -326,9 +366,15 @@ export const listAnswerlatticeSupportBoardCards = async (
 export const getAnswerlatticeSupportBoardSummary = async (tId: number, sId: number) => {
     return await apiCallComposer(
         async () => {
-            const snapshot = await getDoc(getSummaryDocRef(tId, sId));
+            const normalizedTId = normalizeScopeId(tId, 'tenant scope');
+            const normalizedSId = normalizeScopeId(sId, 'workspace scope');
+            const snapshot = await getDoc(getSummaryDocRef(normalizedTId, normalizedSId));
             if (!snapshot.exists()) return null;
-            return { ...snapshot.data(), id: snapshot.id } as AnswerlatticeSupportBoardSummary;
+            const data = snapshot.data();
+            if (data.pId !== 'AL' || data.tId !== normalizedTId || data.sId !== normalizedSId) return null;
+            const countFields = ['openCards', 'needsAnswerCards', 'highPriorityCards', 'totalRecentCards'] as const;
+            if (countFields.some((field) => !Number.isFinite(data[field]) || data[field] < 0)) return null;
+            return { ...data, id: snapshot.id } as AnswerlatticeSupportBoardSummary;
         },
         { tId, sId },
         'getAnswerlatticeSupportBoardSummary',
@@ -341,8 +387,36 @@ export const createAnswerlatticeSupportBoardCard = async (data: CreateAnswerlatt
             const normalized = normalizeCardInput(data);
             if (!normalized.title) throw new Error('Support board card title is required');
             const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
-            const docRef = await addDoc(getCollectionRef(), submitData);
-            return { ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard;
+            const deterministicId = await buildSourceCardDocumentId(
+                normalized.tId,
+                normalized.sId,
+                normalized.sourceType,
+                normalized.sourceId,
+            );
+            if (!deterministicId) {
+                const docRef = await addDoc(getCollectionRef(), submitData);
+                return { ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard;
+            }
+
+            const docRef = getDocRef(deterministicId);
+            const stored = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(docRef);
+                if (snapshot.exists()) {
+                    const existing = snapshot.data() as AnswerlatticeSupportBoardCard;
+                    if (
+                        existing.tId !== normalized.tId
+                        || existing.sId !== normalized.sId
+                        || existing.sourceType !== normalized.sourceType
+                        || existing.sourceId !== normalized.sourceId
+                    ) {
+                        throw new Error('Support board source identity conflict');
+                    }
+                    return { ...existing, id: snapshot.id } as AnswerlatticeSupportBoardCard;
+                }
+                transaction.set(docRef, submitData);
+                return { ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard;
+            });
+            return stored;
         },
         data,
         'createAnswerlatticeSupportBoardCard',
@@ -355,21 +429,64 @@ export const createAnswerlatticeSupportBoardCards = async (cards: CreateAnswerla
             const limitedCards = cards.slice(0, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_SOURCE_SYNC_ITEMS);
             if (limitedCards.length === 0) return [];
 
-            const batch = writeBatch(answerlatticeFirebaseClient);
-            const created: AnswerlatticeSupportBoardCard[] = [];
+            const prepared: Array<{
+                docRef: ReturnType<typeof doc>;
+                sourceId: string | null;
+                sourceType: AnswerlatticeSupportBoardCard['sourceType'];
+                submitData: Record<string, unknown>;
+                tId: number;
+                sId: number;
+            }> = [];
+            const seenDocumentIds = new Set<string>();
 
             for (const card of limitedCards) {
                 const normalized = normalizeCardInput(card);
                 if (!normalized.title) continue;
                 const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
-                const docRef = doc(getCollectionRef());
-                batch.set(docRef, submitData);
-                created.push({ ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard);
+                const deterministicId = await buildSourceCardDocumentId(
+                    normalized.tId,
+                    normalized.sId,
+                    normalized.sourceType,
+                    normalized.sourceId,
+                );
+                const docRef = deterministicId ? getDocRef(deterministicId) : doc(getCollectionRef());
+                if (seenDocumentIds.has(docRef.id)) continue;
+                seenDocumentIds.add(docRef.id);
+                prepared.push({
+                    docRef,
+                    sourceId: normalized.sourceId,
+                    sourceType: normalized.sourceType,
+                    submitData,
+                    tId: normalized.tId,
+                    sId: normalized.sId,
+                });
             }
 
-            if (created.length === 0) return [];
-            await batch.commit();
-            return created;
+            if (prepared.length === 0) return [];
+            return await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snapshots = await Promise.all(prepared.map(({ docRef }) => transaction.get(docRef)));
+                const created: AnswerlatticeSupportBoardCard[] = [];
+
+                prepared.forEach(({ docRef, sourceId, sourceType, submitData, tId, sId }, index) => {
+                    const snapshot = snapshots[index];
+                    if (snapshot.exists()) {
+                        const existing = snapshot.data() as AnswerlatticeSupportBoardCard;
+                        if (
+                            existing.tId !== tId
+                            || existing.sId !== sId
+                            || existing.sourceType !== sourceType
+                            || existing.sourceId !== sourceId
+                        ) {
+                            throw new Error('Support board source identity conflict');
+                        }
+                        return;
+                    }
+                    transaction.set(docRef, submitData);
+                    created.push({ ...submitData, id: docRef.id } as unknown as AnswerlatticeSupportBoardCard);
+                });
+
+                return created;
+            });
         },
         { count: cards.length },
         'createAnswerlatticeSupportBoardCards',
@@ -393,6 +510,9 @@ export const updateAnswerlatticeSupportBoardCard = async (
                     const card = snapshot.data() as AnswerlatticeSupportBoardCard;
                     const currentStatuses = Array.isArray(card.statuses) ? card.statuses : [];
                     const statusChanged = card.status !== updatePatch.status;
+                    if (statusChanged && currentStatuses.length >= ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_STATUS_HISTORY_PER_CARD) {
+                        throw new Error(`A support board card can hold up to ${ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_STATUS_HISTORY_PER_CARD} status changes`);
+                    }
                     const nextStatuses = statusChanged
                         ? [
                             buildStatusEntry(updatePatch.status as AnswerlatticeSupportBoardCard['status'], {
@@ -400,12 +520,19 @@ export const updateAnswerlatticeSupportBoardCard = async (
                                 statusRemark: statusMeta.statusRemark || 'Status updated',
                             }),
                             ...currentStatuses,
-                        ].slice(0, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_STATUS_HISTORY_PER_CARD)
+                        ]
                         : currentStatuses;
+                    const isResolved = updatePatch.status === ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED;
 
                     const updateData = await answerlatticeRequestBodyComposer({
                         ...updatePatch,
                         ...(statusChanged ? { statuses: nextStatuses } : {}),
+                        ...(statusChanged ? {
+                            resolvedOn: isResolved ? Timestamp.now() : null,
+                            resolvedBy: isResolved
+                                ? cleanText(statusMeta.statusActorName || statusMeta.statusActorId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_NAME_LENGTH) || 'Team member'
+                                : null,
+                        } : {}),
                     }, { isNew: false });
                     transaction.set(cardRef, updateData, { merge: true });
                     return updateData;
@@ -439,9 +566,9 @@ export const addAnswerlatticeSupportBoardNote = async (
             const nextNote: AnswerlatticeSupportBoardNote = {
                 id: makeLocalId('note'),
                 text,
-                status: note.status || ANSWERLATTICE_SUPPORT_BOARD_NOTE_STATUS.OPEN,
-                authorId: note.authorId || 'unknown',
-                authorName: cleanText(note.authorName, 100) || 'Team member',
+                status: normalizeNoteStatus(note.status),
+                authorId: cleanText(note.authorId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_ID_LENGTH) || 'unknown',
+                authorName: cleanText(note.authorName, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_NAME_LENGTH) || 'Team member',
                 createdAt,
             };
 
@@ -469,5 +596,47 @@ export const addAnswerlatticeSupportBoardNote = async (
         },
         { cardId, note: { ...note, text: '[redacted]' } },
         'addAnswerlatticeSupportBoardNote',
+    );
+};
+
+export const redactAnswerlatticeSupportBoardSourceIdentity = async (
+    cardId: string,
+    actor: { id: string; name: string },
+) => {
+    return await apiCallComposer(
+        async () => {
+            const cardRef = getDocRef(cardId);
+            return await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(cardRef);
+                if (!snapshot.exists()) throw new Error('Support board card not found');
+                const card = snapshot.data() as AnswerlatticeSupportBoardCard;
+                const hasIdentity = Boolean(
+                    card.sourceCustomerName
+                    || card.sourceCustomerEmail
+                    || card.sourceCustomerPhone
+                    || card.sourceCustomerUserId
+                    || card.sourceOrigin
+                    || card.sourcePath
+                    || card.sourceSessionId,
+                );
+                if (!hasIdentity) return false;
+
+                const updateData = await answerlatticeRequestBodyComposer({
+                    sourceCustomerName: null,
+                    sourceCustomerEmail: null,
+                    sourceCustomerPhone: null,
+                    sourceCustomerUserId: null,
+                    sourceOrigin: null,
+                    sourcePath: null,
+                    sourceSessionId: null,
+                    sourceIdentityRedactedAt: Timestamp.now(),
+                    sourceIdentityRedactedBy: cleanText(actor.name || actor.id, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_ACTOR_NAME_LENGTH) || 'Team member',
+                }, { isNew: false });
+                transaction.set(cardRef, updateData, { merge: true });
+                return true;
+            });
+        },
+        { cardId, actorIdPresent: Boolean(actor.id) },
+        'redactAnswerlatticeSupportBoardSourceIdentity',
     );
 };

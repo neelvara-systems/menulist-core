@@ -5,10 +5,13 @@ import {
     getStoreStatus,
     StoreStatus,
 } from "@lib/hours";
+import { createPublicCustomerTranslator } from "@lib/localization/publicCustomerMessages";
+import { localizePublicHoursText } from "@lib/localization/publicHoursText";
 import { Tag } from "antd";
 import { useEffect, useState } from "react";
 
 interface StoreStatusBadgeProps {
+    activeLanguage?: string;
     workingHours?: Record<string, string>;
     timezone?: string;
     showNextChange?: boolean;
@@ -25,12 +28,14 @@ interface StoreStatusBadgeProps {
  * @see __docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md
  */
 export function StoreStatusBadge({
+    activeLanguage,
     workingHours,
     timezone,
     showNextChange = true,
     urgentOnly = false,
     urgencyWindowMinutes = 5,
 }: StoreStatusBadgeProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
     const [status, setStatus] = useState<StoreStatus | null>(null);
     const [minutesUntilChange, setMinutesUntilChange] = useState<number | null>(
         null,
@@ -65,10 +70,12 @@ export function StoreStatusBadge({
         Closed: "red",
     };
 
+    const localizedStatus = localizePublicHoursText(status.statusText, t);
+    const localizedNextChange = localizePublicHoursText(status.nextChange, t);
     const displayText =
         showNextChange && status.nextChange
-            ? `${status.statusText} · ${status.nextChange}`
-            : status.statusText;
+            ? `${localizedStatus} · ${localizedNextChange}`
+            : localizedStatus;
 
     return (
         <Tag color={colorMap[status.statusText] || "default"} style={{ marginInlineEnd: 0 }}>

@@ -10,6 +10,7 @@ Use:
 
 - One selected Knowledge Intake can prepare ten product-specific editable questions and governed answer drafts, reducing blank-page setup without making generated text authoritative.
 - Canonical-only tests run without an AI provider call.
+- The dedicated First 10 check runs one exact active launch set and refuses partial or stale evidence.
 - Missing coverage remains visible for owner review.
 - Explicit end-user outcomes separate confirmed resolution from unverified non-escalation.
 - Examples are labelled; customer proof requires consent and evidence.

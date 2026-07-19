@@ -39,7 +39,7 @@ export const DB_COLLECTIONS = {
     CHAT_SESSIONS: "chatSessions",
     CHAT_ANALYTICS: "chatAnalytics", // Aggregated daily stats (cost-optimized)
     QUERY_EMBEDDINGS: "queryEmbeddings", // Cache for vector embeddings to avoid repeated API calls
-    WEEKLY_DIGESTS: "weeklyDigests", // AI-generated weekly performance summaries
+    WEEKLY_DIGESTS: "weeklyDigests", // Legacy weekly-summary collection; Answerlattice uses deterministic scoped insights.
 
     //Knowledge Base Collections
     KB_CATEGORIES: "kb_categories",
@@ -54,6 +54,7 @@ export const DB_COLLECTIONS = {
     CHANGELOG: "changelog",
     CHANGELOG_FEEDBACK: "changelog_feedback",
     ARTICLE_FEEDBACK: "article_feedback",
+    FAQ_FEEDBACK: "faq_feedback",
 
     //apps collections
     TODOS: "todos",

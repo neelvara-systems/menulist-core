@@ -3,8 +3,11 @@ import { createHash } from 'crypto';
 export const ANSWERLATTICE_ONBOARDING_STATUS = {
     PAYMENT_PENDING: 'payment_pending',
     PAYMENT_PROVIDER_FAILED: 'payment_provider_failed',
+    PROVIDER_RECOVERY_PENDING: 'provider_recovery_pending',
     PROVISIONING: 'provisioning',
 } as const;
+
+export const ANSWERLATTICE_ONBOARDING_PROVIDER_RECOVERY_HOLD_MS = 15 * 60 * 1000;
 
 export type AnswerlatticeOnboardingStatus = (
     typeof ANSWERLATTICE_ONBOARDING_STATUS[keyof typeof ANSWERLATTICE_ONBOARDING_STATUS]
@@ -35,6 +38,11 @@ export type AnswerlatticeProviderSubscriptionCandidate = {
 };
 
 const normalizeString = (value: unknown) => String(value || '').trim();
+const ANSWERLATTICE_TERMINAL_PROVIDER_SUBSCRIPTION_STATUSES = new Set([
+    'cancelled',
+    'completed',
+    'expired',
+]);
 
 export function buildAnswerlatticeOnboardingRequestFingerprint(
     input: AnswerlatticeOnboardingRequestIdentity,
@@ -96,16 +104,63 @@ export function findAnswerlatticeProviderSubscriptionForAttempt(params: {
     if (!attemptId) return null;
 
     const matches = params.candidates.filter((candidate) => {
-        if (!candidate || normalizeString(candidate.plan_id) !== params.providerPlanId) return false;
-        if (!candidate.notes || Array.isArray(candidate.notes) || typeof candidate.notes !== 'object') return false;
-        const notes = candidate.notes as Record<string, unknown>;
-        return normalizeString(notes.onboardingAttemptId) === attemptId
-            && normalizeString(notes.productId) === 'AL'
-            && normalizeString(notes.planId) === params.planId
-            && Number(notes.tenantId) === params.tenantId
-            && Number(notes.storeId) === params.storeId;
+        return normalizeString(candidate.status) === 'created'
+            && answerlatticeProviderSubscriptionMatchesAttempt({
+                attemptId,
+                candidate,
+                planId: params.planId,
+                providerPlanId: params.providerPlanId,
+                storeId: params.storeId,
+                tenantId: params.tenantId,
+            });
     });
 
     matches.sort((left, right) => Number(right.created_at || 0) - Number(left.created_at || 0));
     return matches[0] || null;
+}
+
+export function answerlatticeProviderSubscriptionMatchesAttempt(params: {
+    attemptId: string;
+    candidate: AnswerlatticeProviderSubscriptionCandidate;
+    planId: string;
+    providerPlanId: string;
+    storeId: number;
+    tenantId: number;
+}): boolean {
+    const attemptId = normalizeString(params.attemptId);
+    const candidate = params.candidate;
+    if (
+        !attemptId
+        || !candidate
+        || !normalizeString(candidate.id)
+        || normalizeString(candidate.plan_id) !== params.providerPlanId
+        || !candidate.notes
+        || Array.isArray(candidate.notes)
+        || typeof candidate.notes !== 'object'
+    ) return false;
+
+    const notes = candidate.notes as Record<string, unknown>;
+    return normalizeString(notes.onboardingAttemptId) === attemptId
+        && normalizeString(notes.productId) === 'AL'
+        && normalizeString(notes.planId) === params.planId
+        && normalizeString(notes.tenantId) === String(params.tenantId)
+        && normalizeString(notes.storeId) === String(params.storeId);
+}
+
+export function isAnswerlatticeTerminalProviderSubscriptionStatus(status: unknown): boolean {
+    return ANSWERLATTICE_TERMINAL_PROVIDER_SUBSCRIPTION_STATUSES.has(
+        normalizeString(status).toLowerCase(),
+    );
+}
+
+export function shouldHoldAnswerlatticeOnboardingProviderRecovery(params: {
+    nowMillis?: number;
+    providerSubscriptionId?: unknown;
+    recoveryAvailableAt?: unknown;
+}): boolean {
+    if (normalizeString(params.providerSubscriptionId)) return false;
+    const recoveryAvailableAtMillis = getAnswerlatticeOnboardingTimestampMillis(params.recoveryAvailableAt);
+    if (!recoveryAvailableAtMillis) return true;
+    const nowMillis = Number.isFinite(params.nowMillis) ? Number(params.nowMillis) : Date.now();
+    return nowMillis < recoveryAvailableAtMillis;
 }

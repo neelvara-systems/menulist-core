@@ -242,6 +242,7 @@ export default async function OBPContent({
         return (
             <StarterActivationHoldingPage
                 activePlanType={storeData?.activePlanType || null}
+                activeLanguage={contentLanguage}
                 storeName={storeData?.name || storeData?.businessName || null}
             />
         );

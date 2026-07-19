@@ -1,60 +1,65 @@
-# Predictive Support — Marketing & Sales Collateral
+# Predictive Support Marketing Boundary
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-10
+**Status:** Claim guidance only
+**Last verified:** July 18, 2026
 
----
+## Safe positioning
 
-## §1 — Positioning
+Predictive support helps a SaaS team place approved, page-specific support inside the product before the user starts a new support conversation.
 
-### One-Liner
-Answerlattice Predictive Support shows your users the right help before they even ask.
+Recommended description:
 
-### Elevator Pitch (30 seconds)
-Most support systems wait for users to get confused and ask a question. Answerlattice's Predictive Support flips this: when a user opens a complex page in your product, the system detects known friction points for that exact context and surfaces a contextual help card — before frustration leads to a ticket. Rule-based, deterministic, and self-improving from your actual support data.
+> Show approved help on the exact product page where it applies, and keep every trigger under founder review.
 
----
+Known-issue description:
 
-## §2 — Key Differentiators
+> Publish a current, page-specific incident notice with a controlled active window and optional public status link.
 
-| Feature | Answerlattice Predictive | Intercom Proactive | Zendesk Proactive |
-|---------|--------------------|--------------------|-------------------|
-| Knowledge-bound triggers | ✅ Entity + canonical answer linked | ❌ Manual content only | ❌ Manual content only |
-| Auto-generated from friction data | ✅ Nightly from real signals | ❌ Manual setup only | ❌ Manual setup only |
-| Self-improving effectiveness | ✅ Learning loop | ❌ Static rules | ❌ Static rules |
-| Governed (human approval) | ✅ Suggested → Approved flow | ❌ Direct publish | ❌ Direct publish |
-| Ontology-aware | ✅ Uses entity graph | ❌ No ontology | ❌ No ontology |
-| Zero-ML deterministic | ✅ Rule-based only | Partial (ML targeting) | ❌ ML-based |
-| Firebase cost-optimized | ✅ <$5/month at 100 tenants | N/A (SaaS pricing) | N/A (SaaS pricing) |
+## Differentiation
 
----
+The relevant distinction is governance, not broad automation:
 
-## §3 — Target ICP Messaging
+- exact structured context instead of raw DOM observation;
+- approved support content instead of invented product behavior;
+- owner-reviewed suggestions instead of automatic publication;
+- current trigger/window checks before interaction evidence is accepted;
+- engagement evidence kept separate from verified resolution.
 
-### For SaaS Founders
-"Your users shouldn't need to search for help. Answerlattice learns what confuses them and shows the answer before they ask."
+## Claims that require customer evidence
 
-### For Support Teams
-"Reduce repetitive tickets by 20-30%. Predictive Support handles the known issues so your team can focus on the complex ones."
+Do not publish numerical claims for:
 
-### For Product Teams
-"Turn your support friction data into a product guidance layer. See which pages confuse users and fix it with contextual help."
+- ticket reduction;
+- support deflection;
+- resolution uplift;
+- activation uplift;
+- response latency;
+- founder time saved;
+- task completion;
+- revenue or retention impact.
 
----
+These may be measured in customer pilots but are not established by the implementation alone.
 
-## §4 — Competitive Moat
+## Prohibited claims
 
-1. **Knowledge-bound:** Triggers are linked to Answerlattice's entity ontology and canonical answers — not just free-text. This means proactive help is always accurate and version-aware.
-2. **Self-improving:** Friction intelligence automatically suggests new triggers from real user confusion patterns. No other system does this.
-3. **Governed:** Auto-generated suggestions require founder approval. This prevents bad proactive help from annoying users — a common failure mode in competing products.
+Do not say that Predictive Support:
 
----
+- learns or improves itself automatically;
+- identifies confusion from every interaction;
+- prevents a stated percentage of tickets;
+- guarantees the right answer;
+- watches the user's screen or product behavior;
+- performs account actions;
+- automatically disables poor triggers;
+- has no competitor or is the only system with this behavior.
 
-## §5 — Pricing Consideration
+## Proof to collect
 
-Predictive Support should be positioned as a **premium capability** — available on Pro/Enterprise plans only. It requires:
-- Context-Aware Support (existing)
-- Friction Intelligence (existing)
-- Widget browser contract integration (existing)
+Before expanding public claims, collect:
 
-The value proposition justifies premium positioning: "Prevent 20-30% of support tickets before they happen."
+- eligible delivery and stale-context suppression;
+- shown/opened/dismissed counts;
+- verified downstream task completion or resolution;
+- owner review/edit/disable time;
+- comparison with a matched unguided workflow;
+- customer-approved examples of a useful cue and a safely suppressed cue.

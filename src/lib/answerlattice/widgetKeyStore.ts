@@ -3,7 +3,6 @@ import { isAnswerlatticeStoreInScope, normalizeAnswerlatticeScopeDocumentId } fr
 import {
     buildAnswerlatticeWidgetApiStateWithNewKey,
     buildAnswerlatticeWidgetKeySummaries,
-    deleteAnswerlatticeWidgetKey,
     renameAnswerlatticeWidgetKey,
     revokeAnswerlatticeWidgetKey,
     type AnswerlatticeWidgetApiState,
@@ -97,15 +96,10 @@ export const mutateAnswerlatticeWidgetKeys = async (
                 keyId: targetKeyId,
                 name: mutation.name,
             })
-            : mutation.action === 'revoke'
-                ? revokeAnswerlatticeWidgetKey({
-                    currentState: storeData.answerlatticeWidgetApi,
-                    keyId: targetKeyId,
-                })
-                : deleteAnswerlatticeWidgetKey({
-                    currentState: storeData.answerlatticeWidgetApi,
-                    keyId: targetKeyId,
-                });
+            : revokeAnswerlatticeWidgetKey({
+                currentState: storeData.answerlatticeWidgetApi,
+                keyId: targetKeyId,
+            });
         if (!nextState) {
             throw new AnswerlatticeWidgetKeyStoreError('key_not_found', 404, 'Widget key not found.');
         }

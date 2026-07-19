@@ -12,7 +12,9 @@ Choose questions that repeatedly interrupt launch work, especially around onboar
 
 ## Run The Free Check First
 
-Run **Canonical checks** before using the full runtime. The free check verifies the governed answer route, expected answer or FAQ, blocked phrases, and evidence rules without calling an AI provider.
+Select **Run First 10 checks** before using the full runtime. This free launch check runs the exact active ten-question set and verifies the governed answer route, expected answer or FAQ, blocked phrases, and evidence rules without calling an AI provider.
+
+If the action is unavailable, restore or activate every question in one valid set. Do not mix general starter questions with product-generated questions. Reload before running when a selected question changed or became inactive.
 
 ## Fix Failures In The Right Place
 

@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Website Content Plan
 
 > **Status:** IMPLEMENTED — public website copy includes day-one intake
-> **Version:** 1.0.0
+> **Version:** 1.5.0
 > **Created:** 2026-05-31
 > **Audience:** Website / Product / SEO
 
@@ -167,11 +167,11 @@ Bullets:
 - Source files are private workspace data.
 - Raw media is not retained by default in the day-one flow; extracted support text and metadata are stored for review.
 - URL import blocks private/internal addresses and uses capped fetches.
-- Discovered-but-skipped website URLs are stored as a manifest, not Firestore source documents.
-- Unchanged selected website pages skip expensive reprocessing.
+- Discovered website URLs are returned as bounded candidates; skipped URLs are not persisted as source documents or a discovery manifest.
+- Identical selected-page sources deduplicate within the same intake job.
 - Screenshots and videos should not contain passwords, tokens, card data, or private customer records.
-- Owner approval is required before high-risk answers become official.
-- Sources can be deleted with dependent unapproved drafts.
+- Authorized human review is required before intake drafts publish; canonical proposals still require the separate Governance approval flow.
+- Source-level deletion is not currently offered; do not promise cascade deletion until the governed lifecycle is implemented and verified.
 
 ---
 
@@ -183,7 +183,7 @@ Do say:
 - owner-approved
 - paid processing
 - selected pages
-- topic readiness
+- aggregate intake progress
 - support launch decisions
 
 Do not say:
@@ -205,3 +205,5 @@ Do not say:
 | 2026-05-31 | 1.1.0 | Added selected-page website import and app URL crawl boundary for public messaging. |
 | 2026-05-31 | 1.2.0 | Added runtime claim boundary for search, widget, hosted help, FAQ, canonical, surface-summary, and compiled-context readiness. |
 | 2026-05-31 | 1.3.0 | Synced public-site copy plan with implemented dedicated page, pricing credit wording, get-started checklist, FAQ, resources, updates, and security/source-intake boundaries. |
+| 2026-07-18 | 1.4.0 | Corrected discovery persistence and source-deletion claims to current runtime truth. |
+| 2026-07-18 | 1.5.0 | Replaced topic-readiness, generic high-risk approval, and background reprocessing claims with current review and dedupe behavior. |

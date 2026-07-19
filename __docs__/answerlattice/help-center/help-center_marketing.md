@@ -1,7 +1,7 @@
 # MenuList Help Center — Approved Positioning
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-16
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Product, Sales, Marketing, Support
 > **Source:** Current codebase and active release gates
 
@@ -18,6 +18,7 @@ Answerlattice supplies the scoped support knowledge and ticket infrastructure. T
 - Owners can submit and track support requests with up to four supported attachments of 10 MB each.
 - Ticket history and replies update through a bounded store-scoped listener.
 - Search failure leaves documentation, tickets, feedback, contact email and release notes as separate fallback paths.
+- Managed FAQ failure is visible and routes owners to the Knowledge Base or a ticket; the product does not silently present fallback copy as current approved FAQ truth.
 
 ## Claims Requiring Release Evidence
 

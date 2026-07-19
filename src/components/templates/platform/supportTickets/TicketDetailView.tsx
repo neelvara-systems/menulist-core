@@ -130,20 +130,33 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
             // Ticket → Knowledge Loop (Item #9): emit enriched resolution signal
             // Fire-and-forget — never blocks ticket update flow
             if (statusChanged && (values.status === SUPPORT_TICKET_STATUS.RESOLVED || values.status === SUPPORT_TICKET_STATUS.CLOSED)) {
+                const persistedTicket = res as SupportTicketType;
+                const persistedStatuses = Array.isArray(persistedTicket.statuses) ? persistedTicket.statuses : [];
+                const latestStatus = persistedStatuses[persistedStatuses.length - 1];
+                const latestStatusMillis = latestStatus?.timestamp && typeof latestStatus.timestamp.toMillis === 'function'
+                    ? latestStatus.timestamp.toMillis()
+                    : persistedStatuses.length;
+                const matchedEntityIds = persistedTicket.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds || [];
+                const resolutionEntityId = matchedEntityIds.find((value: unknown): value is string => (
+                    typeof value === 'string' && Boolean(value.trim())
+                ));
                 const resolutionSignalLogContext = {
                     ...getBoundedRuntimeStringContext('ticketId', ticket.id),
                     ...getBoundedRuntimeStringContext('ticketDisplayId', ticket.displayId),
                     ...getBoundedRuntimeStringContext('ticketStatus', values.status),
                 };
+                const resolutionTenantId = typeof persistedTicket.tId === 'number' ? persistedTicket.tId : 0;
+                const resolutionStoreId = typeof persistedTicket.sId === 'number' ? persistedTicket.sId : 0;
                 import('@lib/answerlattice/signalEmitter').then(({ emitTicketResolutionSignal }) => {
                     emitTicketResolutionSignal({
                         ticketId: ticket.id,
                         subject: ticket.subject || '',
                         messages: (res as SupportTicketType).messages || [],
                         category: ticket.category || '',
-                        tId: Number(ticket.tId),
-                        sId: Number(ticket.sId),
-                        resolvedBy: session.user.email || session.user.name || 'unknown',
+                        entityId: resolutionEntityId,
+                        tId: resolutionTenantId,
+                        sId: resolutionStoreId,
+                        resolutionEventId: `${values.status}_${latestStatusMillis}`,
                     }).catch((error) => {
                         logRuntimeFailure('answerlattice_ticket_resolution_signal_emit_failed', error, resolutionSignalLogContext);
                     });

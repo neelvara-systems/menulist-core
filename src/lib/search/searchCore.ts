@@ -42,6 +42,7 @@ import {
     rankAnswerlatticeExactEntityEvidence,
 } from '@lib/answerlattice/hybridEvidenceRetrieval';
 import { normalizeAnswerlatticeProductSurfaceScopeId } from '@lib/answerlattice/productSurfaceContent';
+import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
 import {
     parseAnswerlatticeRetrievalRelease,
     parseAnswerlatticeRetrievalSearchIndex,
@@ -480,6 +481,7 @@ const buildProductContextCacheToken = (productContext: CoreSearchInput['productC
         page: productContext.page || '',
         plan: productContext.plan || '',
         state: productContext.state || '',
+        version: productContext.version || '',
         surfaceEntityIds: Array.isArray((productContext as any).surfaceEntityIds)
             ? (productContext as any).surfaceEntityIds.map(String).sort()
             : [],
@@ -894,9 +896,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             mountContext,
                             craftedAnswer: cached.craftedAnswer,
                             references: [],
+                            citations: cached.citations || [],
                             canonical: true,
                             answerSource: 'canonical',
                             canonicalAnswerId: cached.canonicalAnswerId,
+                            guidedProcedure: cached.procedure || undefined,
                             matchedEntityIds: cached.matchedEntityIds,
                             confidence: cached.confidence,
                             sourceVersions: cached.sourceVersions,
@@ -920,6 +924,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                         return withAiProviderUsage({
                             craftedAnswer: cached.craftedAnswer,
                             references: [],
+                            citations: cached.citations || [],
                             suggestedQuestions: [],
                             searchHistoryId: savedHistory?.id,
                             canonical: true,
@@ -997,12 +1002,15 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             generatedQueryFromImage,
             craftedAnswer: result.craftedAnswer,
             references: result.references || [],
+            citations: result.citations || [],
             canonical: Boolean(result.canonical),
             answerSource: result.answerSource || (result.canonical ? 'canonical' : result.references?.length ? 'rag' : 'empty'),
             canonicalAnswerId: result.canonicalAnswerId,
+            guidedProcedure: result.canonical && result.procedure ? result.procedure : undefined,
             faqAnswerId: result.faqAnswerId,
             matchedEntityIds,
             fallbackReason: historyContext.fallbackReason,
+            clarification: result.clarification,
             confidence: result.confidence || historyContext.confidence,
             sourceVersions: {
                 ...(kbCacheState.sourceVersion
@@ -1090,6 +1098,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         return withAiProviderUsage({
             craftedAnswer: cachedResult.craftedAnswer,
             references: cachedResult.references || [],
+            citations: cachedResult.citations || [],
             suggestedQuestions: cachedResult.suggestedQuestions || [],
             searchHistoryId: cachedResult.id,
             canonical: !!cachedResult.canonical,
@@ -1097,6 +1106,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             canonicalAnswerId: cachedResult.canonicalAnswerId,
             faqAnswerId: cachedResult.faqAnswerId,
             confidence: cachedResult.confidence,
+            fallbackReason: cachedResult.fallbackReason,
+            clarification: cachedResult.clarification,
             answerType: cachedResult.answerType,
             imageProcessed: imageProcessed || !!cachedResult.imageUrl,
         });
@@ -1121,6 +1132,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const canonicalResult = await attemptCanonicalRetrieval(searchQuery, {
         tId,
         sId,
+        currentVersion: normalizeAnswerlatticeVersionLabel(validatedContext?.version)?.normalized,
         context: validatedContext,
         preloadedSearchIndex: instantCacheSearchIndex,
         preloadedLatestRelease: instantCacheLatestRelease,
@@ -1147,9 +1159,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 mountContext,
                 craftedAnswer: answer.content.structuredSummary,
                 references: [],
+                citations: canonicalResult.citations || [],
                 canonical: true,
                 answerSource: 'canonical',
                 canonicalAnswerId: answer.id,
+                guidedProcedure: answer.answerType === 'procedure' ? answer.content.procedure : undefined,
                 matchedEntityIds: canonicalResult.matchedEntityIds,
                 confidence: canonicalResult.confidence,
                 sourceVersions: canonicalSourceVersions,
@@ -1178,6 +1192,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         const result: CoreSearchResult = {
             craftedAnswer: answer.content.detailedExplanation || answer.content.structuredSummary,
             references: [],
+            citations: canonicalResult.citations || [],
             suggestedQuestions: [],
             canonical: true,
             answerSource: 'canonical',
@@ -1226,6 +1241,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     canonicalResult.matchedEntityIds[0],
                     answer,
                     canonicalResult.matchedEntityIds,
+                    canonicalResult.confidence === 'none' ? 'low' : canonicalResult.confidence,
                     effectiveProductContext?.plan,
                     effectiveProductContext?.userRole,
                     effectiveProductContext?.state,
@@ -1287,6 +1303,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             canonical: false,
             answerSource: 'empty',
             confidence: 'low',
+            fallbackReason,
+            clarification: canonicalResult.clarification,
             drifted: governanceReviewRequired,
             imageProcessed,
         };
@@ -1335,10 +1353,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             generatedQueryFromImage,
             craftedAnswer: safeFallback.craftedAnswer,
             references: [],
+            citations: [],
             canonical: false,
             answerSource: 'empty',
             matchedEntityIds: canonicalResult.matchedEntityIds,
             fallbackReason,
+            clarification: safeFallback.clarification,
             confidence: safeFallback.confidence,
             sourceVersions,
             ...buildSearchHistoryContextFields(effectiveProductContext),
@@ -1422,7 +1442,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 canonicalResult,
                 ragDocuments: [],
                 searchQuery,
-                sessionFailureCount: input.sessionFailureCount,
                 productContext: effectiveProductContext,
                 effectiveQuery: queryForEmbedding,
                 answerWasEmpty: true,
@@ -1814,9 +1833,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             id: d.id,
                             title: d.title || 'Untitled',
                             similarityScore: d.similarityScore as number,
-                        })),
+                    })),
                     searchQuery,
-                    sessionFailureCount: input.sessionFailureCount,
                     productContext: effectiveProductContext,
                     effectiveQuery: queryForEmbedding,
                     answerWasEmpty: !craftedAnswer,

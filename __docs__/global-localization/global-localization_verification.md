@@ -1,7 +1,7 @@
 # Global Localization Verification
 
 **Status:** Local source and semantic-evidence verification passed
-**Last updated:** July 18, 2026
+**Last updated:** July 19, 2026
 
 ## Findings and Fixes
 
@@ -27,13 +27,22 @@
 | Medium | Automated translation produced isolated high-confidence errors in Assamese reservation, Finnish action rate, Filipino lifetime range, and Hindi action breakdown. | Applied direct native-script corrections for those exact mounted keys. |
 | Medium | The Odia provider output split English fragments into Odia words, including “no data,” “dark mode,” and “invalid.” | Repaired the affected mounted strings and added a regression guard for the known mixed-script patterns. |
 | Medium | Desktop and mobile settings entry points still displayed the stale “App Appearance” wording even after the settings panel was broadened. | Both entry points now reuse the canonical localized `AppSettings` title/summary; the theme action also changes between localized dark/light labels. |
-| High | The earlier completeness gate covered only five namespaces while mounted desktop/mobile owner code uses 49 MenuList namespaces. | Expanded the structural and ICU boundary to all 3,119 owner keys, excluding only separately governed `Website` and `CampaignCue`. |
+| High | The earlier completeness gate covered only five namespaces while mounted desktop/mobile owner code uses 49 MenuList namespaces. | Expanded the structural and ICU boundary to all current 3,456 owner keys, excluding only separately governed `Website` and `CampaignCue`. |
 | High | Bottom navigation, loader names, and the MobileShell subscription gate bypassed next-intl. | Added `MobileNavigation` and `MobileShell` source contracts, wired the rendered labels, and added hardcode regression checks. |
 | High | The structural expansion still contained 125,159 exact `en-US` fallback values, including Bodo and Kashmiri. | Preserved existing translations and populated 122,117 source-equal owner values with pinned local AI4Bharat IndicTrans2 and Google MADLAD-400 revisions. Remaining exact values are approved invariants or reviewed same-spelling cognates. |
 | High | Ordinary URL, alphanumeric, and XML-style sentinels could be dropped, transliterated, renumbered, or duplicated by one or both model families. | Switched to provider-native numbered-brace/printf placeholders and an exact token multiset gate. A failed token switches only that message to segment translation around the protected values. |
 | High | Greedy multilingual output sometimes appended explanations, duplicates, or unrelated second phrases; a few values collapsed to a short partial meaning. | Added a 0.18-2.5 Unicode length boundary for source values of 20 or more characters, targeted beam-search repair, bounded first-complete-message reduction, and locale/key-specific reviewed corrections. No quality residue remains. |
 | High | A late-locale validation failure could have produced a partial multi-file write. | Semantic apply now validates and reconstructs all locale packs in memory before writing any locale or evidence file. |
 | Medium | Locale packs retained 765 obsolete owner keys that no longer existed in canonical `en-US`. | Removed the stale keys, made offline sync prune only inside canonical owner namespaces, and made the source gate require exact owner-key parity while leaving `Website` and `CampaignCue` untouched. |
+| High | OBP, public menu, Guest Feedback, Customer App, public recovery, compliance chrome, and metadata fallbacks mixed owner-selected content with fixed English UI copy. | Added a 337-message `BusinessSettings.publicCustomer` boundary across all 52 locale packs and wired every audited customer surface to the shared static resolver. |
+| High | Public language could be lost between OBP, menu, feedback, policy, item, recovery, and PWA handoff URLs. | Admitted `?lang=` is now preserved across public transitions, while the owner-controlled store/project resolver remains authoritative. |
+| Medium | The 80 public content languages and 52 application UI packs could be mistaken for identical registries. | Kept owner content available in all 80 supported content languages and made fixed chrome deterministically fall back to `en-US` when no dedicated UI pack exists. |
+| Medium | Public image keyboard and swipe navigation used physical left/right assumptions in RTL. | Public image navigation now reverses logical previous/next behavior and safe-area placement when the resolved public language is RTL. |
+| High | Machine-translating generated or owner-edited legal body text could change legal meaning. | Localized only compliance-page chrome; canonical English legal body text remains untouched and is explicitly tagged as English inside non-English chrome. |
+| High | Structural key parity passed even when some generated public strings contained unrelated sentences, provider placeholders, unexpected contact data, mixed scripts, or exact English residue. | Added semantic public-subtree hashes plus placeholder, protected-term, sentence, contact-data, canonical-example, script-boundary, and exact-source gates; contextual defects were repaired across the checked-in packs. |
+| High | The maintainer-time provider silently treated `pt-BR` as unsupported and returned the English source for the Portuguese public pack. | Regenerated the complete pack with the supported static provider target `pt`, recorded the alias in evidence, and added exact-source rejection through the full owner gate. |
+| Medium | Fixed spice-level values rendered raw English even when the surrounding menu/item-detail chrome was localized. | Added four localized enum messages and one shared bounded resolver used by both public surfaces; unknown owner values remain readable and unguessed. |
+| Medium | Kashmiri was registered as LTR and the language registry used stale Kashmiri/Manipuri native names. | Kashmiri now uses RTL with `کٲشُر`; Manipuri uses the Meitei-script native name aligned with the checked-in pack. |
 
 ## Parity Map
 
@@ -49,10 +58,13 @@
 
 - `en-US`: canonical source.
 - `en-GB`: English source-synced for this mounted boundary, retaining existing regional copy elsewhere.
-- All 52 packs: exactly 3,119 owner keys across 49 namespaces are structurally complete and ICU-safe; no locale-only owner keys remain.
+- All 52 packs: exactly 3,456 owner keys across 49 namespaces are structurally complete and ICU-safe; no locale-only owner keys remain.
 - All 50 non-English packs: the established 464-string dashboard/settings subset and expanded owner boundary are semantic-evidence gated.
-- Semantic migration: 122,117 actual owner values populated from 106,662 deduplicated protected translation units.
-- Quality repair: 826 bounded values repaired after overlong, under-translated, token-preservation, or exact-English-residue review; 109 applications use explicit locale/key or locale/source reviewed wording, covering duplicates consistently.
+- Earlier semantic migration: 122,117 actual owner values populated from 106,662 deduplicated protected translation units.
+- Current owner-quality evidence: 696 bounded repairs remain hash-bound to the 52 locale packs.
+- Public customer bundle: exactly 337 keys generated from every one of the 52 registered locale packs.
+- Public static generation: 48 non-English packs generated and English-round-trip audited through the maintainer-time static workflow; Bodo and Kashmiri use pinned local IndicTrans2.
+- Public contextual review: 75 key-specific corrections and 71 exact values admitted only as reviewed same-spelling cognates or unit formats.
 - Exact-source residue: limited to protected brands, URLs, identifiers, ICU-only values, file/format terms, or reviewed same-spelling cognates.
 - `brx-IN` and `ks-IN`: use the pinned AI4Bharat model and the same token, ICU, length, residue, and evidence-hash gates as every other non-English pack.
 
@@ -68,6 +80,10 @@ Meta M2M-100 and Helsinki bilingual candidates were rejected after real-message 
 - Rejected 682 overlong values and 12 under-translated values, then applied targeted beam-search or bounded reviewed corrections.
 - Re-ran the exact-English classifier until zero non-invariant residue remained.
 - Bound the final 52 locale trees to checked-in SHA-256 evidence and reran the normal localization source gate.
+- Reprepared the current quality queue after the public-customer extension and confirmed zero residual repair candidates.
+- Regenerated the compact public-customer bundle and checked exact source/bundle parity, placeholder and protected-term parity, provider-marker and unrelated-sentence rejection, canonical examples, selected script boundaries, per-locale hashes, surface wiring, language-query preservation, RTL behavior, and zero runtime provider/Firebase imports.
+- Added functional assertions for regional public codes, store-policy fallback, locale selection, URL propagation, localized hours/day labels, interpolation, and shared spice labels.
+- Re-ran the owner semantic gate after the public pass; it caught and closed the silent Portuguese source return and a remaining Odia mixed-script artifact.
 - This is strong executable semantic evidence. It does not certify native fluency, tone, or regional dialect, so future native-speaker feedback remains a valid copy improvement rather than a hidden code-completion blocker.
 
 ## Commands
@@ -75,6 +91,7 @@ Meta M2M-100 and Helsinki bilingual candidates were rejected after real-message 
 ```bash
 npm run verify:owner-dashboard-locales
 npm run verify:global-localization-boundary
+npm run verify:public-customer-localization
 npm run verify:website-resource-locales
 npm run sync:owner-locale-keys
 node scripts/localization/owner-locale-semantic.js --quality-prepare=/tmp/owner-quality.json

@@ -43,6 +43,10 @@ import {
     resolveProjectPublicLanguage,
     resolveStorePublicLanguage,
 } from "@lib/localization/publicRenderLanguage";
+import {
+    createPublicCustomerTranslator,
+    type PublicCustomerTranslator,
+} from "@lib/localization/publicCustomerMessages";
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
@@ -684,20 +688,32 @@ function resolveSafeStoreCanonicalUrl(
     return allowedHosts.has(storedHost) ? parsedStoredUrl.toString() : fallbackUrl;
 }
 
-const COMPLIANCE_METADATA_BY_SLUG: Record<string, { label: string; description: (storeName: string) => string }> = {
-    privacy: {
-        label: 'Privacy Policy',
-        description: (storeName) => `Privacy policy for ${storeName}.`,
-    },
-    terms: {
-        label: 'Terms & Conditions',
-        description: (storeName) => `Terms and conditions for ${storeName}.`,
-    },
-    refund: {
-        label: 'Refund & Cancellation Policy',
-        description: (storeName) => `Refund and cancellation policy for ${storeName}.`,
-    },
-};
+function getComplianceMetadata(
+    slug: string,
+    t: PublicCustomerTranslator,
+): { label: string; description: (storeName: string) => string } | undefined {
+    const metadataBySlug: Record<string, { label: string; descriptionKey: Parameters<PublicCustomerTranslator>[0] }> = {
+        privacy: {
+            label: t('menu.privacyPolicy'),
+            descriptionKey: 'menu.privacyPolicyDescription',
+        },
+        terms: {
+            label: t('menu.termsConditions'),
+            descriptionKey: 'menu.termsConditionsDescription',
+        },
+        refund: {
+            label: t('menu.refundCancellationPolicy'),
+            descriptionKey: 'menu.refundCancellationPolicyDescription',
+        },
+    };
+    const metadata = metadataBySlug[slug];
+    return metadata
+        ? {
+            label: metadata.label,
+            description: (storeName) => t(metadata.descriptionKey, { businessName: storeName }),
+        }
+        : undefined;
+}
 
 // Generate metadata for SEO
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
@@ -714,9 +730,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     }
 
     if (!storeData) {
+        const t = createPublicCustomerTranslator(requestedLanguage);
         return {
-            title: "Menu Not Found",
-            description: "The requested menu could not be found.",
+            title: t('menu.menuNotFound'),
+            description: t('menu.publicLinkInactive'),
             robots: {
                 index: false,
                 follow: false,
@@ -727,17 +744,18 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const slugSegments = params?.slug || [];
     const isRootRequest = slugSegments.length === 0;
     const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
+    const publicCustomerT = createPublicCustomerTranslator(contentLanguage);
     const storeName = isRootRequest && FEATURE_FLAGS.ENABLE_OBP
-        ? getBrandName(storeData, "Restaurant Menu")
-        : getStoreContextName(storeData, "Restaurant Menu");
+        ? getBrandName(storeData, publicCustomerT('common.business'))
+        : getStoreContextName(storeData, publicCustomerT('common.business'));
     if (isStarterPublicSurfaceExpired(storeData)) {
         const starterIndexDecision = evaluatePublicTruthIndexability(storeData, {
             surface: FEATURE_FLAGS.ENABLE_OBP && isRootRequest ? 'obp' : 'menu',
             hasPublishedMenu: Boolean(storeData?.lastPublishedAt || storeData?.primaryProjectId),
         });
         return {
-            title: `${storeName} menu is being finalized`,
-            description: `${storeName}'s MenuList page is being finalized. Please contact the business directly for the current menu.`,
+            title: publicCustomerT('menu.notFinalizedYet', { businessName: storeName }),
+            description: publicCustomerT('menu.contactBusinessCurrentMenu'),
             robots: buildPublicTruthRobots(starterIndexDecision),
         };
     }
@@ -766,15 +784,15 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     // "Joe's Pizza — Menu, Hours, Contact" helps AI answer "What time does Joe's Pizza close?"
     let title = storeMetaTitle || (
         FEATURE_FLAGS.ENABLE_OBP
-            ? `${storeName} — Menu, Hours, Contact`
-            : `${storeName} | Menu`
+            ? publicCustomerT('menu.metadataObpTitle', { businessName: storeName })
+            : publicCustomerT('menu.metadataMenuTitle', { businessName: storeName })
     );
     let description =
         storeMetaDescription ||
         storeTagline ||
         (FEATURE_FLAGS.ENABLE_OBP
-            ? `${storeName} — View menu, check hours, get directions, and contact details. Official business page.`
-            : `View the digital menu for ${storeName}`
+            ? publicCustomerT('menu.metadataObpDescription', { businessName: storeName })
+            : publicCustomerT('menu.metadataMenuDescription', { businessName: storeName })
         );
     const imageUrl = storeData.logo || DEFAULT_PUBLIC_PREVIEW_IMAGE;
 
@@ -826,7 +844,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const manifestUrl = '/manifest.webmanifest';
     const currentUrl = `${canonicalBase}${currentPath === '/' ? '' : currentPath}`;
     const complianceMetadata = FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && slugLen === 1
-        ? COMPLIANCE_METADATA_BY_SLUG[firstSlug || '']
+        ? getComplianceMetadata(firstSlug || '', publicCustomerT)
         : undefined;
 
     if (complianceMetadata) {
@@ -961,6 +979,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const metadataLanguage = metadataProject
         ? resolveProjectPublicLanguage(metadataProject, metadataStore, requestedLanguage)
         : resolveStorePublicLanguage(metadataStore, requestedLanguage);
+    const metadataT = createPublicCustomerTranslator(metadataLanguage);
     const metadataLanguageOptions = metadataProject
         ? (Array.isArray(metadataProject?.languages) && metadataProject.languages.length > 0
             ? metadataProject.languages
@@ -1018,8 +1037,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         : canonicalWithoutLanguage;
 
     if (missingProjectPath) {
-        title = `Menu not available | ${resolvedStoreName}`;
-        description = `This menu link is no longer available. Use ${resolvedStoreName}'s current public page for the latest information.`;
+        title = metadataT('menu.metadataUnavailableTitle', { businessName: resolvedStoreName });
+        description = metadataT('menu.metadataUnavailableDescription', { businessName: resolvedStoreName });
     }
     let resolvedPublicTruthRobots = publicTruthRobots;
 
@@ -1043,7 +1062,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     '',
                 ),
             )
-                || `View ${projectTitle} from ${resolvedStoreName}.`;
+                || metadataT('menu.viewOfferingFrom', {
+                    offering: projectTitle,
+                    businessName: resolvedStoreName,
+                });
         }
 
         const contextCanonicalWithoutLanguage = projectCanonicalUrl && contextSegments.length
@@ -1327,6 +1349,7 @@ function buildPublicCatalogStructuredData({
     showItemPrices: boolean;
 }): Record<string, any> {
     const isFoodCatalog = isFoodBusinessCategory(businessType, businessCategory);
+    const t = createPublicCustomerTranslator(contentLanguage);
     const catalogAdditionalProperty = freshness.menuVersion
         ? [{
             "@type": "PropertyValue",
@@ -1355,7 +1378,7 @@ function buildPublicCatalogStructuredData({
             return {
                 "@type": "MenuSection",
                 identifier: category.id,
-                name: getLocalizedValue(category.name, contentLanguage) || "Menu Section",
+                name: getLocalizedValue(category.name, contentLanguage) || t('menu.menuSection'),
                 hasMenuItem: sectionItems,
             };
         }
@@ -1363,7 +1386,7 @@ function buildPublicCatalogStructuredData({
         return {
             "@type": "OfferCatalog",
             identifier: category.id,
-            name: getLocalizedValue(category.name, contentLanguage) || "Offer Category",
+            name: getLocalizedValue(category.name, contentLanguage) || t('menu.offerCategory'),
             itemListElement: sectionItems,
         };
     });
@@ -1375,7 +1398,7 @@ function buildPublicCatalogStructuredData({
                 "@type": "Menu",
                 "@id": `${canonicalUrl}#menu`,
                 identifier: projectData?.projectId || canonicalUrl,
-                name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || "Menu",
+                name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || t('menu.menuOffering'),
                 url: canonicalUrl,
                 inLanguage: contentLanguage,
                 ...(freshness.dateModified && { dateModified: freshness.dateModified }),
@@ -1390,7 +1413,7 @@ function buildPublicCatalogStructuredData({
             "@type": "OfferCatalog",
             "@id": `${canonicalUrl}#offer-catalog`,
             identifier: projectData?.projectId || canonicalUrl,
-            name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || "Offerings",
+            name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || t('menu.offeringsOffering'),
             url: canonicalUrl,
             inLanguage: contentLanguage,
             ...(freshness.dateModified && { dateModified: freshness.dateModified }),
@@ -1421,9 +1444,12 @@ function buildCatalogItemStructuredData({
     showImages: boolean;
     showItemPrices: boolean;
 }) {
+    const t = createPublicCustomerTranslator(contentLanguage);
     const dietaryTags = getDecisionFactArray(item, "dietaryTags");
     const nutritionInfo = getNutritionFact(item);
-    const itemName = getLocalizedValue(item.name, contentLanguage) || (isFoodCatalog ? "Menu Item" : "Offering");
+    const itemName = getLocalizedValue(item.name, contentLanguage) || (
+        isFoodCatalog ? t('menu.menuItem') : t('menu.offeringItem')
+    );
     const itemId = item.id ? String(item.id) : '';
     const itemUrl = itemId ? buildCanonicalItemUrl(canonicalUrl, itemId) : undefined;
     const itemImage = showImages ? getPrimaryPublicMenuImage(item) : undefined;
@@ -1622,6 +1648,7 @@ function buildContextMetadata({
     if (contextSegments.length < 2) return null;
 
     const renderLanguage = language || getProjectLanguage(projectData);
+    const t = createPublicCustomerTranslator(renderLanguage);
     const resolvedCanonicalUrl = canonicalUrl || currentUrl;
     const { categories, items } = flattenProjectMenu(projectData);
     const [contextType, contextValue] = contextSegments;
@@ -1630,7 +1657,7 @@ function buildContextMetadata({
         const item = findItemByUrlSegment(items, contextValue, renderLanguage);
         if (!item) return null;
 
-        const itemName = getLocalizedValue(item.name, renderLanguage) || 'Menu Item';
+        const itemName = getLocalizedValue(item.name, renderLanguage) || t('menu.menuItem');
         const itemDescription = getLocalizedValue(item.description, renderLanguage);
         const category = categories.find((entry: any) => entry?.id === item.category);
         const categoryName = getLocalizedValue(category?.name, renderLanguage);
@@ -1638,28 +1665,46 @@ function buildContextMetadata({
 
         return {
             title: `${itemName} | ${storeName}`,
-            description: itemDescription
-                || (categoryName
-                    ? `${itemName} in ${categoryName} at ${storeName}.`
-                    : `${itemName} at ${storeName}.`),
+            description: itemDescription || (categoryName
+                ? t('menu.itemInCategoryAt', {
+                    itemName,
+                    categoryName,
+                    businessName: storeName,
+                })
+                : t('menu.itemAt', {
+                    itemName,
+                    businessName: storeName,
+                })),
             alternates: {
                 canonical: resolvedCanonicalUrl,
             },
             openGraph: {
                 title: `${itemName} | ${storeName}`,
-                description: itemDescription
-                    || (categoryName
-                        ? `${itemName} in ${categoryName} at ${storeName}.`
-                        : `${itemName} at ${storeName}.`),
+                description: itemDescription || (categoryName
+                    ? t('menu.itemInCategoryAt', {
+                        itemName,
+                        categoryName,
+                        businessName: storeName,
+                    })
+                    : t('menu.itemAt', {
+                        itemName,
+                        businessName: storeName,
+                    })),
                 url: resolvedCanonicalUrl,
                 images: imageUrl ? [{ url: imageUrl }] : undefined,
             },
             twitter: {
                 title: `${itemName} | ${storeName}`,
-                description: itemDescription
-                    || (categoryName
-                        ? `${itemName} in ${categoryName} at ${storeName}.`
-                        : `${itemName} at ${storeName}.`),
+                description: itemDescription || (categoryName
+                    ? t('menu.itemInCategoryAt', {
+                        itemName,
+                        categoryName,
+                        businessName: storeName,
+                    })
+                    : t('menu.itemAt', {
+                        itemName,
+                        businessName: storeName,
+                    })),
                 images: imageUrl ? [imageUrl] : undefined,
             },
         };
@@ -1669,9 +1714,14 @@ function buildContextMetadata({
         const category = findCategoryByUrlSegment(categories, contextValue, renderLanguage);
         if (!category) return null;
 
-        const categoryName = getLocalizedValue(category.name, renderLanguage) || 'Category';
+        const categoryName = getLocalizedValue(category.name, renderLanguage) || t('menu.category');
         const categoryItems = items.filter((item: any) => item?.category === category.id && item?.active !== false);
-        const categoryDescription = `${categoryName} from ${storeName}. ${categoryItems.length} ${categoryItems.length === 1 ? 'item' : 'items'} available.`;
+        const categoryDescription = t('menu.categoryFromBusiness', {
+            categoryName,
+            businessName: storeName,
+            count: categoryItems.length,
+            items: categoryItems.length === 1 ? t('menu.itemSingular') : t('menu.itemsPlural'),
+        });
 
         return {
             title: `${categoryName} | ${storeName}`,
@@ -1973,6 +2023,7 @@ async function MenuContent({
         return (
             <StarterActivationHoldingPage
                 activePlanType={storeData?.activePlanType || null}
+                activeLanguage={contentLanguage}
                 storeName={getStoreContextName(storeData, '') || masterBrandName || null}
             />
         );
@@ -2008,6 +2059,7 @@ async function MenuContent({
         // correctly for multi-outlet tenants.
         return (
             <MenuNotFoundFallback
+                activeLanguage={contentLanguage}
                 requestedSlug={resolvedSlug || slug || ''}
                 outletSlug={storeData.isMaster === false ? safeStoreOutletSlug : null}
                 storeName={getStoreContextName(storeData, '') || null}
@@ -2106,6 +2158,7 @@ async function MenuContent({
             : baseUrl);
 
     const projectLanguage = resolveProjectPublicLanguage(projectData, storeDetails, initialProjectLanguage);
+    const publicCustomerT = createPublicCustomerTranslator(projectLanguage);
     const schemaOrgJsonLd = generateSchemaOrgJsonLd(
         projectData,
         storeDetails,
@@ -2114,8 +2167,13 @@ async function MenuContent({
     );
 
     // BreadcrumbList for search engine navigation: Business → Menu
-    const storeName = getStoreContextName(storeDetails, 'Business');
-    const menuName = getLocalizedText(projectMetadata?.name, projectLanguage, getPrimaryLocalizedLanguage(projectMetadata?.name, projectLanguage), 'Menu');
+    const storeName = getStoreContextName(storeDetails, publicCustomerT('common.business'));
+    const menuName = getLocalizedText(
+        projectMetadata?.name,
+        projectLanguage,
+        getPrimaryLocalizedLanguage(projectMetadata?.name, projectLanguage),
+        publicCustomerT('menu.menuOffering'),
+    );
     const breadcrumbJsonLd = buildBreadcrumbList(storeName, baseUrl, menuName);
     const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
     const menuMoodConfig = getMoodWithBrandColor(
@@ -2157,7 +2215,9 @@ async function MenuContent({
                         getPrimaryLocalizedLanguage(storeDetails?.tagline, contentLanguage),
                         '',
                     ).trim().slice(0, 160)
-                    : `${storeName} — digital menu`,
+                    : publicCustomerT('menu.metadataMenuDescription', {
+                        businessName: storeName,
+                    }),
             baseUrl,
             themeColor: storeDetails?.publicPresence?.accentColor,
         })
@@ -2181,6 +2241,7 @@ async function MenuContent({
               * AND we have a real outletSlug to link to.
               */}
             <MenuBreadcrumb
+                ariaLabel={publicCustomerT('menu.businessInformation')}
                 businessName={masterBrandName || storeName}
                 outletName={
                     !storeData.isMaster && safeStoreOutletSlug
@@ -2232,6 +2293,7 @@ export default function ClientMenuPage({ params, searchParams }: PageProps) {
                 <CompliancePageContent
                     type={slug as 'privacy' | 'terms' | 'refund'}
                     backHref={appendPublicLanguageParam('/', requestedLanguage)}
+                    requestedLanguage={requestedLanguage}
                 />
             </Suspense>
         );

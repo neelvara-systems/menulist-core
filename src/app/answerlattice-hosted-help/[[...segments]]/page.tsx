@@ -8,14 +8,16 @@ import {
 import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
 import { resolveHostedHelpSiteByDomain } from '@lib/answerlattice/hostedHelpServer';
 import {
+    buildHostedHelpArticlePath,
     getHostedHelpChangelogText,
     normalizeHostedHelpArticleSlug,
     resolveHostedHelpRequestDomain,
+    resolveHostedHelpPublicRoute,
     serializeHostedHelpDate,
 } from '@lib/answerlattice/hostedHelpRequest';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
-import type { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import type { AnswerlatticeFaq } from '@type/answerlattice';
 import type { ChangelogPage } from '@type/changelog';
 import type { AnswerlatticePublicArticle } from '@lib/answerlattice/publicContentBoundary';
@@ -55,17 +57,18 @@ const getRequestIp = () => {
 
 const getArticlesFromCategories = (categories: KnowledgeBaseCategoriesType | null): KnowledgeBaseArticleMeta[] => {
     if (!categories?.categories) return [];
-    return Object.values(categories.categories).flatMap(category => [
+    const articles = Object.values(categories.categories).flatMap(category => [
         ...(category.articles || []),
         ...(category.sections || []).flatMap(section => section.articles || []),
     ]);
+    return Array.from(new Map(articles.map(article => [article.id, article])).values());
 };
 
 const findArticleMeta = (
     categories: KnowledgeBaseCategoriesType | null,
-    segment?: string | string[],
+    slug?: string | null,
 ): KnowledgeBaseArticleMeta | null => {
-    const normalized = normalizeHostedHelpArticleSlug(Array.isArray(segment) ? segment.join('/') : segment);
+    const normalized = normalizeHostedHelpArticleSlug(slug);
     if (!normalized) return null;
     return getArticlesFromCategories(categories).find(article => (
         article.id === normalized
@@ -164,6 +167,10 @@ async function resolvePage(searchParams?: { domain?: string }) {
     return resolveHostedHelpSiteByDomain(getRequestDomain(searchParams));
 }
 
+const buildCanonicalUrl = (domain: string, path: string) => (
+    `https://${domain}${path === '/' ? '' : path}`
+);
+
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const site = await resolvePage(searchParams);
     if (!site) {
@@ -173,14 +180,41 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         };
     }
 
-    const segments = params.segments || [];
-    const title = segments[0] === 'docs'
+    const publicRoute = resolveHostedHelpPublicRoute(params.segments, {
+        showFaqs: site.config.showFaqs,
+        showChangelog: site.config.showChangelog,
+    });
+    if (!publicRoute) {
+        return {
+            title: `Page not found | ${site.config.title}`,
+            robots: { index: false, follow: false },
+        };
+    }
+
+    let canonicalPath = publicRoute.canonicalPath;
+    let title = publicRoute.view === 'docs'
         ? `Docs | ${site.config.title}`
-        : segments[0] === 'faq'
+        : publicRoute.view === 'faq'
             ? `FAQ | ${site.config.title}`
-            : segments[0] === 'changelog'
+            : publicRoute.view === 'changelog'
                 ? `What's New | ${site.config.title}`
                 : site.config.title;
+
+    if (publicRoute.view === 'article') {
+        const categories = await getCachedKnowledgeBaseCategories({ tId: site.tId, sId: site.sId });
+        const articleMeta = findArticleMeta(categories, publicRoute.articleSlug);
+        const articlePath = buildHostedHelpArticlePath(articleMeta?.url || articleMeta?.id);
+        if (!articleMeta || !articlePath) {
+            return {
+                title: `Article not found | ${site.config.title}`,
+                robots: { index: false, follow: false },
+            };
+        }
+        title = `${articleMeta.title} | ${site.config.title}`;
+        canonicalPath = articlePath;
+    }
+
+    const canonicalDomain = site.config.primaryDomain || site.domain;
 
     return {
         title,
@@ -189,15 +223,21 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             index: !site.config.noIndex,
             follow: !site.config.noIndex,
         },
-        alternates: site.config.primaryDomain ? {
-            canonical: `https://${site.config.primaryDomain}/${segments.join('/')}`.replace(/\/$/, ''),
-        } : undefined,
+        alternates: {
+            canonical: buildCanonicalUrl(canonicalDomain, canonicalPath),
+        },
     };
 }
 
 export default async function AnswerlatticeHostedHelpPage({ params, searchParams }: PageProps) {
     const site = await resolvePage(searchParams);
     if (!site) notFound();
+
+    const publicRoute = resolveHostedHelpPublicRoute(params.segments, {
+        showFaqs: site.config.showFaqs,
+        showChangelog: site.config.showChangelog,
+    });
+    if (!publicRoute) notFound();
 
     const rateLimitConfig = getRateLimitForFeature('ANSWERLATTICE_HOSTED_HELP');
     const rateLimit = await checkRateLimit({
@@ -217,13 +257,12 @@ export default async function AnswerlatticeHostedHelpPage({ params, searchParams
                 changelogPage={null}
                 faqs={[]}
                 site={compactSiteForClient(site)}
-                view="home"
+                unavailableReason="Help content is temporarily unavailable. Please try again shortly."
+                view={publicRoute.view}
             />
         );
     }
 
-    const segments = params.segments || [];
-    const route = segments[0] || 'home';
     const scope = { tId: site.tId, sId: site.sId };
     const [categories, faqs, changelogPage] = await Promise.all([
         getCachedKnowledgeBaseCategories(scope),
@@ -231,12 +270,10 @@ export default async function AnswerlatticeHostedHelpPage({ params, searchParams
         site.config.showChangelog ? getCachedLatestChangelogPage(scope) : Promise.resolve(null),
     ]);
 
-    if (route === 'articles') {
-        const articlePath = segments.slice(1);
-        const articleMeta = findArticleMeta(categories, articlePath);
-        const article = articleMeta
-            ? await getCachedKnowledgeBaseArticle(scope, articleMeta.id)
-            : await getCachedKnowledgeBaseArticle(scope, normalizeHostedHelpArticleSlug(articlePath.join('/')));
+    if (publicRoute.view === 'article') {
+        const articleMeta = findArticleMeta(categories, publicRoute.articleSlug);
+        if (!articleMeta) notFound();
+        const article = await getCachedKnowledgeBaseArticle(scope, articleMeta.id);
 
         if (!article) notFound();
 
@@ -252,21 +289,13 @@ export default async function AnswerlatticeHostedHelpPage({ params, searchParams
         );
     }
 
-    const view = route === 'docs'
-        ? 'docs'
-        : route === 'faq'
-            ? 'faq'
-            : route === 'changelog'
-                ? 'changelog'
-                : 'home';
-
     return (
         <HostedHelpClient
             categories={compactCategoriesForClient(categories)}
             changelogPage={compactChangelogForClient(changelogPage)}
             faqs={compactFaqsForClient(faqs)}
             site={compactSiteForClient(site)}
-            view={view}
+            view={publicRoute.view}
         />
     );
 }

@@ -28,6 +28,7 @@ const CustomerAppController = dynamic(
 );
 
 interface Props {
+    activeLanguage?: string;
     storeId: string | number;
     tenantId: string | number;
     storeName: string;

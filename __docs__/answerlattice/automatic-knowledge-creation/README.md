@@ -1,132 +1,74 @@
-# Answerlattice — Automatic Knowledge Creation
+# Answerlattice Automatic Knowledge Creation
 
-> **Status:** IMPLEMENTED — Capped and human-reviewed
-> **Version:** 1.2.0
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-07-11
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE` (ready-to-use default ON; capped and human-reviewed)
-> **Expansion Item:** #4 in answerlattice-expansion-tracker.md
-> **Doctrine Compliance:** ⚠️ CAREFUL — AI drafts are PROPOSALS only, never auto-published
+> **Status:** Implemented; Feature 12 hardening verified locally on 2026-07-18
+> **Runtime flags:** `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`, `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
+> **Deployment:** Scoped QA rule and nightly Function deploys were attempted on 2026-07-18 and stopped before upload because Firebase CLI authentication is unavailable
 
----
+Automatic Knowledge Creation converts admitted support-friction signals into owner-reviewed mutation proposals and, where eligible, bounded draft content. It does not publish knowledge automatically.
 
-## Quick Summary
+## Customer Job
 
-Automatic Knowledge Creation is the **last-mile enhancement** to Answerlattice's existing signal mutation pipeline. It transforms mutation proposals from "todo items" into "review-and-publish" items by adding AI-generated draft content to `new_answer_required` proposals.
+Reduce the work required to turn repeated support friction into a reviewed canonical answer without treating tickets, chats, or model output as approved truth.
 
-**What this feature IS:**
-- AI-generated draft canonical answers attached to existing mutation proposals
-- Structured drafts following `CanonicalAnswerSchema` (title, summary, steps, warnings, prerequisites)
-- Founder reviews draft, edits it, and approves it through the server-owned governance transaction that creates or updates canonical truth
-- Knowledge gap metrics surfaced on governance dashboard
+## Governed Flow
 
-**What this feature is NOT:**
-- A ticket system (Answerlattice observes signals, does not manage tickets)
-- A support analytics dashboard
-- An auto-publishing system (doctrine: "LLM assists, never becomes the control plane")
-- A new clustering engine (existing entity-based clustering is correct)
+```text
+support event
+-> sanitized signal admission
+-> entity-scoped clustering
+-> deterministic mutation proposal
+-> bounded draft claim
+-> draft generation or explicit failure state
+-> owner review and edit
+-> server-owned governance transaction
+-> canonical answer, audit, cache/source version, and stale-bundle invalidation
+```
 
----
+## Invariants
+
+- Signals propose; humans approve.
+- Canonical answers take priority over generated retrieval output.
+- Only `new_answer_required` and `content_refinement` proposals are eligible for automatic draft generation.
+- A failed draft does not remove the underlying proposal.
+- Draft claims use a lease so concurrent scheduler/manual work does not duplicate provider calls.
+- Browser clients cannot directly write canonical answers or proposal decision state.
+- Proposal approval validates stored content, entity bindings, scope, version overlap, and current-answer fingerprints where applicable.
+- Model output is a review aid, not an answer-quality measurement.
+
+## Current Surfaces
+
+- Nightly master scheduler: signal mutation, impact tracking, and draft generation.
+- Signal-to-Knowledge Queue: draft review, edit, approve, reject, and regenerate.
+- Support Board: deterministic manual proposal creation from a governed card.
+- Governance server: authoritative proposal decisions and canonical mutation.
+
+## Primary Source Files
+
+- `src/lib/answerlattice/signalEmitter.ts`
+- `src/database/answerlattice/signalEvents.ts`
+- `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`
+- `functions-answerlattice/src/answerlattice/draftGenerator.ts`
+- `src/database/answerlattice/mutationProposals.ts`
+- `src/components/templates/answerlattice/MutationProposalReview.tsx`
+- `src/lib/answerlattice/governanceServer.ts`
+- `firestore-answerlattice.rules`
+
+## Verification
+
+- `npm run test:answerlattice-signal-contracts`
+- `npm run test:answerlattice-ticket-knowledge-contracts`
+- `npm run test:answerlattice-governance:rules`
+- `npm run test:answerlattice-governance:shared-rules`
+- `node scripts/verification/verify-answerlattice-runtime-truth.js`
+- `npx tsc --noEmit --pretty false`
+- `npm --prefix functions-answerlattice run build`
 
 ## Documents
 
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| [README.md](./README.md) | Everyone | This file — index and navigation |
-| [_spec.md](./automatic-knowledge-creation_spec.md) | CEO/PM | Business requirements, user stories, acceptance criteria |
-| [_impl.md](./automatic-knowledge-creation_impl.md) | Developers | Technical blueprint, architecture, file structure, API contracts |
-| [_firebase.md](./automatic-knowledge-creation_firebase.md) | Developers | Firestore operations, cost model, indexes |
-| [_marketing.md](./automatic-knowledge-creation_marketing.md) | Sales/Marketing | Pitch points, competitive positioning |
-| [_website.md](./automatic-knowledge-creation_website.md) | Public | Landing page content, SEO |
-| [_helpdoc.md](./automatic-knowledge-creation_helpdoc.md) | Customers | Help documentation for founders |
-| [_mobile-support.md](./automatic-knowledge-creation_mobile-support.md) | Developers | Mobile assessment (4-gate test) |
-
----
-
-## Architecture Overview
-
-```
-Existing Pipeline (ALREADY BUILT):
-Signal Sources → signalEmitter.ts → answerlattice_signal_events
-    ↓
-Nightly CF → clusterSignalsByEntity() → determineMutationType()
-    ↓
-new_answer_required proposal → answerlattice_mutation_proposals (suggestedChange: {})
-    ↓
-Governance UI → MutationProposalReview → Founder writes answer manually
-
-NEW (This Feature):
-Signal Sources → signalEmitter.ts → answerlattice_signal_events
-    ↓
-Nightly CF → clusterSignalsByEntity() → determineMutationType()
-    ↓
-new_answer_required proposal → AI Draft Generator (Gemini) → proposal WITH draft content
-    ↓
-Governance UI → MutationProposalReview → Founder REVIEWS draft → edits → approves
-    ↓
-Server governance transaction applies the approved draft and writes the audit/invalidation state
-```
-
-Current governance UI coverage:
-- Generated drafts appear inside the Signal-to-Knowledge Queue.
-- Product owners can approve a generated draft after editing. The browser never writes canonical truth or proposal decision state directly.
-- Product owners can explicitly generate/regenerate a draft from the queue; this is manual, feature-flagged by `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`, and uses one AI request per click.
-- `/api/answerlattice/governance/actions` derives workspace and actor scope from the authenticated session, validates stored proposal content, rejects active answer overlaps, and commits the canonical answer, implemented proposal state, rollback snapshot, audit record, canonical cache version, source version, and stale bundle marker in one transaction.
-- `firestore-answerlattice.rules` denies browser create/update on `answerlattice_canonicalAnswers` and denies browser updates on `answerlattice_mutationProposals`.
-- Canonical retrieval excludes drifted and review-required answers. When the matching governed answer needs review, search returns a fixed non-AI review message and stops before FAQ or RAG so weaker content cannot replace stale canonical truth.
-
-Runtime diagnostics coverage:
-- Manual draft regeneration, scheduled draft generation, signal mutation, signal emission, and entity extraction use bounded diagnostics.
-- Manual draft regeneration logs optional grounding-read failures with fixed codes and continues with empty signal/example context instead of exposing provider or Firestore errors to the owner UI.
-- Manual draft regeneration and article entity extraction check safe mode and rate limits before permission/body/provider work; article-save extraction triggers stay non-blocking but use no-store/same-origin/manual-redirect requests plus bounded acknowledgement parsing.
-- Scheduled Cloud Function draft failures use fixed `ANSWERLATTICE_DRAFT_*` codes with source error name/code/status, tenant/store scope booleans, identifier presence/length metadata, and prompt/response lengths only.
-- Diagnostics must not emit raw tenant/store IDs, proposal IDs, entity IDs, entity names, provider exceptions, generated content, or prompt text.
-
----
-
-## Key Decisions (Cascade, NOT ChatGPT)
-
-| Decision | ChatGPT Said | Cascade Decision | Rationale |
-|----------|-------------|-----------------|-----------|
-| Clustering approach | Semantic embedding + Qdrant | Entity-based (existing) | Answerlattice doctrine: "Entities define structure" — deterministic, $0 cost |
-| New collections | `supportSignals`, `clusters`, `knowledgeProposals` | NONE needed | All infrastructure already exists in 9 Answerlattice collections |
-| Vector DB | Qdrant self-host | NOT needed | Entity-based clustering requires no embeddings |
-| Signal retention | 30 days | 12 months | Answerlattice doctrine mandates 12-month TTL |
-| Draft generation | Full article auto-generation | Structured skeleton only | Doctrine: "LLM assists, never becomes the control plane" |
-| Batch frequency | Every 6-15 hours | Nightly (3:00 AM UTC) | Aligns with existing answerlatticeNightly scheduler |
-| New feature flag | Multiple | Single: `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE` | Answerlattice pattern: one flag per expansion item |
-
----
-
-## Dependencies
-
-- **Requires:** `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION: true` (Pillar 4)
-- **Requires:** `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS: true` (Pillar 2)
-- **Enhances:** Expansion Item #9 (Ticket → Knowledge Conversion) feeds into this
-- **Enhanced by:** Expansion Item #8 (AI Escalation Path) generates more signals
-
----
-
-## ChatGPT Accuracy Assessment
-
-**Overall: ~50%** — ChatGPT correctly identified the problem (documentation decay, need for self-improving KB) but was ~75% wrong on the solution architecture because it was unaware of Answerlattice's existing entity-based infrastructure.
-
-| What ChatGPT Got Right | What ChatGPT Got Wrong |
-|------------------------|----------------------|
-| Documentation decays without feedback loop | Assumed embedding-based clustering needed |
-| Founder review must be mandatory | Proposed 3 new Firestore collections (unnecessary) |
-| Batch processing over real-time | Suggested external vector DB (Qdrant) |
-| Gap detection from signal patterns | Proposed separate clustering engine |
-| Draft generation saves founder time | 30-day retention (should be 12 months) |
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-06-29 | 1.1.4 | Added manual draft-regeneration grounding-read diagnostics for signal examples and existing answer context without changing operation counts |
-| 2026-06-28 | 1.1.3 | Added manual draft/entity extraction route safe-mode admission and bounded route diagnostics notes |
-| 2026-06-28 | 1.1.2 | Added scheduled draft generator bounded diagnostics contract and runtime status |
-| 2026-06-20 | 1.1.1 | Added manual draft regeneration and scheduled AI operation accounting notes |
-| 2026-03-09 | 1.0.0 | Initial documentation from ChatGPT conversation + codebase audit + external research |
+- [Specification](./automatic-knowledge-creation_spec.md)
+- [Implementation](./automatic-knowledge-creation_impl.md)
+- [Firebase](./automatic-knowledge-creation_firebase.md)
+- [Help](./automatic-knowledge-creation_helpdoc.md)
+- [Mobile](./automatic-knowledge-creation_mobile-support.md)
+- [Marketing](./automatic-knowledge-creation_marketing.md)
+- [Website](./automatic-knowledge-creation_website.md)

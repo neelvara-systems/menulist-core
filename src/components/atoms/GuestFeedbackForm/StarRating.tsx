@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { LuStar } from 'react-icons/lu';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import styles from './StarRating.module.scss';
 
 interface StarRatingProps {
+    activeLanguage?: string;
     disabled?: boolean;
     onChange: (rating: number) => void;
     size?: number;
@@ -12,17 +14,19 @@ interface StarRatingProps {
 }
 
 export const StarRating: React.FC<StarRatingProps> = ({
+    activeLanguage,
     disabled = false,
     onChange,
     size = 28,
     value,
 }) => {
+    const t = createPublicCustomerTranslator(activeLanguage);
     const [hoverValue, setHoverValue] = useState<number | null>(null);
     const displayValue = hoverValue ?? value;
 
     return (
         <div
-            aria-label="Rating"
+            aria-label={t('feedback.ratingGroup')}
             className={styles.group}
             role="radiogroup"
         >
@@ -33,7 +37,10 @@ export const StarRating: React.FC<StarRatingProps> = ({
                     <button
                         key={star}
                         aria-checked={value === star}
-                        aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                        aria-label={t('feedback.rateStars', {
+                            count: star,
+                            stars: star === 1 ? t('feedback.oneStar') : t('feedback.manyStars'),
+                        })}
                         className={[
                             styles.button,
                             disabled ? styles.buttonDisabled : '',

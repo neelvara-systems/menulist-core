@@ -16,6 +16,7 @@ import {
     resolveAnswerlatticeExistingBundleVersion,
 } from './compiledContextVersions';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { normalizeAnswerlatticeFunctionPublicCitations } from './publicCitationBoundary';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
 
 const SCHEMA_VERSION = 1;
@@ -28,11 +29,17 @@ const MAX_ARTICLES = 500;
 const MAX_FAQS = 500;
 const MAX_RELEASES = 100;
 const MAX_CHANGELOG_PAGES = 5;
+const MAX_PUBLIC_BOOTSTRAP_BYTES = 50_000;
+const MAX_PUBLIC_ROUTE_BYTES = 50_000;
+const MAX_PUBLIC_OBJECT_BYTES = 512 * 1024;
+const MAX_PRIVATE_OBJECT_BYTES = 2 * 1024 * 1024;
 const PUBLIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const PRIVATE_CACHE_CONTROL = 'private, max-age=300';
 const ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED';
 const ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED';
+const ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED = 'ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED';
 const ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED';
+const ANSWERLATTICE_CONTEXT_BUNDLE_SOURCE_LIMIT_EXCEEDED = 'ANSWERLATTICE_CONTEXT_BUNDLE_SOURCE_LIMIT_EXCEEDED';
 
 type BuildStatus = 'ready' | 'skipped' | 'superseded' | 'failed';
 
@@ -164,6 +171,39 @@ const loadDocs = async <T = any>(query: FirebaseFirestore.Query): Promise<T[]> =
     return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
 };
 
+const loadBoundedDocs = async <T = any>(query: FirebaseFirestore.Query, maxCount: number, sourceName: string): Promise<T[]> => {
+    const docs = await loadDocs<T>(query.limit(maxCount + 1));
+    if (docs.length > maxCount) {
+        logger.error('[Answerlattice Context Bundle] Source limit exceeded', {
+            failureCode: ANSWERLATTICE_CONTEXT_BUNDLE_SOURCE_LIMIT_EXCEEDED,
+            sourceName,
+            maxCount,
+        });
+        throw new Error(ANSWERLATTICE_CONTEXT_BUNDLE_SOURCE_LIMIT_EXCEEDED);
+    }
+    return docs;
+};
+
+const valuesMatchScope = (values: unknown[], expected: number): boolean => {
+    const supplied = values.filter(value => value !== undefined);
+    return supplied.length > 0 && supplied.every(value => value === expected || value === String(expected));
+};
+
+const isScopedStore = (value: unknown, tId: number, sId: number, documentId: string): value is Record<string, any> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const store = value as Record<string, any>;
+    const productIds = [store.pId, store.productId].filter(value => value !== undefined);
+    return productIds.length > 0
+        && productIds.every(value => value === 'AL')
+        && valuesMatchScope([store.tId, store.tenantId], tId)
+        && valuesMatchScope([store.sId, store.storeId, store.id, documentId], sId);
+};
+
+const getScopedPlatformSummary = (snap: FirebaseFirestore.DocumentSnapshot, tId: number, sId: number) => {
+    const data = snap.exists ? snap.data() : null;
+    return data && data.pId === 'AL' && data.tId === tId && data.sId === sId ? data : null;
+};
+
 const compactEntity = (entity: any) => ({
     id: entity.id,
     type: entity.type,
@@ -200,6 +240,7 @@ const compactAnswerLite = (answer: any) => ({
     verified: answer.status === 'active' && !answer.governance?.reviewRequired,
     confidenceScore: answer.validation?.confidenceScore ?? null,
     lastValidatedOn: toIso(answer.validation?.lastValidatedOn),
+    citations: normalizeAnswerlatticeFunctionPublicCitations(answer.evidence?.citations),
 });
 
 const compactAnswerPrivate = (answer: any) => ({
@@ -212,6 +253,10 @@ const compactAnswerPrivate = (answer: any) => ({
         procedure: answer.content?.procedure || null,
     },
     productBinding: answer.productBinding || null,
+    evidence: {
+        sourceIds: Array.isArray(answer.evidence?.sourceIds) ? answer.evidence.sourceIds.slice(0, 20) : [],
+        citations: Array.isArray(answer.evidence?.citations) ? answer.evidence.citations.slice(0, 8) : [],
+    },
     governance: {
         driftFlag: Boolean(answer.governance?.driftFlag),
         reviewRequired: Boolean(answer.governance?.reviewRequired),
@@ -308,7 +353,9 @@ const loadChangelogEntries = async (tId: number, sId: number) => {
         );
         return pages
             .flatMap((page: any) => (page.entries || [])
-                .filter((entry: any) => entry.published !== false)
+                .filter((entry: any) => entry?.published === true
+                    && (!(typeof entry.version === 'string' && entry.version.trim())
+                        || (typeof entry.releaseId === 'string' && entry.releaseId.trim())))
                 .map((entry: any) => compactChangelogEntry(entry, page.id)))
             .slice(0, 100);
     } catch (error) {
@@ -321,9 +368,33 @@ const loadChangelogEntries = async (tId: number, sId: number) => {
     }
 };
 
-const uploadObject = async (path: string, value: any, cacheControl: string) => {
+const getObjectMaxBytes = (visibility: 'public' | 'private', filePath: string) => {
+    if (visibility === 'private') return MAX_PRIVATE_OBJECT_BYTES;
+    if (filePath === 'widget-bootstrap.json') return MAX_PUBLIC_BOOTSTRAP_BYTES;
+    if (filePath.startsWith('routes/')) return MAX_PUBLIC_ROUTE_BYTES;
+    return MAX_PUBLIC_OBJECT_BYTES;
+};
+
+const uploadObject = async (
+    path: string,
+    value: any,
+    cacheControl: string,
+    visibility: 'public' | 'private',
+    filePath: string,
+) => {
     const json = stableStringify(value);
     const bytes = Buffer.byteLength(json, 'utf8');
+    const maxBytes = getObjectMaxBytes(visibility, filePath);
+    if (bytes > maxBytes) {
+        logger.error('[Answerlattice Context Bundle] Object oversized', {
+            failureCode: ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED,
+            visibility,
+            filePath,
+            bytes,
+            maxBytes,
+        });
+        throw new Error(ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED);
+    }
     const hash = sha256(json);
     await storageAdmin.bucket().file(path).save(json, {
         resumable: false,
@@ -348,7 +419,7 @@ const uploadManifestObjectBestEffort = async (
     },
 ) => {
     try {
-        await uploadObject(path, value, cacheControl);
+        await uploadObject(path, value, cacheControl, context.visibility, 'manifest.json');
     } catch (error) {
         logger.error('[Answerlattice Context Bundle] Manifest upload failed', {
             failureCode: ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED,
@@ -376,22 +447,23 @@ const loadSourceData = async (tId: number, sId: number) => {
     ] = await Promise.all([
         db.collection(DB_COLLECTIONS.STORES).doc(String(sId)).get(),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`contextContent_${tId}_${sId}`).get(),
-        loadDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('tId', '==', tId).where('sId', '==', sId).limit(MAX_ENTITIES)),
-        loadDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('tId', '==', tId).where('sId', '==', sId).limit(MAX_RELATIONS)),
-        loadDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'active').limit(MAX_CANONICAL)),
-        loadDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES).where('tId', '==', tId).where('sId', '==', sId).limit(MAX_SURFACES)),
-        loadDocs(db.collection(DB_COLLECTIONS.KB_ARTICLES).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published').limit(MAX_ARTICLES)),
-        loadDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published').where('active', '==', true).limit(MAX_FAQS)),
-        loadDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES).where('tId', '==', tId).where('sId', '==', sId).limit(MAX_RELEASES)),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('tId', '==', tId).where('sId', '==', sId), MAX_ENTITIES, 'entities'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('tId', '==', tId).where('sId', '==', sId), MAX_RELATIONS, 'entity_relations'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'active'), MAX_CANONICAL, 'canonical_answers'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES).where('tId', '==', tId).where('sId', '==', sId), MAX_SURFACES, 'product_surfaces'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.KB_ARTICLES).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published'), MAX_ARTICLES, 'articles'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published').where('active', '==', true), MAX_FAQS, 'faqs'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES).where('tId', '==', tId).where('sId', '==', sId), MAX_RELEASES, 'releases'),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`predictiveTriggers_${tId}_${sId}`).get(),
         loadChangelogEntries(tId, sId),
     ]);
 
-    const contextSummary = contextSummarySnap.exists ? contextSummarySnap.data() || {} : {};
+    const contextSummary = getScopedPlatformSummary(contextSummarySnap, tId, sId) || {};
     const surfacesFromSummary = Object.values((contextSummary as any).surfaces || {}).map(safeSurface);
+    const storeData = storeSnap.exists ? storeSnap.data() : null;
 
     return {
-        store: storeSnap.exists ? { ...storeSnap.data(), id: storeSnap.id } : {},
+        store: isScopedStore(storeData, tId, sId, storeSnap.id) ? { ...storeData, id: storeSnap.id } : {},
         entities: entitiesRaw.filter((entity: any) => ['active', 'beta'].includes(String(entity.status || '').toLowerCase())),
         relations,
         answers: answersRaw.filter((answer: any) => !answer.governance?.reviewRequired),
@@ -399,7 +471,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         articles: articlesRaw.filter((article: any) => article.active !== false),
         faqs: faqsRaw,
         releases: releasesRaw.filter((release: any) => String(release.status || '').toLowerCase() === 'active'),
-        predictive: predictiveSnap.exists ? predictiveSnap.data() || null : null,
+        predictive: getScopedPlatformSummary(predictiveSnap, tId, sId),
         changelogEntries,
     };
 };
@@ -421,6 +493,11 @@ const buildObjects = (params: {
         billingModel: (source.store as any).billingModel || null,
         timeZone: (source.store as any).timeZone || 'UTC',
         businessDayEndTime: (source.store as any).businessDayEndTime || '00:00',
+    };
+    const publicProduct = {
+        name: product.name,
+        url: product.url,
+        supportEmail: product.supportEmail,
     };
     const entities = source.entities.map(compactEntity);
     const relations = source.relations
@@ -464,12 +541,11 @@ const buildObjects = (params: {
     };
 
     const publicObjects: Record<string, any> = {
-        'manifest.json': { schemaVersion: SCHEMA_VERSION, pId: 'AL', publicBundleId, bundleVersion, generatedAt, sourceVersions },
         'widget-bootstrap.json': {
             schemaVersion: SCHEMA_VERSION,
             bundleVersion,
             generatedAt,
-            product,
+            product: publicProduct,
             widget: {
                 configVersion: Number((source.store as any).widgetConfigVersion || 0),
                 config: normalizeWidgetConfig((source.store as any).widgetConfig),
@@ -527,7 +603,6 @@ const buildObjects = (params: {
     }]));
 
     const privateObjects: Record<string, any> = {
-        'manifest.json': { schemaVersion: SCHEMA_VERSION, pId: 'AL', tId, sId, publicBundleId, bundleVersion, generatedAt, sourceVersions },
         'mcp/product-summary.json': {
             schemaVersion: SCHEMA_VERSION,
             pId: 'AL',
@@ -597,6 +672,17 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     }
     const sourceVersions = normalizeCompiledSourceVersions(rawSourceVersions);
     const existingManifest = manifestSnap.exists ? manifestSnap.data() || null : null;
+    if (existingManifest && (
+        existingManifest.pId !== 'AL'
+        || existingManifest.tId !== tenantId
+        || existingManifest.sId !== storeId
+        || !areAnswerlatticeCompiledSourceVersionsValid(existingManifest.sourceVersions)
+        || !existingManifest.bundles
+        || typeof existingManifest.bundles !== 'object'
+        || Array.isArray(existingManifest.bundles)
+    )) {
+        return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_manifest_scope' };
+    }
     const existingBundleVersion = resolveAnswerlatticeExistingBundleVersion(existingManifest);
     if (existingBundleVersion === null) {
         return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
@@ -683,12 +769,12 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
         let privateBytesTotal = 0;
 
         for (const [filePath, value] of Object.entries(objects.publicObjects)) {
-            const ref = await uploadObject(getPublicBundlePath(publicBundleId, bundleVersion, filePath), value, PUBLIC_CACHE_CONTROL);
+            const ref = await uploadObject(getPublicBundlePath(publicBundleId, bundleVersion, filePath), value, PUBLIC_CACHE_CONTROL, 'public', filePath);
             bundles[`public:${filePath}`] = ref;
             publicBytesTotal += ref.bytes;
         }
         for (const [filePath, value] of Object.entries(objects.privateObjects)) {
-            const ref = await uploadObject(getPrivateBundlePath(tenantId, storeId, bundleVersion, filePath), value, PRIVATE_CACHE_CONTROL);
+            const ref = await uploadObject(getPrivateBundlePath(tenantId, storeId, bundleVersion, filePath), value, PRIVATE_CACHE_CONTROL, 'private', filePath);
             bundles[`private:${filePath}`] = ref;
             privateBytesTotal += ref.bytes;
         }
@@ -740,6 +826,8 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             limits: {
                 maxPublicBootstrapBytes: 50000,
                 maxPublicRouteBytes: 50000,
+                maxPublicObjectBytes: MAX_PUBLIC_OBJECT_BYTES,
+                maxPrivateObjectBytes: MAX_PRIVATE_OBJECT_BYTES,
                 maxMcpResponseBytes: 24000,
                 maxMcpToolCallsPerMinute: 60,
             },
@@ -748,15 +836,26 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             requestedBy: 'system:answerlattice_nightly',
         };
 
+        const publicManifest = {
+            schemaVersion: manifest.schemaVersion,
+            pId: manifest.pId,
+            publicBundleId: manifest.publicBundleId,
+            bundleVersion: manifest.bundleVersion,
+            status: manifest.status,
+            generatedAt,
+            hash: manifest.hash,
+        };
+        const { updatedAt: _updatedAt, ...privateManifest } = manifest;
+
         await uploadManifestObjectBestEffort(
             getPublicBundlePath(publicBundleId, bundleVersion, 'manifest.json'),
-            manifest,
+            publicManifest,
             PUBLIC_CACHE_CONTROL,
             { tId: tenantId, sId: storeId, bundleVersion, visibility: 'public' },
         );
         await uploadManifestObjectBestEffort(
             getPrivateBundlePath(tenantId, storeId, bundleVersion, 'manifest.json'),
-            manifest,
+            privateManifest,
             PRIVATE_CACHE_CONTROL,
             { tId: tenantId, sId: storeId, bundleVersion, visibility: 'private' },
         );
@@ -777,6 +876,30 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             routes: stats.routes,
         };
     } catch (error) {
+        logger.error('[Answerlattice Context Bundle] Repair failed', {
+            failureCode: ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED,
+            ...getContextBundleScopeContext(tenantId, storeId),
+            bundleVersion,
+            ...getContextBundleSourceErrorContext(error),
+        });
+        await Promise.allSettled([
+            storageAdmin.bucket().deleteFiles({
+                prefix: getPublicBundlePath(publicBundleId, bundleVersion, ''),
+                force: true,
+            }),
+            storageAdmin.bucket().deleteFiles({
+                prefix: getPrivateBundlePath(tenantId, storeId, bundleVersion, ''),
+                force: true,
+            }),
+        ]).then((results) => {
+            if (results.some(result => result.status === 'rejected')) {
+                logger.error('[Answerlattice Context Bundle] Failed version cleanup failed', {
+                    failureCode: 'ANSWERLATTICE_CONTEXT_BUNDLE_FAILED_VERSION_CLEANUP_FAILED',
+                    ...getContextBundleScopeContext(tenantId, storeId),
+                    bundleVersion,
+                });
+            }
+        });
         await db.runTransaction(async (transaction) => {
             const currentLockSnap = await transaction.get(lockRef);
             if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) return;

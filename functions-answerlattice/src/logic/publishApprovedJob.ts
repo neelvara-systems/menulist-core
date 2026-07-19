@@ -18,7 +18,6 @@ import {
     IngestionJobCategory,
     IngestionJobCategoriesMap,
     KB_ARTICLES_COLLECTION,
-    KB_CATEGORIES_COLLECTION,
 } from '../types';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
 import { getReusableEmbeddingVectorDimensions } from './embeddingVectorBoundary';
@@ -28,7 +27,6 @@ const MAX_PUBLISH_ARTICLES = 60;
 const MAX_PUBLISH_CATEGORIES = 20;
 const MAX_PUBLISH_SECTIONS = 60;
 const MAX_REPLACEMENT_ARTICLES = 20;
-const MAX_NAVIGATION_BYTES = 850 * 1024;
 const MAX_FINAL_CATEGORIES_INPUT_BYTES = 512 * 1024;
 const PUBLISH_APPROVED_JOB_FAILED_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_FAILED';
 const PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED_CODE = 'ANSWERLATTICE_PUBLISH_APPROVED_JOB_STATUS_UPDATE_FAILED';
@@ -164,9 +162,7 @@ function buildFaqDrafts(
                 uId: job.uId,
                 question: faq.question,
                 answer: faq.answer,
-                status: 'published',
                 source: 'import',
-                active: true,
                 articleId,
                 articleTitle,
                 tags: faq.tags,
@@ -175,17 +171,19 @@ function buildFaqDrafts(
                 sortOrder: faq.sortOrder,
                 jobId: job.id,
                 generatedFromArticleId: articleId,
-                publishedOn: Timestamp.now(),
-                lastReviewedOn: Timestamp.now(),
+                publishedOn: null,
+                lastReviewedOn: null,
                 reviewRequestedOn: null,
                 createdOn: article.createdOn instanceof Timestamp ? article.createdOn : Timestamp.now(),
                 modifiedOn: Timestamp.now(),
+                status: 'needs_review',
+                active: false,
             },
         };
     });
 }
 
-function normalizeFinalCategories(input: unknown): NormalizedFinalCategories {
+export function normalizeFinalCategories(input: unknown): NormalizedFinalCategories {
     let byteSize = Number.POSITIVE_INFINITY;
     try {
         byteSize = Buffer.byteLength(JSON.stringify(input), 'utf8');
@@ -314,26 +312,6 @@ function normalizeFinalCategories(input: unknown): NormalizedFinalCategories {
     return { categories, placements };
 }
 
-function removeArticleIdsFromNavigation(categories: Record<string, unknown>, ids: Set<string>) {
-    for (const category of Object.values(categories)) {
-        if (!isRecord(category)) continue;
-        if (Array.isArray(category.articles)) {
-            category.articles = category.articles.filter(article => (
-                !isRecord(article) || !ids.has(String(article.id || ''))
-            ));
-        }
-        if (Array.isArray(category.sections)) {
-            category.sections.forEach(section => {
-                if (isRecord(section) && Array.isArray(section.articles)) {
-                    section.articles = section.articles.filter(article => (
-                        !isRecord(article) || !ids.has(String(article.id || ''))
-                    ));
-                }
-            });
-        }
-    }
-}
-
 function normalizeJobArticleIds(value: unknown): string[] | null {
     if (!Array.isArray(value) || value.length === 0 || value.length > MAX_PUBLISH_ARTICLES) return null;
     const ids = value.map(normalizeGeneratedArticleId);
@@ -366,10 +344,6 @@ function normalizeArticlesToReview(value: unknown, jobArticleIds: Set<string>): 
         normalized.push({ status: String(item.status), similarArticleIds: uniqueSimilarArticleIds });
     }
     return normalized;
-}
-
-function getCategoriesDocId(tId: number, sId: number) {
-    return `categories_${tId}_${sId}`;
 }
 
 function getOwnedGeneratedFaqIds(articleId: string, value: unknown): string[] {
@@ -441,8 +415,6 @@ export async function publishApprovedJobLogic(jobIdInput: string, finalCategorie
                 throw new HttpsError('failed-precondition', 'Resolve duplicate article reviews before publishing.');
             }
 
-            const categoriesRef = firestoreAdmin.collection(KB_CATEGORIES_COLLECTION).doc(getCategoriesDocId(tId, sId));
-            const categorySnap = await transaction.get(categoriesRef);
             const articleDocs = new Map<string, FirebaseFirestore.DocumentSnapshot>();
             for (const articleId of jobArticleIds) {
                 const articleSnap = await transaction.get(firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId));
@@ -488,31 +460,6 @@ export async function publishApprovedJobLogic(jobIdInput: string, finalCategorie
                 }
             }
 
-            const storedCategories = categorySnap.data()?.categories;
-            if (categorySnap.exists && storedCategories !== undefined && !isRecord(storedCategories)) {
-                throw new HttpsError('failed-precondition', 'Stored knowledge-base navigation is invalid.');
-            }
-            const existingCategories: Record<string, unknown> = isRecord(storedCategories)
-                ? structuredClone(storedCategories)
-                : {};
-            const removedIds = new Set([
-                ...jobArticleIds.filter(id => !normalized.placements.has(id)),
-                ...replacementIds,
-            ]);
-            removeArticleIdsFromNavigation(existingCategories, removedIds);
-            for (const [categoryId, category] of Object.entries(normalized.categories)) {
-                existingCategories[categoryId] = {
-                    ...category,
-                    pId: PRODUCT_ID,
-                    tId,
-                    sId,
-                    modifiedOn: Timestamp.now(),
-                };
-            }
-            if (Buffer.byteLength(JSON.stringify(existingCategories), 'utf8') > MAX_NAVIGATION_BYTES) {
-                throw new HttpsError('resource-exhausted', 'Knowledge-base navigation is too large to publish safely.');
-            }
-
             const embeddingPendingArticleIds: string[] = [];
             for (const articleId of jobArticleIds) {
                 const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
@@ -553,9 +500,9 @@ export async function publishApprovedJobLogic(jobIdInput: string, finalCategorie
                     sectionId: placement.sectionId,
                     sectionTitle: placement.sectionTitle,
                     title: placement.title,
-                    active: !needsEmbedding,
-                    status: needsEmbedding ? ARTICLE_STATUS.NEEDS_REVIEW : ARTICLE_STATUS.PUBLISHED,
-                    ...(needsEmbedding ? { embeddingStatus: 'pending' } : { lastReviewedOn: Timestamp.now() }),
+                    active: false,
+                    status: ARTICLE_STATUS.NEEDS_REVIEW,
+                    ...(needsEmbedding ? { embeddingStatus: 'pending' } : {}),
                     generatedFaqs: FieldValue.delete(),
                     reconciliation: FieldValue.delete(),
                     faqIds: nextFaqIds,
@@ -569,19 +516,6 @@ export async function publishApprovedJobLogic(jobIdInput: string, finalCategorie
                     );
                 }
             }
-            for (const [articleId, articleSnap] of replacementDocs) {
-                if (articleSnap.exists) {
-                    deleteStaleGeneratedFaqs(transaction, articleId, articleSnap.data()?.faqIds, []);
-                    transaction.delete(firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId));
-                }
-            }
-            transaction.set(categoriesRef, {
-                pId: PRODUCT_ID,
-                tId,
-                sId,
-                categories: existingCategories,
-                modifiedOn: Timestamp.now(),
-            }, { merge: true });
 
             const embeddingRunId = `publish_${randomUUID()}`;
             transaction.set(jobRef, {
@@ -594,6 +528,7 @@ export async function publishApprovedJobLogic(jobIdInput: string, finalCategorie
                 embeddingFailedArticleIds: [],
                 embeddingEnqueueStatus: 'pending',
                 embeddingRunId,
+                replacementArticleIds: replacementIds,
                 articlesToEmbedCount: embeddingPendingArticleIds.length,
                 articlesEmbeddedCount: 0,
                 errorMessage: null,

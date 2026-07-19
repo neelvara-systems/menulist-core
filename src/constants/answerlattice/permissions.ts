@@ -61,7 +61,7 @@ export const ANSWERLATTICE_PERMISSION_LABELS: Record<AnswerlatticePermissionKey,
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE]: 'Manage knowledge governance',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET]: 'Manage widget install',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT]: 'Manage support signals',
-    [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS]: 'Manage workflow notifications',
+    [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS]: 'Manage integrations and API access',
     [ANSWERLATTICE_PERMISSION_KEYS.EXPORT_DATA]: 'Export data',
     [ANSWERLATTICE_PERMISSION_KEYS.REBUILD_CONTEXT]: 'Rebuild context bundles',
 };
@@ -70,13 +70,13 @@ export const ANSWERLATTICE_PERMISSION_DESCRIPTIONS: Record<AnswerlatticePermissi
     [ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS]: 'Can open readiness metrics, digest, and operational health summaries.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WORKSPACE]: 'Can edit product profile, surfaces, and workspace setup details.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM]: 'Can add, edit, deactivate, and remove workspace members.',
-    [ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES]: 'Can create custom roles and change a member role.',
+    [ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES]: 'Requires team access. Can create custom roles and change a member role.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING]: 'Can view transactions and manage Answerlattice subscription settings.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE]: 'Can import, edit, publish, and organize knowledge content.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE]: 'Can review canonical answers, drift, entities, and signal queues.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET]: 'Can configure widget keys, allowed origins, appearance, and install snippets.',
     [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT]: 'Can review tickets, conversations, feedback, and support signals.',
-    [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS]: 'Can configure Slack/email workflow notifications and test deliveries.',
+    [ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS]: 'Can configure workflow notifications, test deliveries, and manage rollout-gated Public API credentials.',
     [ANSWERLATTICE_PERMISSION_KEYS.EXPORT_DATA]: 'Can export workspace data where export actions exist.',
     [ANSWERLATTICE_PERMISSION_KEYS.REBUILD_CONTEXT]: 'Can rebuild compiled context bundles for runtime surfaces.',
 };
@@ -200,6 +200,8 @@ export const ANSWERLATTICE_ROUTE_PERMISSION_REQUIREMENTS: Partial<Record<string,
     [ANSWERLATTICE_ROUTES.CONVERSATIONS]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT,
     [ANSWERLATTICE_ROUTES.FEEDBACK]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT,
     [ANSWERLATTICE_ROUTES.WEEKLY_DIGEST]: ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS,
+    [ANSWERLATTICE_ROUTES.WORKFLOW_NOTIFICATIONS]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS,
+    [ANSWERLATTICE_ROUTES.PUBLIC_API]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS,
     [ANSWERLATTICE_ROUTES.BILLING]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING,
     [ANSWERLATTICE_ROUTES.TRANSACTIONS]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING,
     [ANSWERLATTICE_ROUTES.GOVERNANCE]: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
@@ -228,10 +230,16 @@ export function normalizeAnswerlatticeRolePermissions(
     permissions: AnswerlatticeRolePermissions | undefined,
     defaults: AnswerlatticeRolePermissions = {},
 ): Record<AnswerlatticePermissionKey, boolean> {
-    return ANSWERLATTICE_ALL_PERMISSIONS.reduce((acc, permission) => {
+    const normalized = ANSWERLATTICE_ALL_PERMISSIONS.reduce((acc, permission) => {
         acc[permission] = permissions?.[permission] === true || defaults?.[permission] === true;
         return acc;
     }, {} as Record<AnswerlatticePermissionKey, boolean>);
+
+    if (!normalized[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM]) {
+        normalized[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES] = false;
+    }
+
+    return normalized;
 }
 
 export function getAnswerlatticeRouteRequiredPermission(pathname: string): AnswerlatticePermissionKey | null {

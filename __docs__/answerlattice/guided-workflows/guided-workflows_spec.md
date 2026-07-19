@@ -1,7 +1,7 @@
 # Answerlattice Guided Workflows Specification
 
 > **Status:** Implemented, workspace opt-in
-> **Version:** 2.1.0
+> **Version:** 2.2.0
 > **Last verified:** 2026-07-18
 
 ## Problem
@@ -73,8 +73,10 @@ Examples: `billing.change_plan`, `slack.oauth.started`.
 6. The public outcome endpoint derives product/workspace scope from the validated widget credential.
 7. The endpoint requires an exact scoped widget search-history document with `canonical === true`.
 8. The endpoint is byte-bounded, strict-schema validated, origin/runtime-token protected, rate-limited, and idempotent.
-9. Terminal outcomes are signals, not product truth.
-10. Human approval remains required for every canonical answer change.
+9. Terminal evidence must match the exact validated procedure snapshot, context key, and widget session retained with the canonical widget search record.
+10. Expired search-history evidence is not accepted even when Firestore TTL cleanup has not deleted it yet.
+11. Terminal outcomes are client interaction evidence, not independent proof of product correctness or product truth.
+12. Human approval remains required for every canonical answer change.
 
 ## Outcome States
 
@@ -83,7 +85,7 @@ Examples: `billing.change_plan`, `slack.oauth.started`.
 | `completed` | Every manual step was confirmed and every event-gated step received its matching verified event | One deduplicated guided-resolution signal |
 | `abandoned` | The user explicitly stopped before completion | One deduplicated guided-resolution signal |
 | `target_missing` | A declared semantic target was not found | One deduplicated guided-resolution signal |
-| `escalated` | The user requested support from a blocked step | One deduplicated escalation signal |
+| `escalated` | The explicit support request was created from a blocked step | One deduplicated escalation signal |
 
 Closing, hiding, navigating, or changing context clears the in-memory guide without creating an outcome. If signal mutation is disabled, the endpoint acknowledges the request with `recorded: false` and performs no Firestore write.
 

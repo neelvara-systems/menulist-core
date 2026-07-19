@@ -17,6 +17,10 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    redactAnswerlatticeIntakeText,
+    sanitizeAnswerlatticeIntakeMetadata,
+} from '@lib/answerlattice/knowledgeIntakePrivacy';
+import {
     parseAnswerlatticeIntakeReviewItem,
     parseAnswerlatticeKnowledgeIntakeJob,
     parseAnswerlatticeKnowledgeIntakeSummary,
@@ -36,6 +40,7 @@ import {
 } from '@lib/answerlattice/intakeUsageLedger';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
 import { validateProcedure } from '@lib/answerlattice/procedureValidation';
+import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     fetchBoundedPublicText,
@@ -45,6 +50,7 @@ import {
 import { secureLog } from '@lib/security/secureLogger';
 import { normalizeGeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import {
+    ANSWERLATTICE_FAQ_SOURCE,
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
     ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS,
@@ -198,32 +204,6 @@ const cleanLongText = (value: unknown, maxLength: number) => (
         .slice(0, maxLength)
 );
 
-const redactSensitiveSourceText = (value: string): { text: string; redactionCount: number } => {
-    let text = String(value || '');
-    let redactionCount = 0;
-
-    const apply = (pattern: RegExp, replacement: string | ((substring: string, ...args: any[]) => string)) => {
-        text = text.replace(pattern, (...args) => {
-            redactionCount += 1;
-            return typeof replacement === 'function' ? replacement(...args) : replacement;
-        });
-    };
-
-    apply(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted-email]');
-    apply(/\b(?:\d[ -]*?){13,19}\b/g, '[redacted-card]');
-    apply(/\b(?:sk-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,})\b/g, '[redacted-token]');
-    apply(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[redacted-jwt]');
-    apply(/\b(?:password|passcode|secret|client_secret|api[_ -]?key|access[_ -]?token|refresh[_ -]?token|authorization)\b\s*[:=]\s*["']?[^"'\s]{6,}/gi, (match: string) => {
-        const label = match.split(/[:=]/)[0]?.trim() || 'secret';
-        return `${label}: [redacted]`;
-    });
-
-    return {
-        text,
-        redactionCount,
-    };
-};
-
 const cleanList = (value: unknown, maxItems: number, maxLength = 80) => {
     const raw = typeof value === 'string'
         ? value.split(/[\n,]/)
@@ -236,6 +216,23 @@ const cleanList = (value: unknown, maxItems: number, maxLength = 80) => {
 
 const cleanIdList = (value: unknown, maxItems: number) =>
     normalizeAnswerlatticeResolvedEntityIds(value, maxItems);
+
+const cleanIntakeSourceIds = (
+    value: unknown,
+    maxItems = ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS,
+) => {
+    if (!Array.isArray(value)) return [];
+    return Array.from(new Set(value
+        .map(item => normalizeAnswerlatticeKnowledgeIntakeSourceId(item))
+        .filter((item): item is string => Boolean(item))))
+        .slice(0, maxItems);
+};
+
+const getReviewItemSourceIds = (item: AnswerlatticeIntakeReviewItem) => cleanIntakeSourceIds([
+    ...(item.sourceIds || []),
+    ...(item.launchPack?.sourceIds || []),
+    ...(item.sourceId ? [item.sourceId] : []),
+]);
 
 const sha256 = (value: string | Buffer) => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -613,18 +610,25 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
     const job = await ensureJobForScope(scope, normalizedJobId);
     assertJobCanAcceptSource(job);
 
-    const fetched = preparedRepeatedReply
+    const normalizedInputOriginUrl = input.originUrl
+        ? normalizePublicUrl(input.originUrl)
+        : null;
+    if (input.originUrl && !normalizedInputOriginUrl) {
+        throw new Error('Use a public URL without credentials or sensitive query parameters.');
+    }
+
+    const fetched: { text: string; title: string; finalUrl?: string } = preparedRepeatedReply
         ? { text: preparedRepeatedReply.contentText, title: input.title || '' }
         : input.contentText?.trim()
         ? { text: input.contentText, title: input.title || '' }
-        : input.originUrl && sourceType === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.WEBSITE_PAGE
-            ? await fetchPublicPageText(input.originUrl)
+        : normalizedInputOriginUrl && sourceType === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.WEBSITE_PAGE
+            ? await fetchPublicPageText(normalizedInputOriginUrl)
             : { text: '', title: '' };
     const redacted = preparedRepeatedReply?.redacted
-        || redactSensitiveSourceText(cleanLongText(fetched.text || input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS));
+        || redactAnswerlatticeIntakeText(cleanLongText(fetched.text || input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS));
     const contentText = preparedRepeatedReply?.contentText
         || cleanLongText(redacted.text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
-    const normalizedOriginUrl = normalizePublicUrl(input.originUrl);
+    const normalizedOriginUrl = normalizePublicUrl(fetched.finalUrl || normalizedInputOriginUrl);
     const computedContentHash = sha256([
         sourceType,
         normalizedOriginUrl || '',
@@ -656,7 +660,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
         tags: cleanList(input.tags, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS),
         contextKeys: cleanList(input.contextKeys, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_CONTEXT_KEYS),
         entityIds: cleanIdList(input.entityIds, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS),
-        metadata: sanitizeMetadata({
+        metadata: sanitizeAnswerlatticeIntakeMetadata({
             ...(input.metadata || {}),
             ...(redacted.redactionCount > 0 ? { privacyRedactionCount: redacted.redactionCount } : {}),
         }),
@@ -792,7 +796,7 @@ async function claimKnowledgeIntakeMediaSource(params: {
             tags: [],
             contextKeys: [],
             entityIds: [],
-            metadata: sanitizeMetadata({
+            metadata: sanitizeAnswerlatticeIntakeMetadata({
                 mediaKind: params.mediaKind,
                 rawMediaHash: params.rawMediaHash,
                 privacyNote: 'Raw media was not retained by Answerlattice intake.',
@@ -1041,7 +1045,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
                 throw new Error('Knowledge intake media settlement evidence is invalid.');
             }
 
-            const redacted = redactSensitiveSourceText(cleanLongText(
+            const redacted = redactAnswerlatticeIntakeText(cleanLongText(
                 extracted.text,
                 ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS,
             ));
@@ -1055,7 +1059,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
                 tags: cleanList(input.tags, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS),
                 contextKeys: cleanList(input.contextKeys, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_CONTEXT_KEYS),
                 entityIds: cleanIdList(input.entityIds, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS),
-                metadata: sanitizeMetadata({
+                metadata: sanitizeAnswerlatticeIntakeMetadata({
                     ...source.metadata,
                     ...input.metadata,
                     mediaKind,
@@ -1373,7 +1377,7 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             if (item.jobId !== normalizedJobId) throw new Error('Review item is not available for this intake job.');
             return item;
         });
-        const existingIds = new Set(existingItems.map(item => item.id));
+        const existingById = new Map(existingItems.map(item => [item.id, item]));
 
         const reviewItems: AnswerlatticeIntakeReviewItem[] = [];
         sources.forEach((source, sourceIndex) => {
@@ -1389,10 +1393,32 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_ITEMS_PER_JOB - existingItems.length,
         );
         const newItems = candidates
-            .filter(item => !existingIds.has(item.id))
+            .filter(item => !existingById.has(item.id))
             .slice(0, availableSlots);
+        const evidenceUpdates = candidates.flatMap((candidate) => {
+            const existing = existingById.get(candidate.id);
+            if (!existing) return [];
+            const sourceIds = cleanIntakeSourceIds([
+                ...getReviewItemSourceIds(existing),
+                ...getReviewItemSourceIds(candidate),
+            ]);
+            if (sourceIds.join('|') === getReviewItemSourceIds(existing).join('|')) return [];
+            return [{
+                id: existing.id,
+                sourceId: existing.sourceId || sourceIds[0] || null,
+                sourceIds,
+            }];
+        });
         const batch = db.batch();
         const createdAt = now();
+        evidenceUpdates.forEach((update) => {
+            batch.set(reviewItemRef(update.id), {
+                sourceId: update.sourceId,
+                sourceIds: update.sourceIds,
+                modifiedOn: createdAt,
+                ...mutableActorFields(actor),
+            }, { merge: true });
+        });
         newItems.forEach((item, index) => {
             batch.create(reviewItemRef(item.id), {
                 ...item,
@@ -1809,7 +1835,8 @@ async function publishArticle(scope: IntakeScope, job: AnswerlatticeKnowledgeInt
         jobId: job.id,
         intakeJobId: job.id,
         intakeReviewItemId: item.id,
-        sources: item.sourceId ? [{ type: 'knowledge_intake', name: item.title, url: item.sourceId }] : null,
+        intakeSourceIds: getReviewItemSourceIds(item),
+        sources: null,
         likes: 0,
         dislikes: 0,
         lastReviewedOn: now(),
@@ -1999,7 +2026,7 @@ async function publishFaq(scope: IntakeScope, item: AnswerlatticeIntakeReviewIte
                 question: cleanText(current.question || current.title, 240),
                 answer: cleanLongText(current.answer || current.body, 2000),
                 status: 'published',
-                source: 'knowledge_intake',
+                source: ANSWERLATTICE_FAQ_SOURCE.KNOWLEDGE_INTAKE,
                 active: true,
                 tags: cleanList(current.tags, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS),
                 contextKeys: cleanList(current.contextKeys, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_CONTEXT_KEYS),
@@ -2007,6 +2034,7 @@ async function publishFaq(scope: IntakeScope, item: AnswerlatticeIntakeReviewIte
                 sortOrder: Number(current.sortOrder || 0),
                 intakeJobId: current.jobId,
                 intakeReviewItemId: current.id,
+                intakeSourceIds: getReviewItemSourceIds(current),
                 publishedOn: publishedAt,
                 lastReviewedOn: publishedAt,
                 reviewRequestedOn: null,
@@ -2085,6 +2113,7 @@ async function publishSurface(scope: IntakeScope, item: AnswerlatticeIntakeRevie
                 priority: 100,
                 intakeJobId: current.jobId,
                 intakeReviewItemId: current.id,
+                intakeSourceIds: getReviewItemSourceIds(current),
                 createdOn: publishedAt,
                 modifiedOn: publishedAt,
                 ...actorFields(actor),
@@ -2138,8 +2167,12 @@ async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeI
             current.launchPack ? current.answer : current.answer || current.body,
             4000,
         );
+        const evidenceSourceIds = getReviewItemSourceIds(current);
         if (supportedAnswer.length < 20) {
             throw new Error('Add a supported answer before publishing a canonical answer proposal.');
+        }
+        if (evidenceSourceIds.length === 0) {
+            throw new Error('Add approved source evidence before publishing a canonical answer proposal.');
         }
         if (proposalSnap.exists) {
             const existing = proposalSnap.data() || {};
@@ -2165,10 +2198,7 @@ async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeI
                     ticketCount: 0,
                     chatCount: 0,
                     negativeFeedbackRate: 0,
-                    exampleReferences: cleanIdList(
-                        current.launchPack?.sourceIds || (current.sourceId ? [current.sourceId] : []),
-                        5,
-                    ),
+                    exampleReferences: evidenceSourceIds,
                 },
                 suggestedChange: {
                     draftTitle: cleanText(current.title, 160),
@@ -2184,6 +2214,10 @@ async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeI
                     draftSignalExamples: [cleanText(current.question || current.title, 240)].filter(Boolean),
                     draftEntityContext: cleanText(current.contextKeys?.join(', '), 500),
                     draftPromptVersion: 'knowledge-intake-v1',
+                    proposedEvidence: {
+                        sourceIds: evidenceSourceIds,
+                        citations: [],
+                    },
                 },
                 confidenceScore: Number(current.confidenceScore || 0.6),
                 status: ANSWERLATTICE_MUTATION_STATUS.PENDING_REVIEW,
@@ -2220,6 +2254,7 @@ function buildReviewItemsFromSource(
         sId: scope.sId,
         jobId: job.id,
         sourceId: source.id,
+        sourceIds: [source.id],
         status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.DRAFT,
         tags: source.tags || [],
         contextKeys: source.contextKeys || [],
@@ -2328,7 +2363,7 @@ function buildReviewItemsFromSource(
 
 function prepareRepeatedReplySourceText(input: AddSourceInput) {
     const rawText = cleanLongText(input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
-    const redacted = redactSensitiveSourceText(rawText);
+    const redacted = redactAnswerlatticeIntakeText(rawText);
     const contentText = cleanLongText(redacted.text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
     if (!extractRepeatedReplyTextPair(contentText, input.metadata?.replyQuestion, input.title)) {
         throw new Error('Add one repeated question and a reusable answer before importing a repeated reply.');
@@ -2352,7 +2387,7 @@ function extractRepeatedReplyTextPair(text: string, preferredQuestion?: unknown,
 }
 
 function dedupeReviewItems(items: AnswerlatticeIntakeReviewItem[]) {
-    const seen = new Set<string>();
+    const indexByKey = new Map<string, number>();
     const result: AnswerlatticeIntakeReviewItem[] = [];
     items.forEach((item) => {
         const key = [
@@ -2361,9 +2396,31 @@ function dedupeReviewItems(items: AnswerlatticeIntakeReviewItem[]) {
             cleanText(item.question, 120).toLowerCase(),
             cleanText(item.routePath, 120).toLowerCase(),
         ].join('|');
-        if (seen.has(key)) return;
-        seen.add(key);
-        result.push(item);
+        const existingIndex = indexByKey.get(key);
+        if (existingIndex === undefined) {
+            indexByKey.set(key, result.length);
+            result.push({
+                ...item,
+                sourceIds: getReviewItemSourceIds(item),
+            });
+            return;
+        }
+
+        const existing = result[existingIndex];
+        const sourceIds = cleanIntakeSourceIds([
+            ...getReviewItemSourceIds(existing),
+            ...getReviewItemSourceIds(item),
+        ]);
+        result[existingIndex] = {
+            ...existing,
+            sourceId: existing.sourceId || sourceIds[0] || null,
+            sourceIds,
+            tags: cleanList([...(existing.tags || []), ...(item.tags || [])], ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS),
+            contextKeys: cleanList([...(existing.contextKeys || []), ...(item.contextKeys || [])], ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_CONTEXT_KEYS, 100),
+            entityIds: cleanIdList([...(existing.entityIds || []), ...(item.entityIds || [])], ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS),
+            confidenceScore: Math.max(Number(existing.confidenceScore || 0), Number(item.confidenceScore || 0)),
+            sortOrder: Math.min(Number(existing.sortOrder || 0), Number(item.sortOrder || 0)),
+        };
     });
     return result;
 }
@@ -2571,40 +2628,6 @@ function normalizeSourceType(value: unknown): AnswerlatticeKnowledgeSource['type
     return values.includes(value as any) ? value as AnswerlatticeKnowledgeSource['type'] : ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.PRODUCT_NOTE;
 }
 
-const stringifyMetadataValue = (value: unknown): string => {
-    try {
-        return JSON.stringify(value);
-    } catch {
-        return String(value);
-    }
-};
-
-function sanitizeMetadataValue(value: unknown, depth = 0): any {
-    if (value === undefined || value === null) return null;
-    if (typeof value === 'string') return cleanText(value, 500);
-    if (typeof value === 'number' || typeof value === 'boolean') return value;
-    if (value instanceof Date) return value.toISOString();
-    if (depth >= 2) return cleanText(stringifyMetadataValue(value), 500);
-    if (Array.isArray(value)) {
-        return value.slice(0, 20).map(item => sanitizeMetadataValue(item, depth + 1));
-    }
-    if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
-            .slice(0, 12)
-            .map(([key, val]) => [cleanText(key, 80), sanitizeMetadataValue(val, depth + 1)])
-            .filter(([key]) => Boolean(key)));
-    }
-    return cleanText(value, 200);
-}
-
-function sanitizeMetadata(value: unknown) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-    return Object.fromEntries(Object.entries(value as Record<string, any>)
-        .slice(0, 20)
-        .map(([key, val]) => [cleanText(key, 80), sanitizeMetadataValue(val)])
-        .filter(([key]) => Boolean(key)));
-}
-
 function buildTiptapDoc(text: string) {
     const paragraphs = cleanLongText(text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_BODY_CHARS)
         .split(/\n{2,}/)
@@ -2641,7 +2664,7 @@ function normalizePublicUrl(value: unknown): string | null {
             }
         });
         url.searchParams.sort();
-        return url.toString();
+        return normalizeAnswerlatticePublicCitationUrl(url.toString());
     } catch {
         return null;
     }
@@ -2715,12 +2738,13 @@ export async function discoverKnowledgeIntakeLinks(rawUrl: string) {
                 }
             });
             url.searchParams.sort();
-            const normalized = url.toString();
+            const normalized = normalizePublicUrl(url.toString());
+            if (!normalized) return;
             if (discovered.has(normalized)) return;
             discovered.set(normalized, {
                 url: normalized,
                 title: cleanText(title || url.pathname || url.hostname, 120),
-                role: classifyUrl(url.toString()),
+                role: classifyUrl(normalized),
                 reason,
             });
         } catch {

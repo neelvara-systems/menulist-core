@@ -1,6 +1,6 @@
 # Maps Place Check - Mobile Support
 
-**Status:** Mobile UI deferred; backend usable by future owner-assisted surfaces
+**Status:** Existing mobile Maps-link flow supported; grounded-candidate UI deferred
 
 ## Admission Test
 
@@ -13,7 +13,15 @@
 
 ## Decision
 
-Do not add a mobile screen in the prototype. The first implementation is a guarded callable that can later power:
+Do not add a new mobile screen. This is an occasional setup/review action and
+still fails the frequency gate.
+
+The existing `MobileOfficialPageScreen` already lets an owner save or remove the
+Google Maps directions link. That shared `updateStore` mutation now mirrors or
+removes the internal `google_maps` URI binding in the same write, so mobile,
+desktop, and embedded editor behavior stay aligned without another mobile task.
+
+The guarded callable can later power:
 
 - owner onboarding review
 - Business Health review card

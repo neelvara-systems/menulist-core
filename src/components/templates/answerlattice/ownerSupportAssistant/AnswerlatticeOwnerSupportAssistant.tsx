@@ -10,7 +10,9 @@ import {
     type AnswerlatticeOwnerAssistantStatus,
     type AnswerlatticeFounderDailyAction,
     type AnswerlatticeFounderDailyActionSeverity,
-} from '@lib/answerlattice/ownerSupportAssistant';
+    isAnswerlatticeOwnerAssistantBriefResponse,
+    isAnswerlatticeOwnerAssistantQueryResponse,
+} from '@lib/answerlattice/ownerSupportAssistantContracts';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
@@ -46,9 +48,8 @@ import {
 
 const { Paragraph, Text, Title } = Typography;
 const RESPONSE_MAX_BYTES = 128 * 1024;
-
-type BriefResponse = { brief?: AnswerlatticeOwnerAssistantBrief; error?: string };
-type QueryResponse = { answer?: AnswerlatticeOwnerAssistantAnswer; error?: string };
+const SUPPORT_BRIEF_LOAD_FAILED = 'Could not load the support brief.';
+const SUPPORT_QUESTION_FAILED = 'Could not answer that support question.';
 
 const STATUS_META: Record<AnswerlatticeOwnerAssistantStatus, { color: string; label: string }> = {
     healthy: { color: 'green', label: 'Stable' },
@@ -73,10 +74,6 @@ const DAILY_FOCUS_META: Record<NonNullable<AnswerlatticeOwnerAssistantBrief['dai
     maintain: { color: 'green', label: 'Maintain' },
 };
 
-const getError = (payload: { error?: string } | null, fallback: string) => (
-    payload?.error?.trim() || fallback
-);
-
 const formatOwnerSupportDateTime = (
     value: string | null | undefined,
     formatter: IntlFormatter,
@@ -97,20 +94,27 @@ export default function AnswerlatticeOwnerSupportAssistant() {
     const [question, setQuestion] = useState('');
     const [loading, setLoading] = useState(false);
     const [asking, setAsking] = useState(false);
+    const [briefError, setBriefError] = useState<string | null>(null);
+    const [answerError, setAnswerError] = useState<string | null>(null);
 
     const loadBrief = useCallback(async () => {
         setLoading(true);
+        setBriefError(null);
         try {
             const response = await fetch('/api/answerlattice/support-assistant/brief', {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
             });
-            const payload = await readJsonResponseWithLimit<BriefResponse>(response, RESPONSE_MAX_BYTES);
-            if (!response.ok || !payload?.brief) throw new Error(getError(payload, 'Could not load the support brief.'));
+            const payload = await readJsonResponseWithLimit<unknown>(response, RESPONSE_MAX_BYTES);
+            if (!response.ok || !isAnswerlatticeOwnerAssistantBriefResponse(payload)) {
+                throw new Error('answerlattice_owner_assistant_brief_response_invalid');
+            }
             setBrief(payload.brief);
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : 'Could not load the support brief.');
+        } catch {
+            setBrief(null);
+            setBriefError(SUPPORT_BRIEF_LOAD_FAILED);
+            message.error(SUPPORT_BRIEF_LOAD_FAILED);
         } finally {
             setLoading(false);
         }
@@ -125,6 +129,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
         if (query.length < 3) return;
         setQuestion(query);
         setAsking(true);
+        setAnswerError(null);
         try {
             const response = await fetch('/api/answerlattice/support-assistant/query', {
                 method: 'POST',
@@ -134,18 +139,25 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question: query }),
             });
-            const payload = await readJsonResponseWithLimit<QueryResponse>(response, RESPONSE_MAX_BYTES);
-            if (!response.ok || !payload?.answer) throw new Error(getError(payload, 'Could not answer that support question.'));
+            const payload = await readJsonResponseWithLimit<unknown>(response, RESPONSE_MAX_BYTES);
+            if (!response.ok || !isAnswerlatticeOwnerAssistantQueryResponse(payload)) {
+                throw new Error('answerlattice_owner_assistant_query_response_invalid');
+            }
             setAnswer(payload.answer);
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : 'Could not answer that support question.');
+        } catch {
+            setAnswerError(SUPPORT_QUESTION_FAILED);
+            message.error(SUPPORT_QUESTION_FAILED);
         } finally {
             setAsking(false);
         }
     }, [question]);
 
     const prepareReviewCard = useCallback((action: NonNullable<AnswerlatticeOwnerAssistantBrief['dailyBrief']>['actions'][number]) => {
-        if (!action.preparedReviewCard || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS) return;
+        if (
+            !action.preparedReviewCard
+            || !brief?.capabilities.canPrepareReviewCard
+            || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS
+        ) return;
         const params = new URLSearchParams({
             create: '1',
             title: action.preparedReviewCard.title.slice(0, 140),
@@ -154,7 +166,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
             tags: action.preparedReviewCard.tags.slice(0, 8).join(','),
         });
         router.push(`${ANSWERLATTICE_ROUTES.SUPPORT_BOARD}?${params.toString()}`);
-    }, [router]);
+    }, [brief?.capabilities.canPrepareReviewCard, router]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT) return null;
 
@@ -192,7 +204,9 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                         >
                             {action.cta}
                         </Button>
-                        {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS && action.preparedReviewCard ? (
+                        {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS
+                            && brief?.capabilities.canPrepareReviewCard
+                            && action.preparedReviewCard ? (
                             <Button
                                 icon={<LuFilePlus2 />}
                                 onClick={() => prepareReviewCard(action)}
@@ -220,13 +234,15 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                     </Paragraph>
                 </div>
                 <Space wrap>
-                    <Button
-                        icon={<LuRocket />}
-                        onClick={() => router.push(`${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`)}
-                        style={{ minHeight: 44 }}
-                    >
-                        I shipped a change
-                    </Button>
+                    {brief?.capabilities.canRecordProductChange ? (
+                        <Button
+                            icon={<LuRocket />}
+                            onClick={() => router.push(`${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`)}
+                            style={{ minHeight: 44 }}
+                        >
+                            I shipped a change
+                        </Button>
+                    ) : null}
                     <Button icon={<LuRefreshCw />} onClick={loadBrief} loading={loading} style={{ minHeight: 44 }}>Refresh brief</Button>
                 </Space>
             </Flex>
@@ -240,6 +256,23 @@ export default function AnswerlatticeOwnerSupportAssistant() {
 
             {brief ? (
                 <>
+                    {!brief.summaryHealth.complete ? (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            message="Support evidence is partial"
+                            description={[
+                                brief.summaryHealth.unavailableSources.length
+                                    ? `Unavailable: ${brief.summaryHealth.unavailableSources.join(', ')}.`
+                                    : '',
+                                brief.summaryHealth.staleSources.length
+                                    ? `Needs refresh: ${brief.summaryHealth.staleSources.join(', ')}.`
+                                    : '',
+                                `Using ${brief.summaryHealth.currentCount}/${brief.summaryHealth.expectedCount} current summaries.`,
+                            ].filter(Boolean).join(' ')}
+                            action={<Button onClick={loadBrief} loading={loading}>Retry</Button>}
+                        />
+                    ) : null}
                     {brief.dailyBrief && (
                         <Card>
                             <Flex vertical gap={16}>
@@ -260,47 +293,49 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                                     </Tag>
                                 </Flex>
 
-                                <div
-                                    style={{
-                                        border: `1px solid ${brief.launchVerification.ready ? token.colorSuccessBorder : token.colorBorderSecondary}`,
-                                        borderRadius: 8,
-                                        padding: isMobile ? 12 : 14,
-                                        background: brief.launchVerification.ready ? token.colorSuccessBg : token.colorFillAlter,
-                                    }}
-                                >
-                                    <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} vertical={isMobile} gap={12}>
-                                        <Flex vertical gap={4}>
-                                            <Space wrap>
-                                                <Text strong>Launch verification</Text>
-                                                <Tag color={brief.launchVerification.ready ? 'green' : brief.launchVerification.available ? 'orange' : 'default'}>
-                                                    {brief.launchVerification.ready ? 'Ready' : brief.launchVerification.available ? 'Incomplete' : 'Not verified'}
-                                                </Tag>
-                                                {brief.launchVerification.available ? (
-                                                    <Text type="secondary">
-                                                        {brief.launchVerification.completeCount}/{brief.launchVerification.totalCount} checks complete
-                                                    </Text>
-                                                ) : null}
-                                            </Space>
-                                            <Text type="secondary">
-                                                {brief.launchVerification.ready
-                                                    ? `Verified ${formatOwnerSupportDateTime(
-                                                        brief.launchVerification.verifiedAt,
-                                                        formatter,
-                                                        'from the latest activation snapshot',
-                                                    )}.`
-                                                    : brief.launchVerification.blockers[0] || 'Open Activation to create the first factual launch verification.'}
-                                            </Text>
+                                {brief.capabilities.canViewLaunchVerification ? (
+                                    <div
+                                        style={{
+                                            border: `1px solid ${brief.launchVerification.ready ? token.colorSuccessBorder : token.colorBorderSecondary}`,
+                                            borderRadius: 8,
+                                            padding: isMobile ? 12 : 14,
+                                            background: brief.launchVerification.ready ? token.colorSuccessBg : token.colorFillAlter,
+                                        }}
+                                    >
+                                        <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} vertical={isMobile} gap={12}>
+                                            <Flex vertical gap={4}>
+                                                <Space wrap>
+                                                    <Text strong>Launch verification</Text>
+                                                    <Tag color={brief.launchVerification.ready ? 'green' : brief.launchVerification.available ? 'orange' : 'default'}>
+                                                        {brief.launchVerification.ready ? 'Ready' : brief.launchVerification.available ? 'Incomplete' : 'Not verified'}
+                                                    </Tag>
+                                                    {brief.launchVerification.available ? (
+                                                        <Text type="secondary">
+                                                            {brief.launchVerification.completeCount}/{brief.launchVerification.totalCount} checks complete
+                                                        </Text>
+                                                    ) : null}
+                                                </Space>
+                                                <Text type="secondary">
+                                                    {brief.launchVerification.ready
+                                                        ? `Verified ${formatOwnerSupportDateTime(
+                                                            brief.launchVerification.verifiedAt,
+                                                            formatter,
+                                                            'from the latest activation snapshot',
+                                                        )}.`
+                                                        : brief.launchVerification.blockers[0] || 'Open Activation to create the first factual launch verification.'}
+                                                </Text>
+                                            </Flex>
+                                            {!brief.launchVerification.ready ? (
+                                                <Button
+                                                    onClick={() => router.push(brief.launchVerification.nextActionRoute)}
+                                                    style={{ minHeight: 44 }}
+                                                >
+                                                    {brief.launchVerification.nextActionLabel || 'Open Activation'}
+                                                </Button>
+                                            ) : null}
                                         </Flex>
-                                        {!brief.launchVerification.ready ? (
-                                            <Button
-                                                onClick={() => router.push(brief.launchVerification.nextActionRoute)}
-                                                style={{ minHeight: 44 }}
-                                            >
-                                                {brief.launchVerification.nextActionLabel || 'Open Activation'}
-                                            </Button>
-                                        ) : null}
-                                    </Flex>
-                                </div>
+                                    </div>
+                                ) : null}
 
                                 <Flex vertical gap={10}>
                                     {brief.dailyBrief.actions[0] ? renderDailyAction(brief.dailyBrief.actions[0], true) : null}
@@ -344,9 +379,9 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                     </Card>
 
                     <Flex gap={12} wrap="wrap">
-                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Coverage" value={brief.metrics.coverageRate ?? 0} suffix={brief.metrics.coverageRate === null ? '' : '%'} prefix={<LuShieldCheck size={16} />} /></Card>
-                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Confirmed resolved" value={brief.metrics.confirmedResolutionRate ?? 0} suffix={brief.metrics.confirmedResolutionRate === null ? '' : '%'} prefix={<LuGauge size={16} />} /></Card>
-                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="No escalation" value={brief.metrics.resolutionRate ?? 0} suffix={brief.metrics.resolutionRate === null ? '' : '%'} prefix={<LuGauge size={16} />} /></Card>
+                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Coverage" value={brief.metrics.coverageRate ?? 'Not available'} suffix={brief.metrics.coverageRate === null ? undefined : '%'} prefix={<LuShieldCheck size={16} />} /></Card>
+                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Confirmed resolved" value={brief.metrics.confirmedResolutionRate ?? 'Not available'} suffix={brief.metrics.confirmedResolutionRate === null ? undefined : '%'} prefix={<LuGauge size={16} />} /></Card>
+                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="No escalation" value={brief.metrics.noEscalationRate ?? 'Not available'} suffix={brief.metrics.noEscalationRate === null ? undefined : '%'} prefix={<LuGauge size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Drifted answers" value={brief.metrics.driftedAnswers} prefix={<LuAlertCircle size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Review items" value={brief.metrics.reviewItems + brief.metrics.needsAnswerCards} prefix={<LuListChecks size={16} />} /></Card>
                     </Flex>
@@ -358,6 +393,15 @@ export default function AnswerlatticeOwnerSupportAssistant() {
 
                     <Card title="Ask about support operations">
                         <Flex vertical gap={14}>
+                            {answerError ? (
+                                <Alert
+                                    type="error"
+                                    showIcon
+                                    message={answerError}
+                                    closable
+                                    onClose={() => setAnswerError(null)}
+                                />
+                            ) : null}
                             <Flex gap={8} vertical={isMobile}>
                                 <Input
                                     value={question}
@@ -382,12 +426,29 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                     </Card>
                 </>
             ) : (
-                <Card loading={loading}><Empty description="Support brief is not available." /></Card>
+                briefError ? (
+                    <Alert
+                        type="error"
+                        showIcon
+                        message={briefError}
+                        action={<Button onClick={loadBrief} loading={loading}>Retry</Button>}
+                    />
+                ) : (
+                    <Card loading={loading}><Empty description="Support brief is not available." /></Card>
+                )
             )}
 
             {answer && (
                 <Card title="Answer" extra={<Tag color={STATUS_META[answer.status].color}>{STATUS_META[answer.status].label}</Tag>}>
                     <Flex vertical gap={16}>
+                        {!answer.summaryHealth.complete ? (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message="This answer uses partial support evidence"
+                                description="Review the listed limits and owning screens before making a support decision."
+                            />
+                        ) : null}
                         <Title level={4} style={{ margin: 0 }}>{answer.directAnswer}</Title>
                         {answer.evidence.length > 0 && (
                             <Flex vertical gap={8}>

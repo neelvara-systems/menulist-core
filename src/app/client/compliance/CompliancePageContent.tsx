@@ -16,10 +16,15 @@ import {
     getStoreByCustomDomain,
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from "@lib/localization/publicCustomerMessages";
+import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
-import { LuChevronLeft } from "react-icons/lu";
+import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import { notFound } from "next/navigation";
 
 // ── Store lookup + tenant headers — shared with other client pages ──
@@ -31,6 +36,7 @@ async function getTenantFromHeaders() {
 interface CompliancePageContentProps {
     type: 'privacy' | 'terms' | 'refund';
     backHref?: string;
+    requestedLanguage?: string | string[] | null;
 }
 
 const PUBLIC_COMPLIANCE_STORE_DOCUMENT_ID_PATTERN = /^\d+$/;
@@ -65,7 +71,11 @@ function logComplianceOverrideReadFailure(
     });
 }
 
-export default async function CompliancePageContent({ type, backHref = '/' }: CompliancePageContentProps) {
+export default async function CompliancePageContent({
+    type,
+    backHref = '/',
+    requestedLanguage,
+}: CompliancePageContentProps) {
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
 
     // Resolve store
@@ -80,13 +90,15 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
         notFound();
     }
 
+    const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
+    const t = createPublicCustomerTranslator(contentLanguage);
     const sId = storeData.storeId ?? storeData.id;
     const inputs = extractComplianceInputs(storeData);
 
     const titleMap: Record<string, string> = {
-        privacy: 'Privacy Policy',
-        terms: 'Terms & Conditions',
-        refund: 'Refund & Cancellation Policy',
+        privacy: t('menu.privacyPolicy'),
+        terms: t('menu.termsConditions'),
+        refund: t('menu.refundCancellationPolicy'),
     };
 
     if (!inputs) {
@@ -94,11 +106,12 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
         return (
             <ComplianceShell
                 activePlanType={storeData?.activePlanType}
-                title={titleMap[type] || 'Policy'}
-                businessName={getBrandName(storeData, 'Business')}
+                activeLanguage={contentLanguage}
+                title={titleMap[type] || t('menu.policy')}
+                businessName={getBrandName(storeData, t('common.business'))}
             >
                 <p style={{ color: '#666', textAlign: 'center', padding: '40px 0' }}>
-                    This page is not yet available.
+                    {t('menu.pageNotYetAvailable')}
                 </p>
             </ComplianceShell>
         );
@@ -148,19 +161,24 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
         }
     }
 
-    const title = titleMap[type] || 'Policy';
+    const title = titleMap[type] || t('menu.policy');
     const businessName = inputs.businessName;
     const logoUrl = storeData?.logo || null;
 
     return (
         <ComplianceShell
             activePlanType={storeData?.activePlanType}
+            activeLanguage={contentLanguage}
             title={title}
             businessName={businessName}
             logoUrl={logoUrl}
             backHref={backHref}
         >
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 14, color: '#333' }}>
+            <div
+                dir={contentLanguage.startsWith('en') ? getPublicCustomerLanguageDirection(contentLanguage) : 'ltr'}
+                lang={contentLanguage.startsWith('en') ? contentLanguage : 'en'}
+                style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 14, color: '#333' }}
+            >
                 {content}
             </div>
         </ComplianceShell>
@@ -171,6 +189,7 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
 
 function ComplianceShell({
     activePlanType,
+    activeLanguage,
     title,
     businessName,
     logoUrl,
@@ -178,6 +197,7 @@ function ComplianceShell({
     children,
 }: {
     activePlanType?: string | null;
+    activeLanguage?: string | null;
     title: string;
     businessName: string;
     logoUrl?: string | null;
@@ -185,13 +205,19 @@ function ComplianceShell({
     children: React.ReactNode;
 }) {
     const showMenuListAttribution = resolveMenuListAttributionPolicy({ activePlanType }).showAttribution;
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
 
     return (
-        <div style={{
-            minHeight: '100dvh',
-            background: '#fafafa',
-            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        }}>
+        <div
+            dir={direction}
+            lang={activeLanguage || 'en'}
+            style={{
+                minHeight: '100dvh',
+                background: '#fafafa',
+                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            }}
+        >
             <div style={{
                 maxWidth: 680,
                 margin: '0 auto',
@@ -212,7 +238,7 @@ function ComplianceShell({
                         marginBottom: 16,
                     }}>
                         <a
-                            aria-label="Back"
+                            aria-label={t('menu.back')}
                             href={backHref}
                             style={{
                                 width: 36,
@@ -227,12 +253,12 @@ function ComplianceShell({
                                 flex: '0 0 auto',
                             }}
                         >
-                            <LuChevronLeft size={18} />
+                            {direction === 'rtl' ? <LuChevronRight size={18} /> : <LuChevronLeft size={18} />}
                         </a>
                         {logoUrl ? (
                             <img
                                 src={logoUrl}
-                                alt={`${businessName} logo`}
+                                alt={businessName}
                                 style={{
                                     width: 40,
                                     height: 40,
@@ -307,8 +333,10 @@ function ComplianceShell({
                 }}>
                     <PublicMenuListAttribution
                         activePlanType={activePlanType}
+                        ariaLabel={t('common.createOfficialCustomerLink')}
                         mode="compact"
-                        surfaceLabel="Powered by MenuList"
+                        rightsLabel={t('common.allRightsReserved')}
+                        surfaceLabel={t('common.poweredByMenuList')}
                     />
                 </footer>
                 ) : null}

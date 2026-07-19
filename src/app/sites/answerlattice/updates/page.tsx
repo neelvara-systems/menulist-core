@@ -39,7 +39,7 @@ const UPDATES = [
         items: [
             'Owners can mark priority questions as standard or critical, verify required and forbidden wording, and require supporting article references for FAQ or knowledge-fallback answers.',
             'Each run reports Ready, Review, or Blocked. A critical failure marks only the retained proof result blocked; AnswerLattice does not publish content, change a release, or control deployment automatically.',
-            'The proof loop reuses the existing bounded Answer Tests summary and retrieval references. Deterministic checks add no model call, scheduler, listener, or per-test record.',
+            'The proof loop reuses the existing bounded Answer Tests summary and retrieval references. Deterministic checks add no model call, scheduler, listener, or per-test record, and are regression evidence rather than an independent factual-correctness guarantee.',
         ],
     },
     {

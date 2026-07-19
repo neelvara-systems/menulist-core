@@ -13,6 +13,7 @@ interface ChatFooterProps {
     mode: ChatMode;
     disabled: boolean;
     sessionId?: string | null;
+    draftScope?: string | null;
     searchQuery?: string; // For controlled input clearing
     showQnAActions?: boolean;
     onSendMessage: (message: string, image?: UserUploadedFileType) => void;
@@ -27,6 +28,7 @@ const ChatFooter = ({
     mode,
     disabled,
     sessionId,
+    draftScope,
     searchQuery,
     showQnAActions,
     onSendMessage,
@@ -57,6 +59,7 @@ const ChatFooter = ({
                 mode={mode}
                 disabled={disabled}
                 sessionId={sessionId}
+                draftScope={draftScope}
                 value={searchQuery} // Pass for controlled clearing
                 hasMessages={hasMessages} // For contextual placeholder
                 showQnAActions={showQnAActions}

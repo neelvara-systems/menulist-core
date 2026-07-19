@@ -6,7 +6,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Feedback } from '@type/feedback';
 import { Alert, Button, Col, Flex, Form, List, message, Rate, Row, Steps, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuArrowLeft, LuArrowRight, LuHeartHandshake, LuInbox, LuLightbulb, LuStar, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 import FeatureRequests from './FeatureRequests';
 import FeatureUsage from './FeatureUsage';
@@ -19,6 +19,8 @@ const ShareFeedbackView = () => {
     const [form] = Form.useForm();
     const [currentStep, setCurrentStep] = useState(0);
     const [latestFeedback, setLatestFeedback] = useState<Feedback | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submittingRef = useRef(false);
     const dispatch = useAppDispatch();
 
     const steps = [
@@ -59,9 +61,12 @@ const ShareFeedbackView = () => {
         };
 
         fetchLatestFeedback();
-    }, [dispatch]);
+    }, [dispatch, t]);
 
     const handleSendFeedback = async (values: Record<string, unknown>) => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
+        setIsSubmitting(true);
         const feedbackType = steps[currentStep].key as AnswerlatticeFeedbackSubmission['type'];
         const feedbackPayload = {
             type: feedbackType,
@@ -83,6 +88,8 @@ const ShareFeedbackView = () => {
             message.error(t('failedToSendFeedback'));
         } finally {
             dispatch(stopLoader('send-feedback'));
+            submittingRef.current = false;
+            setIsSubmitting(false);
         }
     };
 
@@ -101,26 +108,34 @@ const ShareFeedbackView = () => {
                 <Steps
                     current={currentStep}
                     items={steps.map(item => ({ key: item.key, title: item.title, icon: item.icon }))}
-                    onChange={setCurrentStep}
+                    onChange={isSubmitting ? undefined : setCurrentStep}
                     style={{ marginBottom: 24 }} />
                 <div>{steps[currentStep].content}</div>
 
                 <Row justify="end" gutter={8} style={{ marginTop: 24 }}>
                     <Col style={{ marginRight: "auto" }}>
-                        <Button onClick={() => { form.resetFields(); setCurrentStep(0); }}>{t('cancel')}</Button>
+                        <Button disabled={isSubmitting} onClick={() => { form.resetFields(); setCurrentStep(0); }}>{t('cancel')}</Button>
                     </Col>
                     {currentStep > 0 && (
                         <Col>
-                            <Button onClick={() => setCurrentStep(currentStep - 1)} icon={<LuArrowLeft />}>{t('previous')}</Button>
+                            <Button disabled={isSubmitting} onClick={() => setCurrentStep(currentStep - 1)} icon={<LuArrowLeft />}>{t('previous')}</Button>
                         </Col>
                     )}
                     {currentStep < steps.length - 1 && (
                         <Col>
-                            <Button onClick={() => setCurrentStep(currentStep + 1)} icon={<LuArrowRight />}>{t('next')}</Button>
+                            <Button disabled={isSubmitting} onClick={() => setCurrentStep(currentStep + 1)} icon={<LuArrowRight />}>{t('next')}</Button>
                         </Col>
                     )}
                     <Col>
-                        <Button type="primary" onClick={handleSubmitCurrentFeedback} icon={<LuHeartHandshake />}>{t('submitFeedback')}</Button>
+                        <Button
+                            type="primary"
+                            onClick={handleSubmitCurrentFeedback}
+                            icon={<LuHeartHandshake />}
+                            loading={isSubmitting}
+                            disabled={isSubmitting}
+                        >
+                            {t('submitFeedback')}
+                        </Button>
                     </Col>
                 </Row>
             </Form>
@@ -129,16 +144,16 @@ const ShareFeedbackView = () => {
                 <Alert
                     style={{ marginTop: 44 }}
                     message={<>
-                        Last submitted on <DateTimeDisplay value={latestFeedback.createdOn} />
+                        {t('lastSubmittedOn')} <DateTimeDisplay value={latestFeedback.createdOn} />
                     </>}
                     description={<Flex vertical justify='flex-start' align='flex-start' gap="small">
-                        {latestFeedback.rating ? <Text type="secondary">Rating: <Rate disabled style={{ margin: "unset" }} value={latestFeedback.rating} /></Text> : null}
-                        {latestFeedback.comment ? <Text type="secondary">General Feedback: <Text>{latestFeedback.comment}</Text></Text> : null}
-                        {latestFeedback.featureComment ? <Text type="secondary">Feature Feedback: <Text>{latestFeedback.featureComment}</Text></Text> : null}
-                        {latestFeedback.featureIssues?.length ? <Text type="secondary">Feature Issues: <Text>{latestFeedback.featureIssues.join(', ')}</Text></Text> : null}
-                        {latestFeedback.featureRequest ? <Text type="secondary">Feature Request: <Text>{latestFeedback.featureRequest}</Text></Text> : null}
+                        {latestFeedback.rating ? <Text type="secondary">{t('rating')} <Rate disabled style={{ margin: "unset" }} value={latestFeedback.rating} /></Text> : null}
+                        {latestFeedback.comment ? <Text type="secondary">{t('generalFeedbackLabel')} <Text>{latestFeedback.comment}</Text></Text> : null}
+                        {latestFeedback.featureComment ? <Text type="secondary">{t('featureFeedbackLabel')} <Text>{latestFeedback.featureComment}</Text></Text> : null}
+                        {latestFeedback.featureIssues?.length ? <Text type="secondary">{t('featureIssuesLabel')} <Text>{latestFeedback.featureIssues.join(', ')}</Text></Text> : null}
+                        {latestFeedback.featureRequest ? <Text type="secondary">{t('featureRequestLabel2')} <Text>{latestFeedback.featureRequest}</Text></Text> : null}
                         {latestFeedback.votedPopularRequests && latestFeedback.votedPopularRequests.length > 0 && (
-                            <Text type="secondary">Voted On Features:
+                            <Text type="secondary">{t('votedOnFeatures')}
                                 <List
                                     size="small"
                                     dataSource={latestFeedback.votedPopularRequests}

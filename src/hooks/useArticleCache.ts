@@ -1,4 +1,5 @@
 import { fetchAnswerlatticePublicArticle } from '@lib/answerlattice/publicContentClient';
+import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
@@ -23,14 +24,17 @@ const MAX_CACHED_ARTICLES = 20;
  */
 export const useArticleCache = () => {
     const { cachedArticles, setCachedArticles } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const scopeKey = useAnswerlatticeCacheScope();
+    const scopedArticles = cachedArticles.scopeKey === scopeKey ? cachedArticles.articles : [];
 
     /**
      * Add article to cache with LRU eviction
      * If cache is full, removes oldest article
      */
     const addArticleToCache = useCallback((article: AnswerlatticeReadableArticle) => {
+        if (!scopeKey) return;
         setCachedArticles(prev => {
-            const newArticles = [...prev.articles];
+            const newArticles = prev.scopeKey === scopeKey ? [...prev.articles] : [];
 
             // Remove if already exists (to re-add at end)
             const existingIndex = newArticles.findIndex(a => a.id === article.id);
@@ -48,17 +52,20 @@ export const useArticleCache = () => {
 
             return {
                 cachedOn: Timestamp.now(),
-                articles: newArticles
+                articles: newArticles,
+                scopeKey,
             };
         });
-    }, [setCachedArticles]);
+    }, [scopeKey, setCachedArticles]);
 
     /**
      * Move article to end of cache (mark as recently used)
      * Used for LRU - keeps frequently accessed articles in cache longer
      */
     const moveArticleToEnd = useCallback((articleId: string) => {
+        if (!scopeKey) return;
         setCachedArticles(prev => {
+            if (prev.scopeKey !== scopeKey) return prev;
             const newArticles = [...prev.articles];
             const index = newArticles.findIndex(a => a.id === articleId);
 
@@ -71,52 +78,53 @@ export const useArticleCache = () => {
 
             return {
                 cachedOn: prev.cachedOn,
-                articles: newArticles
+                articles: newArticles,
+                scopeKey,
             };
         });
-    }, [setCachedArticles]);
+    }, [scopeKey, setCachedArticles]);
 
     /**
      * Get article from cache by ID
      * Returns undefined if not found
      */
     const getCachedArticle = useCallback((articleId: string): AnswerlatticeReadableArticle | undefined => {
-        return cachedArticles.articles.find(a => a.id === articleId);
-    }, [cachedArticles.articles]);
+        return scopedArticles.find(a => a.id === articleId);
+    }, [scopedArticles]);
 
     /**
      * Check if article exists in cache
      */
     const isArticleCached = useCallback((articleId: string): boolean => {
-        return cachedArticles.articles.some(a => a.id === articleId);
-    }, [cachedArticles.articles]);
+        return scopedArticles.some(a => a.id === articleId);
+    }, [scopedArticles]);
 
     /**
      * Clear entire article cache
      * Useful for manual refresh or logout
      */
     const clearCache = useCallback(() => {
-        setCachedArticles({ cachedOn: null, articles: [] });
+        setCachedArticles({ cachedOn: null, articles: [], scopeKey: null });
     }, [setCachedArticles]);
 
     /**
      * Get cache statistics
      */
     const getCacheStats = useCallback(() => {
-        const size = cachedArticles.articles.length;
-        const memoryEstimate = JSON.stringify(cachedArticles).length;
+        const size = scopedArticles.length;
+        const memoryEstimate = JSON.stringify(scopedArticles).length;
 
         return {
             size,
             maxSize: MAX_CACHED_ARTICLES,
             memoryBytes: memoryEstimate,
             memoryKB: Math.round(memoryEstimate / 1024),
-            articles: cachedArticles.articles.map(a => ({
+            articles: scopedArticles.map(a => ({
                 id: a.id,
                 title: a.title
             }))
         };
-    }, [cachedArticles]);
+    }, [scopedArticles]);
 
     /**
      * Check if article is active (not archived/deleted)
@@ -162,6 +170,7 @@ export const useArticleCache = () => {
             onCacheMiss?: () => void; // Callback when fetching
         }
     ): Promise<AnswerlatticeReadableArticle | null> => {
+        if (!scopeKey) return null;
         // ============================================
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================
@@ -181,7 +190,7 @@ export const useArticleCache = () => {
             } catch (error) {
                 logHookFailure('answerlattice_article_cache_fetch_failed', error, {
                     forceRefresh: true,
-                    cachedArticleCount: cachedArticles.articles.length,
+                    cachedArticleCount: scopedArticles.length,
                     ...getBoundedHookStringContext('articleId', articleId),
                 });
                 return null;
@@ -191,7 +200,7 @@ export const useArticleCache = () => {
         // ============================================
         // STEP 2: Check Cache
         // ============================================
-        const cached = cachedArticles.articles.find(a => a.id === articleId);
+        const cached = scopedArticles.find(a => a.id === articleId);
 
         if (cached) {
             // ✅ Cache hit - instant return
@@ -222,12 +231,12 @@ export const useArticleCache = () => {
         } catch (error) {
             logHookFailure('answerlattice_article_cache_fetch_failed', error, {
                 forceRefresh: false,
-                cachedArticleCount: cachedArticles.articles.length,
+                cachedArticleCount: scopedArticles.length,
                 ...getBoundedHookStringContext('articleId', articleId),
             });
             return null;
         }
-    }, [cachedArticles.articles, addArticleToCache, moveArticleToEnd, isArticleActive]);
+    }, [scopeKey, scopedArticles, addArticleToCache, moveArticleToEnd, isArticleActive]);
 
     return {
         // Primary method - use this!
@@ -241,7 +250,7 @@ export const useArticleCache = () => {
         clearCache,
 
         // Cache state
-        cachedArticles: cachedArticles.articles,
+        cachedArticles: scopedArticles,
         cacheStats: getCacheStats(),
     };
 };

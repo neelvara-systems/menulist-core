@@ -205,12 +205,14 @@ function TargetTag({ target }: { target: string }) {
 
 const getReviewItemSourceIds = (item: AnswerlatticeIntakeReviewItem): string[] => (
     Array.from(new Set(
-        item.launchPack?.sourceIds?.length
-            ? item.launchPack.sourceIds
-            : item.sourceId
-                ? [item.sourceId]
-                : [],
-    )).slice(0, 3)
+        item.sourceIds?.length
+            ? item.sourceIds
+            : item.launchPack?.sourceIds?.length
+                ? item.launchPack.sourceIds
+                : item.sourceId
+                    ? [item.sourceId]
+                    : [],
+    )).slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS)
 );
 
 const getSafeHttpsSourceUrl = (value: unknown): string | null => {

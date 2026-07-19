@@ -16,6 +16,7 @@ You need:
 - your production app URL if it exists;
 - links to pricing, terms, privacy, security, help, and contact pages if they exist;
 - approval to let your AI coding tool read the local files you choose;
+- explicit permission before that tool processes private source material;
 - time to review the generated package before upload.
 
 ## How To Use It
@@ -26,7 +27,7 @@ You need:
 4. Paste it into Codex, Cursor, Windsurf, Antigravity, Claude Code, or your preferred AI coding agent.
 5. Direct AI-agent access remains available at `/pre-onboarding.md`.
 6. Fill in the copy/paste intake fields at the top of the prompt.
-7. Let the agent inspect the source bundle you have: repo, docs, website links, owner notes, support exports, or screenshots.
+7. Let the agent inspect only the source bundle you are authorized to process: repo, docs, website links, owner notes, sanitized support exports, or approved screenshots.
 8. Review the generated `*-answerlattice-pre-onboarding-inputs/` folder.
 9. Remove anything private or inaccurate.
 10. Upload selected source files into Answerlattice Knowledge Intake.
@@ -42,7 +43,8 @@ You need:
 - Risk boundaries for billing, legal, privacy, security, and integrations.
 - Product surface mappings.
 - Screenshot and asset usage rules.
-- API payload skeletons for faster upload.
+- A source evidence map with authority, approval, visibility, citation eligibility, applicability, and conflicts.
+- Review-only API payload skeletons. They are sendable only after source bodies and permissions are reviewed.
 
 ## What This Cannot Guarantee
 
@@ -62,7 +64,9 @@ Do not include:
 - payment details;
 - raw logs;
 - private support messages;
-- unapproved screenshots.
+- unapproved screenshots;
+- source material you are not authorized to process in the selected AI tool;
+- private source URLs marked for public citation.
 
 ## Troubleshooting
 
@@ -89,6 +93,14 @@ Use the prompt anyway. Fill `SOURCE_MODE` as `owner_notes_only`, add the best pr
 ### The generated package includes private IDs or customer data.
 
 Remove them before upload. Answerlattice does not need private production identifiers to prepare general support knowledge.
+
+### The generated API payload uses `sourceUrls` or has no source body.
+
+Do not send it. Public page payloads use singular `originUrl`. A non-website JSON payload needs reviewed `contentText` before it becomes a ready source; raw screenshots, audio, and video use the authenticated media upload flow.
+
+### Two sources disagree.
+
+Keep the conflict visible in the source evidence map. Record each source's authority and applicability, then require the source owner to decide what can become approved support truth.
 
 ### The agent says coverage is not complete.
 

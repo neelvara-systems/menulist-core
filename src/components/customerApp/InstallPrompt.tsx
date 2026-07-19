@@ -27,10 +27,15 @@ import { getBoundedPwaStringContext, logPwaTrackingFailure } from '@lib/pwa/pwaD
 import { recordPromptShown } from '@lib/pwa/installTracker';
 import { detectPlatform } from '@lib/pwa/platformDetection';
 import { APP_THEME_COLOR } from '@constant/common';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import InstallInstructions from './InstallInstructions';
 
 interface Props {
+    activeLanguage?: string;
     storeId: string | number;
     tenantId: string | number;
     storeName: string;
@@ -61,6 +66,7 @@ const getSafeContrastColor = (background: string) => {
 };
 
 export default function InstallPrompt({
+    activeLanguage,
     storeId,
     tenantId,
     storeName,
@@ -73,6 +79,8 @@ export default function InstallPrompt({
     onDismiss,
     onInstallAccepted,
 }: Props) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const languageDirection = getPublicCustomerLanguageDirection(activeLanguage);
     const platform = useMemo(() => detectPlatform(), []);
     const [showIosInstructions, setShowIosInstructions] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -165,7 +173,9 @@ export default function InstallPrompt({
         <>
             <div
                 role="dialog"
-                aria-label={`Install ${storeName} app`}
+                aria-label={t('menu.installAppAria', { storeName })}
+                dir={languageDirection}
+                lang={activeLanguage}
                 style={{
                     position: 'fixed',
                     left: 0,
@@ -215,7 +225,7 @@ export default function InstallPrompt({
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>
-                            Install {storeName}
+                            {t('menu.installTitle', { storeName })}
                         </div>
                         <div
                             style={{
@@ -227,14 +237,14 @@ export default function InstallPrompt({
                                 whiteSpace: 'nowrap',
                             }}
                         >
-                            One-tap access from your home screen.
+                            {t('menu.oneTapHomeScreen')}
                         </div>
                     </div>
 
                     <button
                         type="button"
                         onClick={handleDismiss}
-                        aria-label="Dismiss install prompt"
+                        aria-label={t('menu.dismissInstallPrompt')}
                         style={{
                             background: 'transparent',
                             border: 'none',
@@ -247,7 +257,7 @@ export default function InstallPrompt({
                             flexShrink: 0,
                         }}
                     >
-                        Not now
+                        {t('menu.notNow')}
                     </button>
                     <button
                         type="button"
@@ -266,12 +276,13 @@ export default function InstallPrompt({
                             flexShrink: 0,
                         }}
                     >
-                        {busy ? '…' : 'Install'}
+                        {busy ? '…' : t('menu.install')}
                     </button>
                 </div>
             </div>
 
             <InstallInstructions
+                activeLanguage={activeLanguage}
                 open={showIosInstructions}
                 onClose={() => setShowIosInstructions(false)}
                 storeName={storeName}

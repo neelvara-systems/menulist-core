@@ -5,10 +5,11 @@ import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
     type AnswerlatticeHostedHelpConfig,
+    type AnswerlatticeHostedHelpDomainVerification,
     normalizeHostedHelpConfig,
 } from '@lib/answerlattice/hostedHelpConfig';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { secureError } from '@lib/security/secureLogger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { revalidateTag, unstable_cache } from 'next/cache';
 
 const HOSTED_HELP_REGISTRY_CACHE_SECONDS = 60;
@@ -30,7 +31,7 @@ export type AnswerlatticeHostedHelpRegistryStatus = {
     domainVerified?: boolean;
     domainVerifiedAt?: string | null;
     domainLastCheckedAt?: string | null;
-    domainVerification?: Record<string, any> | null;
+    domainVerification?: AnswerlatticeHostedHelpDomainVerification | null;
     domainProvisioningError?: string | null;
     domainVercelAddedAt?: string | null;
 };
@@ -47,20 +48,10 @@ export function getHostedHelpDomainCacheTag(domain: string) {
     return `answerlattice-hosted-help-domain-${domain}`;
 }
 
-export function getHostedHelpScopeCacheTag(tId: string | number, sId: string | number) {
-    return `answerlattice-hosted-help-scope-${String(tId)}-${String(sId)}`;
-}
-
 export function revalidateAnswerlatticeHostedHelpDomain(domain: string) {
     const normalizedDomain = normalizeHostedHelpDomain(domain);
     if (!normalizedDomain) return [];
     const tags = [getHostedHelpDomainCacheTag(normalizedDomain)];
-    tags.forEach(tag => revalidateTag(tag));
-    return tags;
-}
-
-export function revalidateAnswerlatticeHostedHelpScope(tId: string | number, sId: string | number) {
-    const tags = [getHostedHelpScopeCacheTag(tId, sId)];
     tags.forEach(tag => revalidateTag(tag));
     return tags;
 }
@@ -80,8 +71,8 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
 
     const data = snapshot.data() || {};
     if (String(data.pId || '') !== PRODUCT_IDS.ANSWERLATTICE) {
-        secureError('[Answerlattice Hosted Help] Invalid registry product', new Error('Hosted help registry doc has invalid product scope'), {
-            domain: normalizedDomain,
+        logRuntimeFailure('answerlattice_hosted_help_registry_product_invalid', new Error('Hosted help registry doc has invalid product scope'), {
+            ...getBoundedRuntimeStringContext('domain', normalizedDomain),
         });
         return null;
     }
@@ -90,8 +81,8 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
     const tId = normalizeAnswerlatticeScopeDocumentId(data.tId);
     const sId = normalizeAnswerlatticeScopeDocumentId(data.sId);
     if (!tId || !sId) {
-        secureError('[Answerlattice Hosted Help] Invalid registry scope', new Error('Hosted help registry doc has invalid scope'), {
-            domain: normalizedDomain,
+        logRuntimeFailure('answerlattice_hosted_help_registry_scope_invalid', new Error('Hosted help registry doc has invalid scope'), {
+            ...getBoundedRuntimeStringContext('domain', normalizedDomain),
         });
         return null;
     }
@@ -133,15 +124,18 @@ export function buildHostedHelpRegistryDoc(params: {
     status?: AnswerlatticeHostedHelpRegistryStatus;
 }) {
     const domain = normalizeHostedHelpDomain(params.domain);
-    if (!domain) return null;
+    const tId = normalizeAnswerlatticeScopeDocumentId(params.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(params.sId);
+    const config = normalizeHostedHelpConfig(params.config);
+    if (!domain || !tId || !sId || !config.domains.includes(domain)) return null;
 
     return {
         domain,
         pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: params.tId,
-        sId: params.sId,
-        enabled: Boolean(params.config.enabled),
-        config: params.config,
+        tId,
+        sId,
+        enabled: Boolean(config.enabled),
+        config,
         ...(params.status || {}),
         updatedAt: new Date().toISOString(),
     };

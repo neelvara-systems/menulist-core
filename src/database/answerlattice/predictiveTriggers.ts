@@ -16,13 +16,15 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, qu
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
+import {
+    getAnswerlatticePredictiveTimestampMillis,
+    normalizeAnswerlatticePredictiveTrigger,
+    projectAnswerlatticePredictiveTriggerForRuntime,
+} from '@lib/answerlattice/predictiveSupportContracts';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import {
     ANSWERLATTICE_PREDICTIVE_CONSTRAINTS,
-    ANSWERLATTICE_TRIGGER_ACTION_TYPES,
-    ANSWERLATTICE_TRIGGER_SOURCE,
-    ANSWERLATTICE_TRIGGER_STATUS,
     AnswerlatticePredictiveTrigger,
 } from "@type/answerlattice";
 
@@ -50,120 +52,26 @@ const assertScope = (tId: unknown, sId: unknown) => {
     return { tId: tenantId, sId: storeId };
 };
 
-const normalizeOptionalText = (value: unknown, maxLength: number): string | undefined => {
-    if (typeof value !== 'string') return undefined;
-    const normalized = value.trim().slice(0, maxLength);
-    return normalized || undefined;
-};
-
 const normalizePredictiveTriggerRecord = (
     triggerId: unknown,
     value: unknown,
     expectedScope?: { tId: number; sId: number },
-): AnswerlatticePredictiveTrigger | null => {
-    const id = normalizeAnswerlatticePredictiveTriggerId(triggerId);
-    if (!id || !value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const data = value as Record<string, any>;
-    const tId = normalizeScopeId(data.tId);
-    const sId = normalizeScopeId(data.sId);
-    if (
-        data.pId !== PRODUCT_IDS.ANSWERLATTICE
-        || tId === null
-        || sId === null
-        || (expectedScope && (tId !== expectedScope.tId || sId !== expectedScope.sId))
-    ) return null;
-
-    const name = normalizeOptionalText(data.name, ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_NAME_LENGTH);
-    const status = Object.values(ANSWERLATTICE_TRIGGER_STATUS).includes(data.status);
-    const source = Object.values(ANSWERLATTICE_TRIGGER_SOURCE).includes(data.source);
-    const actionType = Object.values(ANSWERLATTICE_TRIGGER_ACTION_TYPES).includes(data.action?.type);
-    if (
-        !name
-        || !status
-        || !source
-        || !actionType
-        || !data.conditions
-        || typeof data.conditions !== 'object'
-        || Array.isArray(data.conditions)
-        || !Number.isSafeInteger(data.priority)
-        || data.priority < ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_PRIORITY
-        || data.priority > ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_PRIORITY
-        || !Number.isSafeInteger(data.cooldownHours)
-        || data.cooldownHours < ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_COOLDOWN_HOURS
-        || data.cooldownHours > ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_COOLDOWN_HOURS
-    ) return null;
-
-    const conditions = {
-        ...(normalizeOptionalText(data.conditions.page, 100) ? { page: normalizeOptionalText(data.conditions.page, 100) } : {}),
-        ...(normalizeOptionalText(data.conditions.feature, 100) ? { feature: normalizeOptionalText(data.conditions.feature, 100) } : {}),
-        ...(normalizeOptionalText(data.conditions.workflow, 100) ? { workflow: normalizeOptionalText(data.conditions.workflow, 100) } : {}),
-        ...(normalizeOptionalText(data.conditions.plan, 100) ? { plan: normalizeOptionalText(data.conditions.plan, 100) } : {}),
-        ...(normalizeOptionalText(data.conditions.userRole, 100) ? { userRole: normalizeOptionalText(data.conditions.userRole, 100) } : {}),
-    };
-    const action = {
-        type: data.action.type,
-        ...(normalizeOptionalText(data.action.entityId, 180) ? { entityId: normalizeOptionalText(data.action.entityId, 180) } : {}),
-        ...(normalizeOptionalText(data.action.articleId, 180) ? { articleId: normalizeOptionalText(data.action.articleId, 180) } : {}),
-        ...(normalizeOptionalText(data.action.customTitle, 180) ? { customTitle: normalizeOptionalText(data.action.customTitle, 180) } : {}),
-        ...(normalizeOptionalText(data.action.customSummary, ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_CUSTOM_SUMMARY_LENGTH)
-            ? { customSummary: normalizeOptionalText(data.action.customSummary, ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_CUSTOM_SUMMARY_LENGTH) }
-            : {}),
-    };
-
-    return {
-        id,
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId,
-        sId,
-        name,
-        ...(normalizeOptionalText(data.description, ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_DESCRIPTION_LENGTH)
-            ? { description: normalizeOptionalText(data.description, ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_DESCRIPTION_LENGTH) }
-            : {}),
-        ...(data.kind === 'predictive_help' || data.kind === 'known_issue' ? { kind: data.kind } : {}),
-        conditions,
-        action,
-        ...(data.resolvedSuggestion && typeof data.resolvedSuggestion === 'object' ? { resolvedSuggestion: data.resolvedSuggestion } : {}),
-        priority: data.priority,
-        cooldownHours: data.cooldownHours,
-        ...(Number.isSafeInteger(data.maxImpressionsPerUser) && data.maxImpressionsPerUser > 0
-            ? { maxImpressionsPerUser: data.maxImpressionsPerUser }
-            : {}),
-        status: data.status,
-        source: data.source,
-        ...(data.effectiveness && typeof data.effectiveness === 'object' ? { effectiveness: data.effectiveness } : {}),
-        ...(data.frictionSource && typeof data.frictionSource === 'object' ? { frictionSource: data.frictionSource } : {}),
-        ...(data.knownIssue && typeof data.knownIssue === 'object' ? { knownIssue: data.knownIssue } : {}),
-        ...(data.createdOn ? { createdOn: data.createdOn } : {}),
-        ...(data.modifiedOn ? { modifiedOn: data.modifiedOn } : {}),
-    } as AnswerlatticePredictiveTrigger;
-};
+): AnswerlatticePredictiveTrigger | null => normalizeAnswerlatticePredictiveTrigger({
+    id: triggerId,
+    value,
+    scope: expectedScope,
+});
 
 const projectPredictiveTriggerForSummary = (trigger: AnswerlatticePredictiveTrigger): AnswerlatticePredictiveTrigger => {
-    const summaryTrigger = { ...trigger };
-    delete summaryTrigger.createdBy;
-    delete summaryTrigger.createdOn;
-    delete summaryTrigger.modifiedOn;
-    return summaryTrigger;
-};
-
-const getTriggerTimestampMillis = (value: unknown): number | null => {
-    if (!value) return null;
-    if (typeof (value as { toMillis?: unknown })?.toMillis === 'function') {
-        const millis = Number((value as { toMillis: () => number }).toMillis());
-        return Number.isFinite(millis) ? millis : null;
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-        const millis = new Date(value).getTime();
-        return Number.isFinite(millis) ? millis : null;
-    }
-    return null;
+    return projectAnswerlatticePredictiveTriggerForRuntime(trigger);
 };
 
 const isPotentiallyActiveTrigger = (trigger: AnswerlatticePredictiveTrigger, now = Date.now()) => {
     if (trigger.status !== 'active') return false;
     if (trigger.kind !== 'known_issue') return true;
-    const endsAt = getTriggerTimestampMillis(trigger.knownIssue?.endsAt);
-    return endsAt === null || endsAt > now;
+    const startsAt = getAnswerlatticePredictiveTimestampMillis(trigger.knownIssue?.startsAt);
+    const endsAt = getAnswerlatticePredictiveTimestampMillis(trigger.knownIssue?.endsAt);
+    return (startsAt === null || startsAt <= now) && (endsAt === null || endsAt > now);
 };
 
 const resolveTriggerScope = async (triggerId?: string) => {
@@ -189,8 +97,11 @@ const rebuildPredictiveTriggerSummary = async (
         getCollectionRef(),
         where('tId', '==', tId),
         where('sId', '==', sId),
-        limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT),
+        limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT + 1),
     ));
+    if (snapshot.size > ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT) {
+        throw new Error('Predictive trigger limit exceeded; the runtime summary was not replaced.');
+    }
     const triggers: Record<string, AnswerlatticePredictiveTrigger> = {};
     snapshot.docs.forEach((triggerDoc) => {
         const trigger = normalizePredictiveTriggerRecord(triggerDoc.id, triggerDoc.data(), { tId, sId });
@@ -227,9 +138,12 @@ export const getPredictiveTriggers = async (tId: number, sId: number) => {
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
                 orderBy('createdOn', 'desc'),
-                limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT)
+                limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT + 1)
             );
             const snapshot = await getDocs(q);
+            if (snapshot.size > ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT) {
+                throw new Error('Predictive trigger limit exceeded; archive or delete triggers before continuing.');
+            }
             const list: AnswerlatticePredictiveTrigger[] = [];
             snapshot.forEach((d) => {
                 const trigger = normalizePredictiveTriggerRecord(d.id, d.data(), scope);
@@ -294,6 +208,7 @@ export const getPredictiveTriggerById = async (triggerId: string) => {
 export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTrigger, 'id'>) => {
     return await apiCallComposer(
         async () => {
+            const scope = assertScope(data.tId, data.sId);
             // Validate constraints
             if (!Number.isSafeInteger(data.priority) ||
                 data.priority < ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_PRIORITY ||
@@ -306,9 +221,42 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
                 throw new Error(`Cooldown must be between ${ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_COOLDOWN_HOURS} and ${ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_COOLDOWN_HOURS} hours`);
             }
 
-            const submitData = await answerlatticeRequestBodyComposer(data, { isNew: true });
+            const existing = await getDocs(query(
+                getCollectionRef(),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
+                limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT),
+            ));
+            if (existing.size >= ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT) {
+                throw new Error(`Predictive support supports up to ${ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT} triggers per workspace.`);
+            }
+
+            const candidate = normalizePredictiveTriggerRecord('new_predictive_trigger', {
+                ...data,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                ...scope,
+                kind: data.kind === 'known_issue' ? 'known_issue' : 'predictive_help',
+            }, scope);
+            if (!candidate) throw new Error('Predictive trigger is invalid');
+            if (candidate.source !== 'manual') throw new Error('Client-created predictive triggers must be manual');
+            if (candidate.status === 'active' && !candidate.conditions.page) {
+                throw new Error('Set an exact page before activating predictive support.');
+            }
+
+            const submitData = await answerlatticeRequestBodyComposer({
+                ...scope,
+                name: candidate.name,
+                description: candidate.description,
+                kind: candidate.kind,
+                conditions: candidate.conditions,
+                action: candidate.action,
+                priority: candidate.priority,
+                cooldownHours: candidate.cooldownHours,
+                status: candidate.status,
+                source: candidate.source,
+                ...(candidate.knownIssue ? { knownIssue: candidate.knownIssue } : {}),
+            }, { isNew: true });
             const docRef = await addDoc(getCollectionRef(), submitData);
-            const scope = assertScope(data.tId, data.sId);
             await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_create', docRef.id);
             const created = normalizePredictiveTriggerRecord(docRef.id, submitData, scope);
             if (!created) throw new Error('Created predictive trigger is invalid');
@@ -338,6 +286,9 @@ export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredict
                 || (data.tId !== undefined && data.tId !== current.tId)
                 || (data.sId !== undefined && data.sId !== current.sId)
             ) throw new Error('Predictive trigger scope cannot be changed');
+            if (data.kind !== undefined && data.kind !== current.kind) {
+                throw new Error('Predictive trigger kind cannot be changed');
+            }
             if (data.priority !== undefined && (
                 !Number.isSafeInteger(data.priority)
                 || data.priority < ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_PRIORITY
@@ -357,10 +308,13 @@ export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredict
                 ...scope,
             }, scope);
             if (!next) throw new Error('Predictive trigger update is invalid');
+            if (next.status === 'active' && !next.conditions.page) {
+                throw new Error('Set an exact page before activating predictive support.');
+            }
             const patch: Record<string, unknown> = {};
+            if (currentSnap.data().kind === undefined) patch.kind = next.kind;
             if (data.name !== undefined) patch.name = next.name;
             if (data.description !== undefined) patch.description = next.description ?? null;
-            if (data.kind !== undefined) patch.kind = next.kind ?? null;
             if (data.conditions !== undefined) patch.conditions = next.conditions;
             if (data.action !== undefined) patch.action = next.action;
             if (data.priority !== undefined) patch.priority = next.priority;
@@ -397,6 +351,9 @@ export const activateTrigger = async (triggerId: string) => {
             const scope = { tId: normalizedCurrent.tId, sId: normalizedCurrent.sId };
             if (normalizedCurrent.status !== 'suggested' && normalizedCurrent.status !== 'disabled') {
                 throw new Error(`Cannot activate trigger in '${normalizedCurrent.status}' state — must be 'suggested' or 'disabled'`);
+            }
+            if (!normalizedCurrent.conditions.page) {
+                throw new Error('Set an exact page before activating predictive support.');
             }
 
             const composedData = await answerlatticeRequestBodyComposer({ ...scope, status: 'active' }, { isNew: false });

@@ -42,6 +42,8 @@ const NotificationRequestSchema = z.object({
     eventType: z.enum(CLIENT_TICKET_NOTIFICATION_EVENTS),
     ticketId: z.string().trim().min(1).max(180),
     messageId: z.string().trim().min(1).max(180).optional(),
+    tId: z.number().int().positive(),
+    sId: z.number().int().positive(),
 }).strict();
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -90,6 +92,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             request,
             session,
             ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT,
+            {
+                tenantId: parsed.data.tId,
+                storeId: parsed.data.sId,
+            },
         );
         if (permission.response || !permission.access) return permission.response;
 
@@ -97,6 +103,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             .collection(DB_COLLECTIONS.SUPPORT_TICKETS)
             .doc(ticketId)
             .get();
+
         const ticket = ticketSnapshot.exists
             ? parseAnswerlatticeSupportTicketDocument({
                 id: ticketSnapshot.id,

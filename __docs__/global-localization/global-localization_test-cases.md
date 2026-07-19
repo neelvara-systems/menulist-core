@@ -1,6 +1,6 @@
 # Global Localization Test Cases
 
-**Last updated:** July 18, 2026
+**Last updated:** July 19, 2026
 
 | ID | Case | Expected |
 | --- | --- | --- |
@@ -22,7 +22,7 @@
 | GL-16 | UI preference change | Zero Firestore operations. |
 | GL-17 | Store locale change | Existing store DAL acknowledgement and public-cache behavior remain unchanged. |
 | GL-18 | Registered locale files | Exact one-to-one parity with `APP_LANGUAGES`; every JSON file parses. |
-| GL-19 | Full MenuList owner namespace boundary | All 3,119 strings in 49 namespaces exist and are non-empty in all 52 files; obsolete locale-only owner keys are rejected, while `Website` and `CampaignCue` remain excluded. |
+| GL-19 | Full MenuList owner namespace boundary | All 3,456 strings in 49 namespaces exist and are non-empty in all 52 files; obsolete locale-only owner keys are rejected, while `Website` and `CampaignCue` remain excluded. |
 | GL-20 | ICU variables in owner copy | Variables match `en-US` exactly and each owner message parses as ICU. |
 | GL-21 | Non-English owner value equals `en-US` | Passes only for a protected invariant, ICU-only value, or locale-specific reviewed cognate. |
 | GL-22 | Open-hours analytics fallback copy | Desktop, mobile, and shared detail-builder fallbacks match the translation source. |
@@ -38,5 +38,16 @@
 | GL-32 | Protected semantic generation | ICU controls, variables, brands, URLs, emails, and technical terms retain exact identity; token loss switches to segmented translation. |
 | GL-33 | Translation length anomaly | Source messages of 20 or more characters outside the 0.18-2.5 translated/source range fail or enter bounded quality repair. |
 | GL-34 | Semantic evidence drift | Any source or locale owner-subtree hash change fails until the semantic snapshot is intentionally refreshed. |
+| GL-35 | Fixed public-customer chrome | Exactly 337 source keys exist in all 52 locale packs and match the generated compact runtime bundle. |
+| GL-36 | Public content language outside the 52 UI packs | Owner content remains in the admitted content language; fixed UI copy falls back to `en-US` without a provider or Firebase operation. |
+| GL-37 | Public language transitions | OBP, menu, item, feedback, compliance, recovery, and PWA handoff links preserve admitted `?lang=` values. |
+| GL-38 | Public RTL output | Page `lang`/`dir`, shared image controls, keyboard/swipe direction, and logical safe-area placement follow the resolved public language. |
+| GL-39 | Compliance text in non-English chrome | Chrome is localized; canonical legal body stays unmodified and is explicitly tagged `lang="en"` / `dir="ltr"`. |
+| GL-40 | Invalid or unavailable Guest Feedback project | Route-local recovery copy follows `?lang=`, exposes no project/store state, and preserves the language on the homepage link. |
+| GL-41 | Customer App manifest and shortcuts | Manifest `lang`/`dir`, screenshot/fallback copy, shortcut labels, and shortcut `lang` query follow the normalized owner-controlled public language. |
+| GL-42 | Regional or unsupported public locale | Regional code normalizes to its admitted base language; an unsupported UI pack falls back to `en-US` without changing owner content. |
+| GL-43 | Fixed spice level | Mild, medium, hot, and very hot use localized enum labels on menu and item detail; an unknown owner value is rendered readably without invented translation. |
+| GL-44 | Public hours fallback | Known fixed hours/day patterns localize through the public bundle; an unrecognized owner-authored note remains verbatim. |
+| GL-45 | Public semantic evidence | Every locale public-subtree hash, placeholder set, protected term, canonical example, selected script boundary, and zero-runtime-operation assertion matches checked-in evidence. |
 
-Automated coverage: `scripts/verification/test-global-localization-boundary.ts`, `scripts/verification/verify-global-localization-boundary.js`, and `scripts/verification/verify-owner-dashboard-locales.js`.
+Automated coverage: `scripts/verification/test-global-localization-boundary.ts`, `scripts/verification/verify-global-localization-boundary.js`, `scripts/verification/verify-owner-dashboard-locales.js`, and `scripts/verification/verify-public-customer-localization.js`.

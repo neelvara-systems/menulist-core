@@ -1,7 +1,7 @@
 # Global Localization Implementation
 
 **Status:** Implemented
-**Last updated:** July 18, 2026
+**Last updated:** July 19, 2026
 
 ## End-to-end Flow
 
@@ -15,7 +15,7 @@
 
 ## Owner UI Message Boundary
 
-The canonical owner boundary is derived from the top-level `en-US.json` message tree. `Website` is excluded because public website localization has a separate release contract; `CampaignCue` is excluded because it is an adjacent product. The remaining 49 namespaces currently contain 3,119 owner strings. Every registered locale file must contain the same keys.
+The canonical owner boundary is derived from the top-level `en-US.json` message tree. `Website` is excluded because public website localization has a separate release contract; `CampaignCue` is excluded because it is an adjacent product. The remaining 49 namespaces currently contain 3,456 owner strings. Every registered locale file must contain the same keys.
 
 `scripts/verification/verify-owner-dashboard-locales.js` checks:
 
@@ -35,7 +35,27 @@ The canonical owner boundary is derived from the top-level `en-US.json` message 
 
 `scripts/localization/owner-locale-semantic.js` prepares and atomically applies semantic snapshots. It protects ICU structures, URLs, emails, product names, and technical terms; preserves all existing non-source values; and translates only exact-source residue. `scripts/localization/translate-owner-locale-units.py` uses pinned AI4Bharat IndicTrans2 and Google MADLAD-400 model revisions in an isolated maintainer environment. Provider-native placeholders retain sentence context; if a model drops one, only the surrounding English segments are translated before exact reconstruction.
 
-The quality workflow rejects altered tokens and ICU signatures, overlong or under-translated output, and exact non-invariant English residue. A targeted beam-search pass plus 19 key-specific and source-specific reviewed corrections resolved the bounded remainder. `owner-locale-semantic-coverage.json` records provider provenance, counts, quality policy, and hashes. Native-speaker review can still improve fluency and tone, but it is not masking missing code-side coverage.
+The quality workflow rejects altered tokens and ICU signatures, overlong or under-translated output, exact non-invariant English residue, leaked provider placeholders, unrelated sentence expansion, unexpected email/URL injection, and selected mixed-script artifacts. The current evidence records 696 bounded owner-quality repairs. Its public-customer audit records 75 key-specific contextual corrections and 71 exact values approved only as same-spelling cognates or unit formats. `owner-locale-semantic-coverage.json` records provider provenance, counts, quality policy, and source/per-locale hashes. Native-speaker review can still improve fluency and tone, but it is not masking missing code-side coverage.
+
+## Public Customer Message Boundary
+
+`BusinessSettings.publicCustomer` is the source namespace for fixed public chrome. `scripts/localization/generate-public-customer-messages.js` extracts that namespace from all 52 registered locale packs into a deterministic compact bundle, and `src/lib/localization/publicCustomerMessages.ts` resolves 337 fixed messages without loading next-intl, Firestore, or a translation provider in the public renderer. The helper also localizes the bounded mild/medium/hot/very-hot enum used by both the menu and item-detail surfaces.
+
+The public packs are maintainer-time static artifacts. Forty-eight non-English packs were generated and English-round-trip checked through the static Google Translate mobile-web workflow; its Portuguese target is explicitly normalized from `pt-BR` to supported provider target `pt` so a source-identical response cannot be mistaken for a translated pack. Bodo and Kashmiri remain on the pinned local IndicTrans2 path. None of these providers or model dependencies is imported or called by the application runtime.
+
+The public language decision remains owner-controlled:
+
+1. an explicit `?lang=` wins only when it is admitted by the store/project public-language contract;
+2. otherwise the normalized store/project `defaultLanguage` is used;
+3. otherwise the existing public-language resolver falls back to English;
+4. public menu/business content can use all 80 supported content languages; and
+5. when a content language does not have one of the 52 static UI packs, content remains in that language while fixed chrome falls back to `en-US`.
+
+The resolved language and direction are applied consistently to OBP, public menu and item detail, Guest Feedback, customer images, Customer App install UI and manifest, PWA shortcut labels/handoffs, compliance-page chrome, metadata/schema fallbacks, starter holding, error/not-found recovery, and public attribution. Links between OBP, menu, feedback, compliance, item, recovery, and PWA surfaces preserve the admitted `?lang=` value.
+
+Standard temporary-status types use localized fixed copy. A custom status message remains owner-authored truth and is rendered verbatim rather than machine-translated. Compliance-page title, navigation, dates, missing-data state, and attribution use the public message bundle; generated or owner-edited legal body text remains canonical English unless a future owner-managed localized legal source is introduced. A non-English page marks that legal body `lang="en"` and `dir="ltr"` so assistive technology is not told that English legal text is translated.
+
+`npm run verify:public-customer-localization` enforces locale/key parity, generated-bundle freshness, runtime purity, placeholder and protected-term parity, canonical phone/email examples, provider-marker and sentence-expansion rejection, selected script boundaries, semantic-evidence hashes, public surface `lang`/`dir` wiring, query preservation, localized spice labels, legal-body language truth, and RTL public-image navigation. Functional boundary tests also cover regional-code normalization, store-policy fallback, URL propagation, localized hours, interpolation, and unknown enum fallback. The gate is included in `npm run verify:global-localization-boundary`.
 
 ## Maintainer Regeneration
 

@@ -1,44 +1,28 @@
 # KB Generation Pipeline — Website Content
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Public website visitors
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
+> **Audience:** Website, Product, Legal/Claims Review
 
 ---
 
-## SEO Meta
+## Public Website Decision
 
-```
-Title: AI Article Generation | MenuList
-Description: Upload your existing documentation and let AI generate structured help articles. Review, resolve duplicates, and publish — all from one dashboard.
-Keywords: AI article generation, knowledge base, documentation automation, help center
-OG Title: Documentation, Generated
-OG Description: Upload docs. AI structures them into help articles. Review and publish.
-```
+**Do not create a public feature page for the legacy KB Generation Pipeline.**
 
----
+The Answerlattice owner route redirects to Knowledge Intake, while the remaining KB Generation screen is an internal platform operation. Public website content should describe the owner-facing Knowledge Intake and governed-answer workflow instead of exposing implementation history.
 
-## Feature Block
+## Allowed Supporting Claim
 
-### Headline
-**Documentation, generated.**
+When a technical architecture page needs to mention this runtime, use:
 
-### Subheadline
-Upload your existing files — PDFs, documents, videos, websites. AI generates structured help articles. Review and publish.
+> Approved internal imports can create reviewable KB and FAQ drafts. Nothing becomes live until review and required embeddings complete, then publication switches the approved content and navigation together.
 
-### How It Works
+## Prohibited Claims
 
-**Step 1 — Upload your files**
-Drag and drop any combination of PDFs, documents, images, videos, or website URLs. The system accepts 9 different file formats.
-
-**Step 2 — AI structures the content**
-The AI reads your files and generates organized help articles with categories, sections, and rich content. Source provenance tracks which file generated each article.
-
-**Step 3 — Review and publish**
-Review generated articles, resolve any duplicates against existing content, and publish. Every article is automatically embedded for semantic search.
-
-### Trust Indicators
-- Human review required before any article goes live
-- Duplicate detection prevents content conflicts
-- Source provenance tracks article origins
-- Every article auto-embedded for AI search
+- No MenuList branding.
+- No claim of nine connectors or automatic website/YouTube/Google Drive ingestion.
+- No page-level provenance claim.
+- No promise that duplicate detection prevents every conflict.
+- No fixed cost, accuracy, speed, or publication-volume claim.
+- No implication that this internal platform screen is available to Answerlattice customers.

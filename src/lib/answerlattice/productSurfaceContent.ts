@@ -12,6 +12,11 @@ import type {
     AnswerlatticeSurfaceTicketStats,
 } from '@type/answerlattice';
 import { normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
+import {
+    normalizeAnswerlatticeKnowledgeIntakeJobId,
+    normalizeAnswerlatticeKnowledgeIntakeReviewItemId,
+    normalizeAnswerlatticeKnowledgeIntakeSourceId,
+} from './knowledgeIntakeIdBoundary';
 import { normalizeAnswerlatticeProductSurfaceId } from './productSurfaceIdBoundary';
 import { z } from 'zod';
 
@@ -31,6 +36,7 @@ const MAX_ENTITY_HINTS = 12;
 const MAX_ENTITY_IDS = 25;
 const MAX_TAGS = 25;
 const MAX_FIELD_LENGTH = 100;
+const MAX_INTAKE_SOURCE_IDS = 5;
 const MAX_SUMMARY_SURFACES = ANSWERLATTICE_PRODUCT_SURFACE_LIMIT;
 const MAX_RELATED_ARTICLES = 25;
 const MAX_RELATED_CHANGELOGS = 25;
@@ -157,6 +163,36 @@ export function normalizeSurfaceRoutePatterns(values: unknown): string[] {
     )).slice(0, MAX_ROUTE_PATTERNS);
 }
 
+export function normalizeSurfaceContextPath(value: unknown): string | null {
+    const normalized = normalizeSurfaceRoutePattern(value);
+    return normalized && !normalized.includes('*') ? normalized : null;
+}
+
+export function scoreSurfaceRouteForContextPath(routePatterns: unknown, contextPath: unknown): number {
+    const path = normalizeSurfaceContextPath(contextPath);
+    if (!path) return 0;
+
+    let bestScore = 0;
+    for (const pattern of normalizeSurfaceRoutePatterns(routePatterns)) {
+        if (pattern === path) {
+            bestScore = Math.max(bestScore, 900 + Math.min(path.length, 99));
+            continue;
+        }
+        if (pattern === '*') {
+            bestScore = Math.max(bestScore, 700);
+            continue;
+        }
+        if (!pattern.endsWith('*')) continue;
+
+        const prefix = pattern.slice(0, -1);
+        const basePath = prefix.endsWith('/') && prefix.length > 1 ? prefix.slice(0, -1) : prefix;
+        if (path === basePath || path.startsWith(prefix)) {
+            bestScore = Math.max(bestScore, 800 + Math.min(prefix.length, 99));
+        }
+    }
+    return bestScore;
+}
+
 export function normalizeSurfaceList(values: unknown, maxItems: number, maxLength = MAX_FIELD_LENGTH): string[] {
     const raw = typeof values === 'string'
         ? values.split(/[\n,]/)
@@ -258,6 +294,14 @@ export function normalizeStoredAnswerlatticeProductSurface(
     const page = normalizeSurfaceToken(value.page);
     const workflow = normalizeSurfaceToken(value.workflow);
     const priority = normalizeNonNegativeInteger(value.priority, 999) ?? 100;
+    const intakeJobId = normalizeAnswerlatticeKnowledgeIntakeJobId(value.intakeJobId);
+    const intakeReviewItemId = normalizeAnswerlatticeKnowledgeIntakeReviewItemId(value.intakeReviewItemId);
+    const intakeSourceIds = Array.isArray(value.intakeSourceIds)
+        ? Array.from(new Set(value.intakeSourceIds
+            .map(normalizeAnswerlatticeKnowledgeIntakeSourceId)
+            .filter((item): item is string => Boolean(item))))
+            .slice(0, MAX_INTAKE_SOURCE_IDS)
+        : [];
 
     return {
         id,
@@ -277,6 +321,9 @@ export function normalizeStoredAnswerlatticeProductSurface(
         visibility: normalizeSurfaceVisibility(value.visibility),
         active: value.active !== false,
         priority,
+        ...(intakeJobId ? { intakeJobId } : {}),
+        ...(intakeReviewItemId ? { intakeReviewItemId } : {}),
+        ...(intakeSourceIds.length > 0 ? { intakeSourceIds } : {}),
         ...(value.createdOn !== undefined ? { createdOn: value.createdOn as AnswerlatticeProductSurface['createdOn'] } : {}),
         ...(value.modifiedOn !== undefined ? { modifiedOn: value.modifiedOn as AnswerlatticeProductSurface['modifiedOn'] } : {}),
         ...(typeof value.createdBy === 'string' ? { createdBy: value.createdBy.slice(0, 180) } : {}),
@@ -505,7 +552,7 @@ export function scoreSurfaceForContext(
     const contextKey = normalizeSurfaceKey(context.contextKey);
     if (contextKey && contextKey === surface.key) return 1000;
 
-    let score = 0;
+    let score = scoreSurfaceRouteForContextPath(surface.routePatterns, context.path);
     if (context.feature && normalizeSurfaceToken(context.feature) === surface.feature) score += 40;
     if (context.page && normalizeSurfaceToken(context.page) === surface.page) score += 50;
     if (context.workflow && normalizeSurfaceToken(context.workflow) === surface.workflow) score += 35;

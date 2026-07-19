@@ -18,6 +18,8 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { resolveStorePublicLanguage } from '@lib/localization/publicRenderLanguage';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveDomain, type ResolvedDomain } from '@lib/multiTenant/domainResolver';
 import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
@@ -177,8 +179,9 @@ export async function GET() {
         );
         const startUrl = await getCachedStoreLevelStartUrl(store.tenantId, store.storeId);
 
-        const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
-        const displayName: string = getStoreContextName(store, 'Menu');
+        const contentLanguage = resolveStorePublicLanguage(store);
+        const t = createPublicCustomerTranslator(contentLanguage);
+        const displayName: string = getStoreContextName(store, t('menu.menuOffering'));
         const shortName = getLocalizedText(
             store.pwaSettings?.pwaShortName,
             contentLanguage,
@@ -224,7 +227,7 @@ export async function GET() {
                     getPrimaryLocalizedLanguage(store.tagline, contentLanguage),
                     '',
                 ).trim().slice(0, 120)
-                : `${displayName} — digital menu`;
+                : t('menu.metadataMenuDescription', { businessName: displayName });
 
         const manifest = buildManifest({
             id: store.id,
@@ -233,6 +236,7 @@ export async function GET() {
             themeColor,
             description,
             iconVersion: getCustomerAppIconVersion(store),
+            language: contentLanguage,
             // Customer App is one store-level app per tenant origin. Install
             // page is source attribution only; it never changes app identity.
             startUrl,

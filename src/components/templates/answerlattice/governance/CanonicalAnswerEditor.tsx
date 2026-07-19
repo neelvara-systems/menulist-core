@@ -15,8 +15,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import {
     ANSWERLATTICE_ANSWER_STATUS,
+    ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS,
+    ANSWERLATTICE_ENTITY_TYPES,
     ANSWERLATTICE_PREREQUISITE_TYPE,
     ANSWERLATTICE_PROCEDURE_ACTIONS,
     ANSWERLATTICE_PROCEDURE_CONSTRAINTS,
@@ -54,11 +57,13 @@ import {
     theme,
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { useCallback, useMemo, useState } from 'react';
 import {
     LuAlertTriangle,
     LuCheck,
     LuEye,
+    LuExternalLink,
     LuListOrdered,
     LuMinus,
     LuPencil,
@@ -101,6 +106,31 @@ const SEVERITY_OPTIONS = Object.values(ANSWERLATTICE_WARNING_SEVERITY).map(s => 
 const PREREQ_TYPE_OPTIONS = Object.values(ANSWERLATTICE_PREREQUISITE_TYPE).map(t => ({ label: t, value: t }));
 
 const DEFAULT_STEP: AnswerlatticeProcedureStep = { stepOrder: 1, action: 'click', instruction: '' };
+const VERSION_LABEL_PATTERN = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+const parseVersionLabel = (value: unknown): number | null => {
+    const label = typeof value === 'string' ? value.trim() : '';
+    if (!VERSION_LABEL_PATTERN.test(label)) return null;
+    const normalized = normalizeVersion(label);
+    return Number.isInteger(normalized) && normalized > 0 && normalized <= 999_999_999
+        ? normalized
+        : null;
+};
+
+const optionalIds = (value: unknown): string[] | undefined => (
+    Array.isArray(value) && value.length > 0 ? value : undefined
+);
+
+const buildPublicCitations = (value: unknown) => (
+    Array.isArray(value)
+        ? value.slice(0, ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS).flatMap((citation) => {
+            const title = typeof citation?.title === 'string' ? citation.title.trim() : '';
+            const url = normalizeAnswerlatticePublicCitationUrl(citation?.url);
+            if (!title || !url) return [];
+            return [{ id: createRuntimeId('citation'), title, url }];
+        })
+        : []
+);
 
 export default function CanonicalAnswerEditor() {
     const session = useClientAuthSession();
@@ -135,9 +165,33 @@ export default function CanonicalAnswerEditor() {
         [entities]
     );
 
+    const planOptions = useMemo(() =>
+        (entities || [])
+            .filter(entity => entity.type === ANSWERLATTICE_ENTITY_TYPES.PLAN)
+            .map(entity => ({ label: entity.name, value: entity.slug })),
+        [entities]
+    );
+
+    const roleOptions = useMemo(() =>
+        (entities || [])
+            .filter(entity => entity.type === ANSWERLATTICE_ENTITY_TYPES.ROLE)
+            .map(entity => ({ label: entity.name, value: entity.slug })),
+        [entities]
+    );
+
+    const stateOptions = useMemo(() =>
+        (entities || [])
+            .filter(entity => entity.type === ANSWERLATTICE_ENTITY_TYPES.STATE)
+            .map(entity => ({ label: entity.name, value: entity.slug })),
+        [entities]
+    );
+
     const entityMap = useMemo(() => {
         const map = new Map<string, string>();
-        (entities || []).forEach(e => map.set(e.id, e.name));
+        (entities || []).forEach(e => {
+            map.set(e.id, e.name);
+            map.set(e.slug, e.name);
+        });
         return map;
     }, [entities]);
 
@@ -157,7 +211,17 @@ export default function CanonicalAnswerEditor() {
             edgeCases: answer.content.edgeCases || '',
             constraints: answer.content.constraints || '',
             entityIds: answer.scope.entityIds,
+            planIds: answer.scope.planIds || [],
+            roleIds: answer.scope.roleIds || [],
+            stateIds: answer.scope.stateIds || [],
             versionFrom: denormalizeVersion(answer.productBinding.applicableVersions.from),
+            versionTo: answer.productBinding.applicableVersions.to
+                ? denormalizeVersion(answer.productBinding.applicableVersions.to)
+                : '',
+            citations: (answer.evidence?.citations || []).map(citation => ({
+                title: citation.title,
+                url: citation.url,
+            })),
         });
     }, [form, setSelectedAnswer]);
 
@@ -166,6 +230,12 @@ export default function CanonicalAnswerEditor() {
         setSavingProposal(true);
         try {
             const values = await form.validateFields();
+            const versionFrom = parseVersionLabel(values.versionFrom);
+            const versionToInput = String(values.versionTo || '').trim();
+            const versionTo = versionToInput ? parseVersionLabel(versionToInput) : null;
+            if (!versionFrom || (versionToInput && !versionTo) || (versionTo && versionTo < versionFrom)) {
+                throw new Error('Invalid canonical answer version window');
+            }
             const procedure: AnswerlatticeProcedure | undefined =
                 editAnswerType === 'procedure' && editSteps.length > 0
                     ? {
@@ -185,9 +255,22 @@ export default function CanonicalAnswerEditor() {
                     constraints: values.constraints || undefined,
                     procedure,
                 },
+                evidence: {
+                    sourceIds: selectedAnswer.evidence?.sourceIds || [],
+                    citations: buildPublicCitations(values.citations),
+                },
                 scope: {
-                    ...selectedAnswer.scope,
                     entityIds: values.entityIds,
+                    planIds: optionalIds(values.planIds),
+                    roleIds: optionalIds(values.roleIds),
+                    stateIds: optionalIds(values.stateIds),
+                },
+                productBinding: {
+                    ...selectedAnswer.productBinding,
+                    applicableVersions: {
+                        from: versionFrom,
+                        to: versionTo,
+                    },
                 },
             });
             if (submitted) {
@@ -206,7 +289,12 @@ export default function CanonicalAnswerEditor() {
         setCreatingProposal(true);
         try {
             const values = await createForm.validateFields();
-            const versionNorm = normalizeVersion(values.versionFrom || '1.0.0');
+            const versionNorm = parseVersionLabel(values.versionFrom);
+            const versionToInput = String(values.versionTo || '').trim();
+            const versionTo = versionToInput ? parseVersionLabel(versionToInput) : null;
+            if (!versionNorm || (versionToInput && !versionTo) || (versionTo && versionTo < versionNorm)) {
+                throw new Error('Invalid canonical answer version window');
+            }
             const procedureSlug = String(values.title || '')
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, '_')
@@ -227,11 +315,14 @@ export default function CanonicalAnswerEditor() {
                 answerType: createAnswerType,
                 scope: {
                     entityIds: values.entityIds,
+                    planIds: optionalIds(values.planIds),
+                    roleIds: optionalIds(values.roleIds),
+                    stateIds: optionalIds(values.stateIds),
                 },
                 productBinding: {
                     introducedInVersion: versionNorm,
                     lastValidatedInVersion: versionNorm,
-                    applicableVersions: { from: versionNorm, to: null },
+                    applicableVersions: { from: versionNorm, to: versionTo },
                 },
                 content: {
                     structuredSummary: values.structuredSummary,
@@ -239,6 +330,10 @@ export default function CanonicalAnswerEditor() {
                     edgeCases: values.edgeCases || undefined,
                     constraints: values.constraints || undefined,
                     procedure,
+                },
+                evidence: {
+                    sourceIds: [],
+                    citations: buildPublicCitations(values.citations),
                 },
                 validation: {
                     confidenceScore: 1.0,
@@ -381,6 +476,79 @@ export default function CanonicalAnswerEditor() {
             </Flex>
         </Card>
     ), [updateStep, addStep, removeStep]);
+
+    const renderCitationEditor = useCallback(() => (
+        <Card size="small" title="Approved Public Sources">
+            <Form.List
+                name="citations"
+                rules={[{
+                    validator: async (_, citations) => {
+                        if ((citations || []).length > ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS) {
+                            throw new Error(`Use at most ${ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS} public sources`);
+                        }
+                    },
+                }]}
+            >
+                {(fields, { add, remove }, { errors }) => (
+                    <Flex vertical gap={10}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Only these reviewer-approved links are shown with customer-facing canonical answers. Internal evidence stays private.
+                        </Text>
+                        {fields.map(field => (
+                            <Flex key={field.key} gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'start'}>
+                                <Form.Item
+                                    {...field}
+                                    name={[field.name, 'title']}
+                                    label="Source title"
+                                    style={{ flex: 1, marginBottom: 0 }}
+                                    rules={[{
+                                        required: true,
+                                        max: ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_TITLE_LENGTH,
+                                    }]}
+                                >
+                                    <Input placeholder="Product documentation" />
+                                </Form.Item>
+                                <Form.Item
+                                    {...field}
+                                    name={[field.name, 'url']}
+                                    label="Public URL"
+                                    style={{ flex: 1.4, marginBottom: 0 }}
+                                    rules={[
+                                        { required: true },
+                                        {
+                                            validator: (_, value) => normalizeAnswerlatticePublicCitationUrl(value)
+                                                ? Promise.resolve()
+                                                : Promise.reject(new Error('Use a public HTTP or HTTPS URL without credentials')),
+                                        },
+                                    ]}
+                                >
+                                    <Input placeholder="https://docs.example.com/article" />
+                                </Form.Item>
+                                <Button
+                                    type="text"
+                                    danger
+                                    icon={<LuMinus />}
+                                    onClick={() => remove(field.name)}
+                                    aria-label="Remove public source"
+                                    style={{ marginTop: isMobile ? 0 : 30 }}
+                                />
+                            </Flex>
+                        ))}
+                        <Button
+                            type="dashed"
+                            icon={<LuPlus />}
+                            onClick={() => add({ title: '', url: '' })}
+                            disabled={fields.length >= ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS}
+                            block
+                        >
+                            Add public source
+                        </Button>
+                        <Form.ErrorList errors={errors} />
+                    </Flex>
+                )}
+            </Form.List>
+        </Card>
+    ), [isMobile]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI) return null;
 
@@ -570,6 +738,33 @@ export default function CanonicalAnswerEditor() {
                                     ))}
                                 </Space>
                             </Descriptions.Item>
+                            {selectedAnswer.scope.planIds && selectedAnswer.scope.planIds.length > 0 && (
+                                <Descriptions.Item label="Plans">
+                                    <Space wrap>
+                                        {selectedAnswer.scope.planIds.map(id => (
+                                            <Tag key={id} color="cyan">{entityMap.get(id) || id}</Tag>
+                                        ))}
+                                    </Space>
+                                </Descriptions.Item>
+                            )}
+                            {selectedAnswer.scope.roleIds && selectedAnswer.scope.roleIds.length > 0 && (
+                                <Descriptions.Item label="Roles">
+                                    <Space wrap>
+                                        {selectedAnswer.scope.roleIds.map(id => (
+                                            <Tag key={id} color="geekblue">{entityMap.get(id) || id}</Tag>
+                                        ))}
+                                    </Space>
+                                </Descriptions.Item>
+                            )}
+                            {selectedAnswer.scope.stateIds && selectedAnswer.scope.stateIds.length > 0 && (
+                                <Descriptions.Item label="States">
+                                    <Space wrap>
+                                        {selectedAnswer.scope.stateIds.map(id => (
+                                            <Tag key={id} color="gold">{entityMap.get(id) || id}</Tag>
+                                        ))}
+                                    </Space>
+                                </Descriptions.Item>
+                            )}
                             <Descriptions.Item label="Version">
                                 {denormalizeVersion(selectedAnswer.productBinding.applicableVersions.from)}
                                 {' → '}
@@ -584,6 +779,26 @@ export default function CanonicalAnswerEditor() {
                                 Tickets: {selectedAnswer.signalMetrics?.linkedTicketCount || 0} |
                                 Chat: {selectedAnswer.signalMetrics?.linkedChatCount || 0} |
                                 Negative: {selectedAnswer.signalMetrics?.negativeFeedbackCount || 0}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Internal Evidence">
+                                {selectedAnswer.evidence?.sourceIds.length || 0} linked source{selectedAnswer.evidence?.sourceIds.length === 1 ? '' : 's'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Public Sources">
+                                {selectedAnswer.evidence?.citations.length ? (
+                                    <Flex vertical gap={4}>
+                                        {selectedAnswer.evidence.citations.map(citation => (
+                                            <Typography.Link
+                                                key={citation.id}
+                                                href={citation.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <LuExternalLink size={12} aria-hidden style={{ marginRight: 6 }} />
+                                                {citation.title}
+                                            </Typography.Link>
+                                        ))}
+                                    </Flex>
+                                ) : <Text type="secondary">None approved</Text>}
                             </Descriptions.Item>
                         </Descriptions>
 
@@ -668,6 +883,51 @@ export default function CanonicalAnswerEditor() {
                         <Form.Item name="entityIds" label="Bound Entities" rules={[{ required: true, type: 'array', min: 1, message: 'At least one entity required' }]}>
                             <Select mode="multiple" options={entityOptions} placeholder="Select entities" />
                         </Form.Item>
+                        <Form.Item name="planIds" label="Applicable Plans (optional)">
+                            <Select mode="multiple" options={planOptions} placeholder="All plans when empty" />
+                        </Form.Item>
+                        <Form.Item name="roleIds" label="Applicable Roles (optional)">
+                            <Select mode="multiple" options={roleOptions} placeholder="All roles when empty" />
+                        </Form.Item>
+                        <Form.Item name="stateIds" label="Applicable Product States (optional)">
+                            <Select mode="multiple" options={stateOptions} placeholder="All states when empty" />
+                        </Form.Item>
+                        <Flex gap={12} vertical={isMobile}>
+                            <Form.Item
+                                name="versionFrom"
+                                label="Applicable From Version"
+                                style={{ flex: 1 }}
+                                rules={[
+                                    { required: true, message: 'Starting version is required' },
+                                    {
+                                        validator: (_, value) => parseVersionLabel(value)
+                                            ? Promise.resolve()
+                                            : Promise.reject(new Error('Use a version such as 2.4.1')),
+                                    },
+                                ]}
+                            >
+                                <Input placeholder="e.g., 2.4.1" />
+                            </Form.Item>
+                            <Form.Item
+                                name="versionTo"
+                                label="Through Version (optional)"
+                                style={{ flex: 1 }}
+                                dependencies={['versionFrom']}
+                                rules={[{
+                                    validator: (_, value) => {
+                                        if (!String(value || '').trim()) return Promise.resolve();
+                                        const to = parseVersionLabel(value);
+                                        const from = parseVersionLabel(form.getFieldValue('versionFrom'));
+                                        if (!to) return Promise.reject(new Error('Use a version such as 3.0.0'));
+                                        return from && to < from
+                                            ? Promise.reject(new Error('Through version must be the same or later'))
+                                            : Promise.resolve();
+                                    },
+                                }]}
+                            >
+                                <Input placeholder="Current when empty" />
+                            </Form.Item>
+                        </Flex>
                         <Form.Item name="structuredSummary" label="Structured Summary (≤500 chars)" rules={[{ required: true, max: 500 }]}>
                             <TextArea rows={3} maxLength={500} showCount />
                         </Form.Item>
@@ -680,6 +940,7 @@ export default function CanonicalAnswerEditor() {
                         <Form.Item name="constraints" label="Constraints (optional)">
                             <TextArea rows={2} />
                         </Form.Item>
+                        {renderCitationEditor()}
                         {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && editAnswerType === 'procedure' && (
                             renderStepEditor(editSteps, setEditSteps)
                         )}
@@ -720,9 +981,52 @@ export default function CanonicalAnswerEditor() {
                     <Form.Item name="entityIds" label="Bound Entities" rules={[{ required: true, type: 'array', min: 1, message: 'At least one entity required' }]}>
                         <Select mode="multiple" options={entityOptions} placeholder="Select entities this answer is about" />
                     </Form.Item>
-                    <Form.Item name="versionFrom" label="Applicable From Version" initialValue="1.0.0">
-                        <Input placeholder="e.g., 2.4.1" />
+                    <Form.Item name="planIds" label="Applicable Plans (optional)">
+                        <Select mode="multiple" options={planOptions} placeholder="All plans when empty" />
                     </Form.Item>
+                    <Form.Item name="roleIds" label="Applicable Roles (optional)">
+                        <Select mode="multiple" options={roleOptions} placeholder="All roles when empty" />
+                    </Form.Item>
+                    <Form.Item name="stateIds" label="Applicable Product States (optional)">
+                        <Select mode="multiple" options={stateOptions} placeholder="All states when empty" />
+                    </Form.Item>
+                    <Flex gap={12} vertical={isMobile}>
+                        <Form.Item
+                            name="versionFrom"
+                            label="Applicable From Version"
+                            initialValue="1.0.0"
+                            style={{ flex: 1 }}
+                            rules={[
+                                { required: true, message: 'Starting version is required' },
+                                {
+                                    validator: (_, value) => parseVersionLabel(value)
+                                        ? Promise.resolve()
+                                        : Promise.reject(new Error('Use a version such as 2.4.1')),
+                                },
+                            ]}
+                        >
+                            <Input placeholder="e.g., 2.4.1" />
+                        </Form.Item>
+                        <Form.Item
+                            name="versionTo"
+                            label="Through Version (optional)"
+                            style={{ flex: 1 }}
+                            dependencies={['versionFrom']}
+                            rules={[{
+                                validator: (_, value) => {
+                                    if (!String(value || '').trim()) return Promise.resolve();
+                                    const to = parseVersionLabel(value);
+                                    const from = parseVersionLabel(createForm.getFieldValue('versionFrom'));
+                                    if (!to) return Promise.reject(new Error('Use a version such as 3.0.0'));
+                                    return from && to < from
+                                        ? Promise.reject(new Error('Through version must be the same or later'))
+                                        : Promise.resolve();
+                                },
+                            }]}
+                        >
+                            <Input placeholder="Current when empty" />
+                        </Form.Item>
+                    </Flex>
                     <Form.Item name="structuredSummary" label="Structured Summary (≤500 chars)" rules={[{ required: true, max: 500 }]}>
                         <TextArea rows={3} maxLength={500} showCount placeholder="Concise, deterministic answer core" />
                     </Form.Item>
@@ -735,6 +1039,7 @@ export default function CanonicalAnswerEditor() {
                     <Form.Item name="constraints" label="Constraints (optional)">
                         <TextArea rows={2} />
                     </Form.Item>
+                    {renderCitationEditor()}
                     {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && createAnswerType === 'procedure' && (
                         renderStepEditor(createSteps, setCreateSteps)
                     )}

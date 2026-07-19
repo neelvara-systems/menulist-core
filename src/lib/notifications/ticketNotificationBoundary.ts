@@ -1,5 +1,8 @@
 import { PRODUCT_IDS } from '@constant/product';
-import { normalizeAnswerlatticeSupportTicketId } from '@lib/answerlattice/supportTicketLifecycle';
+import {
+    getAnswerlatticeSupportTicketDisplayId,
+    normalizeAnswerlatticeSupportTicketId,
+} from '@lib/answerlattice/supportTicketLifecycle';
 import type { NotificationPayload } from '@lib/notifications';
 import type { SupportTicketType } from '@type/supportTicket';
 
@@ -40,7 +43,7 @@ export function projectTicketNotification(params: {
     const recipientName = normalizeBoundedText(params.ticket.clientDetails?.storeName, 120) || undefined;
     const baseMetadata = {
         ticketId,
-        ticketDisplayId: ticketId.slice(0, 6).toUpperCase(),
+        ticketDisplayId: getAnswerlatticeSupportTicketDisplayId(ticketId),
         ticketSubject,
     };
 

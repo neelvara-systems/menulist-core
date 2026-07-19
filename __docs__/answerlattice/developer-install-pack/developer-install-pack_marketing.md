@@ -24,7 +24,7 @@ Copy the install packet into a coding agent, install the support layer, prove pa
 
 ## Avoid
 
-- Do not claim Answerlattice supports a public SDK or npm package.
+- Describe the supported first-party browser loader/global contract precisely. Do not claim a separately installed npm package, broad public SDK, or arbitrary client execution surface.
 - Do not claim guaranteed ticket reduction.
 - Do not call proof examples customer case studies unless they are real and approved.
 - Do not lead with MCP or Public API v1; those remain secondary or gated unless intentionally rolled out.

@@ -23,7 +23,7 @@ const REQUIRED_DIRECT_VERSIONS = {
     '@sentry/nextjs': '10.66.0',
     axios: '1.18.1',
     jspdf: '4.2.1',
-    nodemailer: '9.0.3',
+    nodemailer9: 'npm:nodemailer@9.0.3',
     'ua-parser-js': '2.0.10',
     uuid: '11.1.1',
     ws: '8.21.1',
@@ -60,6 +60,19 @@ function verifyDirectVersions(cwd, expectedVersions, label) {
       `${label} ${packageName} must stay pinned at ${expectedVersion}; found ${actualVersion || 'missing'}`,
     );
   }
+}
+
+function verifyRootMailRuntime() {
+  const packageJson = readPackageJson(ROOT);
+  const packageLock = require(path.join(ROOT, 'package-lock.json'));
+  assert(
+    !packageJson.dependencies?.nodemailer,
+    'Root Nodemailer must remain absent so NextAuth 4 does not receive an incompatible optional peer',
+  );
+  assert(
+    packageLock.packages?.['node_modules/nodemailer9']?.version === '9.0.3',
+    'Root Nodemailer 9 runtime alias must resolve exactly to 9.0.3',
+  );
 }
 
 function runAudit(cwd, label) {
@@ -157,6 +170,7 @@ verifyDirectVersions(
   REQUIRED_DIRECT_VERSIONS.functions,
   'Answerlattice Functions runtime',
 );
+verifyRootMailRuntime();
 verifyRootAudit(runAudit(ROOT, 'Root production'));
 verifyFunctionsAudit(runAudit(FUNCTIONS_DIR, 'Answerlattice Functions production'));
 

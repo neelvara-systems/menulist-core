@@ -27,21 +27,29 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Expected source classes are `canonical`, `faq`, `rag`, `escalation`, and `no_answer`.
 - Evidence policies are `not_required`, `at_least_one`, and `specific_sources`; the last policy requires one to eight expected article-reference IDs.
 - Existing version-1 cases default to standard risk with no new evidence requirement.
+- Required phrases, blocked phrases, and expected reference IDs are unique; the same phrase cannot be both required and blocked.
 - Canonical-only runs never invoke the AI fallback provider.
 - Full-runtime runs use the existing search pipeline, existing SAFE_MODE, existing rate limits, and existing support-credit accounting.
 - Test traffic is marked as test traffic and excluded from production search history, signals, conversations, friction, coverage, and ROI.
 - The UI shows pass/fail, source, answer/version, evidence outcome, bounded reference IDs, risk level, proof status, and duration.
 - A run is `blocked` when any critical case fails, `review` when only standard cases fail, and `ready` when every case passes. This is an advisory release-proof state, not an automated deployment gate.
+- Deterministic checks validate the configured answer contract. They do not independently establish semantic factual correctness, completeness, or customer resolution.
+- The retained run records the exact test-suite revision used. Any later case edit makes that run historical until the current suite is rerun.
+- A request ID is idempotent only for the same run kind, mode, ordered selected cases, suite revision, and release ID. Reusing it for different inputs fails with a conflict instead of returning unrelated evidence.
+- The persisted summary must have its exact deterministic ID, product ID `AL`, numeric tenant/store scope, supported schema version, numeric revision, valid cases, and unique case IDs. Corrupted persisted truth fails closed for repair.
+- Retained test runs do not increment the suite revision; only test-case saves do.
 - Only the latest 10 compact run summaries are retained.
 
 ### Release Safety
 
 - Release checks select test cases by related entity IDs and product-surface context.
+- Release checks parse the exact stored release contract and reject wrong-product, wrong-scope, or malformed records.
 - A release check never scans all historical tests or all support collections.
 - Failed release checks create no knowledge automatically.
 - Critical failures mark the release-check result blocked without changing release, deployment, or product state.
 - Owners can convert a failure to a mutation proposal.
 - Version history offers `Propose rollback`; this creates a `version_update` mutation proposal containing the selected prior version as review material.
+- Rollback idempotency validates the existing proposal target, mutation type, source audit ID, and paired audit row. A missing half of an otherwise valid deterministic pair is repaired transactionally.
 - Approval and implementation continue through the existing governance flow.
 
 ### Proposal Impact Preview
@@ -85,10 +93,13 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 ### Support Truth Export
 
 - Owners with export permission can download a bounded JSON package containing product surfaces, published KB articles, published FAQs, changelog entries, entities, canonical answers, and release records.
-- Export is owner-triggered, tenant/store scoped, ordered, and capped by existing product limits.
-- The package contains schema version, generated time, counts, and a `complete: true` marker.
-- Secrets, raw widget keys, integration credentials, private visitor identity, tickets, chat transcripts, and raw audit logs are excluded.
+- Export is owner-triggered through POST, exact `AL`/tenant/store scoped, ordered, and capped by existing product limits.
+- The package contains schema version, `governed_support_truth` type, generated time, selection/exclusion policy, counts, and a `complete: true` marker.
+- Canonical rows include bounded approved source IDs and citations. Raw source bodies/context, secrets, raw widget keys, integration credentials, private visitor identity, tickets, chat transcripts, and raw audit logs are excluded.
+- Article translations are included only when human-produced or human-reviewed after AI generation; reviewer identity is excluded. Changelog entries retain changed-entity and release links.
+- Rate enforcement fails closed when its provider is unavailable. Successful generation appends one metadata-only audit event before delivery; failure to retain that event fails the export.
 - An oversized export fails safely with an owner-readable message instead of silently truncating authoritative data.
+- This package supports governed-knowledge portability and review. It is not a complete legal data export, backup, restore, account closure, or erasure workflow.
 
 ### Owner Support Assistant Alignment
 
@@ -130,6 +141,7 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 
 - A founder can create five priority questions, mark material cases critical, require known article references where applicable, and run a canonical-only test in one session.
 - Legacy test suites load unchanged while new runs retain deterministic evidence and proof-status fields.
+- Current proof is shown only when retained evidence uses the current suite revision and current source versions.
 - A release can check only its affected cases without a broad scan.
 - A reviewer can compare a pending proposal against at most 10 explicitly linked active tests without a write or provider call.
 - An active known issue appears on matching widget surfaces and disappears after resolution/expiry.

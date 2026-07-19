@@ -123,7 +123,7 @@ Two APIs (business + menu) is the industry standard pattern:
 | OAuth / JWT                        | Overkill for read-only data. API key is sufficient.                                                               |
 | Usage analytics dashboard          | Anti-doctrine (Doc 08).                                                                                           |
 | Granular item/category endpoints   | Full snapshot architecture. No partials.                                                                          |
-| Identity resolution endpoint       | Deferred. No demand yet. Reserve for future.                                                                      |
+| Identity resolution endpoint       | Deferred. The optional internal store binding is not a public resolution API; add an endpoint only for an approved consumer and versioned contract. |
 | Multiple API keys per store        | Deferred. Current 1-key model is sufficient.                                                                      |
 | In-memory key cache for MenuList pull endpoints | Rejected for v1. Revocation and store/tenant blocking must take effect on the next request from each server process. |
 | Precomputed snapshots              | Deferred. `menuSnapshots` collection exists but not wired to pull API. On-demand reads are fine at current scale. |

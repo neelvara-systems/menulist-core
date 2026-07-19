@@ -1,5 +1,7 @@
 # First Trusted Answers Test Cases
 
+**Updated:** 2026-07-19
+
 ## Product-Specific Pack
 
 1. A user without Knowledge or Governance permission cannot generate a pack.
@@ -22,6 +24,14 @@
 18. Product-specific and generic fallback flows remain usable on narrow mobile layouts.
 19. Intake audience or included source-context changes invalidate the cached pack; unchanged prompt inputs reuse it.
 20. The general fallback cannot be added after a product-specific set exists.
+21. Only exact product slots `product_launch_01` through `product_launch_10` count; `product_launch_11` and arbitrary prefixed IDs do not.
+22. A mixed generic/product suite selects product mode and cannot combine both sets to reach ten.
+23. Product slots with different generation-input hashes fail closed.
+24. Product slots with duplicate review-item provenance fail closed.
+25. Inactive product slots do not count toward runnable launch proof.
+26. Shared SAFE_MODE blocks product-pack generation before provider and usage work.
+27. A malformed request ID passed directly to the server generator fails before the job or provider is read.
+28. Cached reuse requires every exact launch position `1` through `10`; duplicate or out-of-range positions fail closed.
 
 ## Launch Workflow
 
@@ -45,6 +55,16 @@
 18. A case or governed-source change leaves the latest result visible but marks current proof stale until all ten current cases are rerun.
 19. A source change during execution is detected by the post-run current-proof read and cannot return a false ready state.
 20. The First 10 route sends exact `includeLaunchProof=1`; the standard Answer Tests route omits it and does not incur the launch-only proof read.
+21. **Run First 10 checks** sends the exact active launch IDs, independent of ordinary table selection.
+22. The run API rejects a requested case that changed, disappeared, or became inactive instead of running a subset.
+23. A malformed First 10 `updatedAt` value removes that case from current launch coverage.
+24. A run completed more than five minutes in the future cannot become current proof.
+25. A failed case is critical when retained or current case evidence marks it critical; contradictory stored summary totals do not override derived proof.
+26. Management, run, release-check, and launch-pack responses are private/no-store and include `X-Content-Type-Options: nosniff`.
+27. Browser summaries contain no active reservations; browser runs contain no request fingerprint or governed-source counters.
+28. Browser parsing rejects wrong scope, unknown fields, duplicate IDs, future suite revisions, and contradictory derived run counts.
+29. A failed result with missing retained risk evidence cannot become launch-ready proof.
+30. A failed result is critical when either retained result evidence or the current First 10 case is critical.
 
 ## Outcome Feedback
 

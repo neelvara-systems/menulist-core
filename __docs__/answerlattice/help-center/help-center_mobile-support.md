@@ -1,7 +1,7 @@
 # MenuList Help Center — Mobile Support
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-16
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Mobile, Product, QA
 > **Source:** Current `MobileShell` and Help Center components
 
@@ -18,6 +18,8 @@ Help is useful away from a desk and has short, touch-oriented tasks: find guidan
 - Back returns to `/dashboard#mobile/more`.
 - Help Center buttons and interactive roles receive a 44 px minimum touch target.
 - Wide Ant Design content is contained within the mobile screen instead of forcing page-level horizontal overflow.
+- The Mobile Help header and description use the maintained `MobileHelp` locale namespace rather than fixed English copy.
+- Help Chat drafts follow the same workspace/user, 2,000-character and 24-hour boundary as desktop.
 
 ## Data and Product Boundary
 

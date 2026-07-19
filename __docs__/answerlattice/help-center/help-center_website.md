@@ -1,7 +1,7 @@
 # MenuList Help Center — Website Content Decision
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-16
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Website, Product, SEO
 > **Source:** Current route and content inventory
 

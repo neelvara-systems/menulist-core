@@ -17,6 +17,12 @@ Use **Canonical only** for a fast deterministic check. Use **Full runtime** only
 
 `Ready`, `Review`, and `Blocked` describe the retained proof result. They do not deploy code, publish content, or change a release automatically.
 
+These checks confirm the source route, expected IDs, phrases, confidence, abstention, and evidence rules you configured. They do not independently prove that an answer is factually correct, complete, or that a customer was resolved. Review representative cases with product/support judgment.
+
+If a test definition changes, the previous run is labelled **Stale** and remains available only as historical evidence. Rerun the current suite before relying on its proof status.
+
+For a failed result, **Adopt current route and evidence** updates the expected source, answer IDs, confidence, and references after owner confirmation. Required and blocked phrase checks remain unchanged and must still be reviewed explicitly.
+
 ## Check A Proposed Answer
 
 1. Open **Governance > Signal Queue**.
@@ -72,3 +78,5 @@ Add trusted evidence hosts in Access & Security. Your product may then pass up t
 Open workspace settings and choose **Export support truth**. The JSON package includes approved knowledge and product structure. It excludes tickets, chat transcripts, visitor details, raw keys, and integration credentials.
 
 If the workspace exceeds the safe export limit, Answerlattice stops and shows an error instead of downloading an incomplete package.
+
+Answerlattice records that the export was generated, who requested it, its counts, and its size. The audit record does not copy the exported answers or source content.

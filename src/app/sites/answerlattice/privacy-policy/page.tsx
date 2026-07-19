@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { ANSWERLATTICE_RETENTION_DAYS } from '@data/shared/answerlatticeRetention';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
@@ -44,6 +45,7 @@ const SECTIONS = [
         title: 'Service Providers',
         body: [
             'The current operational provider map includes Vercel for application hosting, Google Firebase and Google Cloud for database, authentication, storage, and functions, Google Gemini for configured AI-assisted processing, Razorpay for billing, a configured SMTP service for email, Upstash Redis when configured for cache or rate limiting, and consent-gated Plausible or Google Analytics for the public website.',
+            'AnswerLattice does not make a public no-training or zero-data-retention promise for Gemini processing. Those conditions depend on the deployed billing tier, enabled provider features, abuse-monitoring status, and account configuration and must be verified for a buyer that requires them.',
             'The public Trust and Data Handling page describes how each provider category is used. It is factual product documentation, not a contractual subprocessor schedule.',
             'AnswerLattice does not sell customer support content or widget conversation data.',
         ],
@@ -67,7 +69,7 @@ const SECTIONS = [
         title: 'Retention and Security',
         body: [
             'AnswerLattice keeps data for as long as it is needed to provide the service, support the customer workspace, meet operational needs, or satisfy legal requirements.',
-            'Implemented windows include 30 days for query embedding cache, 90 days for raw answer/search history and selected operational logs, 2 days for notification rate-limit counters, 365 days for public contact enquiries, 12 months for raw signal events, and 90 days for friction daily statistics.',
+            `Implemented windows include ${ANSWERLATTICE_RETENTION_DAYS.queryEmbeddings} days for query embedding cache, ${ANSWERLATTICE_RETENTION_DAYS.aiSearchHistory} days for raw answer/search history, ${ANSWERLATTICE_RETENTION_DAYS.notificationLogs} days for selected operational logs, ${ANSWERLATTICE_RETENTION_DAYS.ownerNotificationRateLimits} days for notification rate-limit counters, ${ANSWERLATTICE_RETENTION_DAYS.contactEnquiries} days for public contact enquiries, ${ANSWERLATTICE_RETENTION_DAYS.signalEvents} days for raw signal events, and 90 days for friction daily statistics.`,
             'Imported source metadata and capped extracted text stay with the intake job so owners can review drafts and lineage. Raw file retention is not required for day-one browser-extracted intake.',
             'Access controls, tenant separation, validation, and bounded payload handling are used to reduce accidental exposure and protect support data.',
         ],
@@ -92,7 +94,7 @@ export default function AnswerlatticePrivacyPolicyPage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Privacy Policy</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Privacy Policy</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: July 11, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: July 19, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             This policy explains how AnswerLattice handles information for its public website, product dashboard,
                             help widget, and support knowledge features.

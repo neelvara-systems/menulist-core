@@ -317,33 +317,6 @@ export const renameAnswerlatticeWidgetKey = (params: {
     };
 };
 
-export const deleteAnswerlatticeWidgetKey = (params: {
-    currentState: unknown;
-    keyId: string;
-    nowIso?: string;
-}): AnswerlatticeWidgetApiState | null => {
-    const match = getAnswerlatticeWidgetKeyRecordById(params.currentState, params.keyId);
-    if (!match) return null;
-
-    const nowIso = params.nowIso || new Date().toISOString();
-    const keysByHash = { ...match.state.keysByHash };
-    delete keysByHash[match.keyHash];
-
-    const keyHashes = match.state.keyHashes.filter((hash) => hash !== match.keyHash);
-    const activeKeyHash = keyHashes[0] || null;
-    const activeRecord = activeKeyHash ? keysByHash[activeKeyHash] : null;
-
-    return {
-        ...match.state,
-        activeKeyHash,
-        apiKeyHash: activeKeyHash,
-        keyPrefix: activeRecord?.keyPrefix || null,
-        keyHashes,
-        keysByHash,
-        updatedAt: nowIso,
-    };
-};
-
 export const revokeAnswerlatticeWidgetKey = (params: {
     currentState: unknown;
     keyId: string;

@@ -17,7 +17,7 @@ Current source truth:
 | Brief API | Authenticated, rate-limited before permission reads, six compact summary reads, private/no-store. |
 | Query API | Authenticated, exact session scope, 20 requests/minute per hashed user/workspace key before permission reads, 4 KiB body cap, Zod validation, private/no-store. |
 | Answer engine | Deterministic ten-intent classifier over the same six summary documents: attention, answer risk, friction, readiness, intake, release, install, reply, cost, and unsupported. No AI provider or bounded-detail path. |
-| Daily Founder Brief | Optional `dailyBrief` payload ranks the smallest useful support actions for today from the same five summaries. |
+| Daily Founder Brief | Optional `dailyBrief` payload ranks the smallest useful support actions for today from the same six summaries. |
 | Persistence | None. No transcript, feedback, operation, action, analytics, or assistant summary write. |
 | Owner actions | Route links only. No action preview/execute, ticket reply/status change, draft, card, note, or publish path. |
 | Client | Bounded 128 KiB JSON responses, no-store/same-origin/manual-redirect requests, responsive layout, 44px action targets. |
@@ -157,7 +157,7 @@ Navigation placement:
 
 - Group: Support Control
 - Label: Support Assistant
-- Position: after Support Board and before Weekly Digest
+- Position: first in Support Control as `Daily Brief`, before Support Board and Weekly Digest
 - Permission: `MANAGE_SUPPORT` for action-taking access, with read-only brief access allowed only if current Answerlattice permission rules add an explicit view permission.
 
 Do not add this route under an old product namespace, `/help-center/*`, or MenuList mobile shell routing.
@@ -170,13 +170,14 @@ Do not add this route under an old product namespace, `/help-center/*`, or MenuL
 
 Purpose: one protected summary packet for route load.
 
-After feature, rate-limit, and `MANAGE_SUPPORT` admission, it reads exactly these five documents in one `getAll()` call:
+After feature, rate-limit, and `MANAGE_SUPPORT` admission, it reads exactly these six documents in one `getAll()` call:
 
 - `platformSummary/coverage_{tId}_{sId}`
 - `platformSummary/trustMetrics_{tId}_{sId}`
 - `platformSummary/supportBoardSummary_{tId}_{sId}`
 - `platformSummary/frictionSnapshot_{tId}_{sId}`
 - `platformSummary/knowledgeIntakeSummary_{tId}_{sId}`
+- `platformSummary/activation_{tId}_{sId}`
 
 Response:
 
@@ -189,7 +190,9 @@ Response:
     metrics: Record<string, number | null>;
     promptChips: string[];
     updatedAt: string | null;
-    readModel: { firestoreReads: 0 | 5; source: 'summary_only'; cacheHit: boolean };
+    summaryHealth: AnswerlatticeOwnerAssistantSummaryHealth;
+    capabilities: AnswerlatticeOwnerAssistantCapabilities;
+    readModel: { firestoreReads: 0 | 6; source: 'summary_only'; cacheHit: boolean };
   };
 }
 ```
@@ -211,12 +214,13 @@ Response:
   answer: {
     id: string;
     status: 'healthy' | 'needs_review' | 'at_risk' | 'insufficient_data' | 'unsupported';
-    intent: 'attention' | 'answer_risk' | 'friction' | 'readiness' | 'intake' | 'unsupported';
+    intent: 'attention' | 'answer_risk' | 'friction' | 'readiness' | 'intake' | 'release' | 'install' | 'reply' | 'cost' | 'unsupported';
     directAnswer: string;
     evidence: Array<{ label: string; value: string; href: string; source: string }>;
     nextActions: Array<{ label: string; href: string }>;
     limits: string[];
-    readModel: { firestoreReads: 0 | 5; source: 'summary_only'; cacheHit: boolean };
+    summaryHealth: AnswerlatticeOwnerAssistantSummaryHealth;
+    readModel: { firestoreReads: 0 | 6; source: 'summary_only'; cacheHit: boolean };
   };
 }
 ```
@@ -229,8 +233,8 @@ Server sequence:
 4. Apply the hashed workspace/user rate limit before the Firestore-backed permission check.
 5. Require `MANAGE_SUPPORT`.
 6. Read at most 4 KiB and Zod-validate a strict 3-500 character question.
-7. Classify one of the six supported intents.
-8. Read or reuse the five-document compact summary packet.
+7. Classify one of the ten bounded intents.
+8. Read or reuse the six-document compact summary packet.
 9. Build a deterministic answer with evidence and governed route links.
 10. Return a private `no-store` response.
 

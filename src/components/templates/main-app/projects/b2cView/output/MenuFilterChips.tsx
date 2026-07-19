@@ -19,6 +19,7 @@
  */
 
 import { FILTER_ALLOWLIST, resolveBusinessCategory, SystemFilter } from '@data/shared/businessTypes';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import { useMemo } from 'react';
 import { LuLeaf, LuStar } from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';
@@ -38,7 +39,6 @@ interface MenuItem {
 
 interface FilterConfig {
     key: SystemFilter;
-    label: string;
     icon: React.ReactNode;
     iconColor: string;
 }
@@ -46,19 +46,16 @@ interface FilterConfig {
 const FILTER_UI_CONFIG: Record<SystemFilter, FilterConfig> = {
     popular: {
         key: 'popular',
-        label: 'Popular',
         icon: <LuStar size={14} />,
         iconColor: '#f59e0b',
     },
     veg: {
         key: 'veg',
-        label: 'Veg',
         icon: <LuLeaf size={14} />,
         iconColor: '#22c55e',
     },
     nonveg: {
         key: 'nonveg',
-        label: 'Non-Veg',
         icon: (
             <span style={{
                 width: 10,
@@ -72,13 +69,11 @@ const FILTER_UI_CONFIG: Record<SystemFilter, FilterConfig> = {
     },
     forMen: {
         key: 'forMen',
-        label: 'For Men',
         icon: <span style={{ fontSize: 14 }}>♂</span>,
         iconColor: '#3b82f6',
     },
     forWomen: {
         key: 'forWomen',
-        label: 'For Women',
         icon: <span style={{ fontSize: 14 }}>♀</span>,
         iconColor: '#ec4899',
     },
@@ -93,9 +88,11 @@ interface MenuFilterChipsProps {
     businessType?: string;
     businessCategory?: string;
     isSearchActive?: boolean;
+    activeLanguage?: string;
 }
 
 function MenuFilterChips({
+    activeLanguage,
     items,
     activeFilter,
     onFilterChange,
@@ -105,6 +102,14 @@ function MenuFilterChips({
     businessCategory,
     isSearchActive = false,
 }: MenuFilterChipsProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const localizedFilterLabels: Record<SystemFilter, string> = {
+        popular: t('menu.popular'),
+        veg: t('menu.vegetarian'),
+        nonveg: t('menu.nonVeg'),
+        forMen: t('menu.forMen'),
+        forWomen: t('menu.forWomen'),
+    };
     // Layer 3: Get allowed filters for this business category
     const resolvedBusinessCategory = resolveBusinessCategory(businessType, businessCategory);
     const allowedFilters = FILTER_ALLOWLIST[resolvedBusinessCategory || ''] ?? [];
@@ -166,7 +171,7 @@ function MenuFilterChips({
     const handleFilterClick = (filter: SystemFilter) => {
         const nextFilter = activeFilter === filter ? null : filter;
         onFilterChange(nextFilter);
-        onFilterIntentChange?.(nextFilter, nextFilter ? FILTER_UI_CONFIG[nextFilter].label : undefined);
+        onFilterIntentChange?.(nextFilter, nextFilter ? localizedFilterLabels[nextFilter] : undefined);
     };
 
     const chipStyle = (isActive: boolean): React.CSSProperties => ({
@@ -195,7 +200,7 @@ function MenuFilterChips({
                 flexWrap: 'wrap',
             }}
             role="group"
-            aria-label="Menu filters"
+            aria-label={t('menu.menuFilters')}
         >
             {visibleFilters.map(filter => {
                 const config = FILTER_UI_CONFIG[filter];
@@ -209,7 +214,7 @@ function MenuFilterChips({
                         aria-pressed={isActive}
                     >
                         <span style={{ color: config.iconColor }}>{config.icon}</span>
-                        <span>{config.label}</span>
+                        <span>{localizedFilterLabels[filter]}</span>
                         <span style={{ opacity: 0.5, fontSize: 11 }}>({counts[filter]})</span>
                     </button>
                 );

@@ -1,137 +1,77 @@
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/routes';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
+import {
+    parseAnswerlatticeCoverageData,
+    parseAnswerlatticeFrictionSnapshot,
+    parseAnswerlatticeTrustMetrics,
+} from '@lib/answerlattice/analyticsIntelligenceContracts';
+import { isAnswerlatticeActivationSummaryResponse } from '@lib/answerlattice/activationDashboardResponseClient';
+import { parseAnswerlatticeKnowledgeIntakeSummary } from '@lib/answerlattice/knowledgeIntakeContracts';
+import {
+    ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS,
+    type AnswerlatticeFounderDailyAction,
+    type AnswerlatticeFounderDailyBrief,
+    type AnswerlatticeLaunchVerification,
+    type AnswerlatticeOwnerAssistantAnswer,
+    type AnswerlatticeOwnerAssistantBrief,
+    type AnswerlatticeOwnerAssistantCapabilities,
+    type AnswerlatticeOwnerAssistantPermissionMap,
+    type AnswerlatticeOwnerAssistantSourceHealth,
+    type AnswerlatticeOwnerAssistantSourceKey,
+    type AnswerlatticeOwnerAssistantStatus,
+    type AnswerlatticeOwnerAssistantSummaryHealth,
+    buildAnswerlatticeOwnerAssistantCapabilities,
+    canUseAnswerlatticeOwnerAssistantRoute,
+    getAnswerlatticeOwnerAssistantStatus,
+    isAnswerlatticeOwnerAssistantRoute,
+    parseAnswerlatticeOwnerAssistantSupportBoardSummary,
+} from '@lib/answerlattice/ownerSupportAssistantContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
+import type {
+    AnswerlatticeActivationSummary,
+    AnswerlatticeKnowledgeIntakeSummary,
+    AnswerlatticeSupportBoardSummary,
+} from '@type/answerlattice';
 import { z } from 'zod';
 
 export const AnswerlatticeOwnerAssistantQuerySchema = z.object({
     question: z.string().trim().min(3).max(500),
 }).strict();
 
-export type AnswerlatticeOwnerAssistantStatus =
-    | 'healthy'
-    | 'needs_review'
-    | 'at_risk'
-    | 'insufficient_data'
-    | 'unsupported';
+export type {
+    AnswerlatticeFounderDailyAction,
+    AnswerlatticeFounderDailyActionCategory,
+    AnswerlatticeFounderDailyActionSeverity,
+    AnswerlatticeFounderDailyBrief,
+    AnswerlatticeLaunchVerification,
+    AnswerlatticeOwnerAssistantAnswer,
+    AnswerlatticeOwnerAssistantBrief,
+    AnswerlatticeOwnerAssistantEvidence,
+    AnswerlatticeOwnerAssistantStatus,
+} from '@lib/answerlattice/ownerSupportAssistantContracts';
 
-export type AnswerlatticeOwnerAssistantEvidence = {
-    label: string;
-    value: string;
-    href: string;
-    source: string;
+type SummaryPacketValue = {
+    coverage: ReturnType<typeof parseAnswerlatticeCoverageData>;
+    trust: ReturnType<typeof parseAnswerlatticeTrustMetrics>;
+    board: AnswerlatticeSupportBoardSummary | null;
+    friction: ReturnType<typeof parseAnswerlatticeFrictionSnapshot>;
+    intake: AnswerlatticeKnowledgeIntakeSummary | null;
+    activation: AnswerlatticeActivationSummary | null;
+    summaryHealth: AnswerlatticeOwnerAssistantSummaryHealth;
 };
 
-export type AnswerlatticeFounderDailyActionCategory =
-    | 'answer_review'
-    | 'needs_answer'
-    | 'intake_review'
-    | 'release_safety'
-    | 'support_reply'
-    | 'launch_safety'
-    | 'cost_guard';
-
-export type AnswerlatticeFounderDailyActionSeverity = 'critical' | 'high' | 'medium' | 'low' | 'stable';
-
-export type AnswerlatticeFounderDailyAction = {
-    id: string;
-    category: AnswerlatticeFounderDailyActionCategory;
-    severity: AnswerlatticeFounderDailyActionSeverity;
-    title: string;
-    description: string;
-    reason: string;
-    href: string;
-    cta: string;
-    source: string;
-    aiAssist: string;
-    costImpact: string;
-    preparedReviewCard?: {
-        title: string;
-        description: string;
-        priority: 'low' | 'medium' | 'high';
-        tags: string[];
-    };
-};
-
-export type AnswerlatticeFounderDailyBrief = {
-    enabled: true;
-    headline: string;
-    summary: string;
-    focus: 'review' | 'stabilize' | 'launch' | 'maintain';
-    actions: AnswerlatticeFounderDailyAction[];
-    costNote: string;
-    sourceNote: string;
-};
-
-export type AnswerlatticeLaunchVerification = {
-    available: boolean;
-    ready: boolean;
-    completeCount: number;
-    totalCount: number;
-    blockers: string[];
-    nextActionLabel: string | null;
-    nextActionRoute: string;
-    verifiedAt: string | null;
-};
-
-export type AnswerlatticeOwnerAssistantAnswer = {
-    id: string;
-    status: AnswerlatticeOwnerAssistantStatus;
-    intent: 'attention' | 'answer_risk' | 'friction' | 'readiness' | 'intake' | 'release' | 'install' | 'reply' | 'cost' | 'unsupported';
-    directAnswer: string;
-    evidence: AnswerlatticeOwnerAssistantEvidence[];
-    nextActions: Array<{ label: string; href: string }>;
-    limits: string[];
-    readModel: {
-        firestoreReads: number;
-        source: 'summary_only';
-        cacheHit: boolean;
-    };
-};
-
-export type AnswerlatticeOwnerAssistantBrief = {
-    status: AnswerlatticeOwnerAssistantStatus;
-    headline: string;
-    attentionCount: number;
-    metrics: {
-        coverageRate: number | null;
-        resolutionRate: number | null;
-        confirmedResolutionRate: number | null;
-        recontactEligible: number;
-        recontactedSameSession: number;
-        driftedAnswers: number;
-        criticalEntities: number;
-        openBoardCards: number;
-        needsAnswerCards: number;
-        reviewItems: number;
-        signals7d: number;
-        escalations7d: number;
-    };
-    promptChips: string[];
-    launchVerification: AnswerlatticeLaunchVerification;
-    dailyBrief?: AnswerlatticeFounderDailyBrief;
-    updatedAt: string | null;
-    readModel: {
-        firestoreReads: number;
-        source: 'summary_only';
-        cacheHit: boolean;
-    };
-};
-
-type SummaryPacket = {
-    coverage: Record<string, any> | null;
-    trust: Record<string, any> | null;
-    board: Record<string, any> | null;
-    friction: Record<string, any> | null;
-    intake: Record<string, any> | null;
-    activation: Record<string, any> | null;
+type SummaryPacket = SummaryPacketValue & {
     cacheHit: boolean;
 };
 
 const SUMMARY_CACHE_TTL_MS = 60_000;
 const SUMMARY_CACHE_MAX_ENTRIES = 300;
-const summaryCache = new Map<string, { expiresAt: number; value: Omit<SummaryPacket, 'cacheHit'> }>();
+const SCHEDULED_SUMMARY_STALE_AFTER_MS = 48 * 60 * 60 * 1_000;
+const SUMMARY_TIMESTAMP_FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
+const summaryCache = new Map<string, { expiresAt: number; value: SummaryPacketValue }>();
 
 const toNumber = (value: unknown) => {
     const numberValue = Number(value);
@@ -165,7 +105,23 @@ const normalizeLaunchRoute = (value: unknown): string => {
         : ANSWERLATTICE_ROUTES.ACTIVATION;
 };
 
-const buildLaunchVerification = (activation: Record<string, any> | null): AnswerlatticeLaunchVerification => {
+const buildLaunchVerification = (
+    activation: AnswerlatticeActivationSummary | null,
+    canViewLaunchVerification: boolean,
+): AnswerlatticeLaunchVerification => {
+    if (!canViewLaunchVerification) {
+        return {
+            available: false,
+            ready: false,
+            completeCount: 0,
+            totalCount: 0,
+            blockers: [],
+            nextActionLabel: null,
+            nextActionRoute: ANSWERLATTICE_ROUTES.ACTIVATION,
+            verifiedAt: null,
+        };
+    }
+
     const launchProof = isRecord(activation?.launchProof) ? activation.launchProof : null;
     if (!launchProof) {
         return {
@@ -215,7 +171,113 @@ const buildLaunchVerification = (activation: Record<string, any> | null): Answer
         nextActionRoute: isRecord(nextItem)
             ? normalizeLaunchRoute(nextItem.route)
             : ANSWERLATTICE_ROUTES.ACTIVATION,
-        verifiedAt: toIso(activation?.lastComputedAt || activation?.computedAtIso),
+        verifiedAt: toIso(activation?.computedAtIso),
+    };
+};
+
+const parseKnowledgeIntakeSummary = (
+    value: unknown,
+    documentId: string,
+    tId: number,
+    sId: number,
+): AnswerlatticeKnowledgeIntakeSummary | null => {
+    if (
+        !isRecord(value)
+        || value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || value.tId !== tId
+        || value.sId !== sId
+    ) return null;
+    try {
+        const parsed = parseAnswerlatticeKnowledgeIntakeSummary(value, documentId);
+        return parsed.pId === PRODUCT_IDS.ANSWERLATTICE
+            && parsed.tId === tId
+            && parsed.sId === sId
+            ? parsed
+            : null;
+    } catch {
+        return null;
+    }
+};
+
+const parseActivationSummary = (
+    value: unknown,
+    tId: number,
+    sId: number,
+): AnswerlatticeActivationSummary | null => {
+    const response = { summary: value };
+    if (
+        !isAnswerlatticeActivationSummaryResponse(response)
+        || response.summary.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || response.summary.tId !== tId
+        || response.summary.sId !== sId
+    ) return null;
+    return response.summary;
+};
+
+const SOURCE_LABELS: Record<AnswerlatticeOwnerAssistantSourceKey, string> = {
+    coverage: 'Coverage',
+    trust: 'Answer evidence',
+    support_board: 'Support Board',
+    friction: 'Support friction',
+    knowledge_intake: 'Knowledge Intake',
+    activation: 'Activation',
+};
+
+const buildSummaryHealth = (
+    sources: AnswerlatticeOwnerAssistantSourceHealth[],
+): AnswerlatticeOwnerAssistantSummaryHealth => {
+    const timestamps = sources
+        .flatMap(source => source.updatedAt ? [source.updatedAt] : [])
+        .sort();
+    const unavailableSources = sources
+        .filter(source => source.state === 'missing' || source.state === 'invalid')
+        .map(source => source.label);
+    const staleSources = sources
+        .filter(source => source.state === 'stale')
+        .map(source => source.label);
+    const admittedCount = sources.filter(source => (
+        source.state === 'available' || source.state === 'stale'
+    )).length;
+    const currentCount = sources.filter(source => source.state === 'available').length;
+    return {
+        expectedCount: ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS.length,
+        admittedCount,
+        currentCount,
+        complete: currentCount === ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS.length
+            && unavailableSources.length === 0
+            && staleSources.length === 0,
+        unavailableSources,
+        staleSources,
+        oldestUpdatedAt: timestamps[0] || null,
+        newestUpdatedAt: timestamps[timestamps.length - 1] || null,
+        sources,
+    };
+};
+
+const getSourceHealth = (
+    key: AnswerlatticeOwnerAssistantSourceKey,
+    snapshotExists: boolean,
+    admitted: unknown,
+    updatedAt: string | null,
+    scheduled: boolean,
+    nowMs: number,
+): AnswerlatticeOwnerAssistantSourceHealth => {
+    let state: AnswerlatticeOwnerAssistantSourceHealth['state'] = 'available';
+    if (!snapshotExists) state = 'missing';
+    else if (!admitted || (updatedAt && Date.parse(updatedAt) > nowMs + SUMMARY_TIMESTAMP_FUTURE_TOLERANCE_MS)) {
+        state = 'invalid';
+    } else if (
+        scheduled
+        && updatedAt
+        && nowMs - Date.parse(updatedAt) > SCHEDULED_SUMMARY_STALE_AFTER_MS
+    ) {
+        state = 'stale';
+    }
+    return {
+        key,
+        label: SOURCE_LABELS[key],
+        state,
+        updatedAt: admitted ? updatedAt : null,
     };
 };
 
@@ -235,18 +297,46 @@ const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacke
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`activation_${tId}_${sId}`),
     ];
     const snapshots = await db.getAll(...refs);
+    const scope = { tenantId: tId, storeId: sId };
+    const coverage = snapshots[0]?.exists
+        ? parseAnswerlatticeCoverageData(snapshots[0].data(), scope)
+        : null;
+    const trust = snapshots[1]?.exists
+        ? parseAnswerlatticeTrustMetrics(snapshots[1].data(), scope)
+        : null;
+    const board = snapshots[2]?.exists
+        ? parseAnswerlatticeOwnerAssistantSupportBoardSummary(
+            snapshots[2].data(),
+            { tenantId: tId, storeId: sId },
+        )
+        : null;
+    const friction = snapshots[3]?.exists
+        ? parseAnswerlatticeFrictionSnapshot(snapshots[3].data(), scope)
+        : null;
+    const intakeDocumentId = `knowledgeIntakeSummary_${tId}_${sId}`;
+    const intake = snapshots[4]?.exists
+        ? parseKnowledgeIntakeSummary(snapshots[4].data(), intakeDocumentId, tId, sId)
+        : null;
+    const activation = snapshots[5]?.exists
+        ? parseActivationSummary(snapshots[5].data(), tId, sId)
+        : null;
+    const nowMs = Date.now();
+    const sourceHealth = [
+        getSourceHealth('coverage', snapshots[0]?.exists === true, coverage, toIso(coverage?.lastUpdated), true, nowMs),
+        getSourceHealth('trust', snapshots[1]?.exists === true, trust, toIso(trust?.lastUpdated), true, nowMs),
+        getSourceHealth('support_board', snapshots[2]?.exists === true, board, toIso(board?.lastUpdated), false, nowMs),
+        getSourceHealth('friction', snapshots[3]?.exists === true, friction, toIso(friction?.lastUpdated), true, nowMs),
+        getSourceHealth('knowledge_intake', snapshots[4]?.exists === true, intake, toIso(intake?.lastUpdated), false, nowMs),
+        getSourceHealth('activation', snapshots[5]?.exists === true, activation, activation?.computedAtIso || null, false, nowMs),
+    ];
     const value = {
-        coverage: snapshots[0]?.exists ? snapshots[0].data() || null : null,
-        trust: snapshots[1]?.exists ? snapshots[1].data() || null : null,
-        board: snapshots[2]?.exists ? snapshots[2].data() || null : null,
-        friction: snapshots[3]?.exists ? snapshots[3].data() || null : null,
-        intake: snapshots[4]?.exists ? snapshots[4].data() || null : null,
-        activation: snapshots[5]?.exists
-            && snapshots[5].data()?.pId === 'AL'
-            && snapshots[5].data()?.tId === tId
-            && snapshots[5].data()?.sId === sId
-            ? snapshots[5].data() || null
-            : null,
+        coverage,
+        trust,
+        board,
+        friction,
+        intake,
+        activation,
+        summaryHealth: buildSummaryHealth(sourceHealth),
     };
     if (summaryCache.size >= SUMMARY_CACHE_MAX_ENTRIES) {
         const firstKey = summaryCache.keys().next().value;
@@ -257,19 +347,21 @@ const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacke
 };
 
 const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['metrics'] => ({
-    coverageRate: packet.trust?.coverage?.rate !== undefined
-        ? toNumber(packet.trust.coverage.rate)
-        : packet.coverage?.coverage?.rate !== undefined
-            ? toNumber(packet.coverage.coverage.rate)
+    coverageRate: packet.trust && packet.trust.coverage.total > 0
+        ? packet.trust.coverage.rate
+        : packet.coverage && packet.coverage.coverage.total > 0
+            ? packet.coverage.coverage.rate
             : null,
-    resolutionRate: packet.trust?.resolution?.rate !== undefined ? toNumber(packet.trust.resolution.rate) : null,
-    confirmedResolutionRate: toNumber(packet.trust?.confirmedResolution?.explicitOutcomeTotal) > 0
-        ? toNumber(packet.trust.confirmedResolution.rate)
+    noEscalationRate: packet.trust && packet.trust.nonEscalation.total > 0
+        ? packet.trust.nonEscalation.rate
+        : null,
+    confirmedResolutionRate: (packet.trust?.confirmedResolution?.explicitOutcomeTotal || 0) > 0
+        ? packet.trust?.confirmedResolution?.rate ?? null
         : null,
     recontactEligible: toNumber(packet.trust?.confirmedResolution?.recontactEligible),
     recontactedSameSession: toNumber(packet.trust?.confirmedResolution?.recontactedSameSession),
     driftedAnswers: toNumber(packet.trust?.drift?.driftedCount),
-    criticalEntities: toNumber(packet.trust?.entityHealth?.criticalCount),
+    uncoveredEntities: toNumber(packet.trust?.entityAnswerCoverage?.uncoveredCount),
     openBoardCards: toNumber(packet.board?.openCards),
     needsAnswerCards: toNumber(packet.board?.needsAnswerCards),
     reviewItems: toNumber(packet.intake?.reviewItems),
@@ -277,27 +369,7 @@ const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['
     escalations7d: toNumber(packet.friction?.totalEscalations7d),
 });
 
-const getStatus = (metrics: AnswerlatticeOwnerAssistantBrief['metrics']): AnswerlatticeOwnerAssistantStatus => {
-    if (metrics.coverageRate === null && metrics.resolutionRate === null && metrics.openBoardCards === 0 && metrics.reviewItems === 0) {
-        return 'insufficient_data';
-    }
-    if (metrics.criticalEntities > 0 || metrics.driftedAnswers > 2 || (metrics.coverageRate !== null && metrics.coverageRate < 50)) {
-        return 'at_risk';
-    }
-    if (metrics.needsAnswerCards > 0 || metrics.reviewItems > 0 || metrics.driftedAnswers > 0 || metrics.escalations7d > 0) {
-        return 'needs_review';
-    }
-    return 'healthy';
-};
-
-const getUpdatedAt = (packet: SummaryPacket) => {
-    const candidates = [packet.trust?.lastUpdated, packet.board?.lastUpdated, packet.friction?.lastUpdated, packet.intake?.lastUpdated, packet.coverage?.lastUpdated, packet.activation?.lastComputedAt, packet.activation?.computedAtIso]
-        .map(toIso)
-        .filter((value): value is string => Boolean(value))
-        .sort()
-        .reverse();
-    return candidates[0] || null;
-};
+const getUpdatedAt = (packet: SummaryPacket) => packet.summaryHealth.newestUpdatedAt;
 
 const DAILY_ACTION_LIMIT = 4;
 
@@ -307,10 +379,21 @@ const buildFounderDailyBrief = (
     status: AnswerlatticeOwnerAssistantStatus,
     metrics: AnswerlatticeOwnerAssistantBrief['metrics'],
     launchVerification: AnswerlatticeLaunchVerification,
+    permissions: AnswerlatticeOwnerAssistantPermissionMap,
+    capabilities: AnswerlatticeOwnerAssistantCapabilities,
 ): AnswerlatticeFounderDailyBrief => {
     const ranked: Array<AnswerlatticeFounderDailyAction & { rank: number }> = [];
     const add = (rank: number, action: AnswerlatticeFounderDailyAction) => {
-        ranked.push({ rank, ...createDailyAction(action) });
+        if (!canUseAnswerlatticeOwnerAssistantRoute(action.href, permissions)) return;
+        ranked.push({
+            rank,
+            ...createDailyAction({
+                ...action,
+                ...(capabilities.canPrepareReviewCard
+                    ? {}
+                    : { preparedReviewCard: undefined }),
+            }),
+        });
     };
 
     if (launchVerification.available && !launchVerification.ready) {
@@ -336,17 +419,17 @@ const buildFounderDailyBrief = (
         });
     }
 
-    if (metrics.criticalEntities > 0 || metrics.driftedAnswers > 0) {
+    if (metrics.uncoveredEntities > 0 || metrics.driftedAnswers > 0) {
         add(10, {
             id: 'answer-risk-review',
             category: 'answer_review',
-            severity: metrics.criticalEntities > 0 ? 'critical' : 'high',
+            severity: metrics.uncoveredEntities > 0 ? 'critical' : 'high',
             title: 'Review approved-answer risk first',
-            description: `${metrics.driftedAnswers} approved answers and ${metrics.criticalEntities} product entities need governance attention before support volume grows.`,
+            description: `${metrics.driftedAnswers} approved answers need drift review and ${metrics.uncoveredEntities} active product entities do not have an approved answer.`,
             reason: 'Wrong or stale approved answers create the highest support-truth risk.',
             href: `${ANSWERLATTICE_ROUTES.GOVERNANCE}/drift`,
             cta: 'Open drift review',
-            source: 'Trust summary',
+            source: 'Answer evidence summary',
             aiAssist: 'Drafts and proposals remain review-only inside Governance.',
             costImpact: 'No AI cost to open this brief or review the summary.',
         });
@@ -534,24 +617,29 @@ const buildFounderDailyBrief = (
         focus,
         actions,
         costNote: 'This brief is computed from existing summaries. It adds no model call, no new Firestore scan, and no support-credit debit.',
-        sourceNote: 'Uses coverage, trust, support-board, friction, knowledge-intake, and activation summaries only.',
+        sourceNote: 'Uses admitted coverage, answer-evidence, support-board, friction, knowledge-intake, and activation summaries only.',
     };
 };
 
 export const getAnswerlatticeOwnerAssistantBrief = async (
     tId: number,
     sId: number,
+    permissions: AnswerlatticeOwnerAssistantPermissionMap,
 ): Promise<AnswerlatticeOwnerAssistantBrief> => {
     const packet = await loadSummaryPacket(tId, sId);
     const metrics = buildMetrics(packet);
-    const status = getStatus(metrics);
-    const launchVerification = buildLaunchVerification(packet.activation);
-    const attentionCount = metrics.driftedAnswers + metrics.criticalEntities + metrics.needsAnswerCards + metrics.reviewItems
+    const status = getAnswerlatticeOwnerAssistantStatus(metrics, packet.summaryHealth);
+    const capabilities = buildAnswerlatticeOwnerAssistantCapabilities(permissions);
+    const launchVerification = buildLaunchVerification(
+        packet.activation,
+        capabilities.canViewLaunchVerification,
+    );
+    const attentionCount = metrics.driftedAnswers + metrics.uncoveredEntities + metrics.needsAnswerCards + metrics.reviewItems
         + (launchVerification.available && !launchVerification.ready ? 1 : 0);
     const headline = status === 'healthy'
         ? 'Support looks stable. No urgent review is visible in the current summaries.'
         : status === 'insufficient_data'
-            ? 'There is not enough support activity yet to judge system health.'
+            ? 'There is not enough support activity yet to summarize the current support state.'
             : status === 'at_risk'
                 ? `${attentionCount || 1} high-risk support items need owner review.`
                 : `${attentionCount || 1} support items are ready for review.`;
@@ -574,8 +662,18 @@ export const getAnswerlatticeOwnerAssistantBrief = async (
         ],
         launchVerification,
         ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF
-            ? { dailyBrief: buildFounderDailyBrief(status, metrics, launchVerification) }
+            ? {
+                dailyBrief: buildFounderDailyBrief(
+                    status,
+                    metrics,
+                    launchVerification,
+                    permissions,
+                    capabilities,
+                ),
+            }
             : {}),
+        summaryHealth: packet.summaryHealth,
+        capabilities,
         updatedAt: getUpdatedAt(packet),
         readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit },
     };
@@ -599,32 +697,33 @@ export const answerAnswerlatticeOwnerQuestion = async (
     tId: number,
     sId: number,
     question: string,
+    permissions: AnswerlatticeOwnerAssistantPermissionMap,
 ): Promise<AnswerlatticeOwnerAssistantAnswer> => {
     const packet = await loadSummaryPacket(tId, sId);
     const metrics = buildMetrics(packet);
-    const status = getStatus(metrics);
+    const status = getAnswerlatticeOwnerAssistantStatus(metrics, packet.summaryHealth);
     const intent = classifyIntent(question);
-    const evidence: AnswerlatticeOwnerAssistantEvidence[] = [];
+    const evidence: AnswerlatticeOwnerAssistantAnswer['evidence'] = [];
     const nextActions: Array<{ label: string; href: string }> = [];
     let directAnswer = '';
 
     if (intent === 'attention') {
-        directAnswer = metrics.needsAnswerCards + metrics.reviewItems + metrics.driftedAnswers > 0
-            ? `Review ${metrics.needsAnswerCards} support-board answers, ${metrics.reviewItems} intake items, and ${metrics.driftedAnswers} drifted answers. Start with critical entities and unresolved answer gaps.`
+        directAnswer = metrics.needsAnswerCards + metrics.reviewItems + metrics.driftedAnswers + metrics.uncoveredEntities > 0
+            ? `Review ${metrics.needsAnswerCards} support-board answers, ${metrics.reviewItems} intake items, ${metrics.driftedAnswers} drifted answers, and ${metrics.uncoveredEntities} uncovered entities. Start with known answer risk and unresolved gaps.`
             : 'No queued answer, intake, or drift work is visible in the latest summaries.';
         evidence.push(
             { label: 'Support board', value: `${metrics.openBoardCards} open · ${metrics.needsAnswerCards} need answers`, href: ANSWERLATTICE_ROUTES.SUPPORT_BOARD, source: 'support board summary' },
             { label: 'Knowledge review', value: `${metrics.reviewItems} items waiting`, href: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE, source: 'intake summary' },
-            { label: 'Drift review', value: `${metrics.driftedAnswers} drifted answers`, href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'trust summary' },
+            { label: 'Drift review', value: `${metrics.driftedAnswers} drifted answers`, href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'answer evidence summary' },
         );
         nextActions.push({ label: 'Open Support Board', href: ANSWERLATTICE_ROUTES.SUPPORT_BOARD });
     } else if (intent === 'answer_risk') {
-        directAnswer = metrics.driftedAnswers > 0 || metrics.criticalEntities > 0
-            ? `${metrics.driftedAnswers} approved answers are marked for drift review and ${metrics.criticalEntities} product entities are critical. Review those before expanding automation.`
-            : 'No drifted answers or critical entities are visible in the latest trust summary.';
+        directAnswer = metrics.driftedAnswers > 0 || metrics.uncoveredEntities > 0
+            ? `${metrics.driftedAnswers} approved answers are marked for drift review and ${metrics.uncoveredEntities} active product entities do not have an approved answer. Review those before expanding automation.`
+            : 'No drifted answers or uncovered active entities are visible in the latest answer-evidence summary.';
         evidence.push(
-            { label: 'Drifted answers', value: String(metrics.driftedAnswers), href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'trust summary' },
-            { label: 'Critical entities', value: String(metrics.criticalEntities), href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'trust summary' },
+            { label: 'Drifted answers', value: String(metrics.driftedAnswers), href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'answer evidence summary' },
+            { label: 'Uncovered entities', value: String(metrics.uncoveredEntities), href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'answer evidence summary' },
         );
         nextActions.push({ label: 'Open Drift Review', href: ANSWERLATTICE_ROUTES.GOVERNANCE });
     } else if (intent === 'friction') {
@@ -640,12 +739,14 @@ export const answerAnswerlatticeOwnerQuestion = async (
         directAnswer = metrics.coverageRate === null
             ? 'Coverage is not available yet. Let real users ask questions, then review the next nightly summary.'
             : metrics.confirmedResolutionRate === null
-                ? `Canonical coverage is ${metrics.coverageRate}% and ${metrics.resolutionRate ?? 0}% of recent queries did not escalate. Explicit solved/not-solved outcomes are not available yet.`
+                ? metrics.noEscalationRate === null
+                    ? `Canonical coverage is ${metrics.coverageRate}%. No-escalation and explicit solved/not-solved outcomes are not available yet.`
+                    : `Canonical coverage is ${metrics.coverageRate}% and ${metrics.noEscalationRate}% of recent queries did not escalate. Explicit solved/not-solved outcomes are not available yet.`
                 : `Canonical coverage is ${metrics.coverageRate}% and confirmed resolution is ${metrics.confirmedResolutionRate}%. ${metrics.recontactEligible > 0 ? `${metrics.recontactedSameSession} same-session recontacts were observed across ${metrics.recontactEligible} trackable solved outcomes. ` : ''}${status === 'healthy' ? 'The current summary is stable.' : 'Review gaps before increasing support traffic.'}`;
         evidence.push(
             { label: 'Canonical coverage', value: metrics.coverageRate === null ? 'Not available' : `${metrics.coverageRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'coverage summary' },
             { label: 'Confirmed resolution', value: metrics.confirmedResolutionRate === null ? 'Not available' : `${metrics.confirmedResolutionRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'explicit widget outcomes' },
-            { label: 'No escalation', value: metrics.resolutionRate === null ? 'Not available' : `${metrics.resolutionRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'trust summary' },
+            { label: 'No escalation', value: metrics.noEscalationRate === null ? 'Not available' : `${metrics.noEscalationRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'answer evidence summary' },
         );
         nextActions.push({ label: 'Open Readiness', href: ANSWERLATTICE_ROUTES.DASHBOARD });
     } else if (intent === 'intake') {
@@ -688,18 +789,33 @@ export const answerAnswerlatticeOwnerQuestion = async (
         directAnswer = 'I can summarize support attention, answer risk, user friction, readiness, and knowledge review. I cannot change support truth or perform unrestricted product actions.';
     }
 
+    const permittedEvidence = evidence.filter(item => (
+        canUseAnswerlatticeOwnerAssistantRoute(item.href, permissions)
+    ));
+    const permittedNextActions = nextActions.filter(item => (
+        canUseAnswerlatticeOwnerAssistantRoute(item.href, permissions)
+    ));
+    const limits = [
+        'Uses compact operational summaries, not raw customer conversations.',
+        'Does not publish answers, close tickets, or change widget settings.',
+        'Open the linked review screen before making a support decision.',
+    ];
+    if (!packet.summaryHealth.complete) {
+        limits.unshift('One or more required summaries are missing, invalid, or stale; treat this answer as partial.');
+    }
+    if (evidence.length > permittedEvidence.length || nextActions.length > permittedNextActions.length) {
+        limits.push('Some evidence or actions are hidden because this role cannot open the owning surface.');
+    }
+
     return {
         id: createRuntimeId('owner_support_answer'),
         status: intent === 'unsupported' ? 'unsupported' : status,
         intent,
         directAnswer,
-        evidence,
-        nextActions,
-        limits: [
-            'Uses compact operational summaries, not raw customer conversations.',
-            'Does not publish answers, close tickets, or change widget settings.',
-            'Open the linked review screen before making a support decision.',
-        ],
+        evidence: permittedEvidence,
+        nextActions: permittedNextActions,
+        limits,
+        summaryHealth: packet.summaryHealth,
         readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit },
     };
 };

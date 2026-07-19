@@ -390,12 +390,19 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
 
     const togglePermission = (permission: AnswerlatticePermissionKey, value: boolean) => {
         if (!editingRole || isDefaultAnswerlatticeRoleId(editingRole.id)) return;
+        const nextPermissions = {
+            ...editingRole.permissions,
+            [permission]: value,
+        };
+        if (permission === ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES && value) {
+            nextPermissions[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM] = true;
+        }
+        if (permission === ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM && !value) {
+            nextPermissions[ANSWERLATTICE_PERMISSION_KEYS.ASSIGN_ROLES] = false;
+        }
         setEditingRole({
             ...editingRole,
-            permissions: {
-                ...editingRole.permissions,
-                [permission]: value,
-            },
+            permissions: nextPermissions,
         });
     };
 

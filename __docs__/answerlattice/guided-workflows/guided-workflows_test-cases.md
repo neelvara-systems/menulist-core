@@ -38,6 +38,9 @@
 | Signal mutation disabled | 200, `recorded: false`, no history read/write |
 | Missing/non-widget/non-canonical history | 404, no signal |
 | Valid terminal outcome | One deduplicated signal |
+| Expired search history | 404, no signal |
+| Missing/invalid served procedure snapshot | 409, no signal |
+| Mismatched step count, blocked step, target, event, context, or widget session | 409, no signal |
 
 ## Host Runtime Tests
 
@@ -46,7 +49,8 @@
 | Exact semantic target exists | Non-interactive highlight appears |
 | Duplicate target where first match is hidden | Hidden match ignored; visible match selected |
 | Selected target becomes hidden | Existing overlay is hidden |
-| Target missing | Host reports missing; written step remains |
+| Target appears during bounded retry | Host finds it without a MutationObserver |
+| Target missing after bounded retry | Host reports missing; written step remains |
 | More than 500 marked targets | Scan stops at 500 |
 | Matching expected event | Current step advances once |
 | Event-gated step | Manual Next/Finish action is unavailable |
@@ -78,6 +82,7 @@
 - Procedure editor preserves existing warnings, prerequisites, and slug.
 - Guide controls remain usable at narrow mobile width.
 - Completion, target missing, and escalation use clear non-technical copy.
+- **Still stuck** opens the explicit support form; the escalated outcome is sent only after ticket creation succeeds.
 
 ## Deployment Smoke Required
 

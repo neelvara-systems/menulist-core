@@ -48,6 +48,7 @@ const BEFORE_RUN = [
     'Known product pages, user roles, plans, and integrations.',
     'Existing support FAQs, support macros, release notes, or onboarding docs.',
     'Screenshot and marketing approval status.',
+    'Private-source processing permission for the selected AI tool.',
 ];
 
 const INTAKE_FIELDS = [
@@ -74,6 +75,7 @@ const INTAKE_FIELDS = [
     'SOURCE_MODE',
     'APPROVAL_STATUS',
     'SCREENSHOT_MARKETING_PERMISSION',
+    'AI_TOOL_PRIVATE_SOURCE_PERMISSION',
     'ANSWERLATTICE_WORKSPACE_STATUS',
     'OWNER_NOTES',
 ];
@@ -123,7 +125,7 @@ const MARKET_PATTERN_RULES = [
     'Use repo and docs to explain product behavior, not internal implementation details.',
     'For website imports, record included and excluded URLs so unrelated marketing or sister-product pages stay out.',
     'Use OpenAPI or API specs only for public/customer-facing API support.',
-    'Use support exports to seed FAQ and coverage gaps only after removing private conversations and identifiers.',
+    'Use support exports to seed FAQ and coverage gaps only after removing private conversations and identifiers; treat them as signals, not approved truth.',
     'Turn recordings and screenshots into capture plans, walkthrough briefs, transcripts, and support-step maps.',
     'Keep demo, FAQ, and website outputs review-ready until the owner approves public use.',
 ];
@@ -131,6 +133,7 @@ const MARKET_PATTERN_RULES = [
 const CAPABILITY_LIMITS = [
     'The prompt works only with sources the AI IDE can access in that session.',
     'Private repos, login-only apps, restricted websites, recordings, and local files may need owner-granted access or exported copies.',
+    'Private source material may be processed only when the owner permits the selected AI tool to access it, and it must not be exposed through public citations.',
     'If browsing, file reading, or media inspection is unavailable, the agent must mark that source as pending instead of claiming coverage.',
     'A weaker agent may miss context in a large or unusual codebase, so owner review is mandatory before upload.',
     'No prompt can guarantee perfect output for every product, AI model, IDE, private app, or source shape.',
@@ -139,6 +142,7 @@ const CAPABILITY_LIMITS = [
 const REVIEW_ITEMS = [
     'Remove secrets, tokens, cookies, API keys, service accounts, and raw logs.',
     'Remove private customer records, private support messages, payment data, and internal IDs.',
+    'Reject any package that treats tickets, chats, macros, or repeated replies as approved truth without source-owner review.',
     'Check legal, refund, privacy, security, billing, and integration answers for approval.',
     'Check every public website claim against current product behavior.',
     'Confirm the generated support questions match real user language.',

@@ -430,7 +430,11 @@ export default function AnswerlatticeProductSurfaces() {
                                                     </Col>
                                                     <Col xs={24} md={12}>
                                                         <Form.Item name="key" label="Context key">
-                                                            <Input placeholder="billing_invoices" />
+                                                            <Input
+                                                                disabled={Boolean(selectedSurface)}
+                                                                placeholder="billing_invoices"
+                                                                title={selectedSurface ? 'Context keys stay fixed after creation so installed clients and answer mappings do not break.' : undefined}
+                                                            />
                                                         </Form.Item>
                                                     </Col>
                                                 </Row>

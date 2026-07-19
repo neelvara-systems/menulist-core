@@ -17,7 +17,7 @@ async function run(): Promise<void> {
     try {
         const now = Timestamp.now();
         const release = {
-            pId: 'AL', tId: 1, sId: 101, versionLabel: '1.0.0', versionNormalized: 1,
+            pId: 'AL', tId: 1, sId: 101, versionLabel: '1.0.0', versionNormalized: 1_000_000,
             releasedAt: now, entityChanges: ['billing'], status: 'pending',
             requestId: 'release_request_1', requestFingerprint: 'a'.repeat(64),
             createdOn: now, createdBy: 'Owner', modifiedOn: now, modifiedBy: 'Owner',

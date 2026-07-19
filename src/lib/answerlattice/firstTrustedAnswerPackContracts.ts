@@ -9,6 +9,10 @@ import { z } from 'zod';
 
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE = 10;
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX = 'product_launch_';
+export const ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS = Array.from(
+    { length: ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE },
+    (_, index) => `${ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX}${String(index + 1).padStart(2, '0')}`,
+) as readonly string[];
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_VERSION = 1;
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_CHARS = 32_000;
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_EXCERPT_CHARS = 1_800;
@@ -80,6 +84,10 @@ export const AnswerlatticeProductStarterPackResponseSchema = z.object({
     pack: AnswerlatticeProductStarterPackResultSchema,
 }).strict();
 
+const ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_ID_SET = new Set(
+    ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
+);
+
 export const isAnswerlatticeProductStarterPackCaseId = (caseId: unknown): boolean => (
-    typeof caseId === 'string' && caseId.startsWith(ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX)
+    typeof caseId === 'string' && ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_ID_SET.has(caseId)
 );

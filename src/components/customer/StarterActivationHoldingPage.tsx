@@ -1,15 +1,28 @@
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 
 interface StarterActivationHoldingPageProps {
     activePlanType?: string | null;
+    activeLanguage?: string | null;
     storeName?: string | null;
 }
 
-export default function StarterActivationHoldingPage({ activePlanType, storeName }: StarterActivationHoldingPageProps) {
-    const name = storeName?.trim() || 'This business';
+export default function StarterActivationHoldingPage({
+    activePlanType,
+    activeLanguage,
+    storeName,
+}: StarterActivationHoldingPageProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const direction = getPublicCustomerLanguageDirection(activeLanguage);
+    const name = storeName?.trim() || t('common.business');
 
     return (
         <main
+            dir={direction}
+            lang={activeLanguage || 'en'}
             style={{
                 alignItems: 'center',
                 background: '#fafafa',
@@ -42,7 +55,7 @@ export default function StarterActivationHoldingPage({ activePlanType, storeName
                         textTransform: 'uppercase',
                     }}
                 >
-                    Menu status
+                    {t('menu.menuStatus')}
                 </p>
                 <h1
                     id="starter-holding-title"
@@ -52,7 +65,7 @@ export default function StarterActivationHoldingPage({ activePlanType, storeName
                         margin: '0 0 12px',
                     }}
                 >
-                    {name} has not finalized this menu yet.
+                    {t('menu.notFinalizedYet', { businessName: name })}
                 </h1>
                 <p
                     style={{
@@ -62,9 +75,15 @@ export default function StarterActivationHoldingPage({ activePlanType, storeName
                         margin: '0 0 20px',
                     }}
                 >
-                    Please contact the business directly for the current menu.
+                    {t('menu.contactBusinessCurrentMenu')}
                 </p>
-                <PublicMenuListAttribution activePlanType={activePlanType} mode="compact" rightsLabel={null} />
+                <PublicMenuListAttribution
+                    activePlanType={activePlanType}
+                    ariaLabel={t('common.createOfficialCustomerLink')}
+                    mode="compact"
+                    rightsLabel={null}
+                    surfaceLabel={t('common.poweredByMenuList')}
+                />
             </section>
         </main>
     );

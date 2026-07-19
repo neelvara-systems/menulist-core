@@ -33,7 +33,7 @@ const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED]: 'Knowledge Gap Detected',
     [INTEGRATION_EVENT_TYPES.COVERAGE_DROP]: 'Coverage Drop',
     [INTEGRATION_EVENT_TYPES.ARTICLE_APPROVED]: 'Article Approved',
-    [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Recurring AI Failure',
+    [INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING]: 'Repeated AI Workflow Failure',
     [INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY]: 'Nightly Summary',
 };
 
@@ -124,6 +124,13 @@ function formatEventHtml(event: IntegrationEvent): string {
                 <tr><td><strong>Current:</strong></td><td>${Math.round(safePayloadRatio(p.currentRate) * 100)}%</td></tr>
                 <tr><td><strong>Previous:</strong></td><td>${Math.round(safePayloadRatio(p.previousRate) * 100)}%</td></tr>
                 <tr><td><strong>Threshold:</strong></td><td>${Math.round(safePayloadRatio(p.threshold) * 100)}%</td></tr>`;
+                break;
+
+            case INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING:
+                detailsHtml = `
+                <tr><td><strong>Entity:</strong></td><td>${escapeHtml(p.entityName)} (${escapeHtml(p.entityType, 80)})</td></tr>
+                <tr><td><strong>Failures:</strong></td><td>${safePayloadCount(p.failureCount)} in ${safePayloadCount(p.windowDays, 3650)} days</td></tr>
+                <tr><td><strong>Failed phases:</strong></td><td>${escapeHtml(safePayloadStringArray(p.failurePhases || p.commonQueries, 5, 120).join(', '), 600)}</td></tr>`;
                 break;
 
             case INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY:

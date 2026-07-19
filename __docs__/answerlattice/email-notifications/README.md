@@ -1,96 +1,50 @@
 # Answerlattice Email Notifications
 
-> **Feature:** Generic, reusable email notification system for ticket events
-> **Status:** ✅ IMPLEMENTED AND ENABLED
-> **Date:** 2026-03-07
-> **Last Updated:** 2026-06-28
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_NOTIFICATIONS` (default: ON)
-> **SMTP:** Reuses existing nodemailer infrastructure (same as lifecycle messaging)
+Email notifications close the durable ticket fallback loop. After a ticket, support reply, or status change is persisted, the browser may request an email. The server then reauthorizes the exact workspace, rereads the persisted ticket, derives the recipient and content, claims the delivery identity, and sends through the configured SMTP account.
 
----
+## Implemented events
 
-## Document Index
+| Event | Recipient | Authority |
+|---|---|---|
+| `TICKET_CREATED` | Persisted ticket requester | Exact ticket after scoped support authorization |
+| `TICKET_REPLY` | Persisted ticket requester | Exact non-system message; requester self-replies are suppressed |
+| `TICKET_STATUS_CHANGED` | Persisted ticket requester | Latest persisted status transition |
+| `ANSWERLATTICE_NOTIFICATION_TEST` | Workspace support inbox | Dedicated Activation test route |
 
-| # | Document | Audience | Purpose |
-|---|----------|----------|---------|
-| 1 | **README.md** (this file) | Everyone | Master index |
-| 2 | `email-notifications_spec.md` | CEO/PM | Business requirements |
-| 3 | `email-notifications_impl.md` | Developers | Technical blueprint |
-| 4 | `email-notifications_firebase.md` | Developers/Ops | Firestore cost |
+## Trust boundary
 
----
+- The browser sends only `eventType`, `ticketId`, optional `messageId`, `tId`, and `sId`.
+- The strict route rejects browser-supplied recipient, subject, template data, product, reference ID, and dedupe controls.
+- `MANAGE_SUPPORT` permission is checked against the submitted workspace scope before the ticket is read.
+- The exact persisted ticket must match the authorized scope and must not be deleted.
+- Direct ticket delivery uses a deterministic Firestore row and a 15-minute transactional lease before SMTP.
+- Subjects and HTML values are bounded and escaped; only validated HTTPS links render.
+- The ticket notification authority hardening contract is source-verified by a focused verifier.
 
-## What This Is
+## Operational limits
 
-A generic, reusable email notification system that sends emails when ticket events occur:
-- **Ticket created** — confirmation to the submitter
-- **Ticket reply** — notification to the ticket creator when support agent replies
-- **Ticket status changed** — notification when ticket moves to new status
+- Send route: 16 KiB request body and 120 attempts per authenticated user per hour; provider failure is fail-closed.
+- Direct ticket delivery: 20 sent emails per recipient per calendar day; rate-query failure is fail-closed.
+- SMTP deadlines: 10 seconds connection, 10 seconds greeting, 15 seconds socket.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are all required. No implicit port is supplied.
+- Ticket persistence does not wait for browser-triggered email delivery.
 
-## Architecture
+## Current limitations
 
-```
-Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
-  │
-  └── triggerNotification() — fire-and-forget POST to /api/notifications/send
-        │
-        ├── Feature flag check (ENABLE_ANSWERLATTICE_NOTIFICATIONS)
-        ├── Fail-closed per-user throttle + 16KB bounded request body + strict IDs
-        ├── Current support permission + exact scoped ticket read/projection
-        ├── Transactional delivery claim (deterministic eventType + referenceId)
-        ├── Rate limiting (20/day per recipient)
-        ├── Template resolution (event type → subject + HTML)
-        ├── SMTP send via nodemailer (reuses existing transporter)
-        └── Logging to answerlattice_notificationLogs for Answerlattice events
-```
+- Browser delivery requests are best-effort. Closing the tab or losing the network after ticket persistence can prevent the request from reaching the server.
+- There is no inbound email-to-ticket or email-reply threading.
+- Delivery success means SMTP accepted the message; it does not prove inbox placement or that the customer read it.
+- Notifications must not be treated as the authoritative ticket record.
 
-## Key Design Decisions
+## Documentation
 
-1. **Generic & reusable** — Not ticket-specific. Any feature can add notification types by adding a template to `templates.ts`
-2. **Fire-and-forget** — `triggerNotification()` never blocks the calling operation. Dev builds warn on trigger failure; production ticket flow is not blocked.
-3. **Client → API → Server** — DAL runs client-side, so notifications go through an API route to access firebase-admin
-4. **Reuses existing SMTP** — Same nodemailer transporter, same SMTP env vars as lifecycle messaging. Zero new infrastructure.
-5. **Separate from lifecycle messaging** — Lifecycle messages are for billing/subscription events. Notifications are for operational events (tickets, etc.)
-6. **Answerlattice-scoped logs** — Answerlattice events write to `answerlattice_notificationLogs` in the Answerlattice Firebase project; non-Answerlattice callers still use the legacy generic `notificationLogs` target.
-7. **Activation verification** — `/answerlattice/activation` exposes a test-email action through `/api/answerlattice/notifications/test` with a 3/hour workspace rate limit before permission/readiness/store/send work and fixed-code bounded failure diagnostics.
-8. **Route guardrails** — `/api/notifications/send` accepts only the three client ticket events and ticket/message identifiers. It fails the hashed 120/hour limiter closed, requires current `canManageSupport` authority, reads the exact current-workspace ticket, and derives recipient, bounded template data, product and deterministic reference on the server. Browser callers cannot supply an email, template metadata, product, reference, or dedupe bypass. Unexpected failures use bounded notification diagnostics.
-9. **Delivery claim and content safety** — A Firestore transaction claims each deterministic event/reference before SMTP, so concurrent retries produce one active sender. Finalization is claim-bound, SMTP has connection/greeting/socket deadlines and a deterministic Message-ID, and every subject/HTML value is normalized and escaped. Only validated HTTPS links render. This is the ticket notification authority hardening boundary.
+- [Specification](./email-notifications_spec.md)
+- [Implementation](./email-notifications_impl.md)
+- [Firebase](./email-notifications_firebase.md)
+- [Test cases](./email-notifications_test-cases.md)
+- [Help](./email-notifications_helpdoc.md)
+- [Mobile](./email-notifications_mobile-support.md)
+- [Website](./email-notifications_website.md)
+- [Marketing](./email-notifications_marketing.md)
 
-## Files Created
-
-| File | Purpose |
-|------|---------|
-| `src/lib/notifications/index.ts` | Core notification sender (server-side, firebase-admin) |
-| `src/lib/notifications/client.ts` | Client-side fire-and-forget trigger helper |
-| `src/lib/notifications/notificationDiagnostics.ts` | Bounded notification failure diagnostics |
-| `src/lib/notifications/ticketNotificationBoundary.ts` | Server-only ticket recipient/template/reference projection |
-| `src/lib/notifications/deliveryClaim.ts` | Transactional external-effect claim/finalization boundary |
-| `src/lib/notifications/templates.ts` | Template registry (3 ticket templates) |
-| `src/app/api/notifications/send/route.ts` | API route (withAuth, bridges client → server) |
-| `src/app/api/answerlattice/notifications/test/route.ts` | Workspace test-send route used by Activation |
-
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `src/config/features.ts` | `ENABLE_ANSWERLATTICE_NOTIFICATIONS: true` |
-| `src/database/tickets/index.ts` | `triggerNotification()` calls for addTicket, addTicketMessage, updateTicketStatus with product-aware Answerlattice logging |
-| `firestore-answerlattice.rules` | Platform-admin read access for `answerlattice_notificationLogs`; no client writes |
-| `firestore-answerlattice.indexes.json` | Rate-limit index for `answerlattice_notificationLogs` |
-
-## Adding a New Notification Type
-
-1. Add template to `src/lib/notifications/templates.ts` → `NOTIFICATION_TEMPLATES` object
-2. For server-owned events, call `sendNotification()` with a deterministic reference and already-authorized recipient. Browser ticket events remain limited to the three strict identifiers and must extend the server ticket projector before a new client event is admitted.
-3. Add focused authorization, projection, escaping, idempotency and cost coverage; the sender then owns claim, rate limit, SMTP, and logging.
-
----
-
-## Version History
-
-| Date | Change |
-|------|--------|
-| 2026-06-28 | Hardened the Answerlattice notification test route so rate limiting runs before permission/readiness/store/send work and unexpected failures use bounded runtime diagnostics. |
-| 2026-06-27 | Added 16KB bounded request-body admission to the generic notification send route before schema validation or dispatch. |
-| 2026-05-22 | Enabled Answerlattice notification verification from Activation, moved Answerlattice logs to `answerlattice_notificationLogs`, added test-send template and rate limit, and removed unnecessary reply/status notification reads. |
-| 2026-03-07 | Initial implementation: 3 ticket notification types, generic service, API route |
+Connected dossiers: [Ticket System](../ticket-system/README.md), [Conversation Monitoring](../chat-monitoring/README.md), and [Owner Notifications](../../owner-notifications/README.md).

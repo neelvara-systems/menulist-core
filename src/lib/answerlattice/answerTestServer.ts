@@ -24,6 +24,7 @@ import {
     createEmptyAnswerlatticeAnswerTestSummary,
     getAnswerlatticeAnswerTestSummaryId,
     normalizeAnswerlatticeAnswerTestSourceVersions,
+    parseAnswerlatticeAnswerTestSummaryIdentity,
     type AnswerlatticeAnswerTestCase,
     type AnswerlatticeAnswerTestCaseResult,
     type AnswerlatticeAnswerTestMode,
@@ -39,6 +40,7 @@ import {
     getAnswerTestProofSummary,
     type AnswerlatticeResolvedTestAnswer,
 } from '@lib/answerlattice/answerTestEvaluation';
+import { AnswerlatticeStoredReleaseSchema } from '@lib/answerlattice/releaseContracts';
 import {
     classifyAnswerlatticeProposalImpact,
     type AnswerlatticeProposalImpactComparison,
@@ -52,7 +54,6 @@ import {
     parseAnswerlatticeRetrievalRelease,
     parseAnswerlatticeRetrievalSearchIndex,
 } from '@lib/answerlattice/retrievalContracts';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { coreSearch } from '@lib/search/searchCore';
 import type { CoreSearchResult } from '@lib/search/types';
 import type {
@@ -113,6 +114,7 @@ export class AnswerlatticeAnswerTestCapacityError extends Error {
 
     constructor(remaining: number, required: number) {
         super('Not enough support credits to run the selected full-runtime tests.');
+        Object.setPrototypeOf(this, new.target.prototype);
         this.name = 'AnswerlatticeAnswerTestCapacityError';
         this.remaining = remaining;
         this.required = required;
@@ -122,18 +124,32 @@ export class AnswerlatticeAnswerTestCapacityError extends Error {
 export class AnswerlatticeAnswerTestSummaryTooLargeError extends Error {
     constructor() {
         super('The answer-test suite is too large to save safely. Remove old or oversized test content.');
+        Object.setPrototypeOf(this, new.target.prototype);
         this.name = 'AnswerlatticeAnswerTestSummaryTooLargeError';
     }
 }
 
+export class AnswerlatticeAnswerTestSummaryIntegrityError extends Error {
+    constructor() {
+        super('The stored answer-test suite is invalid and must be repaired before it can be used.');
+        Object.setPrototypeOf(this, new.target.prototype);
+        this.name = 'AnswerlatticeAnswerTestSummaryIntegrityError';
+    }
+}
+
 export class AnswerlatticeAnswerTestRunConflictError extends Error {
-    readonly reason: 'in_progress' | 'busy';
+    readonly reason: 'in_progress' | 'busy' | 'request_conflict' | 'suite_changed';
     readonly retryAfter: number;
 
-    constructor(reason: 'in_progress' | 'busy', retryAfter: number) {
+    constructor(reason: 'in_progress' | 'busy' | 'request_conflict' | 'suite_changed', retryAfter: number) {
         super(reason === 'in_progress'
             ? 'This answer-test request is already running.'
-            : 'Too many answer-test runs are already in progress.');
+            : reason === 'request_conflict'
+                ? 'This answer-test request ID was already used for different inputs.'
+                : reason === 'suite_changed'
+                    ? 'The answer-test suite changed before this run started. Reload and run it again.'
+                : 'Too many answer-test runs are already in progress.');
+        Object.setPrototypeOf(this, new.target.prototype);
         this.name = 'AnswerlatticeAnswerTestRunConflictError';
         this.reason = reason;
         this.retryAfter = Math.max(1, Math.ceil(retryAfter));
@@ -162,9 +178,12 @@ const normalizeStringList = (value: unknown, limit: number, maxLength: number): 
 );
 
 const normalizeNonNegativeInteger = (value: unknown): number => {
-    const normalized = Number(value);
-    return Number.isFinite(normalized) && normalized > 0 ? Math.floor(normalized) : 0;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 };
+
+const normalizeOptionalRequestFingerprint = (value: unknown): string | undefined => (
+    typeof value === 'string' && /^[a-f0-9]{64}$/.test(value) ? value : undefined
+);
 
 const normalizeResult = (value: unknown): AnswerlatticeAnswerTestCaseResult | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -222,9 +241,16 @@ const normalizeRun = (value: unknown): AnswerlatticeAnswerTestRun | null => {
     const failedCount = results.length - passedCount;
     const proof = getAnswerTestProofSummary(results);
     const sourceVersions = normalizeAnswerlatticeAnswerTestSourceVersions(run.sourceVersions);
+    const requestFingerprint = normalizeOptionalRequestFingerprint(run.requestFingerprint);
 
     return {
         id: String(run.id).slice(0, 120),
+        ...(requestFingerprint ? { requestFingerprint } : {}),
+        ...(typeof run.suiteRevision === 'number'
+            && Number.isSafeInteger(run.suiteRevision)
+            && run.suiteRevision >= 0
+            ? { suiteRevision: run.suiteRevision }
+            : {}),
         mode: run.mode === 'full_runtime' ? 'full_runtime' : 'canonical_only',
         status: failedCount === 0 ? 'passed' : passedCount === 0 ? 'failed' : 'partial',
         startedAt: String(run.startedAt || ''),
@@ -247,12 +273,15 @@ const normalizeReservation = (value: unknown): AnswerlatticeAnswerTestRunReserva
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const reservation = value as Partial<AnswerlatticeAnswerTestRunReservation>;
     const id = String(reservation.id || '').trim();
+    const requestFingerprint = normalizeOptionalRequestFingerprint(reservation.requestFingerprint);
     const startedAt = String(reservation.startedAt || '');
     const expiresAt = String(reservation.expiresAt || '');
     if (!/^[a-zA-Z0-9_-]{8,100}$/.test(id)) return null;
+    if (!requestFingerprint) return null;
     if (!Number.isFinite(Date.parse(startedAt)) || !Number.isFinite(Date.parse(expiresAt))) return null;
     return {
         id,
+        requestFingerprint,
         createdBy: String(reservation.createdBy || 'unknown').slice(0, 180),
         startedAt,
         expiresAt,
@@ -281,19 +310,21 @@ export const normalizeAnswerlatticeAnswerTestSummary = (
     scope: AnswerTestScope,
 ): AnswerlatticeAnswerTestSummary => {
     const empty = createEmptyAnswerlatticeAnswerTestSummary(scope.tId, scope.sId);
-    if (
-        !raw
-        || normalizeAnswerlatticeScopeDocumentId(raw.tId) !== scope.tId
-        || normalizeAnswerlatticeScopeDocumentId(raw.sId) !== scope.sId
-    ) return empty;
+    if (!raw) return empty;
+    const identity = parseAnswerlatticeAnswerTestSummaryIdentity(raw, scope);
+    if (!identity) throw new AnswerlatticeAnswerTestSummaryIntegrityError();
 
-    const cases = Array.isArray(raw.cases)
-        ? raw.cases
-            .map(value => AnswerlatticeAnswerTestCaseSchema.safeParse(value))
-            .filter(result => result.success)
-            .map(result => result.data as AnswerlatticeAnswerTestCase)
-            .slice(0, 100)
-        : [];
+    if (!Array.isArray(raw.cases) || raw.cases.length > 100) {
+        throw new AnswerlatticeAnswerTestSummaryIntegrityError();
+    }
+    const parsedCases = raw.cases.map(value => AnswerlatticeAnswerTestCaseSchema.safeParse(value));
+    if (parsedCases.some(result => !result.success)) {
+        throw new AnswerlatticeAnswerTestSummaryIntegrityError();
+    }
+    const cases = parsedCases.map(result => result.data as AnswerlatticeAnswerTestCase);
+    if (new Set(cases.map(testCase => testCase.id)).size !== cases.length) {
+        throw new AnswerlatticeAnswerTestSummaryIntegrityError();
+    }
     const runs = Array.isArray(raw.runs)
         ? raw.runs.map(normalizeRun).filter((run): run is AnswerlatticeAnswerTestRun => Boolean(run)).slice(0, ANSWERLATTICE_ANSWER_TEST_MAX_RUNS)
         : [];
@@ -306,7 +337,8 @@ export const normalizeAnswerlatticeAnswerTestSummary = (
 
     return {
         ...empty,
-        revision: Math.max(0, Math.floor(Number(raw.revision || 0))),
+        schemaVersion: identity.schemaVersion,
+        revision: identity.revision,
         cases,
         runs,
         reservations,
@@ -318,19 +350,35 @@ export const normalizeAnswerlatticeAnswerTestSummary = (
 export const reserveAnswerlatticeAnswerTestRun = async (
     scope: AnswerTestScope,
     runId: string,
+    requestFingerprint: string,
+    suiteRevision: number,
     createdBy: string,
 ): Promise<{ summary: AnswerlatticeAnswerTestSummary; completedRun?: AnswerlatticeAnswerTestRun }> => {
+    if (!/^[a-f0-9]{64}$/.test(requestFingerprint) || !Number.isSafeInteger(suiteRevision) || suiteRevision < 0) {
+        throw new AnswerlatticeAnswerTestSummaryIntegrityError();
+    }
     const summaryRef = getSummaryRef(scope);
     return getDb().runTransaction(async transaction => {
         const snapshot = await transaction.get(summaryRef);
         const current = normalizeAnswerlatticeAnswerTestSummary(snapshot.exists ? snapshot.data() : undefined, scope);
+        if (current.revision !== suiteRevision) {
+            throw new AnswerlatticeAnswerTestRunConflictError('suite_changed', 1);
+        }
         const completedRun = current.runs.find(run => run.id === runId);
-        if (completedRun) return { summary: current, completedRun };
+        if (completedRun) {
+            if (completedRun.requestFingerprint !== requestFingerprint) {
+                throw new AnswerlatticeAnswerTestRunConflictError('request_conflict', 1);
+            }
+            return { summary: current, completedRun };
+        }
 
         const now = Date.now();
         const activeReservations = current.reservations.filter(reservation => Date.parse(reservation.expiresAt) > now);
         const existing = activeReservations.find(reservation => reservation.id === runId);
         if (existing) {
+            if (existing.requestFingerprint !== requestFingerprint) {
+                throw new AnswerlatticeAnswerTestRunConflictError('request_conflict', 1);
+            }
             throw new AnswerlatticeAnswerTestRunConflictError(
                 'in_progress',
                 (Date.parse(existing.expiresAt) - now) / 1000,
@@ -343,6 +391,7 @@ export const reserveAnswerlatticeAnswerTestRun = async (
 
         const reservation: AnswerlatticeAnswerTestRunReservation = {
             id: runId,
+            requestFingerprint,
             createdBy: createdBy.slice(0, 180),
             startedAt: new Date(now).toISOString(),
             expiresAt: new Date(now + ANSWER_TEST_RUN_RESERVATION_TTL_MS).toISOString(),
@@ -473,7 +522,7 @@ const runDeterministicAnswer = async (
             answerId: canonical.answer.id,
             relatedEntityIds: canonical.matchedEntityIds,
             confidence: canonical.confidence,
-            referenceIds: [],
+            referenceIds: canonical.evidenceReferenceIds || [],
             aiProviderUsed: false,
         };
     }
@@ -611,7 +660,10 @@ const resolveCoreSearchAnswer = (result: CoreSearchResult): ResolvedAnswer => {
         answerId: result.canonicalAnswerId,
         faqId: result.faqAnswerId,
         relatedEntityIds: [],
-        referenceIds: extractAnswerTestReferenceIds(result.references),
+        referenceIds: extractAnswerTestReferenceIds([
+            ...(result.references || []),
+            ...(result.citations || []),
+        ]),
         confidence: result.confidence,
         aiProviderUsed: Boolean(result.aiProviderUsed),
         aiProviderOperations: result.aiProviderOperations,
@@ -663,16 +715,20 @@ export const runAnswerlatticeAnswerTests = async ({
     actor,
     cases,
     mode,
+    requestFingerprint,
     release,
     runId,
     scope,
+    suiteRevision,
 }: {
     actor: AnswerlatticeAiActor;
     cases: AnswerlatticeAnswerTestCase[];
     mode: AnswerlatticeAnswerTestMode;
+    requestFingerprint: string;
     release?: AnswerlatticeRelease | null;
     runId: string;
     scope: AnswerTestScope;
+    suiteRevision: number;
 }): Promise<AnswerlatticeAnswerTestRun> => {
     const startedAt = new Date().toISOString();
     const startedAtMs = Date.now();
@@ -740,6 +796,8 @@ export const runAnswerlatticeAnswerTests = async ({
 
     return {
         id: runId,
+        requestFingerprint,
+        suiteRevision,
         mode,
         status: failedCount === 0 ? 'passed' : passedCount === 0 ? 'failed' : 'partial',
         startedAt,
@@ -768,7 +826,6 @@ export const saveAnswerlatticeAnswerTestRun = async (
         const current = normalizeAnswerlatticeAnswerTestSummary(snapshot.exists ? snapshot.data() : undefined, scope);
         const next = compactAnswerlatticeAnswerTestSummaryForWrite({
             ...current,
-            revision: current.revision + 1,
             runs: [run, ...current.runs.filter(existing => existing.id !== run.id)].slice(0, ANSWERLATTICE_ANSWER_TEST_MAX_RUNS),
             reservations: current.reservations.filter(reservation => reservation.id !== run.id),
             updatedAt: run.completedAt,
@@ -787,12 +844,9 @@ export const getAnswerlatticeAnswerTestRelease = async (
     if (!normalizedReleaseId) return null;
     const snapshot = await getDb().collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES).doc(normalizedReleaseId).get();
     if (!snapshot.exists) return null;
-    const release = { ...snapshot.data(), id: snapshot.id } as AnswerlatticeRelease;
-    if (
-        normalizeAnswerlatticeScopeDocumentId(release.tId) !== scope.tId
-        || normalizeAnswerlatticeScopeDocumentId(release.sId) !== scope.sId
-    ) return null;
-    return release;
+    const parsed = AnswerlatticeStoredReleaseSchema.safeParse(snapshot.data());
+    if (!parsed.success || parsed.data.tId !== scope.tId || parsed.data.sId !== scope.sId) return null;
+    return { id: normalizedReleaseId, ...parsed.data } as AnswerlatticeRelease;
 };
 
 export const selectAnswerlatticeReleaseTestCases = (

@@ -7,7 +7,9 @@ import {
     normalizeKnowledgeBaseArticleMetaInput,
     normalizeKnowledgeBaseCategoryInput,
     normalizeKnowledgeBaseSectionInput,
+    removeKnowledgeBaseArticleMetaEverywhere,
     requireKnowledgeBaseNavigationId,
+    resolveKnowledgeBaseArticlePlacement,
     updateKnowledgeBaseCategoryMetadata,
     upsertKnowledgeBaseArticleMeta,
     upsertKnowledgeBaseSection,
@@ -142,6 +144,45 @@ assert.deepEqual(
     'sequential transaction retries must preserve distinct article changes',
 );
 
+const movedArticle = upsertKnowledgeBaseArticleMeta(
+    twoArticleUpdates,
+    'account',
+    article('article-a', 'Moved article'),
+    'account-section',
+);
+assert.equal(
+    movedArticle.billing.sections?.[0].articles?.some(item => item.id === 'article-a'),
+    false,
+    'moving an article must remove every stale navigation reference',
+);
+assert.equal(
+    movedArticle.account.sections?.[0].articles?.filter(item => item.id === 'article-a').length,
+    1,
+    'moving an article must create one target navigation reference',
+);
+assert.deepEqual(resolveKnowledgeBaseArticlePlacement(movedArticle, 'account', 'account-section'), {
+    categoryId: 'account',
+    categoryTitle: 'Category account',
+    sectionId: 'account-section',
+    sectionTitle: 'Section account-section',
+});
+assert.deepEqual(resolveKnowledgeBaseArticlePlacement(movedArticle, 'account', null), {
+    categoryId: 'account',
+    categoryTitle: 'Category account',
+    sectionId: null,
+    sectionTitle: '',
+});
+assert.throws(() => resolveKnowledgeBaseArticlePlacement(movedArticle, 'account', 'missing'));
+assert.equal(
+    Object.values(removeKnowledgeBaseArticleMetaEverywhere(movedArticle, 'article-a'))
+        .flatMap(item => [
+            ...(item.articles || []),
+            ...(item.sections || []).flatMap(sectionItem => sectionItem.articles || []),
+        ])
+        .some(item => item.id === 'article-a'),
+    false,
+);
+
 const afterArticleDelete = deleteKnowledgeBaseArticleMeta(twoArticleUpdates, 'billing', 'article-a', 'billing-section');
 assert.deepEqual(
     afterArticleDelete.billing.sections?.[0].articles?.map((item) => item.id),
@@ -150,11 +191,34 @@ assert.deepEqual(
 assert.throws(() => upsertKnowledgeBaseArticleMeta(base, 'missing', article('x')));
 assert.throws(() => upsertKnowledgeBaseArticleMeta(base, 'billing', article('x'), 'missing'));
 
-const afterSectionDelete = deleteKnowledgeBaseSection(base, 'billing', 'billing-section');
+assert.throws(
+    () => deleteKnowledgeBaseSection(base, 'billing', 'billing-section'),
+    /answerlattice_kb_section_not_empty/,
+);
+const emptyBillingSectionBase = {
+    ...base,
+    billing: {
+        ...base.billing,
+        sections: [section('billing-section')],
+    },
+};
+const afterSectionDelete = deleteKnowledgeBaseSection(emptyBillingSectionBase, 'billing', 'billing-section');
 assert.deepEqual(afterSectionDelete.billing.sections, []);
 assert.throws(() => deleteKnowledgeBaseSection(base, 'billing', 'missing'));
 
-const afterCategoryDelete = deleteKnowledgeBaseCategory(base, 'billing');
+assert.throws(
+    () => deleteKnowledgeBaseCategory(base, 'billing'),
+    /answerlattice_kb_category_not_empty/,
+);
+const emptyBillingCategoryBase = {
+    ...base,
+    billing: {
+        ...base.billing,
+        articles: [],
+        sections: [section('billing-section')],
+    },
+};
+const afterCategoryDelete = deleteKnowledgeBaseCategory(emptyBillingCategoryBase, 'billing');
 assert.deepEqual(Object.keys(afterCategoryDelete), ['account']);
 assert.throws(() => deleteKnowledgeBaseCategory(base, 'missing'));
 assert.throws(() => updateKnowledgeBaseCategoryMetadata({ billing: 'corrupt' } as unknown as KbCategoriesMap, category('billing')));

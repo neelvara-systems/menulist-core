@@ -10,7 +10,7 @@ The page should explain:
 2. generate ten product-specific priority questions and draft answers from selected sources;
 3. review evidence, applicability, risk, and missing knowledge before approval;
 4. approve the required answer truth;
-5. run deterministic checks;
+5. run the exact active First 10 as deterministic checks;
 6. install and verify the widget;
 7. measure explicit resolution and recontact;
 8. review gaps weekly.
@@ -26,3 +26,5 @@ Continue showing example workloads until verified evidence exists. Render custom
 ## Website Boundary
 
 Do not claim Daily Brief mutations while the action flag is off. Do not publish customer names, metrics, logos, or quotations without explicit source-controlled consent evidence.
+
+Do not present a generic/product mixed set, a partial run, or a stale historical run as current First 10 proof.

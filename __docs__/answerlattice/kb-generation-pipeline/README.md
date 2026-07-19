@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Feature Documentation
 
-> **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
+> **Status:** IMPLEMENTED — internal platform compatibility runtime
+> **Last Updated:** 2026-07-18
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -9,20 +9,20 @@
 
 ## What Is This
 
-The KB Generation Pipeline is Answerlattice's article and FAQ generation system — product owners upload raw source files (PDFs, documents, videos, images, websites, copied text), and the system generates structured knowledge base articles with optional source-backed FAQ suggestions. Generated articles and FAQs go through review → reconciliation → publish → embed workflow before becoming searchable and visible in the Help Center.
+The KB Generation Pipeline is Answerlattice's internal platform article/FAQ import runtime. Platform administrators upload bounded source files, pasted text, or pasted URL text, and the system generates structured knowledge-base article drafts with optional FAQ suggestions. Generated content goes through review, reconciliation, embedding, and one atomic final publication transaction before articles, FAQs, navigation, and replacement cleanup become live.
 
 ## Successor Architecture Note
 
-This folder documents the **current runtime**. The planned long-term Answerlattice intake architecture is documented in [`../knowledge-intake-command-center/README.md`](../knowledge-intake-command-center/README.md).
+This folder documents the **current internal compatibility runtime**. The implemented owner-facing intake route is documented in [`../knowledge-intake-command-center/README.md`](../knowledge-intake-command-center/README.md).
 
 The key distinction:
 
-- **Current KB Generation Pipeline:** upload/source-file-first article and FAQ generation.
-- **Knowledge Intake Command Center:** paid-gated product understanding layer that starts from product context, selected-page website discovery, source registry, source authority, product map, launch decisions, source-backed drafts, and topic readiness before publishing into the existing KB, FAQ, canonical answer, product-surface, changelog/release, widget/search, public cache, and compiled-context paths.
+- **Current KB Generation Pipeline:** internal platform compatibility tool and persisted generation/publish runtime for bounded file-first imports.
+- **Knowledge Intake Command Center:** canonical owner-facing intake route for selected public URLs, bounded files/media/text, review drafts, and governed publishing into existing Answerlattice knowledge surfaces.
 
-Do not implement the long-term intake work by adding more source cards to this upload modal alone. This pipeline should remain a compatibility article/FAQ output path until the Answerlattice-owned intake command center replaces the owner workflow.
+Do not add owner onboarding scope to this upload modal. `/answerlattice/kb-generation` redirects to Knowledge Intake; the remaining `/platform/kb-generation` surface is internal.
 
-When intake implementation begins, the current publish/embedding behavior remains an integration dependency: approved article output must still produce searchable `kb_articles`, `kb_categories`, generated/published FAQs, cache-version bumps, public cache invalidation, and embedding readiness. Do not fork a second article/search runtime for intake.
+Knowledge Intake has its own implemented publishing path. This legacy pipeline remains a separate compatibility runtime. Shared article, FAQ, retrieval, cache, and embedding contracts still need parity; do not create a second public retrieval system.
 
 ---
 
@@ -78,7 +78,8 @@ Upload Files → Create Job (pending)
   → Job status: processing → needs_review
   → Platform admin reviews generated content
   → Reconciliation: handle duplicate articles (replace/discard/keep_both)
-  → Publish: articles written to kb_articles, FAQs written to answerlattice_faqs, embeddings generated
+  → Publish staging: articles and FAQs remain inactive; changed articles are embedded
+  → Atomic finalization: activate articles/FAQs, switch navigation, delete approved replacements, bump freshness versions
   → Job status: publishing → published
 ```
 
@@ -88,6 +89,7 @@ Upload Files → Create Job (pending)
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-18 | 1.6.0 | Reclaims only workspace-unreferenced source objects on explicit job deletion and makes final publication atomic across articles, generated FAQs, navigation, approved replacements, job state, and freshness invalidation. |
 | 2026-07-17 | 1.5.0 | Kept the pre-launch corpus on one `gemini-embedding-2`/`embedding` contract, removing the temporary dual-vector migration, its scheduled scans, duplicate index, and possible duplicate provider/write cost. |
 | 2026-07-13 | 1.4.0 | Introduced the Embedding 2 direction; its temporary dual-vector migration design was superseded before launch by the single canonical contract above. |
 | 2026-07-12 | 1.3.0 | Aligned dedicated/shared publish and embedding lifecycle, strict durable sets, source-hash reuse, deterministic task identity, and recoverable cleanup docs to runtime truth. |

@@ -6918,6 +6918,10 @@ body[data-menulist-website="true"] {
     display: block;
   }
 
+  .ws-page-source-map__paths--mobile-phone {
+    display: none;
+  }
+
   .ws-page-source-map__path {
     display: none;
   }
@@ -7048,9 +7052,16 @@ body[data-menulist-website="true"] {
 }
 
 @media (max-width: 520px) {
-  .ws-workflow-map__paths--mobile,
-  .ws-page-source-map__paths--mobile {
+  .ws-workflow-map__paths--mobile {
     display: none;
+  }
+
+  .ws-page-source-map__paths--mobile-tablet {
+    display: none;
+  }
+
+  .ws-page-source-map__paths--mobile-phone {
+    display: block;
   }
 
   .ws-workflow-map__stack--input,
@@ -7099,6 +7110,12 @@ body[data-menulist-website="true"] {
 
   .ws-location-source-map__outlet span:not(.ws-location-source-map__outlet-icon) {
     display: none;
+  }
+}
+
+@media (max-width: 325px) {
+  .ws-page-source-map {
+    padding-inline: var(--ws-space-3);
   }
 }
 

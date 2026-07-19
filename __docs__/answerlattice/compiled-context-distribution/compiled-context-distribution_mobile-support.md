@@ -1,17 +1,5 @@
-# Compiled Context Distribution Mobile Support
+# Compiled Context Distribution Mobile Assessment
 
-This feature is infrastructure and owner-screen support, not a separate mobile workflow.
+No dedicated mobile UI is required. Activation/readiness surfaces that expose bundle status must remain responsive and use the same server manifest contract.
 
-Mobile impact:
-
-- Activation already uses responsive Ant Design layout. The bundle readiness card and rebuild action must remain usable on narrow screens.
-- The rebuild action uses one clear button, loading state, and compact status text.
-- No new mobile-specific navigation is required.
-- The widget runtime runs in customer browsers; bundle pointers are independent of owner desktop/mobile.
-
-Mobile acceptance:
-
-- Bundle readiness is visible without horizontal scrolling.
-- Rebuild button remains at least 40px high in the existing Ant Design surface.
-- Error copy is short and operational.
-- No additional owner setting is created.
+Mobile customer surfaces receive only the behavior of their actual consumer path. The current widget remains server-mediated because widget bundle bootstrap is disabled. No mobile copy may promise direct bundle loading, fixed response time, or offline availability.

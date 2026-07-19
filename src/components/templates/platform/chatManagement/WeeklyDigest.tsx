@@ -3,7 +3,7 @@
 /**
  * Weekly Performance Digest Component
  * 
- * Displays AI-generated weekly performance summaries from Cloud Functions
+ * Displays the scoped weekly performance summary from Answerlattice Functions.
  * Reads from: insights/{tId}/stores/{sId}/ai/weekly
  */
 
@@ -11,120 +11,19 @@ import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import {
   type AnswerlatticeWeeklySummary,
+  getAnswerlatticeWeeklySummaryFreshness,
   parseAnswerlatticeWeeklySummary,
 } from '@lib/answerlattice/analyticsIntelligenceContracts';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
-import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { Alert, Button, Card, Empty, message, Space, Spin, Statistic } from 'antd';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { Alert, Button, Card, Empty, message, Space, Spin, Statistic, Typography } from 'antd';
 import { doc, getDoc } from 'firebase/firestore';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { LuCalendar, LuDownload, LuRefreshCw, LuSparkles, LuTrendingDown, LuTrendingUp } from 'react-icons/lu';
+import { LuCalendar, LuDownload, LuRefreshCw, LuTrendingDown, LuTrendingUp } from 'react-icons/lu';
 
-// ================================================================
-// TYPES
-// ================================================================
-
-type SentimentType = 'positive' | 'neutral' | 'concerning';
-const WEEKLY_DIGEST_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
-const WEEKLY_DIGEST_GENERATE_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
-  cache: 'no-store',
-  credentials: 'same-origin',
-  redirect: 'manual',
-};
-const WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE = 'Generation failed. Please try again later';
 const WEEKLY_DIGEST_LOAD_FAILED_MESSAGE = 'Failed to load weekly digest. Please try again later';
-const WEEKLY_DIGEST_NO_DATA_MESSAGE = 'No analytics data found for the past week. Please run daily aggregation first.';
-
-type WeeklyDigestNoDataResponse = {
-  status: 'no_data';
-  message?: string;
-};
-
-type WeeklyDigestGenerateSuccessResponse = {
-  success: true;
-  message?: string;
-  data: {
-    weekStart: string;
-    weekEnd: string;
-    narrativeLength: number;
-    highlightsCount: number;
-  };
-};
-
-type WeeklyDigestGenerateResponse = WeeklyDigestNoDataResponse | WeeklyDigestGenerateSuccessResponse;
-
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-);
-
-const isFiniteNumber = (value: unknown): value is number => (
-  typeof value === 'number' && Number.isFinite(value)
-);
-
-const isWeeklyDigestNoDataResponse = (value: unknown): value is WeeklyDigestNoDataResponse => (
-  isRecord(value)
-  && value.status === 'no_data'
-  && (value.message === undefined || typeof value.message === 'string')
-);
-
-const isWeeklyDigestGenerateSuccessResponse = (
-  value: unknown,
-): value is WeeklyDigestGenerateSuccessResponse => (
-  isRecord(value)
-  && value.success === true
-  && isRecord(value.data)
-  && typeof value.data.weekStart === 'string'
-  && typeof value.data.weekEnd === 'string'
-  && isFiniteNumber(value.data.narrativeLength)
-  && isFiniteNumber(value.data.highlightsCount)
-);
-
-const isWeeklyDigestGenerateResponse = (value: unknown): value is WeeklyDigestGenerateResponse => (
-  isWeeklyDigestNoDataResponse(value) || isWeeklyDigestGenerateSuccessResponse(value)
-);
-
-const getWeeklyDigestResponseLogContext = (response: Response) => ({
-  ...getBoundedRuntimeStringContext('responseKind', 'weekly_digest_generate'),
-  responseOk: response.ok,
-  responseStatus: response.status,
-});
-
-const readWeeklyDigestGenerateResponse = async (response: Response): Promise<WeeklyDigestGenerateResponse> => {
-  let payload: unknown = null;
-  try {
-    payload = await readJsonResponseWithLimit<unknown>(response, WEEKLY_DIGEST_RESPONSE_JSON_MAX_BYTES);
-  } catch (error) {
-    logRuntimeFailure(
-      'platform_weekly_digest_generate_response_parse_failed',
-      error,
-      getWeeklyDigestResponseLogContext(response),
-    );
-    throw new Error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
-  }
-
-  if (!response.ok) {
-    logRuntimeFailure(
-      'platform_weekly_digest_generate_response_rejected',
-      undefined,
-      getWeeklyDigestResponseLogContext(response),
-    );
-    throw new Error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
-  }
-
-  if (!isWeeklyDigestGenerateResponse(payload)) {
-    logRuntimeFailure(
-      'platform_weekly_digest_generate_response_invalid',
-      undefined,
-      getWeeklyDigestResponseLogContext(response),
-    );
-    throw new Error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
-  }
-
-  return payload;
-};
 
 // ================================================================
 // COMPONENT
@@ -134,7 +33,6 @@ export default function WeeklyDigest() {
   const session = useClientAuthSession();
   const [digest, setDigest] = useState<AnswerlatticeWeeklySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [regenerating, setRegenerating] = useState(false);
 
   // Fetch digest from Firestore
   const fetchDigest = async () => {
@@ -177,35 +75,6 @@ export default function WeeklyDigest() {
     }
   };
 
-  // Manual regeneration (local generation without Cloud Function)
-  const handleRegenerate = async () => {
-    try {
-      setRegenerating(true);
-
-      // Use local generation endpoint (no Cloud Function required)
-      const response = await fetch('/api/analytics/weekly-narrative/generate-local', {
-        ...WEEKLY_DIGEST_GENERATE_REQUEST_POLICY,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const result = await readWeeklyDigestGenerateResponse(response);
-
-      if ('status' in result && result.status === 'no_data') {
-        message.warning(WEEKLY_DIGEST_NO_DATA_MESSAGE);
-        return;
-      }
-
-      message.success(digest ? 'Weekly digest refreshed.' : 'Weekly digest generated.');
-      await fetchDigest();
-    } catch (error) {
-      logRuntimeFailure('platform_weekly_digest_generate_failed', error);
-      message.error(WEEKLY_DIGEST_GENERATE_FAILED_MESSAGE);
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
   // Export as text
   const handleExport = () => {
     if (!digest) return;
@@ -224,9 +93,15 @@ RECOMMENDATIONS
 ${digest.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 KEY METRICS
-- Volume Change: ${digest.keyMetrics.volumeChange > 0 ? '+' : ''}${digest.keyMetrics.volumeChange.toFixed(1)}%
-- Satisfaction Change: ${digest.keyMetrics.satisfactionChange > 0 ? '+' : ''}${digest.keyMetrics.satisfactionChange.toFixed(1)}%
-- Top Category: ${digest.keyMetrics.topCategory}
+- Conversation Volume: ${digest.sourceCompleteness.comparisonComplete
+  ? `${digest.keyMetrics.volumeChange > 0 ? '+' : ''}${digest.keyMetrics.volumeChange.toFixed(1)}%`
+  : 'Not available'}
+- Recorded Feedback: ${digest.sourceCompleteness.comparisonComplete
+  ? `${digest.keyMetrics.satisfactionChange > 0 ? '+' : ''}${digest.keyMetrics.satisfactionChange.toFixed(1)}%`
+  : 'Not available'}
+- Top Repeated Question: ${digest.keyMetrics.topCategory}
+- Current Source Days: ${digest.sourceCompleteness.currentDays ?? 'Not recorded'}/7
+- Comparison Source Days: ${digest.sourceCompleteness.previousDays ?? 'Not recorded'}/7
 
 Generated: ${new Date(digest.generatedAt).toLocaleString()}
     `.trim();
@@ -238,37 +113,6 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
     a.download = `weekly-digest-${digest.weekStart}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  // Determine sentiment
-  const getSentiment = (): SentimentType => {
-    if (!digest) return 'neutral';
-
-    const { volumeChange, satisfactionChange } = digest.keyMetrics;
-
-    if (volumeChange < -10 || satisfactionChange < -5) return 'concerning';
-    if (volumeChange > 5 && satisfactionChange > 2) return 'positive';
-    return 'neutral';
-  };
-
-  const sentiment = digest ? getSentiment() : 'neutral';
-
-  const sentimentConfig = {
-    positive: {
-      color: '#52c41a',
-      label: 'Positive Performance',
-      description: 'Your metrics are trending in the right direction',
-    },
-    neutral: {
-      color: '#1890ff',
-      label: 'Steady Performance',
-      description: 'Metrics are stable with room for optimization',
-    },
-    concerning: {
-      color: '#ff4d4f',
-      label: 'Needs Attention',
-      description: 'Some metrics require immediate review',
-    },
   };
 
   useEffect(() => {
@@ -301,27 +145,13 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
           <div>
             <div style={{ marginBottom: 8 }}>No weekly digest available yet</div>
             <div style={{ fontSize: 13, color: '#8c8c8c' }}>
-              Weekly digests are automatically generated every Sunday by Cloud Functions.
-              <br />
-              Or you can generate one manually right now.
+              Weekly digests are prepared every Sunday UTC by the Answerlattice scheduler after analytics settle.
             </div>
           </div>
         }
         style={{ marginTop: 100 }}
       >
-        <Space>
-          <Button
-            type="primary"
-            icon={<LuSparkles />}
-            onClick={handleRegenerate}
-            loading={regenerating}
-          >
-            Generate Now
-          </Button>
-          <Button icon={<LuRefreshCw />} onClick={fetchDigest}>
-            Refresh
-          </Button>
-        </Space>
+        <Button type="primary" icon={<LuRefreshCw />} onClick={fetchDigest}>Refresh</Button>
       </Empty>
     );
   }
@@ -329,6 +159,9 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
   // ================================================================
   // MAIN CONTENT
   // ================================================================
+
+  const freshness = getAnswerlatticeWeeklySummaryFreshness(digest);
+  const comparisonComplete = digest.sourceCompleteness.comparisonComplete;
 
   return (
     <div style={{ padding: '20px 0' }}>
@@ -351,50 +184,66 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
             >
               Export
             </Button>
-            <Button
-              type="primary"
-              icon={<LuRefreshCw />}
-              onClick={handleRegenerate}
-              loading={regenerating}
-            >
-              Regenerate
-            </Button>
+            <Button type="primary" icon={<LuRefreshCw />} onClick={fetchDigest}>Refresh</Button>
           </Space>
         </div>
       </Card>
 
-      {/* Sentiment Alert */}
-      <Alert
-        type={sentiment === 'positive' ? 'success' : sentiment === 'concerning' ? 'warning' : 'info'}
-        message={sentimentConfig[sentiment].label}
-        description={sentimentConfig[sentiment].description}
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
+      {freshness.state !== 'current' || !digest.sourceCompleteness.currentWeekComplete ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={freshness.state === 'future'
+            ? 'Weekly insight timestamp is invalid'
+            : freshness.state === 'stale'
+              ? 'Weekly insight needs refresh'
+              : 'Weekly insight uses partial source days'}
+          description={digest.sourceCompleteness.currentDays === null
+            ? 'Source-completeness evidence was not recorded for this stored insight.'
+            : `${digest.sourceCompleteness.currentDays}/7 current-week days and ${digest.sourceCompleteness.previousDays}/7 comparison days were admitted.`}
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
 
       {/* Key Metrics */}
       <Card title="Key Metrics" style={{ marginBottom: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           <Statistic
-            title="Volume Change"
-            value={digest.keyMetrics.volumeChange}
-            precision={1}
-            suffix="%"
-            prefix={digest.keyMetrics.volumeChange >= 0 ? <LuTrendingUp style={{ color: '#52c41a' }} /> : <LuTrendingDown style={{ color: '#ff4d4f' }} />}
-            valueStyle={{ color: digest.keyMetrics.volumeChange >= 0 ? '#52c41a' : '#ff4d4f' }}
+            title="Conversation volume change"
+            value={comparisonComplete ? digest.keyMetrics.volumeChange : 'Not available'}
+            precision={comparisonComplete ? 1 : undefined}
+            suffix={comparisonComplete ? '%' : undefined}
+            prefix={comparisonComplete
+              ? digest.keyMetrics.volumeChange >= 0
+                ? <LuTrendingUp style={{ color: '#52c41a' }} />
+                : <LuTrendingDown style={{ color: '#ff4d4f' }} />
+              : undefined}
+            valueStyle={comparisonComplete
+              ? { color: digest.keyMetrics.volumeChange >= 0 ? '#52c41a' : '#ff4d4f' }
+              : undefined}
           />
           <Statistic
-            title="Satisfaction Change"
-            value={digest.keyMetrics.satisfactionChange}
-            precision={1}
-            suffix="%"
-            prefix={digest.keyMetrics.satisfactionChange >= 0 ? <LuTrendingUp style={{ color: '#52c41a' }} /> : <LuTrendingDown style={{ color: '#ff4d4f' }} />}
-            valueStyle={{ color: digest.keyMetrics.satisfactionChange >= 0 ? '#52c41a' : '#ff4d4f' }}
+            title="Recorded feedback change"
+            value={comparisonComplete ? digest.keyMetrics.satisfactionChange : 'Not available'}
+            precision={comparisonComplete ? 1 : undefined}
+            suffix={comparisonComplete ? '%' : undefined}
+            prefix={comparisonComplete
+              ? digest.keyMetrics.satisfactionChange >= 0
+                ? <LuTrendingUp style={{ color: '#52c41a' }} />
+                : <LuTrendingDown style={{ color: '#ff4d4f' }} />
+              : undefined}
+            valueStyle={comparisonComplete
+              ? { color: digest.keyMetrics.satisfactionChange >= 0 ? '#52c41a' : '#ff4d4f' }
+              : undefined}
           />
-          <Statistic
-            title="Top Category"
-            value={digest.keyMetrics.topCategory}
-          />
+          <div>
+            <Typography.Text type="secondary">Top repeated question</Typography.Text>
+            <div style={{ marginTop: 8 }}>
+              <Typography.Text strong style={{ overflowWrap: 'anywhere' }}>
+                {digest.keyMetrics.topCategory}
+              </Typography.Text>
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -406,7 +255,7 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
       </Card>
 
       {/* Highlights & Recommendations */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 16 }}>
         <Card title="Key Highlights">
           <ul style={{ margin: 0, paddingLeft: 20 }}>
             {digest.highlights.map((highlight, index) => (

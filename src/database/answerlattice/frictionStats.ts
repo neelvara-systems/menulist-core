@@ -14,6 +14,10 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { doc, getDoc } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import {
+    parseAnswerlatticeFrictionInsight,
+    parseAnswerlatticeFrictionSnapshot,
+} from "@lib/answerlattice/analyticsIntelligenceContracts";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { AnswerlatticeFrictionInsight, AnswerlatticeFrictionSnapshot } from "@type/answerlattice";
 
@@ -27,7 +31,7 @@ export const getFrictionSnapshot = async (tId: number, sId: number): Promise<Ans
             const docRef = doc(answerlatticeFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `frictionSnapshot_${tId}_${sId}`);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return docSnap.data() as AnswerlatticeFrictionSnapshot;
+                return parseAnswerlatticeFrictionSnapshot(docSnap.data(), { tenantId: tId, storeId: sId });
             }
             return null;
         },
@@ -45,7 +49,7 @@ export const getFrictionInsight = async (tId: number, sId: number): Promise<Answ
             const docRef = doc(answerlatticeFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `friction_${tId}_${sId}`);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return docSnap.data() as AnswerlatticeFrictionInsight;
+                return parseAnswerlatticeFrictionInsight(docSnap.data(), { tenantId: tId, storeId: sId });
             }
             return null;
         },

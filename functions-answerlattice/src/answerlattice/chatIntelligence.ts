@@ -10,6 +10,7 @@ const MAX_TEXT_LENGTH = 1_000;
 
 type ChatAnalyticsDay = {
     date: string;
+    sourceComplete: true;
     totalChats: number;
     totalMessages: number;
     positiveFeedback: number;
@@ -101,6 +102,7 @@ const parseChatAnalyticsDay = (
     if (
         !date
         || id !== `${tId}_${sId}_${date}`
+        || value.sourceComplete !== true
         || Object.values(numeric).some((entry) => entry === null)
         || numeric.positiveFeedback! + numeric.negativeFeedback! !== numeric.totalFeedback
         || numeric.totalFeedback! > numeric.totalMessages!
@@ -116,6 +118,7 @@ const parseChatAnalyticsDay = (
 
     return {
         date,
+        sourceComplete: true,
         totalChats: numeric.totalChats!,
         totalMessages: numeric.totalMessages!,
         positiveFeedback: numeric.positiveFeedback!,
@@ -176,11 +179,34 @@ const hashPayload = (value: unknown): string => (
     createHash('sha256').update(JSON.stringify(value)).digest('hex')
 );
 
+const getRangeDays = (
+    days: ChatAnalyticsDay[],
+    start: string,
+    end: string,
+): ChatAnalyticsDay[] => (
+    days
+        .filter((day) => day.date >= start && day.date <= end)
+        .sort((left, right) => left.date.localeCompare(right.date))
+);
+
+const hasCompleteSevenDayRange = (
+    days: ChatAnalyticsDay[],
+    start: string,
+): boolean => (
+    days.length === CURRENT_DAYS
+    && days.every((day, index) => day.date === shiftDateKey(start, index))
+);
+
 const buildWeeklyPayload = (days: ChatAnalyticsDay[], weekStart: string, weekEnd: string) => {
-    const current = aggregateDays(days.filter((day) => day.date >= weekStart && day.date <= weekEnd));
     const previousStart = shiftDateKey(weekStart, -CURRENT_DAYS);
     const previousEnd = shiftDateKey(weekEnd, -CURRENT_DAYS);
-    const previous = aggregateDays(days.filter((day) => day.date >= previousStart && day.date <= previousEnd));
+    const currentDays = getRangeDays(days, weekStart, weekEnd);
+    const previousDays = getRangeDays(days, previousStart, previousEnd);
+    const current = aggregateDays(currentDays);
+    const previous = aggregateDays(previousDays);
+    const currentWeekComplete = hasCompleteSevenDayRange(currentDays, weekStart);
+    const comparisonComplete = currentWeekComplete
+        && hasCompleteSevenDayRange(previousDays, previousStart);
     const volumeChange = previous.totalChats > 0
         ? ((current.totalChats - previous.totalChats) / previous.totalChats) * 100
         : 0;
@@ -190,12 +216,12 @@ const buildWeeklyPayload = (days: ChatAnalyticsDay[], weekStart: string, weekEnd
     const topCategory = current.topQuestions[0]?.question || 'No recurring question';
     const conversationLabel = current.totalChats === 1 ? 'conversation' : 'conversations';
     const narrative = current.totalChats > 0
-        ? `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. Satisfaction was ${current.satisfactionRate.toFixed(1)}%, and the most frequent question was "${topCategory}".`
+        ? `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. Recorded positive feedback was ${current.satisfactionRate.toFixed(1)}%, and the most frequent question was "${topCategory}".`
         : `No conversations were recorded for the week ending ${weekEnd}.`;
     const highlights = current.totalChats > 0
         ? [
             `${current.totalChats} ${conversationLabel} reviewed`,
-            `${current.satisfactionRate.toFixed(1)}% satisfaction across recorded feedback`,
+            `${current.satisfactionRate.toFixed(1)}% positive feedback across recorded outcomes`,
             `${current.knowledgeGaps.length} recurring answer gaps identified`,
         ]
         : ['No conversation activity was recorded in this period.'];
@@ -211,6 +237,12 @@ const buildWeeklyPayload = (days: ChatAnalyticsDay[], weekStart: string, weekEnd
         highlights,
         recommendations,
         keyMetrics: { volumeChange, satisfactionChange, topCategory },
+        sourceCompleteness: {
+            currentDays: currentDays.length,
+            previousDays: previousDays.length,
+            currentWeekComplete,
+            comparisonComplete,
+        },
         generationMode: 'deterministic',
         promptVersion: 'deterministic-v1',
     };

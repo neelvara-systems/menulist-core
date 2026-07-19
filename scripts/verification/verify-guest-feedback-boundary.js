@@ -210,6 +210,7 @@ function verifyPublicSubmitRoute() {
 
 function verifyPublicPageAndForm() {
   const page = read('src/app/feedback/[projectId]/page.tsx');
+  const notFoundPage = read('src/app/feedback/[projectId]/not-found.tsx');
   const form = read('src/components/atoms/GuestFeedbackForm/index.tsx');
   const identityHeader = read('src/app/client/[[...slug]]/MenuBreadcrumb.tsx');
   const responseGuard = read('src/lib/feedback/guestFeedbackSubmitResponse.ts');
@@ -256,6 +257,13 @@ function verifyPublicPageAndForm() {
   assertIncludes(page, 'logPublicFeedbackPageFailure', 'Guest Feedback public page bounded diagnostics');
   assertNotIncludes(page, 'console.', 'Guest Feedback public page direct console diagnostics');
 
+  assertIncludes(notFoundPage, 'createPublicCustomerTranslator(activeLanguage)', 'Guest Feedback not-found localized copy');
+  assertIncludes(notFoundPage, 'getPublicCustomerLanguageDirection(activeLanguage)', 'Guest Feedback not-found language direction');
+  assertIncludes(notFoundPage, "new URLSearchParams(window.location.search).get('lang')", 'Guest Feedback not-found requested language');
+  assertIncludes(notFoundPage, "appendPublicLanguageParam('/', activeLanguage)", 'Guest Feedback not-found localized recovery link');
+  assertIncludes(notFoundPage, '<LuMessageSquareDashed', 'Guest Feedback not-found approved icon');
+  assertNotIncludes(notFoundPage, 'Page Not Found', 'Guest Feedback not-found English hardcode');
+
   assertIncludes(form, 'GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY', 'Guest Feedback form request policy');
   assertIncludes(form, "cache: 'no-store' as RequestCache", 'Guest Feedback form no-store policy');
   assertIncludes(form, "credentials: 'same-origin' as RequestCredentials", 'Guest Feedback form credential policy');
@@ -268,11 +276,12 @@ function verifyPublicPageAndForm() {
   assertIncludes(form, "return createRuntimeId('feedback');", 'Guest Feedback form runtime submission ID');
   assertNotIncludes(form, 'Math.random()', 'Guest Feedback form insecure randomness fallback');
   assertNotIncludes(form, "^[A-Za-z\\s'.-]+$", 'Guest Feedback form ASCII-only name rejection');
-  assertIncludes(form, "if (trimmedValue.length < 2) return 'Please enter at least 2 characters.';", 'Guest Feedback form language-neutral name minimum');
+  assertIncludes(form, "if (trimmedValue.length < 2) return t('feedback.nameTooShort');", 'Guest Feedback form localized language-neutral name minimum');
+  assertIncludes(form, 't: PublicCustomerTranslator,', 'Guest Feedback form public customer translator contract');
   assertIncludes(form, 'readJsonResponseWithLimit', 'Guest Feedback form bounded response parser');
   assertIncludes(form, 'isSuccessfulGuestFeedbackSubmitResponse(data)', 'Guest Feedback form response acknowledgement guard');
   assertIncludes(form, "normalizeGuestFeedbackReviewUrl(data.reviewUrl, 'submit_response_review_url')", 'Guest Feedback form review URL guard');
-  assertIncludes(form, 'GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE', 'Guest Feedback form fixed failure copy');
+  assertIncludes(form, "message.error(t('feedback.submitFailed'));", 'Guest Feedback form localized fixed failure copy');
   assertIncludes(form, 'logPublicFeedbackFormFailure', 'Guest Feedback form bounded diagnostics');
   assertIncludes(form, 'htmlFor="guest-feedback-message"', 'Guest Feedback note visible label association');
   assertIncludes(form, 'id="guest-feedback-message"', 'Guest Feedback note stable control ID');

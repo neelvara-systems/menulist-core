@@ -28,6 +28,10 @@ import { createPortal } from 'react-dom';
 import { LuList, LuX } from 'react-icons/lu';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { FEATURE_FLAGS } from '@config/features';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+} from '@lib/localization/publicCustomerMessages';
 import { getLocalizedText } from '@lib/localization/text';
 import { MenuMoodConfig } from '../designSystem';
 import { menuFadeTransition, menuPanelMotion, menuSpringTransition } from './menuMotion';
@@ -51,9 +55,6 @@ interface MenuFiltersProps {
     hideFAB?: boolean;
 }
 
-const getCategoryLabel = (category: Category, activeLanguage: string): string =>
-    getLocalizedText(category.name, activeLanguage, 'en', 'Section');
-
 function MenuFilters({
     categories,
     activeCategory,
@@ -65,6 +66,10 @@ function MenuFilters({
     categoryItemCounts,
     hideFAB = false,
 }: MenuFiltersProps) {
+    const t = createPublicCustomerTranslator(activeLanguage);
+    const languageDirection = getPublicCustomerLanguageDirection(activeLanguage);
+    const getCategoryLabel = (category: Category): string =>
+        getLocalizedText(category.name, activeLanguage, 'en', t('menu.category'));
     const [showCategories, setShowCategories] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [isWideInlinePopover, setIsWideInlinePopover] = useState(false);
@@ -216,7 +221,9 @@ function MenuFilters({
                     gap: 10,
                     justifyContent: 'space-between',
                     minHeight: 48,
-                    padding: '8px 58px 8px 14px',
+                    paddingBlock: 8,
+                    paddingInlineEnd: 58,
+                    paddingInlineStart: 14,
                     position: 'relative',
                     borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
                 }}
@@ -232,7 +239,7 @@ function MenuFilters({
                         fontWeight: 700,
                     }}
                 >
-                    Menu sections
+                    {t('menu.menuSections')}
                 </h3>
                 <button
                     type="button"
@@ -241,7 +248,7 @@ function MenuFilters({
                     onMouseDown={closeCategories}
                     onPointerDown={closeCategories}
                     onTouchStart={closeCategories}
-                    aria-label="Close menu sections"
+                    aria-label={t('menu.closeMenuSections')}
                     style={{
                         alignItems: 'center',
                         background: 'transparent',
@@ -257,7 +264,7 @@ function MenuFilters({
                         minWidth: 44,
                         padding: 0,
                         position: 'absolute',
-                        right: 8,
+                        insetInlineEnd: 8,
                         top: '50%',
                         transform: 'translateY(-50%)',
                         width: 44,
@@ -321,7 +328,7 @@ function MenuFilters({
                                 fontSize: 14,
                                 lineHeight: '18px',
                                 fontWeight: isActive ? 700 : 500,
-                                textAlign: 'left',
+                                textAlign: 'start',
                                 textDecoration: 'none',
                                 userSelect: 'none',
                                 WebkitUserSelect: 'none',
@@ -345,7 +352,7 @@ function MenuFilters({
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                {getCategoryLabel(category, activeLanguage)}
+                                {getCategoryLabel(category)}
                             </span>
                             {typeof itemCount === 'number' && itemCount > 0 && (
                                 <span
@@ -372,10 +379,12 @@ function MenuFilters({
         <AnimatePresence>
             {showCategories && (
                 <motion.div
+                    dir={languageDirection}
+                    lang={activeLanguage}
                     ref={popoverRef}
                     role="dialog"
                     aria-modal={false}
-                    aria-label="Menu sections"
+                    aria-label={t('menu.menuSections')}
                     initial={menuPanelMotion.initial}
                     animate={menuPanelMotion.animate}
                     exit={menuPanelMotion.exit}
@@ -427,6 +436,8 @@ function MenuFilters({
                         }}
                     />
                     <motion.div
+                        dir={languageDirection}
+                        lang={activeLanguage}
                         initial={menuPanelMotion.initial}
                         animate={menuPanelMotion.animate}
                         exit={menuPanelMotion.exit}
@@ -434,7 +445,7 @@ function MenuFilters({
                         className="fixed left-4 right-4 z-50 rounded-xl overflow-hidden"
                         role="dialog"
                         aria-modal={isInline}
-                        aria-label="Menu sections"
+                        aria-label={t('menu.menuSections')}
                         style={{
                             position: 'fixed',
                             right: useAnchoredInlinePopover
@@ -485,7 +496,7 @@ function MenuFilters({
                     onClick={handleOpenCategories}
                     onFocus={() => setTriggerFocused(true)}
                     onBlur={() => setTriggerFocused(false)}
-                    aria-label="Open menu sections"
+                    aria-label={t('menu.openMenuSections')}
                     aria-expanded={showCategories}
                     style={{
                         minHeight: 44,
@@ -517,7 +528,7 @@ function MenuFilters({
                     className="active:scale-[0.98]"
                 >
                     <LuList size={17} />
-                    <span>Sections</span>
+                    <span>{t('menu.sections')}</span>
                 </button>
             )}
 
@@ -532,7 +543,7 @@ function MenuFilters({
                         className="fixed right-4 flex items-center gap-2 px-4 py-3 rounded-full text-sm shadow-lg z-30 min-h-[48px]"
                         style={{
                             position: 'fixed',
-                            right: 16,
+                            insetInlineEnd: 16,
                             background: moodConfig.itemStyle.background,
                             bottom: 'calc(24px + env(safe-area-inset-bottom))',
                             zIndex: 10010,
@@ -555,11 +566,11 @@ function MenuFilters({
                             cursor: 'pointer',
                             WebkitTapHighlightColor: 'transparent',
                         }}
-                        aria-label="Open menu sections"
+                        aria-label={t('menu.openMenuSections')}
                         aria-expanded={showCategories}
                     >
                         <LuList size={18} />
-                        <span>Sections</span>
+                        <span>{t('menu.sections')}</span>
                     </motion.button>
                 )}
             </AnimatePresence>

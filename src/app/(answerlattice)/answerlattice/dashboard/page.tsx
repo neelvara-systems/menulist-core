@@ -134,13 +134,14 @@ export default function AnswerlatticeDashboardPage() {
                 showIcon
                 message="Readiness metrics are unavailable"
                 description="Refresh after this Answerlattice workspace is fully connected."
-                action={<Button onClick={() => loadSummary(true)}>Retry</Button>}
+                action={<Button onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>Retry</Button>}
             />
         );
     }
 
     const coverageRate = summary.governance.canonicalCoverageRate;
-    const trustScore = summary.governance.trustScore;
+    const noEscalationRate = summary.governance.noEscalationRate;
+    const launchReady = summary.launchProof.ready;
     const activeAnswersStep = summary.steps.find(step => step.key === 'canonical-answers');
     const activeAnswerCount = activeAnswersStep?.description.match(/^\d+/)?.[0] || '0';
 
@@ -150,27 +151,27 @@ export default function AnswerlatticeDashboardPage() {
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Readiness Metrics</Title>
                     <Text type="secondary">
-                        Summary-based support health for {summary.workspace.productName || summary.workspace.companyName || 'this workspace'}.
+                        Summary-based support evidence for {summary.workspace.productName || summary.workspace.companyName || 'this workspace'}.
                     </Text>
                 </div>
                 <Space wrap>
-                    <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSummary(true)}>
+                    <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>
                         Refresh
                     </Button>
-                    <Button icon={<LuListChecks />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)}>
+                    <Button icon={<LuListChecks />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)} style={{ minHeight: 44 }}>
                         Today&apos;s Brief
                     </Button>
-                    <Button type="primary" icon={<LuExternalLink />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.ACTIVATION)}>
+                    <Button type="primary" icon={<LuExternalLink />} onClick={() => openRoute(ANSWERLATTICE_ROUTES.ACTIVATION)} style={{ minHeight: 44 }}>
                         Open Launch Setup
                     </Button>
                 </Space>
             </Flex>
 
             <Alert
-                type={attentionSteps.length ? 'warning' : summary.readinessScore >= 85 ? 'success' : 'info'}
+                type={attentionSteps.length ? 'warning' : launchReady ? 'success' : 'info'}
                 showIcon
-                message={summary.readinessScore >= 85 ? 'Support readiness is launch-ready' : 'Support readiness is still building'}
-                description={`${summary.readinessScore}% ready from ${requiredSteps.length} required setup checks.`}
+                message={launchReady ? 'Launch proof is ready for controlled customer testing' : 'Support readiness is still building'}
+                description={`${summary.readinessScore}% setup readiness from ${requiredSteps.length} required checks. ${summary.launchProof.completeCount}/${summary.launchProof.totalCount} factual launch checks are complete.`}
             />
 
             <Row gutter={[12, 12]}>
@@ -181,10 +182,10 @@ export default function AnswerlatticeDashboardPage() {
                                 type="circle"
                                 percent={summary.readinessScore}
                                 size={isMobile ? 84 : 104}
-                                strokeColor={summary.readinessScore >= 85 ? token.colorSuccess : token.colorPrimary}
+                                strokeColor={launchReady ? token.colorSuccess : token.colorPrimary}
                             />
                             <div>
-                                <Text type="secondary">Launch readiness</Text>
+                                <Text type="secondary">Setup readiness</Text>
                                 <Title level={4} style={{ margin: '4px 0' }}>
                                     {requiredSteps.filter(step => step.status === 'complete').length}/{requiredSteps.length}
                                 </Title>
@@ -207,8 +208,8 @@ export default function AnswerlatticeDashboardPage() {
                     <Card>
                         <Statistic
                             title="Coverage"
-                            value={typeof coverageRate === 'number' ? coverageRate : 0}
-                            suffix="%"
+                            value={typeof coverageRate === 'number' ? coverageRate : 'Not available'}
+                            suffix={typeof coverageRate === 'number' ? '%' : undefined}
                             prefix={<LuShieldCheck />}
                         />
                     </Card>
@@ -221,9 +222,9 @@ export default function AnswerlatticeDashboardPage() {
                 <Col xs={12} md={4}>
                     <Card>
                         <Statistic
-                            title="Trust"
-                            value={typeof trustScore === 'number' ? trustScore : 0}
-                            suffix={typeof trustScore === 'number' ? '%' : ''}
+                            title="No escalation"
+                            value={typeof noEscalationRate === 'number' ? noEscalationRate : 'Not available'}
+                            suffix={typeof noEscalationRate === 'number' ? '%' : undefined}
                             prefix={<LuShieldCheck />}
                         />
                     </Card>
@@ -261,7 +262,7 @@ export default function AnswerlatticeDashboardPage() {
                                         <List.Item
                                             actions={[
                                                 step.route ? (
-                                                    <Button key="open" size="small" onClick={() => openRoute(step.route)}>
+                                                    <Button key="open" onClick={() => openRoute(step.route)} style={{ minHeight: 44 }}>
                                                         {step.actionLabel || 'Open'}
                                                     </Button>
                                                 ) : null,
@@ -282,7 +283,7 @@ export default function AnswerlatticeDashboardPage() {
                     </Card>
                 </Col>
                 <Col xs={24} lg={10}>
-                    <Card title="Knowledge Health">
+                    <Card title="Answer Evidence">
                         <Flex vertical gap={12}>
                             <Flex justify="space-between" gap={12}>
                                 <Text type="secondary">Canonical answers</Text>
@@ -305,7 +306,10 @@ export default function AnswerlatticeDashboardPage() {
                             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                                 Open governance when you need answer-level review, drift checks, or signal-to-knowledge decisions.
                             </Paragraph>
-                            <Button onClick={() => openRoute(getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))}>
+                            <Button
+                                onClick={() => openRoute(getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))}
+                                style={{ minHeight: 44 }}
+                            >
                                 Open Governance
                             </Button>
                         </Flex>

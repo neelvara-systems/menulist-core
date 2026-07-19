@@ -11,6 +11,8 @@ import {
     isRazorpayPaymentResponse,
     MAX_SUBSCRIPTION_QUANTITY,
     normalizeSubscriptionQuantity,
+    parseRazorpaySubscriptionCheckoutResponse,
+    parseRazorpayTopupCheckoutResponse,
     type RazorpayPaymentResponse,
 } from '@lib/billing/paymentCheckoutBoundary';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -230,17 +232,15 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 ...getBoundedPaymentStringContext('planId', plan.planId),
                 quantity: subscriptionQuantity,
             });
-            const subscription = isRecord(subscriptionPayload) && isRecord(subscriptionPayload.subscription)
-                ? subscriptionPayload.subscription
-                : null;
-            if (!subscription || !isBoundedProviderString(subscription.id)) {
+            const subscriptionResponse = parseRazorpaySubscriptionCheckoutResponse(subscriptionPayload);
+            if (!subscriptionResponse) {
                 throw createPaymentStatusError(
                     'Failed to create subscription.',
                     'payment_subscription_create_response_invalid',
                     subResponse.status,
                 );
             }
-            subscriptionId = subscription.id;
+            subscriptionId = subscriptionResponse.subscription.id;
         } catch (error) {
             logPaymentFailure('payment_subscription_create_failed', error, buildPaymentLogContext('create_subscription', {
                 ...getBoundedPaymentStringContext('planId', plan.planId),
@@ -499,17 +499,15 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
             const topupOrderPayload = await readPaymentResponseJson<unknown>(response, 'topup_order_create_response', {
                 ...getBoundedPaymentStringContext('packId', pack.packId),
             });
-            const order = isRecord(topupOrderPayload) && isRecord(topupOrderPayload.order)
-                ? topupOrderPayload.order
-                : null;
-            if (!order || !isBoundedProviderString(order.id)) {
+            const topupOrderResponse = parseRazorpayTopupCheckoutResponse(topupOrderPayload);
+            if (!topupOrderResponse) {
                 throw createPaymentStatusError(
                     'Failed to create top-up order.',
                     'payment_topup_order_create_response_invalid',
                     response.status,
                 );
             }
-            orderId = order.id;
+            orderId = topupOrderResponse.order.id;
         } catch (error) {
             logPaymentFailure('payment_topup_failed', error, buildPaymentLogContext('topup_purchase', {
                 ...getBoundedPaymentStringContext('packId', pack.packId),

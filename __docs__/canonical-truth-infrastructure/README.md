@@ -18,6 +18,8 @@ Canonical Truth Infrastructure is the foundational layer that makes MenuList **i
 3. **Versioning** — Global version ID per publish, monotonic, immutable
 4. **Menu Snapshots** — Best-effort, short-term point-in-time menu state on publish
 5. **Reliability Metrics** — Completeness scores, truth metrics per store
+6. **Location Identity Boundary** — Optional owner-confirmed external bindings
+   identify the exact store/outlet without making provider facts canonical
 
 ## Architecture Overview
 
@@ -36,6 +38,7 @@ Owner clicks publish → publishProject() → version++ → snapshot saved → s
 | `src/database/projects/index.ts` | Publish pipeline, MCE + MOL integration |
 | `src/database/menuChangeLog/index.ts` | Append-only event ledger DAL |
 | `src/lib/mce/` | Menu Correctness Engine (validation) |
+| `src/lib/public-truth-tools/externalLocationIdentity.ts` | Provider-neutral external location binding validation |
 | `src/types/menuObservation.ts` | MOL types (change log, drift metrics) |
 | `src/config/features.ts` | Feature flags (ENABLE_MCE, ENABLE_MENU_OBSERVATION) |
 | `src/constants/database.ts` | Collection names |
@@ -55,6 +58,13 @@ Owner clicks publish → publishProject() → version++ → snapshot saved → s
 - Linked outlet publish observation uses the resolved master-plus-outlet menu and reuses the master read already required for publish admission.
 - Snapshot payloads above the 900 KiB preflight boundary are skipped rather than sent to Firestore as guaranteed oversize failures.
 - Snapshot documents carry `expiresAt` at 90 days. Because the current path uses dynamic store-named subcollections, native collection-group TTL cannot target the snapshot documents. The existing leased maintenance scheduler rotates a bounded daily page across all known stores, including inactive stores, and deletes expired rows in capped per-store batches.
+- External location identity stays embedded on the exact `stores/{storeId}`
+  document. An owner-saved Google Maps URI is mirrored in the existing store
+  write; a stable Place ID requires a separate owner confirmation and the ID
+  plus URI from one attributable Maps grounding source. The field is internal,
+  reversible, non-propagating, and excluded from OBP and Platform Pull output.
+  Valid Place IDs are not truncated; `confirmedAt` supports future age-based
+  revalidation without a new scheduler or refresh collection.
 
 ## Version History
 
@@ -62,3 +72,4 @@ Owner clicks publish → publishProject() → version++ → snapshot saved → s
 |------|--------|-----|
 | 2025-02-24 | Initial creation — Phase 0 verification + Phase 1 implementation | Cascade |
 | 2026-07-16 | Resolved outlet snapshots, size preflight, summary-mode and TTL truth documented | Codex |
+| 2026-07-19 | Added the embedded provider-neutral external location identity boundary and linked its source contract | Codex |

@@ -75,14 +75,8 @@ function verifyAnalyticsAdmission() {
 
   analyticsRoutes.forEach((route) => {
     const source = read(route);
-    const hasProtectedWeeklyNarrativeDelegation = route === 'src/app/api/analytics/weekly-narrative/regenerate/route.ts'
-      && source.includes("import { POST as generateWeeklyNarrativePost } from '../generate-local/route';")
-      && source.includes('return await generateWeeklyNarrativePost(request);')
-      && read('src/app/api/analytics/weekly-narrative/generate-local/route.ts')
-        .includes('export const POST = withAuth(generateWeeklyNarrativeLocally);');
     assert(
-      /\bexport\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*withAuth\b/.test(source)
-      || hasProtectedWeeklyNarrativeDelegation,
+      /\bexport\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*withAuth\b/.test(source),
       `${route} active HTTP handler must be wrapped by withAuth`,
     );
   });
@@ -253,20 +247,14 @@ function verifyAiRouteControls() {
       'finalizeAiOperationAccounting',
     ],
     'src/app/api/analytics/weekly-narrative/generate-local/route.ts': [
-      'checkSafeMode',
-      'checkRateLimit',
+      'withAuth',
       'resolveAnswerlatticeSessionScope',
       'buildAnswerlatticeRateLimitKey',
       'requireAnswerlatticePermission',
+      'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT',
       'answerlatticeFirestoreAdmin',
-      'answerlatticeGenAIClient',
-      'recordAnswerlatticeAiOperation',
-      'PRODUCT_IDS.ANSWERLATTICE',
-      'logRuntimeFailure',
-    ],
-    'src/app/api/analytics/weekly-narrative/regenerate/route.ts': [
-      "import { POST as generateWeeklyNarrativePost } from '../generate-local/route';",
-      'generateWeeklyNarrativePost(request)',
+      "generationMode: 'deterministic'",
+      'ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS',
       'logRuntimeFailure',
     ],
   };
@@ -281,13 +269,17 @@ function verifyAiRouteControls() {
   const weeklyNarrativeRoute = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
   assertNotIncludes(
     weeklyNarrativeRoute,
-    'requireAnyStorePermission',
-    'Answerlattice weekly narrative must not use MenuList store permission authority',
+    'answerlatticeGenAIClient',
+    'Answerlattice weekly narrative refresh must not use a model provider',
   );
   assertNotIncludes(
     weeklyNarrativeRoute,
-    'recordAiOperationForSession',
-    'Answerlattice weekly narrative must not use MenuList AI accounting authority',
+    'recordAnswerlatticeAiOperation',
+    'Answerlattice weekly narrative refresh must not record a provider operation',
+  );
+  assert(
+    !fs.existsSync(path.join(ROOT, 'src/app/api/analytics/weekly-narrative/regenerate/route.ts')),
+    'Retired Answerlattice weekly narrative wrapper must stay absent',
   );
 }
 

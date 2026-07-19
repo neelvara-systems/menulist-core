@@ -46,11 +46,33 @@ async function run(): Promise<void> {
                 activeJobs: 0,
                 updatedAt: NOW,
             }));
+            await setDoc(doc(adminDb, 'platformSummary', 'answerTests_1_101'), scoped({
+                id: 'answerTests_1_101',
+                schemaVersion: 4,
+                revision: 0,
+                cases: [],
+                runs: [],
+                reservations: [],
+                updatedAt: null,
+                updatedBy: null,
+            }));
         });
 
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'coverage_1_101')));
         await assertFails(getDoc(doc(otherDb, 'platformSummary', 'coverage_1_101')));
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'knowledgeIntakeSummary_1_101')));
+        await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'answerTests_1_101')));
+        await assertSucceeds(getDoc(doc(platformDb, 'platformSummary', 'answerTests_1_101')));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'answerTests_1_101'), scoped({
+            id: 'answerTests_1_101',
+            schemaVersion: 4,
+            revision: 1,
+            cases: [],
+            runs: [],
+            reservations: [],
+            updatedAt: NOW,
+            updatedBy: 'owner-1',
+        })));
 
         for (const [documentId, payload] of [
             ['coverage_1_101', { coverage: { rate: 0 }, lastUpdated: NOW }],
@@ -68,9 +90,45 @@ async function run(): Promise<void> {
             ));
         }
 
+        const validBranding = {
+            companyName: 'Example',
+            poweredByVisible: true,
+            primaryColor: '#1677ff',
+            accentColor: '#22c55e',
+            logoUrl: 'https://cdn.example.com/logo.png',
+            supportEmail: 'support@example.com',
+            privacyPolicyUrl: 'https://example.com/privacy',
+        };
         await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
-            branding: { companyName: 'Example', poweredByVisible: true, primaryColor: '#1677ff' },
+            branding: validBranding,
         })));
+        await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, logoUrl: 'https://cdn.example.com/logo@2x.png?version=1' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, customCss: 'body { display: none; }' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, fontFamily: 'url(https://attacker.example/font)' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, logoUrl: 'http://example.com/logo.png' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, logoUrl: 'https://cdn.example.com/logo image.png' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, primaryColor: 'red' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), {
+            ...scoped({ branding: validBranding }),
+            unexpected: true,
+        }));
+        await assertSucceeds(setDoc(
+            doc(ownerDb, 'platformSummary', 'branding_1_101'),
+            scoped({ branding: { ...validBranding, companyName: 'Updated Example' } }),
+            { merge: true },
+        ));
         await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'predictiveTriggers_1_101'), scoped({
             activeTriggerCount: 0,
             lastUpdated: NOW,
@@ -91,15 +149,72 @@ async function run(): Promise<void> {
         })));
 
         await assertFails(setDoc(doc(otherDb, 'platformSummary', 'branding_1_101'), scoped({
-            branding: { companyName: 'Cross tenant', poweredByVisible: true, primaryColor: '#000000' },
+            branding: { ...validBranding, companyName: 'Cross tenant' },
         })));
         await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_999_999'), scoped({
-            branding: { companyName: 'Wrong document scope', poweredByVisible: true, primaryColor: '#000000' },
+            branding: { ...validBranding, companyName: 'Wrong document scope' },
         })));
         await assertSucceeds(setDoc(doc(platformDb, 'platformSummary', 'coverage_1_101'), scoped({
             coverage: { rate: 50 },
             lastUpdated: NOW,
         })));
+
+        const surfaceId = '1_101_billing';
+        const productSurface = scoped({
+            key: 'billing',
+            label: 'Billing',
+            description: '',
+            routePatterns: ['/billing', '/billing/*'],
+            feature: 'billing',
+            page: 'invoices',
+            workflow: 'manage_subscription',
+            entityHints: [],
+            entityIds: [],
+            tags: [],
+            visibility: { helpWidget: true, helpCenter: true, changelog: true },
+            active: true,
+            priority: 100,
+            createdOn: NOW,
+            createdBy: 'Owner',
+            modifiedOn: NOW,
+            modifiedBy: 'Owner',
+        });
+        await assertSucceeds(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', surfaceId),
+            productSurface,
+        ));
+        await assertFails(setDoc(
+            doc(otherDb, 'answerlattice_productSurfaces', surfaceId),
+            productSurface,
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', '1_101_private'),
+            { ...productSurface, key: 'private', privateNote: 'not allowed' },
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', '1_101_imported'),
+            { ...productSurface, key: 'imported', intakeJobId: 'job_1' },
+        ));
+        await assertSucceeds(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', surfaceId),
+            { label: 'Billing and invoices', routePatterns: ['/billing/*'], modifiedOn: NOW, modifiedBy: 'Owner' },
+            { merge: true },
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', surfaceId),
+            { key: 'renamed' },
+            { merge: true },
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', surfaceId),
+            { tId: 2 },
+            { merge: true },
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', surfaceId),
+            { intakeReviewItemId: 'review_1' },
+            { merge: true },
+        ));
     } finally {
         await testEnv.cleanup();
     }

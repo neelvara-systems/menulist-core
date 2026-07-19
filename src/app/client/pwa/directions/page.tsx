@@ -14,6 +14,8 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import { normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
+import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
+import { resolveStorePublicLanguage } from '@lib/localization/publicRenderLanguage';
 import PwaDirectionsHandoffClient from './PwaDirectionsHandoffClient';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +43,11 @@ function buildMapsUrl(store: any): string | null {
     return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
-export default async function PwaDirectionsHandoffPage() {
+export default async function PwaDirectionsHandoffPage({
+    searchParams,
+}: {
+    searchParams?: { lang?: string | string[] };
+}) {
     const tenant = await getTenantFromHeaders('PwaDirectionsHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)
@@ -57,11 +63,14 @@ export default async function PwaDirectionsHandoffPage() {
     const mapsUrl = buildMapsUrl(store);
     if (!mapsUrl) return notFound();
 
+    const activeLanguage = resolveStorePublicLanguage(store, searchParams?.lang);
+    const t = createPublicCustomerTranslator(activeLanguage);
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);
-    const storeName = getStoreContextName(store, 'Restaurant');
+    const storeName = getStoreContextName(store, t('common.business'));
 
     return (
         <PwaDirectionsHandoffClient
+            activeLanguage={activeLanguage}
             storeId={store.id}
             tenantId={store.tenantId}
             mapsUrl={mapsUrl}

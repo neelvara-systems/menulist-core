@@ -1,4 +1,9 @@
-import { calculateSLAStatus, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import {
+    calculateSupportTicketSLAStatus,
+    getFirstSupportTicketResponse,
+    SUPPORT_TICKET_STATUS,
+    SupportTicketType,
+} from '@type/supportTicket';
 import { CSVColumn, formatTimestampForCSV } from '@util/exportUtils';
 
 /**
@@ -51,14 +56,13 @@ export const ticketCSVColumns: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => {
             if (!ticket.createdOn) return 'N/A';
             
-            const hasResponse = ticket.messages && ticket.messages.length > 1;
             const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || 
                               ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
             
             if (isResolved) return 'Resolved';
             
-            const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-            return sla.resolutionStatus.replace('_', ' ');
+            const sla = calculateSupportTicketSLAStatus(ticket);
+            return sla ? sla.resolutionStatus.replace('_', ' ') : 'N/A';
         },
     },
     {
@@ -66,14 +70,13 @@ export const ticketCSVColumns: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => {
             if (!ticket.createdOn) return 'N/A';
             
-            const hasResponse = ticket.messages && ticket.messages.length > 1;
             const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || 
                               ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
             
             if (isResolved) return 'Resolved';
             
-            const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-            return Math.round(sla.resolutionTimeRemaining);
+            const sla = calculateSupportTicketSLAStatus(ticket);
+            return sla ? Math.round(sla.resolutionTimeRemaining) : 'N/A';
         },
     },
     {
@@ -127,14 +130,13 @@ export const ticketCSVColumnsMinimal: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => {
             if (!ticket.createdOn) return 'N/A';
             
-            const hasResponse = ticket.messages && ticket.messages.length > 1;
             const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || 
                               ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
             
             if (isResolved) return 'Resolved';
             
-            const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-            return sla.resolutionStatus.replace('_', ' ');
+            const sla = calculateSupportTicketSLAStatus(ticket);
+            return sla ? sla.resolutionStatus.replace('_', ' ') : 'N/A';
         },
     },
     {
@@ -166,9 +168,9 @@ export const ticketAnalyticsColumns: CSVColumn<SupportTicketType>[] = [
     {
         header: 'First Response Time (hours)',
         accessor: (ticket) => {
-            if (!ticket.messages || ticket.messages.length <= 1 || !ticket.createdOn) return 'N/A';
+            if (!ticket.createdOn) return 'N/A';
             
-            const firstAdminMessage = ticket.messages.find(msg => msg.sender.id !== ticket.uId);
+            const firstAdminMessage = getFirstSupportTicketResponse(ticket);
             if (!firstAdminMessage) return 'N/A';
             
             const responseTime = firstAdminMessage.timestamp.toMillis() - ticket.createdOn.toMillis();
@@ -201,14 +203,14 @@ export const ticketAnalyticsColumns: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => {
             if (!ticket.createdOn) return 'N/A';
             
-            const hasResponse = ticket.messages && ticket.messages.length > 1;
             const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || 
                               ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
             
-            if (isResolved) return 'Resolved';
-            
-            const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-            return sla.resolutionStatus.replace('_', ' ');
+            const sla = calculateSupportTicketSLAStatus(ticket);
+            if (!sla) return 'N/A';
+            return isResolved && sla.resolutionStatus === 'on_time'
+                ? 'Resolved'
+                : sla.resolutionStatus.replace('_', ' ');
         },
     },
     {
@@ -216,14 +218,11 @@ export const ticketAnalyticsColumns: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => {
             if (!ticket.createdOn) return 'N/A';
             
-            const hasResponse = ticket.messages && ticket.messages.length > 1;
             const isResolved = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || 
                               ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
             
-            if (isResolved) return 'No';
-            
-            const sla = calculateSLAStatus(ticket.createdOn, ticket.priority, hasResponse, isResolved);
-            return sla.resolutionStatus === 'breached' ? 'Yes' : 'No';
+            const sla = calculateSupportTicketSLAStatus(ticket);
+            return sla?.resolutionStatus === 'breached' ? 'Yes' : 'No';
         },
     },
 ];

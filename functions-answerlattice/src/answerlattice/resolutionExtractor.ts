@@ -11,7 +11,7 @@
  * RULES:
  * - Accumulation only (3+ tickets per entity required)
  * - Max 5 drafts per nightly run (LLM cost cap)
- * - Deduplication: 3 stages (existing answer, pending proposal, post-extraction)
+ * - Deduplication: canonical target resolution, compatible pending proposal, deterministic create
  * - Read-only ticket access — resolution captured at signal emission time
  * - Failure never blocks other nightly steps (fire-and-forget)
  * - Idempotent: running twice produces identical results
@@ -19,13 +19,14 @@
  * @see __docs__/answerlattice/ticket-knowledge-loop/
  */
 
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { createHash } from 'crypto';
 import { ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { redactAnswerlatticeSupportEvidenceText } from '../sharedData/answerlatticeSupportEvidencePrivacy';
 import {
     ANSWERLATTICE_AI_ACTIONS,
     AnswerlatticeGeminiCallResult,
@@ -50,6 +51,8 @@ const CONFIG = {
     maxTicketClustersToProcess: 50, // Max entity clusters to analyze per run
     maxDraftsPerRun: 5,             // Max draft proposals to generate per run (LLM cost cap)
     maxResolutionExamples: 5,       // Max ticket resolutions per Gemini call
+    maxSignalsPerWindow: 500,       // Fail closed instead of drafting from a truncated evidence window
+    maxPendingProposalsPerEntity: 10,
     windowDays: 14,                 // Rolling window for ticket signal analysis
     confidenceThreshold: 0.7,       // Minimum extraction confidence to create proposal
     draftPromptVersion: 'v1-ticket',
@@ -73,6 +76,7 @@ const ANSWERLATTICE_TICKET_KNOWLEDGE_PARSE_FAILED = 'ANSWERLATTICE_TICKET_KNOWLE
 const ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_EXTRACTION_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_EXTRACTION_FAILED';
 const ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED';
 const ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED';
+const ANSWERLATTICE_TICKET_KNOWLEDGE_SIGNAL_WINDOW_SATURATED = 'ANSWERLATTICE_TICKET_KNOWLEDGE_SIGNAL_WINDOW_SATURATED';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -151,10 +155,13 @@ async function gatherTicketResolutionClusters(
         .where('type', '==', 'ticket')
         .where('timestamp', '>=', windowStart)
         .orderBy('timestamp', 'desc')
-        .limit(500)
+        .limit(CONFIG.maxSignalsPerWindow + 1)
         .get();
 
     if (signalsSnap.empty) return [];
+    if (signalsSnap.size > CONFIG.maxSignalsPerWindow) {
+        throw new Error(ANSWERLATTICE_TICKET_KNOWLEDGE_SIGNAL_WINDOW_SATURATED);
+    }
 
     // Group by entityId, only include signals with resolution metadata
     const clusterMap = new Map<string, TicketSignalCluster>();
@@ -171,7 +178,8 @@ async function gatherTicketResolutionClusters(
         const resolutionMessages = meta.resolutionMessages
             .filter((message: unknown): message is string => typeof message === 'string' && message.trim().length > 0)
             .slice(0, 10)
-            .map((message: string) => message.trim().slice(0, 500));
+            .map((message: string) => redactAnswerlatticeSupportEvidenceText(message, 500))
+            .filter(Boolean);
         const ticketId = typeof meta.ticketId === 'string' ? meta.ticketId.trim().slice(0, 180) : '';
         if (!ticketId || resolutionMessages.length === 0) continue;
 
@@ -190,7 +198,11 @@ async function gatherTicketResolutionClusters(
         // Avoid duplicate tickets in same cluster
         if (!cluster.ticketIds.includes(ticketId)) {
             cluster.ticketIds.push(ticketId);
-            cluster.subjects.push(typeof meta.subject === 'string' ? meta.subject.trim().slice(0, 200) || 'No subject' : 'No subject');
+            cluster.subjects.push(
+                typeof meta.subject === 'string'
+                    ? redactAnswerlatticeSupportEvidenceText(meta.subject, 200) || 'No subject'
+                    : 'No subject',
+            );
             cluster.resolutionMessages.push(resolutionMessages);
             cluster.totalCount++;
         }
@@ -206,12 +218,13 @@ async function gatherTicketResolutionClusters(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// STEP 2: DEDUPLICATION (3 Stages)
+// STEP 2: TARGET RESOLUTION AND PENDING-PROPOSAL DEDUPLICATION
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Stage 1: Check if active canonical answer already exists for this entity.
- * If yes → skip (answer already exists).
+ * Resolve the only safe canonical target for this entity. One active answer can
+ * receive a refinement proposal; no active answer can receive a new-answer
+ * proposal; multiple active answers remain owner triage.
  */
 async function getExistingCanonicalAnswerIds(tId: number, sId: number, entityId: string): Promise<string[]> {
     const snap = await db
@@ -229,25 +242,51 @@ async function getExistingCanonicalAnswerIds(tId: number, sId: number, entityId:
 }
 
 /**
- * Stage 2: Check if pending proposal already exists for this entity.
- * If yes → merge (increment sourceTicketCount, append sourceTicketIds).
- * Returns the existing proposal doc reference if found, null otherwise.
+ * Merge only into a pending proposal for the exact mutation type and target.
+ * Other pending work for the entity blocks automatic proposal creation.
  */
 async function findExistingPendingProposal(
     tId: number,
     sId: number,
-    entityId: string
-): Promise<FirebaseFirestore.QueryDocumentSnapshot | null> {
+    entityId: string,
+    mutationType: 'content_refinement' | 'new_answer_required',
+    targetAnswerId: string,
+): Promise<{
+    compatible: FirebaseFirestore.QueryDocumentSnapshot | null;
+    blockedByOtherPendingProposal: boolean;
+}> {
     const snap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('relatedEntityIds', 'array-contains', entityId)
         .where('status', '==', 'pending_review')
-        .limit(1)
+        .limit(CONFIG.maxPendingProposalsPerEntity + 1)
         .get();
 
-    return snap.empty ? null : snap.docs[0];
+    if (snap.size > CONFIG.maxPendingProposalsPerEntity) {
+        throw new Error('answerlattice_ticket_knowledge_pending_proposal_window_saturated');
+    }
+
+    let blockedByOtherPendingProposal = false;
+    for (const document of snap.docs) {
+        const data = document.data();
+        const scope = parseExactAnswerlatticeScope(data.tId, data.sId);
+        if (
+            data.pId !== ANSWERLATTICE_PRODUCT_ID
+            || !scope
+            || scope.tId !== tId
+            || scope.sId !== sId
+            || data.status !== 'pending_review'
+            || !Array.isArray(data.relatedEntityIds)
+            || !data.relatedEntityIds.includes(entityId)
+        ) continue;
+        if (data.mutationType === mutationType && data.targetAnswerId === targetAnswerId) {
+            return { compatible: document, blockedByOtherPendingProposal: false };
+        }
+        blockedByOtherPendingProposal = true;
+    }
+    return { compatible: null, blockedByOtherPendingProposal };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -317,6 +356,13 @@ async function getExistingAnswerTitles(tId: number, sId: number, entityId: strin
 
         for (const doc of snap.docs) {
             const data = doc.data();
+            const answerScope = parseExactAnswerlatticeScope(data.tId, data.sId);
+            if (
+                data.pId !== ANSWERLATTICE_PRODUCT_ID
+                || !answerScope
+                || answerScope.tId !== tId
+                || answerScope.sId !== sId
+            ) continue;
             if (data.title) titles.push(data.title);
         }
     } catch (error) {
@@ -340,8 +386,8 @@ async function getExistingAnswerTitles(tId: number, sId: number, entityId: strin
  * Pipeline:
  * 1. Gather ticket resolution signal clusters (entity-based)
  * 2. For each cluster meeting threshold:
- *    a. Dedup Stage 1: existing canonical answer → skip
- *    b. Dedup Stage 2: existing pending proposal → merge
+ *    a. Resolve the single safe canonical mutation target
+ *    b. Merge only into an exact compatible pending proposal
  *    c. Extract resolution via Gemini
  *    d. Create mutation proposal with draftSource: 'ticket_resolution'
  * 3. Cap at maxDraftsPerRun
@@ -377,9 +423,28 @@ export async function extractTicketKnowledge(
             if (draftsGenerated >= CONFIG.maxDraftsPerRun) break;
 
             try {
-                // 2a. Existing pending proposal → merge bounded ticket lineage.
-                const existingProposal = await findExistingPendingProposal(tId, sId, cluster.entityId);
-                if (existingProposal) {
+                // 2a. Determine the only safe mutation target before touching a
+                // pending proposal. Multiple active answers remain owner triage.
+                const existingAnswerIds = await getExistingCanonicalAnswerIds(tId, sId, cluster.entityId);
+                if (existingAnswerIds.length > 1) {
+                    result.skippedDuplicate++;
+                    continue;
+                }
+                const mutationType = existingAnswerIds.length === 1 ? 'content_refinement' : 'new_answer_required';
+                const targetAnswerId = existingAnswerIds[0] || '';
+
+                // 2b. Merge only into a proposal for the same governed mutation.
+                // An unrelated pending scope/version proposal must not absorb
+                // ticket lineage or have its draft silently rewritten.
+                const pendingLookup = await findExistingPendingProposal(
+                    tId,
+                    sId,
+                    cluster.entityId,
+                    mutationType,
+                    targetAnswerId,
+                );
+                if (pendingLookup.compatible) {
+                    const existingProposal = pendingLookup.compatible;
                     const merged = await db.runTransaction(async transaction => {
                         const currentSnap = await transaction.get(existingProposal.ref);
                         const current = currentSnap.data() || {};
@@ -393,11 +458,15 @@ export async function extractTicketKnowledge(
                             || current.status !== 'pending_review'
                             || !Array.isArray(current.relatedEntityIds)
                             || !current.relatedEntityIds.includes(cluster.entityId)
+                            || current.mutationType !== mutationType
+                            || current.targetAnswerId !== targetAnswerId
                         ) return false;
                         const existingTicketIds = Array.isArray(current.suggestedChange?.sourceTicketIds)
                             ? current.suggestedChange.sourceTicketIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 100)
                             : [];
-                        const newTicketIds = cluster.ticketIds.filter(id => !existingTicketIds.includes(id));
+                        const newTicketIds = cluster.ticketIds
+                            .filter(id => !existingTicketIds.includes(id))
+                            .slice(0, Math.max(0, 100 - existingTicketIds.length));
                         if (newTicketIds.length === 0) return false;
                         const storedSourceCount = normalizeOptionalNonNegativeSafeCount(
                             current.suggestedChange?.sourceTicketCount,
@@ -410,16 +479,54 @@ export async function extractTicketKnowledge(
                         if (storedSourceCount === null || storedSignalCount === null) {
                             throw new Error('answerlattice_ticket_knowledge_proposal_counter_invalid');
                         }
-                        const priorSourceCount = Math.max(
-                            storedSourceCount,
-                            existingTicketIds.length,
+                        const mergedTicketIds = [...existingTicketIds, ...newTicketIds];
+                        const now = Timestamp.now();
+                        const mergeAuditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(
+                            `ticket_merge_${existingProposal.id}_${createHash('sha256')
+                                .update(newTicketIds.slice().sort().join(','))
+                                .digest('hex')
+                                .slice(0, 24)}`,
                         );
                         transaction.update(existingProposal.ref, {
-                            'suggestedChange.sourceTicketIds': [...existingTicketIds, ...newTicketIds].slice(0, 100),
-                            'suggestedChange.sourceTicketCount': priorSourceCount + newTicketIds.length,
-                            'signalSummary.ticketCount': storedSignalCount + newTicketIds.length,
-                            modifiedOn: Timestamp.now(),
+                            'suggestedChange.sourceTicketIds': mergedTicketIds,
+                            'suggestedChange.sourceTicketCount': mergedTicketIds.length,
+                            'suggestedChange.draftSignalExamples': cluster.subjects.slice(0, 5),
+                            'suggestedChange.draftStatus': 'pending',
+                            'suggestedChange.draftSource': 'ticket_resolution',
+                            'suggestedChange.reviewReason': 'New resolved-ticket evidence was added. Regenerate the draft before approval.',
+                            'suggestedChange.draftTitle': FieldValue.delete(),
+                            'suggestedChange.structuredSummary': FieldValue.delete(),
+                            'suggestedChange.detailedExplanation': FieldValue.delete(),
+                            'suggestedChange.edgeCases': FieldValue.delete(),
+                            'suggestedChange.constraints': FieldValue.delete(),
+                            'suggestedChange.procedure': FieldValue.delete(),
+                            'suggestedChange.proposedContent': FieldValue.delete(),
+                            'suggestedChange.draftGeneratedAt': FieldValue.delete(),
+                            'suggestedChange.resolutionContext': FieldValue.delete(),
+                            'suggestedChange.extractionConfidence': FieldValue.delete(),
+                            'signalSummary.ticketCount': mergedTicketIds.length,
+                            confidenceScore: 0,
+                            modifiedOn: now,
                             modifiedBy: 'system:ticket_resolution_extractor',
+                        });
+                        transaction.create(mergeAuditRef, {
+                            pId: ANSWERLATTICE_PRODUCT_ID,
+                            tId,
+                            sId,
+                            action: 'ticket_knowledge_evidence_merged',
+                            entityType: 'mutationProposal',
+                            entityId: existingProposal.id,
+                            previousState: {
+                                sourceTicketCount: Math.max(storedSourceCount, storedSignalCount, existingTicketIds.length),
+                                draftStatus: current.suggestedChange?.draftStatus || null,
+                            },
+                            newState: {
+                                sourceTicketCount: mergedTicketIds.length,
+                                evidenceAdded: newTicketIds.length,
+                                draftStatus: 'pending',
+                            },
+                            performedBy: 'system:ticket_knowledge_nightly',
+                            timestamp: now,
                         });
                         return true;
                     });
@@ -430,17 +537,10 @@ export async function extractTicketKnowledge(
                     }
                     continue;
                 }
-
-                // 2b. A single existing answer can receive a governed content
-                // refinement. Multiple scoped answers are ambiguous and remain
-                // owner triage rather than choosing one arbitrarily.
-                const existingAnswerIds = await getExistingCanonicalAnswerIds(tId, sId, cluster.entityId);
-                if (existingAnswerIds.length > 1) {
+                if (pendingLookup.blockedByOtherPendingProposal) {
                     result.skippedDuplicate++;
                     continue;
                 }
-                const mutationType = existingAnswerIds.length === 1 ? 'content_refinement' : 'new_answer_required';
-                const targetAnswerId = existingAnswerIds[0] || '';
                 const proposalId = `almp_ticket_${createHash('sha256')
                     .update(`${tId}:${sId}:${cluster.entityId}:${cluster.ticketIds.slice().sort().join(',')}`)
                     .digest('hex')
@@ -499,6 +599,7 @@ export async function extractTicketKnowledge(
                 }
 
                 // 2d. Create mutation proposal with ticket_resolution source
+                const trackedTicketIds = cluster.ticketIds.slice(0, 100);
                 const proposalData = {
                     pId: ANSWERLATTICE_PRODUCT_ID,
                     tId,
@@ -507,7 +608,7 @@ export async function extractTicketKnowledge(
                     relatedEntityIds: [cluster.entityId],
                     mutationType,
                     signalSummary: {
-                        ticketCount: cluster.totalCount,
+                        ticketCount: trackedTicketIds.length,
                         chatCount: 0,
                         negativeFeedbackRate: 0,
                         exampleReferences: [],
@@ -536,8 +637,8 @@ export async function extractTicketKnowledge(
                         draftEntityContext: `${entity.name}: ${entity.description}`.substring(0, 500),
                         draftPromptVersion: CONFIG.draftPromptVersion,
                         // Ticket lineage
-                        sourceTicketIds: cluster.ticketIds.slice(0, 100),
-                        sourceTicketCount: cluster.totalCount,
+                        sourceTicketIds: trackedTicketIds,
+                        sourceTicketCount: trackedTicketIds.length,
                         resolutionContext: parsed.extractedProblem,
                         extractionConfidence: parsed.confidence,
                     },
@@ -566,7 +667,7 @@ export async function extractTicketKnowledge(
                         mutationType,
                         entityId: cluster.entityId,
                         entityName: entity.name,
-                        sourceTicketCount: cluster.totalCount,
+                        sourceTicketCount: trackedTicketIds.length,
                         extractionConfidence: parsed.confidence,
                         promptVersion: CONFIG.draftPromptVersion,
                     },
@@ -600,9 +701,12 @@ export async function extractTicketKnowledge(
             });
         }
     } catch (error) {
-        result.errors.push(ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED);
+        const errorCode = error instanceof Error && error.message === ANSWERLATTICE_TICKET_KNOWLEDGE_SIGNAL_WINDOW_SATURATED
+            ? ANSWERLATTICE_TICKET_KNOWLEDGE_SIGNAL_WINDOW_SATURATED
+            : ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED;
+        result.errors.push(errorCode);
         logger.error('[Answerlattice TicketKnowledge] Fatal extraction failure', {
-            failureCode: ANSWERLATTICE_TICKET_KNOWLEDGE_FATAL_FAILED,
+            failureCode: errorCode,
             ...getTicketKnowledgeScopeContext(tId, sId),
             ...getTicketKnowledgeSourceErrorContext(error),
         });

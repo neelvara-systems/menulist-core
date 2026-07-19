@@ -10,11 +10,11 @@
  * No Ant Design - uses Tailwind + inline styles only.
  */
 
-import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
 import TempStatusBanner from '@atoms/TempStatusBanner';
 import TrustSignals from '@atoms/TrustSignals';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getAnalyticsTrackingContext, getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
@@ -23,6 +23,11 @@ import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@
 import { setMenuAttributeFilterContext, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt, type TrackingData } from '@lib/analytics/unified';
 import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
 import { getStoreStatus } from '@lib/hours';
+import {
+    createPublicCustomerTranslator,
+    getPublicCustomerLanguageDirection,
+    getPublicSpiceLevelLabel,
+} from '@lib/localization/publicCustomerMessages';
 import { getLocalizedText } from '@lib/localization/text';
 import {
     getDecisionFactArray,
@@ -32,7 +37,6 @@ import {
 } from '@lib/menu/itemDecisionFacts';
 import { buildCanonicalItemUrl } from '@lib/menu/itemTruthUrls';
 import { normalizePublicMenuBackground } from '@lib/menu/publicMenuBackground';
-import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import {
     buildPublicMenuSearchDocument,
     buildPublicMenuSearchQuery,
@@ -308,10 +312,31 @@ function MenuPageNew({
         ) || businessType,
         [businessType, storeDetails?.businessType, storeDetails?.businessIndustry],
     );
-    const labels = useMemo(
-        () => getOfferingLabels(effectiveBusinessType, storeDetails?.businessCategory),
+    const resolvedBusinessCategory = useMemo(
+        () => resolveBusinessCategory(effectiveBusinessType, storeDetails?.businessCategory),
         [effectiveBusinessType, storeDetails?.businessCategory],
     );
+    const t = useMemo(
+        () => createPublicCustomerTranslator(activeLanguage),
+        [activeLanguage],
+    );
+    const languageDirection = getPublicCustomerLanguageDirection(activeLanguage);
+    const localizedItemsPlural = useMemo(() => {
+        switch (resolvedBusinessCategory) {
+            case 'service':
+            case 'health':
+            case 'professional':
+            case 'creative':
+            case 'specialty':
+                return t('menu.servicesPlural');
+            case 'retail':
+                return t('menu.productsPlural');
+            case 'food':
+                return t('menu.itemsPlural');
+            default:
+                return t('menu.offeringsPlural');
+        }
+    }, [resolvedBusinessCategory, t]);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const currencyCode = storeDetails?.currencyCode || 'INR';
     const primaryLanguage = projectData?.defaultLanguage || storeDetails?.defaultLanguage || projectData?.languages?.[0] || 'en';
@@ -431,10 +456,11 @@ function MenuPageNew({
     }, [projectData?.projectId]);
 
     // Get unavailable label based on business type
-    const unavailableLabel = useMemo(
-        () => getUnavailableLabel(effectiveBusinessType, storeDetails?.businessCategory),
-        [effectiveBusinessType, storeDetails?.businessCategory],
-    );
+    const unavailableLabel = resolvedBusinessCategory === 'food'
+        ? t('menu.soldOut')
+        : resolvedBusinessCategory === 'retail'
+            ? t('menu.outOfStock')
+            : t('menu.unavailable');
     const clearSearch = useCallback(() => {
         setSearchTerm('');
         setDebouncedSearch('');
@@ -525,30 +551,30 @@ function MenuPageNew({
 
         return [
             (publicPresence?.showCall !== false) && callHref ? {
-                label: 'Call',
+                label: t('menu.call'),
                 href: callHref,
                 track: () => trackRecoveryAction('call'),
             } : null,
             (publicPresence?.showWhatsApp !== false) && whatsappHref ? {
-                label: 'WhatsApp',
+                label: t('menu.whatsApp'),
                 href: whatsappHref,
                 external: true,
                 track: () => trackRecoveryAction('whatsapp'),
             } : null,
             (publicPresence?.showDirections !== false) && directionsHref ? {
-                label: 'Directions',
+                label: t('menu.directions'),
                 href: directionsHref,
                 external: true,
                 track: () => trackRecoveryAction('directions'),
             } : null,
             (publicPresence?.showReservation !== false) && reservationHref ? {
-                label: 'Reserve',
+                label: t('menu.reserve'),
                 href: reservationHref,
                 external: true,
                 track: () => trackRecoveryAction('reserve'),
             } : null,
             (publicPresence?.showOrder !== false) && orderHref ? {
-                label: 'Order',
+                label: t('menu.order'),
                 href: orderHref,
                 external: true,
                 track: () => trackRecoveryAction('order'),
@@ -571,6 +597,7 @@ function MenuPageNew({
         storeDetails?.timeZone,
         storeDetails?.workingHours,
         storeDetails?.businessDayEndTime,
+        t,
     ]);
 
     // P0.2 - Restore state from sessionStorage on mount (runs once when categories load)
@@ -1014,27 +1041,35 @@ function MenuPageNew({
         };
 
         const normalizedAttributes = normalizeItemFilterAttributes(item);
-        if (normalizedAttributes.veg) addChip('Vegetarian');
-        if (normalizedAttributes.nonveg) addChip('Non-veg');
-        if (normalizedAttributes.forMen) addChip('For men');
-        if (normalizedAttributes.forWomen) addChip('For women');
-        if (normalizedAttributes.popular) addChip('Popular');
+        if (normalizedAttributes.veg) addChip(t('menu.vegetarian'));
+        if (normalizedAttributes.nonveg) addChip(t('menu.nonVeg'));
+        if (normalizedAttributes.forMen) addChip(t('menu.forMen'));
+        if (normalizedAttributes.forWomen) addChip(t('menu.forWomen'));
+        if (normalizedAttributes.popular) addChip(t('menu.popular'));
 
         const canonicalDietaryFilterTags = new Set(['vegetarian', 'non-vegetarian', 'non-veg', 'nonveg']);
         getDecisionFactArray(item, 'dietaryTags')
             .filter((tag) => !canonicalDietaryFilterTags.has(tag.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')))
             .slice(0, 2)
-            .forEach((tag) => addChip(normalizeFactLabel(tag)));
+            .forEach((tag) => {
+                const key = tag.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+                if (key === 'gluten-free') addChip(t('menu.glutenFree'));
+                else if (key === 'dairy-free') addChip(t('menu.dairyFree'));
+                else if (key === 'sugar-free') addChip(t('menu.sugarFree'));
+                else addChip(normalizeFactLabel(tag));
+            });
 
         const spiceLevel = getDecisionFactString(item, 'spiceLevel');
         if (spiceLevel && !['none', 'not spicy', 'no spice'].includes(spiceLevel.toLowerCase())) {
-            addChip(`${normalizeFactLabel(spiceLevel)} spice`);
+            addChip(t('menu.spice', { value: getPublicSpiceLevelLabel(spiceLevel, t) }));
         }
 
         const durationNumber = getDecisionFactNumber(item, 'duration');
         const durationValue = getDecisionFactValue(item, 'duration');
         if (typeof durationNumber === 'number') {
-            addChip(durationNumber <= 90 ? `${durationNumber} min` : `${Math.round(durationNumber / 60)} hr`);
+            addChip(durationNumber <= 90
+                ? t('menu.minutesShort', { count: durationNumber })
+                : t('menu.hoursShort', { count: Math.round(durationNumber / 60) }));
         } else if (typeof durationValue === 'string') {
             addChip(normalizeFactLabel(durationValue));
         }
@@ -1044,11 +1079,11 @@ function MenuPageNew({
 
         const allergens = getDecisionFactArray(item, 'allergens');
         if (allergens.length > 0) {
-            addChip(`Contains ${normalizeFactLabel(allergens[0])}`, 'warning');
+            addChip(t('menu.contains', { value: normalizeFactLabel(allergens[0]) }), 'warning');
         }
 
         return chips.slice(0, 3);
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         if (!analyticsPreferences.trackMenuViews) return;
@@ -1135,23 +1170,35 @@ function MenuPageNew({
 
         const storeName =
             getMenuText((storeDetails as any)?.publicPresence?.displayName, '') ||
-            String((storeDetails as any)?.name || (storeDetails as any)?.tenantName || 'Menu').trim();
-        const menuName = getMenuText((projectData as any)?.metadata?.name, 'Menu');
+            String((storeDetails as any)?.name || (storeDetails as any)?.tenantName || t('common.business')).trim();
+        const menuName = getMenuText((projectData as any)?.metadata?.name, t('menu.menuOffering'));
         const storeDescription =
             getMenuText((storeDetails as any)?.metaDescription, '') ||
             getMenuText((storeDetails as any)?.tagline, '') ||
-            `View ${menuName} from ${storeName}.`;
+            t('menu.viewOfferingFrom', {
+                offering: menuName,
+                businessName: storeName,
+            });
         const fallbackImage = (storeDetails as any)?.logo || '';
 
         const category = item?.category
             ? allCategories.find((entry: any) => entry?.id === item.category)
             : null;
         const categoryName = category ? getMenuText(category.name, '') : '';
-        const itemName = item ? getMenuText(item.name, 'Menu item') : '';
+        const itemName = item ? getMenuText(item.name, t('menu.menuItem')) : '';
         const itemDescription = item ? getMenuText(item.description, '') : '';
         const title = itemName ? `${itemName} | ${storeName}` : `${menuName} | ${storeName}`;
         const description = itemName
-            ? itemDescription || (categoryName ? `${itemName} in ${categoryName} at ${storeName}.` : `${itemName} at ${storeName}.`)
+            ? itemDescription || (categoryName
+                ? t('menu.itemInCategoryAt', {
+                    itemName,
+                    categoryName,
+                    businessName: storeName,
+                })
+                : t('menu.itemAt', {
+                    itemName,
+                    businessName: storeName,
+                }))
             : storeDescription;
         const url = explicitUrl || (itemName ? buildItemUrl(item) : buildBaseMenuUrl());
         const imageUrl = itemName
@@ -1170,7 +1217,7 @@ function MenuPageNew({
             upsertClientHeadMeta('property', 'og:image', imageUrl);
             upsertClientHeadMeta('name', 'twitter:image', imageUrl);
         }
-    }, [allCategories, buildBaseMenuUrl, buildItemUrl, getMenuText, previewMode, projectData, storeDetails]);
+    }, [allCategories, buildBaseMenuUrl, buildItemUrl, getMenuText, previewMode, projectData, storeDetails, t]);
 
     // G14 - Handle item click with history state
     const handleItemClick = useCallback((item: any) => {
@@ -1395,7 +1442,7 @@ function MenuPageNew({
         }
 
         if (!item || item.available === false || item.active === false) {
-            setLinkNotice('This item is no longer available');
+            setLinkNotice(t('menu.itemNoLongerAvailable'));
             window.setTimeout(() => setLinkNotice(null), 2600);
             if (canonicalItemId || legacyUrlSegment) {
                 window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
@@ -1409,7 +1456,7 @@ function MenuPageNew({
         applyClientDocumentMeta(item, buildItemUrl(item));
         historyPushedRef.current = false;
 
-    }, [allItems, applyClientDocumentMeta, buildItemUrl, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, scrollToItemElement]);
+    }, [allItems, applyClientDocumentMeta, buildItemUrl, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, scrollToItemElement, t]);
 
     const scrollToCategoryElement = useCallback((categoryId: string) => {
         const element = document.getElementById(`cat-${categoryId}`);
@@ -1436,8 +1483,12 @@ function MenuPageNew({
         if (typeof window === 'undefined') return;
         if (previewMode) return;
 
-        window.history.replaceState(null, '', `${getMenuBasePath()}#cat-${categoryId}`);
-    }, [getMenuBasePath, previewMode]);
+        window.history.replaceState(
+            null,
+            '',
+            `${getMenuBasePath()}${getMenuLanguageSearch()}#cat-${categoryId}`,
+        );
+    }, [getMenuBasePath, getMenuLanguageSearch, previewMode]);
 
     const centerCategoryTab = useCallback((categoryId: string, behavior: ScrollBehavior = 'auto') => {
         const container = categoryTabsContainerRef.current;
@@ -1453,12 +1504,11 @@ function MenuPageNew({
 
         if (isComfortablyVisible) return;
 
-        const targetLeft = Math.max(
-            0,
-            tab.offsetLeft - (container.clientWidth - tab.offsetWidth) / 2,
-        );
-
-        container.scrollTo({ left: targetLeft, behavior });
+        tab.scrollIntoView({
+            behavior,
+            block: 'nearest',
+            inline: 'center',
+        });
     }, []);
 
     const scrollSearchResultsIntoView = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -1952,7 +2002,7 @@ function MenuPageNew({
     };
 
     return (
-        <div style={containerStyle}>
+        <div dir={languageDirection} lang={activeLanguage} style={containerStyle}>
             <div ref={scrollContainerRef} style={scrollContentStyle}>
                 <div style={contentStyle}>
                     <div
@@ -1999,6 +2049,7 @@ function MenuPageNew({
                     <div ref={stickyControlsRef} data-menu-sticky-controls style={stickyControlsStyle}>
                         <div style={commandLayerStyle}>
                             <MenuSearchBar
+                                activeLanguage={activeLanguage}
                                 searchTerm={searchTerm}
                                 onSearchChange={setSearchTerm}
                                 onFocusChange={setIsSearchFocused}
@@ -2126,7 +2177,7 @@ function MenuPageNew({
                                     exit={menuSearchStateMotion.exit}
                                     transition={menuSpringTransition}
                                     style={searchSuggestionsStyle}
-                                    aria-label="Search suggestions"
+                                    aria-label={t('menu.searchSuggestions')}
                                 >
                                     {searchSuggestions.map((suggestion) => (
                                         <button
@@ -2195,6 +2246,7 @@ function MenuPageNew({
 
                     {/* Filter Chips - Below category tabs, auto-hide when irrelevant */}
                     <MenuFilterChips
+                        activeLanguage={activeLanguage}
                         items={allItems}
                         activeFilter={activeFilter}
                         onFilterChange={setActiveFilter}
@@ -2218,8 +2270,14 @@ function MenuPageNew({
                                 aria-live="polite"
                             >
                                 <span>
-                                    {filteredItems.length} {filteredItems.length === 1 ? 'result' : 'results'}
-                                    {' '}across {searchResultSectionCount} {searchResultSectionCount === 1 ? 'section' : 'sections'}
+                                    {t('menu.resultsAcrossSections', {
+                                        results: filteredItems.length === 1
+                                            ? t('menu.oneResult')
+                                            : t('menu.manyResults', { count: filteredItems.length }),
+                                        sections: searchResultSectionCount === 1
+                                            ? t('menu.oneSection')
+                                            : t('menu.manySections', { count: searchResultSectionCount }),
+                                    })}
                                 </span>
                                 <button
                                     type="button"
@@ -2235,7 +2293,7 @@ function MenuPageNew({
                                         padding: 0,
                                     }}
                                 >
-                                    Show all
+                                    {t('menu.showAll')}
                                 </button>
                             </motion.div>
                         )}
@@ -2257,10 +2315,10 @@ function MenuPageNew({
                                     top: stickyControlsOffset,
                                     maxHeight: `calc(100vh - ${stickyControlsOffset + 24}px)`,
                                     overflowY: 'auto',
-                                    paddingRight: 16,
+                                    paddingInlineEnd: 16,
                                     scrollbarWidth: 'thin',
                                 }}
-                                aria-label="Menu categories"
+                                aria-label={t('menu.menuCategories')}
                             >
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                                     {allCategories.map((cat: any) => {
@@ -2283,10 +2341,10 @@ function MenuPageNew({
                                                     fontSize: 14,
                                                     fontWeight: isActive ? 600 : 400,
                                                     lineHeight: '19px',
-                                                    textAlign: 'left',
+                                                    textAlign: 'start',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.15s ease',
-                                                    borderLeft: isActive
+                                                    borderInlineStart: isActive
                                                         ? `${Math.max(3, categoryNavBorderWidth)}px solid ${moodConfig.accentColor}`
                                                         : `${Math.max(3, categoryNavBorderWidth)}px solid transparent`,
                                                     display: 'block',
@@ -2333,7 +2391,7 @@ function MenuPageNew({
                             {allCategories.map((category: any, categoryIndex: number) => {
                                 const items = getItemsForCategory(category.id);
                                 if (items.length === 0 && isSearchFilteringActive) return null;
-                                const categoryName = getMenuText(category.name, 'Category');
+                                const categoryName = getMenuText(category.name, t('menu.category'));
                                 const categoryHeaderFrameStyle = getCategoryHeaderFrameStyle();
                                 const renderedDividerStyle = getDividerStyle();
 
@@ -2388,7 +2446,7 @@ function MenuPageNew({
                                             }}>
                                                 {items.map((item: any, itemIndex: number) => {
                                                     const isAvailable = item.available !== false;
-                                                    const itemName = getMenuText(item.name, 'Menu item');
+                                                    const itemName = getMenuText(item.name, t('menu.menuItem'));
                                                     const itemDescription = getMenuText(item.description);
                                                     const itemDecisionChips = getItemDecisionChips(item);
                                                     const activePriceAttributes = getActivePublicItemPriceAttributes(item);
@@ -2466,7 +2524,7 @@ function MenuPageNew({
                                                                     {itemImageUrl && (
                                                                         <Image
                                                                             src={itemImageUrl}
-                                                                            alt={getMenuItemImageAltText(itemName, categoryName)}
+                                                                            alt={getMenuItemImageAltText(itemName)}
                                                                             fill
                                                                             style={{ objectFit: 'cover' }}
                                                                             sizes={isDesktop ? '300px' : '(max-width: 768px) 50vw, 200px'}
@@ -2504,13 +2562,13 @@ function MenuPageNew({
                                                                     )}
                                                                 </div>
                                                                 {showItemPrices && activePriceAttributes.length > 0 && (
-                                                                    <div aria-label="Available option prices" style={itemOptionPriceRowStyle}>
+                                                                    <div aria-label={t('menu.availableOptionPrices')} style={itemOptionPriceRowStyle}>
                                                                         {activePriceAttributes.map((attribute, attributeIndex) => (
                                                                             <span
                                                                                 key={`${String(attribute.id ?? 'option')}-${attributeIndex}`}
                                                                                 style={itemOptionPriceStyle}
                                                                             >
-                                                                                {getMenuText(attribute.name, 'Option')}: {' '}
+                                                                                {getMenuText(attribute.name, t('menu.option'))}: {' '}
                                                                                 <strong style={{ color: moodConfig.priceColor }}>
                                                                                     {formatMenuPrice(attribute.price as string | number, currencySymbol, { fractionDigits: 2 })}
                                                                                 </strong>
@@ -2519,7 +2577,7 @@ function MenuPageNew({
                                                                     </div>
                                                                 )}
                                                                 {itemDecisionChips.length > 0 && (
-                                                                    <div style={itemFactRowStyle} aria-label="Item details">
+                                                                    <div style={itemFactRowStyle} aria-label={t('menu.itemDetails')}>
                                                                         {itemDecisionChips.map((chip) => (
                                                                             <span key={chip.label} style={itemFactChipStyle(chip.tone)}>
                                                                                 {chip.label}
@@ -2554,7 +2612,7 @@ function MenuPageNew({
                                     color: moodConfig.bodyColor,
                                     fontFamily: moodConfig.bodyFont,
                                 }}>
-                                    No {labels.itemsPlural} yet
+                                    {t('menu.noItemsYet', { items: localizedItemsPlural })}
                                 </div>
                             )}
 
@@ -2575,10 +2633,13 @@ function MenuPageNew({
                                         }}
                                     >
                                         <div style={{ fontSize: 18, fontWeight: 600, color: moodConfig.headingColor }}>
-                                            No {labels.itemsPlural} found for &ldquo;{debouncedSearch}&rdquo;
+                                            {t('menu.noItemsFound', {
+                                                items: localizedItemsPlural,
+                                                search: debouncedSearch,
+                                            })}
                                         </div>
                                         <p style={{ margin: '10px auto 0', maxWidth: 420, lineHeight: 1.5 }}>
-                                            Try another spelling or browse a section below.
+                                            {t('menu.tryAnotherSearch')}
                                         </p>
                                         <div style={{
                                             display: 'flex',
@@ -2604,7 +2665,7 @@ function MenuPageNew({
                                                     cursor: 'pointer',
                                                 }}
                                             >
-                                                Show all
+                                                {t('menu.showAll')}
                                             </button>
                                             {suggestedCategories.map((category: any) => (
                                                 <button
@@ -2625,7 +2686,7 @@ function MenuPageNew({
                                                         cursor: 'pointer',
                                                     }}
                                                 >
-                                                    {getMenuText(category.name, 'Category')}
+                                                    {getMenuText(category.name, t('menu.category'))}
                                                 </button>
                                             ))}
                                         </div>
@@ -2645,6 +2706,7 @@ function MenuPageNew({
                         projectData?.menuSettings?.feedback !== false &&
                         projectData?.projectId && (
                             <FeedbackNudge
+                                activeLanguage={activeLanguage}
                                 projectId={projectData.projectId}
                                 reviewUrl={storeDetails?.reviewUrl}
                                 moodConfig={moodConfig}
@@ -2654,12 +2716,16 @@ function MenuPageNew({
 
                     {FEATURE_FLAGS.ENABLE_TEMP_STATUS && activeTempStatus && (
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
-                            <TempStatusBanner tempStatus={activeTempStatus as any} variant="pill" />
+                            <TempStatusBanner
+                                activeLanguage={activeLanguage}
+                                tempStatus={activeTempStatus as any}
+                                variant="pill"
+                            />
                         </div>
                     )}
 
                     {/* Menu meta moves to the bottom so browsing controls stay focused at the top. */}
-                    <section style={bottomMetaStyle} aria-label="Menu status and language">
+                    <section style={bottomMetaStyle} aria-label={t('menu.menuStatusAndLanguage')}>
                         <MenuHeader
                             activeDeviceType={activeDeviceType}
                             projectData={projectData}
@@ -2673,6 +2739,7 @@ function MenuPageNew({
 
                         {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
                             <TrustSignals
+                                activeLanguage={activeLanguage}
                                 businessType={effectiveBusinessType || storeDetails?.businessType || ''}
                                 businessCategory={storeDetails?.businessCategory}
                                 lastPublishedAt={projectData?.lastPublishedAt || null}
@@ -2695,7 +2762,7 @@ function MenuPageNew({
                       */}
 
                     {/* G06 - Service Charge Disclosure (Trust Zone - Pricing Truth) */}
-                    <ServiceChargeNote note={publicMenuSpecialNote} />
+                    <ServiceChargeNote activeLanguage={activeLanguage} note={publicMenuSpecialNote} />
 
                     {/* G09 - Contact/Location Display (Trust Zone - Business Identity) */}
                     <MenuFooter
@@ -2723,7 +2790,7 @@ function MenuPageNew({
             </div>
 
             {/* G07 - Back to Top Control (Accessibility - Long Menu Navigation) */}
-            <BackToTop scrollContainerRef={scrollContainerRef} moodConfig={moodConfig} />
+            <BackToTop activeLanguage={activeLanguage} scrollContainerRef={scrollContainerRef} moodConfig={moodConfig} />
 
             {/* PDP Modal */}
             {/* G14: Uses handleModalClose for proper history management */}

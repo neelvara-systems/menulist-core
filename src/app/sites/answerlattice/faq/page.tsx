@@ -52,7 +52,7 @@ const FAQS = [
     },
     {
         question: 'Do imports use support credits?',
-        answer: 'Selected text sources, public help pages, and normal widget loading do not consume credits. Paid intake media extraction, AI-assisted answers, fallback handling, and review work can use support credits so processing remains bounded.',
+        answer: 'Provider-backed fallback answers, full-runtime answer tests, the source-backed first-ten starter-answer run, screenshot OCR, and short recording transcription use support credits. Approved or cached widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and public help browsing do not use credits.',
     },
     {
         question: 'Does Knowledge Intake publish answers automatically?',
@@ -148,7 +148,7 @@ const FAQS = [
     },
     {
         question: 'Can AnswerLattice notify my team in Slack or email?',
-        answer: 'Yes. AnswerLattice supports Slack and email workflow notifications for support review events such as digest summaries, coverage drops, repeated answer failures, and test delivery. Broader adapter integrations should stay controlled rollout until they are safe for every workspace.',
+        answer: 'Yes. AnswerLattice supports Slack and email workflow notifications for nightly governance summaries, coverage drops, repeated AI workflow failures, and test delivery. Jira, Linear, GitHub, Notion, and custom webhook destinations are not currently offered.',
     },
     {
         question: 'Will proactive help interrupt users everywhere?',

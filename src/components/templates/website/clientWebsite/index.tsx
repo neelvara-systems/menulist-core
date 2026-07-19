@@ -8,6 +8,7 @@ import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { normalizePublicLanguageCode, resolveProjectPublicLanguage } from "@lib/localization/publicRenderLanguage";
+import { createPublicCustomerTranslator } from "@lib/localization/publicCustomerMessages";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import {
@@ -90,7 +91,6 @@ function ClientMenuRenderer({
     const router = useRouter();
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const storeId = storeDetails?.storeId;
-    const storeDisplayName = getStoreContextName(storeDetails, "Menu");
     const brandAccentColor = projectData?.config?.design?.brand?.accentColor || APP_THEME_COLOR;
     const publicBusinessType = resolvePublicBusinessType(
         storeDetails?.businessType,
@@ -118,6 +118,8 @@ function ClientMenuRenderer({
             ? resolveProjectPublicLanguage(projectData, storeDetails, storedLanguage)
             : defaultLanguage;
     });
+    const customerT = createPublicCustomerTranslator(activeLanguage);
+    const storeDisplayName = getStoreContextName(storeDetails, customerT('menu.menuOffering'));
     const handleActiveLanguageChange = useCallback((language: string) => {
         const resolvedLanguage = resolveProjectPublicLanguage(projectData, storeDetails, language);
         setActiveLanguage(resolvedLanguage);
@@ -238,6 +240,7 @@ function ClientMenuRenderer({
                     }}
                 >
                     <StoreStatusBadge
+                        activeLanguage={activeLanguage}
                         workingHours={storeDetails?.workingHours}
                         timezone={storeDetails?.timeZone}
                         urgentOnly
@@ -273,6 +276,7 @@ function ClientMenuRenderer({
                 are all satisfied. Fixed-position overlay; does not affect menu layout. */}
             {storeId && (
                 <CustomerAppController
+                    activeLanguage={activeLanguage}
                     storeId={storeId}
                     tenantId={storeDetails.tenantId}
                     storeName={storeDisplayName}

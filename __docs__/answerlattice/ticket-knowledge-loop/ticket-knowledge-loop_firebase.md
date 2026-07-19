@@ -1,140 +1,40 @@
-# Ticket → Knowledge Loop — Firebase Cost & Operations
+# Ticket-to-Knowledge Loop - Firebase
 
-> **Version:** 1.1.1
-> **Created:** 2026-03-09
-> **Last Updated:** 2026-06-29
-> **Audience:** Developers
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
+> **Status:** Dedicated and shared rule emulators pass as of 2026-07-18
 
----
+## Collections and Operations
 
-## §1 — Collections Used (All Existing)
+| Collection | Operation | Bound |
+|---|---|---:|
+| `answerlattice_signalEvents` | Resolution signal create | 1 per admitted resolution lifecycle event |
+| `answerlattice_signalEvents` | 14-day extraction query | 500 + 1 sentinel |
+| `answerlattice_canonicalAnswers` | Active target lookup per candidate | 2 |
+| `answerlattice_mutationProposals` | Pending compatibility lookup | 10 + 1 sentinel |
+| `answerlattice_mutationProposals` | New proposal writes | Max 5 per tenant run |
+| `answerlattice_mutationProposals` | Compatible merge update | One transaction per admitted merge |
+| `answerlattice_auditLogs` | Extract/create or evidence-merge lineage | Paired with proposal write |
 
-| Collection | Firestore Project | Access | Purpose |
-|------------|------------------|--------|---------|
-| `answerlattice_signalEvents` | Answerlattice | Read + Write | Enriched ticket resolution signals |
-| `answerlattice_mutationProposals` | Answerlattice | Read + Write | Proposals with `draftSource: 'ticket_resolution'` |
-| `answerlattice_canonicalAnswers` | Answerlattice | Read | Deduplication check |
-| `answerlattice_auditLogs` | Answerlattice | Write | Provenance tracking |
-| `supportTickets` | Answerlattice Firebase in separate mode | Source UI data only; nightly uses copied signal metadata | Resolution messages are captured at signal emission time so nightly does not re-read ticket documents |
+## Rule Contract
 
-**New collections: ZERO**
+- Signals are append only.
+- Deduplicated signals require `identityFingerprint`; a fingerprint without `dedupKey` is rejected.
+- Signal type `guided_resolution` remains admitted for the connected interactive-resolution runtime.
+- Browser proposal creation requires governance permission, pending status, valid confidence range, and one existing in-scope entity.
+- Browser proposal update/delete is denied.
+- `ticket_knowledge_evidence_merged` is server reserved and cannot be forged by a client.
+- The Support Board manual proposal plus `mutation_proposal_created_manual` audit can be created as one authorized batch.
 
----
+## Idempotency
 
-## §2 — Operations Per Nightly Run (Per Tenant)
+- Signal document: deterministic `sig_*` ID plus payload fingerprint.
+- Ticket-derived proposal: deterministic `almp_ticket_*` ID.
+- Evidence merge audit: deterministic proposal ID plus hash of newly admitted ticket IDs.
+- Manual Support Board proposal: deterministic `almp_manual_*` ID plus exact replay comparison.
 
-### Step 14: Ticket Resolution Knowledge Extraction
+## Retention and Privacy
 
-| Operation | Type | Count (est.) | Description |
-|-----------|------|-------------|-------------|
-| Signal events query | Read | 1 | Query `answerlattice_signalEvents` where type='ticket', last 14 days |
-| Signal event docs | Read | ~50 | Read ticket signal documents for entity clustering |
-| Canonical answer dedup | Read | ~5 | Check existing active answers per entity cluster |
-| Pending proposal dedup | Read | ~5 | Check existing pending proposals per entity cluster |
-| Proposal create | Write | 0-5 | New mutation proposals (capped at 5/run) |
-| Proposal merge update | Write | 0-5 | Increment sourceTicketCount on existing proposals |
-| Audit log writes | Write | 0-5 | One per extraction attempt |
-| **Total per tenant** | | **~66-76** | |
+Signal events receive the shared retention `expiresAt`. Ticket documents are not reread by the nightly extractor; only bounded signal evidence is consumed. This reduces coupling but does not remove the need for approved model-provider data handling.
 
-Existing-answer lookup failures during dedupe are non-blocking. They log `ANSWERLATTICE_TICKET_KNOWLEDGE_EXISTING_ANSWERS_LOAD_FAILED` with source error name/code/status, tenant/store scope booleans, and bounded entity identifier metadata before continuing with an empty title list. Entity loads and proposal merges independently require exact stored product/tenant/store identity. Merge counters are exact nonnegative safe integers; only an absent legacy counter can be derived from the admitted ticket-ID list, and malformed counters abort the transaction. Entity read failures use `ANSWERLATTICE_TICKET_KNOWLEDGE_ENTITY_LOAD_FAILED` rather than being reported as missing truth.
+## Cost Statement
 
-### Enhanced Signal Emission (Frontend, Per Ticket Resolution)
-
-| Operation | Type | Count | Description |
-|-----------|------|-------|-------------|
-| Signal event write | Write | 1 | One enriched signal per ticket resolution |
-
----
-
-## §3 — Cost Per Tenant Per Month
-
-### Firestore Operations
-
-| Metric | Volume | Cost |
-|--------|--------|------|
-| Nightly reads | ~66 × 30 = ~1,980 | $0.0012 |
-| Nightly writes | ~15 × 30 = ~450 | $0.0008 |
-| Signal emission writes | ~20/month (est.) | $0.00004 |
-| **Monthly Firestore total** | | **~$0.002** |
-
-### LLM Costs (Gemini 2.5 Flash)
-
-| Operation | Frequency | Input Tokens | Output Tokens | Cost |
-|-----------|-----------|-------------|--------------|------|
-| Resolution extraction | Max 5/night = 150/month | ~300K | ~75K | ~$0.045 |
-| Draft generation | Max 5/night = 150/month | ~450K | ~150K | ~$0.075 |
-| **Monthly LLM total** | | | | **~$0.12** |
-
-### Total Monthly Cost Per Tenant
-
-Assumption for INR estimates: ₹85/USD placeholder.
-
-| Component | Cost |
-|-----------|------|
-| Firestore | ~₹0.20 |
-| LLM (Gemini Flash) | ~₹10 |
-| **Total** | **~₹10/tenant/month** |
-
-### Scale Projection
-
-| Tenants | Monthly Cost |
-|---------|-------------|
-| 10 | ~₹100 |
-| 100 | ~₹1,000 |
-| 1,000 | ~₹10,000 |
-
----
-
-## §4 — Existing Indexes (No New Indexes Required)
-
-The following existing indexes support this feature:
-
-1. `answerlattice_signalEvents`: `tId ASC, sId ASC, type ASC, timestamp DESC` — query ticket signals by entity
-2. `answerlattice_mutationProposals`: `tId ASC, sId ASC, relatedEntityIds ARRAY, status ASC` — dedup check
-3. `answerlattice_canonicalAnswers`: `tId ASC, sId ASC, scope.entityIds ARRAY, status ASC` — dedup check
-
-No new composite indexes required.
-
----
-
-## §5 — Cost Guardrails
-
-| Guardrail | Value | Purpose |
-|-----------|-------|---------|
-| Max drafts per nightly run | 5 | Cap LLM cost per tenant per night |
-| Max ticket clusters analyzed | 50 | Cap Firestore reads per nightly run |
-| Min tickets per cluster | 3 | Prevent single-ticket extraction (reduces LLM calls) |
-| Batch processing (nightly) | 1/day | No real-time processing spikes |
-| Feature flag default | ON | Work still remains bounded by tenant summary discovery, resolved-ticket threshold, and draft caps |
-
----
-
-## §6 — DAL Functions (Existing + Enhanced)
-
-### Frontend DAL (No New Functions)
-
-All frontend operations use existing DAL:
-- `emitAnswerlatticeSignal()` — enhanced metadata (signalEmitter.ts)
-- `runAnswerlatticeGovernanceAction({ action: 'approve_proposal' })` — browser handoff to the protected server transaction; canonical and proposal-decision writes are not client-authorized
-
-### Cloud Function Operations (Server-Side)
-
-New CF file `resolutionExtractor.ts` uses firebase-admin directly:
-- `db.collection().where().get()` — standard Firestore queries
-- `db.collection().add()` — proposal creation
-- `db.collection().doc().update()` — proposal merge
-
-Failure results returned to the nightly scheduler use fixed `ANSWERLATTICE_TICKET_KNOWLEDGE_*` codes. Runtime logs keep only source error name/code/status, scope booleans, and identifier presence/length metadata. Proposal and audit lineage fields remain unchanged.
-
----
-
-## §7 — Data Lifecycle
-
-| Data | TTL | Cleanup |
-|------|-----|---------|
-| Ticket resolution signals | 12 months | Existing signal TTL archive (Step 8) |
-| Mutation proposals (pending) | 30 days | Existing candidate lifecycle |
-| Mutation proposals (approved) | Permanent | Becomes canonical answer |
-| Mutation proposals (rejected) | 90 days | Existing archive cleanup |
-| Audit logs | Permanent | Append-only (no cleanup) |
+The runtime is bounded, but no fixed per-tenant currency claim is maintained here. Measure actual Firestore reads/writes and model operations through runtime accounting and provider billing.

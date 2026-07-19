@@ -7,7 +7,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import type { AnswerlatticeAnswerTestCase, AnswerlatticeAnswerTestSource } from '@lib/answerlattice/answerTestContracts';
 import {
-    ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX,
+    ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_CHARS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_EXCERPT_CHARS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
@@ -65,6 +65,7 @@ const REVIEW_ITEMS = DB_COLLECTIONS.ANSWERLATTICE_INTAKE_REVIEW_ITEMS;
 const SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
 const PACK_LEASE_MS = 5 * 60 * 1000;
 const PACK_REFUND_REASON = 'product_starter_pack_generation_failed';
+const PRODUCT_STARTER_PACK_REQUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{8,100}$/;
 
 const cleanText = (value: unknown, max: number) => String(value || '')
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -394,6 +395,7 @@ const buildReviewItems = (
         sId: scope.sId,
         jobId,
         sourceId: candidate.sourceIds[0],
+        sourceIds: candidate.sourceIds,
         target: ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL,
         status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.DRAFT,
         title: candidate.title,
@@ -441,7 +443,7 @@ const buildCases = (reviewItems: AnswerlatticeIntakeReviewItem[], timestamp: str
                 ...(applicability?.role ? { role: applicability.role } : {}),
             };
             return {
-                id: `${ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_PREFIX}${String(index + 1).padStart(2, '0')}`,
+                id: ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS[index],
                 title: item.title,
                 query: item.question || item.title,
                 ...(Object.keys(context).length > 1 ? { context } : {}),
@@ -489,8 +491,13 @@ const loadCachedPack = async (
         return item;
     });
     const positions = new Set(reviewItems.map(item => item.launchPack?.position));
+    const expectedPositions = Array.from(
+        { length: ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE },
+        (_, index) => index + 1,
+    );
     if (
         positions.size !== ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE
+        || expectedPositions.some(position => !positions.has(position))
         || reviewItems.some(item => (
             !item.launchPack
             || item.id !== buildReviewItemId(job.id, sourceHash, item.launchPack.position)
@@ -548,6 +555,9 @@ export async function generateAnswerlatticeProductStarterPack(
     const scope = assertScope(scopeInput);
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(jobIdInput);
     if (!jobId) throw new Error('Knowledge intake job not found.');
+    if (!PRODUCT_STARTER_PACK_REQUEST_ID_PATTERN.test(requestId)) {
+        throw new Error('Product-specific starter pack request is invalid.');
+    }
 
     const initialJobSnapshot = await jobRef(jobId).get();
     if (!initialJobSnapshot.exists) throw new Error('Knowledge intake job not found.');

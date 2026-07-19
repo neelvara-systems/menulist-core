@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import { PRODUCT_IDS } from '@constant/product';
+import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS } from '@type/answerlattice';
 
 import {
     normalizeAnswerlatticeCanonicalAnswerId,
@@ -10,6 +13,7 @@ import {
 } from './governanceIdBoundary';
 
 const FirestoreDocumentIdSchema = z.string().trim().min(1).max(180);
+const EvidenceDocumentIdSchema = FirestoreDocumentIdSchema.refine(isValidFirestoreDocumentId, 'Invalid evidence document id');
 const CanonicalAnswerIdSchema = FirestoreDocumentIdSchema.refine(
     value => normalizeAnswerlatticeCanonicalAnswerId(value) === value,
     'Invalid canonical answer id',
@@ -24,6 +28,29 @@ const ResolvedEntityIdSchema = FirestoreDocumentIdSchema.refine(
 );
 
 const OptionalScopeIdsSchema = z.array(ResolvedEntityIdSchema).max(50).optional();
+
+const PublicCitationUrlSchema = z.string()
+    .trim()
+    .min(1)
+    .max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_URL_LENGTH)
+    .url()
+    .refine(value => normalizeAnswerlatticePublicCitationUrl(value) !== null, 'Citation URL must be a public HTTP or HTTPS URL without credentials');
+
+export const AnswerlatticeCanonicalCitationInputSchema = z.object({
+    id: EvidenceDocumentIdSchema.optional(),
+    title: z.string().trim().min(1).max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_CITATION_TITLE_LENGTH),
+    url: PublicCitationUrlSchema,
+    sourceId: EvidenceDocumentIdSchema.optional(),
+}).strict();
+
+export const AnswerlatticeCanonicalEvidenceSchema = z.object({
+    sourceIds: z.array(EvidenceDocumentIdSchema)
+        .max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_SOURCE_IDS)
+        .default([]),
+    citations: z.array(AnswerlatticeCanonicalCitationInputSchema)
+        .max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS)
+        .default([]),
+}).strict();
 
 export const AnswerlatticeCanonicalScopeSchema = z.object({
     entityIds: z.array(ResolvedEntityIdSchema).min(1).max(25),
@@ -56,6 +83,7 @@ export const AnswerlatticeCanonicalProposalAnswerSchema = z.object({
     scope: AnswerlatticeCanonicalScopeSchema,
     productBinding: AnswerlatticeCanonicalProductBindingSchema,
     content: AnswerlatticeCanonicalContentSchema,
+    evidence: AnswerlatticeCanonicalEvidenceSchema.optional(),
 }).strict().superRefine((answer, context) => {
     if (answer.answerType === 'procedure' && !answer.content.procedure) {
         context.addIssue({
@@ -106,6 +134,8 @@ const AnswerlatticeMutationSuggestedChangeSchema = z.object({
     proposedProductBinding: AnswerlatticeCanonicalProductBindingSchema.optional(),
     proposedStatus: z.enum(['active', 'needs_review', 'deprecated', 'archived']).optional(),
     proposedAnswerType: z.enum(['explanation', 'navigation', 'procedure']).optional(),
+    proposedEvidence: AnswerlatticeCanonicalEvidenceSchema.optional(),
+    baseAnswerFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     sourceTicketIds: z.array(FirestoreDocumentIdSchema).max(100).optional(),
     sourceTicketCount: z.number().int().nonnegative().max(1_000_000).optional(),
     resolutionContext: z.string().trim().max(24_000).optional(),
@@ -158,6 +188,9 @@ export const AnswerlatticeGovernanceEditedContentSchema = z.object({
     detailedExplanation: z.string().trim().min(1).max(24_000).optional(),
     edgeCases: z.string().trim().max(8_000).optional(),
     constraints: z.string().trim().max(8_000).optional(),
+    citations: z.array(AnswerlatticeCanonicalCitationInputSchema)
+        .max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_PUBLIC_CITATIONS)
+        .optional(),
 }).strict();
 
 export type AnswerlatticeGovernanceEditedContent = z.infer<typeof AnswerlatticeGovernanceEditedContentSchema>;
@@ -188,9 +221,7 @@ const AnswerlatticeGovernanceActionBaseSchema = z.discriminatedUnion('action', [
         proposalId: MutationProposalIdSchema,
     }).strict(),
     z.object({
-        action: z.literal('record_drift'),
-        answerId: CanonicalAnswerIdSchema,
-        driftReason: z.string().trim().min(1).max(4_000),
+        action: z.literal('evaluate_drift'),
     }).strict(),
     z.object({
         action: z.literal('validate_drift'),
@@ -241,6 +272,15 @@ export type AnswerlatticeCanonicalProposalAnswer = {
         constraints?: string;
         procedure?: unknown;
     };
+    evidence?: {
+        sourceIds: string[];
+        citations: Array<{
+            id?: string;
+            title: string;
+            url: string;
+            sourceId?: string;
+        }>;
+    };
 };
 
 export type AnswerlatticeGovernanceAction =
@@ -253,7 +293,7 @@ export type AnswerlatticeGovernanceAction =
     }
     | { action: 'reject_proposal'; proposalId: string }
     | { action: 'mark_implemented'; proposalId: string }
-    | { action: 'record_drift'; answerId: string; driftReason: string }
+    | { action: 'evaluate_drift' }
     | { action: 'validate_drift'; answerId: string }
     | { action: 'merge_entities'; requestId: string; survivorId: string; mergedId: string };
 
@@ -266,7 +306,11 @@ export type AnswerlatticeGovernanceActionResult = {
     created?: boolean;
     transferredAnswers?: number;
     transferredArticles?: number;
+    transferredFaqs?: number;
     transferredRelations?: number;
+    transferredSurfaces?: number;
+    evaluatedAnswers?: number;
+    updatedAnswers?: number;
 };
 
 export const AnswerlatticeGovernanceActionResultSchema = z.object({
@@ -277,7 +321,7 @@ export const AnswerlatticeGovernanceActionResultSchema = z.object({
         'approve_proposal',
         'reject_proposal',
         'mark_implemented',
-        'record_drift',
+        'evaluate_drift',
         'validate_drift',
         'merge_entities',
     ]),
@@ -287,5 +331,9 @@ export const AnswerlatticeGovernanceActionResultSchema = z.object({
     created: z.boolean().optional(),
     transferredAnswers: z.number().int().nonnegative().optional(),
     transferredArticles: z.number().int().nonnegative().optional(),
+    transferredFaqs: z.number().int().nonnegative().optional(),
     transferredRelations: z.number().int().nonnegative().optional(),
+    transferredSurfaces: z.number().int().nonnegative().optional(),
+    evaluatedAnswers: z.number().int().nonnegative().optional(),
+    updatedAnswers: z.number().int().nonnegative().optional(),
 }).strict() as z.ZodType<AnswerlatticeGovernanceActionResult>;

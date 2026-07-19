@@ -27,6 +27,7 @@ import {
     recordFounderSubscriptionNewMrr,
 } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { normalizeRazorpayInvoiceUrl } from '@lib/razorpay/checkoutUrl';
 import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validator";
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
 import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
@@ -251,7 +252,7 @@ const getRazorpayPaymentFailureRemark = (eventType: string | undefined) => {
 const getInvoiceById = async (eventPayloadToUpload: any, invoiceId: string) => {
     try {
         const invoice = await razorpayClient.invoices.fetch(invoiceId);
-        const invoiceUrl = invoice.short_url;
+        const invoiceUrl = normalizeRazorpayInvoiceUrl(invoice.short_url);
         eventPayloadToUpload.invoiceUrl = invoiceUrl;
         eventPayloadToUpload.payload.invoice = invoice;
         return eventPayloadToUpload;

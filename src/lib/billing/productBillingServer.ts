@@ -11,7 +11,10 @@ import {
     normalizeAnswerlatticeBillingScopeDocumentId,
     normalizeAnswerlatticeSubscriptionId,
 } from '@lib/answerlattice/billingDocumentIdBoundary';
-import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import {
+    getAnswerlatticeBillingRecordScope,
+    isAnswerlatticeSubscriptionInScope,
+} from '@lib/answerlattice/billingScopeBoundary';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     canUseAnswerlatticeManagement,
@@ -153,8 +156,8 @@ const productDocPayload = (
     const userId = data.uId ?? data.userId;
     return sanitizeForAdminFirestore({
         ...data,
-        pId: data.pId ?? productId,
-        productId: data.productId ?? productId,
+        pId: isAnswerlatticeBillingProduct(productId) ? productId : data.pId ?? productId,
+        productId: isAnswerlatticeBillingProduct(productId) ? productId : data.productId ?? productId,
         ...(storeId !== undefined ? { sId: storeId } : {}),
         ...(tenantId !== undefined ? { tId: tenantId } : {}),
         ...(userId !== undefined ? { uId: userId } : {}),
@@ -290,7 +293,12 @@ export const getProductSubscriptionById = async (
         .get();
 
     if (!docSnap.exists) return null;
-    return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+    const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+    if (
+        isAnswerlatticeBillingProduct(productId)
+        && !getAnswerlatticeBillingRecordScope(subscription)
+    ) return null;
+    return subscription;
 };
 
 const fetchAnswerlatticeSubscriptionRaw = async (
@@ -541,6 +549,10 @@ export async function applyProductSubscriptionPayment(
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
+        if (
+            isAnswerlatticeBillingProduct(productId)
+            && !getAnswerlatticeBillingRecordScope(current)
+        ) return null;
         const billingHistory = Array.isArray(current.billingHistory)
             ? current.billingHistory.filter((entry): entry is string => typeof entry === 'string')
             : [];
@@ -645,6 +657,10 @@ export async function applyProductSubscriptionStatusTransition(
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
+        if (
+            isAnswerlatticeBillingProduct(productId)
+            && !getAnswerlatticeBillingRecordScope(current)
+        ) return null;
         if (current.status === params.nextStatus) {
             return {
                 applied: false,
@@ -796,16 +812,24 @@ export async function applyProductSubscriptionUpgradeCarryForward(
             productId,
             newSubscription.storeId ?? newSubscription.sId,
         );
-        const scopeMatches = Boolean(
-            oldTenantScope
-            && oldStoreScope
-            && newTenantScope
-            && newStoreScope
-            && oldTenantScope.numericId === tenantScope.numericId
-            && newTenantScope.numericId === tenantScope.numericId
-            && oldStoreScope.numericId === storeScope.numericId
-            && newStoreScope.numericId === storeScope.numericId
-        );
+        const scopeMatches = isAnswerlatticeBillingProduct(productId)
+            ? isAnswerlatticeSubscriptionInScope(oldSubscription, {
+                tId: tenantScope.numericId,
+                sId: storeScope.numericId,
+            }) && isAnswerlatticeSubscriptionInScope(newSubscription, {
+                tId: tenantScope.numericId,
+                sId: storeScope.numericId,
+            })
+            : Boolean(
+                oldTenantScope
+                && oldStoreScope
+                && newTenantScope
+                && newStoreScope
+                && oldTenantScope.numericId === tenantScope.numericId
+                && newTenantScope.numericId === tenantScope.numericId
+                && oldStoreScope.numericId === storeScope.numericId
+                && newStoreScope.numericId === storeScope.numericId
+            );
         const carriedFromId = normalizeSubscriptionId(newSubscription.carryForwardFromSubscriptionId);
         const storedCarryForwardCredits = Number(newSubscription.carryForwardCredits);
         const duplicate = (
@@ -951,6 +975,10 @@ export async function applyProductSubscriptionWebhookEvent(
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
+        if (
+            isAnswerlatticeBillingProduct(productId)
+            && !getAnswerlatticeBillingRecordScope(current)
+        ) return null;
         const eventHistory = Array.isArray(current.webhookEventHistory)
             ? current.webhookEventHistory.filter((entry): entry is string => typeof entry === 'string')
             : [];

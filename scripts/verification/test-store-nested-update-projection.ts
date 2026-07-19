@@ -74,17 +74,100 @@ assert.deepEqual(
 
 assert.deepEqual(
     projectStoreNestedUpdateEntries({
+        externalLocationIdentity: {
+            schemaVersion: 'menulist.external-location-identity.v1',
+            bindings: {
+                google_maps: {
+                    provider: 'google_maps',
+                    providerLocationId: 'ChIJ-current',
+                },
+            },
+        },
         modifiedOn: 'now',
         publicPresence: { descriptor: { en: 'New English' }, photos: ['one'] },
         workingHours: { monday: '09:00-17:00' },
     }),
     [
+        {
+            path: ['externalLocationIdentity', 'schemaVersion'],
+            value: 'menulist.external-location-identity.v1',
+        },
+        {
+            path: ['externalLocationIdentity', 'bindings', 'google_maps', 'provider'],
+            value: 'google_maps',
+        },
+        {
+            path: ['externalLocationIdentity', 'bindings', 'google_maps', 'providerLocationId'],
+            value: 'ChIJ-current',
+        },
         { path: ['modifiedOn'], value: 'now' },
         { path: ['publicPresence', 'descriptor', 'en'], value: 'New English' },
         { path: ['publicPresence', 'photos'], value: ['one'] },
         { path: ['workingHours', 'monday'], value: '09:00-17:00' },
     ],
     'nested store patches must become Firestore field paths',
+);
+
+assert.deepEqual(
+    mergeStoreNestedUpdateWithCurrent(
+        {
+            externalLocationIdentity: {
+                schemaVersion: 'menulist.external-location-identity.v1',
+                bindings: {
+                    google_business_profile: {
+                        provider: 'google_business_profile',
+                        providerLocationId: 'gbp-current',
+                    },
+                    google_maps: {
+                        provider: 'google_maps',
+                        providerLocationId: 'maps-old',
+                    },
+                },
+            },
+        },
+        {
+            externalLocationIdentity: {
+                bindings: {
+                    google_maps: {
+                        provider: 'google_maps',
+                        providerLocationId: 'maps-new',
+                    },
+                },
+            },
+        },
+    ),
+    {
+        externalLocationIdentity: {
+            schemaVersion: 'menulist.external-location-identity.v1',
+            bindings: {
+                google_business_profile: {
+                    provider: 'google_business_profile',
+                    providerLocationId: 'gbp-current',
+                },
+                google_maps: {
+                    provider: 'google_maps',
+                    providerLocationId: 'maps-new',
+                },
+            },
+        },
+    },
+    'external location updates must preserve other provider bindings',
+);
+const externalLocationRemovalProjection = projectStoreNestedUpdateEntries({
+    externalLocationIdentity: {
+        bindings: {
+            google_maps: STORE_NESTED_DELETE,
+        },
+    },
+});
+assert.equal(
+    isStoreNestedDelete(
+        externalLocationRemovalProjection.find(
+            (entry) => entry.path.join('.') === 'externalLocationIdentity.bindings.google_maps',
+        )?.value,
+    ),
+    true,
+    'external location removal must target only the selected provider binding',
 );
 
 assert.deepEqual(

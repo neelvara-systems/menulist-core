@@ -17,9 +17,11 @@
 ## Settings
 
 - GET workspace profile returns `timeZone` and `businessDayEndTime`.
-- PUT workspace profile validates `HH:mm`.
+- PUT workspace profile validates IANA timezone, exact `HH:mm`, HTTP(S)-only product URL, and expected revision.
 - GET/PUT workspace profile require Answerlattice management scope.
-- PUT workspace profile syncs `platformSummary/answerlatticeTenantsSummary`.
+- PUT workspace profile atomically syncs the store, one tenant-summary shard, compiled source version, and stale manifest.
+- A stale profile revision returns conflict without overwriting current timing.
+- An unchanged profile writes nothing and does not increment the compiled source version.
 - Bundle product summaries include scheduler timezone/EOD metadata.
 
 ## Owner Dashboard

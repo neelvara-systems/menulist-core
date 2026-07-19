@@ -137,5 +137,11 @@ for (const method of ['emitWorkflowEvent', 'getGuidanceState']) {
     assert.ok(sdkDistribution.includes(method), `SDK distribution must expose ${method}`);
     assert.ok(sdkTypes.includes(method), `SDK declaration output must expose ${method}`);
 }
+for (const contextField of ['state', 'version']) {
+    assert.ok(sdkSource.includes(`| '${contextField}'`), `SDK source must type ${contextField} context`);
+    assert.ok(sdkTypes.includes(`| '${contextField}'`), `SDK declaration output must type ${contextField} context`);
+}
+assert.ok(sdkSource.includes('function sanitizeContextVersion'), 'SDK source must validate product version context');
+assert.ok(sdkDistribution.includes('function sanitizeContextVersion'), 'SDK distribution must validate product version context');
 
 process.stdout.write('Answerlattice MenuList reference-client contracts passed.\n');

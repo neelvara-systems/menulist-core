@@ -35,9 +35,17 @@ const entry = (title: string, files: Array<Record<string, unknown>> = []) => ({
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
     if (!db) throw new Error('Answerlattice Firestore Admin is required');
-    for (const name of ['changelog', 'answerlattice_changelogEntryIndex', 'platformSummary']) {
+    for (const name of ['changelog', 'answerlattice_changelogEntryIndex', 'answerlattice_releases', 'platformSummary']) {
         await db.recursiveDelete(db.collection(name));
     }
+
+    const releasedAt = Timestamp.fromDate(new Date('2026-07-11T10:00:00.000Z'));
+    await db.collection('answerlattice_releases').doc('release-linked').set({
+        pId: 'AL', tId: 1, sId: 101,
+        versionLabel: '1.0.0', versionNormalized: 1_000_000,
+        releasedAt, entityChanges: ['billing'], status: 'active',
+        createdOn: releasedAt, createdBy: 'Owner', modifiedOn: releasedAt, modifiedBy: 'Owner',
+    });
 
     const created = await executeAnswerlatticeChangelogAction({
         action: 'create', requestId: 'create_request_1', entry: entry('First release'),
@@ -92,8 +100,26 @@ async function run(): Promise<void> {
     assert.ok((latestData?.entryIds || []).includes(parallelA.entryId));
     assert.ok((latestData?.entryIds || []).includes(parallelB.entryId));
 
+    const linkedReleaseEntry = {
+        ...entry('Published release'),
+        published: true,
+        version: '1.0.0',
+        entityChanges: ['billing'],
+        releaseId: 'release-linked',
+    };
+    const published = await executeAnswerlatticeChangelogAction({
+        action: 'create', requestId: 'published_request_1', entry: linkedReleaseEntry,
+    }, access);
+    assert.equal(published.replayed, false);
+    await assert.rejects(executeAnswerlatticeChangelogAction({
+        action: 'create', requestId: 'published_request_unlinked', entry: { ...linkedReleaseEntry, releaseId: null },
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 400);
+    await assert.rejects(executeAnswerlatticeChangelogAction({
+        action: 'create', requestId: 'published_request_mismatch', entry: { ...linkedReleaseEntry, entityChanges: ['settings'] },
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+
     const sourceVersions = (await db.collection('platformSummary').doc('sourceVersions_1_101').get()).data();
-    assert.ok(Number(sourceVersions?.releases) >= 6, 'every non-replayed mutation must invalidate compiled release context once');
+    assert.ok(Number(sourceVersions?.releases) >= 7, 'every non-replayed mutation must invalidate compiled release context once');
 }
 
 run()

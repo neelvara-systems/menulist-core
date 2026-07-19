@@ -225,6 +225,12 @@ The development-only clear control is a bounded composition of the same operatio
 
 HelpChat message copy, AI Search answer copy, and ArticleView link copy acknowledgement hardening is browser-local and cost-neutral. `src/lib/answerlattice/supportClipboard.ts` checks Clipboard API support, falls back to a textarea copy path only when available, and requires `document.execCommand('copy') === true` before copied feedback appears. This adds no Firestore reads/writes/deletes, no Storage operations, no Firebase Auth operations, no API routes, no Cloud Functions, no indexes, no rules, no provider calls, and no deployment requirement.
 
+### Widget explicit support request
+
+An initial explicit widget support request transaction reads the exact `aiSearchHistory` row and deterministic `supportTickets` row, creates the ticket when absent, and merges the ticket linkage/unresolved outcome into search history. After commit, the existing signal emitter may create one deterministic `ESCALATION` signal when signal mutation is enabled. No notification is sent by this path. Replays reuse the existing ticket and signal identity but still perform bounded validation work, so production cost must be measured rather than described as zero.
+
+The route adds no collection, index, rule, Storage path, scheduler, or Cloud Function. Raw widget search history retains the existing 90-day lifecycle; ticket and signal rows use their existing feature lifecycles.
+
 ---
 
 ## 8. Document Growth Risk

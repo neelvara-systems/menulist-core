@@ -8,6 +8,7 @@ export const ANSWERLATTICE_RETENTION_DAYS = {
     contactEnquiries: 365,
     queryEmbeddings: 30,
     aiSearchHistory: 90,
+    contentFeedback: 365,
 } as const;
 
 export const ANSWERLATTICE_RETENTION_DAY_MS = 24 * 60 * 60 * 1000;
