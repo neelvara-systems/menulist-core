@@ -1154,3 +1154,41 @@ No provider send, real contact, publication, spend, Firebase deploy, Vercel
 deploy, or MenuList truth mutation occurred. Production activation remains
 blocked on the already-recorded QA IAM, permissioned-source, sender, legal,
 provider, and owner-controlled evidence.
+
+## Current-Branch Revalidation - July 21, 2026
+
+The current committed `staging` branch passed the complete local SignalDesk
+verification rail again. The aggregate authenticated E2E completed the
+first-build workflow and mandatory fail-closed cases with
+`SignalDesk local E2E passed`; the deliberately malformed persistence fixtures
+continued to emit bounded safe diagnostics. Firestore and Storage semantic
+rules passed with expected `PERMISSION_DENIED` output for negative client
+operations.
+
+| Gate | Result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - 3,536 assertions. |
+| `npm run test:signaldesk:e2e:local` | PASS - authenticated import, provenance, dedupe, scoring, evidence, decision, draft, approval, export-only handoff, reply, suppression, outcome, attribution, summaries, and mandatory negative cases. |
+| `npm run test:signaldesk:rules` | PASS - semantic Firestore and Storage rules verification. |
+| Private route/API smoke | PASS - 75 checks against the existing warmed local Next.js server. |
+| Access, project-boundary, environment, fresh-lineage, proof-permission, and source-data lifecycle suites | PASS. |
+| Accounting, action-client, provider-adapter, and 43-collection workspace/server/client contract suites | PASS. |
+| Root and SignalDesk Functions TypeScript | PASS - no diagnostics. |
+| Scoped SignalDesk ESLint and dependency freeze | PASS. |
+| Firestore emulator configuration/startup | PASS - no deployment. |
+
+The project-boundary harness explicitly removes an unrelated host
+`GOOGLE_APPLICATION_CREDENTIALS` value before spawning isolated test cases, so
+local application-default credentials cannot change the declared SignalDesk
+project result. No source-policy, approval, suppression, mobile-read-only,
+provider-send, or Firebase rule gate was weakened.
+
+**Verdict remains unchanged:** safe for a local desktop controlled trial and a
+local mobile observe-only trial. It is not cleared for production deployment or
+real outreach until dedicated QA project/IAM approval, permissioned
+source/contact authority, real owner-activation evidence, and the separate
+sender, physical-address, authentication, unsubscribe, bounce, complaint,
+legal, and provider reviews are complete. Provider sending remains disabled.
+
+No deploy, real send, paid provider call, contact, publication, public
+SignalDesk surface, or MenuList runtime/truth mutation occurred.

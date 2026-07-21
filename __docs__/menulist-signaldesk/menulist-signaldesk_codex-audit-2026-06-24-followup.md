@@ -146,3 +146,33 @@ It is **not safe for real outreach** until sender identity, physical address, un
 Additional hardening since the original follow-up covers exact sender/CTA/replay authority, bounded concurrent AI admission, persisted source-lifecycle authority, strict workspace timestamps and approval-history projection, revenue-summary product/document identity, committed AI-finalization recovery, published-content authority incidents and explicit resolution, terminal proof/content lifecycle behavior, critical-reply priority in an existing pending daily mission, and collection-wide raw-secret/payload inspection. The prior team-member visibility concern is superseded by current self-only normal-member rules and semantic coverage; platform admins retain the documented broader audit visibility.
 
 Current command evidence and implementation details are maintained in `menulist-signaldesk_validation.md`. No deployment, real send, paid API call, business contact, public SignalDesk surface, or MenuList truth mutation occurred. Real-world outreach remains blocked pending permissioned source/contact authority and separate sender, legal, provider, and owner approval.
+
+## Current-Branch Follow-Up - July 21, 2026
+
+**Executive verdict: PASS for local controlled internal use; no production or
+real-outreach clearance.** The current committed branch passed the authenticated
+aggregate E2E, semantic Firestore/Storage rules, 75 private route/API checks,
+3,536 runtime assertions, access and Firebase project-boundary suites, source
+and proof lifecycle suites, workspace projection contracts, root and Functions
+TypeScript, scoped lint, dependency freeze, diff hygiene, and Firestore emulator
+startup.
+
+The four original blockers remain closed:
+
+1. The authenticated local first-build workflow is executable end to end.
+2. Source-policy expiry, retention, allowed use, and legacy review-required
+   states are enforced across import, evidence, drafting, approval, export,
+   provider work, and lifecycle refresh.
+3. Mobile is server-enforced observe-only, except for confirmed and audited
+   emergency pause.
+4. Firestore and Storage behavior is covered by semantic emulator tests.
+
+No new BLOCKER or HIGH finding was identified. The local shell contained a
+stale application-default credential path, but the SignalDesk project-boundary
+test now deterministically removes that unrelated host value and passed without
+changing runtime credentials or access policy.
+
+Recommendation: proceed only with a local desktop controlled trial and mobile
+observe-only check. Keep provider send, real outreach, paid calls, publication,
+and deployment disabled until the external IAM, source/contact permission,
+sender, legal, provider, and owner-evidence gates documented above are approved.
