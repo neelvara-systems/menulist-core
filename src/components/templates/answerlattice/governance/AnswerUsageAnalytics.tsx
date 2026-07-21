@@ -62,7 +62,7 @@ export default function AnswerUsageAnalytics() {
     const sId = session?.sId || 0;
 
     const { answers, loading } = useCanonicalAnswers(tId, sId);
-    const { entities } = useEntities(tId, sId);
+    const { entities } = useEntities(tId, sId, 'entities_only');
 
     // Transform answers into usage rows
     const usageData = useMemo((): AnswerUsageRow[] => {

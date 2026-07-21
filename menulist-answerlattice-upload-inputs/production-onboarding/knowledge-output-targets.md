@@ -25,6 +25,11 @@ Create and review article drafts for:
 - Billing status, failed payment, enhancement packs, and paid locations.
 - Dashboard, analytics, feedback, and Help Center navigation.
 - Troubleshooting and escalation rules.
+- AI extraction, description, translation, image, Menu Manager approval, content-credit, and Transactions behavior.
+- Today, Setup Progress, Business Health, and the separation between read-only understanding and approved operations.
+- Owner/public localization, timezone and hours, RTL, PWA connectivity/update, accessibility, and failure recovery.
+- Account lifecycle, operational roles versus ownership transfer, and exact location/external identity.
+- Disabled/dormant capability and sister-product boundaries.
 
 ## FAQ Targets
 
@@ -37,6 +42,9 @@ The FAQ layer should cover:
 - multi-location questions;
 - billing and subscription questions only if the source is verified;
 - privacy and screenshot questions with conservative answers.
+- AI credit/failure and owner-review questions with exact current policy;
+- localization, PWA, account lifecycle, ownership, and location-identity questions;
+- disabled or regulated-capability questions that answer with a boundary, not a promise.
 
 ## Canonical Answer Targets
 
@@ -48,6 +56,9 @@ Approve canonical answers only for stable facts:
 - Official Business Page is a public business truth surface.
 - Menu Kit packages shareable deployment assets.
 - Answerlattice screenshots using MenuList production data require approval and privacy scrub.
+- Generated MenuList output does not become public truth without owner acceptance and acknowledged save.
+- Business Health is read-only; Menu Manager owns proposal, approval, and receipt flows.
+- Operational Owner role does not itself transfer the business account.
 
 Keep these as review drafts until verified:
 
@@ -70,6 +81,11 @@ Create surfaces for:
 - staff/users;
 - locations/outlets;
 - feedback;
+- Today and Setup Progress;
+- AI Menu Manager;
+- Business Health;
+- billing Transactions;
+- Share, Use MenuList, and Assets;
 - public menu;
 - Official Business Page;
 - Digital Screen if included in asset story.
@@ -90,6 +106,11 @@ Use safe test questions to create signal history:
 - "My payment failed. What happens now?"
 - "My screen is blank. What should I check first?"
 - "Can you delete my account data?"
+- "Did I lose credits when generated work failed?"
+- "Can Menu Manager change my menu without approval?"
+- "Why are menu items translated but some buttons are in English?"
+- "Does giving someone Owner role transfer the account?"
+- "Can two similar branches be merged automatically?"
 
 Expected outputs:
 

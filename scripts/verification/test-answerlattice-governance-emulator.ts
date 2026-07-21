@@ -108,6 +108,10 @@ async function run(): Promise<void> {
         .doc(createResult.proposalId);
     const createProposal = (await createProposalRef.get()).data();
     assert.equal(createProposal?.suggestedChange?.baseAnswerFingerprint, undefined);
+    await createProposalRef.update({
+        confidenceScore: 0.15,
+        'suggestedChange.draftSource': 'signal_cluster',
+    });
 
     const createApproval = await executeAnswerlatticeGovernanceAction({
         action: 'approve_proposal',
@@ -147,6 +151,8 @@ async function run(): Promise<void> {
     assert.match(answer?.evidence?.citations?.[0]?.id || '', /^citation_[a-f0-9]{24}$/);
     assert.equal(answer?.evidence?.citations?.[0]?.sourceId, 'source_billing_doc');
     assert.deepEqual(answer?.scope?.planIds, ['growth']);
+    assert.equal(answer?.validation?.confidenceScore, 1, 'proposal evidence scores must not become canonical answer confidence');
+    assert.equal(answer?.validation?.validationSource, 'manual', 'human approval must remain the canonical validation authority');
     assert.equal((await createProposalRef.get()).data()?.status, 'implemented');
 
     const cacheVersionId = getAnswerlatticeCacheVersionDocId(

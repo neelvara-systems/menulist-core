@@ -1,5 +1,7 @@
 # MenuList Risk Boundaries And Review Rules
 
+**Verified:** 2026-07-20 against current product doctrine, feature flags, legal/billing copy, external integration boundaries, AI accounting, and Answerlattice canonical-first rules.
+
 ## High-Risk Topics
 
 Answerlattice should mark these MenuList topics as high-risk review before publishing:
@@ -10,6 +12,8 @@ Answerlattice should mark these MenuList topics as high-risk review before publi
 - external integrations and POS behavior;
 - public discovery, SEO, AEO, ranking, citations, and agent-readable behavior;
 - automatic publishing or automatic external sync;
+- allergens, dietary safety, availability, and other regulated/high-consequence menu claims;
+- external location identity and possible duplicate/collision resolution;
 - real customer proof, testimonials, logos, reviews, and screenshots;
 - private data handling in screenshots or uploaded sources.
 
@@ -27,6 +31,8 @@ Allowed:
 Not allowed without fresh implementation proof:
 
 - MenuList automatically updates Google, Instagram, WhatsApp, or every external platform.
+- AI-generated allergen, price, availability, hours, or legal assertions can be published without responsible owner review.
+- Two locations can be merged because their names or phone numbers look similar.
 - MenuList guarantees search ranking, AI citation, or Google Maps placement.
 - MenuList works with any POS.
 - External Menu Sync is real-time bidirectional POS sync.
@@ -66,4 +72,3 @@ When using MenuList as the example, avoid making Answerlattice look like:
 - an external website asset product.
 
 MenuList is the example product. Answerlattice remains the product that governs support knowledge.
-

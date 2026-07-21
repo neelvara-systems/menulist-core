@@ -34,7 +34,7 @@ Answerlattice has **remarkably complete backend infrastructure** across all 5 ar
 | 1   | **Product Ontology**        | 7 entity types, relations, search index, AI extraction, candidate staging           | All present in `entities.ts` + `entityCandidates.ts` + `entityExtraction.ts`. 7 types in `ANSWERLATTICE_ENTITY_TYPES`, 6 relation types, shared tokenizer. | ✅ **VERIFIED**                         |
 | 2   | **Canonical Answer Engine** | 3-layer deterministic retrieval, version-aware, scope-filtered, specificity scoring | Full implementation in `canonicalRetrieval.ts` (378 lines). Knowledge Integrity Guard added. Parallel entity reads via `Promise.all`.                 | ✅ **VERIFIED**                         |
 | 3   | **Drift Governance**        | 4 drift classes, deterministic, idempotent, derived not toggled                     | All 4 classes in `driftDetection.ts` (353 lines). Batched signal counts (Phase 4). Audit-logged.                                                      | ✅ **VERIFIED**                         |
-| 4   | **Signal Mutation**         | 3 signal sources, 4 mutation types, entity-based clustering, human approval         | Full implementation in `signalMutation.ts` (330 lines). Severity weighting (3x/1.5x/1x), time decay (7-day half-life), capped at 10 proposals/run.    | ✅ **VERIFIED**                         |
+| 4   | **Signal Mutation**         | 3 signal sources, 4 mutation types, entity-based clustering, human approval         | Current correction: production runs in the Functions nightly scheduler with bounded recent evidence counts. `signalMutation.ts` is a no-caller legacy/manual utility; its severity/time-decay math is not production scoring. | ✅ **CORE LOOP VERIFIED; SCORING NOT IMPLEMENTED** |
 | 5   | **API & Integration**       | Public API for canonical answers, webhooks, signal ingestion                        | Feature flag exists (`ENABLE_ANSWERLATTICE_PUBLIC_API`). **No API routes implemented.**                                                                    | ❌ **NOT BUILT** (deferred per roadmap) |
 
 ### 1.2 Invariants — All Verified
@@ -85,8 +85,8 @@ All 5 accessible via `GovernanceHub` (`governance/index.tsx`) — 8-tab Ant Desi
 
 | #   | Feature                    | Status | Evidence                                                                                    |
 | --- | -------------------------- | ------ | ------------------------------------------------------------------------------------------- |
-| 3.1 | Signal Severity Weighting  | ✅     | `signalMutation.ts` lines 56-60: escalation=3x, ticket=1.5x, chat=1x                        |
-| 3.2 | Signal Time Decay          | ✅     | `signalMutation.ts` lines 63-91: exponential decay, 7-day half-life                         |
+| 3.1 | Signal Severity Weighting  | Reserved | Present only in the no-caller legacy/manual `signalMutation.ts`; not used by the production nightly scheduler |
+| 3.2 | Signal Time Decay          | Reserved | Present only in the no-caller legacy/manual `signalMutation.ts`; not used by the production nightly scheduler |
 | 3.3 | Batch Signal Count Queries | ✅     | `signalEvents.ts` `getBatchSignalCounts()` — Firestore `in` operator, 30-entity batches     |
 | 3.4 | Answer Version History     | ✅     | `AnswerVersionHistory.tsx` (7.5KB) + DAL                                                    |
 | 3.5 | Signal TTL (12-month)      | ✅     | `answerlatticeNightly.ts` `archiveExpiredSignals()` Admin SDK cleanup                            |
@@ -270,7 +270,7 @@ runAnswerlatticeNightly() → discoverActiveTenants()
   4. aggregateCoverageKPI (hit/miss ratio from search history)
   5. detectRecurringFallbacks (5+ misses → auto-proposal)
   6. trackMutationImpact (14-day pre/post comparison)
-  7. autoAdjustConfidence (30+ serves, 0 negatives → 0.95)
+  7. autoAdjustConfidence (30+ serves, 0 negatives → 0.95; retired 2026-07-20 as an unsafe correctness proxy)
   8. archiveExpiredSignals (12-month TTL)
 → Summary logged per tenant
 ```

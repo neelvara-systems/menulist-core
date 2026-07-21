@@ -1,5 +1,7 @@
 # Review Knowledge Proposals
 
+> **Last Updated:** 2026-07-20
+
 Answerlattice can group repeated support friction into a knowledge proposal and prepare a draft for review. A proposal is not a published answer.
 
 ## Review Flow
@@ -12,9 +14,9 @@ Answerlattice can group repeated support friction into a knowledge proposal and 
 6. Add or correct plan, role, version, region, state, warning, and prerequisite details.
 7. Approve only when the proposed canonical answer is complete and current, or reject the proposal.
 
-## Score Meaning
+## Evidence Meaning
 
-`Extractor score` or `Signal strength` is an internal drafting signal. It is not proof that the answer is correct, complete, current, or safe to publish.
+Ticket-resolution drafts may show an `Extractor score` review aid. Ordinary signal-cluster proposals show transparent ticket, negative-chat, and escalation counts instead of an overall signal-strength percentage. Neither is proof that the answer is correct, complete, current, or safe to publish.
 
 ## When to Reject
 

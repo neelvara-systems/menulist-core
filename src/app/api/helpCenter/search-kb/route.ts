@@ -235,7 +235,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 suggested: true,
                 type: result.escalation.escalationType,
                 triggers: result.escalation.triggerTypes,
-                context: result.escalation.escalationContext,
             };
         }
 

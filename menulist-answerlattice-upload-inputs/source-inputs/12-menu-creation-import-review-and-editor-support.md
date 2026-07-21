@@ -1,5 +1,7 @@
 # MenuList Menu Creation, Import, Review, And Editor Support
 
+**Verified:** 2026-07-20 against current extraction, editor, pricing, AI content, project save/publish, MobileShell, and cache behavior.
+
 ## Core Truth
 
 In MenuList, menus are managed as Projects. An owner can create a project, upload a menu file or image, import from an existing public menu link, review extracted content, edit items, and keep the customer-facing menu current.
@@ -55,9 +57,23 @@ Owners can:
 
 The Command Center is for bulk changes. It includes preview before apply, confirmation, price limits, no zero/negative prices, and short undo for the last action.
 
+## Content Preparation And AI Menu Manager
+
+Owner-reviewed content preparation can include first descriptions, description rewrites, translations, generated images, image edits, and extracted menu structure. The flow must keep these distinctions:
+
+- extraction and first-pass setup operations can be platform-absorbed;
+- eligible premium operations show exact required credits before starting;
+- valid provider output does not become public truth until the owner accepts and saves it;
+- terminal paid-operation failure restores the exact reserved credit buckets;
+- partial provider results cannot be presented as a fully saved menu;
+- raw prompts, generated response bodies, base64 images, provider costs, and private identifiers do not belong in owner Transactions or support answers.
+
+AI Menu Manager sits over registered MenuList operations. It can answer selected-menu questions and prepare supported proposal cards. The owner approves required work; stale or conflicting proposals fail instead of overwriting newer menu truth. It is not a generic autonomous chatbot.
+
 ## Answerlattice Answer Boundary
 
 Answerlattice can guide owners through the steps. It must not guarantee that imported content is perfect, and it must not tell owners that review is unnecessary.
 
 If an owner reports wrong extracted data, Answerlattice should advise them to correct it in the editor and escalate repeated extraction quality issues with the source file/link.
 
+If generated content is wrong, advise review/edit/discard or retry. Do not tell the owner that generated text, translation, image, allergen, price, or availability is verified merely because the provider returned it.

@@ -26,6 +26,7 @@ import { z } from 'zod';
 import { withPlatformAuth } from '../../../../middleware/auth';
 
 const SCHEDULER_LOG_LIMIT = 8;
+const SCHEDULER_READ_WINDOW_LIMIT = 80;
 const ANSWERLATTICE_INTAKE_MONITOR_RATE_LIMIT_KEY = 'answerlattice-intake-monitor';
 const ANSWERLATTICE_INTAKE_MANUAL_TRIGGER_RATE_LIMIT_KEY = 'answerlattice-intake-manual-trigger';
 
@@ -114,6 +115,11 @@ function cleanText(value: unknown, max = 220): string {
 function safeNumber(value: unknown): number {
     const parsed = value === undefined || value === null ? 0 : Number(value);
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function safeCounter(value: unknown): number {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= 10_000_000 ? parsed : 0;
 }
 
 function safeNullableNumber(value: unknown): number | null {
@@ -294,16 +300,54 @@ function findTenantRun(data: Record<string, any>, selectedScope: { tId: number; 
         Number(item?.tId) === selectedScope.tId && Number(item?.sId) === selectedScope.sId,
     );
     if (!run || typeof run !== 'object') return null;
+    const readWindows: Array<{
+        key: string;
+        task: string;
+        source: string;
+        window: string;
+        operationCount: number;
+        documentsReturned: number;
+        configuredLimit: number;
+        saturated: boolean;
+    }> = [];
+    const tasks = Array.isArray(run.tasks) ? run.tasks : [];
+    for (const task of tasks) {
+        if (!task || typeof task !== 'object' || !Array.isArray(task.readWindows)) continue;
+        const taskName = cleanText(task.name, 80) || 'unknown';
+        for (const entry of task.readWindows) {
+            if (readWindows.length >= SCHEDULER_READ_WINDOW_LIMIT) break;
+            if (!Array.isArray(entry) || entry.length !== 6) continue;
+            const source = cleanText(entry[0], 80);
+            const window = cleanText(entry[1], 80);
+            if (!source || !window) continue;
+            const key = `${taskName}:${source}:${window}:${readWindows.length}`;
+            readWindows.push({
+                key,
+                task: taskName,
+                source,
+                window,
+                operationCount: safeCounter(entry[2]),
+                documentsReturned: safeCounter(entry[3]),
+                configuredLimit: safeCounter(entry[4]),
+                saturated: entry[5] === 1,
+            });
+        }
+        if (readWindows.length >= SCHEDULER_READ_WINDOW_LIMIT) break;
+    }
     return {
         tId: selectedScope.tId,
         sId: selectedScope.sId,
         status: cleanText(run.status, 80) || 'unknown',
         durationMs: safeNumber(run.durationMs),
-        taskCount: Array.isArray(run.tasks) ? run.tasks.length : 0,
+        taskCount: tasks.length,
         errorCount: Array.isArray(run.errors) ? run.errors.length : 0,
         driftDetected: safeNumber(run.driftDetected),
         proposalsCreated: safeNumber(run.proposalsCreated),
         coverageRate: safeNumber(run.coverageRate),
+        observedOperationCount: readWindows.reduce((sum, entry) => sum + entry.operationCount, 0),
+        observedDocumentsReturned: readWindows.reduce((sum, entry) => sum + entry.documentsReturned, 0),
+        saturatedReadWindowCount: readWindows.filter(entry => entry.saturated).length,
+        readWindows,
     };
 }
 

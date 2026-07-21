@@ -1,5 +1,40 @@
 # MenuList — Changelog
 
+## July 20, 2026 - MenuList Answerlattice Intake Package Reconciliation
+
+- Re-audited the root `menulist-answerlattice-upload-inputs/` operator package against the current MenuList feature inventory, maintained docs, live Knowledge Intake types/routes, and Answerlattice pre-onboarding contract.
+- Corrected stale sign-in, canonical-host, legal/retention, billing-entitlement, test-count, and feature-availability wording without changing the stable 26-source upload shape.
+- Replaced rejected multi-URL payload metadata with review-only, text-backed payloads and explicit source authority, approval, access, citation, applicability, conflict, and verification evidence.
+- Expanded current owner/public/AI/localization/lifecycle coverage, product surfaces, support questions, target-product exclusions, and owner-pending activation work.
+- Synchronized eight stale May asset-package copies to their current July MenuList website sources; all 9 generated assets and 6 private reference captures now match their declared repository evidence byte for byte.
+- Aligned the MenuList desktop widget context map for Today, AI Menu Manager, Business Health, Share, Use MenuList, and Assets using an approved owner-route allowlist, generic nested-route detail labels, and no tenant, store, project, transaction, customer, or raw URL-segment identifiers. Growth Kits, internal operations, platform administration, reseller, and unknown routes remain suppressed.
+- Added a focused package verifier and npm command for exact source/onboarding/asset manifest parity, byte-identical mapped asset copies, payload parity, JSON/JSONL/CSV validity, source limits, metadata completeness, canonical-host safety, and coverage floors.
+- This changes only the existing client-side MenuList widget context and its docs/verifiers. It adds no runtime route, provider call, Firebase read/write/delete, collection, index, listener, scheduler, dependency, Firebase deployment, or Vercel deployment.
+
+## July 20, 2026 - Answerlattice 44-Feature Audit Ledger Consistency Gate
+
+- Reconciled Feature 29's stale detailed `In progress` label with its completed workspace-profile dossier, contract suite, Firestore emulator proof, and already-complete frozen-order row.
+- Extended the Answerlattice runtime-truth verifier to require exactly 44 summary rows and 44 detailed feature sections in order, matching feature titles, and `Local source complete` status in both views.
+- This is documentation and source-verification hardening only. It adds no app or Functions runtime, Firestore read/write/delete, collection, index, listener, scheduler, dependency, Firebase deployment, or Vercel deployment.
+
+## July 20, 2026 - Answerlattice Scheduler Source-Window Cost Telemetry
+
+- **Nightly read diagnosis is now evidence-backed** - instrumented governance tasks record bounded logical source/window/operation/result/limit/saturation tuples inside the existing scheduler run-log write.
+- **Runtime semantics and Firebase operation counts are preserved** - telemetry observes completed query snapshots in memory, adds no source read, collection, index, listener, scheduler, or extra run-log write, and cannot fail a task when an observation is malformed.
+- **Platform visibility stays bounded and honest** - the intake monitor validates tuple shape, returns at most 80 windows for the selected run, and explicitly distinguishes logical observations from billed Firestore reads or currency.
+- **Query consolidation remains gated** - shared snapshots require at least 14 complete daily observations and exact agreement on source, filters, ordering, limits, freshness, completeness, and failure isolation; saturation, task failures, or negligible savings reject the change.
+- **Verification is executable** - the focused telemetry test covers aggregation, saturation, invalid input, the eight-window cap, and snapshot isolation, and the runtime-truth verifier now requires the instrumentation contract.
+- **The Knowledge Intake emulator is hermetic** - its package command clears inherited `GOOGLE_APPLICATION_CREDENTIALS` for the emulator and child process, preventing a stale host credential path from bypassing local emulation.
+- **QA remains unchanged** - the narrow nightly/manual Functions deployment stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+
+## July 20, 2026 - Answerlattice 44-Feature And C1-C8 Audit Closure
+
+- **The strict inventory is complete locally** - all 44 Answerlattice feature flows and final C1-C8 contracts now have code/docs parity, explicit rollout or non-goal decisions, focused evidence, and a durable tracker.
+- **The complete runtime proof passes** - the clean Answerlattice runtime/emulator aggregate passed dedicated/shared Firebase rules, Storage, auth/scope, integrations, summaries, onboarding, billing, retrieval, Public API, widget, MCP, tickets, signals, governance, Answer Tests, and founder-control contracts.
+- **One final compile defect was fixed** - Slack and email governance adapters still used the shared bounded ratio helper for coverage output after its imports were removed with unrelated confidence fields. The imports are restored; opaque proposal confidence remains removed.
+- **Release truth remains explicit** - CI and recovery tooling exist in source, but successful remote CI, QA deploy/readback, managed backup/restore, full workspace erasure, real-client answer evaluation, browser/accessibility/provider journeys, production telemetry, controlled dependency migrations, and 1,000+ due-workspace scale evidence remain pending.
+- **QA deployment remains blocked** - the nightly/manual-trigger Function pair was attempted after signal-quality verification; the final dedicated rules/nightly/integration-processor target and shared MenuList QA rules were then attempted after the complete audit. All stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+
 ## July 20, 2026 - Answerlattice Advanced Branding Boundary Hardening
 
 - **The stored form is no longer called delivered white label** - code search confirmed that widget, hosted help, knowledge-base, email, public-site, and compiled-context runtimes do not consume `platformSummary/branding_{tId}_{sId}`. The flag and owner copy now describe a disabled private profile prototype.
@@ -49,6 +84,18 @@
 - **Verification is durable** - strict contract tests, key-lifecycle emulator proof, dedicated/shared rules emulators, governance-rule tests, Answerlattice/root TypeScript, focused ESLint, runtime source verification, dependency freeze, documentation links, and diff checks pass on the current worktree.
 - **Release evidence remains separate** - dedicated and shared QA rules deploys were attempted after validation and both stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed. App/API/UI changes remain undeployed under the Vercel opt-in guard.
 - **The product boundary stays narrow** - no autonomous action, generic RAG endpoint, graph-explanation promise, connector family, scheduler, Function, Storage path, collection family, or owner toggle was added. The feature remains default-disabled until real external-consumer and hosted QA evidence exists.
+
+## July 20, 2026 - Answerlattice Signal Evidence And Confidence-Authority Boundary
+
+- **The scoring flag is now truthful** - `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY` is explicitly reserved, has no runtime consumer, and has no Functions mirror. Enabling it does nothing.
+- **Production and legacy paths are separated** - the Functions nightly scheduler is the production mutation path and uses bounded recent evidence counts. Severity/time-decay math in the no-caller app utility is not described as shipped scoring.
+- **Proposal evidence is more transparent** - newly created signal-cluster proposals retain the escalation count already computed in memory alongside ticket and negative-chat counts. Older proposals remain valid.
+- **Opaque signal-strength UI is removed** - ordinary proposals show evidence counts and linked entities instead of converting heterogeneous proposal confidence into a generic percentage. Ticket-resolution drafts use the narrower `Extractor score` label.
+- **Usage cannot certify correctness** - the nightly path that raised canonical confidence after 30 serves with no recorded negative feedback is retired. Its compatibility task is explicitly skipped with `unsafe_usage_proxy_retired`, removing the bounded answer query and possible cache/batch writes.
+- **Proposal scores stop at review** - human approval no longer copies extractor, fallback, or evidence-volume scores into canonical validation. Approved proposal content uses manual validation authority, and Slack, email, GitHub, and Linear notifications no longer call the proposal score confidence.
+- **Scoring is validation-gated** - no ranker should be built before at least 100 reviewed proposals across at least three active workspaces provide segmented approval, edit, rejection, duplicate, and false-priority evidence.
+- **Historical data is not silently rewritten** - canonical answers previously stamped by `system:confidence_auto_adjust` require controlled verification. No migration, collection, index, Storage path, model call, listener, or scheduler was added.
+- **Local proof is complete; QA upload is blocked** - focused source, governance, emulator, integration, Functions build, TypeScript, lint, runtime, dependency, docs, and diff gates pass. The scoped `answerlattice-qa` Functions deploy stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
 
 ## July 19, 2026 - Answerlattice Workflow Notification And Provider-Safety Hardening
 
@@ -27376,3 +27423,10 @@ TEMPLATE FOR NEW ENTRIES:
 
 - **Answerlattice Product Surface Context And Summary Boundary** — Product-surface creates, edits, and archives now use transaction-backed ownership checks with immutable deterministic context keys and specialized dedicated/shared Firestore rules. Exact and wildcard routes resolve before semantic hints, state/version context is preserved across the web SDK, widget loader, iframe, and canonical retrieval, raw paths are not copied into persisted page metadata, and summary rebuilds reject overflow/duplicate keys, omit undefined optional fields, and replace the complete nested surface map so archived mappings cannot survive indirectly.
 - **Owner Dashboard Locale Completeness** — Completed the mounted `Common`, `AppSettings`, `Settings`, `Dashboard`, and `MobileDashboard` message boundary across all 52 registered locale files, added the missing mobile app-settings language label and canonical settings entry summary, repaired stale ICU variables and Odia mixed-script provider artifacts, and aligned ambiguous app-settings and business-hours analytics copy with actual runtime behavior. The semantic pass covered 22,272 values in the 464-string boundary, including a focused 1,872-value recheck of ambiguity-prone copy. At that time Bodo and Kashmiri still used readable English fallback; the July 18, 2026 full-owner semantic-evidence pass superseded that limitation without adding a Firebase operation, owner data mutation, or public-menu behavior change.
+
+## July 19, 2026
+
+### Fixed
+
+- **Answerlattice Automatic Escalation Authority Boundary** — The default-off evaluator now uses only bounded final-answer cited evidence, treats safe refusals as empty outcomes, avoids interrupting healthy strong-RAG answers after ordinary canonical misses, and validates stored escalation context. The Help Chat explicit-intent shortcut, browser DAL ticket creation, callback, and internal debug projection were removed. Client ticket creation cannot set server-reserved escalation fields or choose `ESCALATION` signal authority under the DAL or either Firestore rule set. The active server-authoritative widget fallback remains unchanged; any future Help Chat handoff requires explicit confirmation, deterministic/idempotent server authority, and representative quality/usefulness proof.
+- **Answerlattice Native Intake Connector Boundary** — The unused native-connector flag is now explicitly reserved-only and remains false, with no runtime or Functions consumer, OAuth path, credential store, provider adapter, sync worker, Firebase infrastructure, or public availability claim. Knowledge Intake documentation now reflects the actual selected-URL/file/export/repeated-reply alternative, and an executable source gate blocks accidental connector activation before one provider has paying-client evidence plus complete permission, revocation, deletion, freshness, and cost design.

@@ -1,6 +1,6 @@
 # Answerlattice Guided Workflows Validation
 
-> **Date:** 2026-07-18
+> **Date:** 2026-07-20
 > **Verdict:** Hardened local source-ready; deployed-client smoke pending
 
 ## Verified
@@ -20,7 +20,7 @@
 - Outcome writes are rate-limited, byte-bounded, strict-schema validated, and deduplicated.
 - No new collection, listener, scheduler, AI call, Firestore rule, index, Storage path, or Cloud Function was added.
 - MenuList desktop and mobile equivalents use one typed semantic registry.
-- Menu import/retry/review and publish/share/open workflows emit only fixed, payload-free events after acknowledged transitions.
+- The MenuList reference client emits only fixed, payload-free events after its acknowledged transitions. The generic Answerlattice runtime matches client-reported event names but does not independently verify backend state.
 - Intake preserves validated procedure drafts through the mutation-proposal handoff without bypassing governance approval.
 - Generated target/event IDs are retained only when the exact values occur in cited owner source material.
 - Canonical governance rejects mismatched answer-type/procedure pairs and removes stale procedure data when a reviewed proposal changes back to explanation or navigation.

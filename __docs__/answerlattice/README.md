@@ -82,6 +82,12 @@ Owner-facing setup surfaces must stay direct and founder-readable. The dashboard
 | 29  | `support-truth-export/`                        | Product/Ops/Dev | Feature 37 private approved-truth portability, projection, audit, cap, and non-goal contract |
 | 30  | `multi-language-articles/`                     | Product/Ops/Dev | Feature 38 disabled translation-draft boundary, source fingerprint, overwrite guard, and customer-delivery non-goal |
 | 31  | `advanced-white-label/`                        | Product/Ops/Dev | Feature 39 validated private branding-profile prototype, strict storage, injection boundary, and customer-delivery non-goal |
+| 32  | `ai-failure-escalation/`                      | Product/Ops/Dev | Feature 40 active widget fallback plus default-off final-evidence evaluator, server-reserved ticket authority, and Help Chat activation blockers |
+| 33  | `native-knowledge-intake-connectors/`         | Product/Ops/Dev | Feature 41 reserved-only connector boundary, evidence gate, and explicit do-not-build-now decision |
+| 34  | `signal-quality-scoring/`                    | Product/Ops/Dev | Feature 42 transparent evidence boundary and validation-before-development decision |
+| 35  | `native-helpdesk-and-jira-connectors/`       | Product/Ops/Dev | Feature 43 export-first boundary and one-provider paying-client evidence gate |
+| 36  | `autonomous-browser-and-account-actions/`    | Product/Ops/Dev | Feature 44 Explain + Guide boundary and explicit account-action non-goal |
+| 37  | `system-inventory/answerlattice-final-cross-cutting-audit.md` | Product/Dev/Ops | Final C1-C8 local closure, verification evidence, deploy blocker, and remaining release order |
 
 ---
 
@@ -290,7 +296,8 @@ No `/api/answerlattice/support-assistant/actions/*`, feedback, or owner-analytic
 | `ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER` | `src/config/features.ts`              | `true`  | Client launch/readiness home                     |
 | `ENABLE_ANSWERLATTICE_NOTIFICATIONS`     | `src/config/features.ts`                       | `true`  | Email notifications for ticket events and Activation test-send |
 | `ENABLE_ANSWERLATTICE_GOVERNANCE_UI`     | `src/config/features.ts`                       | `true`  | Governance hub (answer editor, drift, analytics) |
-| `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY`    | `src/config/features.ts`                       | `false` | Severity weighting, time decay, batch queries    |
+| `ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS` | `src/config/features.ts`                | `false` | Reserved only; no connector, OAuth, credential, sync, or Functions runtime |
+| `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY`    | `src/config/features.ts`                       | `false` | Reserved only; no scoring runtime or Functions flag |
 | `ENABLE_ANSWERLATTICE_WHITE_LABEL`       | `src/config/features.ts`                       | `false` | Private validated branding-profile prototype; no customer-surface delivery |
 | `ENABLE_ANSWERLATTICE_MULTI_LANGUAGE`    | `src/config/features.ts`                       | `false` | Multi-language KB article translations           |
 | `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`     | `src/config/features.ts`                       | `true`  | Route/page/workflow context-aware retrieval      |
@@ -442,6 +449,9 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-20 | 3.4.32  | Completed the 44-feature and final C1-C8 local audit, fixed missing shared ratio-helper imports in Slack/email integration adapters, passed the complete runtime/emulator aggregate, and recorded cloud/recovery/client evidence still required. |
+| 2026-07-20 | 3.4.31  | Completed Feature 44 as a deliberate non-goal: Guided Resolution remains Explain + Guide, procedure actions are instructional only, loader messages are origin/source bound, host clicks/form submission/arbitrary code stay prohibited, and client-reported completion is not presented as independent backend proof. |
+| 2026-07-20 | 3.4.30  | Completed Feature 43 as a do-not-build-now connector boundary: no Zendesk, Intercom, Freshdesk, Help Scout, or Jira runtime/claim exists; export-first intake remains supported, generic-file provider logic is source-gated, sensitive provider data is excluded by default, and one read-only provider requires paying-client and concierge proof. |
 | 2026-07-20 | 3.4.29  | Reclassified advanced white label as a disabled private profile prototype; added strict scope/schema/rule validation, removed custom CSS/free-form fonts, corrected write acknowledgement, and documented absent customer delivery. |
 | 2026-07-20 | 3.4.28  | Reclassified multi-language as a disabled private draft generator; added strict provider parsing, source fingerprints, transactional source/overwrite protection, explicit draft approval boundaries, no draft cache propagation, and executable public-delivery exclusion tests. |
 | 2026-07-20 | 3.4.27  | Hardened Support Truth Export with exact `AL` scope, explicit citation projection, approved reviewed translations only, release-linked changelog output, POST-only generation, server-reserved metadata audits, executable completeness/privacy/cap tests, and portability rather than legal-export boundaries. |

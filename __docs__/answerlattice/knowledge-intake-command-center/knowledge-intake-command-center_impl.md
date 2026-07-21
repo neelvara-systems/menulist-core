@@ -3,6 +3,7 @@
 > **Status:** IMPLEMENTED — day-one owner-triggered implementation
 > **Version:** 2.1.0
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-07-20
 > **Audience:** Engineering / QA / Product
 
 ---
@@ -96,7 +97,7 @@ The evidence below records the upload-first runtime that the Answerlattice-owned
 
 ## 3. Required Feature Flags
 
-Add client flags in `src/config/features.ts`:
+The current app flags in `src/config/features.ts` are:
 
 ```ts
 ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE: true,
@@ -106,14 +107,15 @@ ENABLE_ANSWERLATTICE_INTAKE_MEDIA_EXTRACTION: true,
 ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR: true,
 ```
 
-Add server flags in `functions-answerlattice/src/constants/features.ts`:
+The current server flag in `functions-answerlattice/src/constants/features.ts` is:
 
 ```ts
 ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE_SCHEDULER: true,
-ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false,
 ```
 
-Native connectors stay false because Answerlattice does not need private helpdesk/OAuth credentials for this stage. The scheduler flag is true for summary-only analytics: it reads the latest bounded intake job docs and writes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` only when changed. It does not retry failed jobs, crawl URLs, call AI providers, or publish review items.
+`ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS` is a reserved app-side placeholder with no runtime consumer. There is intentionally no matching Functions flag, connector route, OAuth callback, credential store, provider adapter, or sync worker. Adding a mirrored server flag before a real docs-first implementation would create false capability evidence.
+
+The scheduler flag is true for summary-only analytics: it reads the latest bounded intake job docs and writes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` only when changed. It does not retry failed jobs, crawl URLs, call AI providers, or publish review items.
 
 `ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR` controls the internal `/platform/answerlattice-intake` screen and `/api/platform/answerlattice-intake` API. The monitor is platformRole-only. Initial load reads only `platformSummary/answerlatticeTenantsSummary` and recent scheduler logs. Job and ledger details are loaded only after a platform admin selects one `tId/sId` workspace. The retry action is explicit and posts that selected workspace to `triggerAnswerlatticeNightly`; it does not run all tenants by default, add realtime listeners, or create tenant-facing controls.
 

@@ -1,5 +1,7 @@
 # MenuList Menu Kit, Digital Screens, And Customer App Support
 
+**Verified:** 2026-07-20 against current Menu Kit/print exports, Digital Screen links/content, Customer App PWA, QR permanence, and public-freshness boundaries.
+
 ## Menu Kit
 
 Menu Kit gives owners ready-to-use files to get customers scanning the menu. It can include table tent, counter sticker, entrance poster, delivery bag sticker, takeaway card, Instagram Story, WhatsApp Status, Google Maps image, and a placement guide.
@@ -45,4 +47,3 @@ Support only verified account state:
 - owner can enable installable app where the surface is available.
 
 If a customer sees an old menu in an installed app, close and reopen the app with internet on. The app should fetch current data when reopened or after returning from background.
-

@@ -27,6 +27,5 @@ export type SearchAPIResponseType = {
         suggested: boolean;
         type: 'soft' | 'hard' | 'none';
         triggers: string[];
-        context?: import('@lib/answerlattice/escalationTypes').EscalationContext;
     };
 };

@@ -12,6 +12,10 @@ All files under these folders are Answerlattice-related and were included in the
 
 - `__docs__/answerlattice/_archive/`
 - `__docs__/answerlattice/ai-failure-escalation/`
+- `__docs__/answerlattice/autonomous-browser-and-account-actions/`
+- `__docs__/answerlattice/native-knowledge-intake-connectors/`
+- `__docs__/answerlattice/native-helpdesk-and-jira-connectors/`
+- `__docs__/answerlattice/signal-quality-scoring/`
 - `__docs__/answerlattice/ai-qna-chatbot/`
 - `__docs__/answerlattice/automatic-knowledge-creation/`
 - `__docs__/answerlattice/answerlattice-website/`
@@ -476,6 +480,15 @@ Focused MCP verification:
 - `scripts/verification/test-answerlattice-mcp-session.ts`
 - `scripts/verification/test-answerlattice-mcp-contracts.ts`
 - `scripts/verification/test-answerlattice-public-api-contracts.ts`
+- `scripts/verification/test-answerlattice-ai-failure-escalation.ts`
+- `scripts/verification/verify-answerlattice-runtime-truth.js`
+
+Focused Features 41-44 product-boundary verification:
+
+- `scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js`
+- `scripts/verification/verify-answerlattice-signal-quality-boundary.js`
+- `scripts/verification/verify-answerlattice-native-helpdesk-connectors-boundary.js`
+- `scripts/verification/verify-answerlattice-autonomous-action-boundary.js`
 - `scripts/verification/verify-answerlattice-runtime-truth.js`
 
 ---
@@ -534,7 +547,10 @@ Focused MCP verification:
 - `functions-answerlattice` is intentionally separate from MenuList Cloud Functions.
 - Answerlattice dashboard and website routes are intentionally separate from the MenuList owner dashboard.
 - MenuList Help Center components are shared support surfaces, not Answerlattice management screens.
-- Public API, MCP, multi-language draft preparation, the private advanced-branding profile, and AI escalation are present but rollout-gated or disabled by default. Multi-language has no customer review/publish/delivery runtime. Advanced branding has no widget/hosted-help/KB/email/public consumer. MCP requires an explicit `mcp:read` server credential and is not a general OAuth-enabled remote endpoint.
+- Public API, MCP, multi-language draft preparation, the private advanced-branding profile, and automatic AI escalation are present but rollout-gated or disabled by default. Multi-language has no customer review/publish/delivery runtime. Advanced branding has no widget/hosted-help/KB/email/public consumer. MCP requires an explicit `mcp:read` server credential and is not a general OAuth-enabled remote endpoint. Automatic escalation uses bounded final-answer cited evidence, rejects browser-owned repeated-failure and ticket authority, exposes no retrieval debug to Help Chat, and still requires a server-authoritative confirmed ticket handoff before activation.
+- `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY` is a reserved app-only placeholder with no runtime consumer or Functions mirror. Production proposal clustering uses transparent recent evidence counts; the legacy/manual severity and time-decay utility has no caller and is not proof of a scoring feature.
+- Zendesk, Intercom, Freshdesk, Help Scout, and Jira have no provider-specific app/Functions flag, runtime source, OAuth/credential contract, sync path, or public availability claim. Export/import remains the supported intake path until one provider passes the paying-demand, permission, deletion, cost, and concierge-proof gate.
+- Guided Resolution remains Explain + Guide only. Procedure action values are instructional labels; no SDK action registry/execution API, arbitrary code/selector path, host target click, browser-control worker, or account-changing action runtime exists.
 - Predictive support, workflow integrations, and graph traversal are active runtime paths. Keep them bounded through Redis cooldowns, event caps, sanitized workflow delivery, and summary-backed graph/index reads.
 - Compiled context bundles are the approved read distribution layer for enabled consumers; Storage bundles must never include drafts, tickets, chats, raw signals, audit logs, API keys, or billing data. Public API preference is rollout-gated, MCP is disabled by default, and widget bundle bootstrap is disabled until the widget consumes the files.
 - Coverage, answer-evidence, and product-friction summaries use schema version 2, explicit complete windows, cap-plus-one saturation checks, strict client parsing, and summary-backed owner reads. Friction AI output is advisory and cannot set deterministic metrics.

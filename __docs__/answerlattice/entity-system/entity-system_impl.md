@@ -115,6 +115,14 @@ Current `addEntity()` delegates to the protected server ontology transaction. Th
 
 **File:** `src/hooks/answerlattice/useEntities.ts`
 
+The hook supports bounded read modes:
+
+- `full`: entities, relations, and search index for ontology management;
+- `entities_and_search_index`: entity health without the unused relation query;
+- `entities_only`: canonical-answer, analytics, and drift labels without relation or search-index reads.
+
+The default remains `full` so existing ontology mutation workflows preserve their current refresh behavior.
+
 Add `updateAliases` convenience function:
 
 ```typescript

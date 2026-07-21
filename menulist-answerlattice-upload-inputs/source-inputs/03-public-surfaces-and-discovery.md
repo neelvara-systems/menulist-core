@@ -1,5 +1,7 @@
 # Public Surfaces And Discovery
 
+**Verified:** 2026-07-20 against current public menu, Official Business Page, QR/share, Menu Kit, Digital Screens, structured discovery, public localization, and cache boundaries.
+
 ## Official Business Page
 
 The Official Business Page is the canonical public identity endpoint for a business powered by MenuList.
@@ -27,6 +29,8 @@ The customer-facing surface should show:
 - search and section navigation;
 - language support where configured;
 - customer actions such as call, WhatsApp, directions, photos, and menu.
+
+Fixed customer-facing chrome uses the owner-controlled store language where a reviewed UI pack exists. Owner-entered business/menu content keeps its approved language. If a public content language has no fixed UI pack, the content can remain in that language while fixed chrome falls back to English. Public language rendering adds no runtime translation-provider call.
 
 ## Menu Kit
 
@@ -111,4 +115,4 @@ MenuList guarantees ranking or updates every external platform automatically.
 - How do Digital Screens stay current?
 - What can search engines and AI agents read?
 - What public discovery claims are not allowed?
-
+- How does the owner-selected public language affect menu and Official Business Page chrome?

@@ -3,6 +3,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 
 const MAX_JOBS_TO_SUMMARIZE = 20;
 const ANSWERLATTICE_PRODUCT_ID = 'AL';
@@ -136,7 +137,11 @@ export function normalizeKnowledgeIntakeSummaryJob(
     };
 }
 
-export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Promise<IntakeSummaryResult> {
+export async function syncKnowledgeIntakeSummary(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<IntakeSummaryResult> {
     const result: IntakeSummaryResult = {
         jobsScanned: 0,
         summaryWritten: false,
@@ -153,6 +158,13 @@ export async function syncKnowledgeIntakeSummary(tId: number, sId: number): Prom
         .orderBy('modifiedOn', 'desc')
         .limit(MAX_JOBS_TO_SUMMARIZE)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS,
+        window: 'recent_all',
+        documentsReturned: jobsSnap.size,
+        queryLimit: MAX_JOBS_TO_SUMMARIZE,
+        saturated: jobsSnap.size >= MAX_JOBS_TO_SUMMARIZE,
+    });
 
     result.jobsScanned = jobsSnap.size;
     const jobs = jobsSnap.docs.map(doc => normalizeKnowledgeIntakeSummaryJob(

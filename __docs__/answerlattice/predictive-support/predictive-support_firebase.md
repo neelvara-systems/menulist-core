@@ -55,13 +55,14 @@ No trigger-collection fanout occurs on the public request path.
 
 A successful trigger create/update/status/delete operation includes:
 
-1. the trigger write or delete;
-2. one bounded collection query, capped at 201 rows to detect overflow;
-3. one summary write;
-4. the existing compiled-context source invalidation write path;
-5. existing audit behavior where invoked by the owner hook.
+1. on create, one scoped count aggregate to enforce the 200-trigger cap without loading trigger documents;
+2. the trigger write or delete;
+3. one bounded collection query, capped at 201 rows to rebuild the runtime summary and detect overflow;
+4. one summary write;
+5. the existing compiled-context source invalidation write path;
+6. existing audit behavior where invoked by the owner hook.
 
-The 200-trigger workspace cap is enforced before create and during summary rebuild. Overflow fails without replacing the last valid summary.
+The 200-trigger workspace cap is enforced by aggregate count before create and by cap-plus-one during summary rebuild. Overflow fails without replacing the last valid summary.
 
 ### Interaction evidence
 
@@ -76,6 +77,7 @@ The existing Answerlattice nightly task can read friction evidence, create at mo
 | Risk | Control |
 | --- | --- |
 | Collection scan on every page | Public path reads the compact summary only |
+| Full trigger fetch only to enforce create cap | Scoped count aggregate; the bounded full query remains only where the runtime summary must be rebuilt |
 | Unbounded summary | Hard cap of 200 triggers; overflow fails closed |
 | Repeated prompt traffic | 60-second loader cache, server cache, debounce, and Redis cooldown |
 | Interaction write amplification | Three bounded event types, dedupe identity, rate limits, optional signal flag |

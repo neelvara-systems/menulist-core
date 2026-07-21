@@ -1,17 +1,21 @@
 # MenuList Staff, Roles, Locations, And Outlet Policy Support
 
+**Verified:** 2026-07-20 against current roles, staff mutation, master/outlet, billing-scope, location-identity, and ownership-transfer boundaries.
+
 ## Roles
 
 Roles control what each team member can see and do in the MenuList dashboard.
 
 Default roles:
 
-- Owner: full access including billing, staff, roles, public presence, integrations, menu, analytics, and store management.
+- Owner: full operational access to the store surfaces allowed by current account and subscription state.
 - Manager: operations access including menu, publishing, sharing, feedback, analytics, staff, and screens; no billing or public identity changes.
 - Staff: minimal access, mainly customer chat.
 - Custom: owner-defined permissions.
 
 Features a user cannot access should be hidden rather than shown as broken.
+
+Assigning the Owner role does not transfer business-account ownership, billing records, notification recipients, or existing subscriptions.
 
 ## Staff Access
 
@@ -33,6 +37,7 @@ Core concepts:
 - Outlet menus: linked copies that inherit from the master.
 - Local overrides: outlet-specific price or availability changes.
 - Outlet policy: HQ controls what outlets can change.
+- Location identity: each store/outlet remains a distinct location. An optional owner-confirmed external Place ID/Maps URI can be stored on that exact location; it is reversible, internal, and does not merge locations or make provider data canonical.
 
 ## Common Support Questions
 
@@ -52,7 +57,12 @@ Go to Locations, add outlet, review billing impact, and confirm. The new outlet 
 
 Go to Locations, choose the outlet, deactivate, and confirm. Billing impact should be reviewed before confirming.
 
+### Can two similar locations be merged automatically?
+
+No. Similar names, phone numbers, or addresses are not enough to merge locations. MenuList keeps location identity exact and reviewable. External bindings do not propagate from HQ to outlets.
+
 ## Answerlattice Boundary
 
 Do not bypass permissions. If a user lacks access, Answerlattice should explain the likely permission issue and route them to the owner/admin.
 
+Ownership-transfer, billing-authority, duplicate-location, wrong-Place-ID, and disputed-account questions require support review.

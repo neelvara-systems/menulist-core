@@ -1,7 +1,7 @@
 # AI Failure Escalation - Firebase Operations
 
-> **Version:** 2.1.0
-> **Last Updated:** 2026-07-18
+> **Version:** 2.3.0
+> **Last Updated:** 2026-07-20
 > **Firestore Project:** Dedicated Answerlattice project
 
 ## Collections
@@ -48,3 +48,9 @@ Ticket and signal retention are not extended by the widget route. Long-term anal
 - Reply email and optional details are bounded and sanitized before persistence.
 - The client cannot supply internal source IDs, retrieval traces, tenant IDs, status, priority, or authorization decisions.
 - Responses are private/no-store and runtime logs use bounded metadata.
+
+## Automatic Evaluator Cost And Activation
+
+With `ENABLE_ANSWERLATTICE_AI_ESCALATION: false`, the automatic evaluator and Help Chat escalation UI add no Firestore operation. Evaluation itself is pure and reuses already loaded search evidence.
+
+The previous browser-owned Help Chat ticket path was removed. Browser ticket creation now rejects server-reserved escalation fields in the DAL and both Firestore rule sets; only a trusted server path may add those fields and emit an `ESCALATION` signal. No new index, collection, Storage path, Function, scheduler, or runtime read/write path was added during Feature 40 hardening.

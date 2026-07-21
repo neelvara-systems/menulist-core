@@ -1,5 +1,7 @@
 # Owner Operations, Staff, Mobile, And Multi-Location
 
+**Verified:** 2026-07-20 against current MobileShell, staff/role, outlet inheritance/override, billing-capacity, external-sync, and exact-location identity boundaries.
+
 ## Multi-Outlet Consistency
 
 MenuList supports a master/outlet model for multi-location businesses.
@@ -52,6 +54,8 @@ Examples that matter for Answerlattice asset planning:
 - staff actions;
 - owner correction flows.
 
+Mobile inherits owner locale, timezone, date/time/number/currency formatting, direction, permissions, selected store, and shared mutations. Owner features reached from Today, Menu, Share, or More stay inside MobileShell. The owner PWA treats connectivity as advisory, does not silently cache private owner pages for offline use, and requires an explicit refresh to accept an app update.
+
 ## External Menu Sync
 
 External Menu Sync lets MenuList share official menu updates with a trusted connected system through signed full-menu snapshots.
@@ -85,4 +89,3 @@ Evidence:
 - Does mobile support the same owner workflow?
 - What is External Menu Sync?
 - What POS or sync claims are not allowed?
-

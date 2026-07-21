@@ -31,6 +31,7 @@ import {
     getAnswerlatticeUtcFrictionWindows,
 } from '../sharedData/answerlatticeSupportMetrics';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 
 const ANSWERLATTICE_FRICTION_AGGREGATION_FAILED = 'ANSWERLATTICE_FRICTION_AGGREGATION_FAILED';
 const ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED = 'ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED';
@@ -136,7 +137,11 @@ export interface FrictionAggregationResult {
 // MAIN AGGREGATION
 // ═══════════════════════════════════════════════════════════════
 
-export async function aggregateFrictionStats(tId: number, sId: number): Promise<FrictionAggregationResult> {
+export async function aggregateFrictionStats(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<FrictionAggregationResult> {
     const result: FrictionAggregationResult = {
         entitiesProcessed: 0,
         dailyStatsWritten: 0,
@@ -169,6 +174,13 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             .orderBy('timestamp', 'desc')
             .limit(signalLimit + 1)
             .get();
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+            window: 'utc_today',
+            documentsReturned: signalsSnap.size,
+            queryLimit: signalLimit + 1,
+            saturated: signalsSnap.size > signalLimit,
+        });
 
         if (signalsSnap.size > signalLimit) {
             throw new Error(`Daily signal evidence exceeded the complete-window limit of ${signalLimit}.`);
@@ -212,6 +224,13 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             .orderBy('createdOn', 'desc')
             .limit(missLimit + 1)
             .get();
+        readObserver?.record({
+            source: DB_COLLECTIONS.AI_SEARCH_HISTORY,
+            window: 'utc_today_canonical_misses',
+            documentsReturned: missesSnap.size,
+            queryLimit: missLimit + 1,
+            saturated: missesSnap.size > missLimit,
+        });
 
         if (missesSnap.size > missLimit) {
             throw new Error(`Daily canonical misses exceeded the complete-window limit of ${missLimit}.`);
@@ -240,6 +259,12 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             const batch = entityIdsArray.slice(i, i + 30);
             const refs = batch.map(entityId => db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId));
             const entityDocs = await db.getAll(...refs);
+            readObserver?.record({
+                source: DB_COLLECTIONS.ANSWERLATTICE_ENTITIES,
+                window: 'by_id',
+                documentsReturned: entityDocs.filter(document => document.exists).length,
+                queryLimit: refs.length,
+            });
 
             for (const doc of entityDocs) {
                 if (!doc.exists) continue;
@@ -316,6 +341,13 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             .orderBy('date', 'desc')
             .limit(historyLimit + 1)
             .get();
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS,
+            window: 'rolling_14d',
+            documentsReturned: historicalSnap.size,
+            queryLimit: historyLimit + 1,
+            saturated: historicalSnap.size > historyLimit,
+        });
 
         if (historicalSnap.size > historyLimit) {
             throw new Error(`Friction history exceeded the complete-window limit of ${historyLimit}.`);

@@ -1826,7 +1826,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 const { evaluateEscalation } = await import('@lib/answerlattice/escalationEvaluator');
                 escalation = evaluateEscalation({
                     canonicalResult,
-                    ragDocuments: documentsMatched
+                    // Escalation evaluates only evidence the final answer actually cited.
+                    // Candidate documents that the model ignored are not answer evidence.
+                    ragDocuments: resolvedReferences
                         .filter(d => typeof d.similarityScore === 'number')
                         .slice(0, 5)
                         .map(d => ({
@@ -1837,7 +1839,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     searchQuery,
                     productContext: effectiveProductContext,
                     effectiveQuery: queryForEmbedding,
-                    answerWasEmpty: !craftedAnswer,
+                    answerWasEmpty: !craftedAnswer || isKnowledgeBaseRefusal(craftedAnswer),
                 });
             } catch {
                 // Graceful degradation — escalation failure never blocks search

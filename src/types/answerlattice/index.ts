@@ -378,6 +378,8 @@ export interface AnswerlatticeMutationProposal extends AnswerlatticeDocumentIden
     signalSummary: {
         ticketCount: number;
         chatCount: number;
+        /** Present on signal-cluster proposals created after the evidence-transparency hardening. */
+        escalationCount?: number;
         negativeFeedbackRate: number;
         exampleReferences: string[];
     };
@@ -690,6 +692,8 @@ export const ANSWERLATTICE_ANSWER_TYPES = {
 
 export type AnswerlatticeAnswerType = typeof ANSWERLATTICE_ANSWER_TYPES[keyof typeof ANSWERLATTICE_ANSWER_TYPES];
 
+// Instructional verbs only. The guided runtime must never map these values to
+// callbacks, DOM clicks, arbitrary code, or account-changing operations.
 export const ANSWERLATTICE_PROCEDURE_ACTIONS = {
     OPEN: 'open',
     NAVIGATE: 'navigate',
@@ -729,7 +733,7 @@ export type AnswerlatticePrerequisiteType = typeof ANSWERLATTICE_PREREQUISITE_TY
 
 export interface AnswerlatticeProcedureStep {
     stepOrder: number;                     // 1-based integer
-    action: AnswerlatticeProcedureAction;       // From approved vocabulary
+    action: AnswerlatticeProcedureAction;  // Human instruction label, never an executable command
     instruction: string;                   // ≤80 chars, human-readable
     target?: string;                       // Semantic data-answerlattice-target value (optional)
     expectedEvent?: string;                // Allowlisted host event that can advance this step

@@ -136,6 +136,70 @@ function verifyAnswerlatticeFeatureInventoryTruth() {
   assertIncludes(inventory, 'have no runtime consumer in the audited source tree', 'Answerlattice reserved placeholder flag boundary');
 }
 
+function verifyAnswerlatticeFeatureAuditTrackerTruth() {
+  const tracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
+  const summaryStart = tracker.indexOf('## Frozen feature order');
+  const summaryEnd = tracker.indexOf('## Cross-cutting audits');
+  const detailsStart = tracker.indexOf('## Completed items');
+  const detailsEnd = tracker.indexOf('## Final C1-C8 System Pass');
+
+  assert(
+    summaryStart !== -1 && summaryEnd > summaryStart,
+    'Answerlattice feature tracker must include the frozen feature-order section',
+  );
+  assert(
+    detailsStart !== -1 && detailsEnd > detailsStart,
+    'Answerlattice feature tracker must include the completed-items section',
+  );
+
+  const summaryRows = [...tracker.slice(summaryStart, summaryEnd).matchAll(
+    /^\| (\d+) \| ([^|]+) \| (Small|Medium|Large) \| ([^|]+) \|/gm,
+  )].map((match) => ({
+    number: Number(match[1]),
+    title: match[2].trim().toLowerCase().replace(/\s+/g, ' '),
+    status: match[4].trim(),
+  }));
+  const detailRows = [...tracker.slice(detailsStart, detailsEnd).matchAll(
+    /^### Feature (\d+) — ([^\n]+)\n\n\*\*Status:\*\* ([^\n]+)/gm,
+  )].map((match) => ({
+    number: Number(match[1]),
+    title: match[2].trim().toLowerCase().replace(/\s+/g, ' '),
+    status: match[3].trim(),
+  }));
+  const expectedNumbers = Array.from({ length: 44 }, (_, index) => index + 1);
+
+  assert(
+    JSON.stringify(summaryRows.map((row) => row.number)) === JSON.stringify(expectedNumbers),
+    'Answerlattice feature tracker summary must contain each feature exactly once in frozen order 1-44',
+  );
+  assert(
+    JSON.stringify(detailRows.map((row) => row.number)) === JSON.stringify(expectedNumbers),
+    'Answerlattice feature tracker details must contain each feature exactly once in frozen order 1-44',
+  );
+
+  summaryRows.forEach((summary, index) => {
+    const detail = detailRows[index];
+    assert(
+      summary.title === detail.title,
+      `Answerlattice Feature ${summary.number} summary/detail titles must match`,
+    );
+    assert(
+      summary.status === 'Local source complete',
+      `Answerlattice Feature ${summary.number} summary status must be Local source complete`,
+    );
+    assert(
+      detail.status.startsWith('Local source complete'),
+      `Answerlattice Feature ${summary.number} detailed status must be Local source complete`,
+    );
+  });
+
+  assertIncludes(
+    tracker.slice(detailsEnd),
+    '**Status:** Local source complete',
+    'Answerlattice final C1-C8 audit status',
+  );
+}
+
 function verifyAnswerlatticeOperationalHardening() {
   const packageJson = JSON.parse(read('package.json'));
   const functionsPackageJson = JSON.parse(read('functions-answerlattice/package.json'));
@@ -1359,7 +1423,7 @@ function verifyAnswerlatticeBrowserHandoffDiagnostics() {
   assertNotIncludes(ticketsDal, 'const tId = Number(session?.tId ?? session?.user?.tenantId);', 'Answerlattice support ticket reads must not numeric-coerce session tenant scope');
   assertNotIncludes(ticketsDal, 'const sId = Number(session?.sId ?? session?.user?.storeId);', 'Answerlattice support ticket reads must not numeric-coerce session store scope');
   assertIncludes(addSupportTicket, 'support_ticket_submit_create_rejected', 'Answerlattice support ticket submit create rejection code');
-  assertIncludes(helpChatHandlers, 'help_chat_escalation_ticket_create_rejected', 'Answerlattice HelpChat escalation ticket create rejection code');
+  assertNotIncludes(helpChatHandlers, 'help_chat_escalation_ticket_create_rejected', 'Answerlattice retired HelpChat browser escalation ticket path');
   assertIncludes(helpChatHandlers, 'copyHelpChatMessageToClipboard', 'Answerlattice HelpChat copy acknowledgement helper');
   assertIncludes(helpChatHandlers, 'help_chat_message_copy_clipboard_unavailable', 'Answerlattice HelpChat unavailable clipboard failure code');
   assertIncludes(helpChatHandlers, 'help_chat_message_copy_fallback_failed', 'Answerlattice HelpChat failed fallback clipboard failure code');
@@ -1446,6 +1510,9 @@ function verifyAnswerlatticeHookFailureCopy() {
   assertIncludes(entities, 'ANSWERLATTICE_ENTITY_RELATION_ADD_FAILED', 'Answerlattice entities fixed relation-add copy');
   assertIncludes(entities, 'ANSWERLATTICE_ENTITY_RELATION_REMOVE_FAILED', 'Answerlattice entities fixed relation-remove copy');
   assertIncludes(entities, 'ANSWERLATTICE_ENTITY_SEARCH_INDEX_UPDATE_FAILED', 'Answerlattice entities fixed search-index copy');
+  assertIncludes(entities, "export type AnswerlatticeEntityLoadMode = 'full' | 'entities_and_search_index' | 'entities_only';", 'Answerlattice entity hook bounded load modes');
+  assertIncludes(entities, "const shouldLoadRelations = loadMode === 'full';", 'Answerlattice entity hook relation read gate');
+  assertIncludes(entities, "const shouldLoadSearchIndex = loadMode !== 'entities_only';", 'Answerlattice entity hook search-index read gate');
   assertIncludes(predictiveTriggers, 'ANSWERLATTICE_PREDICTIVE_TRIGGERS_LOAD_FAILED', 'Answerlattice predictive triggers fixed load copy');
   assertIncludes(predictiveTriggers, 'ANSWERLATTICE_PREDICTIVE_TRIGGER_CREATE_FAILED', 'Answerlattice predictive triggers fixed create copy');
   assertIncludes(predictiveTriggers, 'ANSWERLATTICE_PREDICTIVE_TRIGGER_UPDATE_FAILED', 'Answerlattice predictive triggers fixed update copy');
@@ -4998,6 +5065,8 @@ function verifyPredictiveTriggerPublicSummary() {
   assertIncludes(triggers, 'projectAnswerlatticePredictiveTriggerForRuntime(trigger)', 'Answerlattice predictive summary strips private and advisory fields through shared projection');
   assertIncludes(triggers, 'limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT + 1)', 'Answerlattice predictive summary detects overflow');
   assertIncludes(triggers, "throw new Error('Predictive trigger limit exceeded; the runtime summary was not replaced.')", 'Answerlattice predictive summary fails closed on overflow');
+  assertIncludes(triggers, 'getCountFromServer', 'Answerlattice predictive create aggregate count guard');
+  assertIncludes(triggers, 'existingCount.data().count >= ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT', 'Answerlattice predictive create cap check');
   assertIncludes(triggers, 'const patch: Record<string, unknown> = {};', 'Answerlattice predictive updates start from an empty allowlisted patch');
   assertIncludes(triggers, 'if (data.conditions !== undefined) patch.conditions = next.conditions;', 'Answerlattice predictive updates use validated condition projection');
   assertIncludes(triggers, 'if (data.action !== undefined) patch.action = next.action;', 'Answerlattice predictive updates use validated action projection');
@@ -6690,6 +6759,38 @@ function verifyAnswerlatticeNightlySchedulerDiagnostics() {
   assertNotIncludes(nightly, 'hasEnabledIntegrationAdapter(tId, sId).catch(() => false)', 'Answerlattice nightly silent integration adapter check fallback');
 }
 
+function verifyAnswerlatticeSchedulerReadTelemetry() {
+  const telemetry = read('functions-answerlattice/src/answerlattice/schedulerReadTelemetry.ts');
+  const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
+  const monitorRoute = read('src/app/api/platform/answerlattice-intake/route.ts');
+  const monitorUi = read('src/components/templates/main-app/platform/answerlatticeIntakeMonitor/index.tsx');
+  const packageJson = JSON.parse(read('package.json'));
+
+  assertIncludes(telemetry, 'const MAX_READ_WINDOWS_PER_TASK = 8;', 'Answerlattice scheduler telemetry run-log bound');
+  assertIncludes(telemetry, 'export class AnswerlatticeSchedulerReadObserver', 'Answerlattice scheduler telemetry observer');
+  assertIncludes(telemetry, 'These counters are not Firebase billing data', 'Answerlattice scheduler telemetry billing boundary');
+  assertIncludes(nightly, 'const readObserver = new AnswerlatticeSchedulerReadObserver();', 'Answerlattice task-local read observer');
+  assert(
+    (nightly.match(/const readWindows = readObserver\.snapshot\(\);/g) || []).length === 2,
+    'Answerlattice scheduler must preserve source windows on task success and failure',
+  );
+  assertIncludes(nightly, 'tenantRuns: result.tenantRuns.slice(0, 100),', 'Answerlattice scheduler existing bounded run-log persistence');
+  assertIncludes(monitorRoute, 'const SCHEDULER_READ_WINDOW_LIMIT = 80;', 'Answerlattice platform monitor telemetry response bound');
+  assertIncludes(monitorRoute, 'entry.length !== 6', 'Answerlattice platform monitor compact tuple validation');
+  assertIncludes(monitorUi, 'Latest scheduler source windows', 'Answerlattice platform monitor source-window table');
+  assertIncludes(monitorUi, 'not billed Firestore reads or a currency estimate', 'Answerlattice platform monitor billing disclaimer');
+  assert(
+    packageJson.scripts?.['test:answerlattice-scheduler-read-telemetry']
+      === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-answerlattice-scheduler-read-telemetry.ts',
+    'Answerlattice scheduler telemetry verification script',
+  );
+  assertIncludes(
+    packageJson.scripts?.['verify:answerlattice-runtime-truth'] || '',
+    'npm run test:answerlattice-scheduler-read-telemetry',
+    'Answerlattice runtime truth aggregate scheduler telemetry test',
+  );
+}
+
 function verifyAnswerlatticeMasterSchedulerDiagnostics() {
   const masterScheduler = read('functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts');
 
@@ -8070,34 +8171,197 @@ function verifyAnswerlatticeAiFailureEscalationBoundary() {
   const evaluator = read('src/lib/answerlattice/escalationEvaluator.ts');
   const escalationTypes = read('src/lib/answerlattice/escalationTypes.ts');
   const helpChatHandlers = read('src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts');
-  const helpChatApi = read('src/components/templates/main-app/helpChat/api.ts');
+  const helpChatApiTypes = read('src/components/templates/main-app/helpChat/apiTypes.ts');
   const helpChat = read('src/components/templates/main-app/helpChat/index.tsx');
-  const requestSchema = read('src/lib/validation/chatSchemas.ts');
   const helpCenterRoute = read('src/app/api/helpCenter/search-kb/route.ts');
-  const searchTypes = read('src/lib/search/types.ts');
   const searchCore = read('src/lib/search/searchCore.ts');
+  const ticketDal = read('src/database/tickets/index.ts');
+  const ticketLifecycle = read('src/lib/answerlattice/supportTicketLifecycle.ts');
+  const dedicatedRules = read('firestore-answerlattice.rules');
+  const sharedRules = read('firestore.rules');
+  const rulesTests = read('scripts/verification/test-answerlattice-ticket-rules.ts');
+  const ticketContractTests = read('scripts/verification/test-answerlattice-ticket-contracts.ts');
   const contractTests = read('scripts/verification/test-answerlattice-ai-failure-escalation.ts');
   const featureTracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
   const readme = read('__docs__/answerlattice/ai-failure-escalation/README.md');
+  const helpChatReadme = read('src/components/templates/main-app/helpChat/README.md');
+  const helpChatSummary = read('src/components/templates/main-app/helpChat/IMPLEMENTATION_SUMMARY.md');
 
   assertIncludes(features, 'ENABLE_ANSWERLATTICE_AI_ESCALATION: false', 'AI failure escalation remains default-disabled');
+  assertIncludes(features, 'It does not activate a customer handoff by itself.', 'AI failure escalation flag does not imply handoff authority');
   assertIncludes(evaluator, 'const normalizedInput = normalizeEscalationInput(input);', 'AI failure evaluator rejects malformed evidence');
   assertIncludes(evaluator, 'ragDocuments.sort((left, right) => right.similarityScore - left.similarityScore);', 'AI failure evaluator selects the actual best RAG score');
+  assertIncludes(evaluator, 'hasUsableFinalAnswerEvidence', 'AI failure evaluator distinguishes useful final-answer evidence from a canonical miss');
+  assertIncludes(evaluator, 'parseAnswerlatticeEscalationContext(', 'AI failure evaluator validates projected escalation context');
   assertIncludes(evaluator, 'ESCALATION_RAG_DOCUMENT_LIMIT = 5', 'AI failure escalation evidence cap');
   assertIncludes(evaluator, 'ESCALATION_QUERY_MAX_CHARS = 500', 'AI failure escalation query cap');
-  assertIncludes(helpChatHandlers, 'content && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION', 'Help Chat explicit intent obeys the rollout flag');
-  assertIncludes(helpChatHandlers, "antMessage.success('Support ticket created.')", 'Help Chat escalation avoids response-time promises');
-  assertNotIncludes(helpChatHandlers, 'Our team will get back to you soon.', 'Help Chat escalation response-time promise');
-  assertIncludes(helpChat, 'FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION', 'Help Chat escalation UI obeys the rollout flag');
-  [helpChatApi, requestSchema, helpCenterRoute, searchTypes, searchCore, evaluator, escalationTypes].forEach((source, index) => {
+  assertIncludes(searchCore, 'ragDocuments: resolvedReferences', 'AI failure escalation evaluates only final-answer cited evidence');
+  assertNotIncludes(searchCore, 'ragDocuments: documentsMatched', 'AI failure escalation candidate-only evidence authority');
+  assertIncludes(searchCore, 'isKnowledgeBaseRefusal(craftedAnswer)', 'AI failure escalation treats refusal as an empty outcome');
+  assertNotIncludes(helpChatHandlers, 'handleEscalate', 'Help Chat browser escalation handler');
+  assertNotIncludes(helpChatHandlers, "import('@database/tickets/index')", 'Help Chat browser ticket creation authority');
+  assertNotIncludes(helpChatHandlers, 'ESCALATION_INTENT_PATTERNS', 'Help Chat browser explicit-intent authority');
+  assertNotIncludes(helpChat, 'onEscalate=', 'Help Chat automatic escalation callback');
+  assertNotIncludes(helpCenterRoute, 'context: result.escalation.escalationContext', 'Help Center internal escalation debug projection');
+  assertNotIncludes(helpChatApiTypes, "context?: import('@lib/answerlattice/escalationTypes').EscalationContext", 'Help Chat escalation debug response contract');
+  assertIncludes(ticketDal, 'answerlattice_ticket_server_escalation_fields_forbidden', 'Client ticket DAL rejects server-owned escalation fields');
+  assertNotIncludes(ticketDal, "data.source === 'ai_escalation'", 'Client ticket DAL cannot select escalation signal authority');
+  assertIncludes(ticketLifecycle, 'parseAnswerlatticeEscalationContext(params.value.escalationContext)', 'Stored escalation context validation');
+  [dedicatedRules, sharedRules].forEach((rules, index) => {
+    assertIncludes(rules, "!data.keys().hasAny(['source', 'escalationContext', 'knowledgeCandidate', 'widgetEscalation'])", `AI failure escalation rules ${index + 1} reserve server-owned ticket fields`);
+  });
+  assertIncludes(rulesTests, "['client-escalation-context'", 'AI failure escalation reserved-field rules regression test');
+  assertIncludes(ticketContractTests, 'malformed-server-escalation-ticket', 'AI failure escalation stored-context regression test');
+  [helpCenterRoute, searchCore, evaluator, escalationTypes].forEach((source, index) => {
     assertNotIncludes(source, 'sessionFailureCount', `AI failure escalation source ${index + 1} browser-owned repeated-failure authority`);
     assertNotIncludes(source, 'repeated_failure', `AI failure escalation source ${index + 1} unverified repeated-failure trigger`);
   });
+  assertNotIncludes(escalationTypes, 'low_canonical_confidence', 'AI failure escalation canonical-miss false-positive trigger');
+  assertIncludes(escalationTypes, 'insufficient_answer_evidence', 'AI failure escalation final-answer evidence trigger');
   assertIncludes(contractTests, 'RAG evidence must use the actual best normalized score', 'AI failure escalation score-order regression test');
+  assertIncludes(contractTests, 'A normal canonical miss must not interrupt a useful source-backed RAG answer', 'AI failure escalation healthy RAG regression test');
   assertIncludes(contractTests, 'Number.NaN', 'AI failure escalation malformed-score regression test');
   assertIncludes(featureTracker, '### Feature 40 — AI Failure Escalation', 'AI failure escalation feature tracker');
   assertIncludes(featureTracker, '**Status:** Local source complete', 'AI failure escalation feature completion state');
   assertIncludes(readme, 'server-authoritative handoff contract', 'AI failure escalation activation boundary');
+  assertIncludes(helpChatReadme, 'Does not create support tickets', 'Help Chat runtime notes preserve the no-ticket boundary');
+  assertNotIncludes(helpChatReadme, 'Offers ticket escalation', 'Help Chat runtime notes stale escalation claim');
+  assertNotIncludes(helpChatSummary, 'optional ticket escalation', 'Help Chat implementation summary stale escalation claim');
+}
+
+function verifyAnswerlatticeNativeIntakeConnectorBoundary() {
+  const packageJson = JSON.parse(read('package.json'));
+  const features = read('src/config/features.ts');
+  const functionsFeatures = read('functions-answerlattice/src/constants/features.ts');
+  const boundaryVerifier = read('scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js');
+  const featureTracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
+  const readme = read('__docs__/answerlattice/native-knowledge-intake-connectors/README.md');
+
+  assertIncludes(features, 'ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false', 'Native intake connector placeholder remains disabled');
+  assertIncludes(features, 'RESERVED ONLY: no app, API, OAuth, credential, provider, sync worker, or', 'Native intake connector no-runtime source comment');
+  assertNotIncludes(functionsFeatures, 'ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS', 'Native intake connector phantom Functions flag');
+  assert(
+    packageJson.scripts?.['verify:answerlattice-native-intake-connectors']
+      === 'node scripts/verification/verify-answerlattice-native-intake-connectors-boundary.js',
+    'Native intake connector boundary package script',
+  );
+  assertIncludes(
+    packageJson.scripts?.['verify:answerlattice-founder-support-controls'] || '',
+    'npm run verify:answerlattice-native-intake-connectors',
+    'Founder support controls aggregate native connector boundary',
+  );
+  assertIncludes(boundaryVerifier, 'runtimeFlagReferences.length === 0', 'Native intake connector no-consumer source gate');
+  assertIncludes(boundaryVerifier, 'Current Firebase operations: zero', 'Native intake connector zero-cost source gate');
+  assertIncludes(
+    featureTracker,
+    '### Feature 41 — Native Knowledge Intake Connectors\n\n**Status:** Local source complete',
+    'Native intake connector feature completion state',
+  );
+  assertIncludes(readme, 'DO NOT BUILD NOW - RESERVED PLACEHOLDER ONLY', 'Native intake connector product decision');
+}
+
+function verifyAnswerlatticeSignalQualityBoundary() {
+  const packageJson = JSON.parse(read('package.json'));
+  const features = read('src/config/features.ts');
+  const functionsFeatures = read('functions-answerlattice/src/constants/features.ts');
+  const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
+  const governanceServer = read('src/lib/answerlattice/governanceServer.ts');
+  const proposalReview = read('src/components/templates/answerlattice/MutationProposalReview.tsx');
+  const governanceContracts = read('src/lib/answerlattice/governanceContracts.ts');
+  const boundaryVerifier = read('scripts/verification/verify-answerlattice-signal-quality-boundary.js');
+  const featureTracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
+  const readme = read('__docs__/answerlattice/signal-quality-scoring/README.md');
+
+  assertIncludes(features, 'ENABLE_ANSWERLATTICE_SIGNAL_QUALITY: false', 'Signal-quality placeholder remains disabled');
+  assertIncludes(features, 'RESERVED ONLY: no app or Functions runtime reads this flag.', 'Signal-quality no-runtime source comment');
+  assertNotIncludes(functionsFeatures, 'ENABLE_ANSWERLATTICE_SIGNAL_QUALITY', 'Signal-quality phantom Functions flag');
+  assert(
+    packageJson.scripts?.['verify:answerlattice-signal-quality']
+      === 'node scripts/verification/verify-answerlattice-signal-quality-boundary.js',
+    'Signal-quality boundary package script',
+  );
+  assertIncludes(
+    packageJson.scripts?.['verify:answerlattice-founder-support-controls'] || '',
+    'npm run verify:answerlattice-signal-quality',
+    'Founder support controls aggregate signal-quality boundary',
+  );
+  assertIncludes(boundaryVerifier, 'runtimeFlagReferences.length === 0', 'Signal-quality no-consumer source gate');
+  assertIncludes(boundaryVerifier, 'legacyMutationCallers.length === 0', 'Signal-quality production/legacy source gate');
+  assertNotIncludes(nightly, 'async function autoAdjustConfidence', 'Signal-quality usage proxy cannot mutate canonical confidence');
+  assertIncludes(nightly, "reason: 'unsafe_usage_proxy_retired'", 'Signal-quality retired nightly task diagnostic');
+  assertNotIncludes(governanceServer, 'Number(proposal.confidenceScore', 'Signal-quality proposal score cannot become canonical confidence');
+  assertIncludes(governanceServer, "validationSource: 'manual'", 'Signal-quality approved canonical answer uses manual validation authority');
+  assertIncludes(nightly, 'escalationCount: cluster.escalation', 'Signal-cluster proposal escalation evidence');
+  assertIncludes(governanceContracts, 'escalationCount: z.number().int().nonnegative().max(1_000_000).optional()', 'Signal-cluster escalation evidence validation');
+  assertIncludes(proposalReview, 'Evidence: {proposal.signalSummary.ticketCount} tickets', 'Signal proposal transparent evidence UI');
+  assertIncludes(proposalReview, 'Extractor score:', 'Signal proposal extractor score label');
+  assertNotIncludes(proposalReview, 'Extractor confidence:', 'Signal proposal misleading extractor-confidence label');
+  assertNotIncludes(proposalReview, "'Signal strength'", 'Signal proposal opaque strength UI');
+  assertIncludes(
+    featureTracker,
+    '### Feature 42 — Signal-Quality Scoring\n\n**Status:** Local source complete',
+    'Signal-quality feature completion state',
+  );
+  assertIncludes(readme, 'VALIDATE FIRST - RESERVED SCORING PLACEHOLDER', 'Signal-quality product decision');
+}
+
+function verifyAnswerlatticeNativeHelpdeskConnectorBoundary() {
+  const packageJson = JSON.parse(read('package.json'));
+  const boundaryVerifier = read('scripts/verification/verify-answerlattice-native-helpdesk-connectors-boundary.js');
+  const featureTracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
+  const readme = read('__docs__/answerlattice/native-helpdesk-and-jira-connectors/README.md');
+
+  assert(
+    packageJson.scripts?.['verify:answerlattice-native-helpdesk-connectors']
+      === 'node scripts/verification/verify-answerlattice-native-helpdesk-connectors-boundary.js',
+    'Native helpdesk connector boundary package script',
+  );
+  assertIncludes(
+    packageJson.scripts?.['verify:answerlattice-founder-support-controls'] || '',
+    'npm run verify:answerlattice-native-helpdesk-connectors',
+    'Founder support controls aggregate native helpdesk connector boundary',
+  );
+  assertIncludes(boundaryVerifier, 'provider-specific app flag must remain absent', 'Native helpdesk connector no-flag source gate');
+  assertIncludes(boundaryVerifier, 'provider-named runtime source must remain absent', 'Native helpdesk connector no-runtime source gate');
+  assertIncludes(boundaryVerifier, 'provider-specific logic must not hide in a generic runtime source', 'Native helpdesk connector generic-file source gate');
+  assertIncludes(boundaryVerifier, 'provider credential contract must remain absent', 'Native helpdesk connector no-credential source gate');
+  assertIncludes(readme, 'Attachments, internal notes, requester profiles, and unrestricted conversation history stay excluded', 'Native helpdesk connector sensitive-data boundary');
+  assertIncludes(
+    featureTracker,
+    '### Feature 43 — Native Zendesk, Intercom, Freshdesk, Help Scout, and Jira Connectors\n\n**Status:** Local source complete',
+    'Native helpdesk connector feature completion state',
+  );
+  assertIncludes(readme, 'DO NOT BUILD NOW', 'Native helpdesk connector product decision');
+}
+
+function verifyAnswerlatticeAutonomousActionBoundary() {
+  const packageJson = JSON.parse(read('package.json'));
+  const boundaryVerifier = read('scripts/verification/verify-answerlattice-autonomous-action-boundary.js');
+  const featureTracker = read('__docs__/answerlattice/system-inventory/answerlattice-feature-flow-audit-tracker.md');
+  const readme = read('__docs__/answerlattice/autonomous-browser-and-account-actions/README.md');
+
+  assert(
+    packageJson.scripts?.['verify:answerlattice-autonomous-action-boundary']
+      === 'node scripts/verification/verify-answerlattice-autonomous-action-boundary.js',
+    'Autonomous action boundary package script',
+  );
+  assertIncludes(
+    packageJson.scripts?.['verify:answerlattice-founder-support-controls'] || '',
+    'npm run verify:answerlattice-autonomous-action-boundary',
+    'Founder support controls aggregate autonomous action boundary',
+  );
+  assertIncludes(boundaryVerifier, 'guidance must not click the host target', 'Autonomous action no-click source gate');
+  assertIncludes(boundaryVerifier, 'widget loader must not request host form submission', 'Autonomous action no-form-submit source gate');
+  assertIncludes(boundaryVerifier, 'guidance messages require the configured widget origin', 'Autonomous action iframe-origin source gate');
+  assertIncludes(boundaryVerifier, 'SDK action method must remain absent', 'Autonomous action no-SDK source gate');
+  assertIncludes(boundaryVerifier, 'procedure executable field must remain absent', 'Autonomous action no-procedure-execution source gate');
+  assertIncludes(
+    featureTracker,
+    '### Feature 44 — Autonomous Browser and Account-Changing Actions\n\n**Status:** Local source complete',
+    'Autonomous action feature completion state',
+  );
+  assertIncludes(readme, 'DO NOT BUILD', 'Autonomous action product decision');
+  assertIncludes(readme, 'not independent proof of backend state', 'Autonomous action outcome-evidence limitation');
 }
 
 function verifyAnswerlatticeAdvancedBrandingBoundary() {
@@ -8199,6 +8463,7 @@ verifyAnswerlatticeRuntimeDiagnostics();
 verifyWorkflowIntegrationAdapterSafety();
 verifyAnswerlatticeRetentionDiagnostics();
 verifyAnswerlatticeNightlySchedulerDiagnostics();
+verifyAnswerlatticeSchedulerReadTelemetry();
 verifyAnswerlatticeMasterSchedulerDiagnostics();
 verifyAnswerlatticeOnboardingBootstrapDiagnostics();
 verifyAnswerlatticeTicketKnowledgeDiagnostics();
@@ -8216,9 +8481,14 @@ verifyAnswerlatticeOwnerSupportAssistantRuntime();
 verifyAnswerlatticeAnswerTestsRuntime();
 verifyAnswerlatticeFounderSupportControlsRuntime();
 verifyAnswerlatticeAiFailureEscalationBoundary();
+verifyAnswerlatticeNativeIntakeConnectorBoundary();
+verifyAnswerlatticeSignalQualityBoundary();
+verifyAnswerlatticeNativeHelpdeskConnectorBoundary();
+verifyAnswerlatticeAutonomousActionBoundary();
 verifyAnswerlatticeAdvancedBrandingBoundary();
 verifyAnswerlatticePinnedIconBoundary();
 verifyAnswerlatticeFeatureInventoryTruth();
+verifyAnswerlatticeFeatureAuditTrackerTruth();
 verifyAnswerlatticeOperationalHardening();
 
 console.log('Answerlattice runtime truth verifier passed');

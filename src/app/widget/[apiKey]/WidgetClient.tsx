@@ -53,6 +53,7 @@ const WIDGET_ESCALATION_EMAIL_MESSAGE = 'Enter a valid email so support can repl
 const WIDGET_LINK_OPEN_FAILED_MESSAGE = 'Could not open link. Try again.';
 const GUIDANCE_CONTRACT_VERSION = 'answerlattice.guidance.v1';
 const GUIDANCE_SEMANTIC_ID_PATTERN = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
+// Presentation vocabulary only. Host execution is deliberately unsupported.
 const GUIDANCE_ACTIONS = new Set([
     'open', 'navigate', 'click', 'select', 'enter', 'toggle', 'submit', 'confirm',
     'download', 'upload', 'copy', 'paste', 'scroll', 'expand', 'collapse',

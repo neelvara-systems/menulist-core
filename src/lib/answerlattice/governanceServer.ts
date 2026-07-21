@@ -658,7 +658,6 @@ export const buildAnswerlatticeCandidateFromProposal = (
         entityIds: normalizeAnswerlatticeResolvedEntityIds(proposal.relatedEntityIds, 25),
     };
     const status = suggested.proposedStatus || currentAnswer?.status || 'active';
-    const validationSource = suggested.draftSource === 'manual_authoring' ? 'manual' : 'signal_cluster';
     const evidenceSource = suggested.proposedEvidence || currentAnswer?.evidence || { sourceIds: [], citations: [] };
     const evidence = normalizeCanonicalEvidence({
         sourceIds: evidenceSource.sourceIds || [],
@@ -680,8 +679,10 @@ export const buildAnswerlatticeCandidateFromProposal = (
         evidence,
         validation: {
             ...(currentAnswer?.validation || {}),
-            confidenceScore: Math.max(0, Math.min(1, Number(proposal.confidenceScore ?? currentAnswer?.validation?.confidenceScore ?? 1))),
-            validationSource,
+            // Proposal scores describe extraction or evidence volume. They must
+            // never become canonical answer correctness after human approval.
+            confidenceScore: 1,
+            validationSource: 'manual',
             lastValidatedOn: validationTimestamp,
             validatedBy: actor.label,
         },

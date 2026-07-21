@@ -1,5 +1,6 @@
 # Answerlattice — Strategic Improvement Report
 
+> **Historical snapshot:** This March 2026 gap report preserves the starting analysis. Current implementation and priority truth is maintained in `system-inventory/answerlattice-feature-flow-audit-tracker.md` and `answerlattice-build-priority-roadmap.md`.
 > **Date:** 2026-03-03 (updated after implementation session)
 > **Scope:** Infrastructure-grade improvements for SMB SaaS ICP
 > **Source:** Forensic code audit findings + architecture analysis
@@ -118,7 +119,7 @@ Doctrine says: "Post-mutation impact tracked (14-day window)." Not implemented.
 | **Signal-to-entity auto-resolution** — Use entity search index to auto-resolve `unresolved` entityIds on incoming signals        | Signal quality          | Must Build         |
 | **Multi-language canonical answers** — Leverage existing `next-intl` infrastructure for answer content                           | Market expansion        | Nice to Have       |
 | **Answer usage analytics** — Track which canonical answers are served most, least, never                                         | Governance intelligence | Should Build       |
-| **Confidence score auto-adjustment** — After 30 days of serving an answer with 0 negative signals, auto-increase confidence      | Self-improvement        | Nice to Have       |
+| **Confidence score auto-adjustment** — Increase confidence from serve volume and missing negative signals                      | Unsafe proxy            | Retired / Do Not Build |
 
 ---
 
@@ -135,7 +136,7 @@ Doctrine says: "Post-mutation impact tracked (14-day window)." Not implemented.
 7. ✅ Post-mutation impact tracking — `trackMutationImpact()` (14-day window)
 8. ✅ Parallel retrieval reads — `Promise.all` in `canonicalRetrieval.ts`
 9. ✅ Signal deduplication — in-memory Set in `signalEmitter.ts`
-10. ✅ Confidence score auto-adjustment — `autoAdjustConfidence()` in nightly
+10. ✅ Confidence score auto-adjustment retired on 2026-07-20 — usage volume and missing negative feedback are not correctness evidence
 11. ✅ All unbounded queries capped with `limit()`
 12. ✅ CF feature flag `ENABLE_ANSWERLATTICE_NIGHTLY` added
 13. ✅ Master Execution Prompt STEP 9B — Answerlattice completion rules
@@ -159,6 +160,7 @@ Doctrine says: "Post-mutation impact tracked (14-day window)." Not implemented.
 7. Cross-entity drift propagation (premature — basic drift not proven)
 8. Multi-language canonical answers (English KB only today)
 9. Entity relationship graph visualization (developer tool, not SMB ICP tool)
+10. Usage-based canonical confidence adjustment (unsafe correctness proxy; signals create review work instead)
 
 ---
 

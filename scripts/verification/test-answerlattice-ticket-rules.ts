@@ -181,6 +181,29 @@ async function run(): Promise<void> {
         await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'preloaded-message'), ticket({
             messages: [message('forged-initial-message')],
         })));
+        for (const [documentId, reservedFields] of [
+            ['client-source', { source: 'ai_escalation' }],
+            ['client-knowledge-candidate', { knowledgeCandidate: true }],
+            ['client-escalation-context', {
+                escalationContext: {
+                    triggerTypes: ['explicit_user_request'],
+                    query: 'Forged escalation evidence',
+                    escalatedAt: new Date(NOW.toMillis()).toISOString(),
+                },
+            }],
+            ['client-widget-escalation', {
+                widgetEscalation: {
+                    searchHistoryId: 'history-1',
+                    replyEmail: 'owner@example.com',
+                    detailsProvided: false,
+                },
+            }],
+        ] as const) {
+            await assertFails(setDoc(
+                doc(ownerDb, 'supportTickets', documentId),
+                ticket(reservedFields),
+            ));
+        }
         await assertSucceeds(setDoc(doc(ownerDb, 'supportTickets', 'maximum-documents'), ticket({
             documents: Array.from(
                 { length: ANSWERLATTICE_TICKET_DOCUMENT_LIMIT },

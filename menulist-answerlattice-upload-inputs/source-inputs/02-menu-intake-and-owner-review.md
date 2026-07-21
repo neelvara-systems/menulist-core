@@ -1,15 +1,17 @@
 # Menu Intake And Owner Review
 
+**Verified:** 2026-07-20 against the current sign-in-first public entry, extraction, review, claim, and publish boundaries.
+
 ## Public Create Menu Flow
 
 MenuList has a controlled public-facing `/create-menu` flow.
 
-The owner uploads a current menu image, gets a structured owner-review preview, and signs in before claiming the public starter activation. The public marketing promise is free to start and review before publishing, not an unlimited public processing utility.
+The public `/create-menu` route explains and starts the flow, but current acquisition is sign-in-first. Upload/link acquisition, extraction, polling, claim, and publish remain signed-in and owner-bound. The owner provides a current menu image or supported source, receives a structured review preview, and approves the result before it becomes public truth.
 
 Core loop:
 
 ```text
-Upload -> extraction -> preview -> sign in -> official source setup
+Open create menu -> sign in -> upload or link -> extraction -> review -> claim/publish
 ```
 
 Evidence:
@@ -44,6 +46,7 @@ MenuList intake must keep these boundaries:
 
 - no import without owner permission confirmation;
 - no unauthenticated menu link import;
+- no unauthenticated upload/extraction/claim path;
 - no private IP, localhost, link-local, metadata, non-HTTP, or credentialed URLs;
 - no marketplace/CAPTCHA/login bypass;
 - no public menu mutation during acquisition or extraction;
@@ -72,4 +75,4 @@ Potential Answerlattice draft questions:
 - Can MenuList import a competitor or marketplace page?
 - Why does MenuList need owner review?
 - Is a login required before publishing?
-
+- Why does MenuList ask me to sign in before upload or link processing?

@@ -1,5 +1,7 @@
 # MenuList Public Menu, QR, Sharing, And Official Business Page Support
 
+**Verified:** 2026-07-20 against current public retrieval, stored-slug routing, QR destinations, Official Business Page projection, public localization, and cache revalidation.
+
 ## Core Truth
 
 The public digital menu is what customers see when they scan the restaurant's QR code. It shows menu items, prices, categories, and availability from MenuList's current approved menu data.
@@ -53,9 +55,10 @@ The Official Business Page can show:
 
 Business information comes from Business Settings and updates automatically after saving, usually within about a minute.
 
+Saved public links use stable stored slugs and supported previous-slug redirects. Renaming a menu should not be treated as permission to replace printed QR assets blindly; owners should still scan-test the printed destination.
+
 ## Answerlattice Must Be Conservative
 
 Do not promise instant global cache invalidation. Use "wait up to 60 seconds" or "wait 1-2 minutes" depending on the surface. If data remains wrong after that, escalate.
 
 Do not claim Google, delivery apps, or third-party sites update automatically unless the specific integration is verified for that account.
-

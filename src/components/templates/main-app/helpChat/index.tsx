@@ -1,6 +1,5 @@
 'use client'
 
-import { FEATURE_FLAGS } from '@config/features';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { resolveAnswerlatticeHelpChatDraftScope } from '@lib/answerlattice/helpChatDrafts';
 import { Button, Drawer, Flex, Grid, Modal, Typography, theme } from 'antd';
@@ -172,11 +171,6 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
             }
             onStartFollowUp={handlers.handleStartFollowUp}
             onNewQuestion={isMobile ? handleMobileNewChat : handlers.handleNewChat}
-            onEscalate={
-                FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION
-                    ? handlers.handleEscalate
-                    : undefined
-            }
             isMobile={isMobile}
         />
     );

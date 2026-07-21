@@ -1,7 +1,7 @@
 # AI Failure Escalation - Specification
 
-> **Version:** 2.1.0
-> **Last Updated:** 2026-07-18
+> **Version:** 2.3.0
+> **Last Updated:** 2026-07-20
 > **Status:** Explicit widget fallback active; automatic evaluator rollout-gated
 
 ## Problem
@@ -26,7 +26,20 @@ When a widget answer does not resolve the question, the user can deliberately cr
 
 ## Automatic Evaluator
 
-The optional evaluator can add escalation metadata to `coreSearch()` and expose Help Chat escalation UI. It remains disabled by `ENABLE_ANSWERLATTICE_AI_ESCALATION: false` pending representative answer-quality tests, hosted workflow proof, and threshold validation. Its existence is not evidence that automatic escalation performs well.
+The optional evaluator can add bounded internal escalation metadata to `coreSearch()`. It does not create a ticket or expose internal debug context to Help Chat. It remains disabled by `ENABLE_ANSWERLATTICE_AI_ESCALATION: false`.
+
+When enabled in a future controlled rollout, it may classify:
+
+1. no canonical answer plus no useful evidence actually cited by the final answer;
+2. no resolved entity plus no useful final-answer evidence;
+3. an empty answer or safe refusal;
+4. a canonical miss whose best cited RAG score is below the configured threshold.
+
+A canonical miss with a non-empty answer and strong cited RAG evidence is not a failure and must not interrupt the user.
+
+Browser-provided retry or failure counters are not authority and must not trigger escalation. Malformed, unbounded, non-finite, or out-of-range evidence must fail closed to no automatic suggestion.
+
+Activation additionally requires a server-authoritative, explicitly confirmed, deterministic, idempotent Help Chat handoff, representative answer-quality tests, hosted workflow proof, and threshold validation. Code presence is not evidence that automatic escalation performs well.
 
 ## Data Required
 

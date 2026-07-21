@@ -12,7 +12,7 @@ The current Help Chat UI slice is implemented and source-gated for the reviewed 
 - bounded image-question admission and failed-persistence cleanup
 - fixed error copy, copy acknowledgement and bounded diagnostics
 - responsive modal behavior inside desktop and MobileShell Help Center
-- optional ticket escalation through the existing scoped ticket DAL
+- no browser-owned ticket escalation; any future Help Chat handoff requires a server-authoritative, explicitly confirmed contract
 
 ## Not certified by source alone
 

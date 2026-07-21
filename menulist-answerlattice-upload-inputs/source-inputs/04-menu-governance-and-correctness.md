@@ -1,5 +1,7 @@
 # Menu Governance And Correctness
 
+**Verified:** 2026-07-20 against current save/publish validation, pricing, availability, quality, trust, version/snapshot, and public-cache contracts.
+
 ## Menu Correctness Engine
 
 The Menu Correctness Engine is a validation layer that runs on menu save. It ensures project data is complete, valid, and safe before it reaches customer-facing surfaces.
@@ -24,6 +26,8 @@ MenuList correctness is governed by five laws:
 3. Hours data consistency.
 4. Data completeness.
 5. Structural integrity.
+
+Persisted prices can be a number, currency value, range, multilingual label, or short text such as `Market Price`. Only true single-number prices enter arithmetic, numeric filters, or outlier checks. Active priced options remain valid item-price truth across owner and customer surfaces.
 
 These laws are useful Answerlattice examples because they show how product knowledge can be governed by deterministic rules instead of loose generated text.
 
@@ -74,6 +78,9 @@ MenuList is a strong Answerlattice example because it has:
 - quality signals;
 - public freshness and trust language;
 - explicit boundaries around what the system can and cannot claim.
+- project save/publish acknowledgement before owner success;
+- public menu/Official Business Page cache invalidation after public truth writes;
+- best-effort observation/snapshot evidence that never replaces the authoritative project.
 
 Answerlattice should convert this source into drafts such as:
 
@@ -81,4 +88,3 @@ Answerlattice should convert this source into drafts such as:
 - "Why owner approval matters before publishing";
 - "What MenuList trust signals mean";
 - "What MenuList does not guarantee."
-

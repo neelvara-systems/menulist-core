@@ -5,6 +5,7 @@
 - `functions-answerlattice/src/index.ts` keeps the deployed `answerlatticeNightly` and `triggerAnswerlatticeNightly` exports.
 - `functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts` owns the scheduler task registry, task lease, tenant-date locks, and scheduler state.
 - `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` owns the governance batch and accepts a pre-filtered `tenantScope`.
+- `functions-answerlattice/src/answerlattice/schedulerReadTelemetry.ts` owns bounded, failure-safe logical source-window observations for the governance batch.
 - `functions-answerlattice/src/answerlattice/schedulerTime.ts` mirrors the MenuList runtime-timezone settlement pattern for Answerlattice.
 - `functions-answerlattice/src/answerlattice/tenantSummary.ts` reads the legacy `platformSummary/answerlatticeTenantsSummary` document and up to 64 deterministic `answerlatticeTenantsSummaryShard_*` documents. New writes use shards; the root is read-only migration input.
 - `src/app/api/answerlattice/workspace-profile/route.ts` validates revisioned timezone/EOD settings behind Answerlattice management scope and returns private no-store owner responses.
@@ -45,6 +46,10 @@ Manual trigger diagnostics use bounded request/scope metadata. Unauthorized requ
 Master scheduler task diagnostics use fixed failure codes and bounded source metadata. `runAnswerlatticeMasterScheduler()` still writes task outcomes to `platformSummary/answerlatticeSchedulerState`, but failed task summaries and `lastError` now use `ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED`; source error name/code/status are persisted separately, and task/lease failure logs use fixed codes instead of raw exception text.
 
 Governance batch diagnostics use fixed scheduler failure codes and bounded metadata. `runAnswerlatticeNightly()` still writes the structured run log and per-tenant task diagnostics, but diagnostic `error` values are fixed local codes, human `errorMessages` use `scoped`/`global` instead of raw tenant/store IDs, logger payloads use source error name/code/status plus scope booleans, and workflow summary event payloads carry bounded diagnostic strings instead of raw diagnostic objects.
+
+Governance tasks also share one source-window observer per tenant task run. The observer records compact tuples containing source, semantic window, operation count, documents returned, configured limit, and saturation. Duplicate source/window tuples aggregate, malformed observations are ignored, and each task persists at most eight unique windows in the existing run-log write on success or failure. The platform intake monitor returns at most 80 windows for the selected run. This is logical source-operation telemetry for finding repeated work; it is not a Firebase bill estimate and does not include index-entry charges, transaction retries, uninstrumented direct-document reads, provider calls, or cache effects.
+
+Query reuse remains evidence-gated. Collect at least 14 complete daily observations across representative active tenants, then consolidate only when source, filters, ordering, limits, freshness, completeness, and failure-isolation behavior are identical. Saturated windows, task failures, or negligible expected reduction block consolidation.
 
 Workflow integration adapter checks are part of those governance diagnostics. If Step 13 cannot read a tenant's integration config, the tenant workflow integration task is recorded as failed with `ANSWERLATTICE_INTEGRATION_ADAPTER_CHECK_FAILED`; the scheduler run continues, and a legitimate disabled/no-config adapter remains a skipped task.
 

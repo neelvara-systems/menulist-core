@@ -1,5 +1,7 @@
 # MenuList Billing, Subscription, Enhancements, And Payments Support
 
+**Verified:** 2026-07-20 against the current Razorpay state machine, paid-cycle entitlement, outlet/HQ scope, content-credit policy, and owner transaction presentation.
+
 ## What Answerlattice Can Safely Explain
 
 MenuList billing can show:
@@ -22,7 +24,7 @@ Complete the Razorpay checkout if a payment link is available. If there is no pa
 
 ### My payment failed.
 
-The account may enter a grace period. Retry payment from Billing if available, or contact support.
+A failed recurring payment can move the subscription to `past_due`. When the recovery start time is valid, the current runtime uses a seven-day recovery period while payment is retried. If the legacy record does not contain a valid recovery time, the owner UI says that grace-period details are unavailable rather than showing a false countdown. Retry from Billing when available or contact support.
 
 ### I use an outlet but billing points to HQ.
 
@@ -36,6 +38,25 @@ For active non-manual subscriptions, billing may show paid locations and an Add 
 
 Enhancements cover extra menu image generation, descriptions, translations, and image editing. Plans include typical usage. Enhancement packs are available when a business needs more.
 
+The current Content Credit Pack adds 250 Pack credits. Current public operation rates are:
+
+- description rewrite: 1 credit;
+- generated menu image: 5 credits;
+- language addition request: 3 credits;
+- item translation: 1 credit;
+- image translation: 5 credits;
+- image edit: 5 credits.
+
+Eligible operations show required credits before work. Paid operations reserve credits before provider work, settle the same reservation after valid output, and restore the exact reserved buckets on terminal failure. Menu extraction, first-pass item metadata, first-pass description creation, business copy setup, and selected support/control-plane operations are platform-absorbed under the current policy.
+
+### I cancelled or my subscription is paused. Do I lose access immediately?
+
+Current-cycle `cancelled` and legacy/provider-side `paused` subscriptions retain their purchased plan only through a valid paid `cycleEndDate`. After the paid cycle ends, the plan entitlement expires. Self-service pause/resume remains disabled in the current source.
+
+### Why does Transactions show an AI operation?
+
+Transactions presents the owner-safe operation status and credit effect. It does not expose raw prompts, generated response bodies, provider cost, margin, internal tokens, or secret billing identifiers.
+
 ## Review-Gated Topics
 
 Answerlattice must not invent:
@@ -47,10 +68,11 @@ Answerlattice must not invent:
 - invoice/legal details;
 - payment settlement timelines;
 - reseller-specific commitments.
+- internal monthly allowance, provider cost, margin, overdraft, or quota economics;
+- self-service pause/resume while that feature remains disabled.
 
 For those topics, Answerlattice should give the safe next step: check Billing, open a support ticket, or contact MenuList support.
 
 ## Privacy Boundary
 
-Do not expose card numbers, UPI IDs, transaction IDs, invoices, Razorpay IDs, or private billing metadata in Answerlattice answers or screenshots.
-
+Do not expose card numbers, UPI IDs, full private transaction/provider IDs, invoices, Razorpay IDs, raw AI prompts/responses, provider economics, or private billing metadata in Answerlattice answers or screenshots.

@@ -2,7 +2,7 @@
 
 > **Status:** Implemented, workspace opt-in
 > **Version:** 2.2.0
-> **Last verified:** 2026-07-18
+> **Last verified:** 2026-07-20
 
 ## Problem
 
@@ -36,7 +36,7 @@ Answerlattice already owns approved canonical answers and safe page context. Gui
 3. Select **Guide me**.
 4. See the current target highlighted when it exists.
 5. Perform the product action.
-6. Continue manually only when the step has no expected event. Event-gated steps advance only after the matching client-verified event.
+6. Continue manually only when the step has no expected event. Event-gated steps advance only after the matching client-reported event for the active session and step.
 7. Complete, report a missing target, or escalate.
 
 ## Procedure Contract
@@ -82,7 +82,7 @@ Examples: `billing.change_plan`, `slack.oauth.started`.
 
 | State | Meaning | Write behavior |
 |---|---|---|
-| `completed` | Every manual step was confirmed and every event-gated step received its matching verified event | One deduplicated guided-resolution signal |
+| `completed` | Every manual step was confirmed and every event-gated step received its matching client-reported event | One deduplicated guided-resolution signal; not independent backend-state proof |
 | `abandoned` | The user explicitly stopped before completion | One deduplicated guided-resolution signal |
 | `target_missing` | A declared semantic target was not found | One deduplicated guided-resolution signal |
 | `escalated` | The explicit support request was created from a blocked step | One deduplicated escalation signal |

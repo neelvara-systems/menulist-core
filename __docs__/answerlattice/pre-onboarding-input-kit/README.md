@@ -16,6 +16,8 @@ It gives a SaaS founder or product owner a master prompt they can run inside Cod
 
 The MenuList onboarding package is the reference coverage example. It is not the required product shape. Other products may have no repo access, no docs folder, a website-only footprint, or only owner notes before launch.
 
+The maintained reference package is [`menulist-answerlattice-upload-inputs/`](../../../menulist-answerlattice-upload-inputs/). It intentionally lives at the repository root because it is an operator/upload artifact, not Answerlattice feature documentation or product runtime. Its governing contract remains this folder.
+
 ## What This Is Not
 
 - Not a crawler that secretly imports everything.
@@ -62,7 +64,7 @@ When a client gives the AI agent a repo or workspace that contains more than one
 - match the target product using product name, slug, public website URL, app URL, and target paths;
 - include shared auth, billing, roles, integrations, widget/runtime, API contracts, legal pages, and navigation only when they affect the target product support truth;
 - exclude sister-product feature docs, route maps, screenshots, marketing claims, pricing, legal pages, and support flows unless explicitly shared;
-- document product boundaries in `production-onboarding/product-boundary-and-exclusions.md` and `source-inputs/25-source-evidence-map.md`.
+- document product boundaries in `production-onboarding/product-boundary-and-exclusions.md` and source family `25` (the maintained MenuList reference uses `source-inputs/25-repo-docs-menulist-source-map.md`).
 
 ## Market-Informed Source Patterns
 
@@ -167,3 +169,4 @@ Expected flow:
 | 2026-05-31 | Added in-page prompt modal with copy-to-clipboard and Markdown download actions. |
 | 2026-05-31 | Promoted `/pre-onboarding` as the main public entry across header, homepage, resources, get-started, mobile navigation, and footer. |
 | 2026-07-19 | Aligned generated payloads with the strict Knowledge Intake API, added source authority/conflict and private-source permission contracts, and hardened Markdown responses plus dialog focus behavior. |
+| 2026-07-20 | Reconciled the MenuList reference package with the current 26-source contract, strict add-source API, canonical host, feature inventory, legal/billing truth, and live-support coverage verifier. |

@@ -15,10 +15,9 @@
  * 5. Founder Trust Metrics — write compact trust dashboard summary
  * 6. Recurring Fallback Detection — auto-generate proposals for 5+ misses
  * 7. Post-Mutation Impact Tracking — 14-day before/after comparison
- * 8. Confidence Auto-Adjustment — boost answers with 30+ serves, 0 negatives
- * 9. Signal TTL Auto-Archive — delete signals older than 12 months
- * 10. Support Board Sync — create bounded owner review cards and summary
- * 11. Knowledge Intake Summary — refresh compact owner analytics only
+ * 8. Signal TTL Auto-Archive — delete signals older than 12 months
+ * 9. Support Board Sync — create bounded owner review cards and summary
+ * 10. Knowledge Intake Summary — refresh compact owner analytics only
  * 
  * RULES:
  * - Idempotent: running twice produces identical results
@@ -76,6 +75,10 @@ import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
+import {
+    AnswerlatticeSchedulerReadObserver,
+    type AnswerlatticeSchedulerReadWindow,
+} from './schedulerReadTelemetry';
 import { syncSupportBoardNightly } from './supportBoardSync';
 import {
     AnswerlatticeTenantStore,
@@ -128,6 +131,7 @@ interface AnswerlatticeTaskRun {
     status: 'success' | 'failed' | 'skipped';
     durationMs: number;
     details?: Record<string, any>;
+    readWindows?: AnswerlatticeSchedulerReadWindow[];
     error?: string;
 }
 
@@ -411,7 +415,11 @@ interface TrustMetricsResult {
     errors: AnswerlatticeSchedulerDiagnostic[];
 }
 
-async function runDriftDetection(tId: number, sId: number): Promise<DriftResult> {
+async function runDriftDetection(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<DriftResult> {
     const result: DriftResult = { answersEvaluated: 0, driftDetected: 0, driftCleared: 0 };
 
     const answersQuery = db
@@ -440,6 +448,27 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
         entitiesQuery.get(),
         signalsQuery.get(),
     ]);
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS,
+        window: 'active_all',
+        documentsReturned: answersSnap.size,
+        queryLimit: SCHEDULER_LIMITS.activeAnswersPerTenant + 1,
+        saturated: answersSnap.size > SCHEDULER_LIMITS.activeAnswersPerTenant,
+    });
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_ENTITIES,
+        window: 'all',
+        documentsReturned: entitiesSnap.size,
+        queryLimit: SCHEDULER_LIMITS.entitiesPerTenant + 1,
+        saturated: entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant,
+    });
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+        window: 'rolling_14d',
+        documentsReturned: signalsSnap.size,
+        queryLimit: SCHEDULER_LIMITS.signalEventsPerWindow + 1,
+        saturated: signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow,
+    });
 
     if (
         answersSnap.size > SCHEDULER_LIMITS.activeAnswersPerTenant
@@ -691,7 +720,11 @@ async function createPendingMutationProposalIfAbsent(
     });
 }
 
-async function runSignalMutation(tId: number, sId: number): Promise<MutationResult> {
+async function runSignalMutation(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<MutationResult> {
     const result: MutationResult = { clustersAnalyzed: 0, proposalsCreated: 0, proposalsSkippedExisting: 0, errors: [] };
 
     const windowStart = Timestamp.fromMillis(Date.now() - MUTATION_CONFIG.windowDays * 24 * 60 * 60 * 1000);
@@ -704,6 +737,13 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
         .orderBy('timestamp', 'desc')
         .limit(SCHEDULER_LIMITS.signalEventsPerWindow + 1)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+        window: 'rolling_14d',
+        documentsReturned: signalsSnap.size,
+        queryLimit: SCHEDULER_LIMITS.signalEventsPerWindow + 1,
+        saturated: signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow,
+    });
 
     if (signalsSnap.empty) return result;
     if (signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow) {
@@ -747,6 +787,13 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                 .where('status', '==', 'active')
                 .limit(2)
                 .get();
+            readObserver?.record({
+                source: DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS,
+                window: 'active_by_entity',
+                documentsReturned: answersSnap.size,
+                queryLimit: 2,
+                saturated: answersSnap.size >= 2,
+            });
             const scopedAnswerDocs = answersSnap.docs.filter(document => document.data().pId === 'AL');
 
             let mutationType: string;
@@ -771,6 +818,7 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                 signalSummary: {
                     ticketCount: cluster.ticket,
                     chatCount: cluster.chat_negative,
+                    escalationCount: cluster.escalation,
                     negativeFeedbackRate: cluster.chat_negative / Math.max(cluster.total, 1),
                     exampleReferences: cluster.refs,
                 },
@@ -824,7 +872,11 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
  * Without this, unresolved signals are noise — they can't cluster,
  * can't trigger proposals, can't drive governance.
  */
-async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ resolved: number; total: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
+async function resolveUnresolvedSignals(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<{ resolved: number; total: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
     const result: { resolved: number; total: number; errors: AnswerlatticeSchedulerDiagnostic[] } = { resolved: 0, total: 0, errors: [] };
 
     // Fetch unresolved signals (last 14 days)
@@ -837,6 +889,13 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
         .where('timestamp', '>=', windowStart)
         .limit(200)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+        window: 'rolling_14d_unresolved',
+        documentsReturned: unresolvedSnap.size,
+        queryLimit: 200,
+        saturated: unresolvedSnap.size >= 200,
+    });
 
     if (unresolvedSnap.empty) return result;
     result.total = unresolvedSnap.size;
@@ -848,6 +907,13 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
         .where('sId', '==', sId)
         .limit(SCHEDULER_LIMITS.searchIndexEntriesPerTenant)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX,
+        window: 'all',
+        documentsReturned: indexSnap.size,
+        queryLimit: SCHEDULER_LIMITS.searchIndexEntriesPerTenant,
+        saturated: indexSnap.size >= SCHEDULER_LIMITS.searchIndexEntriesPerTenant,
+    });
 
     if (indexSnap.empty) return result;
 
@@ -942,7 +1008,11 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
 // ═══════════════════════════════════════════════════════════════
 
 /** Canonical-served share for the latest complete rolling 24-hour window. */
-async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageKpiResult> {
+async function aggregateCoverageKPI(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<CoverageKpiResult> {
     const windowEndMillis = Date.now();
     const windowStartMillis = windowEndMillis - 24 * 60 * 60 * 1000;
     const result: CoverageKpiResult = {
@@ -969,6 +1039,13 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
             .orderBy('createdOn', 'desc')
             .limit(sourceLimit + 1)
             .get();
+        readObserver?.record({
+            source: DB_COLLECTIONS.AI_SEARCH_HISTORY,
+            window: 'rolling_24h',
+            documentsReturned: historySnap.size,
+            queryLimit: sourceLimit + 1,
+            saturated: historySnap.size > sourceLimit,
+        });
 
         if (historySnap.size > sourceLimit) {
             throw new Error(`Coverage source exceeded the complete-window limit of ${sourceLimit}.`);
@@ -1073,7 +1150,12 @@ interface AnswerlatticeTrustMetricsEscalationBreakdown {
     total: number;
 }
 
-async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: CoverageKpiResult): Promise<TrustMetricsResult> {
+async function aggregateTrustMetrics(
+    tId: number,
+    sId: number,
+    coverageResult: CoverageKpiResult,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<TrustMetricsResult> {
     const result: TrustMetricsResult = {
         written: false,
         coverageRate: 0,
@@ -1118,6 +1200,27 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
                 .doc(`trustMetrics_${tId}_${sId}`)
                 .get(),
         ]);
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS,
+            window: 'active_all',
+            documentsReturned: answersSnap.size,
+            queryLimit: SCHEDULER_LIMITS.activeAnswersPerTenant + 1,
+            saturated: answersSnap.size > SCHEDULER_LIMITS.activeAnswersPerTenant,
+        });
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_ENTITIES,
+            window: 'active_all',
+            documentsReturned: entitiesSnap.size,
+            queryLimit: SCHEDULER_LIMITS.entitiesPerTenant + 1,
+            saturated: entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant,
+        });
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+            window: 'rolling_24h',
+            documentsReturned: signalsSnap.size,
+            queryLimit: SCHEDULER_LIMITS.signalEventsPerWindow + 1,
+            saturated: signalsSnap.size > SCHEDULER_LIMITS.signalEventsPerWindow,
+        });
 
         if (
             answersSnap.size > SCHEDULER_LIMITS.activeAnswersPerTenant
@@ -1374,7 +1477,11 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
  * 
  * Doctrine: "If recurring fallback → auto-generate MutationProposal"
  */
-async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ proposalsCreated: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
+async function detectRecurringFallbacks(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<{ proposalsCreated: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
     const result: { proposalsCreated: number; errors: AnswerlatticeSchedulerDiagnostic[] } = { proposalsCreated: 0, errors: [] };
 
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -1389,6 +1496,13 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
             .where('createdOn', '>=', windowStart)
             .limit(500)
             .get();
+        readObserver?.record({
+            source: DB_COLLECTIONS.AI_SEARCH_HISTORY,
+            window: 'rolling_14d_canonical_misses',
+            documentsReturned: historySnap.size,
+            queryLimit: 500,
+            saturated: historySnap.size >= 500,
+        });
 
         if (historySnap.empty) return result;
 
@@ -1420,6 +1534,13 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
                 .where('status', '==', 'active')
                 .limit(2)
                 .get();
+            readObserver?.record({
+                source: DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS,
+                window: 'active_by_entity',
+                documentsReturned: answersSnap.size,
+                queryLimit: 2,
+                saturated: answersSnap.size >= 2,
+            });
             const scopedAnswerDocs = answersSnap.docs.filter(document => document.data().pId === 'AL');
             if (scopedAnswerDocs.length > 1) continue;
             const mutationType = scopedAnswerDocs.length === 0 ? 'new_answer_required' : 'content_refinement';
@@ -1484,6 +1605,7 @@ async function countMutationImpactSignals(input: {
     entityId: string;
     from: Timestamp;
     to: Timestamp;
+    readObserver?: AnswerlatticeSchedulerReadObserver;
 }): Promise<number> {
     const snapshot = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
@@ -1494,6 +1616,13 @@ async function countMutationImpactSignals(input: {
         .where('timestamp', '<', input.to)
         .limit(MUTATION_IMPACT_SIGNAL_LIMIT + 1)
         .get();
+    input.readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+        window: 'impact_14d_by_entity',
+        documentsReturned: snapshot.size,
+        queryLimit: MUTATION_IMPACT_SIGNAL_LIMIT + 1,
+        saturated: snapshot.size > MUTATION_IMPACT_SIGNAL_LIMIT,
+    });
     if (snapshot.size > MUTATION_IMPACT_SIGNAL_LIMIT) {
         throw new Error('Answerlattice mutation impact signal window exceeded a bounded scheduler limit.');
     }
@@ -1504,7 +1633,11 @@ async function countMutationImpactSignals(input: {
     }).length;
 }
 
-async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
+async function trackMutationImpact(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<{ tracked: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
     const result: { tracked: number; errors: AnswerlatticeSchedulerDiagnostic[] } = { tracked: 0, errors: [] };
 
     const fourteenDaysAgo = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -1521,6 +1654,13 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
             .orderBy('implementedOn', 'asc')
             .limit(50)
             .get();
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS,
+            window: 'implemented_untracked',
+            documentsReturned: proposalsSnap.size,
+            queryLimit: 50,
+            saturated: proposalsSnap.size >= 50,
+        });
 
         for (const proposalDoc of proposalsSnap.docs) {
             const proposal = proposalDoc.data();
@@ -1544,6 +1684,7 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
                         entityId,
                         from: Timestamp.fromMillis(implementedAtMillis - windowMillis),
                         to: implementedAt,
+                        readObserver,
                     }),
                     countMutationImpactSignals({
                         tId,
@@ -1551,6 +1692,7 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
                         entityId,
                         from: implementedAt,
                         to: Timestamp.fromMillis(implementedAtMillis + windowMillis),
+                        readObserver,
                     }),
                 ]);
                 const rawImprovement = preSignalCount > 0
@@ -1596,72 +1738,6 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CONFIDENCE AUTO-ADJUSTMENT (Nice-to-Have, ICP-critical)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Auto-boost confidence for canonical answers that have been served
- * 30+ times with 0 negative signals in 30 days. Simple, deterministic,
- * zero-risk. Saves SMB admin from manually reviewing scores.
- */
-async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjusted: number; errors: AnswerlatticeSchedulerDiagnostic[] }> {
-    const result: { adjusted: number; errors: AnswerlatticeSchedulerDiagnostic[] } = { adjusted: 0, errors: [] };
-
-    try {
-        const answersSnap = await db
-            .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
-            .where('tId', '==', tId)
-            .where('sId', '==', sId)
-            .where('status', '==', 'active')
-            .where('governance.driftFlag', '==', false)
-            .limit(200)
-            .get();
-
-        const answerDocsToAdjust = answersSnap.docs.filter(answerDoc => {
-            const answer = answerDoc.data();
-            if (answer.pId !== 'AL') return false;
-            const currentConfidence = answer.validation?.confidenceScore || 0;
-            const linkedChat = answer.signalMetrics?.linkedChatCount || 0;
-            const negFeedback = answer.signalMetrics?.negativeFeedbackCount || 0;
-            return currentConfidence < 0.95 && linkedChat >= 30 && negFeedback === 0;
-        });
-
-        if (answerDocsToAdjust.length > 0) {
-            // Invalidate first. A later batch failure causes only an extra fresh
-            // read; the inverse ordering could leave updated ranking confidence
-            // hidden behind a stale canonical cache indefinitely.
-            await bumpAnswerlatticeCacheVersion(db, ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId, {
-                reason: 'confidence_auto_adjusted',
-                sourceType: 'canonical_answer_batch',
-            });
-            const batch = db.batch();
-            const now = Timestamp.now();
-            for (const answerDoc of answerDocsToAdjust) {
-                batch.update(answerDoc.ref, {
-                    'validation.confidenceScore': 0.95,
-                    'validation.validationSource': 'signal_cluster',
-                    modifiedOn: now,
-                    modifiedBy: 'system:confidence_auto_adjust',
-                });
-            }
-            await batch.commit();
-            result.adjusted = answerDocsToAdjust.length;
-        }
-    } catch (error) {
-        const diagnostic = buildDiagnostic(error, {
-            tId,
-            sId,
-            phase: 'confidence_adjustment',
-            operation: 'auto_adjust_confidence',
-        });
-        result.errors.push(diagnostic);
-        logger.error('[Answerlattice Confidence] Auto-adjustment failed', getSchedulerDiagnosticLogContext(diagnostic));
-    }
-
-    return result;
-}
-
-// ═══════════════════════════════════════════════════════════════
 // KNOWLEDGE GRAPH INDEX REBUILD (Expansion Item #11)
 // Precomputes entity graph from answerlattice_entityRelations for
 // O(1) graph expansion during retrieval.
@@ -1695,7 +1771,11 @@ function hashGraphPayload(value: any): string {
  * Cost: bounded entity + relation + answer reads plus one existing summary read.
  * Writes only when the deterministic source hash changes or tenant metadata is missing.
  */
-async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphRebuildResult> {
+async function rebuildEntityGraphIndex(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<GraphRebuildResult> {
     const result: GraphRebuildResult = { rebuilt: false, entityCount: 0, relationCount: 0, orphanRelations: 0 };
 
     // 1. Load active entities
@@ -1706,6 +1786,13 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('status', '==', 'active')
         .limit(SCHEDULER_LIMITS.entitiesPerTenant + 1)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_ENTITIES,
+        window: 'active_all',
+        documentsReturned: entitiesSnap.size,
+        queryLimit: SCHEDULER_LIMITS.entitiesPerTenant + 1,
+        saturated: entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant,
+    });
 
     if (entitiesSnap.empty) return result;
     if (entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant) {
@@ -1729,6 +1816,13 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('sId', '==', sId)
         .limit(SCHEDULER_LIMITS.graphRelationsPerTenant + 1)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS,
+        window: 'all',
+        documentsReturned: relationsSnap.size,
+        queryLimit: SCHEDULER_LIMITS.graphRelationsPerTenant + 1,
+        saturated: relationsSnap.size > SCHEDULER_LIMITS.graphRelationsPerTenant,
+    });
 
     if (relationsSnap.size > SCHEDULER_LIMITS.graphRelationsPerTenant) {
         throw new Error('Answerlattice graph relation limit exceeded; existing graph index was preserved.');
@@ -1744,6 +1838,13 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('status', '==', 'active')
         .limit(SCHEDULER_LIMITS.graphAnswersPerTenant + 1)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS,
+        window: 'active_all',
+        documentsReturned: answersSnap.size,
+        queryLimit: SCHEDULER_LIMITS.graphAnswersPerTenant + 1,
+        saturated: answersSnap.size > SCHEDULER_LIMITS.graphAnswersPerTenant,
+    });
 
     if (answersSnap.size > SCHEDULER_LIMITS.graphAnswersPerTenant) {
         throw new Error('Answerlattice graph answer limit exceeded; existing graph index was preserved.');
@@ -1918,6 +2019,7 @@ export interface AnswerlatticeNightlyResult {
     totalSignalsResolved: number;
     totalFallbackProposals: number;
     totalImpactTracked: number;
+    /** Deprecated compatibility field. Remains zero after the unsafe usage proxy was retired. */
     totalConfidenceAdjusted: number;
     totalTrustMetricsWritten: number;
     totalSignalsArchived: number;
@@ -2175,15 +2277,16 @@ export async function runAnswerlatticeNightly(options: {
         tenantRun: AnswerlatticeTenantRun,
         taskName: string,
         operation: string,
-        task: () => Promise<T>,
+        task: (readObserver: AnswerlatticeSchedulerReadObserver) => Promise<T>,
         applyResult: (taskResult: T) => void,
         buildDetails: (taskResult: T) => Record<string, any>
     ): Promise<T | null> => {
         const taskStart = Date.now();
         const errorCountBefore = tenantRun.errors.length;
+        const readObserver = new AnswerlatticeSchedulerReadObserver();
 
         try {
-            const taskResult = await task();
+            const taskResult = await task(readObserver);
             const taskErrors = Array.isArray(taskResult.errors)
                 ? (taskResult.errors.filter((entry: any) => entry && typeof entry === 'object' && entry.phase && entry.operation) as AnswerlatticeSchedulerDiagnostic[])
                 : [];
@@ -2193,11 +2296,13 @@ export async function runAnswerlatticeNightly(options: {
 
             applyResult(taskResult);
             const newErrorCount = tenantRun.errors.length - errorCountBefore;
+            const readWindows = readObserver.snapshot();
             tenantRun.tasks.push({
                 name: taskName,
                 status: newErrorCount > 0 ? 'failed' : 'success',
                 durationMs: Date.now() - taskStart,
                 details: buildDetails(taskResult),
+                ...(readWindows.length > 0 ? { readWindows } : {}),
                 error: newErrorCount > 0
                     ? tenantRun.errors.slice(errorCountBefore).map(diagnosticToMessage).join('; ').substring(0, 1000)
                     : undefined,
@@ -2212,10 +2317,12 @@ export async function runAnswerlatticeNightly(options: {
                 operation,
             });
             const message = recordDiagnostic(diagnostic, tenantRun);
+            const readWindows = readObserver.snapshot();
             tenantRun.tasks.push({
                 name: taskName,
                 status: 'failed',
                 durationMs: Date.now() - taskStart,
+                ...(readWindows.length > 0 ? { readWindows } : {}),
                 error: message,
             });
             logger.error('[Answerlattice Nightly] Tenant task failed', getSchedulerDiagnosticLogContext(diagnostic));
@@ -2317,7 +2424,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'drift_detection',
                 'runDriftDetection',
-                () => runDriftDetection(tId, sId),
+                (readObserver) => runDriftDetection(tId, sId, readObserver),
                 (taskResult) => {
                     result.totalDriftDetected += taskResult.driftDetected;
                     result.totalDriftCleared += taskResult.driftCleared;
@@ -2335,7 +2442,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'signal_resolution',
                 'resolveUnresolvedSignals',
-                () => resolveUnresolvedSignals(tId, sId),
+                (readObserver) => resolveUnresolvedSignals(tId, sId, readObserver),
                 (taskResult) => {
                     result.totalSignalsResolved += taskResult.resolved;
                     tenantRun.signalsResolved = taskResult.resolved;
@@ -2347,7 +2454,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'signal_mutation',
                 'runSignalMutation',
-                () => runSignalMutation(tId, sId),
+                (readObserver) => runSignalMutation(tId, sId, readObserver),
                 (taskResult) => {
                     result.totalProposalsCreated += taskResult.proposalsCreated;
                     tenantRun.proposalsCreated = taskResult.proposalsCreated;
@@ -2363,7 +2470,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'coverage_kpi',
                 'aggregateCoverageKPI',
-                () => aggregateCoverageKPI(tId, sId),
+                (readObserver) => aggregateCoverageKPI(tId, sId, readObserver),
                 (_taskResult) => { },
                 (taskResult) => ({
                     hits: taskResult.hits,
@@ -2387,7 +2494,7 @@ export async function runAnswerlatticeNightly(options: {
                     tenantRun,
                     'trust_metrics',
                     'aggregateTrustMetrics',
-                    () => aggregateTrustMetrics(tId, sId, coverageResult) as Promise<any>,
+                    (readObserver) => aggregateTrustMetrics(tId, sId, coverageResult, readObserver) as Promise<any>,
                     (taskResult) => {
                         if (taskResult.written) result.totalTrustMetricsWritten++;
                     },
@@ -2419,7 +2526,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'recurring_fallback_detection',
                 'detectRecurringFallbacks',
-                () => detectRecurringFallbacks(tId, sId),
+                (readObserver) => detectRecurringFallbacks(tId, sId, readObserver),
                 (taskResult) => {
                     result.totalFallbackProposals += taskResult.proposalsCreated;
                     tenantRun.fallbackProposals = taskResult.proposalsCreated;
@@ -2431,19 +2538,20 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'mutation_impact',
                 'trackMutationImpact',
-                () => trackMutationImpact(tId, sId),
+                (readObserver) => trackMutationImpact(tId, sId, readObserver),
                 (taskResult) => { result.totalImpactTracked += taskResult.tracked; },
                 (taskResult) => ({ tracked: taskResult.tracked })
             );
 
-            const confidenceResult = await runTenantTask(
-                tenantRun,
-                'confidence_adjustment',
-                'autoAdjustConfidence',
-                () => autoAdjustConfidence(tId, sId),
-                (taskResult) => { result.totalConfidenceAdjusted += taskResult.adjusted; },
-                (taskResult) => ({ adjusted: taskResult.adjusted })
-            );
+            tenantRun.tasks.push({
+                name: 'confidence_adjustment',
+                status: 'skipped',
+                durationMs: 0,
+                details: {
+                    adjusted: 0,
+                    reason: 'unsafe_usage_proxy_retired',
+                },
+            });
 
             const draftResult = await runTenantTask(
                 tenantRun,
@@ -2466,7 +2574,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'friction_aggregation',
                 'aggregateFrictionStats',
-                () => aggregateFrictionStats(tId, sId) as Promise<any>,
+                (readObserver) => aggregateFrictionStats(tId, sId, readObserver) as Promise<any>,
                 (taskResult) => { result.totalFrictionEntities += taskResult.entitiesProcessed; },
                 (taskResult) => ({
                     entitiesProcessed: taskResult.entitiesProcessed,
@@ -2517,7 +2625,7 @@ export async function runAnswerlatticeNightly(options: {
                     tenantRun,
                     'graph_index_rebuild',
                     'rebuildEntityGraphIndex',
-                    () => rebuildEntityGraphIndex(tId, sId) as Promise<any>,
+                    (readObserver) => rebuildEntityGraphIndex(tId, sId, readObserver) as Promise<any>,
                     (taskResult) => {
                         result.graphIndexRebuilt += taskResult.rebuilt ? 1 : 0;
                         result.graphIndexEntities += taskResult.entityCount;
@@ -2568,7 +2676,7 @@ export async function runAnswerlatticeNightly(options: {
                     tenantRun,
                     'support_board_sync',
                     'syncSupportBoardNightly',
-                    () => syncSupportBoardNightly(tId, sId) as Promise<any>,
+                    (readObserver) => syncSupportBoardNightly(tId, sId, readObserver) as Promise<any>,
                     (taskResult) => {
                         result.supportBoardCardsCreated += taskResult.cardsCreated;
                         result.supportBoardCardsUpdated += taskResult.cardsUpdated;
@@ -2596,7 +2704,7 @@ export async function runAnswerlatticeNightly(options: {
                     tenantRun,
                     'knowledge_intake_summary',
                     'syncKnowledgeIntakeSummary',
-                    () => syncKnowledgeIntakeSummary(tId, sId) as Promise<any>,
+                    (readObserver) => syncKnowledgeIntakeSummary(tId, sId, readObserver) as Promise<any>,
                     (taskResult) => {
                         result.knowledgeIntakeJobsScanned += taskResult.jobsScanned;
                         result.knowledgeIntakeSummaryWritten += taskResult.summaryWritten ? 1 : 0;
@@ -2620,7 +2728,7 @@ export async function runAnswerlatticeNightly(options: {
                     tenantRun,
                     'chat_analytics_summary',
                     'syncChatAnalyticsNightly',
-                    () => syncChatAnalyticsNightly(tId, sId) as Promise<any>,
+                    (readObserver) => syncChatAnalyticsNightly(tId, sId, readObserver) as Promise<any>,
                     (taskResult) => {
                         result.chatAnalyticsChangedSessionsScanned += taskResult.changedSessionsScanned;
                         result.chatAnalyticsDatesProcessed += taskResult.datesProcessed;

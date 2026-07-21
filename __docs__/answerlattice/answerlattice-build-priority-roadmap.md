@@ -20,7 +20,7 @@ Answerlattice is no longer a backend-only system. The current codebase implement
 - Public API v1 routes for answers, entities, and signals, guarded by `ENABLE_ANSWERLATTICE_PUBLIC_API`.
 - Workflow integration infrastructure for governance events, with Slack/email self-service and Linear/GitHub controlled rollout.
 - Product friction intelligence, ticket-to-knowledge extraction, knowledge graph traversal, predictive support, and compiled context bundles with caps/guards. Widget bundle bootstrap stays disabled until the widget consumes and verifies those files.
-- A validated private advanced-branding profile, multi-language draft preparation, guided workflows, MCP, and AI failure escalation code paths exist behind rollout flags. The branding profile has no customer-facing consumer.
+- A validated private advanced-branding profile, multi-language draft preparation, guided workflows, MCP, and a bounded automatic AI-failure evaluator exist behind rollout flags. The branding profile has no customer-facing consumer; automatic Help Chat escalation has no customer handoff and no activation-ready server route.
 
 Important distinction:
 
@@ -29,8 +29,9 @@ Important distinction:
 | First-client launch loop | Implemented but must be proven with real workspace data | Immediate priority |
 | Public API v1 | Implemented, default flag off | Roll out only after canonical coverage is proven |
 | Workflow integrations | Slack/email self-service; Linear/GitHub controlled | Keep bounded; no Jira shortcut |
-| Jira integration | No native Jira connector found in code/docs | New docs-first feature only after workflow-event loop is stable |
-| Helpdesk integrations | No native Zendesk/Intercom/Freshdesk/Help Scout connectors found | Start with export/import intake; native OAuth later |
+| Jira integration | No native Jira connector found | Do not build now; select one provider only after paying-client and export-friction proof |
+| Helpdesk integrations | No native Zendesk/Intercom/Freshdesk/Help Scout connectors found | Keep export/import; one read-only provider only after the full admission gate |
+| Native private-source intake connectors | Reserved app flag only; no runtime or Functions consumer | Do not build now; validate one repeatedly requested read-only provider after export/import proof |
 | Multi-channel distribution | Widget and hosted help are active | Expand only after source-of-truth quality is proven |
 | White-label / multi-language | Advanced branding is only a private profile; translation is only draft preparation; customer delivery is absent for both | Market expansion only after repeated paying-client demand |
 
@@ -72,11 +73,11 @@ No roadmap item may bypass human approval, tenant isolation, summary-backed read
 | 6 | Signal mutation loop: feedback, negative feedback, fallback, repeated tickets, escalation signals, auto drafts, approval queue | Implemented with caps; AI escalation flag off | Repeated signals create useful proposals without auto-publishing |
 | 7 | Ticket-to-knowledge loop: resolved ticket clustering, reusable extraction, customer answer draft, KB/canonical proposal | Implemented with caps | Three-plus resolved tickets per entity produce useful reviewed proposals |
 | 8 | Product friction intelligence | Implemented and enabled with caps | Founder sees product-confusion areas without BI-style dashboards |
-| 9 | AI failure escalation | Implemented but default off | Enable only after search/ticket UX is verified for one workspace |
+| 9 | AI failure escalation | Source-hardened but default off; active widget fallback is separate; browser ticket authority removed | Add/enable a Help Chat handoff only after a server-authoritative, explicitly confirmed, deterministic/idempotent route and representative false-interruption, answer-quality, and founder-usefulness proof |
 | 10 | Public API v1 | Implemented but default off | Enable after canonical coverage, API keys, rate limits, and docs are verified for the target tenant |
 | 11 | Workflow integrations | Implemented with guards | Keep Slack/email self-service; Linear/GitHub controlled until secret lifecycle is production-safe |
-| 12 | Jira integration | Not implemented | Build only as a docs-first connector into the integration event and signal mutation system |
-| 13 | Helpdesk integrations | Not implemented as native connectors | Start with exported helpdesk history via Knowledge Intake before native OAuth/API sync |
+| 12 | Jira integration | Not implemented; do not build now | Reconsider one read-only provider only after paying-client concentration, export-friction, selected-scope, deletion, cost, and concierge-outcome proof |
+| 13 | Helpdesk integrations | Not implemented as native connectors; do not build now | Keep export/import; reconsider one read-only provider only after the complete Feature 43 admission gate |
 | 14 | Changelog-to-knowledge automation | Partially implemented through releases/surfaces/drift | Widen only after releases are consistently linked to entities and stale-answer review |
 | 15 | Knowledge graph traversal | Implemented and active with 1-hop summary-backed guards | Keep bounded; no visualization unless owner value is proven |
 | 16 | Predictive support | Implemented and active with cooldown/fail-closed guards | Keep rule-based and quiet; no prompt spam |
@@ -90,6 +91,8 @@ No roadmap item may bypass human approval, tenant isolation, summary-backed read
 ## Jira Rule
 
 Do not build Jira as ticket sync.
+
+Do not build a native Jira connector now. The flow below is a future admission boundary only after Jira is the single provider that passes the Feature 43 paying-demand, export-friction, selected-resource permission, revocation/deletion, privacy, retention, recovery, cost, and concierge-outcome gate.
 
 The only acceptable Jira flow is:
 
@@ -128,6 +131,8 @@ The acceptable helpdesk flow is:
 5. Send to Governance.
 6. Publish only after approval.
 
+Feature 43 now has an executable no-runtime/no-claim boundary and a complete dossier under `__docs__/answerlattice/native-helpdesk-and-jira-connectors/`. Reconsider one provider only after at least three paying workspaces request the same provider, concierge imports prove useful governed outcomes, and selected-resource permissions, revocation, deletion, privacy, rate limits, retention, recovery, and cost are designed. Do not create a generic connector framework first.
+
 ---
 
 ## Public API Rollout Gate
@@ -152,6 +157,8 @@ Before enabling it for a tenant:
 | --- | --- | --- |
 | Jira before governance proof | Reject | Jira is valuable only when it becomes trusted knowledge proposals |
 | Native helpdesk OAuth before export/import proof | Reject | Credential/privacy risk before intake loop is proven |
+| Opaque signal-quality score | Reject until calibrated | Visible evidence counts are safer than an unexplained percentage; require reviewed-proposal outcomes before ranking |
+| Autonomous browser or account-changing actions | Reject | Guided Explain + Guide delivers safer task help; broad execution violates product boundaries and requires disproportionate authorization/recovery risk |
 | Helpdesk replacement features | Reject | Violates Answerlattice non-goals |
 | Live chat infrastructure | Reject for core roadmap | Operational support system, not governed answer infrastructure |
 | Broad multi-channel distribution | Defer | Spreads unreliable answers if source truth is not proven |
@@ -216,6 +223,9 @@ Checklist:
 | --- | --- |
 | 2026-06-06 | Added repeated reply import as the first SupportLayer-derived expansion item and documented the remaining follow-up sequence. |
 | 2026-06-06 | Added Activation-backed first-client launch proof so setup, knowledge, ontology, widget, governance summaries, and signal-source blockers are visible before connector rollout. |
+| 2026-07-19 | Corrected signal-quality truth: the reserved flag has no runtime, production uses transparent evidence counts, and scoring requires reviewed-proposal calibration before development. |
+| 2026-07-20 | Audited native helpdesk/Jira connectors, confirmed zero runtime, and set a one-provider paying-demand, concierge-proof, permission, deletion, and cost gate before implementation. |
+| 2026-07-20 | Audited autonomous browser/account actions, preserved Explain + Guide only, and added executable no-click/no-action-API/no-account-mutation boundaries. |
 | 2026-06-06 | Rebuilt roadmap around current runtime truth and the first-client governed answer loop; added explicit Jira, helpdesk, Public API, distribution, white-label, and multi-language gates. |
 | 2026-03-07 | Initial consolidated roadmap from internal docs, industry research, and codebase truth. |
 | 2026-03-07 | Governance UI, signal quality, white-label, and multi-language implementation statuses recorded. |

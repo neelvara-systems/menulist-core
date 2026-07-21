@@ -1,115 +1,206 @@
-# MenuList Repo Documentation Source Map For Answerlattice
+# MenuList Repo Evidence Map For Answerlattice
+
+**Verified:** 2026-07-20 against current paths in the MenuList repository.
 
 ## Purpose
 
-This source maps the MenuList repo documentation families that should back Answerlattice knowledge. It prevents Answerlattice from relying only on public website copy when live SMB owners ask operational questions.
+This map tells Answerlattice reviewers where to verify a summarized package claim before approving it as support truth. It prevents public website copy, old strategy notes, disabled scaffolds, or sister-product docs from outranking current code and maintained MenuList documentation.
 
-## Main Website Docs
+## Authority Order
 
-Use these as public website truth and asset/story context:
+1. Current runtime code, shared constants/types, feature flags, and executable verifiers.
+2. Current maintained feature docs and active verification reports.
+3. Current public website source and legal-page components.
+4. Current production configuration/evidence available to the authenticated operator.
+5. Owner-approved account-specific evidence.
+6. Historical archives, external AI conversations, strategies, and screenshots only as non-authoritative context.
 
-- `__docs__/main-website/README.md`
-- `__docs__/main-website/main-website_content.md`
-- `__docs__/main-website/main-website_marketing.md`
-- `__docs__/main-website/main-website_image-assets.md`
-- `__docs__/main-website/main-website_seo-aeo.md`
+## Package-Level Evidence
 
-## Core Owner/Menu Docs
+| Evidence | Use |
+| --- | --- |
+| `FEATURE_SWEEP_MASTER_INVENTORY.md` | MenuList feature/classification/surface map. |
+| `FEATURE_SWEEP_MASTER_REPORT.md` | Cross-system audit findings, fixes, verification, and pending external evidence. |
+| `src/config/features.ts` | Current source feature-flag declarations. |
+| `src/constants/database.ts` | Current MenuList collection constants. |
+| `src/types/` | Shared runtime data and boundary types. |
+| `scripts/verification/` | Executable source/behavior/rules/cache/cost gates. |
+| `__docs__/audits/menulist-production-readiness-audit.md` | Current production-readiness separation between local proof and external release evidence. |
 
-Use these for menu creation, editing, publishing, and correctness:
+## Product, Website, Discovery, And Public Truth
 
-- `__docs__/projects/README.md`
-- `__docs__/public-menu-entry/public-menu-entry_helpdoc.md`
-- `__docs__/use-menulist/use-menulist_helpdoc.md`
-- `__docs__/menu-intake-identity/menu-intake-identity_helpdoc.md`
-- `__docs__/menu-link-import/menu-link-import_helpdoc.md`
-- `__docs__/client-menu/client-menu_helpdoc.md`
-- `__docs__/client-menu-retrieval-foundation/client-menu-retrieval-foundation_helpdoc.md`
-- `__docs__/menu-command-center/menu-command-center_helpdoc.md`
-- `__docs__/menu-correctness-engine/menu-correctness-engine_helpdoc.md`
-- `__docs__/pricing-integrity-system/pricing-integrity-system_helpdoc.md`
-- `__docs__/editor-ux-improvements/README.md`
+- `__docs__/constitution/`
+- `__docs__/main-website/`
+- `__docs__/public-menu-entry/`
+- `__docs__/client-menu/`
+- `__docs__/client-menu-retrieval-foundation/`
+- `__docs__/official-business-page/`
+- `__docs__/discovery-infrastructure/`
+- `__docs__/agent-readiness-strategy/`
+- `__docs__/canonical-truth-infrastructure/`
+- `__docs__/business-truth-graph/`
+- `__docs__/url-routing-architecture/`
+- `__docs__/customer-facing-infrastructure/`
 
-## Public Surface Docs
+Canonical public URL identity is `https://menulist.ai`. Preview/alias hosts are deployment evidence only and must not replace canonical Answerlattice source identity.
 
-Use these for customer-facing surfaces:
+## Menu Intake, Extraction, Editing, Publish, And Correctness
 
-- `__docs__/official-business-page/official-business-page_helpdoc.md`
-- `__docs__/menu-kit/menu-kit_helpdoc.md`
-- `__docs__/digital-screens/digital-screens_helpdoc.md`
-- `__docs__/customer-app/customer-app_helpdoc.md`
-- `__docs__/pdf-surface/pdf-surface_helpdoc.md`
-- `__docs__/physical-surfaces/physical-surfaces_helpdoc.md`
-- `__docs__/sharable-item-card-generation/sharable-item-card-generation_helpdoc.md`
+- `__docs__/projects/`
+- `__docs__/menu-extraction-pipeline/`
+- `__docs__/menu-link-import/`
+- `__docs__/menu-intake-identity/`
+- `__docs__/menu-command-center/`
+- `__docs__/menu-correctness-engine/`
+- `__docs__/pricing-integrity-system/`
+- `__docs__/menu-quality-signals/`
+- `__docs__/menu-trust-signals/`
+- `__docs__/menu-setup-progress/`
+- `__docs__/menulist-activation-concierge/`
+- `__docs__/editor-ux-improvements/`
 
-## Operations Docs
+Current save/publish/cache truth is also enforced through `src/database/projects/` and `src/lib/cache/publicClientCache.ts`.
 
-Use these for daily operations and post-publish owner workflows:
+## MenuList AI Owner Workflows
 
-- `__docs__/special-menu-switching/special-menu-switching_helpdoc.md`
-- `__docs__/temp-status-layer/temp-status-layer_helpdoc.md`
-- `__docs__/hours-holiday-accuracy/hours-holiday-accuracy_helpdoc.md`
-- `__docs__/menu-presence-monitor/menu-presence-monitor_helpdoc.md`
-- `__docs__/menu-quality-signals/menu-quality-signals_helpdoc.md`
-- `__docs__/menu-trust-signals/menu-trust-signals_helpdoc.md`
-- `__docs__/customer-communication-kit/customer-communication-kit_helpdoc.md`
-- `__docs__/media-image-system/media-image-system_helpdoc.md`
-- `__docs__/continuous-menu-intelligence/continuous-menu-intelligence_helpdoc.md`
+- `__docs__/ai-system-layer/`
+- `__docs__/ai-enhancement-packs/`
+- `__docs__/ai-menu-manager/`
+- `__docs__/projects/description-generation/`
+- `__docs__/projects/multi-language-translation/`
+- `__docs__/projects/ai-image-generation/`
+- `__docs__/media-image-system/`
+- `__docs__/extracted-business-profile/`
+- `src/constants/AI/unitCosts.ts`
+- `src/data/shared/contentCreditPolicy.ts`
 
-## Staff, Account, And Store Docs
+Use these to distinguish free setup operations, paid content-credit operations, owner review, credit reservation/settlement/restoration, provider failures, and safe Transactions presentation. Never expose internal provider cost, margin, raw prompts/responses, model-routing internals, or secret identifiers.
 
-Use these for access and multi-location support:
+## Public, Share, Print, Screen, And Customer Surfaces
 
-- `__docs__/auth/auth_helpdoc.md`
-- `__docs__/auth-onboarding/auth-onboarding_helpdoc.md`
-- `__docs__/roles-permissions/roles-permissions_helpdoc.md`
-- `__docs__/multi-chain-permissions/multi-chain-permissions_helpdoc.md`
-- `__docs__/staff-prompt/staff-prompt_helpdoc.md`
-- `__docs__/multi-outlet-consistency/multi-outlet-consistency_helpdoc.md`
-- `__docs__/stores-management/stores-management_helpdoc.md`
-- `__docs__/ownership-transfer/ownership-transfer_spec.md`
+- `__docs__/menu-kit/`
+- `__docs__/item-truth-export/`
+- `__docs__/menu-card-export/`
+- `__docs__/print-assets/`
+- `__docs__/printable-asset-templates/`
+- `__docs__/print-menu-surfaces/`
+- `__docs__/pdf-surface/`
+- `__docs__/customer-communication-kit/`
+- `__docs__/physical-surfaces/`
+- `__docs__/digital-screens/`
+- `__docs__/customer-app/`
+- `__docs__/sharable-item-card-generation/`
 
-## Billing, Trust, And Policy Docs
+Downloaded/printed assets are snapshots. Stable QR destinations can continue to show current truth, but an old downloaded PDF/image does not update after it leaves MenuList.
 
-Use these for billing and sensitive support:
+## Store, Hours, Localization, Accessibility, And Mobile
 
-- `__docs__/ai-enhancement-packs/ai-enhancement-packs_helpdoc.md`
-- `__docs__/production-readiness/README.md`
-- `__docs__/security/README.md`
-- `__docs__/compliance-pages/compliance-pages_helpdoc.md`
-- `__docs__/razorpay/README.md`
+- `__docs__/stores-management/`
+- `__docs__/hours-holiday-accuracy/`
+- `__docs__/temp-status-layer/`
+- `__docs__/global-localization/`
+- `__docs__/website-i18n/`
+- `__docs__/global-accessibility/`
+- `__docs__/mobile-operational-support/`
+- `__docs__/owner-pwa-lifecycle/`
+- `.codex/rules/MOBILE_SUPPORT_RULES.md`
 
-Public website policy pages remain the current public source for end-user legal/support wording:
+Owner UI language, store/public language, and owner-entered menu content language are distinct. Weekly hours and current status use the business timezone. Holiday calendars/date-specific exception managers are not shipped.
 
-- `https://www.menulist.online/privacy-policy`
-- `https://www.menulist.online/terms-of-service`
-- `https://www.menulist.online/refund-policy`
-- `https://www.menulist.online/trust-security`
+## Dashboard, Analytics, Business Health, Feedback, And Help
 
-## Integrations And External Sync Docs
+- `__docs__/projects/owner-dashboard.md`
+- `__docs__/owner-business-assistant/`
+- `__docs__/menu-presence-monitor/`
+- `__docs__/menulist-tools/public-truth-tools/`
+- `__docs__/continuous-menu-intelligence/`
+- `__docs__/decision-intelligence/`
+- `__docs__/answerlattice/help-center/`
+- current Guest Feedback docs under `__docs__/features/` and related feature folders
 
-Use these only with review because integration claims are risky:
+Business Health is read-only. AI Menu Manager owns supported action preparation. Analytics are bounded business signals, not personal, billing, or legal records.
 
-- `__docs__/pos-webhook-sync/pos-webhook-sync_helpdoc.md`
-- `__docs__/gbp-sync/gbp-sync_helpdoc.md`
-- `__docs__/platform-pull-api/platform-pull-api_spec.md`
-- `__docs__/url-routing-architecture/README.md`
-- `__docs__/url-routing-architecture/url-routing-architecture_spec.md`
+## Account, Staff, Ownership, And Multi-Location
 
-Answerlattice must not claim universal POS, Google, delivery app, or external-platform sync unless the specific account/integration is enabled and verified.
+- `__docs__/auth/`
+- `__docs__/auth-onboarding/`
+- `__docs__/onboarding/`
+- `__docs__/onboarding-centralization/`
+- `__docs__/account-tenant-lifecycle/`
+- `__docs__/roles-permissions/`
+- `__docs__/multi-chain-permissions/`
+- `__docs__/staff-prompt/`
+- `__docs__/multi-outlet-consistency/`
+- `__docs__/ownership-transfer/`
+- `__docs__/ownership-dormant-lifecycle/`
 
-## Reputation And Feedback Docs
+An operational Owner role is not a complete business-account transfer. Full ownership, privacy, portability, deletion, or last-owner disputes require verified support.
 
-Use these for customer feedback and review-related support:
+## Billing, Trust, Security, And Legal
 
-- `__docs__/reputation-protection/reputation-protection_helpdoc.md`
-- `__docs__/reviews-reputation/reviews-reputation_helpdoc.md`
-- `__docs__/risk-decline-detection/risk-decline-detection_helpdoc.md`
+- `__docs__/razorpay/`
+- `__docs__/ai-enhancement-packs/`
+- `__docs__/security/`
+- `__docs__/compliance-pages/`
+- `__docs__/production-readiness/`
+- `src/components/website/legal/`
+- `src/data/PlatformPlansList.ts`
+- `src/lib/billing/`
 
-These should stay support-assistive, not legal, medical, or reputation-guarantee advice.
+Use source code and dated public components for current price/policy facts. Do not restore retired fixed 30-day deletion wording, absolute output ownership, all-feature access, provider certification, or access beyond the valid paid cycle.
 
-## Answerlattice Upload Rule
+## Integrations, Location Identity, And External Distribution
 
-Answerlattice should ingest summarized source files first, then attach individual repo docs as source evidence only where needed. If an Answerlattice answer conflicts with the live public website or current runtime behavior, do not publish it as canonical until reviewed.
+- `__docs__/pos-webhook-sync/`
+- `__docs__/external-integrations/`
+- `__docs__/platform-pull-api/`
+- `__docs__/gbp-sync/`
+- `__docs__/qr-whatsapp-experiments/`
+- `__docs__/canonical-truth-infrastructure/`
+- `__docs__/business-truth-graph/`
+- `src/lib/public-truth-tools/externalLocationIdentity.ts`
 
-Historical archive, strategy, and ChatGPT-review files are not direct live-owner support truth. Use them only to understand decisions, not to answer SMB owners unless the claim is also present in current docs, current code, or the live website.
+External Menu Sync is one signed snapshot path to a configured receiver. GBP posting/review experiments, automatic platform posting, public MCP, agent truth audit, external collision detection, and automatic location merging are not ordinary shipped owner capabilities.
+
+## Failure, Configuration, Lifecycle, Cost, And Internal Operations
+
+- `__docs__/global-failure-observability/`
+- `__docs__/configuration-safety/`
+- `__docs__/account-tenant-lifecycle/`
+- `__docs__/ownership-dormant-lifecycle/`
+- `__docs__/firebase-scale-cost-closeout/`
+- `__docs__/ops-control-room/`
+- `__docs__/cost-self-protection/`
+- `__docs__/internal-platform/`
+
+These folders explain system behavior and operator boundaries. Internal alerts, schedulers, costs, safe-mode controls, and platform recovery must not become ordinary owner-facing feature claims.
+
+## Disabled, Dormant, Or Planning-Only Boundaries
+
+- `__docs__/reviews-reputation/`
+- `__docs__/reputation-protection/`
+- `__docs__/owner-referral/`
+- `__docs__/surface-os/`
+- dormant pricing/background queue material explicitly marked inactive in its maintained docs
+
+Documentation existence does not prove availability. Check current flags, runtime consumers, account allowlists, and release evidence.
+
+## Separate Products And Exclusions
+
+Exclude Answerlattice, CampaignCue, GrowthOS, KitStamp, MyCodex, Canonica, SignalDesk, Neelvara, SurfaceOS planning, and other sibling-product features from MenuList support unless the exact question is about the boundary or a deliberately shared MenuList surface.
+
+Relevant exclusion roots include:
+
+- `__docs__/answerlattice/`
+- `__docs__/campaigncue/`
+- `__docs__/growthos-addon/`
+- `__docs__/kitstamp/`
+- `__docs__/mycodex-*`
+- `__docs__/surface-os/`
+- sibling runtime route groups, packages, Firebase targets, and deployment domains
+
+## Upload And Approval Rule
+
+Ingest the 26 summarized package sources first. Attach individual repo docs only when deeper evidence is needed. A source file, support reply, screenshot, public page, or generated draft remains evidence for review; it does not become approved canonical truth automatically.
+
+If two current sources disagree, keep both facts and their applicability visible, identify the authority/conflict, and require owner review. Never silently choose historical or more convenient wording over current code/runtime truth.

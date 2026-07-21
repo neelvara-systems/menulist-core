@@ -1,5 +1,7 @@
 # MenuList On Answerlattice Production Onboarding Runbook
 
+**Package verified:** 2026-07-20
+
 ## Operating Principle
 
 MenuList should be onboarded into Answerlattice as a real production client, not as fake seed data. The resulting dashboard state can then be used for Answerlattice website and marketing assets only after approval and privacy review.
@@ -24,7 +26,7 @@ Exit criteria:
 - Create or select the Answerlattice production workspace for MenuList.
 - Confirm production Answerlattice environment points to `https://answerlattice.com` and the `answerlattice` Firebase project.
 - Confirm MenuList production remains `https://menulist.ai` and the `menulist` Firebase project.
-- Confirm whether the public website content source remains `https://www.menulist.online` or has moved to the canonical production host before final Answerlattice source review.
+- Use `https://menulist.ai` as canonical MenuList product/website identity. Check hosted alignment before live discovery, widget activation, and screenshots; do not substitute a preview/alias host into canonical source metadata.
 - Activate license/subscription for the MenuList Answerlattice workspace.
 - Add required admin users only.
 - Generate an Answerlattice widget key for MenuList production.
@@ -48,6 +50,8 @@ MenuList production client onboarding and asset proof
 - Upload `source-inputs/08-support-faq-seed.csv` as CSV.
 - Add selected public MenuList website URLs through Answerlattice discovery after the prepared source files are imported.
 - Keep each source under Answerlattice's runtime source-size constraints.
+- If using `api-payloads/add-source-payloads.jsonl`, insert reviewed `contentText` from each matching file before sending it. The checked-in JSONL is review-only.
+- Add individual public pages later with one singular `originUrl` each. Do not use a multi-page `sourceUrls` metadata shortcut.
 - Do not publish canonical answers directly from intake.
 
 Exit criteria:
@@ -60,6 +64,7 @@ Exit criteria:
 
 - Review generated KB articles for implemented MenuList truth only.
 - Review FAQ drafts and remove unsupported pricing, refund, privacy, POS, or integration claims.
+- Review AI credit rates, reservation/settlement/restoration, Transactions wording, owner/public localization, lifecycle/ownership, and location-identity answers.
 - Import and review live owner support and website/docs reconciliation source files `11` through `26`.
 - Use `live-smb-support-coverage-checklist.md` as the production support gate.
 - Review entity candidates such as menu, project, store, outlet, Official Business Page, QR, Digital Screen, Menu Kit, staff, and public menu.
@@ -102,15 +107,27 @@ Exit criteria:
 /answerlattice/*
 /__answerlattice
 /__answerlattice/*
+/growth-kits
+/growth-kits/*
+/ops
+/ops/*
+/platform
+/platform/*
+/reseller
+/reseller/*
 ```
 
-- Verify page context is received for owner routes such as dashboard, projects, users, feedback, business settings, transactions, locations, and billing.
+- Verify page context is received only for approved desktop owner routes. Unknown or newly added routes must remain hidden until they receive an explicit safe route mapping.
+- Verify nested owner routes use a generic `_detail` context key and never send tenant, store, project, transaction, customer, or raw URL-segment identifiers.
+- Verify Growth Kits, internal operations, platform administration, and reseller routes do not load or retain MenuList owner-widget context.
+- The current embed hides on coarse-pointer/mobile viewports, so MobileShell Help remains the mobile support entry unless a separate mobile widget decision changes that contract.
 - Confirm the widget is hidden on mobile until a separate mobile UX decision is approved.
 
 Exit criteria:
 
 - `/answerlattice/widget` shows a production runtime last-seen event from MenuList.
 - `/answerlattice/activation` marks widget seen in product and page context received.
+- No telemetry is present for blocked, unknown, internal, reseller, or separately governed product routes.
 
 ## Phase 6: Support Signal Loop
 

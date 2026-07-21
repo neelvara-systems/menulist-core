@@ -11,7 +11,7 @@ A source-gated help interface designed for non-technical owners.
 - Persists acknowledged chat sessions and feedback in the active Answerlattice workspace.
 - Shows references and normalized related content; related article actions build internal Help Center routes from validated document IDs.
 - Supports one validated screenshot for the current question. Prior image URLs are not replayed in conversation context.
-- Offers ticket escalation when the server returns a valid escalation suggestion.
+- Does not create support tickets. Automatic AI-failure evaluation is rollout-gated, and any future Help Chat handoff must use a server-authoritative, explicitly confirmed flow.
 - Uses fixed owner-safe error copy and bounded diagnostics.
 
 ## Product and trust boundary
@@ -27,7 +27,7 @@ The UI does not administer Answerlattice governance or promise that generated wo
 - `MessageBubble.tsx` — sanitized Markdown, references and related-content actions
 - `api.ts` — bounded same-origin search client
 - `hooks/useChatData.ts` — session/category reads
-- `hooks/useChatHandlers.ts` — send, retry, feedback, copy and ticket escalation
+- `hooks/useChatHandlers.ts` — send, retry, feedback and copy
 - `helpChatDiagnostics.ts` — bounded client diagnostics
 
 ## Verification

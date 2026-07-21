@@ -67,6 +67,7 @@ const storedProposal = {
     signalSummary: {
         ticketCount: 1,
         chatCount: 2,
+        escalationCount: 1,
         negativeFeedbackRate: 0.25,
         exampleReferences: ['signal_123'],
     },
@@ -103,6 +104,17 @@ assert.equal(
     AnswerlatticeStoredMutationProposalSchema.safeParse({ ...storedProposal, confidenceScore: 1.5 }).success,
     false,
     'stored proposal confidence must stay within its declared range',
+);
+assert.equal(
+    AnswerlatticeStoredMutationProposalSchema.safeParse({
+        ...storedProposal,
+        signalSummary: {
+            ...storedProposal.signalSummary,
+            escalationCount: -1,
+        },
+    }).success,
+    false,
+    'stored proposal escalation evidence must be a bounded non-negative count',
 );
 assert.equal(
     AnswerlatticeStoredMutationProposalSchema.safeParse({
@@ -256,6 +268,16 @@ assert.equal(
     governanceServerSource.includes('prefixTokens: buildAnswerlatticeEntityPrefixTokens'),
     true,
     'entity merge must rebuild the survivor search index instead of changing synonyms alone',
+);
+assert.equal(
+    governanceServerSource.includes('Number(proposal.confidenceScore'),
+    false,
+    'proposal evidence scores must never be copied into canonical answer validation',
+);
+assert.equal(
+    governanceServerSource.includes("validationSource: 'manual'"),
+    true,
+    'human approval must remain the canonical validation authority',
 );
 
 for (const indexPath of ['firestore.indexes.json', 'firestore-answerlattice.indexes.json']) {

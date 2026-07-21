@@ -109,8 +109,7 @@ function formatEventHtml(event: IntegrationEvent): string {
                 detailsHtml = `
                 <tr><td><strong>Type:</strong></td><td>${escapeHtml(p.mutationType)}</td></tr>
                 <tr><td><strong>Entities:</strong></td><td>${escapeHtml(safePayloadStringArray(p.entityNames, 5, 80).join(', '), 300)}</td></tr>
-                <tr><td><strong>Signals:</strong></td><td>${safePayloadCount(p.signalCount)}</td></tr>
-                <tr><td><strong>Confidence:</strong></td><td>${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%</td></tr>`;
+                <tr><td><strong>Signals:</strong></td><td>${safePayloadCount(p.signalCount)}</td></tr>`;
                 break;
 
             case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:

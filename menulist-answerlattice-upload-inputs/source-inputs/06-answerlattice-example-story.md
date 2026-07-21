@@ -1,5 +1,7 @@
 # Why MenuList Is The Answerlattice Example
 
+**Verified:** 2026-07-20 against current MenuList feature coverage and Answerlattice canonical-first/product-surface/Knowledge Intake boundaries.
+
 ## Short Story
 
 MenuList is the best internal example for Answerlattice because it has everything Answerlattice needs to explain:
@@ -72,6 +74,10 @@ Answerlattice can create review drafts for these stable MenuList answers:
 10. What is External Menu Sync?
 11. What public discovery claims are allowed?
 12. What screenshots can be used for Answerlattice marketing?
+13. How do content credits settle or restore after an AI operation?
+14. What is the difference between Business Health and Menu Manager?
+15. How do owner language, public language, and menu-content language differ?
+16. When does a location's external Place ID count as confirmed?
 
 ## Suggested Website Proof Slots
 
@@ -83,4 +89,3 @@ Answerlattice can use MenuList in these proof slots:
 - Source conflict/review example.
 - Website asset proof example.
 - Founder dashboard setup example.
-

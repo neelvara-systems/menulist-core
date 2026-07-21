@@ -1,5 +1,7 @@
 # MenuList Production Onboarding Context For Answerlattice
 
+**Verified:** 2026-07-20 against current Answerlattice activation, Knowledge Intake, Product Surfaces, widget, Answer Tests, governance, and screenshot boundaries.
+
 ## Why This Source Exists
 
 MenuList is intended to be a real Answerlattice production client when Answerlattice goes live.
@@ -74,4 +76,3 @@ After onboarding, Answerlattice assets should prefer real routed screenshots fro
 - Answerlattice product surfaces;
 - Answerlattice widget management;
 - Answerlattice governance and support board.
-

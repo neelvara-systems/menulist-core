@@ -3,7 +3,7 @@
 > **Status:** Implemented, workspace opt-in
 > **Version:** 2.2.0
 > **Created:** 2026-03-08
-> **Last verified:** 2026-07-18
+> **Last verified:** 2026-07-20
 > **Flags:** `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`, `ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION`
 
 ## Purpose
@@ -12,7 +12,7 @@ Guided Workflows turn an approved canonical procedure into controlled in-product
 
 1. Explain the approved procedure.
 2. Highlight a client-declared semantic target.
-3. Wait for the user or a client-verified workflow event.
+3. Wait for the user or an exact client-reported workflow event.
 4. Advance, complete, report a missing target, or escalate.
 5. Record at most one deduplicated terminal outcome when signal mutation is enabled.
 

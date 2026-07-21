@@ -53,13 +53,21 @@ interface UseEntitiesReturn {
     refresh: () => Promise<void>;
 }
 
-export function useEntities(tId: number, sId: number): UseEntitiesReturn {
+export type AnswerlatticeEntityLoadMode = 'full' | 'entities_and_search_index' | 'entities_only';
+
+export function useEntities(
+    tId: number,
+    sId: number,
+    loadMode: AnswerlatticeEntityLoadMode = 'full',
+): UseEntitiesReturn {
     const [entities, setEntities] = useState<AnswerlatticeEntity[]>([]);
     const [relations, setRelations] = useState<AnswerlatticeEntityRelation[]>([]);
     const [searchIndex, setSearchIndex] = useState<AnswerlatticeEntitySearchIndex[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedEntity, setSelectedEntity] = useState<AnswerlatticeEntity | null>(null);
+    const shouldLoadRelations = loadMode === 'full';
+    const shouldLoadSearchIndex = loadMode !== 'entities_only';
 
     const refresh = useCallback(async () => {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI || !tId || !sId) return;
@@ -69,8 +77,8 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
         try {
             const [entitiesResult, relationsResult, indexResult] = await Promise.all([
                 getEntities(tId, sId),
-                getEntityRelations(tId, sId),
-                getEntitySearchIndex(tId, sId),
+                shouldLoadRelations ? getEntityRelations(tId, sId) : Promise.resolve([]),
+                shouldLoadSearchIndex ? getEntitySearchIndex(tId, sId) : Promise.resolve([]),
             ]);
             setEntities(entitiesResult || []);
             setRelations(relationsResult || []);
@@ -80,7 +88,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
         } finally {
             setLoading(false);
         }
-    }, [tId, sId]);
+    }, [tId, sId, shouldLoadRelations, shouldLoadSearchIndex]);
 
     useEffect(() => {
         refresh();

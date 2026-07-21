@@ -1990,6 +1990,7 @@ service cloud.firestore {
     function isValidAnswerlatticeSupportTicketCreate(data) {
       return data.pId == 'AL'
         && data.keys().hasAll(['tId', 'sId', 'subject', 'status', 'priority', 'category', 'statuses'])
+        && !data.keys().hasAny(['source', 'escalationContext', 'knowledgeCandidate', 'widgetEscalation'])
         && data.subject is string
         && data.subject.size() > 0
         && data.subject.size() <= 300

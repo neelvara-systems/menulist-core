@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto';
 import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 
 const PRODUCT_ID = 'AL';
 const SESSION_LIMIT_PER_DAY = 2000;
@@ -208,7 +209,12 @@ export const releaseChatAnalyticsBackfillLease = async (
     });
 };
 
-const aggregateDay = async (tId: number, sId: number, dateKey: string) => {
+const aggregateDay = async (
+    tId: number,
+    sId: number,
+    dateKey: string,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+) => {
     const bounds = utcDayBounds(dateKey);
     const snapshot = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
         .where('pId', '==', PRODUCT_ID)
@@ -219,6 +225,13 @@ const aggregateDay = async (tId: number, sId: number, dateKey: string) => {
         .orderBy('createdOn', 'asc')
         .limit(SESSION_LIMIT_PER_DAY + 1)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.CHAT_SESSIONS,
+        window: 'utc_day',
+        documentsReturned: snapshot.size,
+        queryLimit: SESSION_LIMIT_PER_DAY + 1,
+        saturated: snapshot.size > SESSION_LIMIT_PER_DAY,
+    });
     const sourceComplete = snapshot.size <= SESSION_LIMIT_PER_DAY;
     const sessions = snapshot.docs
         .slice(0, SESSION_LIMIT_PER_DAY)
@@ -355,6 +368,7 @@ export const backfillChatAnalyticsDays = async (
 export const syncChatAnalyticsNightly = async (
     tId: number,
     sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
 ): Promise<ChatAnalyticsAggregationResult> => {
     if (!isPositiveScopeId(tId) || !isPositiveScopeId(sId)) {
         throw new Error('answerlattice_chat_analytics_scope_invalid');
@@ -395,6 +409,13 @@ export const syncChatAnalyticsNightly = async (
         changedQuery = changedQuery.where('modifiedOn', '>', cursor);
     }
     const changedSnapshot = await changedQuery.limit(CHANGED_SESSION_LIMIT + 1).get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.CHAT_SESSIONS,
+        window: 'changed_since_cursor',
+        documentsReturned: changedSnapshot.size,
+        queryLimit: CHANGED_SESSION_LIMIT + 1,
+        saturated: changedSnapshot.size > CHANGED_SESSION_LIMIT,
+    });
 
     const dates = new Set<string>([yesterdayDateKey()]);
     let processedThrough = cursor;
@@ -428,7 +449,7 @@ export const syncChatAnalyticsNightly = async (
     let summariesSkipped = 0;
     let partialDates = 0;
     for (const dateKey of Array.from(dates)) {
-        const result = await aggregateDay(tId, sId, dateKey);
+        const result = await aggregateDay(tId, sId, dateKey, readObserver);
         if (result.written) summariesWritten += 1;
         else summariesSkipped += 1;
         if (result.partial) partialDates += 1;

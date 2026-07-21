@@ -354,6 +354,14 @@ const uploadImage = async (
 export const addTicket = async (data: SupportTicketType) => {
     return await apiCallComposer(
         async () => {
+            if (
+                data.source !== undefined
+                || data.knowledgeCandidate !== undefined
+                || data.escalationContext !== undefined
+                || data.widgetEscalation !== undefined
+            ) {
+                throw new Error('answerlattice_ticket_server_escalation_fields_forbidden');
+            }
             if (Array.isArray(data.documents) && data.documents.length > ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT) {
                 throw new Error('answerlattice_ticket_document_limit_reached');
             }
@@ -410,18 +418,10 @@ export const addTicket = async (data: SupportTicketType) => {
             clearCapturedLogs(); // Clear only after the ticket is persisted successfully.
             const displayId = getDisplayId(docRef.id);
 
-            // Answerlattice: emit ticket creation signal (fire-and-forget)
-            // For AI escalation tickets, emit ESCALATION signal (3x severity weight)
-            // For manual tickets, emit TICKET signal (1.5x weight)
-            const signalType = data.source === 'ai_escalation'
-                ? ANSWERLATTICE_SIGNAL_TYPE.ESCALATION
-                : ANSWERLATTICE_SIGNAL_TYPE.TICKET;
-            const escalationMatchedEntityIds = data.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds || [];
-            const signalEntityId = escalationMatchedEntityIds.find((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()));
-
+            // Browser-created tickets are manual support evidence. Server-owned
+            // escalation paths emit their own deterministic escalation signal.
             void emitAnswerlatticeSignal({
-                type: signalType,
-                entityId: signalEntityId,
+                type: ANSWERLATTICE_SIGNAL_TYPE.TICKET,
                 tId: submitData.tId,
                 sId: submitData.sId,
                 metadata: {
@@ -430,13 +430,6 @@ export const addTicket = async (data: SupportTicketType) => {
                     category: data.category,
                     contextKeys: data.contextKeys || [],
                     priority: data.priority,
-                    ...(data.source === 'ai_escalation' && {
-                        query: data.escalationContext?.query,
-                        matchedEntityIds: escalationMatchedEntityIds,
-                        fallbackReason: data.escalationContext?.retrievalDebug?.canonicalResult?.fallbackReason,
-                        triggerTypes: data.escalationContext?.triggerTypes,
-                        conversationId: data.escalationContext?.conversationId,
-                    }),
                 },
             }).catch((signalError) => {
                 logRuntimeFailure('answerlattice_ticket_create_signal_emit_failed', signalError, {

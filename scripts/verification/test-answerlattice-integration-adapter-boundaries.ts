@@ -137,6 +137,7 @@ async function main(): Promise<void> {
     const githubPayload = new GithubAdapter().formatPayload(malformedLegacyEvent);
     for (const formatted of [slackPayload, emailPayload, linearPayload, githubPayload]) {
         assert.equal(JSON.stringify(formatted).includes(malformedMarker), false);
+        assert.equal(JSON.stringify(formatted).includes('Confidence'), false, 'proposal notifications must not present an opaque confidence score');
     }
     assert.equal(String(emailPayload.html).includes('<script>alert(1)</script>'), false);
     assert.equal(String(emailPayload.html).includes('&lt;script&gt;alert(1)&lt;/script&gt;'), true);

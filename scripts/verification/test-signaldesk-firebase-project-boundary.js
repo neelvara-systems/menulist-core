@@ -120,6 +120,7 @@ const cleanEnvironment = () => {
         "FIRESTORE_EMULATOR_HOST",
         "GCLOUD_PROJECT",
         "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_APPLICATION_CREDENTIALS",
         "NEXT_PUBLIC_ENV",
         "NEXT_PUBLIC_VERCEL_ENV",
         "NODE_ENV",

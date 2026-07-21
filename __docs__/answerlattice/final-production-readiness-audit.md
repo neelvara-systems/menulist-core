@@ -1,5 +1,7 @@
 # Answerlattice Final Production Readiness Audit
 
+> **Historical audit notice:** This July 11 snapshot is retained as audit history. The July 20, 2026 44-feature and C1-C8 source closure, including the current CI/security/recovery state and remaining production evidence, is maintained in `system-inventory/answerlattice-final-cross-cutting-audit.md`. Do not use superseded July 11 statements such as “no CI workflow exists” as current source truth.
+
 **Audit date:** 2026-07-11  
 **Branch:** `staging`  
 **Verdict:** Not production-ready  

@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 import { classifySupportBoardSearchEvidence } from './supportBoardEvidence';
 import { loadAnswerlatticeSupportBoardCoreCounts } from './supportBoardSummary';
 
@@ -189,7 +190,12 @@ function getEntityLabel(entityId: string, entities: Map<string, EntityInfo>): st
     return entities.get(entityId)?.name || entityId;
 }
 
-async function loadEntityInfo(tId: number, sId: number, entityIds: string[]): Promise<Map<string, EntityInfo>> {
+async function loadEntityInfo(
+    tId: number,
+    sId: number,
+    entityIds: string[],
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<Map<string, EntityInfo>> {
     const uniqueIds = Array.from(new Set(
         entityIds
             .map(entityId => normalizeAnswerlatticeResolvedFunctionEntityId(entityId))
@@ -201,6 +207,12 @@ async function loadEntityInfo(tId: number, sId: number, entityIds: string[]): Pr
         const batch = uniqueIds.slice(i, i + 30);
         const refs = batch.map(entityId => db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId));
         const docs = await db.getAll(...refs);
+        readObserver?.record({
+            source: DB_COLLECTIONS.ANSWERLATTICE_ENTITIES,
+            window: 'by_id',
+            documentsReturned: docs.filter(document => document.exists).length,
+            queryLimit: refs.length,
+        });
 
         for (const doc of docs) {
             if (!doc.exists) continue;
@@ -413,6 +425,7 @@ async function buildReleaseImpactCandidates(
     sId: number,
     driftCandidates: SupportBoardCandidate[],
     entities: Map<string, EntityInfo>,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
 ): Promise<SupportBoardCandidate[]> {
     const driftedEntityIds = new Set(driftCandidates.map(candidate => candidate.relatedEntityId).filter(Boolean) as string[]);
     if (driftedEntityIds.size === 0) return [];
@@ -424,6 +437,13 @@ async function buildReleaseImpactCandidates(
         .where('status', '==', 'active')
         .limit(SUPPORT_BOARD_SYNC_LIMITS.maxReleaseReads)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_RELEASES,
+        window: 'recent_for_drifted_entities',
+        documentsReturned: releasesSnap.size,
+        queryLimit: SUPPORT_BOARD_SYNC_LIMITS.maxReleaseReads,
+        saturated: releasesSnap.size >= SUPPORT_BOARD_SYNC_LIMITS.maxReleaseReads,
+    });
 
     const releaseCutoffMs = Date.now() - SUPPORT_BOARD_SYNC_LIMITS.releaseWindowDays * 24 * 60 * 60 * 1000;
 
@@ -453,7 +473,11 @@ async function buildReleaseImpactCandidates(
         .filter(Boolean) as SupportBoardCandidate[];
 }
 
-async function loadSupportBoardSourceDocs(tId: number, sId: number): Promise<SupportBoardSourceDocs> {
+async function loadSupportBoardSourceDocs(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<SupportBoardSourceDocs> {
     const entityIds = new Set<string>();
     const windowStart = Timestamp.fromMillis(Date.now() - SUPPORT_BOARD_SYNC_LIMITS.windowDays * 24 * 60 * 60 * 1000);
 
@@ -480,6 +504,27 @@ async function loadSupportBoardSourceDocs(tId: number, sId: number): Promise<Sup
             .limit(SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads + 1)
             .get(),
     ]);
+    readObserver?.record({
+        source: DB_COLLECTIONS.AI_SEARCH_HISTORY,
+        window: 'rolling_14d_canonical_misses',
+        documentsReturned: historySnap.size,
+        queryLimit: SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads + 1,
+        saturated: historySnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads,
+    });
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS,
+        window: 'rolling_14d',
+        documentsReturned: signalSnap.size,
+        queryLimit: SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads + 1,
+        saturated: signalSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads,
+    });
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS,
+        window: 'drifted_all',
+        documentsReturned: driftSnap.size,
+        queryLimit: SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads + 1,
+        saturated: driftSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads,
+    });
     const sourceWindowsSaturated = historySnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads
         || signalSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads
         || driftSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxDriftedAnswerReads;
@@ -567,7 +612,12 @@ function buildCardPayload(tId: number, sId: number, candidate: SupportBoardCandi
     };
 }
 
-async function upsertSupportBoardCards(tId: number, sId: number, candidates: SupportBoardCandidate[]): Promise<{
+async function upsertSupportBoardCards(
+    tId: number,
+    sId: number,
+    candidates: SupportBoardCandidate[],
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<{
     created: number;
     updated: number;
     skippedResolved: number;
@@ -582,6 +632,12 @@ async function upsertSupportBoardCards(tId: number, sId: number, candidates: Sup
     const collection = db.collection(DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS);
     const refs = limitedCandidates.map(candidate => collection.doc(supportBoardDocId(tId, sId, candidate.sourceType, candidate.sourceId)));
     const snapshots = await db.getAll(...refs);
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS,
+        window: 'by_id',
+        documentsReturned: snapshots.filter(document => document.exists).length,
+        queryLimit: refs.length,
+    });
     const batch = db.batch();
     let created = 0;
     let updated = 0;
@@ -639,7 +695,7 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
     cardsSkippedUnchanged: number;
     candidatesAnalyzed: number;
     sourceWindowsSaturated: boolean;
-}): Promise<{
+}, readObserver?: AnswerlatticeSchedulerReadObserver): Promise<{
     written: boolean;
     openCards: number;
     needsAnswerCards: number;
@@ -654,6 +710,13 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
         .orderBy('modifiedOn', 'desc')
         .limit(SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads + 1)
         .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS,
+        window: 'recent_all',
+        documentsReturned: cardsSnap.size,
+        queryLimit: SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads + 1,
+        saturated: cardsSnap.size > SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads,
+    });
     const breakdownFresh = cardsSnap.size <= SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads;
     const breakdownDocs = cardsSnap.docs.slice(0, SUPPORT_BOARD_SYNC_LIMITS.maxExistingBoardReads);
     const coreCounts = await loadAnswerlatticeSupportBoardCoreCounts(tId, sId);
@@ -715,7 +778,11 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
     return { written: true, ...coreCounts, breakdownFresh };
 }
 
-export async function syncSupportBoardNightly(tId: number, sId: number): Promise<SupportBoardSyncResult> {
+export async function syncSupportBoardNightly(
+    tId: number,
+    sId: number,
+    readObserver?: AnswerlatticeSchedulerReadObserver,
+): Promise<SupportBoardSyncResult> {
     const result: SupportBoardSyncResult = {
         enabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC,
         candidatesAnalyzed: 0,
@@ -736,20 +803,20 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
     if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC) return result;
 
     try {
-        const sourceDocs = await loadSupportBoardSourceDocs(tId, sId);
+        const sourceDocs = await loadSupportBoardSourceDocs(tId, sId, readObserver);
         result.sourceWindowsSaturated = sourceDocs.sourceWindowsSaturated;
-        const entities = await loadEntityInfo(tId, sId, sourceDocs.entityIds);
+        const entities = await loadEntityInfo(tId, sId, sourceDocs.entityIds, readObserver);
         const driftCandidates = buildDriftCandidates(sourceDocs.driftAnswerDocs);
         const candidates = [
             ...buildFallbackCandidates(sourceDocs.historyDocs, entities),
             ...buildSignalClusterCandidates(sourceDocs.signalDocs, entities),
             ...driftCandidates,
-            ...await buildReleaseImpactCandidates(tId, sId, driftCandidates, entities),
+            ...await buildReleaseImpactCandidates(tId, sId, driftCandidates, entities, readObserver),
         ]
             .sort((a, b) => b.signalCount - a.signalCount);
 
         result.candidatesAnalyzed = candidates.length;
-        const upsert = await upsertSupportBoardCards(tId, sId, candidates);
+        const upsert = await upsertSupportBoardCards(tId, sId, candidates, readObserver);
         result.cardsCreated = upsert.created;
         result.cardsUpdated = upsert.updated;
         result.cardsSkippedResolved = upsert.skippedResolved;
@@ -762,7 +829,7 @@ export async function syncSupportBoardNightly(tId: number, sId: number): Promise
             cardsSkippedUnchanged: result.cardsSkippedUnchanged,
             candidatesAnalyzed: result.candidatesAnalyzed,
             sourceWindowsSaturated: result.sourceWindowsSaturated,
-        });
+        }, readObserver);
         result.summaryWritten = summary.written;
         result.openCards = summary.openCards;
         result.needsAnswerCards = summary.needsAnswerCards;

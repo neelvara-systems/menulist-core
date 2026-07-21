@@ -20,18 +20,32 @@ const BLOCKED_ROUTES = [
     '/answerlattice/*',
     '/__answerlattice',
     '/__answerlattice/*',
+    '/growth-kits',
+    '/growth-kits/*',
+    '/ops',
+    '/ops/*',
+    '/platform',
+    '/platform/*',
+    '/reseller',
+    '/reseller/*',
 ];
 
 const routeFeatureMap: Record<string, { feature: string; workflow: string; entityHints: string[] }> = {
+    dashboard: { feature: 'today', workflow: 'review_daily_business', entityHints: ['today', 'business_status', 'setup_status'] },
     projects: { feature: 'projects', workflow: 'manage_menu', entityHints: ['menu', 'project', 'public_menu'] },
     today: { feature: 'today', workflow: 'review_daily_actions', entityHints: ['today', 'business_status'] },
+    'menu-manager': { feature: 'ai_menu_manager', workflow: 'prepare_and_approve_menu_work', entityHints: ['menu', 'proposal', 'approval'] },
+    'business-health': { feature: 'business_health', workflow: 'understand_business_health', entityHints: ['health', 'analytics', 'public_readiness'] },
+    'qr-code': { feature: 'share', workflow: 'share_menu_and_place_qr', entityHints: ['qr', 'public_link', 'official_business_page'] },
+    qrCode: { feature: 'share', workflow: 'share_menu_and_place_qr', entityHints: ['qr', 'public_link', 'official_business_page'] },
+    'use-menulist': { feature: 'share', workflow: 'place_menu_surfaces', entityHints: ['public_link', 'qr', 'menu_kit', 'screen'] },
+    assets: { feature: 'assets', workflow: 'prepare_downloadable_assets', entityHints: ['print', 'pdf', 'menu_card'] },
     users: { feature: 'users', workflow: 'manage_staff', entityHints: ['staff', 'permissions'] },
     feedback: { feature: 'feedback', workflow: 'review_customer_feedback', entityHints: ['feedback', 'reviews'] },
     'business-settings': { feature: 'business_settings', workflow: 'manage_business_profile', entityHints: ['business_profile', 'store_settings'] },
     transactions: { feature: 'transactions', workflow: 'review_billing_activity', entityHints: ['billing', 'transactions'] },
     locations: { feature: 'locations', workflow: 'manage_locations', entityHints: ['outlets', 'locations'] },
     billing: { feature: 'billing', workflow: 'manage_subscription', entityHints: ['subscription', 'plan'] },
-    reseller: { feature: 'reseller', workflow: 'manage_reseller_accounts', entityHints: ['reseller', 'accounts'] },
 };
 
 function normalizePathname(pathname: string | null): string {
@@ -65,23 +79,23 @@ function resolveWidgetScriptSrc(): string {
     return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
 }
 
-function buildPageContext(pathname: string): AnswerlatticePageContext {
-    const [firstSegment = 'dashboard', secondSegment] = pathname
+function buildPageContext(pathname: string): AnswerlatticePageContext | null {
+    const routeSegments = pathname
         .replace(/^\/+/, '')
         .split('/')
         .filter(Boolean);
+    const [firstSegment = 'dashboard'] = routeSegments;
     const routeKey = firstSegment || 'dashboard';
-    const routeConfig = routeFeatureMap[routeKey] || {
-        feature: routeKey.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() || 'dashboard',
-        workflow: 'use_dashboard',
-        entityHints: [routeKey || 'dashboard'],
-    };
+    const routeConfig = routeFeatureMap[routeKey];
+    if (!routeConfig) return null;
+    const contextRouteKey = routeKey === 'qrCode' ? 'qr-code' : routeKey;
+    const contextSuffix = routeSegments.length > 1 ? '_detail' : '';
 
     return {
         contextVersion: 1,
-        contextKey: `menulist_owner_${routeKey}${secondSegment ? `_${secondSegment}` : ''}`,
+        contextKey: `menulist_owner_${contextRouteKey}${contextSuffix}`,
         feature: routeConfig.feature,
-        page: routeKey,
+        page: contextRouteKey,
         workflow: routeConfig.workflow,
         userRole: 'owner',
         entityHints: routeConfig.entityHints,
@@ -92,9 +106,9 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
     const pathname = normalizePathname(usePathname());
     const [runtimeState, setRuntimeState] = useState({ ready: false, mobile: false });
     const scriptSrc = useMemo(() => resolveWidgetScriptSrc(), []);
-    const blockedRoute = isBlockedRoute(pathname);
-    const shouldSuppressWidget = blockedRoute || runtimeState.mobile;
     const pageContext = useMemo(() => buildPageContext(pathname), [pathname]);
+    const blockedRoute = isBlockedRoute(pathname);
+    const shouldSuppressWidget = blockedRoute || runtimeState.mobile || !pageContext;
 
     useEffect(() => {
         const mediaQuery = window.matchMedia(MOBILE_WIDGET_MEDIA_QUERY);
@@ -125,10 +139,10 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
         }
 
         widget?.show?.();
-        widget?.page?.(pageContext);
+        if (pageContext) widget?.page?.(pageContext);
     }, [pageContext, runtimeState.ready, shouldSuppressWidget]);
 
-    if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeState.ready || shouldSuppressWidget) return null;
+    if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeState.ready || shouldSuppressWidget || !pageContext) return null;
 
     return (
         <Script

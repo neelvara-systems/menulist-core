@@ -3,11 +3,11 @@
 > **Status:** ACTIVE — Living Document
 > **Version:** 1.0.0
 > **Created:** 2026-03-07
-> **Last Updated:** 2026-06-06
+> **Last Updated:** 2026-07-20
 > **Source:** ChatGPT ICP gap analysis → Cascade codebase cross-check
 > **Purpose:** Track implementation progress of 12 ICP-driven expansion items. Reference this doc BEFORE starting work on any item.
 > **Rule:** Update this doc after completing each item (status, date, key files, notes).
-> **2026-06-06 Update:** This tracker records the 12 ICP expansion items only. For the full activation/connector/distribution sequence, use `answerlattice-build-priority-roadmap.md`. Tool integrations, knowledge graph traversal/exploitation, and predictive support remain active with caps, fail-closed guards, summary-backed reads, and sanitized workflow delivery. AI escalation code exists but remains default-off until a workspace-level rollout decision.
+> **2026-07-20 Update:** This tracker records the 12 ICP expansion items only. For the full activation/connector/distribution sequence, use `answerlattice-build-priority-roadmap.md`. Tool integrations, knowledge graph traversal/exploitation, and predictive support remain active with caps, fail-closed guards, summary-backed reads, and sanitized workflow delivery. Automatic AI escalation remains default-off; browser-owned repeated-failure and ticket authority were removed, only final-answer cited evidence can support automatic classification, and activation requires a server-authoritative confirmed deterministic/idempotent handoff plus representative quality evidence.
 
 ---
 
@@ -28,10 +28,10 @@
 | 2   | Guided Workflows              | Core Experience | COMPLETE    | answerType + procedure.steps[] + warnings + prerequisites on canonical answers                                                                                                                                                                                                                                                                                               | P2       | #1 (context improves step relevance)                  |
 | 3   | Instant Answer Caching        | Core Experience | COMPLETE    | Upstash Redis cache for canonical answers. 2 new files + 2 modified. Flag: `ENABLE_ANSWERLATTICE_INSTANT_CACHE`. Docs: `instant-response-infrastructure/`                                                                                                                                                                                                                         | P3       | #1                                                    |
 | 4   | Automatic Knowledge Creation  | Core Experience | ✅ COMPLETE | Implemented 2026-03-09 and governance-hardened 2026-07-11. `draftGenerator.ts` + `draftPrompt.ts` (app + CF), Nightly Step 9, additive proposal draft fields, and server-owned approval transaction. Flag: `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`. Docs: `automatic-knowledge-creation/` (8 docs + archive). | P2 | #9 (ticket→knowledge feeds this) |
-| 5   | Product Friction Insights     | Core Experience | � COMPLETE  | Implemented 2026-03-09. Flag: `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`. 6 new files + 5 modified. Nightly Steps 10/10b/11 wired. GovernanceHub "Friction" tab. Zero TS errors. Docs: `__docs__/answerlattice/product-friction-intelligence/` (8 docs + 1 archive).                                                                                                                 | P2       | #10 (trust metrics is the UI layer)                   |
+| 5   | Product Friction Insights     | Core Experience | COMPLETE    | Implemented 2026-03-09. Flag: `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`. 6 new files + 5 modified. Nightly Steps 10/10b/11 wired. GovernanceHub "Friction" tab. Zero TS errors. Docs: `__docs__/answerlattice/product-friction-intelligence/` (8 docs + 1 archive).                                                                                                                 | P2       | #10 (trust metrics is the UI layer)                   |
 | 6   | Simple Onboarding             | Adoption        | COMPLETE    | Implemented 2026-03-09. Flag: `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`. 2 new files + 5 modified. Nightly Step 12 (separate discovery loop). Zero new collections. Zero TS errors. Docs: `__docs__/answerlattice/founder-onboarding/` (8 docs + 1 archive).                                                                                                                           | P1       | None                                                  |
 | 7   | Tool Integrations             | Adoption        | COMPLETE    | Restored and hardened 2026-05-24. Slack/email settings are owner-configurable through `/api/answerlattice/integrations`; raw webhooks stay server-side. Delivery payloads/errors are sanitized, event emission is capped, and `processIntegrationEvent` dispatches append-only events to configured adapters. Linear/GitHub adapters remain server-side/config-driven. | P2       | #3, #10                                               |
-| 8   | AI Escalation Path            | Adoption        | COMPLETE / DEFAULT OFF | Code and docs exist under `__docs__/answerlattice/ai-failure-escalation/`, with evaluator, search-result metadata, ticket enrichment, and escalation signals wired behind `ENABLE_ANSWERLATTICE_AI_ESCALATION: false`. Enable only after search/ticket UX is verified for a target workspace. | P1       | #1 (context makes escalation tickets richer)          |
+| 8   | AI Escalation Path            | Adoption        | SOURCE-HARDENED / DEFAULT OFF | The active widget fallback is server-authoritative and separate. The automatic evaluator uses bounded normalized final-answer cited evidence, has no browser-owned repeated-failure or ticket authority, and Help Chat has no handoff callback. Activation requires a server-authoritative confirmed deterministic/idempotent Help Chat handoff and representative quality/usefulness proof. | P1       | #1 (context makes escalation tickets richer)          |
 | 9   | Ticket → Knowledge Conversion | Adoption        | ✅ COMPLETE | Implemented 2026-03-09. `resolutionExtractor.ts` + `ticketKnowledgePrompt.ts` (CF). Nightly Step 14. `emitTicketResolutionSignal` in signalEmitter. +4 additive fields. Flag: `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`. Docs: `ticket-knowledge-loop/` (8 docs + archive).                                                                                                         | P2       | #4, #8                                                |
 | 10  | Trust Metrics for Founders    | Adoption        | ✅ COMPLETE | Implemented 2026-03-09. Flag: `ENABLE_ANSWERLATTICE_TRUST_METRICS`. 2 new files + 4 modified. 4 metrics + top 5 failing + escalation breakdown. Zero new collections. Zero TS errors. Docs: `__docs__/answerlattice/founder-trust-layer/` (8 docs + archive).                                                                                                                          | P2       | #5                                                    |
 | 11  | Knowledge Graph Exploitation  | Strategic       | COMPLETE    | Restored and hardened 2026-05-24. Retrieval performs bounded 1-hop traversal from the precomputed `entityGraphIndex_{tId}_{sId}` summary and reuses the loaded graph for related suggestions to avoid duplicate reads.                         | P2       | #1, #4                                                |
@@ -109,7 +109,7 @@
 
 **Doctrine check:** ✅ Allowed — performance optimization (Freeze §2)
 
-**Status:** � IMPLEMENTED (2026-03-09) — Full doc set + code complete. Zero TS errors. Parity audit passed.
+**Status:** IMPLEMENTED (2026-03-09) — Full doc set + code complete. Zero TS errors. Parity audit passed.
 **Feature flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE` (ready-to-use default ON; no-op when Upstash env is missing)
 **New files:** `src/lib/answerlattice/instantCache.ts` (124 lines), `src/lib/answerlattice/instantCache.types.ts` (36 lines)
 **Modified files:** `src/lib/search/searchCore.ts` (Stage 2.5 + cache write), `src/config/features.ts` (flag)
@@ -148,8 +148,8 @@
 **Codebase reality (DEEP AUDIT — 2026-03-09):**
 
 - ✅ `answerlattice_signalEvents` — 3 signal types (ticket, chat_negative, escalation), 4 DAL functions, fire-and-forget emitter with deduplication
-- ✅ `signalMutation.ts` — Entity-based clustering with severity weighting (escalation 3x, ticket 1.5x, chat 1x) + time decay (7-day half-life)
-- ✅ Nightly scheduler (8 steps) — drift detection, entity resolution, signal mutation, coverage KPI, recurring fallback, impact tracking, confidence auto-adjust, signal TTL
+- ⚠️ `signalMutation.ts` — Legacy/manual reference utility with severity weighting and time decay; no caller. Production clustering is in `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` and currently uses transparent recent evidence counts.
+- ✅ Nightly scheduler — drift detection, entity resolution, signal mutation, coverage KPI, recurring fallback, impact tracking, signal TTL, and owner summaries; usage-based confidence auto-adjustment was retired on 2026-07-20
 - ✅ `coverageKPI.ts` — Hit/miss aggregation from aiSearchHistory
 - ✅ `searchCore.ts` — Logs CANONICAL_HIT/MISS with matchedEntityIds and performance metrics
 - ❌ NO daily aggregated friction stats per entity
@@ -225,6 +225,8 @@
 ---
 
 ### Item 8 — AI Escalation Path
+
+**2026-07-20 current source truth:** The public widget has an active explicit unresolved-answer flow that derives exact-scope evidence from persisted widget search history and creates one deterministic/idempotent ticket. The separate automatic evaluator remains disabled. It admits bounded canonical/entity evidence plus only RAG references actually cited by the final answer, treats refusals as empty outcomes, does not interrupt a healthy strong-RAG answer after a canonical miss, and no longer accepts `sessionFailureCount` or `repeated_failure`. The Help Chat explicit-intent shortcut, browser DAL ticket path, and suggestion callback were removed; a future handoff requires a server-authoritative, explicitly confirmed, deterministic/idempotent route with representative false-interruption and usefulness tests.
 
 **ChatGPT claim:** Users need "Still need help? → Create ticket" flow when AI can't answer. Need retrieval debug logging and entity match debug info for developer ICP.
 

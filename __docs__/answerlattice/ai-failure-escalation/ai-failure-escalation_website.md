@@ -1,6 +1,6 @@
 # AI Failure Escalation - Website Boundary
 
-> **Last Updated:** 2026-07-18
+> **Last Updated:** 2026-07-20
 > **Status:** Do not publish a standalone automatic-escalation feature page yet
 
 ## Approved Product Copy
@@ -13,7 +13,7 @@ Users can mark a widget answer as unresolved and create an asynchronous support 
 
 - Support is asynchronous.
 - No response time or resolution guarantee is implied.
-- Automatic low-confidence suggestions are rollout-gated.
+- Automatic evidence-based suggestions are rollout-gated and have no customer handoff while disabled.
 - Public source links appear only when approved for public delivery.
 
 ## Publication Hold

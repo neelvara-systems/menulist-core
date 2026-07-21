@@ -2,6 +2,7 @@
 
 Release activation failure recovery now observes a secondary rollback failure through `answerlattice_release_activation_failure_marker_failed` with bounded release/request/workspace metadata while preserving the original activation error. The activation lease still supplies eventual retry admission, but a failed pending-state/audit recovery transaction is no longer silent.
 
+> **Historical snapshot:** This March 2026 clearance is not the current feature-flag, deployment, or production-certification authority. Use `system-inventory/answerlattice-feature-flow-audit-tracker.md`, `system-inventory/answerlattice-final-cross-cutting-audit.md`, and `deployment/answerlattice-qa-deployment-runbook.md` for current source and remote-evidence status.
 > **Status:** CLEARED FOR CONTROLLED EXPERIMENT
 > **Audit Date:** 2026-03-03 (re-audited)
 > **Auditor:** Cascade (forensic parity audit + operational loop completion)
@@ -243,10 +244,10 @@ INTEGRATION POINTS (existing system):
    - Compares pre/post signal counts for related entity
    - Stores improvement percentage on proposal doc
 
-   **Step 7 — Confidence Auto-Adjustment:**
-   - Finds active, non-drifted answers with confidence < 0.95
-   - If served 30+ times with 0 negative feedback → auto-boost to 0.95
-   - Updates validation source to 'signal_cluster'
+   **Retired Step — Confidence Auto-Adjustment:**
+   - Retired on 2026-07-20 because serve volume and missing negative feedback do not prove answer correctness.
+   - The scheduler now records `unsafe_usage_proxy_retired` and performs no canonical-answer confidence mutation.
+   - Support signals remain transparent evidence for human review.
 
 4. Summary logged per tenant with batch result counts
 5. Structured run log written to `answerlattice_schedulerRunLogs/{runLogId}` with per-tenant task results, capped query limits, errors, and feature-flag state
@@ -680,7 +681,7 @@ Every integration point is designed to fail silently:
 | 24  | Signal deduplication (in-memory Set in signalEmitter.ts)                  | ✅     |
 | 25  | Parallel retrieval reads (Promise.all in canonicalRetrieval.ts)           | ✅     |
 | 26  | All unbounded queries capped with limit()                                 | ✅     |
-| 27  | Confidence auto-adjustment (30+ serves, 0 negatives → 0.95)               | ✅     |
+| 27  | Usage-based confidence auto-adjustment retired; review evidence cannot mutate canonical confidence | ✅     |
 | 28  | Recurring fallback detection (5+ misses → auto-proposal)                  | ✅     |
 | 29  | Post-mutation impact tracking (14-day window comparison)                  | ✅     |
 

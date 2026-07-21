@@ -40,7 +40,7 @@ const emptyFailure = evaluateEscalation({
 assert.equal(emptyFailure.escalationSuggested, true);
 assert.equal(emptyFailure.escalationType, 'hard');
 assert.deepEqual(emptyFailure.triggerTypes, [
-    'low_canonical_confidence',
+    'insufficient_answer_evidence',
     'entity_resolution_failure',
 ]);
 assert.equal(emptyFailure.escalationContext?.query, 'Why did the import fail?');
@@ -73,7 +73,7 @@ const weakRag = evaluateEscalation({
 });
 assert.equal(weakRag.escalationType, 'soft');
 assert.deepEqual(weakRag.triggerTypes, [
-    'low_canonical_confidence',
+    'insufficient_answer_evidence',
     'rag_low_similarity',
 ]);
 assert.deepEqual(
@@ -84,16 +84,29 @@ assert.deepEqual(
 assert.equal(weakRag.escalationContext?.entityDebug?.queryTokens.length, 20);
 assert.equal(weakRag.escalationContext?.entityDebug?.candidates.length, 3);
 
-const strongRagWithoutCanonicalFallback = evaluateEscalation({
-    canonicalResult: canonicalResult({
-        matchedEntityIds: ['billing'],
-        confidence: 'medium',
-        fallbackReason: undefined,
-    }),
+const strongRagAfterCanonicalMiss = evaluateEscalation({
+    canonicalResult: canonicalResult(),
     ragDocuments: [{ id: 'billing-guide', title: 'Billing guide', similarityScore: 0.82 }],
     searchQuery: 'Where is billing?',
 });
-assert.deepEqual(strongRagWithoutCanonicalFallback, NO_ESCALATION);
+assert.deepEqual(
+    strongRagAfterCanonicalMiss,
+    NO_ESCALATION,
+    'A normal canonical miss must not interrupt a useful source-backed RAG answer',
+);
+
+const refusalWithCandidateEvidence = evaluateEscalation({
+    canonicalResult: canonicalResult(),
+    ragDocuments: [{ id: 'candidate', title: 'Candidate only', similarityScore: 0.91 }],
+    searchQuery: 'Can I pause billing?',
+    answerWasEmpty: true,
+});
+assert.equal(refusalWithCandidateEvidence.escalationSuggested, true);
+assert.equal(refusalWithCandidateEvidence.escalationType, 'hard');
+assert.deepEqual(refusalWithCandidateEvidence.triggerTypes, [
+    'insufficient_answer_evidence',
+    'entity_resolution_failure',
+]);
 
 for (const invalidInput of [
     {

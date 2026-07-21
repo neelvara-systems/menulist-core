@@ -100,7 +100,7 @@ export default function DriftDashboard() {
     const sId = session?.sId || 0;
 
     const { answers, driftedAnswers, loading, error, refresh } = useCanonicalAnswers(tId, sId);
-    const { entities } = useEntities(tId, sId);
+    const { entities } = useEntities(tId, sId, 'entities_only');
 
     const [reEvalLoading, setReEvalLoading] = useState(false);
     const [selectedDrifted, setSelectedDrifted] = useState<AnswerlatticeCanonicalAnswer | null>(null);

@@ -89,6 +89,39 @@ assert.ok(parseAnswerlatticeSupportTicketDocument({
     value: baseTicket,
     scope: { tId: 1, sId: 101 },
 }));
+assert.ok(parseAnswerlatticeSupportTicketDocument({
+    id: 'server-escalation-ticket',
+    value: {
+        ...baseTicket,
+        source: 'ai_escalation',
+        knowledgeCandidate: true,
+        escalationContext: {
+            triggerTypes: ['explicit_user_request'],
+            query: 'I still need help',
+            escalatedAt: new Date(NOW.toMillis()).toISOString(),
+        },
+    },
+}));
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'malformed-server-escalation-ticket',
+    value: {
+        ...baseTicket,
+        source: 'ai_escalation',
+        knowledgeCandidate: true,
+        escalationContext: {
+            triggerTypes: ['unsupported_trigger'],
+            query: 'I still need help',
+            escalatedAt: 'not-a-date',
+        },
+    },
+}), null);
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'unowned-escalation-fields',
+    value: {
+        ...baseTicket,
+        knowledgeCandidate: true,
+    },
+}), null);
 assert.equal(parseAnswerlatticeSupportTicketDocument({
     id: 'ticket-1',
     value: { ...baseTicket, pId: 'ML' },
@@ -155,6 +188,8 @@ assert.ok(ticketDal.includes("where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)"), '
 assert.ok(ticketDal.includes('session: scope,'), 'ticket uploads must use the verified target ticket scope');
 assert.ok(ticketDal.includes('mutationContext.scope,'), 'ticket reply uploads must preserve the target ticket scope');
 assert.ok(ticketDal.includes('if (transactionResult.statusChanged)'), 'all effective status mutations must trigger notification centrally');
+assert.ok(ticketDal.includes('answerlattice_ticket_server_escalation_fields_forbidden'), 'browser ticket creation must reject server-owned escalation fields');
+assert.ok(!ticketDal.includes("data.source === 'ai_escalation'"), 'browser ticket creation must not choose escalation signal authority');
 assert.ok(ticketDal.includes('recipientEmail !== actor.email'), 'customer self-replies must not trigger a support-reply notification');
 assert.ok(!ticketDal.includes('const updatedMessages = [...currentMessages, message]'), 'ticket replies must not rebuild from caller state');
 assert.ok(!ticketDal.includes('const updatedStatuses = [...currentStatuses'), 'ticket statuses must not rebuild from caller state');

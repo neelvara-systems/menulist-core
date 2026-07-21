@@ -3,6 +3,7 @@
 **Status:** Preparation pack for real production onboarding
 **Client:** MenuList
 **Answerlattice environment:** Production, after explicit founder/legal approval
+**Package verified:** 2026-07-20
 **Primary output:** Correct live MenuList owner support in Answerlattice, plus meaningful Answerlattice dashboard data and website/demo assets based on MenuList as a real Answerlattice client.
 
 ## Purpose
@@ -23,6 +24,7 @@ MenuList is not only sample content for Answerlattice. The intended launch story
 | File | Purpose |
 | --- | --- |
 | `menulist-client-profile.json` | Machine-readable production client profile and launch constraints. |
+| `product-boundary-and-exclusions.md` | Exact MenuList target boundary, included shared infrastructure, and excluded sibling products. |
 | `onboarding-runbook.md` | Step-by-step operating checklist for legal approval, Answerlattice production setup, intake, widget install, dashboard proof, and screenshot capture. |
 | `dashboard-demo-data-requirements.md` | The minimum meaningful Answerlattice state needed before taking website/demo screenshots. |
 | `product-surface-map.csv` | MenuList routes and surfaces to create in Answerlattice Product Surfaces. |
@@ -30,7 +32,8 @@ MenuList is not only sample content for Answerlattice. The intended launch story
 | `knowledge-output-targets.md` | Expected KB, FAQ, canonical, entity, support, and widget outputs after intake. |
 | `production-data-safety.md` | Privacy, legal, and screenshot-scrub rules for using MenuList production data in Answerlattice assets. |
 | `live-smb-support-coverage-checklist.md` | Coverage gate before live MenuList owners use Answerlattice for help. |
-| `live-owner-support-test-questions.csv` | Thirty owner-style questions for pre-live Answerlattice answer review. |
+| `live-owner-support-test-questions.csv` | Seventy-five owner-style questions for pre-live Answerlattice answer review. |
+| `owner-pending-actions.md` | Owner-controlled approvals, workspace/upload, release, provider, and live-evidence tasks. |
 
 ## Answerlattice Surfaces To Fill
 

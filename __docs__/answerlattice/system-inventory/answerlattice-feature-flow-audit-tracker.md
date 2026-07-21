@@ -61,11 +61,11 @@ For each feature, the audit must cover the complete connected flow where applica
 | 37 | Support Truth Export | Small | Local source complete | Permission -> scoped export -> sensitive-field exclusion -> delivery and audit |
 | 38 | Multi-language articles | Medium | Local source complete | Locale configuration -> translation -> review/publish -> fallback and rollout gate |
 | 39 | Advanced white label | Medium | Local source complete | Private branding inputs -> validated storage -> explicit non-delivery -> safe defaults and rollout gate |
-| 40 | AI failure escalation | Small | In progress | Failure classification -> safe fallback -> handoff context -> audit and rollout gate |
-| 41 | Native Knowledge Intake connectors | Medium | Pending | Reserved flag/contract -> connector validation -> source permissions -> implement only if justified |
-| 42 | Signal-quality scoring | Small | Pending | Reserved flag/contract -> evidence/metric definition -> implement only if justified |
-| 43 | Native Zendesk, Intercom, Freshdesk, Help Scout, and Jira connectors | Large | Pending | Market/customer validation -> connector boundary -> source permissions -> avoid connector-count scope |
-| 44 | Autonomous browser and account-changing actions | Large | Pending | Deliberate non-goal audit -> authorization/action policy -> reconsider only after trustworthy answering proof |
+| 40 | AI failure escalation | Small | Local source complete | Failure classification -> safe fallback -> handoff context -> audit and rollout gate |
+| 41 | Native Knowledge Intake connectors | Medium | Local source complete | Reserved flag/contract -> connector validation -> source permissions -> implement only if justified |
+| 42 | Signal-quality scoring | Small | Local source complete | Reserved flag/contract -> evidence/metric definition -> implement only if justified |
+| 43 | Native Zendesk, Intercom, Freshdesk, Help Scout, and Jira connectors | Large | Local source complete | Market/customer validation -> connector boundary -> source permissions -> avoid connector-count scope |
+| 44 | Autonomous browser and account-changing actions | Large | Local source complete | Deliberate non-goal audit -> authorization/action policy -> reconsider only after trustworthy answering proof |
 
 ## Cross-cutting audits
 
@@ -668,8 +668,8 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run test:answerlattice-widget-runtime-token`
 - `npm run test:answerlattice-retrieval-contracts`
 - `npm run test:answerlattice-ticket-contracts`
-- `npm run verify:answerlattice-ticket-notification-boundary`
-- `npm run test:answerlattice-ticket-notification-boundary`
+- `npm run verify:ticket-notification-boundary`
+- `npm run test:ticket-notification-boundary`
 - `npm run test:answerlattice-product-surface-summary:emulator`
 - `npx tsc --noEmit --pretty false`
 - focused ESLint on every changed Feature 16 runtime, shared ticket-reference, and verifier file
@@ -1201,7 +1201,7 @@ The first full aggregate attempt reached the rules suites but found a transient 
 
 ### Feature 29 — Workspace Profile and Settings
 
-**Status:** In progress; concurrent Feature 33 source changes are being reconciled  
+**Status:** Local source complete on July 20, 2026
 **Dossier:** `__docs__/answerlattice/workspace-profile/README.md`
 
 **Verified flow:** authenticated Settings profile -> bounded GET and strict browser response -> product identity/support/timing edit -> bounded PUT -> exact `AL` product/tenant/store admission -> expected-revision check -> atomic store, scheduler-registry, source-version, and stale-manifest commit -> downstream scheduler, notification, and compiled-context use -> conflict reload or bounded failure.
@@ -1652,6 +1652,163 @@ The focused aggregate proves strict API credential/scope contracts, key rotation
 
 ### Feature 40 — AI Failure Escalation
 
-**Status:** In progress
+**Status:** Local source complete
+**Dossier:** `__docs__/answerlattice/ai-failure-escalation/README.md`
 
-**Current audit boundary:** rollout flag -> failure inputs and classification -> fallback/abstention -> customer handoff context -> governed signal/audit state -> permissions, retention, cost, tests, public claims, activation evidence, and deliberate non-goals.
+**Verified flow:** active widget unresolved-answer action -> exact persisted widget search evidence -> strict stored escalation context -> deterministic/idempotent ticket and best-effort signal, independently of automatic evaluator; default-off automatic flag -> bounded canonical/entity/final-answer-cited RAG evidence -> refusal/empty-answer handling -> deterministic soft/hard metadata -> minimal browser suggestion projection with no debug context and no Help Chat ticket callback.
+
+**Findings and changes:**
+
+- preserved the active public widget fallback as the authoritative production-shaped escalation path already audited in Feature 16;
+- confirmed the separate automatic evaluator remains disabled by `ENABLE_ANSWERLATTICE_AI_ESCALATION: false` and cannot activate a customer handoff by itself;
+- removed browser-supplied `sessionFailureCount` and the `repeated_failure` trigger from request, search, evaluator, and type contracts;
+- normalized, bounded, and validated query, canonical, RAG, entity, and product-context evidence; malformed evidence now fails to no automatic suggestion;
+- changed automatic evaluation to use only references actually cited by the final answer, so ignored candidate documents cannot mask a refusal or unsupported answer;
+- prevented an ordinary canonical miss from creating a false suggestion when the final answer is non-empty and uses strong cited RAG evidence;
+- treated empty answers and safe knowledge-base refusals as insufficient evidence and validated projected escalation context with a strict bounded schema;
+- removed the Help Chat explicit-intent shortcut, browser ticket DAL call, and suggestion callback instead of leaving a disabled client-authority path available for accidental activation;
+- removed internal escalation context from the authenticated Help Center response;
+- reserved `source`, `knowledgeCandidate`, `escalationContext`, and `widgetEscalation` to trusted server writers in the browser DAL and both Firestore rule sets; browser tickets always emit ordinary `TICKET` evidence;
+- retained the activation requirement for a server-authoritative, explicitly confirmed, deterministic, idempotent Help Chat handoff plus representative quality/usefulness proof;
+- added focused evaluator tests, runtime-truth guards, a validation record, and docs/cost/public-claim parity.
+
+**Verification passed:** `npm run test:answerlattice-ai-failure-escalation`, `npm run test:answerlattice-ticket-contracts`, `npm run test:answerlattice-widget-answer-contracts`, `npm run test:answerlattice-widget-escalation:emulator`, dedicated/shared ticket-rules emulators, focused ESLint, strict root TypeScript, `npm run typecheck:answerlattice`, and Answerlattice runtime truth. Documentation links, dependency freeze, and final diff integrity are rerun in the closing gate.
+
+**Deployment:** Both Firestore rule files changed. The scoped commands `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` and `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive` were attempted after local validation. Both stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule revision changed. App/runtime changes require an explicitly authorized Vercel deployment before hosted proof; that deployment is not authorized by the current request.
+
+**Cost and retention:** The disabled automatic path performs no runtime read/write/provider operation. Its evaluator is pure and reuses already loaded final-answer evidence. The active widget path retains the existing Feature 16 exact-document transaction and bounded ticket/signal lifecycles; stricter validation and rules add no read, write, collection, index, listener, scheduler, Function, or retention extension.
+
+**External evidence:** automatic suggestion precision, false-interruption rate, context-complete Help Chat handoff, deterministic server ticket replay, hosted allowed-origin behavior, founder workload reduction, and verified customer resolution remain separate from local source completion.
+
+### Feature 41 — Native Knowledge Intake Connectors
+
+**Status:** Local source complete
+**Decision:** Do not build now
+**Dossier:** `__docs__/answerlattice/native-knowledge-intake-connectors/README.md`
+
+**Verified flow:** reserved false app flag -> no runtime consumer -> no Functions mirror, OAuth, credential, provider, sync, UI, route, rule, index, or public claim; current selected-URL/file/export/pasted/repeated-reply/media intake -> bounded review evidence -> human-governed existing destinations.
+
+**Findings and changes:**
+
+- confirmed the repository has no native Knowledge Intake connector implementation and no customer-facing claim;
+- distinguished outbound Slack/email/Linear/GitHub governance notifications from source-ingestion connectors;
+- confirmed the current founder job is already served by selected public URLs, supported files/exports, pasted notes, repeated replies, screenshots/images, and short media without private-system credentials;
+- changed the app flag comment from a misleading true/false capability description to an explicit reserved-only, no-runtime contract;
+- corrected Knowledge Intake implementation docs that previously instructed adding a nonexistent mirrored Functions flag;
+- added an executable recursive source gate proving the flag has no consumer, no matching server flag/path exists, and public copy does not claim provider availability;
+- documented a strict reconsideration gate: repeated paying-client demand for one provider, demonstrated export failure, selected-scope permission preservation, complete revoke/delete/dependency review, sustainable cost, and evidence-only ingestion;
+- limited any future approved implementation to one read-only provider with manual import before background sync and no write-back or automatic truth publication.
+
+**Verification passed:** `npm run verify:answerlattice-native-intake-connectors`, strict root TypeScript, `npm run typecheck:answerlattice`, Answerlattice runtime truth, documentation links, dependency freeze, package parse, and diff integrity.
+
+**Deployment:** No app runtime, Firebase rule/index/Storage/Functions, provider, or Vercel-deployable customer surface was added. No deployment applies.
+
+**Cost and retention:** Current feature cost is zero. No source, credential, cursor, webhook, log, TTL, Storage object, provider call, scheduler work, or cleanup obligation exists for this reserved feature.
+
+**External evidence:** repeated paying-client demand for the same provider, measured export/import activation friction, provider-specific permission/deletion feasibility, provider pricing/limits, and reduced founder maintenance remain required before reconsideration.
+
+### Feature 42 — Signal-Quality Scoring
+
+**Status:** Local source complete
+**Decision:** Validate before development
+**Dossier:** `__docs__/answerlattice/signal-quality-scoring/README.md`
+
+**Verified flow:** reserved false app flag -> no runtime consumer or Functions mirror -> existing signal mutation flag -> normalized/deduped retained evidence -> bounded production nightly entity clusters -> transparent ticket/negative-chat/escalation counts -> human-reviewed proposal -> manual canonical validation authority; no usage-based confidence mutation.
+
+**Findings and changes:**
+
+- confirmed the separately named signal-quality flag enables nothing and corrected its comment to a reserved-only contract;
+- distinguished the production Functions scheduler, which currently uses transparent recent evidence counts, from a legacy/manual app utility that contains severity/time-decay math but has no caller;
+- rejected an opaque overall quality or signal-strength score because current data cannot distinguish product defects, user error, customer-specific cases, spam, or knowledge gaps reliably;
+- added the escalation count already held by the nightly cluster to newly generated proposal summaries without another read, write, collection, index, or model call;
+- updated stored-proposal validation to accept only a bounded non-negative optional escalation count while preserving older proposals;
+- changed the review queue to show explicit ticket, negative-chat, and escalation evidence and removed the generic `Signal strength` percentage;
+- renamed the ticket-resolution review aid to `Extractor score`, not answer confidence or proof of correctness;
+- found and retired a nightly path that raised canonical confidence after 30 serves with no recorded negative feedback, because usage and silence are not correctness evidence;
+- found and removed proposal-score propagation into canonical validation during human approval; approved proposal content now uses manual validation authority;
+- removed misleading proposal-confidence labels from Slack, email, GitHub, and Linear notifications while preserving transparent signal counts;
+- preserved the historical `signal_cluster` validation-source value for read compatibility but removed it as the approval default;
+- identified existing canonical answers stamped by `system:confidence_auto_adjust` as a controlled data-verification cohort rather than silently rewriting tenant data;
+- added a calibration gate requiring at least 100 reviewed proposals across at least three active workspaces plus segmented approval/edit/rejection evidence before ranking is reconsidered;
+- added a complete dossier and executable source gate covering the no-runtime flag, production/legacy split, evidence projection, confidence authority, notification labels, UI claim, public claim, cost, and validation boundary.
+
+**Verification passed:** `npm run verify:answerlattice-signal-quality`, `npm run test:answerlattice-governance-contracts`, `npm run test:answerlattice-governance:emulator`, `npm run test:answerlattice-integration-adapter-boundaries`, Answerlattice Functions TypeScript build, focused ESLint, strict root TypeScript, `npm run typecheck:answerlattice`, the Answerlattice runtime aggregate, dependency freeze, package parse, documentation links, and diff integrity.
+
+**Deployment:** The existing Answerlattice nightly Function source now adds an optional evidence count and retires usage-based canonical-confidence mutation. The scoped QA command `firebase deploy --only functions:answerlatticeNightly,functions:triggerAnswerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` was attempted after local verification and stopped before upload with `Error: Failed to authenticate, have you run firebase login?`. No remote revision changed. No Firestore rule, index, or Storage rule changed. No Vercel deployment is authorized.
+
+**Cost and retention:** The reserved scoring feature costs zero. The evidence field reuses an in-memory count and adds no Firestore operation. Retiring confidence adjustment removes one bounded canonical-answer query per processed tenant and removes its possible cache-version write plus canonical-answer batch update. Existing signal TTL and durable proposal retention are unchanged. Historical auto-adjusted answers require verification but no automatic migration was introduced.
+
+**External evidence:** real proposal acceptance, material-edit/rejection, duplicate, false-priority, hidden-high-risk, founder review-time, and customer usefulness evidence remains required before any score or calibrated ranking is built.
+
+### Feature 43 — Native Zendesk, Intercom, Freshdesk, Help Scout, and Jira Connectors
+
+**Status:** Local source complete
+**Decision:** Do not build now
+**Dossier:** `__docs__/answerlattice/native-helpdesk-and-jira-connectors/README.md`
+
+**Verified flow:** no provider flag/runtime -> no OAuth, credential, provider adapter, webhook, poller, sync worker, setup UI, rule, index, or public claim; selected helpdesk/Jira export, macro, canned reply, or resolved example -> existing bounded intake -> evidence -> human review -> existing governed destination.
+
+**Findings and changes:**
+
+- confirmed no provider-named source file, feature flag, Functions flag, provider credential contract, setup route, or background job exists;
+- distinguished existing outbound Slack/email/Linear/GitHub governance delivery from helpdesk/Jira source ingestion;
+- confirmed selected exports and repeated replies already serve day-one activation without broad private-system access;
+- rejected five-provider breadth because connector count does not prove approved-answer coverage, founder workload reduction, or customer resolution;
+- added a complete provider-family dossier with exact permission, revocation, deletion, retry, PII, retention, cost, and human-review admission requirements;
+- added an executable recursive source gate for runtime absence, provider logic hidden in generic files, provider-credential absence, alternate public availability wording, documentation, and tracker state;
+- set attachments, internal notes, requester profiles, private provider URLs, system events, and unrestricted conversation history outside the first-connector boundary by default;
+- set the future threshold to at least three paying workspaces requesting one provider plus demonstrated export friction and a successful concierge proof;
+- limited any future implementation to one read-only, selected-resource provider with manual refresh before background sync and no write-back or automatic publication.
+
+**Verification passed:** `npm run verify:answerlattice-native-helpdesk-connectors`, Answerlattice runtime truth, package parse, dependency freeze, documentation links, focused lint, and diff integrity.
+
+**Deployment:** No app runtime, Firebase rule/index/Storage/Functions, provider, or Vercel-deployable customer surface was added. No deployment applies.
+
+**Cost and retention:** Current feature cost is zero. No source, credential, cursor, webhook, provider call, Firestore row, Storage object, scheduler work, or cleanup obligation exists.
+
+**External evidence:** paying-client provider concentration, measured export/import activation friction, provider-specific scopes and limits, concierge outcome quality, ongoing sync demand, and reduced founder maintenance remain required before reconsideration.
+
+### Feature 44 — Autonomous Browser and Account-Changing Actions
+
+**Status:** Local source complete
+**Decision:** Do not build
+**Dossier:** `__docs__/answerlattice/autonomous-browser-and-account-actions/README.md`
+
+**Verified flow:** approved canonical procedure -> exact semantic target -> non-interactive highlight/scroll -> user action -> exact payload-free client-reported event -> bounded completion/escalation evidence; no independent backend-state proof, action registration, arbitrary selector, code evaluation, synthetic host event, target click, product mutation, or account-changing authority.
+
+**Findings and changes:**
+
+- confirmed Guided Resolution is Explain + Guide only and the end user remains in control of every product action;
+- confirmed procedure `action` values are display vocabulary and strict schemas contain no executable action ID, arguments, callback, code, selector, or confirmation authority;
+- confirmed the SDK exposes payload-free workflow-event emission and read-only guidance state but no registration or execution method;
+- confirmed guidance messages require the configured widget origin and active iframe source, and loader code cannot click elements or submit forms;
+- corrected `client-verified` language: the runtime matches a client-reported semantic event to the active served step, but does not independently verify backend state or customer resolution;
+- confirmed the host finds exact declared targets, scans a bounded set, uses a non-interactive overlay, and performs only `scrollIntoView`;
+- added source comments that prevent future maintainers from treating instructional verbs as an execution dispatch table;
+- added a complete non-goal dossier covering product, security, Firebase, mobile, public-claim, help, test, and future admission boundaries;
+- added an executable source gate proving no host click/eval/synthetic-event path, no SDK action surface, no executable procedure fields, and no action broker/API paths;
+- preserved a separate future option for one reversible registered assist action only after trustworthy answering and guided task completion are proven, with server authorization, confirmation, idempotency, result verification, audit, rollback, and human recovery;
+- permanently excluded refunds, charges, subscription changes, roles/permissions, credentials, destructive deletion, irreversible actions, and automatic knowledge publication.
+
+**Verification passed:** `npm run verify:answerlattice-autonomous-action-boundary`, `npm run test:answerlattice-guided-resolution`, Answerlattice runtime truth, widget syntax, Answerlattice web SDK build, focused lint, strict TypeScript, dependency freeze, documentation links, package parse, and diff integrity.
+
+**Deployment:** Only comments, docs, and verifier wiring changed. No Firebase rule/index/Storage/Functions or Vercel deploy applies.
+
+**Cost and retention:** No action runtime exists, so action-specific cost and retention are zero. Existing guided-outcome evidence retains its current bounded search-history/signal behavior.
+
+**External evidence:** real-client task completion, target mismatch, completion time, escalation, support workload, authorization usability, and reversible-action demand remain external. They do not justify autonomous browser or account-changing actions.
+
+## Final C1-C8 System Pass — July 20, 2026
+
+**Status:** Local source complete
+**Audit:** `__docs__/answerlattice/system-inventory/answerlattice-final-cross-cutting-audit.md`
+
+All 44 feature flows have completed the frozen local audit order. The final cross-cutting pass verified product separation, authorization and tenant isolation, dedicated/shared Firebase policy, retention and recovery contracts, scheduler/cost controls, AI/evidence safety, responsive/mobile source contracts, CI/dependency controls, feature flags, docs, and rollout claims.
+
+The final Functions build found and fixed one compile regression: Slack/email coverage formatting still used the shared bounded ratio helper after its imports were removed with unrelated confidence output. The imports were restored without restoring opaque confidence percentages.
+
+**Final verification passed:** full Answerlattice runtime/emulator truth, final-readiness source gates, dependency/security policy, backup/recovery contracts, founder-support controls, Answerlattice and root strict TypeScript, Functions build, Answerlattice web SDK build, focused adapter contracts, documentation links, and diff integrity.
+
+**Deployment evidence:** dedicated QA rules plus `answerlatticeNightly`/`processIntegrationEvent`, and shared MenuList QA rules, were attempted after validation. Both stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed.
+
+**External release evidence still required:** successful remote CI, QA deploy/readback, managed backup plus isolated restore rehearsal, full workspace closure/erasure, first-client answer evaluation, browser/device/accessibility, live payment/email/provider/DNS journeys, production telemetry, and 1,000+ due-workspace scheduler load evidence.

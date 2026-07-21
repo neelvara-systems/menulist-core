@@ -1,5 +1,6 @@
 # Answerlattice — Production Readiness Certification
 
+> **Historical snapshot:** This May 2026 code-only certification is not current production approval. Use `system-inventory/answerlattice-final-cross-cutting-audit.md` and `deployment/answerlattice-qa-deployment-runbook.md` for the current local-source verdict and unresolved cloud, restore, browser, provider, and real-client evidence.
 > **Audit Date:** 2026-05-12 (re-audited after Answerlattice callable/function split, identity composer, route hardening, owner/public UI hardening, and May 16 Firebase cost optimization pass)
 > **Auditor:** Cascade (Senior Staff Engineer + Systems Auditor)
 > **Method:** Full forensic code-only reconstruction + doc parity verification
@@ -370,7 +371,7 @@ Each flag depends on all previous flags being enabled first.
 | 12  | No CF feature flag for nightly                               | `functions-answerlattice/src/constants/features.ts` | Added `ENABLE_ANSWERLATTICE_NIGHTLY`                          |
 | 13  | Recurring fallback not detected                              | `answerlatticeNightly.ts`         | Added `detectRecurringFallbacks()`                       |
 | 14  | No post-mutation impact tracking                             | `answerlatticeNightly.ts`         | Added `trackMutationImpact()`                            |
-| 15  | No confidence auto-adjustment                                | `answerlatticeNightly.ts`         | Added `autoAdjustConfidence()`                           |
+| 15  | No confidence auto-adjustment                                | `answerlatticeNightly.ts`         | Historical implementation retired 2026-07-20; usage is not correctness evidence |
 | 16  | Master Execution Prompt missing Answerlattice rules               | `MASTER-EXECUTION-PROMPT.md` | Added STEP 9B with 5-component readiness checklist       |
 | 17  | Context-aware Help Center mounting was incomplete            | `HeroSearchBar.tsx`, `HelpChat`, `search-kb/route.ts` | Added validated top-level `productContext` flow and backend session-role override |
 | 18  | Context schema allowed fragile or sensitive free-form strings | `contextSchema.ts`           | Added trimming, size limits, sanitization, unknown-field stripping, and contact-detail rejection |

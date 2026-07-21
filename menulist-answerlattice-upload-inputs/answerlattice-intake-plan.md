@@ -1,5 +1,7 @@
 # Answerlattice Intake Plan For MenuList
 
+**Last verified against current repo truth:** 2026-07-20
+
 ## Goal
 
 Prepare MenuList as the production client and example product Answerlattice can understand deeply:
@@ -25,11 +27,11 @@ Recommended Answerlattice job metadata:
 
 - `title`: `MenuList production client onboarding and asset proof`
 - `description`: `Answerlattice intake package for MenuList production-client onboarding, product knowledge, support examples, public-surface proof, dashboard demo state, and website asset planning.`
-- `productWebsiteUrl`: `https://www.menulist.online`
+- `productWebsiteUrl`: `https://menulist.ai`
 - `appUrl`: `https://menulist.ai`
 - `targetAudience`: `SaaS founders, product owners, and support operators evaluating Answerlattice through the MenuList example.`
 
-Domain note: this package uses `https://www.menulist.online` as the checked website-content source because that is the live website source requested for this audit. Repo deployment docs still define `https://menulist.ai` as the production canonical MenuList host and `menulist.online` as preview/staging or alias. Confirm the active production host before enabling the production widget or public screenshots.
+Domain rule: code and maintained deployment/discovery docs define `https://menulist.ai` as the production canonical MenuList host. `menulist.online` remains preview/staging or alias context and must not be written into canonical Answerlattice source identity. Hosted production alignment still requires release-time verification before widget enablement or public screenshots.
 
 ## Source Groups
 
@@ -56,9 +58,9 @@ Domain note: this package uses `https://www.menulist.online` as the checked webs
 | Troubleshooting/escalation | `source-inputs/19-troubleshooting-escalation-and-risk-review-support.md` | `help_doc` | `troubleshooting`, `escalation`, `risk` |
 | Live support contract | `source-inputs/20-live-owner-support-operating-contract.md` | `product_note` | `live_support`, `answer_contract` |
 | Coverage index | `source-inputs/21-live-support-coverage-index.md` | `product_note` | `coverage_index`, `readiness` |
-| Live website public truth | `source-inputs/22-live-website-public-truth.md` | `website_page` | `live_website`, `public_truth` |
-| Website feature coverage | `source-inputs/23-live-website-feature-capability-coverage.md` | `website_page` | `features`, `capabilities` |
-| Pricing/legal/trust | `source-inputs/24-public-pricing-legal-trust-and-contact-support.md` | `website_page` | `pricing`, `legal`, `trust` |
+| Public website truth summary | `source-inputs/22-live-website-public-truth.md` | `product_note` | `public_website`, `public_truth` |
+| Current feature inventory and support coverage | `source-inputs/23-live-website-feature-capability-coverage.md` | `product_note` | `features`, `capabilities`, `availability` |
+| Pricing/legal/trust summary | `source-inputs/24-public-pricing-legal-trust-and-contact-support.md` | `product_note` | `pricing`, `legal`, `trust` |
 | Repo docs source map | `source-inputs/25-repo-docs-menulist-source-map.md` | `product_note` | `repo_docs`, `coverage` |
 | Undercovered operations | `source-inputs/26-undercovered-operations-from-repo-docs.md` | `help_doc` | `operations`, `external_sync`, `signals` |
 
@@ -76,7 +78,9 @@ Use `production-onboarding/` after the source upload starts:
 | `knowledge-output-targets.md` | Expected KB, FAQ, canonical, entity, support, and asset outputs. |
 | `production-data-safety.md` | Data minimization and screenshot approval rules. |
 | `live-smb-support-coverage-checklist.md` | Required coverage gate before live MenuList owner support. |
-| `live-owner-support-test-questions.csv` | Thirty pre-live owner-style questions for Answerlattice answer review. |
+| `live-owner-support-test-questions.csv` | Seventy-five pre-live owner-style questions for Answerlattice answer review. |
+| `product-boundary-and-exclusions.md` | Target-product boundary, shared-infrastructure inclusion, and sister-product exclusions. |
+| `owner-pending-actions.md` | External approvals, workspace setup, upload, deployment, and live-evidence work that code cannot complete. |
 
 ## Review Strategy
 
@@ -90,6 +94,8 @@ Ask Answerlattice to create review items in this order:
 6. Live support workflows: account access, editor, public menu, billing, staff, locations, analytics, feedback, and escalation.
 7. Asset proof: generated placeholder assets, private reference captures, future routed demo screenshots.
 8. Website-vs-doc parity: keep public website claims, help docs, and Answerlattice answers aligned.
+9. Cross-system owner behavior: localization, timezone, RTL, accessibility, PWA connectivity, failure recovery, account lifecycle, and ownership boundaries.
+10. AI owner workflows: extraction, description preparation, translation, image work, AI Menu Manager approval, credit reservation/settlement/refund, and Transactions presentation.
 
 ## Publish Targets
 
@@ -123,3 +129,16 @@ Use the following source authority order for this package:
 4. Existing generated MenuList website assets.
 5. Private synthetic reference captures.
 6. The external ChatGPT conversation only where repo docs/code already validated it.
+
+## Availability Rule
+
+The package distinguishes:
+
+- current owner/public capability;
+- current capability that depends on plan, role, account, flag, provider, or deployment state;
+- disabled or dormant capability;
+- internal/operator-only capability;
+- separate product capability;
+- strategy or planning that is not shipped.
+
+Answerlattice must not turn a documented implementation, disabled flag, local source gate, or pending deployment into a promise that the feature is available for the current owner account.

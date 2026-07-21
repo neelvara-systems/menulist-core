@@ -161,6 +161,7 @@ export const AnswerlatticeStoredMutationProposalSchema = z.object({
     signalSummary: z.object({
         ticketCount: z.number().int().nonnegative().max(1_000_000),
         chatCount: z.number().int().nonnegative().max(1_000_000),
+        escalationCount: z.number().int().nonnegative().max(1_000_000).optional(),
         negativeFeedbackRate: z.number().min(0).max(1),
         exampleReferences: z.array(z.string().trim().min(1).max(1_000)).max(20),
     }).passthrough(),

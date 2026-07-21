@@ -12,7 +12,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
@@ -221,13 +221,12 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
                 throw new Error(`Cooldown must be between ${ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_COOLDOWN_HOURS} and ${ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_COOLDOWN_HOURS} hours`);
             }
 
-            const existing = await getDocs(query(
+            const existingCount = await getCountFromServer(query(
                 getCollectionRef(),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
-                limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT),
             ));
-            if (existing.size >= ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT) {
+            if (existingCount.data().count >= ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT) {
                 throw new Error(`Predictive support supports up to ${ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT} triggers per workspace.`);
             }
 

@@ -176,6 +176,8 @@ Do not publish a fixed monthly estimate from document counts alone. Measure enab
 | upsertEntitySearchIndex | SERVER TRANSACTION | bounded point reads | search-index + invalidation/operation writes |
 | **mergeEntities** | **SERVER TRANSACTION** | **bounded point and reference-query documents** | **bounded dependency rewrites + fixed governance overhead** |
 
+Entity-label consumers use the `entities_only` hook mode and issue only the bounded entity query. Entity health uses `entities_and_search_index`, avoiding the unused relation query. The ontology management screen keeps `full` mode because it displays and mutates relations and search-index state.
+
 Entity mutation costs are owned by the protected ontology transaction rather than direct browser writes. Entity creation and candidate promotion atomically update entity, search-index, ontology counter, invalidation/source-version, slug-index and operation-replay state. The server then awaits the tenant-summary merge used by scheduler discovery. A failed derived-summary write returns failure after the authoritative transaction; retrying the idempotent action replays the committed result and retries summary synchronization.
 | **syncAliasesToSearchIndex** | **READ+WRITE** | **1** | **1** |
 

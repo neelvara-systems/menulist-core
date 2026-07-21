@@ -1,7 +1,7 @@
 # Answerlattice Guided Workflows Marketing
 
 > **Status:** Implementation exists; public performance claims held for customer proof
-> **Last verified:** 2026-07-18
+> **Last verified:** 2026-07-20
 
 ## Claim-Safe Position
 
@@ -12,7 +12,7 @@ Answerlattice can turn an approved procedure into step-by-step in-product guidan
 - Approved canonical procedures can be shown as guided steps.
 - The client product can mark stable semantic targets.
 - Answerlattice can highlight the current target without clicking it.
-- A client-verified event can advance the current step.
+- An exact client-reported event can advance the current step; it is workflow evidence, not independent backend verification.
 - Missing targets can become governed signals, and a successful explicit support request can record the guide as escalated.
 - Existing human approval remains authoritative.
 - Guided sessions add no database listener, scheduler, or AI request; short-lived browser resize/scroll listeners position the active highlight.

@@ -1,5 +1,7 @@
 # MenuList Troubleshooting, Escalation, And Risk Review Support
 
+**Verified:** 2026-07-20 against current public-cache, auth, billing, AI, provider, mobile/PWA, localization, and failure-recovery boundaries.
+
 ## General Troubleshooting Pattern
 
 For live SMB owners, Answerlattice should use a calm path:
@@ -40,6 +42,18 @@ Use Billing if retry or support actions are visible. Do not provide payment/lega
 
 Confirm it opens the expected MenuList/custom domain and shows the correct business name. If a printed QR may be tampered with, tell the owner to replace the printed code and contact support.
 
+### Generated description, translation, or image failed.
+
+Do not ask the owner to repeat rapidly. Check whether the operation shows failed, restored credits, or retry guidance in Transactions/the current surface. The current menu remains authoritative until an owner accepts and saves valid output. Escalate repeated failures, missing credit restoration, or a provider-unavailable condition.
+
+### Owner app says offline or an update is ready.
+
+Connectivity is advisory. Reconnect before saving or loading current owner truth. Use the explicit refresh/update action when ready; MenuList does not silently replace the running owner app or promise a complete offline private dashboard.
+
+### Dates, currency, language, or text direction look wrong.
+
+Check the owner language, business timezone, date/time format, and selected store. Public fixed chrome follows the configured store language where a reviewed pack exists. Escalate if the saved setting is correct but the same surface still renders the wrong locale or direction.
+
 ## Must Escalate
 
 Escalate when:
@@ -52,8 +66,10 @@ Escalate when:
 - public page exposes private data;
 - suspected QR tampering or phishing appears;
 - an outage, blank public menu, or repeated extraction failure affects a live business.
+- paid AI credits are not restored after terminal failure;
+- wrong language/direction/timezone changes the meaning of public business truth;
+- an external Place ID appears attached to the wrong location.
 
 ## Answerlattice Answer Safety
 
 If Answerlattice is not sure, it should say it needs support to check the account. It must not invent hidden settings, secret fixes, refund terms, support SLAs, or integration behavior.
-

@@ -269,6 +269,7 @@ export async function runSignalMutationEngine(
                 signalSummary: {
                     ticketCount: cluster.ticketCount,
                     chatCount: cluster.chatNegativeCount,
+                    escalationCount: cluster.escalationCount,
                     negativeFeedbackRate: cluster.chatNegativeCount / Math.max(cluster.totalCount, 1),
                     exampleReferences: cluster.signals.slice(0, 3).map(s => s.id),
                 },

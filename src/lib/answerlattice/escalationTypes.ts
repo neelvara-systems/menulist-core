@@ -7,15 +7,17 @@
  * @see __docs__/answerlattice/ai-failure-escalation/
  */
 
+import { z } from 'zod';
+
 // ═══════════════════════════════════════════════════════════════
 // ESCALATION TRIGGER TYPES
 // ═══════════════════════════════════════════════════════════════
 
 export type EscalationTriggerType =
-    | 'low_canonical_confidence'   // S1: canonical miss or confidence='low'
+    | 'insufficient_answer_evidence' // S1: no canonical answer and no usable final-answer evidence
     | 'entity_resolution_failure'  // S2: no entity match
-    | 'explicit_user_request'      // S3: user typed escalation intent
-    | 'rag_low_similarity';        // S4: best vector result < 0.5
+    | 'explicit_user_request'      // S3: user explicitly submitted a trusted support handoff
+    | 'rag_low_similarity';        // S4: best cited result < 0.5
 
 export type EscalationType = 'soft' | 'hard' | 'none';
 
@@ -112,22 +114,60 @@ export interface EntityDebugInfo {
     confidence: number;
 }
 
+const EscalationTriggerTypeSchema = z.enum([
+    'insufficient_answer_evidence',
+    'entity_resolution_failure',
+    'explicit_user_request',
+    'rag_low_similarity',
+]);
+
+const EscalationContextSchema = z.object({
+    triggerTypes: z.array(EscalationTriggerTypeSchema).min(1).max(4),
+    query: z.string().trim().min(1).max(500),
+    conversationId: z.string().trim().min(1).max(180).optional(),
+    productContext: z.object({
+        contextKey: z.string().trim().min(1).max(180).optional(),
+        page: z.string().trim().min(1).max(180).optional(),
+        feature: z.string().trim().min(1).max(180).optional(),
+        workflow: z.string().trim().min(1).max(180).optional(),
+        plan: z.string().trim().min(1).max(180).optional(),
+        userRole: z.string().trim().min(1).max(180).optional(),
+    }).strict().optional(),
+    retrievalDebug: z.object({
+        canonicalResult: z.object({
+            found: z.boolean(),
+            confidence: z.enum(['high', 'medium', 'low', 'none']),
+            fallbackReason: z.string().trim().min(1).max(180).optional(),
+            matchedEntityIds: z.array(z.string().trim().min(1).max(180)).max(20),
+        }).strict(),
+        ragResults: z.array(z.object({
+            docId: z.string().trim().min(1).max(180),
+            title: z.string().trim().min(1).max(300),
+            similarityScore: z.number().finite().min(0).max(1),
+        }).strict()).max(5).optional(),
+        effectiveQuery: z.string().trim().min(1).max(500).optional(),
+    }).strict().optional(),
+    entityDebug: z.object({
+        queryTokens: z.array(z.string().trim().min(1).max(180)).max(20),
+        candidates: z.array(z.object({
+            entityId: z.string().trim().min(1).max(180),
+            entityName: z.string().trim().min(1).max(180).optional(),
+            score: z.number().finite(),
+        }).strict()).max(3),
+        resolvedEntityId: z.string().trim().min(1).max(180).optional(),
+        confidence: z.number().finite().min(0).max(1),
+    }).strict().optional(),
+    escalatedAt: z.string().datetime({ offset: true }),
+}).strict();
+
+export const parseAnswerlatticeEscalationContext = (value: unknown): EscalationContext | null => {
+    const parsed = EscalationContextSchema.safeParse(value);
+    return parsed.success ? parsed.data as EscalationContext : null;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
-
-/** Explicit escalation intent phrases (English) */
-export const ESCALATION_INTENT_PATTERNS = [
-    /\btalk\s+to\s+(a\s+)?human\b/i,
-    /\bspeak\s+to\s+(an?\s+)?agent\b/i,
-    /\bcreate\s+(a\s+)?ticket\b/i,
-    /\bcontact\s+support\b/i,
-    /\bneed\s+(more\s+)?help\b/i,
-    /\bthis\s+(isn't|is\s+not|didn't|does\s+not)\s+help/i,
-    /\bnot\s+help(ful|ing)\b/i,
-    /\breal\s+person\b/i,
-    /\bhuman\s+support\b/i,
-];
 
 /** Default escalation metadata (no escalation) */
 export const NO_ESCALATION: EscalationMetadata = {

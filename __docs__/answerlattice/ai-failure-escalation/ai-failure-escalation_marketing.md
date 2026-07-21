@@ -1,6 +1,6 @@
 # AI Failure Escalation - Marketing Boundary
 
-> **Last Updated:** 2026-07-18
+> **Last Updated:** 2026-07-20
 > **Publication Status:** HOLD automatic-escalation claims until rollout evidence exists
 
 ## Safe Current Claim
@@ -12,7 +12,8 @@ When a widget answer does not resolve the question, the user can create an async
 Do not claim:
 
 - automatic detection is active in every workspace;
-- five triggers work with no configuration;
+- automatic triggers work with no configuration;
+- repeated browser failures are independently verified;
 - a ticket is answered or resolved in seconds;
 - users are automatically notified;
 - a typical escalation rate or knowledge-conversion rate;

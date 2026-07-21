@@ -1,8 +1,10 @@
 # MenuList Dashboard, Analytics, Feedback, And Help Center Support
 
+**Verified:** 2026-07-20 against Today, Business Health, owner analytics read models, Guest Feedback, Help Center, and support-ticket boundaries.
+
 ## Owner Dashboard
 
-The owner dashboard is the main operating view for MenuList owners. It can show menu status, public link/share prompts, activity, quality signals, analytics, and action cards depending on account state.
+Today is the primary day-to-day owner view. It uses current store/project truth plus compact read models and can show menu status, setup progress, public readiness, activity, analytics, and bounded action cards depending on account state. Historical views load only when needed.
 
 Answerlattice should answer dashboard questions in plain owner language:
 
@@ -14,9 +16,15 @@ Answerlattice should answer dashboard questions in plain owner language:
 
 ## Analytics
 
-MenuList may show activity and analytics such as views, device/source breakdowns, top items, location breakdowns, and customer-app/public-surface metrics where configured.
+MenuList may show sessions, engaged/intent/action sessions, item views and taps, category interest, search/no-result signals, unavailable-item taps, and final actions such as call, WhatsApp, directions, reservation, order, share, or official-page action taps where configured.
 
-Answerlattice must avoid overpromising analytics precision. It should describe analytics as directional owner insight unless a specific metric definition is verified.
+This analytics boundary does not collect customer names, emails, payment details, hover/scroll heatmaps, or exact GPS coordinates. Answerlattice must still avoid treating analytics as a billing, legal, or individually identifying record.
+
+## Business Health
+
+Business Health is a read-only owner surface that explains what is happening, public readiness, supported analytics/feedback signals, and what the owner should inspect. It does not prepare or execute menu changes.
+
+If the owner wants MenuList to prepare a supported change, direct them to Menu Manager. Menu Manager uses proposal cards, approval, registered operations, and receipts.
 
 ## Menu Quality Signals
 
@@ -51,4 +59,5 @@ Answerlattice should use MenuList help/support routes as escalation paths when i
 - Do not expose private feedback content in public screenshots.
 - Do not treat analytics numbers as exact billing or legal records.
 - Do not invent operational alerts or background monitoring status unless the dashboard shows it.
-
+- Do not tell owners that Business Health changed their menu.
+- Do not expose ticket attachments, signed URLs, or private feedback content outside authenticated support.

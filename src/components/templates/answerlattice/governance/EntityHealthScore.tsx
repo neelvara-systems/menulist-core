@@ -147,7 +147,7 @@ export default function EntityHealthScore() {
     const sId = session?.sId || 0;
 
     const { answers, loading: answersLoading } = useCanonicalAnswers(tId, sId);
-    const { entities, searchIndex, loading: entitiesLoading } = useEntities(tId, sId);
+    const { entities, searchIndex, loading: entitiesLoading } = useEntities(tId, sId, 'entities_and_search_index');
 
     const loading = answersLoading || entitiesLoading;
 

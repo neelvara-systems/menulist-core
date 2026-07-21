@@ -563,6 +563,7 @@
     function sanitizePredictiveProcedure(value) {
         if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.steps)) return null;
         if (value.steps.length < 1 || value.steps.length > 12) return null;
+        // Instruction labels only; never dispatch these values into host actions.
         var allowedActions = ['open', 'navigate', 'click', 'select', 'enter', 'toggle', 'submit', 'confirm', 'download', 'upload', 'copy', 'paste', 'scroll', 'expand', 'collapse'];
         var steps = value.steps.map(function (step) {
             if (!step || typeof step !== 'object' || Array.isArray(step)) return null;

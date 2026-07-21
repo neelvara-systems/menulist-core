@@ -1,7 +1,7 @@
 # Answerlattice Cost Read-Model Guardrails
 
 > **Status:** Active Architecture Guardrail  
-> **Last Updated:** 2026-05-31  
+> **Last Updated:** 2026-07-20
 > **Scope:** Answerlattice dashboard, widget/runtime APIs, nightly scheduler summaries, owner review surfaces, and platform monitoring.
 
 ## Purpose
@@ -120,6 +120,8 @@ Use external realtime/cache infrastructure only when:
 - `src/database/answerlattice/signalEvents.ts` clamps caller-provided window and result limits.
 - `src/database/answerlattice/auditLogs.ts` clamps audit loads to 200.
 - `src/database/answerlattice/supportBoard.ts` clamps board loads to the configured max and protects against invalid limits.
+- `src/hooks/answerlattice/useEntities.ts` supports entities-only and entities-plus-search-index modes so governance tabs do not load unused ontology collections.
+- `src/database/answerlattice/predictiveTriggers.ts` uses a scoped count aggregate for the create cap; the bounded trigger query remains only for summary rebuild/list rendering.
 - `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` and related scheduler modules own recurring summary preparation. Do not create separate scheduled functions for new Answerlattice summary maintenance unless doctrine changes.
 
 ## Review Checklist

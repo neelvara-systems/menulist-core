@@ -1,5 +1,7 @@
 # MenuList Account, Access, And Onboarding Support
 
+**Verified:** 2026-07-20 against current authentication, onboarding, logout, staff-access, account-lifecycle, and ownership boundaries.
+
 ## What Answerlattice Should Know
 
 MenuList owners and staff can sign in through several supported paths:
@@ -10,6 +12,8 @@ MenuList owners and staff can sign in through several supported paths:
 - Staff ID and passcode for staff who do not have their own email.
 
 Owners may also claim a business from a MenuList onboarding link, including WhatsApp-led onboarding. The claim flow links the prepared digital menu/business to the owner account.
+
+The public Create Menu entry is discoverable without authentication, but current menu acquisition and processing are sign-in-first. Answerlattice must not tell an owner that a new upload can be processed before sign-in.
 
 ## Common Owner Questions
 
@@ -33,6 +37,18 @@ The signed-in account may not have access to that store. Ask the account owner o
 
 Sign out and sign in with the correct Google account. If account merging is needed, contact support.
 
+### What happens when I sign out?
+
+MenuList ends the signed session and clears selected-store and owner-session state from that browser. It does not delete the business account or public menu.
+
+### Can I delete or export my whole account from the dashboard?
+
+Menu/project downloads are not a complete account export. Full access, correction, portability, and deletion requests use verified support review. There is no one-click owner cascade-deletion action.
+
+### Does giving someone the Owner role transfer the business?
+
+No. Owner role grants operational permissions. It does not transfer the business account, billing records, notification recipients, or subscriptions. Complete ownership transfer requires verified authority and support review.
+
 ## What Answerlattice Must Not Do
 
 - Do not reveal whether another email or phone number exists.
@@ -49,4 +65,5 @@ Escalate to MenuList support when:
 - a staff member cannot reset access;
 - a store appears under the wrong account;
 - the user asks to merge accounts, transfer ownership, or delete account data.
-
+- the last owner or business-account authority is disputed;
+- a privacy access, correction, portability, or deletion request is made.

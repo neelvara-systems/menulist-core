@@ -5,10 +5,10 @@
  * Called at the END of coreSearch() pipeline (after answer generation).
  * 
  * 4 Escalation Signals:
- * S1 — Low canonical confidence (canonical miss or confidence='low')
- * S2 — Entity resolution failure (no entity match + no/poor RAG)
- * S3 — Explicit user request (handled in the rollout-gated Help Chat UI)
- * S4 — RAG low similarity (best vector result < threshold)
+ * S1 — Insufficient answer evidence (no canonical answer and no usable final-answer evidence)
+ * S2 — Entity resolution failure (no entity match + no useful final-answer evidence)
+ * S3 — Explicit user request (handled by a separate server-authoritative handoff)
+ * S4 — RAG low similarity (best cited result < threshold)
  * 
  * Feature-flagged: ENABLE_ANSWERLATTICE_AI_ESCALATION
  * Non-blocking: errors return NO_ESCALATION
@@ -25,6 +25,7 @@ import {
     EscalationType,
     NO_ESCALATION,
     RAG_LOW_SIMILARITY_THRESHOLD,
+    parseAnswerlatticeEscalationContext,
 } from './escalationTypes';
 
 const ESCALATION_QUERY_MAX_CHARS = 500;
@@ -152,35 +153,40 @@ export function evaluateEscalation(input: EscalationEvaluatorInput): EscalationM
 
         const triggers: EscalationTriggerType[] = [];
 
-        // ── S1: Low Canonical Confidence ──
-        if (
-            !normalizedInput.canonicalResult.found &&
-            (normalizedInput.canonicalResult.confidence === 'low' || normalizedInput.canonicalResult.confidence === 'none') &&
-            normalizedInput.canonicalResult.fallbackReason
-        ) {
-            triggers.push('low_canonical_confidence');
+        const bestRagSimilarity = normalizedInput.ragDocuments[0]?.similarityScore;
+        const hasUsableFinalAnswerEvidence = (
+            normalizedInput.answerWasEmpty !== true
+            && typeof bestRagSimilarity === 'number'
+            && bestRagSimilarity >= RAG_LOW_SIMILARITY_THRESHOLD
+        );
+
+        // ── S1: Insufficient Answer Evidence ──
+        // A canonical miss alone is not a failure when the final answer used strong RAG evidence.
+        if (!normalizedInput.canonicalResult.found && !hasUsableFinalAnswerEvidence) {
+            triggers.push('insufficient_answer_evidence');
         }
 
         // ── S2: Entity Resolution Failure ──
-        if (normalizedInput.canonicalResult.matchedEntityIds.length === 0) {
-            if (normalizedInput.ragDocuments.length === 0 || normalizedInput.answerWasEmpty) {
-                // No entity match AND no RAG results → hard escalation candidate
-                triggers.push('entity_resolution_failure');
-            } else if (normalizedInput.ragDocuments[0].similarityScore < RAG_LOW_SIMILARITY_THRESHOLD) {
-                // No entity match AND weak RAG → soft escalation
+        if (
+            !normalizedInput.canonicalResult.found
+            && normalizedInput.canonicalResult.matchedEntityIds.length === 0
+        ) {
+            if (!hasUsableFinalAnswerEvidence) {
+                // No entity match and no useful final-answer evidence.
                 triggers.push('entity_resolution_failure');
             }
         }
 
         // ── S3: Explicit User Request ──
-        // Handled in the rollout-gated Help Chat UI before calling coreSearch.
+        // Handled by a separate server-authoritative handoff, not this evaluator.
         // Not evaluated here.
 
         // ── S4: RAG Low Similarity ──
         if (
             !normalizedInput.canonicalResult.found &&
             normalizedInput.ragDocuments.length > 0 &&
-            normalizedInput.ragDocuments[0].similarityScore < RAG_LOW_SIMILARITY_THRESHOLD
+            bestRagSimilarity !== undefined &&
+            bestRagSimilarity < RAG_LOW_SIMILARITY_THRESHOLD
         ) {
             triggers.push('rag_low_similarity');
         }
@@ -191,10 +197,13 @@ export function evaluateEscalation(input: EscalationEvaluatorInput): EscalationM
         }
 
         // ── Determine escalation type (highest urgency wins) ──
-        const escalationType = resolveEscalationType(triggers, normalizedInput);
+        const escalationType = resolveEscalationType(normalizedInput);
 
         // ── Build escalation context ──
-        const escalationContext = buildEscalationContext(normalizedInput, triggers);
+        const escalationContext = parseAnswerlatticeEscalationContext(
+            buildEscalationContext(normalizedInput, triggers),
+        );
+        if (!escalationContext) return NO_ESCALATION;
 
         return {
             escalationSuggested: true,
@@ -215,17 +224,12 @@ export function evaluateEscalation(input: EscalationEvaluatorInput): EscalationM
 /**
  * Resolve escalation type from triggers.
  * HARD > SOFT > NONE
- * Priority: S2 (entity fail + no RAG) > S1/S4 (soft)
+ * Priority: empty/refusal outcomes > weak-evidence suggestions
  */
 function resolveEscalationType(
-    triggers: EscalationTriggerType[],
     input: NormalizedEscalationInput
 ): EscalationType {
-    // S2: Entity failure with no useful RAG → HARD
-    if (
-        triggers.includes('entity_resolution_failure') &&
-        (input.ragDocuments.length === 0 || input.answerWasEmpty)
-    ) {
+    if (input.answerWasEmpty || input.ragDocuments.length === 0) {
         return 'hard';
     }
 

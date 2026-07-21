@@ -1,5 +1,7 @@
 # MenuList Product Context
 
+**Verified:** 2026-07-20 against current MenuList code, maintained docs, feature flags, and public-content source.
+
 ## Canonical Product Identity
 
 MenuList is customer-facing business truth infrastructure for businesses with menus, price lists, catalogues, or service lists that customers need to trust.
@@ -75,6 +77,10 @@ MenuList has product depth beyond a basic QR menu:
 - staff roles and permissions;
 - External Menu Sync through signed full-menu snapshots;
 - structured public discovery through JSON-LD, robots, sitemap, and LLM discovery files.
+- owner desktop and MobileShell localization across the maintained locale registry, with store-language-driven public customer chrome;
+- owner-facing AI Menu Manager proposals and approval-safe registered actions;
+- read-only Business Health and public-truth readiness checks;
+- provider-neutral, owner-confirmed external location identity stored on the exact location without making provider facts canonical.
 
 These capabilities should be used as evidence for Answerlattice's website and marketing examples, but the public story should stay simple: MenuList turns the current menu into the official customer-facing version.
 
@@ -118,4 +124,4 @@ Answerlattice should learn MenuList in this order:
 4. What stays owner-reviewed.
 5. What must not be claimed.
 6. Which screenshots/assets can be shown safely.
-
+7. Which capabilities are current, account/flag dependent, disabled, internal, separate-product, or planning-only.

@@ -56,6 +56,17 @@ type IntakeMonitorLedgerRow = {
     errorMessage: string | null;
 };
 
+type IntakeMonitorSchedulerReadWindow = {
+    key: string;
+    task: string;
+    source: string;
+    window: string;
+    operationCount: number;
+    documentsReturned: number;
+    configuredLimit: number;
+    saturated: boolean;
+};
+
 type IntakeMonitorSchedulerRun = {
     id: string;
     runLogId: string;
@@ -79,6 +90,10 @@ type IntakeMonitorSchedulerRun = {
         driftDetected: number;
         proposalsCreated: number;
         coverageRate: number;
+        observedOperationCount: number;
+        observedDocumentsReturned: number;
+        saturatedReadWindowCount: number;
+        readWindows: IntakeMonitorSchedulerReadWindow[];
     } | null;
     errorCount: number;
     errorMessages: string[];
@@ -259,6 +274,21 @@ const isIntakeMonitorSelectedTenantRun = (
     && isFiniteNumber(value.driftDetected)
     && isFiniteNumber(value.proposalsCreated)
     && isFiniteNumber(value.coverageRate)
+    && isFiniteNumber(value.observedOperationCount)
+    && isFiniteNumber(value.observedDocumentsReturned)
+    && isFiniteNumber(value.saturatedReadWindowCount)
+    && Array.isArray(value.readWindows)
+    && value.readWindows.every((entry) => (
+        isRecord(entry)
+        && typeof entry.key === 'string'
+        && typeof entry.task === 'string'
+        && typeof entry.source === 'string'
+        && typeof entry.window === 'string'
+        && isFiniteNumber(entry.operationCount)
+        && isFiniteNumber(entry.documentsReturned)
+        && isFiniteNumber(entry.configuredLimit)
+        && typeof entry.saturated === 'boolean'
+    ))
 );
 
 const isIntakeMonitorSchedulerRun = (value: unknown): value is IntakeMonitorSchedulerRun => (
@@ -781,6 +811,53 @@ export default function AnswerlatticeIntakeMonitor() {
             },
         },
     ];
+    const readWindowColumns: TableColumnsType<IntakeMonitorSchedulerReadWindow> = [
+        {
+            title: 'Task',
+            dataIndex: 'task',
+            key: 'task',
+            width: 180,
+        },
+        {
+            title: 'Source',
+            dataIndex: 'source',
+            key: 'source',
+            width: 210,
+        },
+        {
+            title: 'Window',
+            dataIndex: 'window',
+            key: 'window',
+            width: 190,
+        },
+        {
+            title: 'Operations',
+            dataIndex: 'operationCount',
+            key: 'operationCount',
+            width: 90,
+        },
+        {
+            title: 'Documents',
+            dataIndex: 'documentsReturned',
+            key: 'documentsReturned',
+            width: 100,
+        },
+        {
+            title: 'Configured cap',
+            dataIndex: 'configuredLimit',
+            key: 'configuredLimit',
+            width: 100,
+        },
+        {
+            title: 'Window state',
+            dataIndex: 'saturated',
+            key: 'saturated',
+            width: 120,
+            render: (saturated: boolean) => (
+                <Tag color={saturated ? 'red' : 'green'}>{saturated ? 'Saturated' : 'Within cap'}</Tag>
+            ),
+        },
+    ];
 
     return (
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 16px' }}>
@@ -852,6 +929,8 @@ export default function AnswerlatticeIntakeMonitor() {
                 <Card size="small"><Statistic prefix={<LuCreditCard />} title="Credits charged" value={stats?.ledgerChargedUnits || 0} /></Card>
                 <Card size="small"><Statistic title="Media extractions" value={stats?.mediaExtractions || 0} /></Card>
                 <Card size="small"><Statistic title="Tenant run errors" value={selectedTenantRun?.errorCount || 0} valueStyle={{ color: selectedTenantRun?.errorCount ? token.colorError : token.colorText }} /></Card>
+                <Card size="small"><Statistic title="Observed source operations" value={selectedTenantRun?.observedOperationCount || 0} /></Card>
+                <Card size="small"><Statistic title="Observed source documents" value={selectedTenantRun?.observedDocumentsReturned || 0} /></Card>
                 <Card size="small">
                     <Statistic
                         prefix={<LuClock3 />}
@@ -870,6 +949,25 @@ export default function AnswerlatticeIntakeMonitor() {
                 <Text type="secondary">
                     {snapshot?.costModel?.readPattern || 'Manual bounded reads only.'} No realtime listener. Refresh is read-only; retry writes scheduler state for the selected workspace.
                 </Text>
+            </Card>
+
+            <Card
+                size="small"
+                style={{ marginBottom: 16 }}
+                title="Latest scheduler source windows"
+            >
+                <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                    Logical high-volume source-operation observations for the selected workspace. These are documents returned by instrumented source windows, not billed Firestore reads or a currency estimate.
+                </Text>
+                <Table
+                    columns={readWindowColumns}
+                    dataSource={selectedTenantRun?.readWindows || []}
+                    locale={{ emptyText: selectedScope ? 'No source-window telemetry exists for the latest run.' : 'Select a workspace to inspect source windows.' }}
+                    pagination={false}
+                    rowKey="key"
+                    scroll={{ x: 990 }}
+                    size="small"
+                />
             </Card>
 
             <Card title="Recent intake jobs" style={{ marginBottom: 16 }}>

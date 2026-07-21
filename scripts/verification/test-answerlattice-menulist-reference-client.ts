@@ -144,4 +144,70 @@ for (const contextField of ['state', 'version']) {
 assert.ok(sdkSource.includes('function sanitizeContextVersion'), 'SDK source must validate product version context');
 assert.ok(sdkDistribution.includes('function sanitizeContextVersion'), 'SDK distribution must validate product version context');
 
+const widgetEmbedSource = fs.readFileSync(
+    path.join(ROOT, 'src/components/answerlattice/MenuListAnswerlatticeWidgetEmbed.tsx'),
+    'utf8',
+);
+for (const routeContext of [
+    "dashboard: { feature: 'today', workflow: 'review_daily_business'",
+    "'menu-manager': { feature: 'ai_menu_manager', workflow: 'prepare_and_approve_menu_work'",
+    "'business-health': { feature: 'business_health', workflow: 'understand_business_health'",
+    "'qr-code': { feature: 'share', workflow: 'share_menu_and_place_qr'",
+    "'use-menulist': { feature: 'share', workflow: 'place_menu_surfaces'",
+    "assets: { feature: 'assets', workflow: 'prepare_downloadable_assets'",
+]) {
+    assert.ok(widgetEmbedSource.includes(routeContext), `MenuList widget must expose safe current route context: ${routeContext}`);
+}
+for (const forbiddenContextField of ['storeId:', 'projectId:', 'tenantId:', 'transactionId:']) {
+    assert.equal(
+        widgetEmbedSource.includes(forbiddenContextField),
+        false,
+        `MenuList widget page context must not expose ${forbiddenContextField}`,
+    );
+}
+assert.ok(
+    widgetEmbedSource.includes("const contextRouteKey = routeKey === 'qrCode' ? 'qr-code' : routeKey;"),
+    'legacy QR route aliases must use the same canonical widget context as /qr-code',
+);
+assert.ok(
+    widgetEmbedSource.includes("const contextSuffix = routeSegments.length > 1 ? '_detail' : '';"),
+    'nested MenuList owner routes must use generic detail context',
+);
+assert.ok(
+    widgetEmbedSource.includes('contextKey: `menulist_owner_${contextRouteKey}${contextSuffix}`'),
+    'MenuList widget context keys must use the safe route key and generic detail suffix',
+);
+assert.equal(
+    widgetEmbedSource.includes('contextKey: `menulist_owner_${routeKey}${secondSegment'),
+    false,
+    'MenuList widget context keys must not interpolate raw second URL segments',
+);
+assert.ok(
+    widgetEmbedSource.includes('if (!routeConfig) return null;'),
+    'unknown MenuList routes must be suppressed instead of becoming widget context',
+);
+for (const blockedRoute of [
+    '/growth-kits',
+    '/growth-kits/*',
+    '/ops',
+    '/ops/*',
+    '/platform',
+    '/platform/*',
+    '/reseller',
+    '/reseller/*',
+]) {
+    assert.ok(
+        widgetEmbedSource.includes(`'${blockedRoute}'`),
+        `MenuList widget must block non-owner or separately governed route: ${blockedRoute}`,
+    );
+}
+for (const forbiddenRouteMap of ['growth-kits', 'ops', 'platform', 'reseller']) {
+    assert.equal(
+        widgetEmbedSource.includes(`${forbiddenRouteMap}: { feature:`)
+            || widgetEmbedSource.includes(`'${forbiddenRouteMap}': { feature:`),
+        false,
+        `${forbiddenRouteMap} must not be exposed as MenuList owner widget context`,
+    );
+}
+
 process.stdout.write('Answerlattice MenuList reference-client contracts passed.\n');

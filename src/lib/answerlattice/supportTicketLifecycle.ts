@@ -1,4 +1,5 @@
 import { PRODUCT_IDS } from '@constant/product';
+import { parseAnswerlatticeEscalationContext } from '@lib/answerlattice/escalationTypes';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
@@ -203,6 +204,33 @@ const isTicketDocument = (value: unknown): boolean => (
     )
 );
 
+const isWidgetEscalationMetadata = (value: unknown): boolean => {
+    if (!isRecord(value)) return false;
+    const keys = Object.keys(value);
+    return keys.every((key) => [
+        'searchHistoryId',
+        'replyEmail',
+        'submittedName',
+        'detailsProvided',
+    ].includes(key))
+        && typeof value.searchHistoryId === 'string'
+        && value.searchHistoryId.length > 0
+        && value.searchHistoryId.length <= 180
+        && typeof value.replyEmail === 'string'
+        && value.replyEmail.length > 0
+        && value.replyEmail.length <= 254
+        && value.replyEmail.includes('@')
+        && (
+            value.submittedName === undefined
+            || (
+                typeof value.submittedName === 'string'
+                && value.submittedName.length > 0
+                && value.submittedName.length <= 160
+            )
+        )
+        && typeof value.detailsProvided === 'boolean';
+};
+
 export const parseAnswerlatticeTicketMessage = (value: unknown): TicketMessage => {
     if (!isTicketMessage(value)) throw new Error('answerlattice_ticket_message_invalid');
     return value;
@@ -232,6 +260,13 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
     const messages = Array.isArray(params.value.messages) ? params.value.messages : [];
     const statuses = Array.isArray(params.value.statuses) ? params.value.statuses : [];
     const documents = Array.isArray(params.value.documents) ? params.value.documents : [];
+    const source = params.value.source;
+    const escalationContext = parseAnswerlatticeEscalationContext(params.value.escalationContext);
+    const hasServerEscalationFields = (
+        params.value.escalationContext !== undefined
+        || params.value.knowledgeCandidate !== undefined
+        || params.value.widgetEscalation !== undefined
+    );
     if (
         messages.length > ANSWERLATTICE_TICKET_MESSAGE_LIMIT
         || !messages.every(isTicketMessage)
@@ -239,6 +274,19 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
         || !statuses.every(isTicketStatusEntry)
         || documents.length > ANSWERLATTICE_TICKET_DOCUMENT_LIMIT
         || !documents.every(isTicketDocument)
+        || (source !== undefined && source !== 'manual' && source !== 'ai_escalation')
+        || (
+            source === 'ai_escalation'
+            && (
+                params.value.knowledgeCandidate !== true
+                || !escalationContext
+                || (
+                    params.value.widgetEscalation !== undefined
+                    && !isWidgetEscalationMetadata(params.value.widgetEscalation)
+                )
+            )
+        )
+        || (source !== 'ai_escalation' && hasServerEscalationFields)
     ) return null;
 
     return {
@@ -250,6 +298,8 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
         messages,
         statuses,
         documents,
+        ...(source ? { source } : {}),
+        ...(escalationContext ? { escalationContext } : {}),
         platformNotes: typeof params.value.platformNotes === 'string' ? params.value.platformNotes : '',
         platformTags: Array.isArray(params.value.platformTags) ? params.value.platformTags.slice(0, 20) : [],
     } as SupportTicketType;

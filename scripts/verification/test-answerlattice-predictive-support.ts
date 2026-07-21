@@ -212,9 +212,17 @@ assert.match(interactionRoute, /doesAnswerlatticePredictiveTriggerMatchContext/)
 assert.match(interactionRoute, /emitSuggestionSignal/);
 
 const predictiveSync = read('functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts');
+const predictiveDal = read('src/database/answerlattice/predictiveTriggers.ts');
 assert.match(predictiveSync, /const MAX_TRIGGERS_PER_TENANT = 200;/);
 assert.match(predictiveSync, /interaction evidence is advisory/i);
 assert.doesNotMatch(predictiveSync, /status: 'disabled'/);
 assert.doesNotMatch(predictiveSync, /autoDisabled/);
+assert.match(predictiveDal, /getCountFromServer/);
+assert.match(predictiveDal, /existingCount\.data\(\)\.count >= ANSWERLATTICE_PREDICTIVE_CONSTRAINTS\.MAX_TRIGGERS_PER_TENANT/);
+assert.doesNotMatch(
+    predictiveDal,
+    /const existing = await getDocs\(query\([\s\S]*?limit\(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS\.MAX_TRIGGERS_PER_TENANT\),[\s\S]*?\)\);/,
+    'trigger create must not fetch the full capped collection only to count it',
+);
 
 process.stdout.write('Answerlattice predictive support contracts passed.\n');

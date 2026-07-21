@@ -25,8 +25,11 @@ export const FUNCTION_FLAGS = {
      * 4. Aggregate canonical coverage KPI
      * 5. Detect recurring fallbacks → auto proposals
      * 6. Track post-mutation impact (14-day window)
-     * 7. Auto-adjust confidence scores
-     * 8. Preserve expiresAt metadata while Firestore TTL performs retention cleanup
+     * 7. Preserve expiresAt metadata while Firestore TTL performs retention cleanup
+     *
+     * Canonical answer confidence is never auto-adjusted from serve volume or
+     * absence of recorded negative feedback. Those signals can create review
+     * work, but they are not evidence of factual correctness.
      *
      * Requires: Answerlattice collections seeded with entities + canonical answers
      *

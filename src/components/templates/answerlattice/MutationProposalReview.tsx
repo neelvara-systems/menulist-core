@@ -190,8 +190,9 @@ function ProposalItem({
                 description={
                     <Flex vertical gap={4}>
                         <Text>
-                            Signals: {proposal.signalSummary.ticketCount} tickets,{' '}
-                            {proposal.signalSummary.chatCount} negative chat signals
+                            Evidence: {proposal.signalSummary.ticketCount} tickets,{' '}
+                            {proposal.signalSummary.chatCount} negative chat signals,{' '}
+                            {proposal.signalSummary.escalationCount || 0} escalations
                         </Text>
                         {hasGeneratedDraft && (
                             <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, padding: 12, background: token.colorFillTertiary }}>
@@ -253,9 +254,9 @@ function ProposalItem({
                             </div>
                         )}
                         <Text type="secondary">
-                            {proposal.suggestedChange?.draftSource === 'ticket_resolution'
-                                ? 'Extractor score'
-                                : 'Signal strength'}: {Math.round(proposal.confidenceScore * 100)}% |{' '}
+                            {proposal.suggestedChange?.draftSource === 'ticket_resolution' && (
+                                <>Extractor score: {Math.round(proposal.confidenceScore * 100)}% | </>
+                            )}
                             {proposal.relatedEntityIds?.length || 0} linked product {(proposal.relatedEntityIds?.length || 0) === 1 ? 'entity' : 'entities'}
                         </Text>
                         {proposal.suggestedChange?.sourceTicketCount !== undefined && (

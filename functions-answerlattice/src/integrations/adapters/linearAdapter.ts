@@ -19,7 +19,6 @@ import {
 } from '../types';
 import {
     safePayloadCount,
-    safePayloadRatio,
     safePayloadStringArray,
     safeText,
 } from '../safety';
@@ -75,7 +74,6 @@ function formatIssueDescription(event: IntegrationEvent): string {
                 `**Mutation Type:** ${safeText(p.mutationType)}`,
                 `**Entities:** ${safePayloadStringArray(p.entityNames, 5, 80).join(', ')}`,
                 `**Signal Count:** ${safePayloadCount(p.signalCount)}`,
-                `**Confidence:** ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`,
             );
             break;
 

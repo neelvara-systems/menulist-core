@@ -87,7 +87,7 @@ function formatEventDetails(event: IntegrationEvent): string {
             return `*Answer:* ${safeSlackMrkdwnText(p.answerTitle || 'Unknown')}\n*Drift Class:* ${safeSlackMrkdwnText(p.driftClass)}\n*Reason:* ${safeSlackMrkdwnText(p.driftReason, 220)}\n*Entity:* ${safeSlackMrkdwnText(p.entityName)} (${safeSlackMrkdwnText(p.entityType, 60)})`;
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
-            return `*Type:* ${safeSlackMrkdwnText(p.mutationType)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).map(item => safeSlackMrkdwnText(item, 80)).join(', ')}\n*Signals:* ${safePayloadCount(p.signalCount)}\n*Confidence:* ${Math.round(safePayloadRatio(p.confidenceScore) * 100)}%`;
+            return `*Type:* ${safeSlackMrkdwnText(p.mutationType)}\n*Entities:* ${safePayloadStringArray(p.entityNames, 5, 80).map(item => safeSlackMrkdwnText(item, 80)).join(', ')}\n*Signals:* ${safePayloadCount(p.signalCount)}`;
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
             return `*Entity:* ${safeSlackMrkdwnText(p.entityName)} (${safeSlackMrkdwnText(p.entityType, 60)})\n*Fallbacks:* ${safePayloadCount(p.fallbackCount)} in ${safePayloadCount(p.windowDays, 3650)} days\n*Sample queries:* ${safePayloadStringArray(p.sampleQueries, 2, 120).map(item => safeSlackMrkdwnText(item, 120)).join(', ')}`;

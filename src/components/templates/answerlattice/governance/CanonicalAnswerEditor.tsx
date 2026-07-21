@@ -146,7 +146,7 @@ export default function CanonicalAnswerEditor() {
         create, update,
     } = useCanonicalAnswers(tId, sId);
 
-    const { entities } = useEntities(tId, sId);
+    const { entities } = useEntities(tId, sId, 'entities_only');
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);

@@ -1,9 +1,10 @@
 # Answerlattice — Architecture Evolution Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.0.1
+> **Last Updated:** 2026-07-20
 > **Source:** ChatGPT strategic session + Cascade codebase validation
 > **Rule:** No code changes — documentation only. Schemas adapted to existing MenuList patterns.
+> **Historical blueprint:** Current runtime and rollout truth is maintained in `../system-inventory/answerlattice-feature-flow-audit-tracker.md` and `../system-inventory/answerlattice-final-cross-cutting-audit.md`. “Missing” and “target” statements below describe the March 2026 starting point unless explicitly updated.
 
 ---
 
@@ -142,7 +143,7 @@ interface CanonicalAnswer {
   };
 
   validation: {
-    confidenceScore: number;             // 0-1 (derived, not manual)
+    confidenceScore: number;             // 0-1 authority/ranking value, not an empirical correctness probability
     validationSource: 'manual' | 'signal_cluster' | 'release_review';
     lastValidatedOn: Timestamp;
     validatedBy: string;
@@ -174,6 +175,8 @@ interface CanonicalAnswer {
 - Version numbers as normalized integers (not strings) — matches existing `menuVersion` pattern
 - Timestamps as `Timestamp` type — matches existing Firestore convention
 - `createdOn/modifiedOn/createdBy/modifiedBy` — via `requestBodyComposer` (existing pattern)
+- Canonical confidence is never auto-raised from serve volume or the absence of recorded negative feedback. Those signals create review work, not factual correctness.
+- Proposal, extractor, fallback, and signal-cluster scores never transfer into canonical validation. Human-approved proposal content uses manual validation authority. `signal_cluster` remains in the schema for historical read compatibility and separately validated future workflows only.
 
 ---
 

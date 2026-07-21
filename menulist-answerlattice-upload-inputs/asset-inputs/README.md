@@ -18,6 +18,8 @@ This folder prepares MenuList visual material for Answerlattice website and mark
 | `screenshot-capture-register.csv` | Capture queue for MenuList and Answerlattice dashboard screenshots. |
 | `answerlattice-website-asset-slots.md` | Answerlattice website/demo slot map for approved MenuList-on-Answerlattice screenshots. |
 | `asset-source-map.json` | Machine-readable asset/source map. |
+| `demo-walkthrough-brief.md` | Review-ready demo story, capture sequence, transcript outline, scrub rules, and approval status. |
+| `website-and-faq-asset-brief.md` | Review-ready FAQ groups, website claim candidates, risky claims, and approval gates. |
 
 ## Boundary
 

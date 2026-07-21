@@ -1,6 +1,6 @@
 # Answerlattice — Firebase Cost Optimization Audit
 
-> **Status:** Updated after May 22, 2026 public-surface cache pass
+> **Status:** Cross-checked July 20, 2026 after the 44-feature hardening audit
 > **Scope:** Answerlattice help center, KB, tickets, chat, changelog, feedback, governance, public API, widget, and scheduler functions
 > **Rule:** Correctness stays higher priority than lower Firebase spend.
 
@@ -8,7 +8,7 @@
 
 ## Executive Verdict
 
-Answerlattice is Firebase-cost-conscious after this pass. The live user-facing paths now avoid duplicate KB category reads, route public KB/FAQ/changelog reads through tenant/store-tagged Next cache, bound customer chat/ticket history reads, use aggregated chat analytics for ROI, avoid an extra feedback refetch after submit, and validate cached search answers through tiny source-version manifests instead of repeatedly reading every source document on fresh cache hits. Governance and scheduler paths remain feature-flagged and bounded.
+Answerlattice is Firebase-cost-conscious after this pass. The live user-facing paths avoid duplicate KB category reads, route public KB/FAQ/changelog reads through tenant/store-tagged Next cache, bound customer chat/ticket history reads, use aggregated chat analytics for ROI, avoid an extra feedback refetch after submit, and validate cached search answers through tiny source-version manifests. The July 20 follow-up also removes unused ontology reads from governance tabs, replaces the predictive-trigger create guard's document fetch with a count aggregate, and instruments the existing scheduler run log with bounded logical source-operation windows. Governance and scheduler paths remain feature-flagged and bounded.
 
 Remaining cost risks are non-blocking and documented below.
 
@@ -35,12 +35,14 @@ Remaining cost risks are non-blocking and documented below.
 | KB article delete helpers | `getArticlesByCategoryId`, `getArticlesBySectionId` | `getDocs` | `kb_articles` | Admin deletes category/section | Exact within current workspace | No | Medium | Added `tId+sId` filter when session exists and capped to 500. |
 | Answerlattice entities | `addEntity` | Count aggregate | `answerlattice_entities` | Entity create | Exact count limit | No | Medium | Replaced full limited read with `getCountFromServer`. |
 | Entity candidates | `getPendingCandidates` | `getDocs` | `answerlattice_entityCandidates` | Candidate review | Queue latest/high confidence | No | Medium | Added pending queue cap of 200. |
+| Governance entity labels | `useEntities` in canonical answers, analytics, drift, and health | Mode-gated `getDocs` | entities, relations, search index | Governance tab mount | Fresh on tab open | No | Medium | Label-only tabs now read entities only; health reads entities plus search index; full ontology management keeps all three queries. |
+| Predictive trigger create cap | `addPredictiveTrigger` | `getCountFromServer` | `answerlattice_predictiveTriggers` | Explicit owner create | Exact cap guard | No | Low/Medium | Replaced fetching up to 200 trigger documents only to count them; summary rebuild remains cap-plus-one and fail-closed. |
 | Canonical answers | `getCanonicalAnswers`, `getActiveAnswersForEntity`, `getDriftedAnswers` | `getDocs`, `getDoc`, writes | `answerlattice_canonicalAnswers` | Governance/retrieval | Fresh on request | No | Low | Existing limits retained. |
 | Search cache | `searchCore`, `cacheFreshness`, `aiSearchHistory/server`, `cacheVersionManifest` | cache query, manifest freshness read, search history write | `aiSearchHistory`, `answerlattice_cacheVersions` | Help search/widget search | Must not serve stale content | No | Medium | New cache rows capture KB/canonical source versions; fresh hits validate against one tiny manifest doc and old rows fall back to direct source validation. |
 | Instant Redis cache | `instantCache`, `searchCore`, `canonicalRetrieval`, `cacheVersionManifest` | Redis read/write + manifest freshness read | Upstash + `answerlattice_cacheVersions` | Canonical answer hot path when enabled | Must be source-fresh | No | Low | Feature remains off by default; canonical cache entries capture source version and bypass full answer-doc validation when manifest is current. |
 | Public API key auth | `publicApi`, `widget/search` | Store key lookup after format/rate guard | Answerlattice `stores` in separate mode, default `stores` only in explicit shared local/test mode | Public API/widget calls | Exact auth | No | Low | Existing malformed-key short-circuit retained; widget keys no longer fall back to client-product store documents in separate mode. |
 | Changelog writes | `addChangelogEntry`, `updateChangelogEntry`, feedback | transactions | `changelog/{tId}/{sId}` | Platform CRUD/user feedback | Exact | No | Low | Page model and 900 KB guard retained. |
-| Scheduler functions | `functions-answerlattice/src/answerlattice/*` | bounded Admin queries/writes | Answerlattice collections | Nightly/manual scheduler | Fresh batch | No | Low | Existing caps/run logs retained; no scheduler schema change in this pass. |
+| Scheduler functions | `functions-answerlattice/src/answerlattice/*` | bounded Admin queries/writes | Answerlattice collections | Nightly/manual scheduler | Fresh batch | No | Low | Existing source queries and one run-log write are retained. Each task now attaches at most eight compact logical source-window observations to that existing log; this adds no query, collection, index, or scheduler work. |
 
 Answerlattice cache freshness ID boundary: cache freshness checks now validate cached canonical answer IDs and KB article reference IDs before either manifest freshness or fallback source-document reads can accept a cached row. This changes malformed-cache admission only; valid cache hits keep the same manifest-read and fallback source-read shape.
 
@@ -99,6 +101,23 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
    - Hosted search is client-side over already-loaded published content and does not call AI or write search history.
    - Anonymous hosted pages do not expose tickets, chat sessions, feedback writes, or user/session data.
 
+11. **Governance ontology read modes**
+   - Added `entities_only` and `entities_and_search_index` modes to the existing entity hook.
+   - Canonical-answer, usage-analytics, and drift tabs skip both relation and search-index queries.
+   - Entity health skips the unused relation query.
+   - Full ontology management preserves the existing entities, relations, and search-index refresh.
+
+12. **Predictive trigger count guard**
+   - Trigger creation now uses one scoped count aggregate for the 200-trigger limit.
+   - The bounded 201-row query remains after mutations because it is required to rebuild and validate the compact runtime summary.
+
+13. **Scheduler source-window telemetry**
+   - Added one failure-safe observer shared through each tenant task execution.
+   - The observer records compact tuples for source, semantic window, operation count, documents returned, configured limit, and saturation.
+   - Duplicate source/window observations aggregate, malformed observations are ignored, and each task keeps at most eight unique windows.
+   - Telemetry is stored inside the existing scheduler run-log write and exposed only in the platform intake monitor, capped to 80 returned windows.
+   - These values describe logical source operations and results, not billed Firestore reads. They exclude index-entry billing, transaction retries, uninstrumented direct document reads, provider calls, and cached or server-side billing adjustments.
+
 ---
 
 ## Before / After Cost Impact
@@ -119,9 +138,13 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
 | ROI/analytics metrics | Up to 500 raw `chatSessions` reads per request, with caller-dependent windows | Daily aggregate reads + 1-90 day DAL clamp + bounded today live stats |
 | Entity create guard | Reads up to max entity docs just to count | Firestore aggregate count |
 | Pending entity candidates | Unbounded pending review query | Latest/highest-confidence 200 |
+| Canonical-answer, analytics, and drift entity labels | Entity hook also read relations and search index | One bounded entity query |
+| Entity health | Entity hook also read relations | Bounded entities plus search index only |
+| Predictive trigger create guard | Fetch up to 200 trigger documents, then fetch up to 201 again for summary rebuild | One scoped count aggregate, then the required bounded summary rebuild |
 | Instant-cache miss | Entity index/latest release could be read for cache lookup, then read again for canonical fallback | Cache lookup data is reused by canonical retrieval |
 | Fresh Firestore search cache hit | 1 cache query + up to N article reads, or 1 canonical answer read | 1 cache query + 1 tiny source-version check (manifest when present, latest-article version fallback for KB) |
 | Fresh Redis canonical cache hit | 1 Redis read + 1 canonical answer read | 1 Redis read + 1 tiny canonical source-version manifest read |
+| Nightly source-read diagnosis | Query overlap could be inferred only by reading code and logs | Existing run log now records bounded per-task/per-tenant logical source windows with operation/result/limit saturation evidence and no additional source read |
 
 ---
 
@@ -133,6 +156,7 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
 | Old cache rows without `sourceVersions` still validate source docs | Pre-change cache rows cannot prove freshness from the manifest or latest-article source version. | Safe fallback remains; rows naturally age out or are replaced by new source-version-backed cache entries. |
 | Public API key validation reads `stores` on each request | Security-sensitive auth path. In-memory caching could delay revocation. | Keep current fail-closed behavior unless revocation-aware cache is designed. |
 | Governance tabs can still refetch on tab navigation when enabled | Feature is off by default; active governance users need fresh review state. | Future improvement: governance-level data provider with explicit refresh. |
+| Nightly tasks query overlapping source collections | Drift, mutation, trust, graph, support-board, and friction work use different windows, filters, ordering, flags, and failure-isolation rules. Blind snapshot sharing could make one saturated task suppress otherwise valid summaries. | Logical source-window instrumentation is now implemented. Observe at least 14 complete daily runs across representative active tenants. Reuse a snapshot only when source, filters, ordering, limits, freshness, completeness, and failure-isolation contracts are identical; reject consolidation when any candidate window saturates, task failures occur, or the measured reduction is negligible. |
 | Today live analytics capped at 500 sessions | Prevents runaway dashboard reads but can undercount extreme same-day volume until nightly aggregate catches up. | Use nightly/manual aggregation for exact high-volume reporting. |
 | Hosted help domain prefixes are intentionally narrow | Middleware cannot query Firestore at the edge, so only common help/docs/support/kb host prefixes route to the hosted resolver. | Add explicit prefixes only when needed; do not reroute all custom domains because MenuList custom domains share this Vercel project. |
 
@@ -140,20 +164,41 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
 
 ## Verification
 
+The July 20 cross-check ran the source, contract, rules-emulator, type, lint, dependency-freeze, and Functions build gates below. The older production-build and browser-smoke evidence is retained for audit history; those checks were not rerun because this follow-up changed only client read selection, a count guard, tests, and documentation.
+
 | Check | Result |
 | --- | --- |
-| `npx tsc --noEmit --incremental false` | PASS |
-| `npm --prefix functions-answerlattice run build` | PASS |
-| `git diff --check` | PASS |
-| `npm run build` | PASS; existing non-fatal i18n dynamic `cookies` warnings still appear during static generation |
-| Local route smoke | PASS: `/help-center`, `/answerlattice`, `/answerlattice/docs`, `/answerlattice/support`, `/answerlattice/release-notes`, `/answerlattice/dashboard`, `/api/version` returned 200 |
-| Local authenticated Chrome smoke | PASS: Help Center rendered with live tickets/changelog/KB cards; QnA search POST returned 200 and produced a grounded no-answer response |
-| Redis fallback smoke | PASS: local Upstash DNS failure degraded safely; `/api/helpCenter/search-kb` continued and returned 200 |
-| Safe unauthenticated API guard smoke | PASS: `/api/helpCenter/search-kb` returned 401, `/api/answerlattice/public/v1/answers` rejected unsupported GET with 405, `/api/widget/search` returned widget-disabled 404 |
+| `npm run verify:answerlattice-runtime-truth` | PASS on July 20, including dedicated/shared Firestore rules-emulator suites |
+| `npm run verify:answerlattice-final-readiness` | PASS on July 20 |
+| `npm run test:answerlattice-scheduler-read-telemetry` | PASS on July 20 |
+| `npm run test:answerlattice-predictive-support` | PASS on July 20 |
+| `npx tsc --noEmit --incremental false` | PASS on July 20 |
+| `npm run lint` | PASS on July 20 with no warnings or errors |
+| `npm run verify:dependency-freeze` | PASS on July 20 |
+| `npm --prefix functions-answerlattice run build` | PASS on July 20 |
+| `git diff --check` | PASS on July 20 |
+| `npm run test:answerlattice-chat-analytics:scheduler` | PASS on July 20 |
+| `npm run test:answerlattice-knowledge-intake-summary:emulator` | PASS on July 20 after making the harness ignore inherited host credentials |
+| Earlier `npm run build` evidence | PASS; existing non-fatal i18n dynamic `cookies` warnings appeared during static generation |
+| Earlier local route smoke evidence | PASS: `/help-center`, `/answerlattice`, `/answerlattice/docs`, `/answerlattice/support`, `/answerlattice/release-notes`, `/answerlattice/dashboard`, `/api/version` returned 200 |
+| Earlier authenticated Chrome smoke evidence | PASS: Help Center rendered with live tickets/changelog/KB cards; QnA search POST returned 200 and produced a grounded no-answer response |
+| Earlier Redis fallback smoke evidence | PASS: local Upstash DNS failure degraded safely; `/api/helpCenter/search-kb` continued and returned 200 |
+| Earlier unauthenticated API guard smoke evidence | PASS: `/api/helpCenter/search-kb` returned 401, `/api/answerlattice/public/v1/answers` rejected unsupported GET with 405, `/api/widget/search` returned widget-disabled 404 |
 | Scope review | No schema-breaking changes |
 | Realtime review | Realtime kept only for ticket flows that need live updates |
 | Tenant scope review | Added `sId` guard to user chat history and KB delete helper queries |
 | Public cache route review | New route derives tenant/store from session only; client-supplied tenant/store IDs are not trusted |
+
+The narrow QA Functions deployment was attempted with:
+
+```bash
+firebase deploy --only functions:answerlattice:answerlatticeNightly,functions:answerlattice:triggerAnswerlatticeNightly \
+  --project answerlattice-qa \
+  --config firebase-answerlattice.json \
+  --non-interactive
+```
+
+Firebase CLI stopped before upload with `Error: Failed to authenticate, have you run firebase login?`. No remote Function revision changed.
 
 ---
 

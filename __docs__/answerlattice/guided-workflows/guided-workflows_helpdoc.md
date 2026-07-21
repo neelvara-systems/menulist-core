@@ -1,7 +1,7 @@
 # Answerlattice Guided Workflows Help
 
 > **Status:** Implemented, workspace opt-in
-> **Last verified:** 2026-07-18
+> **Last verified:** 2026-07-20
 
 ## What It Does
 
@@ -57,7 +57,7 @@ Existing widget configurations remain disabled until this setting is enabled.
 ## End-User Behavior
 
 - **Guide me:** starts the current approved procedure.
-- **Next step / Finish guide:** advances only a step that does not require a verified event.
+- **Next step / Finish guide:** advances only a step that does not require a matching client-reported event.
 - **Target missing:** ends the guide and records which semantic target was absent.
 - **Still stuck:** opens the reply-email support form. The guide is marked escalated only after the support request is created.
 - Closing the widget or changing page/context safely clears the highlight.

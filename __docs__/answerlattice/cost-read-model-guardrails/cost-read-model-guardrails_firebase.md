@@ -10,8 +10,14 @@
 | Batch signal count query | capped to 1000 rows per 30-entity batch | 0 | 0 | Existing cap is now named and fixed. |
 | Audit log loads | capped to 200 rows | 0 | 0 | Protects owner/history views from accidental high reads. |
 | Support Board loads | capped to 120 rows | 0 | 0 | Invalid or negative limits now fall back to the configured cap. |
+| Entity-label governance tabs | one bounded entity query | 0 | 0 | Canonical answers, usage analytics, and drift no longer also read relations and search-index rows. |
+| Entity health tab | bounded entity + search-index queries | 0 | 0 | The unused relation query is skipped. |
+| Predictive trigger create cap | one scoped count aggregate | 0 | 0 | Replaces fetching up to 200 trigger documents only to count them; summary rebuild remains bounded at 201 rows. |
+| Scheduler source-window telemetry | 0 additional source reads | 0 additional writes | 0 | Reuses the existing scheduler source operations and run-log write. Each task records at most eight compact logical operation-result windows; the platform monitor returns at most 80. |
 
-No new collection, listener, index, Storage object, Cloud Function, scheduler, or external cache was added.
+No new collection, listener, index, Storage object, scheduler, external cache, source query, or run-log write was added. Existing Answerlattice Cloud Function logic was instrumented.
+
+The scheduler observations are not Firebase billing data. They intentionally exclude index-entry billing, transaction retries, uninstrumented direct document reads, provider calls, and cached or server-side billing adjustments. Use them to find semantically identical high-volume windows, then confirm any proposed consolidation against Firebase billing telemetry before changing query ownership.
 
 ## Required Pattern For Future Answerlattice Features
 
@@ -26,4 +32,4 @@ No new collection, listener, index, Storage object, Cloud Function, scheduler, o
 
 ## Deployment Impact
 
-No Firebase rules, indexes, Storage rules, or Cloud Function runtime logic changed in this guardrail pass. No Firebase deploy is required for these changes.
+Answerlattice Cloud Function runtime logic changed, so the existing `answerlatticeNightly` and `triggerAnswerlatticeNightly` exports require a QA Functions deploy. The scoped July 20, 2026 attempt stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed. No Firebase rules, indexes, Storage rules, scheduler definition, or app-hosting deployment changed.

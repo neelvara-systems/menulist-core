@@ -1,5 +1,7 @@
 # MenuList Asset And Screenshot Context
 
+**Verified:** 2026-07-20 against the current AssetOS boundary, approved placeholder register, privacy rules, and MenuList/Answerlattice screenshot requirements.
+
 ## Asset Principle
 
 MenuList assets should show one approved public source and current customer-facing output.
@@ -108,4 +110,3 @@ Required Answerlattice dashboard screenshots around MenuList:
 - generic AI dashboard visuals;
 - restaurant-only framing for Answerlattice;
 - describing synthetic generated assets as real customer screenshots.
-

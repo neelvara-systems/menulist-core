@@ -1,6 +1,6 @@
 # AI Failure Escalation - Mobile Support
 
-> **Last Updated:** 2026-07-18
+> **Last Updated:** 2026-07-20
 
 ## End-User Widget
 
@@ -20,6 +20,8 @@ Required behavior:
 ## Founder Review
 
 The created item uses the existing support-ticket workflow. Founder/mobile support for ticket handling belongs to the ticket feature audit and is not reimplemented here.
+
+The authenticated Help Chat browser ticket shortcut and suggestion callback do not exist. A future mobile or desktop handoff must use the same server-authoritative, confirmed, deterministic/idempotent contract. No mobile-only bypass is allowed.
 
 ## External Verification
 

@@ -1,5 +1,6 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "verifiedOn": "2026-07-20",
   "sourceProduct": "MenuList",
   "targetProduct": "Answerlattice",
   "generatedAssets": [
@@ -91,11 +92,15 @@
     }
   ],
   "websiteAssetSlotMap": "answerlattice-website-asset-slots.md",
+  "demoWalkthroughBrief": "demo-walkthrough-brief.md",
+  "websiteAndFaqAssetBrief": "website-and-faq-asset-brief.md",
   "productionReadinessInputs": [
     "production-onboarding/onboarding-runbook.md",
     "production-onboarding/dashboard-demo-data-requirements.md",
     "production-onboarding/product-surface-map.csv",
-    "production-onboarding/production-data-safety.md"
+    "production-onboarding/production-data-safety.md",
+    "production-onboarding/product-boundary-and-exclusions.md",
+    "production-onboarding/owner-pending-actions.md"
   ],
   "futureCaptureFolder": "asset-inputs/future-routed-captures",
   "publicUseRule": "Use generated assets as generated demo visuals only. Use private references for planning only. Use future routed captures only after demo tenant approval and privacy scrub."

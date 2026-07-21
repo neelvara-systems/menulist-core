@@ -1,6 +1,6 @@
 # Answerlattice QA Deployment Runbook
 
-> Last updated: 2026-07-11
+> Last updated: 2026-07-20
 > Environment: QA / staging
 > Firebase project: `answerlattice-qa`
 > Local dev URL: `http://localhost:3000/__answerlattice/`
@@ -247,6 +247,8 @@ Firestore rules and indexes:
 - 2026-07-19: Feature 32 Weekly Digest and founder-guidance hardening added deterministic completed-week preparation inside `answerlatticeNightly`, strict source-completeness/freshness contracts, and exact readiness-authorized weekly insight reads in dedicated and shared rules. Founder Daily Brief and Owner Support Assistant remain six-summary, provider-free, and read-only. Contracts, scheduler emulator, dedicated/shared chat-analytics rule emulators, Functions build, TypeScript, lint, docs, dependency freeze, and broad source gates passed locally. The dedicated `answerlattice-qa` rules command, shared `menulist-qa` rules command, and `functions:answerlatticeNightly` command all stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule or Function revision changed.
 - 2026-07-20: Feature 37 Support Truth Export hardening reserved `support_truth_export_generated` as a server-only audit action in dedicated and shared Firestore rules. Export contracts, both governance-rules emulators, Answerlattice and root TypeScript, focused lint, runtime truth, documentation links, dependency freeze, and diff integrity passed locally. Both `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` and `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive` stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule revision changed.
 - 2026-07-20: Feature 39 Advanced White Label hardening confined the default-off feature to a strict private workspace branding profile, removed arbitrary CSS/font fields, and added exact nested/root validation to dedicated and shared Firestore rules. Focused contracts, both platform-summary rule emulators, Answerlattice and root TypeScript, focused lint, runtime truth, documentation links, dependency freeze, and diff integrity passed locally. Both `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` and `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive` stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule revision changed.
+- 2026-07-20: The final 44-feature/C1-C8 audit passed the complete Answerlattice runtime/emulator aggregate, final readiness, dependency/security, recovery, founder-control, strict TypeScript, Functions, and web SDK gates. It also repaired missing `safePayloadRatio` imports in the Slack/email adapters without restoring removed confidence output. `firebase deploy --only firestore:rules,functions:answerlatticeNightly,functions:processIntegrationEvent --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` and `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive` both stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rule or Function revision changed.
+- 2026-07-20: Scheduler source-window cost telemetry added bounded per-task/per-tenant logical source-operation observations to the existing nightly run-log write and a platform-only monitor projection. Focused telemetry, chat-scheduler, Knowledge Intake summary emulator, complete runtime/emulator, final-readiness, strict TypeScript, lint, dependency-freeze, Functions-build, and diff-integrity gates passed locally. `firebase deploy --only functions:answerlattice:answerlatticeNightly,functions:answerlattice:triggerAnswerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote Function revision changed.
 - 2026-07-11: Extended the same rules target with exact `article_feedback`/`changelog_feedback` actor-item create admission, append-only updates and immutable capped history after coupling source counters and audit items in one transaction. The focused emulator and final 102/102 local readiness gate passed. The required updated-rules command was attempted once more and returned the same Firebase Rules API HTTP 403 before upload; no QA rule revision changed, and the unchanged command must not be retried until IAM changes.
 - 2026-07-11: Moved canonical-answer publication, proposal decisions, drift state and entity merges behind the authenticated Answerlattice governance route, and made drifted or review-required retrieval fail closed before FAQ or RAG. Root TypeScript, focused contract suites, runtime-truth verifier, targeted lint, documentation links, diff integrity, separate-project rules emulation and shared-mode rules emulation passed locally. Demo, Trust, Pricing and USD Growth onboarding returned HTTP 200 from the local product route, and the unauthenticated governance action returned HTTP 401. The required rules-only QA command was attempted once on Node 20.20.2 with Firebase CLI 14.15.1 and failed during the Firebase Rules API test request with HTTP 403 `The caller does not have permission`; no QA rules were uploaded. Retry only after the active account receives the required Firebase Rules permission.
 - 2026-07-11: The Aidbase competitor-response cross-check strengthened strict plan/role/state canonical eligibility, governed fallback stops, canonical-aware cache freshness, monthly paid onboarding and checkout URL admission, retry idempotency, public mobile proof, and the separate KB publish/embed lifecycle. Root TypeScript, targeted lint, Answerlattice runtime truth, Functions build, both governance rules emulators, docs links, dependency freeze, and 390px/1280px browser QA passed locally. The scoped QA Functions command targeting `functions:answerlattice:startGeneration`, `retryGeneration`, `finalizePublish`, `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` completed its predeploy build, then Cloud Resource Manager returned HTTP 403 `The caller does not have permission` for `answerlattice-qa` before upload. No Function changed in QA; do not retry until IAM changes.
@@ -470,6 +472,32 @@ firebase deploy --only functions:answerlattice \
 ```
 
 The predeploy Functions build passed. Cloud Resource Manager then returned HTTP 403 for `answerlattice-qa`, so no Functions or indexes were uploaded. The same project-access blocker from the July 11 audit remains active. When access is restored, deploy Firestore indexes before or with the Functions code because the nightly history query now depends on the mirrored `pId + tId + sId + createdOn DESC` index.
+
+## July 20, 2026 AI Failure Escalation Rule Deployment Attempt
+
+Feature 40 tightened both support-ticket create rule sets so browser clients cannot set server-reserved `source`, `knowledgeCandidate`, `escalationContext`, or `widgetEscalation` fields. Dedicated and shared rules-emulator tests passed before deployment was attempted.
+
+```bash
+firebase deploy --only firestore:rules \
+  --project answerlattice-qa \
+  --config firebase-answerlattice.json \
+  --non-interactive
+```
+
+```bash
+firebase deploy --only firestore:rules \
+  --project menulist-qa \
+  --config firebase.json \
+  --non-interactive
+```
+
+Both commands stopped before upload with:
+
+```text
+Error: Failed to authenticate, have you run firebase login?
+```
+
+No QA rule revision changed. Re-authenticate the Firebase CLI with an account authorized for both QA projects, rerun the same scoped commands, then repeat the dedicated/shared ticket-rules emulator tests and inspect the deployed rules before treating the remote authority boundary as current.
 
 ## Production Setup Checklist
 

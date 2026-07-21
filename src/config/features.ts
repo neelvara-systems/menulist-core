@@ -2687,9 +2687,13 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice Intake Native Connectors
      *
-     * true: Conditional controlled rollout for Notion/GitHub/Drive native connectors.
-     * false: Day-one intake stays file/text/URL based to avoid broad scopes and
-     *        high-volume remote sync costs.
+     * RESERVED ONLY: no app, API, OAuth, credential, provider, sync worker, or
+     * Functions runtime reads this flag. Setting it to true enables nothing.
+     *
+     * Keep false while day-one intake stays file/text/URL/repeated-reply based.
+     * A future single-provider implementation requires a separate docs-first
+     * security, permission, retention, deletion, freshness, cost, and customer-
+     * evidence decision before any runtime consumer or server flag is added.
      */
     ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false,
 
@@ -2755,17 +2759,15 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_GOVERNANCE_UI: true,
 
     /**
-     * Answerlattice Signal Quality Improvements
+     * Answerlattice Signal-Quality Expansion
      *
-     * true: Enhanced signal processing active (severity weighting, time decay,
-     *       batched queries, signal TTL cleanup, answer version history)
-     * false: Basic signal processing (equal weight, no decay, per-entity queries)
+     * RESERVED ONLY: no app or Functions runtime reads this flag. Existing signal
+     * mutation remains governed by ENABLE_ANSWERLATTICE_SIGNAL_MUTATION and uses
+     * transparent evidence counts. Do not add an opaque overall quality score.
+     * Reconsider calibrated ranking only after real proposal acceptance, edit,
+     * rejection, and false-priority evidence shows the current queue is unusable.
      *
-     * Phase 4 of Answerlattice build roadmap — sharpens signal quality after core loop proven.
-     * No new collections. Enhances existing signal mutation + drift engines.
-     *
-     * Requires: ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true
-     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
+     * @see __docs__/answerlattice/signal-quality-scoring/
      */
     ENABLE_ANSWERLATTICE_SIGNAL_QUALITY: false,
 
@@ -3054,9 +3056,10 @@ export const FEATURE_FLAGS = {
     /**
      * Answerlattice AI Failure Escalation
      *
-     * true: Escalation detection in coreSearch() pipeline. Low-confidence answers
-     *       trigger "Still need help?" UI. Tickets created with retrieval debug,
-     *       entity debug, and product context. ESCALATION signals emitted.
+     * true: Escalation detection adds bounded internal metadata to coreSearch().
+     *       It does not activate a customer handoff by itself. Any Help Chat
+     *       ticket flow still requires a server-authoritative, confirmed,
+     *       deterministic, idempotent handoff contract.
      * false: Automatic evaluator-driven suggestions are disabled. The embedded
      *        widget still supports an explicit, user-submitted support request
      *        from a stored widget search result; that path is governed by the

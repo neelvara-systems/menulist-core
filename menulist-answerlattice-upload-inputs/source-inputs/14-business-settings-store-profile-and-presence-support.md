@@ -1,5 +1,7 @@
 # MenuList Business Settings, Store Profile, And Presence Support
 
+**Verified:** 2026-07-20 against current store profile, public presence, working hours, timezone, temporary status, localization, domain, SEO, and external location identity.
+
 ## What Owners Manage In Business Settings
 
 Business Settings and store settings control public business truth across MenuList surfaces.
@@ -21,6 +23,9 @@ Owners may update:
 - customer app settings where enabled;
 - feedback settings;
 - integrations and POS sync settings where enabled.
+- owner dashboard language and public customer/menu language where available;
+- business timezone and date/time preferences;
+- optional owner-confirmed external location binding on the exact store/location.
 
 ## Working Hours
 
@@ -29,9 +34,12 @@ Working hours appear on customer-facing surfaces such as the public menu and Off
 If hours look wrong:
 
 1. Check Business Settings.
-2. Save the corrected hours.
-3. Wait for the public page/menu cache to update.
-4. Escalate if the public surface still shows wrong hours after the normal cache window.
+2. Check the business timezone.
+3. Save the corrected weekly hours or use Temporary Status/today's hours for a one-off closure.
+4. Wait for the public page/menu cache to update.
+5. Escalate if the public surface still shows wrong hours after the normal cache window.
+
+Holiday calendars and date-specific exception managers are not shipped. Do not promise automatic public-holiday closures.
 
 ## Temporary Status
 
@@ -51,3 +59,4 @@ Store SEO fields affect how the menu or public page appears when shared or disco
 
 MenuList is the source for its own public surfaces. Third-party listings require verified integration or manual owner update. For Google or delivery apps, Answerlattice should avoid claiming automatic sync unless the exact account integration is active.
 
+An owner-entered Google Maps URI does not itself prove a stable Place ID. A stable external ID needs separate owner confirmation and attributable source evidence. The binding is internal and reversible; it is not an automatic merge, public listing update, or provider-truth override.

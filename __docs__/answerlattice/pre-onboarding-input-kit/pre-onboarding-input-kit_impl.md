@@ -50,6 +50,8 @@ The master prompt instructs agents to create:
 
 This mirrors the Answerlattice intake package standard proven during the MenuList onboarding work while staying product-agnostic. A client does not need the same repo structure, docs folder, domain model, or public site structure to use it.
 
+The concrete maintained reference is `menulist-answerlattice-upload-inputs/` at the repository root. It remains outside `__docs__/` because operators upload/review its contents as a package. `__docs__/answerlattice/pre-onboarding-input-kit/` remains the governing feature and contract documentation.
+
 Supported source modes:
 
 - `repo_and_website`;

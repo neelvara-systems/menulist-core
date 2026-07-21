@@ -1,6 +1,6 @@
 # Requesting Support From The Answerlattice Widget
 
-> **Last Updated:** 2026-07-18
+> **Last Updated:** 2026-07-20
 
 ## When The Answer Does Not Resolve Your Question
 
@@ -36,4 +36,4 @@ An unresolved support request can create evidence for the founder's review queue
 
 ## Automatic Suggestions
 
-Automatic low-confidence escalation suggestions are rollout-gated and may not be enabled in the current workspace. The explicit **Still need help** support request is a separate widget workflow.
+Automatic evidence-based escalation suggestions are rollout-gated and are not available while the feature flag is disabled. The explicit **Still need help** support request is a separate widget workflow. Authenticated Help Chat does not create an escalation ticket from browser-supplied debug context.

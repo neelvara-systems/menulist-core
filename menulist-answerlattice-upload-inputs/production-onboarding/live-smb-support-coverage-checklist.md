@@ -21,11 +21,18 @@ Do not treat Answerlattice as ready for live MenuList owner support until these 
 - Digital Screens.
 - Customer App, only where enabled.
 - Generated images, descriptions, translations, theme controls, and PDF export.
+- AI extraction, description, translation, image, and AI Menu Manager proposal/approval/receipt behavior.
+- Content-credit reservation, valid-output settlement, exact terminal-failure restoration, and owner-safe Transactions presentation.
 - Special menu switching, presence checklist, customer message templates, and External Menu Sync.
 - Staff Prompt current-menu reference for staff, where enabled.
 - Billing status, payment retry, enhancement packs, and inherited outlet billing.
 - Locations, outlets, master menu, local overrides, and outlet policy.
-- Dashboard, analytics, menu quality signals, feedback, and help center.
+- Today, Setup Progress, Business Health, dashboard/analytics, menu quality signals, feedback, and Help Center.
+- Owner and public localization, language fallbacks, timezone/hour calculations, and RTL behavior.
+- Owner PWA install, connectivity, explicit update behavior, accessibility, and recoverable-failure messaging.
+- Account export/deletion requests, operational roles versus ownership transfer, and logout/session cleanup.
+- Exact location identity, external identifier confidence, aliases, collision prevention, and provider-neutral presence boundaries.
+- Explicit boundaries for disabled Reviews/AI Reply, Owner Referral, Subscription Pause, regulated/allergen assertions, internal tooling, and sister products.
 - Troubleshooting and escalation for public correctness, account access, billing, privacy, and security.
 
 ## Approval Gate
@@ -40,7 +47,7 @@ Before live owner use:
 - Mark risky answers as support-only.
 - Create Answerlattice Product Surfaces for all mapped MenuList routes.
 - Test widget context on MenuList production owner routes.
-- Ask every question in `live-owner-support-test-questions.csv` in Answerlattice and review every answer.
+- Ask all 75 questions in `live-owner-support-test-questions.csv` in Answerlattice and review every answer.
 - Convert unanswered or weak responses into support board cards.
 
 ## Risky Topics That Must Stay Escalation-Gated

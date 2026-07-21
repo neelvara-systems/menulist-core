@@ -15,6 +15,7 @@ The function runs hourly to support global timezones. Tenant discovery reads the
 | Hourly no-due tick | Up to 65 registry reads: one legacy aggregate plus at most 64 shards |
 | Due workspace selection | Same bounded registry read + one lock/state transaction per due workspace |
 | Governance batch | Existing bounded Answerlattice reads, scoped to due tenants only |
+| Source-window telemetry | 0 additional source reads; observes existing query result sizes in memory |
 | Compiled context repair | Only reads approved sources when source versions differ |
 | Owner Daily Governance panel | 1 store read + 2 platformSummary reads + 5 capped scheduler log reads |
 
@@ -33,7 +34,7 @@ The shared app and Functions shard calculators use FNV-1a over the canonical `tI
 | `platformSummary/answerlatticeNightlyState_{tId}_{sId}` | Workspace scheduler state |
 | `platformSummary/answerlatticeNightlyLock_{tId}_{sId}_{YYYY-MM-DD}` | Workspace/date lease |
 | `platformSummary/answerlatticeAiProviderHealth` | Daily Gemini smoke-check status with fixed failure codes and bounded source metadata |
-| `answerlattice_schedulerRunLogs/{runLogId}` | Governance batch result |
+| `answerlattice_schedulerRunLogs/{runLogId}` | Governance batch result, including at most eight compact logical source-window tuples per instrumented tenant task |
 
 ## Cost Rules
 
@@ -43,6 +44,8 @@ The shared app and Functions shard calculators use FNV-1a over the canonical `tI
 - Keep owner scheduler visibility summary-backed; dashboard pages must not scan tenant source collections, run scheduler logic, or expose raw scheduler errors/global run totals.
 - Keep master scheduler state diagnostics bounded; task `lastError` values should be fixed failure codes with source error name/code/status metadata stored separately.
 - Keep scheduler run-log diagnostics bounded; persisted task errors should use fixed scheduler failure codes, source error name/code/status metadata, and bounded detail counts rather than raw exception text.
+- Keep scheduler source-window telemetry inside the existing run-log write, capped to eight unique windows per task and 80 returned windows in the platform monitor. Do not present logical source-operation results as billed Firebase reads or currency.
+- Do not share scheduler snapshots until at least 14 complete daily observations show material repeated work and the source, filters, ordering, limits, freshness, completeness, and failure-isolation contracts are identical.
 - Keep workflow integration adapter-check failures visible as fixed scheduler diagnostics; do not collapse config-read failures into a normal no-adapter skip.
 - Keep provider health diagnostics bounded; failed health checks should store fixed failure codes and source error name/code/status metadata, never raw provider messages.
 - Use Firestore TTL for retention when available instead of nightly empty cleanup scans.

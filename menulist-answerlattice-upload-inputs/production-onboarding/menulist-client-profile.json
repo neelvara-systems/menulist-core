@@ -1,10 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "clientProfileName": "MenuList production client profile for Answerlattice",
   "sourceProduct": "MenuList",
   "targetProduct": "Answerlattice",
-  "clientStatus": "production-onboarding-prep",
+  "verifiedOn": "2026-07-20",
+  "clientStatus": "source_package_ready_production_activation_pending",
   "approvalStatus": {
+    "sourcePackage": "review_ready",
     "productionOnboarding": "requires_founder_and_legal_approval",
     "marketingUse": "requires_explicit_asset_approval",
     "publicScreenshotUse": "requires_privacy_scrub_and_final_signoff"
@@ -12,16 +14,19 @@
   "productIdentity": {
     "name": "MenuList",
     "publicWebsite": "https://menulist.ai",
-    "checkedWebsiteContentSource": "https://www.menulist.online",
-    "domainNote": "Repo deployment docs define menulist.ai as production canonical and menulist.online as preview/staging or alias. The website-content audit used menulist.online because it was the requested live website source. Confirm the active production host before widget enablement or public screenshots.",
-    "productionApp": "https://menulist.ai",
-    "category": "restaurant business truth and public menu infrastructure",
-    "summary": "MenuList keeps a restaurant's menu and public business surfaces current from owner-approved source truth."
+    "canonicalApp": "https://menulist.ai",
+    "previewOrAliasContext": [
+      "https://menulist.online",
+      "https://www.menulist.online"
+    ],
+    "domainRule": "menulist.ai is canonical product and website identity. Preview or alias hosts are deployment evidence only and must not replace canonical Answerlattice source identity.",
+    "category": "owner-approved customer-facing business truth and public menu infrastructure",
+    "summary": "MenuList keeps a business menu and public business surfaces current from owner-approved source truth."
   },
   "answerlatticeOnboardingIntent": {
-    "primaryUse": "real Answerlattice production client onboarding",
-    "secondaryUse": "Answerlattice dashboard demo and website screenshot source",
-    "marketingStory": "MenuList is the concrete product example for Answerlattice because it has source knowledge, owner review, public output, product surfaces, widget context, and governance-sensitive claims."
+    "primaryUse": "real Answerlattice production client onboarding and live MenuList owner support",
+    "secondaryUse": "reviewed Answerlattice dashboard demo and website screenshot source",
+    "marketingStory": "MenuList is a concrete Answerlattice example because it has source knowledge, owner review, public output, product surfaces, widget context, governed AI operations, localization, lifecycle boundaries, and risk-sensitive claims."
   },
   "environmentTargets": {
     "menulistProductionHost": "https://menulist.ai",
@@ -33,6 +38,7 @@
     "workspace_created",
     "license_active",
     "knowledge_imported",
+    "source_evidence_reviewed",
     "help_center_ready",
     "product_entities_reviewed",
     "canonical_answers_reviewed",
@@ -41,20 +47,30 @@
     "allowed_origins_locked",
     "widget_seen_in_product",
     "page_context_received",
+    "answer_tests_passed",
     "support_signal_loop_tested"
   ],
   "requiredLiveSupportCoverage": [
-    "account_access_and_onboarding",
-    "menu_creation_import_review_and_editor",
-    "public_menu_qr_sharing_and_obp",
-    "business_settings_store_profile_and_hours",
-    "menu_kit_digital_screens_and_customer_app",
-    "billing_subscription_payments_and_enhancements",
-    "staff_roles_locations_and_outlet_policy",
-    "dashboard_analytics_feedback_and_help_center",
-    "troubleshooting_escalation_and_risk_review"
+    "product_identity_and_boundaries",
+    "account_access_onboarding_logout_and_lifecycle",
+    "menu_creation_extraction_import_review_and_editor",
+    "project_save_publish_cache_and_pricing",
+    "ai_menu_manager",
+    "descriptions_translations_images_and_ai_transactions",
+    "public_menu_qr_sharing_obp_and_stable_urls",
+    "business_settings_hours_timezone_temp_status_and_public_presence",
+    "owner_and_public_localization_date_time_currency_and_rtl",
+    "menu_kit_print_pdf_screens_customer_app_and_communications",
+    "today_setup_progress_business_health_and_analytics",
+    "feedback_help_center_and_escalation",
+    "staff_roles_ownership_sessions_locations_and_outlet_policy",
+    "billing_subscription_payments_enhancements_and_paid_cycle_access",
+    "public_discovery_external_sync_public_api_and_presence_boundaries",
+    "accessibility_owner_pwa_connectivity_and_failure_recovery",
+    "legal_privacy_security_refunds_and_contact",
+    "disabled_internal_and_separate_product_exclusions"
   ],
-  "liveSupportEnablementRule": "Do not enable Answerlattice for live MenuList SMB owners until source files 01-26 are imported, common canonical answers are reviewed, risky topics are escalation-gated, and the owner-style test questions have been tested.",
+  "liveSupportEnablementRule": "Do not enable Answerlattice for live MenuList SMB owners until source files 01-26 are imported, all 75 owner-style questions are reviewed, common canonical answers are approved, risky topics are escalation-gated, exact product surfaces are mapped, and current account/provider/deployment state is verified.",
   "widgetInstall": {
     "menulistEnvVar": "NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY",
     "optionalScriptOverrideEnvVar": "NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC",
@@ -69,19 +85,31 @@
       "/answerlattice",
       "/answerlattice/*",
       "/__answerlattice",
-      "/__answerlattice/*"
+      "/__answerlattice/*",
+      "/growth-kits",
+      "/growth-kits/*",
+      "/ops",
+      "/ops/*",
+      "/platform",
+      "/platform/*",
+      "/reseller",
+      "/reseller/*"
     ],
-    "mobileVisibility": "hide",
-    "contextMode": "safe_high_level_route_context_only"
+    "mobileVisibility": "hide_on_coarse_pointer_or_max_767px",
+    "mobileSupportEntry": "MenuList MobileShell Help",
+    "contextMode": "approved_owner_route_allowlist_with_generic_detail_context"
   },
   "forbiddenProductionDataForAnswerlatticeAssets": [
     "tenant_ids",
     "store_ids",
     "project_ids",
+    "owner_or_staff_identifiers",
     "owner_emails",
     "owner_phone_numbers",
     "customer_records",
     "payment_details",
+    "private_transaction_or_provider_ids",
+    "raw_ai_prompts_or_outputs",
     "support_messages_with_private_user_data",
     "raw_logs",
     "tokens",
@@ -89,5 +117,5 @@
     "debug_panels",
     "service_account_content"
   ],
-  "assetReadinessRule": "Use real MenuList-on-Answerlattice dashboard screenshots only after production onboarding, approval, privacy scrub, and final founder signoff. Until then, generated assets and private captures remain placeholders or planning references."
+  "assetReadinessRule": "Use real MenuList-on-Answerlattice dashboard screenshots only after production onboarding, explicit approval, privacy scrub, and final founder signoff. Until then, generated assets and private captures remain labeled placeholders or planning references."
 }

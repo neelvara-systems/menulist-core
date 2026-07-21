@@ -13,6 +13,12 @@
 - Duplicate scheduled/manual overlap skips when the task lease is held.
 - Manual trigger calls the same `runAnswerlatticeMasterScheduler()` path.
 - Existing `answerlatticeNightly` export name still exists.
+- Each instrumented tenant task shares one observer and persists its bounded source-window snapshot on both success and failure.
+- Duplicate source/window observations aggregate operation count, documents returned, configured limits, and saturation.
+- Invalid observations are ignored and more than eight unique windows cannot expand a task run log.
+- Source-window telemetry adds no Firestore query or extra run-log write.
+- The platform intake monitor validates tuple shape, returns at most 80 windows, and labels values as logical observations rather than billed reads.
+- `npm run test:answerlattice-scheduler-read-telemetry` covers aggregation, saturation, invalid input, the eight-window cap, and snapshot isolation.
 
 ## Settings
 

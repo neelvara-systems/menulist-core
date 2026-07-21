@@ -11,7 +11,6 @@ import {
     updateChatSession,
     uploadChatImage,
 } from '@database/chatSessions';
-import { FEATURE_FLAGS } from '@config/features';
 import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
 import { resolveAnswerlatticeHelpChatDraftScope } from '@lib/answerlattice/helpChatDrafts';
 import { createRuntimeId } from '@lib/runtime/randomId';
@@ -162,42 +161,6 @@ export function useChatHandlers({
     // Handler: Send Message
     // targetMode: Optional mode override to fix race condition with suggested questions
     const onSendMessage = async (content: string, image?: UserUploadedFileType, targetMode?: ChatMode) => {
-        // AI Failure Escalation (Item #8) — S3: Detect explicit escalation intent BEFORE calling API
-        // If user types "talk to human", "create ticket", etc., skip search and offer ticket creation
-        if (content && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION) {
-            const { ESCALATION_INTENT_PATTERNS } = await import('@lib/answerlattice/escalationTypes');
-            const isExplicitEscalation = ESCALATION_INTENT_PATTERNS.some(p => p.test(content));
-            if (isExplicitEscalation) {
-                // Build a synthetic escalation message and trigger ticket creation
-                const syntheticMessage: ChatMessage = {
-                    id: createRuntimeId('msg_escalation'),
-                    role: 'assistant',
-                    createdOn: Timestamp.now(),
-                        escalation: {
-                            suggested: true,
-                            type: 'hard',
-                            triggers: ['explicit_user_request'],
-                            context: {
-                                triggerTypes: ['explicit_user_request'],
-                                query: content,
-                                conversationId: activeSession?.id || undefined,
-                                productContext: productContext ? {
-                                    contextKey: String(productContext.contextKey || ''),
-                                    feature: String(productContext.feature || ''),
-                                    page: String(productContext.page || ''),
-                                    workflow: String(productContext.workflow || ''),
-                                    plan: String(productContext.plan || ''),
-                                    userRole: String(productContext.userRole || ''),
-                                } : undefined,
-                                escalatedAt: new Date().toISOString(),
-                            },
-                        },
-                };
-                handleEscalate(syntheticMessage);
-                return;
-            }
-        }
-
         // 🔒 FIX: Prevent rapid sends while previous request is processing
         if (isProcessing()) {
             antMessage.warning('Please wait for the previous message to complete');
@@ -764,64 +727,6 @@ export function useChatHandlers({
         setCurrentMode('assistant');
     };
 
-    // Handler: AI Failure Escalation — create support ticket from failed AI answer (Item #8)
-    const handleEscalate = async (message: ChatMessage) => {
-        if (!message.escalation?.context) return;
-
-        try {
-            const ticketsDal: typeof import('@database/tickets/index') = await import('@database/tickets/index');
-            const {
-                SUPPORT_TICKET_CATEGORY,
-                SUPPORT_TICKET_PRIORITY,
-                SUPPORT_TICKET_STATUS,
-            } = await import('@type/supportTicket');
-
-            const escalationContext = {
-                ...message.escalation.context,
-                conversationId: activeSession?.id || undefined,
-            };
-
-            const createdTicket = await ticketsDal.addTicket({
-                subject: `AI couldn't help: ${escalationContext.query?.slice(0, 100) || 'Support needed'}`,
-                category: SUPPORT_TICKET_CATEGORY.GENERAL_QUESTION,
-                priority: SUPPORT_TICKET_PRIORITY.NORMAL,
-                message: escalationContext.query || '',
-                status: SUPPORT_TICKET_STATUS.OPEN,
-                documents: [],
-                platformNotes: '',
-                platformTags: [],
-                contextKeys: message.relatedContent?.key ? [message.relatedContent.key] : [],
-                statuses: [{
-                    status: SUPPORT_TICKET_STATUS.OPEN,
-                    timestamp: Timestamp.now(),
-                    createdBy: {
-                        id: String(loggedInSession?.user?.id || loggedInSession?.uId || ''),
-                        name: String(loggedInSession?.user?.name || loggedInSession?.user?.email || ''),
-                        email: String(loggedInSession?.user?.email || ''),
-                    },
-                    remark: 'Created after the user requested human support.',
-                }],
-                source: 'ai_escalation',
-                knowledgeCandidate: true,
-                escalationContext,
-                clientDetails: {
-                    storeName: loggedInSession?.storeName || '',
-                    tenantName: loggedInSession?.tenantName || '',
-                    email: loggedInSession?.user?.email || '',
-                    phone: '',
-                },
-            } as any);
-            ticketsDal.assertSupportTicketCreateSucceeded(
-                createdTicket,
-                'help_chat_escalation_ticket_create_rejected',
-            );
-
-            antMessage.success('Support ticket created.');
-        } catch {
-            antMessage.error('Failed to create support ticket. Please try again.');
-        }
-    };
-
     // Handler: Delete Session
     const handleDeleteSession = async (sessionId: string) => {
         const wasActiveSession = sessionId === activeSessionId;
@@ -938,7 +843,6 @@ export function useChatHandlers({
         handleFeedbackSubmit,
         handleRenameSession,
         handleStartFollowUp,
-        handleEscalate,
         handleDeleteSession,
         handleClearAllData
     };
