@@ -1,3 +1,4 @@
+import { use } from "react";
 /**
  * Public Menu Entry — Preview Page
  * 
@@ -28,10 +29,11 @@ export const metadata: Metadata = {
 };
 
 interface PreviewPageProps {
-    params: { draftId: string };
+    params: Promise<{ draftId: string }>;
 }
 
-export default function PreviewPage({ params }: PreviewPageProps) {
+export default function PreviewPage(props: PreviewPageProps) {
+    const params = use(props.params);
     const t = useTranslations('Website');
 
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {

@@ -1,11 +1,11 @@
 'use client';
 
 import { Flex, Typography, theme } from 'antd';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 const { Text } = Typography;
 
-const containerVariants = {
+const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
@@ -16,7 +16,7 @@ const containerVariants = {
     },
 };
 
-const digitVariants = {
+const digitVariants: Variants = {
     hidden: { x: 30, opacity: 0 },
     visible: {
         x: 0,

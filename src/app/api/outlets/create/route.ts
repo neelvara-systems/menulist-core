@@ -672,7 +672,7 @@ export const POST = withAuth(async (request, session) => {
                 invalidateAssistant: (effectStoreId, effectTenantId) => (
                     invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
                 ),
-                revalidate: (tag) => revalidateTag(tag),
+                revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
                 touchScreen: (effectStoreId) => touchDigitalScreenContentVersionForStoreServer(
                     effectStoreId,
                     effectStoreId === newStoreDocumentId ? 'outletCreate' : 'outletCreateMasterPromoted',

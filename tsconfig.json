@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext", "ES2021"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+      "ES2021"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
@@ -9,10 +14,10 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "tsBuildInfoFile": ".next/cache/tsconfig.tsbuildinfo",
     "plugins": [
@@ -22,40 +27,105 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@config/*": ["src/config/*"],
-      "@antdComponent/*": ["src/components/antdComponent/*"],
-      "@molecules/*": ["src/components/molecules/*"],
-      "@atoms/*": ["src/components/atoms/*"],
-      "@organisms/*": ["src/components/organisms/*"],
-      "@sections/*": ["src/components/organisms/sections/*"],
-      "@template/*": ["src/components/templates/*"],
-      "@data/*": ["src/data/*"],
-      "@svgs/*": ["src/components/molecules/svgElements/*"],
-      "@atomsCSS/*": ["public/styles/components/atoms/*"],
-      "@moleculesCSS/*": ["public/styles/components/molecules/*"],
-      "@organismsCSS/*": ["public/styles/components/organisms/*"],
-      "@templatesCSS/*": ["public/styles/components/templates/*"],
-
-      "@styles/*": ["public/styles/*"],
-      "@constant/*": ["src/constants/*"],
-      "@type/*": ["src/types/*"],
-      "@type": ["src/types"],
-      "@hook/*": ["src/hooks/*"],
-      "@reduxStore/*": ["src/redux/store/*"],
-      "@reduxSlices/*": ["src/redux/slices/*"],
-      "@axiosClient/*": ["src/lib/axios/*"],
-      "@database/*": ["src/database/*"],
-      "@lib/*": ["src/lib/*"],
-      "@providers/*": ["src/providers/*"],
-      "@util/*": ["src/utils/*"],
-      "@apiService/*": ["src/apiService/*"],
-      "@services/*": ["src/services/*"],
-      "@assets/*": ["public/assets/*"],
-      "@shadcncomponents/*": ["src/components/website/shadcn/ui/*"],
-      "@shadcnhooks/*": ["src/components/website/shadcn/hooks/*"],
-      "@shadcnlib/*": ["src/components/website/shadcn/lib/*"],
-      "logs/*": ["src/lib/logs/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@config/*": [
+        "src/config/*"
+      ],
+      "@antdComponent/*": [
+        "src/components/antdComponent/*"
+      ],
+      "@molecules/*": [
+        "src/components/molecules/*"
+      ],
+      "@atoms/*": [
+        "src/components/atoms/*"
+      ],
+      "@organisms/*": [
+        "src/components/organisms/*"
+      ],
+      "@sections/*": [
+        "src/components/organisms/sections/*"
+      ],
+      "@template/*": [
+        "src/components/templates/*"
+      ],
+      "@data/*": [
+        "src/data/*"
+      ],
+      "@svgs/*": [
+        "src/components/molecules/svgElements/*"
+      ],
+      "@atomsCSS/*": [
+        "public/styles/components/atoms/*"
+      ],
+      "@moleculesCSS/*": [
+        "public/styles/components/molecules/*"
+      ],
+      "@organismsCSS/*": [
+        "public/styles/components/organisms/*"
+      ],
+      "@templatesCSS/*": [
+        "public/styles/components/templates/*"
+      ],
+      "@styles/*": [
+        "public/styles/*"
+      ],
+      "@constant/*": [
+        "src/constants/*"
+      ],
+      "@type/*": [
+        "src/types/*"
+      ],
+      "@type": [
+        "src/types"
+      ],
+      "@hook/*": [
+        "src/hooks/*"
+      ],
+      "@reduxStore/*": [
+        "src/redux/store/*"
+      ],
+      "@reduxSlices/*": [
+        "src/redux/slices/*"
+      ],
+      "@axiosClient/*": [
+        "src/lib/axios/*"
+      ],
+      "@database/*": [
+        "src/database/*"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ],
+      "@providers/*": [
+        "src/providers/*"
+      ],
+      "@util/*": [
+        "src/utils/*"
+      ],
+      "@apiService/*": [
+        "src/apiService/*"
+      ],
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@assets/*": [
+        "public/assets/*"
+      ],
+      "@shadcncomponents/*": [
+        "src/components/website/shadcn/ui/*"
+      ],
+      "@shadcnhooks/*": [
+        "src/components/website/shadcn/hooks/*"
+      ],
+      "@shadcnlib/*": [
+        "src/components/website/shadcn/lib/*"
+      ],
+      "logs/*": [
+        "src/lib/logs/*"
+      ]
     },
     "strictNullChecks": false
   },
@@ -64,7 +134,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "middleware.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -74,5 +144,11 @@
     "functions-signaldesk",
     "sites",
     "src/__tests__"
-  ]
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS",
+      "moduleResolution": "Node"
+    }
+  }
 }

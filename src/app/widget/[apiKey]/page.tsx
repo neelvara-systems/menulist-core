@@ -7,9 +7,10 @@ export const metadata: Metadata = {
 };
 
 interface WidgetPageProps {
-    params: { apiKey: string };
+    params: Promise<{ apiKey: string }>;
 }
 
-export default function WidgetPage({ params }: WidgetPageProps) {
+export default async function WidgetPage(props: WidgetPageProps) {
+    const params = await props.params;
     return <WidgetClient apiKey={params.apiKey} />;
 }

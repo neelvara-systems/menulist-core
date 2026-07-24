@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { fabric } from "fabric";
+import * as fabric from "fabric";
 import {
     CREATIVE_EDITOR_SCHEMA_VERSION,
     CreativeEditorDocument,
@@ -20,7 +20,7 @@ import {
 } from "./types";
 
 export type FabricStatic = typeof fabric;
-export type CreativeFabricObject = fabric.Object & {
+export type CreativeFabricObject = fabric.FabricObject & {
     arrowStyle?: CreativeEditorLineArrowStyle;
     creativeEditorType?: CreativeEditorElementType | "visibleWatermark" | "watermark" | "workspace";
     darkColor?: string;
@@ -44,7 +44,7 @@ export type CreativeFabricObject = fabric.Object & {
     printFrameLocked?: boolean;
     qrMargin?: number;
     sourceRefs?: CreativeEditorSourceRef[];
-    src?: string;
+    creativeEditorSrc?: string;
     strokeLineCap?: CreativeEditorStrokeLineCap;
     value?: string;
 };
@@ -75,7 +75,7 @@ export const CREATIVE_EDITOR_FABRIC_ATTRIBUTES = [
     "printFrameLocked",
     "qrMargin",
     "sourceRefs",
-    "src",
+    "creativeEditorSrc",
     "strokeLineCap",
     "value",
 ];
@@ -98,24 +98,24 @@ type FabricTextPrototypeWithBaselinePatch = {
     ) => void;
 };
 
-export const isWorkspaceObject = (object?: fabric.Object | null) => (
+export const isWorkspaceObject = (object?: fabric.FabricObject | null) => (
     Boolean((object as CreativeFabricObject | undefined)?.creativeEditorType === "workspace")
 );
 
-export const isWatermarkObject = (object?: fabric.Object | null) => (
+export const isWatermarkObject = (object?: fabric.FabricObject | null) => (
     Boolean((object as CreativeFabricObject | undefined)?.creativeEditorType === "watermark")
 );
 
-export const isVisibleWatermarkObject = (object?: fabric.Object | null) => (
+export const isVisibleWatermarkObject = (object?: fabric.FabricObject | null) => (
     Boolean((object as CreativeFabricObject | undefined)?.creativeEditorType === "visibleWatermark")
 );
 
-export const isEditableFabricObject = (object?: fabric.Object | null) => (
+export const isEditableFabricObject = (object?: fabric.FabricObject | null) => (
     Boolean(object && !isWorkspaceObject(object) && !isWatermarkObject(object) && !isVisibleWatermarkObject(object))
 );
 
 function patchFabricTextBaseline(fabricApi: FabricStatic) {
-    const prototype = fabricApi.Text?.prototype as FabricTextPrototypeWithBaselinePatch | undefined;
+    const prototype = fabricApi.FabricText?.prototype as FabricTextPrototypeWithBaselinePatch | undefined;
     if (!prototype || prototype.__creativeEditorBaselinePatched || typeof prototype._setTextStyles !== "function") return;
 
     prototype._setTextStyles = function patchedSetTextStyles(
@@ -138,10 +138,12 @@ function patchFabricTextBaseline(fabricApi: FabricStatic) {
 }
 
 export function configureCreativeFabric(fabricApi: FabricStatic, selectionColor = DEFAULT_SELECTION_COLOR) {
-    (fabricApi.Object as unknown as { NUM_FRACTION_DIGITS: number }).NUM_FRACTION_DIGITS = 4;
-    (fabricApi as unknown as { SHARED_ATTRIBUTES: string[] }).SHARED_ATTRIBUTES = CREATIVE_EDITOR_FABRIC_ATTRIBUTES;
+    fabricApi.config.NUM_FRACTION_DIGITS = 4;
+    fabricApi.FabricObject.customProperties = CREATIVE_EDITOR_FABRIC_ATTRIBUTES;
+    fabricApi.FabricObject.ownDefaults.originX = "left";
+    fabricApi.FabricObject.ownDefaults.originY = "top";
     patchFabricTextBaseline(fabricApi);
-    fabricApi.Object.prototype.set({
+    fabricApi.FabricObject.prototype.set({
         borderColor: selectionColor,
         borderOpacityWhenMoving: 1,
         borderScaleFactor: 2,
@@ -191,7 +193,7 @@ export function findWorkspaceObject(canvas: fabric.Canvas) {
 
 export function keepWorkspaceAtBack(canvas: fabric.Canvas) {
     const workspace = findWorkspaceObject(canvas);
-    if (workspace) workspace.sendToBack();
+    if (workspace) canvas.sendObjectToBack(workspace);
 }
 
 function setFabricCanvasBackground(canvas: fabric.Canvas, color: string) {
@@ -327,33 +329,33 @@ function hasAdjustmentValue(value: number | undefined, defaultValue = 0) {
 
 function applyImageFilter(
     fabricApi: FabricStatic,
-    image: fabric.Image,
+    image: fabric.FabricImage,
     filter?: CreativeEditorImageFilter,
     adjustments?: CreativeEditorImageFilterAdjustments,
 ) {
     const nextFilter = filter || "none";
-    const filtersApi = fabricApi.Image.filters as unknown as {
-        BlackWhite?: new () => fabric.IBaseFilter;
-        Blur?: new (options: { blur: number }) => fabric.IBaseFilter;
-        Brightness?: new (options: { brightness: number }) => fabric.IBaseFilter;
-        Brownie?: new () => fabric.IBaseFilter;
-        Contrast?: new (options: { contrast: number }) => fabric.IBaseFilter;
-        Gamma?: new (options: { gamma: [number, number, number] }) => fabric.IBaseFilter;
-        Grayscale?: new (options?: { mode?: "average" | "lightness" | "luminosity" }) => fabric.IBaseFilter;
-        HueRotation?: new (options: { rotation: number }) => fabric.IBaseFilter;
-        Invert?: new () => fabric.IBaseFilter;
-        Kodachrome?: new () => fabric.IBaseFilter;
-        Noise?: new (options: { noise: number }) => fabric.IBaseFilter;
-        Pixelate?: new (options: { blocksize: number }) => fabric.IBaseFilter;
-        Polaroid?: new () => fabric.IBaseFilter;
-        RemoveColor?: new (options: { color: string; distance: number }) => fabric.IBaseFilter;
-        Saturation?: new (options: { saturation: number }) => fabric.IBaseFilter;
-        Sepia?: new () => fabric.IBaseFilter;
-        Technicolor?: new () => fabric.IBaseFilter;
-        Vibrance?: new (options: { vibrance: number }) => fabric.IBaseFilter;
-        Vintage?: new () => fabric.IBaseFilter;
+    const filtersApi = fabricApi.filters as unknown as {
+        BlackWhite?: new () => fabric.filters.BaseFilter<string>;
+        Blur?: new (options: { blur: number }) => fabric.filters.BaseFilter<string>;
+        Brightness?: new (options: { brightness: number }) => fabric.filters.BaseFilter<string>;
+        Brownie?: new () => fabric.filters.BaseFilter<string>;
+        Contrast?: new (options: { contrast: number }) => fabric.filters.BaseFilter<string>;
+        Gamma?: new (options: { gamma: [number, number, number] }) => fabric.filters.BaseFilter<string>;
+        Grayscale?: new (options?: { mode?: "average" | "lightness" | "luminosity" }) => fabric.filters.BaseFilter<string>;
+        HueRotation?: new (options: { rotation: number }) => fabric.filters.BaseFilter<string>;
+        Invert?: new () => fabric.filters.BaseFilter<string>;
+        Kodachrome?: new () => fabric.filters.BaseFilter<string>;
+        Noise?: new (options: { noise: number }) => fabric.filters.BaseFilter<string>;
+        Pixelate?: new (options: { blocksize: number }) => fabric.filters.BaseFilter<string>;
+        Polaroid?: new () => fabric.filters.BaseFilter<string>;
+        RemoveColor?: new (options: { color: string; distance: number }) => fabric.filters.BaseFilter<string>;
+        Saturation?: new (options: { saturation: number }) => fabric.filters.BaseFilter<string>;
+        Sepia?: new () => fabric.filters.BaseFilter<string>;
+        Technicolor?: new () => fabric.filters.BaseFilter<string>;
+        Vibrance?: new (options: { vibrance: number }) => fabric.filters.BaseFilter<string>;
+        Vintage?: new () => fabric.filters.BaseFilter<string>;
     };
-    const filters: fabric.IBaseFilter[] = [];
+    const filters: fabric.filters.BaseFilter<string>[] = [];
     if (nextFilter === "blackwhite" && filtersApi.BlackWhite) filters.push(new filtersApi.BlackWhite());
     if (nextFilter === "brownie" && filtersApi.Brownie) filters.push(new filtersApi.Brownie());
     if (nextFilter === "grayscale" && filtersApi.Grayscale) filters.push(new filtersApi.Grayscale({ mode: adjustments?.grayscaleMode || "average" }));
@@ -393,8 +395,8 @@ function applyImageFilter(
     }
     image.filters = filters;
     image.applyFilters();
-    (image as CreativeFabricObject).imageFilter = nextFilter;
-    (image as CreativeFabricObject).imageFilterAdjustments = adjustments;
+    (image as unknown as CreativeFabricObject).imageFilter = nextFilter;
+    (image as unknown as CreativeFabricObject).imageFilterAdjustments = adjustments;
 }
 
 const getDashArray = (strokeStyle?: CreativeEditorStrokeStyle, strokeWidth = 1) => {
@@ -443,7 +445,7 @@ const serializeFabricPath = (pathValue: fabric.Path["path"] | unknown) => {
         .join(" ");
 };
 
-function scaleObjectToElementSize(object: fabric.Object, width: number, height: number) {
+function scaleObjectToElementSize(object: fabric.FabricObject, width: number, height: number) {
     const naturalWidth = object.width || width;
     const naturalHeight = object.height || height;
     object.set({
@@ -452,24 +454,15 @@ function scaleObjectToElementSize(object: fabric.Object, width: number, height: 
     });
 }
 
-async function loadFabricImage(fabricApi: FabricStatic, src: string, options: fabric.IObjectOptions = {}) {
-    return new Promise<fabric.Image>((resolve, reject) => {
-        const imageOptions = src.startsWith("data:") || src.startsWith("blob:")
-            ? undefined
-            : { crossOrigin: "anonymous" as const };
-        fabricApi.Image.fromURL(
-            src,
-            (image) => {
-                if (!image) {
-                    reject(new Error("Image could not be loaded."));
-                    return;
-                }
-                image.set(options);
-                resolve(image);
-            },
-            imageOptions,
-        );
-    });
+async function loadFabricImage(
+    fabricApi: FabricStatic,
+    src: string,
+    options: Partial<fabric.ImageProps> = {},
+) {
+    const imageOptions = src.startsWith("data:") || src.startsWith("blob:")
+        ? undefined
+        : { crossOrigin: "anonymous" as const };
+    return fabricApi.FabricImage.fromURL(src, imageOptions, options);
 }
 
 async function buildOutlinedImageSrc(element: Extract<CreativeEditorElement, { type: "image" }>) {
@@ -586,7 +579,7 @@ function createPathTextObject(fabricApi: FabricStatic, element: CreativeEditorPa
         top: textTop,
         underline: Boolean(element.underline),
         width: element.width,
-    } as fabric.ITextboxOptions) as unknown as CreativeFabricObject & { path?: fabric.Path };
+    } as Partial<fabric.TextboxProps>) as unknown as CreativeFabricObject & { path?: fabric.Path };
     text.height = Math.max(1, element.height - textTop);
     if (element.pathVisible !== false) {
         const guide = new fabricApi.Path(element.path, {
@@ -616,7 +609,7 @@ async function createObjectFromElement(
     fabricApi: FabricStatic,
     element: CreativeEditorElement,
 ): Promise<CreativeFabricObject> {
-    const baseOptions: fabric.IObjectOptions = {
+    const baseOptions: Partial<fabric.FabricObjectProps> = {
         left: element.x,
         objectCaching: false,
         top: element.y,
@@ -715,8 +708,8 @@ async function createObjectFromElement(
             : await buildOutlinedImageSrc(element);
         const image = await loadFabricImage(fabricApi, src, baseOptions);
         scaleObjectToElementSize(image, element.width, element.height);
-        object = image as CreativeFabricObject;
-        object.src = element.type === "image" ? element.src : src;
+        object = image as unknown as CreativeFabricObject;
+        object.creativeEditorSrc = element.type === "image" ? element.src : src;
         if (element.type === "image") {
             image.set({
                 stroke: element.stroke || "transparent",
@@ -756,7 +749,7 @@ function buildWatermarkObject(fabricApi: FabricStatic, documentValue: CreativeEd
             strokeWidth: 4,
             top: 0,
         }),
-        new fabricApi.Text(productLabel, {
+        new fabricApi.FabricText(productLabel, {
             fill: "#111111",
             fontFamily: "Inter, Arial, sans-serif",
             fontSize: 16,
@@ -811,14 +804,14 @@ function buildVisibleWatermarkObjects(
         hasControls: false,
         opacity: watermark.opacity,
         selectable: false,
-    } satisfies fabric.ITextOptions;
+    } satisfies Partial<fabric.TextProps>;
     if (watermark.position === "tiled") {
         const objects: CreativeFabricObject[] = [];
         const stepX = Math.max(260, watermark.text.length * watermark.fontSize * 0.78);
         const stepY = Math.max(150, watermark.fontSize * 5);
         for (let top = 36; top < documentValue.canvas.height; top += stepY) {
             for (let left = -40; left < documentValue.canvas.width; left += stepX) {
-                const item = new fabricApi.Text(watermark.text, {
+                const item = new fabricApi.FabricText(watermark.text, {
                     ...baseTextOptions,
                     angle: watermark.rotation ?? -24,
                     left,
@@ -832,7 +825,7 @@ function buildVisibleWatermarkObjects(
         return objects;
     }
     const position = getVisibleWatermarkPosition(documentValue, watermark);
-    const item = new fabricApi.Text(watermark.text, {
+    const item = new fabricApi.FabricText(watermark.text, {
         ...baseTextOptions,
         angle: watermark.rotation || 0,
         left: position.left,
@@ -881,7 +874,7 @@ export async function loadDocumentIntoFabricCanvas(params: {
 }
 
 const getCommonElementData = (object: CreativeFabricObject) => {
-    const boundingRect = object.getBoundingRect(true, true);
+    const boundingRect = object.getBoundingRect();
     const shadow = object.shadow && typeof object.shadow === "object"
         ? {
             blur: Math.round(object.shadow.blur || 0),
@@ -1108,7 +1101,7 @@ export function serializeFabricCanvasToDocument(
                 outlineEnabled: object.outlineEnabled,
                 outlineOnly: object.outlineOnly,
                 outlineWidth: object.outlineWidth,
-                src: object.src || (object as fabric.Image).getSrc?.() || "",
+                src: object.creativeEditorSrc || (object as unknown as fabric.FabricImage).getSrc?.() || "",
                 stroke,
                 strokeLineCap: strokeLineCap as CreativeEditorStrokeLineCap,
                 strokeStyle,

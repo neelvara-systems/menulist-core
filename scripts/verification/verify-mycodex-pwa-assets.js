@@ -162,7 +162,7 @@ function verifyTransparentLogoAssets() {
 function verifyMetadataAndRegistration() {
   const layout = read('src/app/sites/mycodex/layout.tsx');
   const serviceWorkerRegister = read('src/components/ServiceWorkerRegister.tsx');
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
   const domainResolver = read('src/lib/multiTenant/domainResolver.ts');
   const auth = read('src/lib/mycodex/auth.ts');
   const productIds = read('src/constants/product.ts');

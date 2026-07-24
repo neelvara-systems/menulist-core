@@ -6,7 +6,8 @@
 | --- | --- |
 | Shared module has no CampaignCue imports except provider folder | Base editor stays product-neutral. |
 | Feature flags exist | Shared and CampaignCue flags can disable editor surfaces. |
-| Fabric dependency exists | `fabric@5.3.0` and matching types are installed for the shared editor runtime. |
+| Fabric dependency exists | `fabric@7.4.0` is installed and its bundled TypeScript declarations are used; `@types/fabric` stays absent. |
+| Fabric 7 runtime boundary | `npm run verify:creative-editor-smoke` checks left/top origin compatibility, custom clone metadata, Promise APIs, filters, coordinate-safe group/ungroup, collection stacking, PNG export, and async disposal. |
 | CampaignCue verifier includes editor checks | `npm run verify:campaigncue` catches missing integration. |
 | Design Cue panel is neutral | `DesignCuePanel.tsx` imports shared editor types only and no CampaignCue product types. |
 | Bounded failure notices | `npm run verify:campaigncue` confirms editor runtime/provider/callback failures use `showCreativeEditorFailure()` and do not surface raw exception text in notices or AI findings. |

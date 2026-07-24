@@ -23,7 +23,7 @@ export default function SearchBarOutput({
 }: SearchBarOutputProps) {
     const [query, setQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
-    const timeoutRef = useRef<NodeJS.Timeout>();
+    const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     useEffect(() => {
         return () => {

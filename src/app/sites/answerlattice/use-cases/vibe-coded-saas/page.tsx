@@ -8,9 +8,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/use-cases/ai-built-saas' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -19,10 +19,10 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function VibeCodedSaasUseCasePage() {
+export default async function VibeCodedSaasUseCasePage() {
     return (
         <UseCaseLandingPage
-            basePath={getBasePath()}
+            basePath={await getBasePath()}
             canonicalPath="/use-cases/ai-built-saas"
             eyebrow="Campaign guide"
             title="Support for apps built fast with AI."

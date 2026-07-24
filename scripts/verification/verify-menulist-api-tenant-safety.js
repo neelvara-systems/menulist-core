@@ -1388,11 +1388,11 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
     'src/app/api/outlets/deactivate/route.ts',
     'src/app/api/outlets/rename/route.ts',
   ].forEach((route) => {
-    assertIncludes(route, [...sharedNeedles, 'runStorePublicTruthPostCommitEffects({', 'revalidate: (tag) => revalidateTag(tag)'], `${route} multi-outlet public truth write guards`);
+    assertIncludes(route, [...sharedNeedles, 'runStorePublicTruthPostCommitEffects({', 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })'], `${route} multi-outlet public truth write guards`);
   });
   assertIncludes(
     'src/app/api/projects/outlet-save/route.ts',
-    [...sharedNeedles, 'runStorePublicTruthPostCommitEffects({', 'storeIds: [String(outletStoreId)]', 'revalidate: (tag) => revalidateTag(tag)'],
+    [...sharedNeedles, 'runStorePublicTruthPostCommitEffects({', 'storeIds: [String(outletStoreId)]', 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })'],
     'linked outlet save public truth write guards',
   );
   assertIncludes(
@@ -2337,7 +2337,7 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'previousSubdomainSlugs: nextHistorySlugs',
       'runStorePublicTruthPostCommitEffects({',
       'storeIds: [storeIdStr]',
-      'revalidate: (tag) => revalidateTag(tag)',
+      'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
       "touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'adminSubdomainRename')",
       'invalidateOwnerBusinessAssistantPacketCache',
       "logSecurityFailure('admin_subdomain_rename_post_commit_effect_failed'",
@@ -2961,7 +2961,7 @@ function verifyAuthClaimAndCacheBoundaries() {
       'if (rateLimitResponse) return rateLimitResponse;',
       'const bodyResult = await readBoundedJsonBody(request, MENU_REVALIDATE_MAX_BODY_BYTES',
       'for (const tag of tags) {',
-      'revalidateTag(tag);',
+      'revalidateTag(tag, { expire: 0 });',
       'invalidateOwnerBusinessAssistantPacketCache',
     ],
     'menu revalidation route rate limit before cache work',

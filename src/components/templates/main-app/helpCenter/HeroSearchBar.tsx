@@ -118,14 +118,17 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                     key="hero-text"
                                     initial={{ height: 0, opacity: 0 }}
                                     animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
+                                    exit={{
+                                        height: 0,
+                                        opacity: 0,
+                                        transition: {
+                                            opacity: { duration: 0.15 },
+                                            height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] },
+                                        },
+                                    }}
                                     transition={{
                                         duration: 0.5,
                                         ease: [0.32, 0.72, 0, 1],
-                                        exit: {
-                                            opacity: { duration: 0.15 },
-                                            height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] }
-                                        }
                                     }}
                                     style={{
                                         textAlign: 'center',

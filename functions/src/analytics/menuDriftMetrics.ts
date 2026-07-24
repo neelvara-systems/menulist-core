@@ -19,7 +19,7 @@
  * @see __docs__/internal-tracking/menulist-internal-tracking-system.md
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import {
@@ -340,7 +340,7 @@ export async function writeProjectDriftMetrics(
  * Called by the nightly scheduler (decisionBlocksScoring.ts)
  */
 export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetricsResult> {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const timer = startTimer();
 
     analyticsLogger.info('[MenuDriftMetrics] Starting nightly drift computation');

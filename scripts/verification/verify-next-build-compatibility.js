@@ -4,133 +4,80 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
-const nextConfig = fs.readFileSync(path.join(repoRoot, 'next.config.js'), 'utf8');
-const campaignCueWorkspacePage = fs.readFileSync(
-  path.join(repoRoot, 'src/app/(campaigncue)/campaigncue/app/page.tsx'),
-  'utf8',
-);
-const campaignCueSitePage = fs.readFileSync(
-  path.join(repoRoot, 'src/app/sites/campaigncue/page.tsx'),
-  'utf8',
-);
-const campaignCueFeaturePage = fs.readFileSync(
-  path.join(repoRoot, 'src/app/sites/campaigncue/features/[featureSlug]/page.tsx'),
-  'utf8',
-);
-const campaignCueSmallBusinessPage = fs.readFileSync(
-  path.join(repoRoot, 'src/app/sites/campaigncue/use-cases/small-business/page.tsx'),
-  'utf8',
-);
+
+function read(relPath) {
+  return fs.readFileSync(path.join(repoRoot, relPath), 'utf8');
+}
+
+function exists(relPath) {
+  return fs.existsSync(path.join(repoRoot, relPath));
+}
 
 function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
+  if (!condition) throw new Error(message);
 }
 
 function assertIncludes(haystack, needle, message) {
   assert(haystack.includes(needle), message);
 }
 
-assertIncludes(
-  nextConfig,
-  'class MenuListServerChunkCompatPlugin',
-  'Next build compatibility plugin must remain present.',
-);
-
-assertIncludes(
-  nextConfig,
-  "path.basename(outputPath) === 'chunks'",
-  'Compatibility plugin must normalize .next/server versus .next/server/chunks output paths.',
-);
-
-assertIncludes(
-  nextConfig,
-  'const serverOutputPath = await this.copyServerChunks(outputPath);',
-  'Compatibility plugin must continue after optional server chunk copying.',
-);
-
-assertIncludes(
-  nextConfig,
-  'await this.ensurePagesRouterCompatibility(serverOutputPath);',
-  'Compatibility plugin must repair reserved Pages Router modules before page-data collection.',
-);
-
-assertIncludes(
-  nextConfig,
-  "'/_document': {\n                file: 'pages/_document.js',\n                module: 'next/dist/pages/_document'",
-  'Compatibility plugin must provide a reserved /_document server module fallback.',
-);
-
-assertIncludes(
-  nextConfig,
-  "'/_app': {\n                file: 'pages/_app.js',\n                module: 'next/dist/pages/_app'",
-  'Compatibility plugin must provide a reserved /_app server module fallback.',
-);
-
-assertIncludes(
-  nextConfig,
-  "'/_error': {\n                file: 'pages/_error.js',\n                module: 'next/dist/pages/_error'",
-  'Compatibility plugin must provide a reserved /_error server module fallback.',
-);
-
-assertIncludes(
-  nextConfig,
-  'await this.writeRoutesManifest(serverOutputPath);',
-  'Compatibility plugin must write route manifests from the normalized server output path.',
-);
+const nextConfig = read('next.config.js');
+const packageJson = JSON.parse(read('package.json'));
+const proxy = read('src/proxy.ts');
+const dynamicHeaderPages = [
+  'src/app/(campaigncue)/campaigncue/app/page.tsx',
+  'src/app/sites/campaigncue/page.tsx',
+  'src/app/sites/campaigncue/features/[featureSlug]/page.tsx',
+  'src/app/sites/campaigncue/use-cases/small-business/page.tsx',
+];
 
 assert(
-  !nextConfig.includes("await fs.access(chunksDir);\n            } catch {\n                return;\n            }\n\n            await copyServerChunks(chunksDir);"),
-  'Compatibility plugin must not return early when the optional chunks directory is absent.',
+  !nextConfig.includes('MenuListServerChunkCompatPlugin'),
+  'The retired Next 14 server-chunk compatibility plugin must not return.',
 );
-
+assert(
+  !nextConfig.includes('next/dist/'),
+  'next.config.js must not import private Next.js implementation modules.',
+);
+assert(
+  !exists('src/pages/_app.tsx')
+    && !exists('src/pages/_document.tsx')
+    && !exists('src/pages/_error.tsx'),
+  'App Router builds must use native Next 16 error/document handling without obsolete Pages-only shims.',
+);
 assertIncludes(
-  campaignCueWorkspacePage,
-  'export const dynamic = "force-dynamic";',
-  'CampaignCue protected workspace must stay dynamic so session/header redirects are not statically prerendered.',
+  nextConfig,
+  'turbopack: {',
+  'Next 16 must keep an explicit top-level Turbopack configuration.',
 );
-
 assertIncludes(
-  campaignCueWorkspacePage,
-  'CampaignCueWorkspaceApp',
-  'CampaignCue protected workspace route must continue rendering the workspace app behind the dynamic boundary.',
+  nextConfig,
+  "loaders: ['@svgr/webpack']",
+  'Turbopack must preserve the existing SVG component import contract.',
 );
-
 assertIncludes(
-  campaignCueSitePage,
-  "export const dynamic = 'force-dynamic';",
-  'CampaignCue public site must stay dynamic because it derives base-path links from request headers.',
+  nextConfig,
+  "const { withSerwist } = await import('@serwist/turbopack');",
+  'The supported Serwist Turbopack integration must wrap the Next config.',
 );
-
-assertIncludes(
-  campaignCueSitePage,
-  'const headerList = headers();',
-  'CampaignCue public site dynamic guard must remain tied to actual header-derived base-path behavior.',
+assert(
+  packageJson.scripts?.build?.includes('next build')
+    && !packageJson.scripts.build.includes('--webpack'),
+  'The default production build must exercise Next 16 Turbopack.',
 );
-
-assertIncludes(
-  campaignCueFeaturePage,
-  'export const dynamic = "force-dynamic";',
-  'CampaignCue feature pages must stay dynamic because they derive base-path links from request headers.',
+assert(
+  packageJson.scripts?.['build:webpack']?.includes('next build --webpack'),
+  'A full Webpack parity build must remain available.',
 );
+assertIncludes(proxy, 'export async function proxy(', 'Next 16 proxy convention');
+assert(!exists('src/middleware.ts'), 'The deprecated middleware convention must remain removed.');
 
-assertIncludes(
-  campaignCueFeaturePage,
-  'const headerList = headers();',
-  'CampaignCue feature dynamic guard must remain tied to actual header-derived base-path behavior.',
-);
+for (const relPath of dynamicHeaderPages) {
+  const source = read(relPath);
+  assertIncludes(source, 'export const dynamic =', `${relPath} dynamic rendering boundary`);
+  if (source.includes('headers()')) {
+    assertIncludes(source, 'await headers()', `${relPath} async request-header contract`);
+  }
+}
 
-assertIncludes(
-  campaignCueSmallBusinessPage,
-  'export const dynamic = "force-dynamic";',
-  'CampaignCue small-business use-case page must stay dynamic because it derives base-path links from request headers.',
-);
-
-assertIncludes(
-  campaignCueSmallBusinessPage,
-  'const headerList = headers();',
-  'CampaignCue small-business dynamic guard must remain tied to actual header-derived base-path behavior.',
-);
-
-console.log('Next build compatibility contract verified.');
+console.log('Next 16 build compatibility contract verified.');

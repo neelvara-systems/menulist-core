@@ -12,9 +12,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/updates' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -291,8 +291,8 @@ const UPDATES = [
     },
 ];
 
-export default function AnswerlatticeUpdatesPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeUpdatesPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

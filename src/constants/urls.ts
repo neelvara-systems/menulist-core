@@ -31,7 +31,7 @@
  *
  * @see src/constants/productDomains.ts — Multi-product domain registry
  * @see src/lib/multiTenant/domainResolver.ts — Runtime domain routing
- * @see src/middleware.ts — Edge middleware routing
+ * @see src/proxy.ts — Next.js proxy routing
  */
 
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
@@ -233,7 +233,7 @@ export const getGeneratedEmail = (phone: string): string => {
 
 /**
  * All platform domains that should NOT be treated as client tenants.
- * Used by domainResolver.ts and middleware.ts
+ * Used by domainResolver.ts and proxy.ts
  */
 export const PLATFORM_DOMAINS = [
     PLATFORM_DOMAIN,

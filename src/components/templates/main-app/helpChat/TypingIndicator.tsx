@@ -1,7 +1,7 @@
 'use client'
 
 import { Flex, theme, Typography } from 'antd';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Transition, type Variants } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
 
@@ -21,12 +21,12 @@ const TypingIndicator = () => {
     const { token } = theme.useToken();
     const [messageIndex, setMessageIndex] = useState(0);
 
-    const dotVariants = {
+    const dotVariants: Variants = {
         initial: { y: 0 },
         animate: { y: -8 }
     };
 
-    const transition = {
+    const transition: Transition = {
         duration: 0.5,
         repeat: Infinity,
         repeatType: "reverse" as const,

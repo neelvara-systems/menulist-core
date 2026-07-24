@@ -2,7 +2,7 @@ import {
     SIGNALDESK_FIREBASE_APP_NAME,
     SIGNALDESK_FIREBASE_ENV,
 } from "@constant/signaldesk/firebase";
-import * as admin from "firebase-admin";
+import { admin } from "./firebaseAdminCompat";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { createHash } from "crypto";
 import * as fs from "fs";
@@ -199,7 +199,7 @@ function getSignalDeskAdminApp(): admin.app.App | null {
     if (!descriptor) return null;
     const fingerprint = getSignalDeskAdminBootstrapFingerprint(descriptor);
 
-    const existing = admin.apps.find((app) => app?.name === SIGNALDESK_FIREBASE_APP_NAME);
+    const existing = admin.getApps().find((app) => app?.name === SIGNALDESK_FIREBASE_APP_NAME);
     if (existing) {
         const bootstrapState = signaldeskAdminBootstrapGlobal.__MENULIST_SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__;
         if (
@@ -227,8 +227,8 @@ const signaldeskAdminApp = getSignalDeskAdminApp();
 const signaldeskFirestoreAdmin = signaldeskAdminApp
     ? getAdminFirestore(signaldeskAdminApp)
     : null;
-const signaldeskStorageAdmin = signaldeskAdminApp ? signaldeskAdminApp.storage() : null;
-const signaldeskAuthAdmin = signaldeskAdminApp ? signaldeskAdminApp.auth() : null;
+const signaldeskStorageAdmin = signaldeskAdminApp ? admin.storage(signaldeskAdminApp) : null;
+const signaldeskAuthAdmin = signaldeskAdminApp ? admin.auth(signaldeskAdminApp) : null;
 
 export {
     admin,

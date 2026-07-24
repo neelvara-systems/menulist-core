@@ -242,7 +242,7 @@ function verifyRoutesAndUi() {
   const signinComponent = read("src/components/signaldesk/SignalDeskSignin.tsx");
   const sessionProvider = read("src/components/signaldesk/SignalDeskSessionProvider.tsx");
   const pathProvider = read("src/components/signaldesk/SignalDeskPathProvider.tsx");
-  const middleware = read("src/middleware.ts");
+  const middleware = read("src/proxy.ts");
 
   assertIncludes(routes, 'SIGNALDESK_BASE_PATH = "/signaldesk"', "SignalDesk base path");
   assertIncludes(routes, 'SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH = "/sd"', "SignalDesk menulist.digital alias path");

@@ -263,7 +263,7 @@ function CreativeEditorSmokeQaProbe({
                 await clickButtonByName("Rectangle", "rectangle shape", drawerSelector);
                 layerCount = await waitForLayerCountAbove(layerCount, "shape layer inserted");
                 await clickTool("qr");
-                await clickButtonByName("Add QR code", "qr layer", drawerSelector);
+                await clickButtonByName("Add plain QR", "plain qr action", drawerSelector);
                 layerCount = await waitForLayerCountAbove(layerCount, "qr layer inserted");
                 await clickTool("barcode");
                 await clickButtonByName("Add barcode", "barcode layer", drawerSelector);

@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import type { Transaction, WriteBatch } from 'firebase-admin/firestore';
 
 export const ANSWERLATTICE_TENANT_SUMMARY_DOC_ID = 'answerlatticeTenantsSummary';

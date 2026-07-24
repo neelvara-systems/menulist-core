@@ -13,11 +13,11 @@ export const metadata: Metadata = {
 };
 
 interface MyCodexLoginPageProps {
-    searchParams?: {
+    searchParams?: Promise<{
         error?: string | string[];
         returnTo?: string | string[];
         status?: string | string[];
-    };
+    }>;
 }
 
 const firstValue = (value: string | string[] | undefined) => (
@@ -32,7 +32,8 @@ const getErrorMessage = (error: string | undefined) => {
     return null;
 };
 
-export default function MyCodexLoginPage({ searchParams }: MyCodexLoginPageProps) {
+export default async function MyCodexLoginPage(props: MyCodexLoginPageProps) {
+    const searchParams = await props.searchParams;
     const returnTo = sanitizeMyCodexReturnTo(firstValue(searchParams?.returnTo));
     const errorMessage = getErrorMessage(firstValue(searchParams?.error));
     const signedOut = firstValue(searchParams?.status) === 'signed-out';

@@ -1,4 +1,5 @@
-'use client'
+'use client';
+import { use } from "react";
 
 /**
  * Answerlattice Dashboard — Governance Subroute
@@ -15,12 +16,13 @@ const GovernanceHub = dynamic(
 );
 
 interface AnswerlatticeGovernanceTabPageProps {
-    params: {
+    params: Promise<{
         tab: string;
-    };
+    }>;
 }
 
-export default function AnswerlatticeGovernanceTabPage({ params }: AnswerlatticeGovernanceTabPageProps) {
+export default function AnswerlatticeGovernanceTabPage(props: AnswerlatticeGovernanceTabPageProps) {
+    const params = use(props.params);
     const session = useClientAuthSession();
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;

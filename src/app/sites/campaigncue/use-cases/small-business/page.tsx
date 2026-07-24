@@ -83,9 +83,9 @@ const SMALL_BUSINESS_PRODUCT_PROOF_IMAGE = {
     caption: "Sample small-business pack journey with dummy CampaignCue data.",
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const headerList = headers();
+        const headerList = (await headers());
         const aliasBasePath = headerList.get("x-product-base-path") || "";
         if (aliasBasePath) return aliasBasePath;
 
@@ -236,8 +236,8 @@ function SmallBusinessProductProofFigure() {
     );
 }
 
-export default function CampaignCueSmallBusinessUseCasePage() {
-    const basePath = getBasePath();
+export default async function CampaignCueSmallBusinessUseCasePage() {
+    const basePath = await getBasePath();
     const useCase = CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE;
 
     return (

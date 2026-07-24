@@ -75,11 +75,11 @@ function parseSource(raw: string | undefined): FeedbackSource {
 }
 
 interface PageProps {
-    params: { projectId: string };
-    searchParams?: {
+    params: Promise<{ projectId: string }>;
+    searchParams?: Promise<{
         lang?: string | string[];
         source?: string | string[];
-    };
+    }>;
 }
 
 /**
@@ -225,7 +225,9 @@ const getStoreInfo = cache(async (
     }
 });
 
-export default async function FeedbackPage({ params, searchParams }: PageProps) {
+export default async function FeedbackPage(props: PageProps) {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     // Check feature flag
     if (!FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK) {
         notFound();
@@ -314,7 +316,9 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
 /**
  * Generate metadata for SEO
  */
-export async function generateMetadata({ params, searchParams }: PageProps) {
+export async function generateMetadata(props: PageProps) {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang) || undefined;
     const project = await getProjectData(params.projectId);
 

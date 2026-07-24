@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/pricing' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -91,8 +91,8 @@ const CREDIT_EXAMPLES = [
     },
 ];
 
-export default function AnswerlatticePricingPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticePricingPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

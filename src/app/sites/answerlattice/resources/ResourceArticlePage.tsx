@@ -10,9 +10,9 @@ import {
 } from '@/content/answerlatticePublic';
 import AnswerlatticeResourceStructuredData from './ResourceStructuredData';
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -21,8 +21,8 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function AnswerlatticeResourceArticlePage({ articlePath }: { articlePath: string }) {
-    const basePath = getBasePath();
+export default async function AnswerlatticeResourceArticlePage({ articlePath }: { articlePath: string }) {
+    const basePath = await getBasePath();
     const article = getAnswerlatticeResourceArticle(articlePath);
 
     if (!article) {

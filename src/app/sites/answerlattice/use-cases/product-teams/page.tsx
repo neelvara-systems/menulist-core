@@ -8,9 +8,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/use-cases/product-teams' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -19,10 +19,10 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function ProductTeamsUseCasePage() {
+export default async function ProductTeamsUseCasePage() {
     return (
         <UseCaseLandingPage
-            basePath={getBasePath()}
+            basePath={await getBasePath()}
             canonicalPath="/use-cases/product-teams"
                 eyebrow="For product teams"
                 title="See where product changes break support."

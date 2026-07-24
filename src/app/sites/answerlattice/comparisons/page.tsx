@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/comparisons' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -26,8 +26,8 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function AnswerlatticeComparisonsPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeComparisonsPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

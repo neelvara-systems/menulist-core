@@ -42,42 +42,41 @@
   padding: 4px 0;
   gap: 16px;
 
-  :global {
-    // Fix Ant Design Switch vertical alignment
-    .ant-switch {
-      flex-shrink: 0;
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      line-height: 1;
-      vertical-align: middle;
+  // Fix Ant Design Switch vertical alignment. Functional :global(...) syntax
+  // keeps this CSS Module unambiguous for both Webpack and Turbopack.
+  :global(.ant-switch) {
+    flex-shrink: 0;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    vertical-align: middle;
 
-      .ant-switch-handle {
+    :global(.ant-switch-handle) {
+      position: absolute;
+      top: 2px;
+      inset-inline-start: 2px;
+      width: 18px;
+      height: 18px;
+      transition: all 0.2s ease-in-out;
+
+      &::before {
         position: absolute;
-        top: 2px;
-        inset-inline-start: 2px;
-        width: 18px;
-        height: 18px;
+        top: 0;
+        inset-inline-end: 0;
+        bottom: 0;
+        inset-inline-start: 0;
+        border-radius: 9px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px 0 rgba(0, 35, 11, 0.2);
         transition: all 0.2s ease-in-out;
-
-        &::before {
-          position: absolute;
-          top: 0;
-          inset-inline-end: 0;
-          bottom: 0;
-          inset-inline-start: 0;
-          border-radius: 9px;
-          background-color: #fff;
-          box-shadow: 0 2px 4px 0 rgba(0, 35, 11, 0.2);
-          transition: all 0.2s ease-in-out;
-          content: "";
-        }
+        content: "";
       }
+    }
 
-      &.ant-switch-checked {
-        .ant-switch-handle {
-          inset-inline-start: calc(100% - 20px);
-        }
+    &:global(.ant-switch-checked) {
+      :global(.ant-switch-handle) {
+        inset-inline-start: calc(100% - 20px);
       }
     }
   }

@@ -468,7 +468,7 @@ export async function executeMessagingOnboardingPublish(
         sId: result.storeId,
         projectId: result.projectId,
       }),
-      revalidate: revalidateTag,
+      revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
       touchScreen: () => touchDigitalScreenContentVersionForStoreServer(
         result.storeId,
         "messagingOnboardingPublish",

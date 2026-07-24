@@ -42,8 +42,8 @@ const getCachedMenuItems = unstable_cache(
 );
 
 interface PageProps {
-    params: { token: string };
-    searchParams: { mode?: string };
+    params: Promise<{ token: string }>;
+    searchParams: Promise<{ mode?: string }>;
 }
 
 /**
@@ -69,7 +69,9 @@ function resolveScreenMode(searchParams: { mode?: string }): "menu_board" | "hig
  * Server Component - fetches data at render time
  * Per DAL pattern: Direct Firestore query, no API route
  */
-export default async function ScreenPage({ params, searchParams }: PageProps) {
+export default async function ScreenPage(props: PageProps) {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     const { token } = params;
 
     if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {
@@ -103,12 +105,12 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
     // Fetch menu items (used by BOTH modes — same cost) — OPT-6: cached at Vercel edge.
     // The generated projection is used only when it matches the current screen version;
     // otherwise this falls back to the existing project-doc reconstruction path.
-    const menuItems = projectedMenuItems || await getCachedMenuItems(
+    const menuItems = projectedMenuItems || (await getCachedMenuItems(
         screenData.storeId,
         screenData.tenantId,
         screenData.activeSpecialMenuId || null,
         screenData.baseProjectId || null
-    );
+    ));
 
     // ─── MENU BOARD MODE ───────────────────────────────────────
     if (mode === "menu_board") {

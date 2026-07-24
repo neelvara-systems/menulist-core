@@ -11,9 +11,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/terms-of-service' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -96,8 +96,8 @@ const SECTIONS = [
     },
 ];
 
-export default function AnswerlatticeTermsOfServicePage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeTermsOfServicePage() {
+    const basePath = await getBasePath();
 
     return (
         <>

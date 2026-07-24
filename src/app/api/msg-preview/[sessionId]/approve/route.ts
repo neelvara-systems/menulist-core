@@ -190,10 +190,8 @@ async function recordPublishingFailure(params: {
     });
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } },
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ sessionId: string }> }) {
+  const params = await props.params;
   try {
     const declaredBodyResponse = rejectInvalidOrOversizedDeclaredBody(
       request,

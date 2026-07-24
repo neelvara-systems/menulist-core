@@ -6,7 +6,7 @@
  * explicit shared-mode override is used for local/emulator work.
  */
 
-import * as admin from "firebase-admin";
+import { admin } from "./firebaseAdminCompat";
 import * as fs from "fs";
 import * as path from "path";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
@@ -125,7 +125,7 @@ function initializeLocalCampaignCueAdcApp(appName?: string): admin.app.App | nul
 }
 
 function getDefaultAdminAppForCampaignCue(): admin.app.App | null {
-    const existing = admin.apps.find(app => app?.name === CAMPAIGNCUE_DEFAULT_FIREBASE_APP_NAME);
+    const existing = admin.getApps().find(app => app?.name === CAMPAIGNCUE_DEFAULT_FIREBASE_APP_NAME);
     if (existing) return existing;
 
     const defaultCredential = getAdminCredential(CAMPAIGNCUE_DEFAULT_FIREBASE_CREDENTIAL_PREFIX);
@@ -161,7 +161,7 @@ function getCampaignCueAdminApp(): admin.app.App | null {
         return getDefaultAdminAppForCampaignCue();
     }
 
-    const existing = admin.apps.find(app => app?.name === CAMPAIGNCUE_FIREBASE_APP_NAME);
+    const existing = admin.getApps().find(app => app?.name === CAMPAIGNCUE_FIREBASE_APP_NAME);
     if (existing) return existing;
 
     const credential = getAdminCredential(CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX) || getCampaignCueFileCredential();
@@ -184,8 +184,8 @@ const campaigncueFirestoreAdmin = campaigncueAdminApp
         ? getAdminFirestore(campaigncueAdminApp, campaigncueFirestoreDatabaseId)
         : getAdminFirestore(campaigncueAdminApp))
     : (null as unknown as admin.firestore.Firestore);
-const campaigncueStorageAdmin = campaigncueAdminApp ? campaigncueAdminApp.storage() : (null as unknown as admin.storage.Storage);
-const campaigncueAuthAdmin = campaigncueAdminApp ? campaigncueAdminApp.auth() : (null as unknown as admin.auth.Auth);
+const campaigncueStorageAdmin = campaigncueAdminApp ? admin.storage(campaigncueAdminApp) : (null as unknown as admin.storage.Storage);
+const campaigncueAuthAdmin = campaigncueAdminApp ? admin.auth(campaigncueAdminApp) : (null as unknown as admin.auth.Auth);
 
 export {
     admin,

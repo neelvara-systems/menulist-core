@@ -11,7 +11,7 @@ import {
     normalizeAnswerlatticeCanonicalAnswerId,
     normalizeAnswerlatticeResolvedEntityId,
 } from '@lib/answerlattice/governanceIdBoundary';
-import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
+import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitterServer';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
 import { createHash } from 'crypto';

@@ -20,11 +20,12 @@ import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function PwaOrderHandoffPage({
-    searchParams,
-}: {
-    searchParams?: { lang?: string | string[] };
-}) {
+export default async function PwaOrderHandoffPage(
+    props: {
+        searchParams?: Promise<{ lang?: string | string[] }>;
+    }
+) {
+    const searchParams = await props.searchParams;
     const tenant = await getTenantFromHeaders('PwaOrderHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)

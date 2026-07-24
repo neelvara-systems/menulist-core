@@ -134,7 +134,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 - Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 15 article slugs.
 - Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
 - Public website CTAs route to `/create-menu` for free-account-first menu intake. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
-- `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes. `next.config.js` repairs emitted special Pages Router and App Router manifest entries if the worker build emits route files while leaving generated manifests incomplete.
+- Next 16 uses native App Router document/error handling. The former `src/pages/_app.tsx`, `_document.tsx`, `_error.tsx`, and private manifest-repair plugin were removed after both Turbopack and Webpack production builds passed.
 
 ---
 
@@ -429,8 +429,8 @@ src/pages/
 - **Approach:** CSS variables for colors, responsive breakpoints, mobile-first spacing, and 44px-class touch targets
 - **Components:** Mix of Tailwind CSS + custom CSS + shadcn/ui
 - **Theme:** System-preference light/dark mode via `ThemeProvider`; `website.css` provides the public website token set and `pricing-pages/main.css` bridges the shadcn/Tailwind pricing variables
-- **Service worker boundary:** `ServiceWorkerRegister.tsx` registers owner Workbox `/sw.js` only on owner/app platform routes and unregisters it on public marketing routes. If a stale worker controlled the current public page, the page reloads once after unregistering so Safari moves to the network-controlled website. Customer tenant origins still use `sw-customer.js`.
-- **Pages Router defaults:** `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are intentionally minimal. They satisfy Next's generated Pages Router manifest entries during production page-data collection and do not change the App Router website layout or route behavior. `MenuListServerChunkCompatPlugin` in `next.config.js` also repairs emitted page/app manifest entries when local worker builds produce route files but incomplete manifests.
+- **Service worker boundary:** `ServiceWorkerRegister.tsx` registers owner Serwist `/serwist/sw.js` only on owner/app platform routes and unregisters owner workers on public marketing routes. Customer tenant origins still use `sw-customer.js`.
+- **App Router build boundary:** Native Next 16 document/error handling is authoritative; no Pages Router compatibility files or private manifest-repair plugin are retained.
 
 ---
 
@@ -446,4 +446,4 @@ src/pages/
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |
 | Theming | System-aware shadcn ThemeProvider plus footer theme segmented control and website CSS tokens | Light remains default for light system preferences; users can choose Light, System, or Dark from the footer; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
 | Localization | next-intl via layout provider | Consistent i18n across all pages |
-| Pages Router defaults | Minimal `_app`, `_document`, `_error` | Keeps production builds stable while website routes remain App Router |
+| App Router build handling | Native Next 16 | Both Turbopack and Webpack pass without private manifest repair |

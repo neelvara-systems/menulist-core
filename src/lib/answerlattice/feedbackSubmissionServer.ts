@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { emitAnswerlatticeSignal } from './signalEmitter';
+import { emitAnswerlatticeSignal } from './signalEmitterServer';
 import type {
     AnswerlatticeFeedbackSubmission,
     AnswerlatticeFeedbackSubmitRequest,

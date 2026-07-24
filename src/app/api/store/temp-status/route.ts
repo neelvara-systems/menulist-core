@@ -161,7 +161,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     sId: targetStoreId,
                     tId: targetTenantId,
                 }),
-                revalidate: (tag) => revalidateTag(tag),
+                revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
                 touchScreen: (targetStoreId) => touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus'),
             },
             storeIds: [storeId],

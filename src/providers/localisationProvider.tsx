@@ -13,7 +13,7 @@ type Props = {
 export default async function LocalisationProvider({ children, locale }: Props) {
     // Providing all messages to the client side is the easiest way to get started
     const messages = await getMessages();
-    const timeZone = normalizeTimeZone(cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value);
+    const timeZone = normalizeTimeZone((await cookies()).get(APP_TIMEZONE_COOKIES_KEY)?.value);
 
     const APP_LOCALISATION_FORMATTERS: Formats = {
         dateTime: {

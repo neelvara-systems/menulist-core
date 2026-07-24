@@ -21,9 +21,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/resources' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -32,8 +32,8 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function AnswerlatticeResourcesPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeResourcesPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

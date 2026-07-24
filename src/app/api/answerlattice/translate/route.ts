@@ -45,7 +45,7 @@ import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { ANSWERLATTICE_SUPPORTED_LOCALES } from '@type/answerlattice';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';

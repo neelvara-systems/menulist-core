@@ -53,8 +53,9 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
 //   - stale-while-revalidate=604800: serve stale for 1wk while refetching.
 export async function GET(
     request: NextRequest,
-    { params }: { params: { storeId: string; size: string } },
+    props: { params: Promise<{ storeId: string; size: string }> }
 ) {
+    const params = await props.params;
     const size = clampCustomerAppIconSize(params.size);
     const storeId = params.storeId;
 

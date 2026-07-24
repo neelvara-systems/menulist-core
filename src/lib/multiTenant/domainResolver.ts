@@ -261,6 +261,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         // metadata; platform domains still fall through without rewrite.
         '/manifest.json',
         '/sw.js',
+        '/serwist/',
         '/sw-customer.js',
         '/mycodex-sw.js',
         '/workbox-',

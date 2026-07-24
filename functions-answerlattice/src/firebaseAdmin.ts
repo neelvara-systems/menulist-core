@@ -8,11 +8,20 @@
  * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
  */
 
-import * as admin from 'firebase-admin';
+import {
+    cert,
+    deleteApp,
+    getApp,
+    getApps,
+    initializeApp,
+    type Credential,
+} from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import * as logger from 'firebase-functions/logger';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import {
     isAnswerlatticeEmulatorProjectId,
     normalizeAnswerlatticeFirebaseBoundaryMode,
@@ -82,7 +91,7 @@ const answerlatticeFunctionsBoundary = resolveAnswerlatticeFirebaseBoundary({
     stage: answerlatticeFunctionsStage,
 });
 
-function getCredential(prefix: CredentialPrefix): admin.credential.Credential | null {
+function getCredential(prefix: CredentialPrefix): Credential | null {
     const projectId = process.env[`${prefix}_PROJECT_ID`];
     const privateKey = process.env[`${prefix}_PRIVATE_KEY`];
     const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
@@ -102,7 +111,7 @@ function getCredential(prefix: CredentialPrefix): admin.credential.Credential | 
     }
 
     try {
-        return admin.credential.cert({
+        return cert({
             projectId,
             privateKey: normalizePrivateKey(privateKey),
             clientEmail,
@@ -118,7 +127,7 @@ function getCredential(prefix: CredentialPrefix): admin.credential.Credential | 
     }
 }
 
-function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Credential | null {
+function getAnswerlatticeServiceAccountFileCredential(): Credential | null {
     const credentialPath = process.env.ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS;
     if (!credentialPath) return null;
 
@@ -142,7 +151,7 @@ function getAnswerlatticeServiceAccountFileCredential(): admin.credential.Creden
             throw new Error('Answerlattice service-account project does not match the active deployment stage.');
         }
 
-        return admin.credential.cert({
+        return cert({
             projectId,
             privateKey: normalizePrivateKey(privateKey),
             clientEmail,
@@ -161,7 +170,7 @@ if (!answerlatticeFunctionsBoundary.valid) {
     throw new Error(`Answerlattice Firebase project boundary rejected runtime configuration: ${answerlatticeFunctionsBoundary.errorCode}`);
 }
 
-if (!admin.apps.length) {
+if (!getApps().length) {
     if (process.env.FUNCTIONS_EMULATOR === 'true') {
         require('dotenv').config({ path: '.env.local' });
     }
@@ -171,26 +180,35 @@ if (!admin.apps.length) {
         : (getCredential('ANSWERLATTICE_FIREBASE') || getAnswerlatticeServiceAccountFileCredential());
 
     if (credential) {
-        admin.initializeApp({
+        initializeApp({
             credential,
             ...(getAnswerlatticeStorageBucket() ? { storageBucket: getAnswerlatticeStorageBucket() } : {}),
         });
     } else {
-        admin.initializeApp({
+        initializeApp({
             ...(getAnswerlatticeProjectId() ? { projectId: getAnswerlatticeProjectId() } : {}),
             ...(getAnswerlatticeStorageBucket() ? { storageBucket: getAnswerlatticeStorageBucket() } : {}),
         });
     }
 }
 
+const answerlatticeAdminApp = getApp();
 export const firestoreAdmin = process.env.ANSWERLATTICE_FIRESTORE_DATABASE_ID
-    ? getFirestore(admin.app(), process.env.ANSWERLATTICE_FIRESTORE_DATABASE_ID)
-    : admin.firestore();
-const projectId = process.env.GCLOUD_PROJECT || admin.app().options.projectId;
+    ? getFirestore(answerlatticeAdminApp, process.env.ANSWERLATTICE_FIRESTORE_DATABASE_ID)
+    : getFirestore(answerlatticeAdminApp);
+const projectId = process.env.GCLOUD_PROJECT || answerlatticeAdminApp.options.projectId;
 if (!projectId) {
     throw new Error('Answerlattice Firebase project ID could not be determined.');
 }
 
-export const storageAdmin = admin.storage();
-export const authAdmin = admin.auth();
-export { admin };
+export const storageAdmin = getStorage(answerlatticeAdminApp);
+export const authAdmin = getAuth(answerlatticeAdminApp);
+export const admin = {
+    app: () => ({
+        delete: () => deleteApp(answerlatticeAdminApp),
+    }),
+    firestore: {
+        FieldValue,
+        Timestamp,
+    },
+};

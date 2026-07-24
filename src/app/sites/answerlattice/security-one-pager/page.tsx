@@ -12,9 +12,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/security-one-pager' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -40,8 +40,8 @@ const ONE_PAGER = [
     ['Incident contact', 'Report security or data-handling concerns without sending secrets or full customer datasets in the first message.'],
 ];
 
-export default function AnswerlatticeSecurityOnePagerPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeSecurityOnePagerPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

@@ -1,14 +1,9 @@
-import dynamic from 'next/dynamic';
+import { AnswerlatticeKnownIssuesClient } from '@/components/templates/answerlattice/clientOnly/AnswerlatticeClientOnlyPages';
 
 export const metadata = {
     title: 'Known Issues | Answerlattice',
 };
 
-const AnswerlatticeKnownIssues = dynamic(
-    () => import('@/components/templates/answerlattice/knownIssues/AnswerlatticeKnownIssues'),
-    { ssr: false },
-);
-
 export default function AnswerlatticeKnownIssuesPage() {
-    return <AnswerlatticeKnownIssues />;
+    return <AnswerlatticeKnownIssuesClient />;
 }

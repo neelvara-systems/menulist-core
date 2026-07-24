@@ -6,7 +6,7 @@ import {
 } from '@lib/billing/cancellationReasons';
 import { Button, Checkbox, Flex, Form, Input, Modal, Radio, Space, Typography, theme } from 'antd';
 import { Timestamp } from 'firebase/firestore';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { LuArrowLeft, LuArrowRight, LuBan, LuX } from 'react-icons/lu';
 
@@ -19,7 +19,7 @@ interface CancellationModalProps {
     subscriptionEndDate: Timestamp; // Expects a pre-formatted date string
 }
 
-const stepVariants = {
+const stepVariants: Variants = {
     hidden: (direction: number) => ({
         opacity: 0,
         x: direction > 0 ? '50%' : '-50%',

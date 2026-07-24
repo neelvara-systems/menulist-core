@@ -1,10 +1,10 @@
-import * as admin from "firebase-admin";
 import * as functions from 'firebase-functions';
 import * as fs from 'fs'; // Import the 'fs' module
 import { normalizeProcessedKBData, normalizeVector } from ".";
 import {
     AI_ADVANCED_MODEL,
 } from "../constants/ai";
+import { storageAdmin } from "../firebaseAdmin";
 import { genAIClient } from "../genAiClient";
 import {
     ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
@@ -128,7 +128,7 @@ async function validateKnowledgeSourceFiles(
     if (!Array.isArray(files) || files.length === 0 || files.length > MAX_SOURCE_FILES) {
         throw new Error(KB_SOURCE_FILE_REJECTED_CODE);
     }
-    const bucket = admin.storage().bucket();
+    const bucket = storageAdmin.bucket();
     const validated: ValidatedSourceFile[] = [];
     let totalBytes = 0;
     for (const value of files) {
@@ -244,7 +244,7 @@ async function uploadToGemini(file: ValidatedSourceFile, scope: KnowledgeSourceS
             rejectedPathError.code = KB_SOURCE_STORAGE_PATH_REJECTED_CODE;
             throw rejectedPathError;
         }
-        const fileBuffer = await admin.storage().bucket().file(file.storagePath).download();
+        const fileBuffer = await storageAdmin.bucket().file(file.storagePath).download();
 
         // Create a Uint8Array view of the ArrayBuffer
         const uint8Array = new Uint8Array(fileBuffer[0]);

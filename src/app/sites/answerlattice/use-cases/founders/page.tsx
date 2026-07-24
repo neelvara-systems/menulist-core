@@ -8,9 +8,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/use-cases/founders' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -19,10 +19,10 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function FoundersUseCasePage() {
+export default async function FoundersUseCasePage() {
     return (
         <UseCaseLandingPage
-            basePath={getBasePath()}
+            basePath={await getBasePath()}
             canonicalPath="/use-cases/founders"
             eyebrow="For founders"
             title="Your product is live. Your support cannot be random."

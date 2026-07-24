@@ -858,12 +858,7 @@ Protected scope:
 
 ## Stage 7.17 Production Build Compatibility
 
-Stage 7.17 adds explicit minimal Pages Router defaults because the production build's generated `pages-manifest.json` includes `/_app`, `/_document`, and `/_error` entries even though the website itself is App Router based:
-
-- `src/pages/_app.tsx` passes Pages Router pages through unchanged.
-- `src/pages/_document.tsx` uses the standard `Html`, `Head`, `Main`, and `NextScript` shell.
-- `src/pages/_error.tsx` delegates to Next's default error component.
-- These files exist only to satisfy Next's page-data loader and do not wrap, restyle, or reroute the App Router website.
+This historical Next 14 workaround was retired by the July 24, 2026 Next 16 migration. The App Router now relies on native Next 16 document/error handling; `src/pages/_app.tsx`, `_document.tsx`, `_error.tsx`, and the private server-chunk compatibility plugin are absent. Both native Turbopack and diagnostic Webpack builds pass page-data collection.
 
 Protected scope:
 

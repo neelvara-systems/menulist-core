@@ -25,9 +25,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/pre-onboarding/guide' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -160,8 +160,8 @@ const LIVE_GATES = [
     'Owner signs off on screenshots and public asset use.',
 ];
 
-export default function AnswerlatticePreOnboardingGuidePage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticePreOnboardingGuidePage() {
+    const basePath = await getBasePath();
 
     return (
         <>

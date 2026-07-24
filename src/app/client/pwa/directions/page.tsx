@@ -43,11 +43,12 @@ function buildMapsUrl(store: any): string | null {
     return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
-export default async function PwaDirectionsHandoffPage({
-    searchParams,
-}: {
-    searchParams?: { lang?: string | string[] };
-}) {
+export default async function PwaDirectionsHandoffPage(
+    props: {
+        searchParams?: Promise<{ lang?: string | string[] }>;
+    }
+) {
+    const searchParams = await props.searchParams;
     const tenant = await getTenantFromHeaders('PwaDirectionsHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)

@@ -7,9 +7,9 @@ import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
 import { getAnswerlatticeDeveloperDoc } from '../publicContent';
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -18,8 +18,8 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function AnswerlatticeDeveloperDocPage({ docPath }: { docPath: string }) {
-    const basePath = getBasePath();
+export default async function AnswerlatticeDeveloperDocPage({ docPath }: { docPath: string }) {
+    const basePath = await getBasePath();
     const doc = getAnswerlatticeDeveloperDoc(docPath);
 
     if (!doc) {

@@ -3,10 +3,10 @@
  * Tracks Cloud Function execution health and performance
  */
 
-import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { firestoreAdmin } from '../firebaseAdmin';
 
 const telemetryLogger = functions.logger;
 const TELEMETRY_LOG_WRITE_FAILED = 'TELEMETRY_LOG_WRITE_FAILED';
@@ -72,7 +72,7 @@ export async function logTelemetry(
   result: FunctionResult
 ): Promise<void> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const today = new Date().toISOString().split('T')[0];
     const docRef = db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY).doc(today);
 
@@ -160,7 +160,7 @@ export async function withTelemetry<T>(
  */
 export async function getTodayTelemetry(): Promise<TelemetryLog | null> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const today = new Date().toISOString().split('T')[0];
     const docRef = db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY).doc(today);
 
@@ -187,7 +187,7 @@ export async function getTelemetryRange(
   endDate: string
 ): Promise<TelemetryLog[]> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const snapshot = await db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY)
       .where('date', '>=', startDate)
       .where('date', '<=', endDate)

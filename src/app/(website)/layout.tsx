@@ -24,9 +24,9 @@ const siteTitle = MENULIST_SITE_TITLE;
 const siteDescription = MENULIST_SITE_DESCRIPTION;
 const siteImage = MENULIST_SITE_IMAGE;
 
-function getWebsiteBasePath(): string {
+async function getWebsiteBasePath(): Promise<string> {
     try {
-        const basePath = headers().get('x-product-base-path') || '';
+        const basePath = (await headers()).get('x-product-base-path') || '';
         return basePath === '/ml' ? basePath : '';
     } catch {
         return '';
@@ -89,7 +89,7 @@ interface WebsiteLayoutProps {
 export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
     // Get locale for internationalization
     const locale = await getLocale();
-    const basePath = getWebsiteBasePath();
+    const basePath = await getWebsiteBasePath();
 
     return (
         <LocalisationProvider locale={locale}>

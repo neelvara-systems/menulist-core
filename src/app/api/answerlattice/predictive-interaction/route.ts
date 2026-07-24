@@ -10,7 +10,7 @@ import {
     isAnswerlatticePredictiveTriggerWithinWindow,
 } from '@lib/answerlattice/predictiveSupportContracts';
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
-import { emitSuggestionSignal } from '@lib/answerlattice/signalEmitter';
+import { emitSuggestionSignal } from '@lib/answerlattice/signalEmitterServer';
 import {
     ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
     isAnswerlatticeWidgetRuntimeRequestAuthorized,

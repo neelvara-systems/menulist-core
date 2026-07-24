@@ -20,8 +20,8 @@ const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)
 
 const isLocalHost = (host: string | null) => Boolean(host && LOCAL_HOST_PATTERN.test(host));
 
-export default function MyCodexCreativeEditorTestPage() {
-    const host = headers().get("host");
+export default async function MyCodexCreativeEditorTestPage() {
+    const host = (await headers()).get("host");
     const explicitTestRouteEnabled = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE;
 
     if (!isLocalHost(host) && !explicitTestRouteEnabled) {

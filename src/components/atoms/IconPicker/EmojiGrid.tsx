@@ -1,11 +1,10 @@
 import { useAppSelector } from '@hook/useAppSelector';
 import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
 import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
-import { init, SearchIndex } from 'emoji-mart';
+import { init, Picker as EmojiMartPicker, SearchIndex } from 'emoji-mart';
 import { theme } from 'antd';
 import { useLocale } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type EmojiOption = {
     emoji: string;
@@ -177,6 +176,7 @@ export default function EmojiGrid({
     const emojiLocale = resolveEmojiMartLocale(locale);
     const [searchReady, setSearchReady] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    const browserRef = useRef<HTMLDivElement>(null);
     const hasSearchQuery = useMemo(() => searchQuery.trim().length > 0, [searchQuery]);
 
     useEffect(() => {
@@ -224,6 +224,47 @@ export default function EmojiGrid({
             active = false;
         };
     }, [hasSearchQuery, searchQuery, searchReady]);
+
+    useEffect(() => {
+        const container = browserRef.current;
+        if (!container || hasSearchQuery) return;
+
+        const picker = new EmojiMartPicker({
+            data,
+            categories: SMB_EMOJI_CATEGORIES,
+            locale: emojiLocale,
+            theme: isDarkMode ? 'dark' : 'light',
+            set: 'native',
+            navPosition: 'bottom',
+            previewPosition: showPreview ? 'bottom' : 'none',
+            searchPosition: 'none',
+            skinTonePosition: 'search',
+            emojiButtonSize: 52,
+            emojiSize: 28,
+            maxFrequentRows: 1,
+            perLine: EMOJI_BROWSER_COLUMNS,
+            autoFocus: false,
+            noResultsEmoji: normalizedSelected || 'thinking_face',
+            onEmojiSelect: (emoji: { native?: string }) => {
+                if (emoji.native) {
+                    onSelect(`emoji:${emoji.native}`);
+                }
+            },
+        }) as unknown as HTMLElement;
+
+        container.replaceChildren(picker);
+
+        return () => {
+            picker.remove();
+        };
+    }, [
+        emojiLocale,
+        hasSearchQuery,
+        isDarkMode,
+        normalizedSelected,
+        onSelect,
+        showPreview,
+    ]);
 
     return (
         <div className="emoji-grid-picker" style={{ minHeight: 300, width: '100%' }}>
@@ -284,35 +325,13 @@ export default function EmojiGrid({
                 </div>
             ) : (
                 <div
+                    ref={browserRef}
                     className="emoji-grid-picker__panel emoji-grid-picker__browser"
                     style={{
                         background: token.colorBgContainer,
                         border: `1px solid ${token.colorBorderSecondary}`,
                     }}
-                >
-                    <Picker
-                        data={data}
-                        categories={SMB_EMOJI_CATEGORIES}
-                        locale={emojiLocale}
-                        theme={isDarkMode ? 'dark' : 'light'}
-                        set="native"
-                        navPosition="bottom"
-                        previewPosition={showPreview ? 'bottom' : 'none'}
-                        searchPosition="none"
-                        skinTonePosition="search"
-                        emojiButtonSize={52}
-                        emojiSize={28}
-                        maxFrequentRows={1}
-                        perLine={EMOJI_BROWSER_COLUMNS}
-                        autoFocus={false}
-                        noResultsEmoji={normalizedSelected || 'thinking_face'}
-                        onEmojiSelect={(emoji: { native?: string }) => {
-                            if (emoji.native) {
-                                onSelect(`emoji:${emoji.native}`);
-                            }
-                        }}
-                    />
-                </div>
+                />
             )}
         </div>
     );

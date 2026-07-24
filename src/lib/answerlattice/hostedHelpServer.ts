@@ -72,7 +72,7 @@ export function revalidateAnswerlatticeHostedHelpDomain(domain: string) {
     const normalizedDomain = normalizeHostedHelpDomain(domain);
     if (!normalizedDomain) return [];
     const tags = [getHostedHelpDomainCacheTag(normalizedDomain)];
-    tags.forEach(tag => revalidateTag(tag));
+    tags.forEach(tag => revalidateTag(tag, { expire: 0 }));
     return tags;
 }
 

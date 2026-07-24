@@ -8,9 +8,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/use-cases/support-teams' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -19,10 +19,10 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function SupportTeamsUseCasePage() {
+export default async function SupportTeamsUseCasePage() {
     return (
         <UseCaseLandingPage
-            basePath={getBasePath()}
+            basePath={await getBasePath()}
             canonicalPath="/use-cases/support-teams"
             eyebrow="For support teams"
             title="Reduce repeated tickets without losing answer control."

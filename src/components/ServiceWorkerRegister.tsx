@@ -7,7 +7,7 @@
  * MenuList runs multiple isolated PWAs from one Next.js build:
  *
  *   1. Owner Dashboard PWA   → platform origins (menulist.ai, app.menulist.ai)
- *      Registers `/sw.js` (next-pwa generated, Workbox, runtime caching).
+ *      Registers `/serwist/sw.js` (Serwist, bounded static caching only).
  *
  *   2. Customer App PWA      → tenant origins ({subdomain}.menulist.ai,
  *                              verified custom domains)
@@ -20,7 +20,7 @@
  * is derived client-side from `window.location.host` via the same
  * `resolveDomain` utility the middleware uses. This keeps the two SW
  * scopes strictly separated — a customer origin NEVER registers the
- * Workbox-based `sw.js`, and vice versa.
+ * owner worker, and vice versa.
  *
  * Migration safety: If the browser has a stale registration pointing to
  * a different script URL (e.g. a customer who previously had `sw.js`
@@ -38,7 +38,8 @@ import { resolveDeploymentStage } from '@constant/deploymentTargets';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { useEffect } from 'react';
 
-const OWNER_SW_URL = '/sw.js';
+const OWNER_SW_URL = '/serwist/sw.js';
+const LEGACY_OWNER_SW_URL = '/sw.js';
 const CUSTOMER_SW_URL = '/sw-customer.js';
 const MYCODEX_SW_URL = '/mycodex-sw.js';
 const PUBLIC_SW_CLEARED_RELOAD_KEY = '__menulist_public_sw_cleared__';
@@ -169,7 +170,7 @@ function getRegisteredSwLabel(scriptUrl: string | undefined): string {
 
     try {
         const pathname = new URL(scriptUrl).pathname;
-        if (pathname === OWNER_SW_URL) return 'owner';
+        if (pathname === OWNER_SW_URL || pathname === LEGACY_OWNER_SW_URL) return 'owner';
         if (pathname === CUSTOMER_SW_URL) return 'customer';
         if (pathname === MYCODEX_SW_URL) return 'mycodex';
     } catch (error) {

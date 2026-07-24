@@ -1,4 +1,5 @@
-'use client';
+'use client';;
+import { use } from "react";
 
 /**
  * Answerlattice Dashboard — Widget Management Subroute
@@ -13,11 +14,12 @@ const AnswerlatticeWidgetManagement = dynamic(
 );
 
 interface AnswerlatticeWidgetTabPageProps {
-    params: {
+    params: Promise<{
         tab: string;
-    };
+    }>;
 }
 
-export default function AnswerlatticeWidgetTabPage({ params }: AnswerlatticeWidgetTabPageProps) {
+export default function AnswerlatticeWidgetTabPage(props: AnswerlatticeWidgetTabPageProps) {
+    const params = use(props.params);
     return <AnswerlatticeWidgetManagement initialTab={params.tab} />;
 }

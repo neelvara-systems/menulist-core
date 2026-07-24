@@ -8,7 +8,7 @@
  * - Estimated writes: 100-200/day per tenant (within free tier)
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from '../constants/database';
 import {
@@ -114,7 +114,7 @@ export interface ChatCompletionData {
  */
 export async function onChatComplete(data: ChatCompletionData): Promise<void> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const today = getUtcDateKey();
     const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
     const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
@@ -187,7 +187,7 @@ export async function onFeedbackAdded(data: {
   date?: string;
 }): Promise<void> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
     const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
     const isPositive = requireBoolean(data.isPositive, 'feedback sentiment');
@@ -235,7 +235,7 @@ export async function onRegenerationEvent(data: {
   date?: string;
 }): Promise<void> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
     const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
     const targetDate = data.date === undefined ? getUtcDateKey() : requireAnalyticsDateKey(data.date);
@@ -282,7 +282,7 @@ export async function getTodayLiveStats(data: {
   totalRegenerations: number;
 }> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const today = getUtcDateKey();
     const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
     const sId = requireNumericScopeDocumentId(data.sId, 'store ID');
@@ -343,7 +343,7 @@ export async function initializeTodayDoc(data: {
   sId: string;
 }): Promise<void> {
   try {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const today = getUtcDateKey();
     const tId = requireNumericScopeDocumentId(data.tId, 'tenant ID');
     const sId = requireNumericScopeDocumentId(data.sId, 'store ID');

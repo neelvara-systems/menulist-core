@@ -522,22 +522,30 @@ function verifyCustomerAppTechnicalDocBoundaries() {
   assertIncludes(changelog, 'Customer App technical docs have top launch boundaries', 'Changelog Customer App technical-doc top-boundary checkpoint');
 }
 
-function verifyNextPwaScoping() {
-  const nextConfig = read('next.config.js');
-  const executableConfig = stripJsComments(nextConfig);
-  const ownerWorker = read('worker/index.js');
-  assertIncludes(nextConfig, 'register: false', 'next-pwa config');
-  assertIncludes(nextConfig, 'reloadOnOnline: false', 'owner PWA reconnect behavior');
-  assertIncludes(nextConfig, 'cacheStartUrl: false', 'owner PWA public-root cache boundary');
-  assertIncludes(nextConfig, 'buildExcludes: [/\\.map$/]', 'owner PWA source-map precache boundary');
-  assertNotIncludes(executableConfig, "urlPattern: /^\\/_client", 'next-pwa runtimeCaching');
-  assertNotIncludes(executableConfig, 'firestore.googleapis.com', 'next-pwa runtimeCaching');
-  assertNotIncludes(executableConfig, 'firebasestorage.googleapis.com', 'next-pwa runtimeCaching');
-  assertNotIncludes(executableConfig, '/api/public', 'next-pwa runtimeCaching');
-  assertNotIncludes(executableConfig, "cacheName: 'static-assets'", 'owner PWA broad extension cache');
-  assertNotIncludes(executableConfig, "cacheName: 'owner-dashboard-pages'", 'owner PWA private dashboard cache');
-  assertNotIncludes(executableConfig, "cacheName: 'auth-pages'", 'owner PWA auth-page cache');
-  assertNotIncludes(executableConfig, "cacheName: 'screen-pages'", 'owner PWA screen-page cache');
+function verifyOwnerSerwistScoping() {
+  const packageJson = JSON.parse(read('package.json'));
+  const declaredDependencies = {
+    ...packageJson.dependencies,
+    ...packageJson.devDependencies,
+  };
+  const ownerWorker = read('src/app/sw.ts');
+  const serwistRoute = read('src/app/serwist/[path]/route.ts');
+  const registration = read('src/components/ServiceWorkerRegister.tsx');
+  assert(!declaredDependencies['next-pwa'], 'next-pwa must remain removed');
+  assertIncludes(declaredDependencies['@serwist/turbopack'] || '', '9.5.12', 'Serwist build integration version');
+  assertIncludes(declaredDependencies.serwist || '', '9.5.12', 'Serwist runtime version');
+  assertIncludes(registration, "const OWNER_SW_URL = '/serwist/sw.js';", 'owner Serwist registration URL');
+  assertIncludes(registration, "const LEGACY_OWNER_SW_URL = '/sw.js';", 'legacy owner worker cleanup URL');
+  assertIncludes(serwistRoute, "additionalPrecacheEntries: [{ url: '/offline', revision }]", 'owner offline fallback precache');
+  assertIncludes(serwistRoute, "`${distDir}/static/**/*.css`", 'bounded owner style precache');
+  assertNotIncludes(serwistRoute, '**/*.js', 'owner global JavaScript precache');
+  assertNotIncludes(ownerWorker, 'firestore.googleapis.com', 'Serwist runtimeCaching');
+  assertNotIncludes(ownerWorker, 'firebasestorage.googleapis.com', 'Serwist runtimeCaching');
+  assertNotIncludes(ownerWorker, '/api/public', 'Serwist runtimeCaching');
+  assertNotIncludes(ownerWorker, "cacheName: 'static-assets'", 'owner PWA broad extension cache');
+  assertNotIncludes(ownerWorker, "cacheName: 'owner-dashboard-pages'", 'owner PWA private dashboard cache');
+  assertNotIncludes(ownerWorker, "cacheName: 'auth-pages'", 'owner PWA auth-page cache');
+  assertNotIncludes(ownerWorker, "cacheName: 'screen-pages'", 'owner PWA screen-page cache');
   for (const cacheName of ['start-url', 'owner-dashboard-pages', 'auth-pages', 'screen-pages', 'firebase-images', 'static-assets']) {
     assertIncludes(ownerWorker, `'${cacheName}'`, `owner PWA retired ${cacheName} cleanup`);
   }
@@ -1430,7 +1438,7 @@ const checks = [
   ['client menu offline docs', verifyClientMenuOfflineDocsMatchServiceWorkerPolicy],
   ['customer app public copy freshness boundary', verifyCustomerAppPublicCopyFreshnessBoundary],
   ['customer app technical doc boundaries', verifyCustomerAppTechnicalDocBoundaries],
-  ['next-pwa scoping', verifyNextPwaScoping],
+  ['owner Serwist scoping', verifyOwnerSerwistScoping],
   ['owner auth manifest', verifyOwnerAuthManifest],
   ['owner transparent favicons', verifyOwnerFaviconsTransparent],
   ['customer app assets', verifyCustomerAppAssets],

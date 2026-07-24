@@ -8,7 +8,7 @@
  * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md v4.3.0
  */
 
-import * as admin from 'firebase-admin';
+import { admin } from './firebaseAdminCompat';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -147,7 +147,7 @@ function initializeLocalAnswerlatticeAdcApp(appName?: string): admin.app.App | n
 }
 
 function getDefaultAdminAppForAnswerlattice(): admin.app.App | null {
-    const existing = admin.apps.find(app => app?.name === DEFAULT_APP_NAME);
+    const existing = admin.getApps().find(app => app?.name === DEFAULT_APP_NAME);
     if (existing) return existing;
 
     const defaultCredential = getAdminCredential('FIREBASE');
@@ -184,7 +184,7 @@ function getAnswerlatticeAdminApp(): admin.app.App | null {
         return getDefaultAdminAppForAnswerlattice();
     }
 
-    const existing = admin.apps.find(app => app?.name === ANSWERLATTICE_APP_NAME);
+    const existing = admin.getApps().find(app => app?.name === ANSWERLATTICE_APP_NAME);
     if (existing) {
         return existing.options.projectId && isAllowedAnswerlatticeProjectId(existing.options.projectId)
             ? existing
@@ -215,8 +215,8 @@ const answerlatticeFirestoreAdmin = answerlatticeAdminApp
         ? getAdminFirestore(answerlatticeAdminApp, answerlatticeFirestoreDatabaseId)
         : getAdminFirestore(answerlatticeAdminApp))
     : (null as unknown as admin.firestore.Firestore);
-const answerlatticeStorageAdmin = answerlatticeAdminApp ? answerlatticeAdminApp.storage() : (null as unknown as admin.storage.Storage);
-const answerlatticeAuthAdmin = answerlatticeAdminApp ? answerlatticeAdminApp.auth() : (null as unknown as admin.auth.Auth);
+const answerlatticeStorageAdmin = answerlatticeAdminApp ? admin.storage(answerlatticeAdminApp) : (null as unknown as admin.storage.Storage);
+const answerlatticeAuthAdmin = answerlatticeAdminApp ? admin.auth(answerlatticeAdminApp) : (null as unknown as admin.auth.Auth);
 
 type AnswerlatticeVectorValue = ReturnType<typeof FieldValue.vector> & {
     values?: number[];

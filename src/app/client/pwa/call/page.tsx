@@ -24,11 +24,12 @@ import PwaCallHandoffClient from './PwaCallHandoffClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function PwaCallHandoffPage({
-    searchParams,
-}: {
-    searchParams?: { lang?: string | string[] };
-}) {
+export default async function PwaCallHandoffPage(
+    props: {
+        searchParams?: Promise<{ lang?: string | string[] }>;
+    }
+) {
+    const searchParams = await props.searchParams;
     const tenant = await getTenantFromHeaders('PwaCallHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)

@@ -76,7 +76,7 @@ export const metadata: Metadata = {
 
 export default async function AnswerlatticeLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions);
-    const host = headers().get('host');
+    const host = (await headers()).get('host');
     const answerlatticePricingPath = isAnswerlatticeProductHostname(host)
         ? '/pricing'
         : `${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/pricing`;

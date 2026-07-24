@@ -293,7 +293,7 @@ export const executeAnswerlatticeWidgetEscalation = async (
 
     if (signalContext) {
         try {
-            const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
+            const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitterServer');
             const matchedEntityId = Array.isArray(signalContext.matchedEntityIds)
                 ? signalContext.matchedEntityIds[0]
                 : undefined;

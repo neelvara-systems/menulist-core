@@ -15,7 +15,7 @@
  * 3. Logs insights for monitoring
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { FieldPath, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import {
@@ -163,7 +163,7 @@ export async function processAuthorityMaturationForAllStores(): Promise<{
     phase2Count: number;
     phase3Count: number;
 }> {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     analyticsLogger.info('[AuthorityMaturation] Starting nightly analysis');
 
     try {

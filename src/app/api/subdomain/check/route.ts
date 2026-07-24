@@ -295,7 +295,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 invalidateAssistant: (storeId, tenantId) => (
                     invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
                 ),
-                revalidate: (tag) => revalidateTag(tag),
+                revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
                 touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, 'subdomainAssign'),
             },
         });

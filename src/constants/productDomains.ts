@@ -27,7 +27,7 @@
  *   - localhost:3000/__campaigncue/ → CampaignCue website
  *   - No /etc/hosts configuration needed
  *
- * @see src/middleware.ts — Uses this for hostname-based routing
+ * @see src/proxy.ts — Uses this for hostname-based routing
  * @see src/lib/multiTenant/domainResolver.ts — Multi-tenant routing (client menus)
  * @see src/constants/urls.ts — MenuList-specific URL constants
  */

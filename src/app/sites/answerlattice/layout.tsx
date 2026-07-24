@@ -118,9 +118,9 @@ interface AnswerlatticeLayoutProps {
     children: React.ReactNode;
 }
 
-function getAnswerlatticeBasePath(): string {
+async function getAnswerlatticeBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -165,8 +165,8 @@ function AnswerlatticeThemeBootstrapScript() {
     return <script id="answerlattice-theme-bootstrap" dangerouslySetInnerHTML={{ __html: script }} />;
 }
 
-export default function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLayoutProps) {
-    const basePath = getAnswerlatticeBasePath();
+export default async function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLayoutProps) {
+    const basePath = await getAnswerlatticeBasePath();
 
     return (
         <>

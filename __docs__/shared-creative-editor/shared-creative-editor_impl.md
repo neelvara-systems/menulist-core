@@ -28,7 +28,7 @@ Shared Creative Editor is a reusable client module under `src/modules/creative-e
 | --- | --- | --- |
 | `ENABLE_SHARED_CREATIVE_EDITOR` | `true` | Enables shared editor module usage. |
 | `ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS` | `true` | Enables day-one browser editor controls. |
-| `ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER` | `true` | Enables the shared Fabric.js 5.3.0 editor runtime. |
+| `ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER` | `true` | Enables the shared Fabric.js 7.4.0 editor runtime. |
 | `ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR` | `true` | Lets CampaignCue open the shared editor. |
 | `ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS` | `true` | Lets CampaignCue register editor exports as asset records. |
 | `ENABLE_CAMPAIGNCUE_DESIGN_CUE` | `true` | Lets CampaignCue pass deterministic Design Cue commands and handlers into the shared editor. |
@@ -149,7 +149,9 @@ Base editor actions are browser-local and cost zero Firebase reads/writes. Campa
 - Review mode is a UI state for inspection/download readiness. It opens the readiness panel, fits the output frame, collapses low-frequency drawer space on narrow screens, and does not change the document schema.
 - Owner-readable history labels are kept in editor runtime state alongside the undo stack. They are used for Undo/Redo notices and layer panel context, and are not serialized as product data.
 - Use `qrcode`, already present in the repo, for QR element rendering.
-- Use `fabric@5.3.0` for the browser editing engine because the prior full editor behavior depends on Fabric transforms, selected-object controls, object stacking, export, panning, wheel zoom, and snap guidelines.
+- Use `fabric@7.4.0` for the browser editing engine. Fabric 7 uses bundled types, Promise clone/image APIs, collection-owned stack methods, and explicit group/active-selection conversion. `configureCreativeFabric()` retains the neutral document's left/top coordinate contract even though Fabric 7 defaults new objects to centered origins.
+- Keep `creativeEditorSrc` as editor metadata instead of mutating Fabric 7's protected image `src`. Product persistence still stores `CreativeEditorDocument` image `src`; Fabric object metadata is only an editing bridge.
+- Temporary grouping must remove the active selection, create a `Group` without changing scene coordinates, and reverse through `removeAll()` plus a new `ActiveSelection`. Persistence releases temporary groups before neutral serialization.
 - The visible Fabric canvas must fill the remaining workspace area. `CreativeEditorDocument.canvas.width/height` define the internal Fabric workspace rect that exports/downloads, not the DOM canvas dimensions. Runtime zoom, wheel zoom, and Grab mode must update Fabric `viewportTransform`; they must not CSS-scale a frame-sized canvas or pan a scroll container.
 - SVG, PNG, preview, clipboard PNG, and base64 export must temporarily reset the Fabric viewport to identity and crop to the workspace rect, then restore the user's current zoom/pan state. Export must never include surrounding editor workspace pixels.
 - The old Vue Fabric editor was used as a parity reference for shell structure, safe imports, templates, layers, transforms, grouping, flip, filters, image borders/outlines, typography, path text, text decoration, gradients, SVG/PNG/JSON export, clipboard export, ruler orientation, and drawing tools. Arbitrary SVG import was intentionally not carried over because it conflicts with the renderer allowlist and trusted-asset boundary.

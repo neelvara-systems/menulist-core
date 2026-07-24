@@ -1,6 +1,6 @@
 # Next.js Runtime Migration Test Cases
 
-**Status:** PLANNED — results must be recorded in a separate validation artifact
+**Status:** EXECUTED LOCALLY — results recorded in `nextjs-runtime-migration_validation.md`
 **Rule:** Every final release gate runs on the same exact commit and lockfile
 
 ## 1. Evidence levels
@@ -20,13 +20,15 @@ No lower level substitutes for a higher level. In particular, L1/L2/L3 do not pr
 
 | ID | Test | Expected result |
 |---|---|---|
-| DEP-01 | `node`, npm, TypeScript version check | Node is at least 20.9; current TypeScript meets Next 16 minimum |
+| DEP-01 | `node`, npm, TypeScript version check | Node is exactly the approved 22 runtime (`.nvmrc` 22.23.1); current TypeScript meets Next 16 minimum |
 | DEP-02 | Exact package/lockfile parity | Every root declaration is exact and matches root/resolved lockfile entries |
 | DEP-03 | `npm ls --depth=0` and full peer tree | No invalid/missing peer for Next, React, React DOM, ESLint, PWA, intl, registry, Redux, Motion |
 | DEP-04 | Install log review | No `--force`, `--legacy-peer-deps`, or ignored peer failure |
 | DEP-05 | Direct package scan | No `next-pwa` or `@emoji-mart/react`; approved Serwist packages only |
 | DEP-06 | Framework package scan | Next/React/types/analyzer/config match exact approved pins |
-| DEP-07 | `npm audit --omit=dev --json` | Next/React/PWA direct blockers cleared; every remaining high/critical has disposition |
+| DEP-07 | `npm audit --omit=dev --json` | Zero critical/low; at most the one-high/one-moderate Next/PostCSS upstream family; every new package fails the security verifier |
+| DEP-08 | `npm run verify:creative-editor-smoke` | Fabric 7 origins, Promise APIs, filters, group/ungroup coordinates, stacking, export, and disposal pass |
+| DEP-09 | Firebase Admin import scan | No root `firebase-admin` namespace import; modular v14 entry points are used through `firebaseAdminCompat` |
 | SRC-01 | Private import scan | No first-party runtime/config import from `next/dist/**`, absent approved exception |
 | SRC-02 | Compatibility-plugin scan | `MenuListServerChunkCompatPlugin` and manifest alias/shim logic absent in final state |
 | SRC-03 | Async request API AST gate | Zero synchronous `headers`, `cookies`, or `draftMode` access |
@@ -148,7 +150,7 @@ The maintained smoke runner must use controlled Host headers and follow redirect
 | SEC-07 | Rewrite header sanitization | internal routing headers cannot be supplied by an external requester to bypass routing |
 | SEC-08 | Direct protected internal path | production environment blocks internal sites/hosted-help paths as designed |
 | SEC-09 | API authentication negative path | protected dynamic and non-dynamic APIs return generic 401/403 without details |
-| SEC-10 | Middleware/proxy comparison, if Phase 7 is attempted | identical security outcomes and acceptable latency under Node runtime |
+| SEC-10 | Middleware/proxy comparison | identical security outcomes and acceptable latency under Node runtime |
 
 ## 6. Cache correctness tests
 

@@ -34,12 +34,12 @@ import HostedHelpClient, {
 export const dynamic = 'force-dynamic';
 
 type PageProps = {
-    params: { segments?: string[] };
-    searchParams?: { domain?: string };
+    params: Promise<{ segments?: string[] }>;
+    searchParams?: Promise<{ domain?: string }>;
 };
 
-const getRequestDomain = (searchParams?: { domain?: string }) => {
-    const headerList = headers();
+const getRequestDomain = async (searchParams?: { domain?: string }) => {
+    const headerList = (await headers());
     return resolveHostedHelpRequestDomain({
         host: headerList.get('host'),
         queryDomain: searchParams?.domain,
@@ -48,8 +48,8 @@ const getRequestDomain = (searchParams?: { domain?: string }) => {
     });
 };
 
-const getRequestIp = () => {
-    const headerList = headers();
+const getRequestIp = async () => {
+    const headerList = (await headers());
     return headerList.get('x-forwarded-for')?.split(',')[0]?.trim()
         || headerList.get('x-real-ip')
         || 'unknown';
@@ -164,14 +164,16 @@ const compactSiteForClient = (site: Awaited<ReturnType<typeof resolveHostedHelpS
 
 async function resolvePage(searchParams?: { domain?: string }) {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_HOSTED_HELP_CENTER) return null;
-    return resolveHostedHelpSiteByDomain(getRequestDomain(searchParams));
+    return resolveHostedHelpSiteByDomain(await getRequestDomain(searchParams));
 }
 
 const buildCanonicalUrl = (domain: string, path: string) => (
     `https://${domain}${path === '/' ? '' : path}`
 );
 
-export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     const site = await resolvePage(searchParams);
     if (!site) {
         return {
@@ -229,7 +231,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     };
 }
 
-export default async function AnswerlatticeHostedHelpPage({ params, searchParams }: PageProps) {
+export default async function AnswerlatticeHostedHelpPage(props: PageProps) {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     const site = await resolvePage(searchParams);
     if (!site) notFound();
 

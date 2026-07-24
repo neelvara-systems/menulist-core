@@ -14,14 +14,15 @@ export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
-    params: {
+    params: Promise<{
         slug?: string[];
-    };
+    }>;
 }
 
-export default async function MyCodexPage({ params }: PageProps) {
+export default async function MyCodexPage(props: PageProps) {
+    const params = await props.params;
     const slug = params.slug || [];
-    const host = headers().get('host') || '';
+    const host = (await headers()).get('host') || '';
     const isLocalDev = isMyCodexLocalDevelopmentHost(host);
     const docsTree = await getMyCodexDocsTree();
     const { markdown, resolvedFilePath } = await resolveMyCodexDocument(slug);

@@ -42,8 +42,9 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { storeId: string; size: string } },
+    props: { params: Promise<{ storeId: string; size: string }> }
 ) {
+    const params = await props.params;
     const dimensions = parseCustomerAppSplashSize(params.size);
     if (!dimensions) {
         return new Response('Unsupported startup image size', { status: 404 });

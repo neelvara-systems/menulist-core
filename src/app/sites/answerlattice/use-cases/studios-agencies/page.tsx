@@ -8,9 +8,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/use-cases/studios-agencies' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -19,10 +19,10 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function StudiosAgenciesUseCasePage() {
+export default async function StudiosAgenciesUseCasePage() {
     return (
         <UseCaseLandingPage
-            basePath={getBasePath()}
+            basePath={await getBasePath()}
                 canonicalPath="/use-cases/studios-agencies"
                 eyebrow="For studios and agencies"
                 title="Add a repeatable support layer to every SaaS you launch."

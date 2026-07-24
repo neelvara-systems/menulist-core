@@ -1,14 +1,9 @@
-import dynamic from 'next/dynamic';
+import { AnswerlatticeAnswerTestsClient } from '@/components/templates/answerlattice/clientOnly/AnswerlatticeClientOnlyPages';
 
 export const metadata = {
     title: 'First 10 Answers | Answerlattice',
 };
 
-const AnswerlatticeAnswerTests = dynamic(
-    () => import('@/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests'),
-    { ssr: false },
-);
-
 export default function AnswerlatticeLaunchAnswersPage() {
-    return <AnswerlatticeAnswerTests entryMode="launch" />;
+    return <AnswerlatticeAnswerTestsClient entryMode="launch" />;
 }

@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/get-started' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -52,8 +52,9 @@ const readSingleSearchParam = (value: string | string[] | undefined): string => 
     Array.isArray(value) ? String(value[0] || '') : String(value || '')
 );
 
-export default function AnswerlatticeGetStartedPage({ searchParams }: AnswerlatticeGetStartedPageProps) {
-    const basePath = getBasePath();
+export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGetStartedPageProps) {
+    const searchParams = await props.searchParams;
+    const basePath = await getBasePath();
     const requestedPlanId = readSingleSearchParam(searchParams?.plan);
     const initialPlanId = ['answerlattice_starter', 'answerlattice_growth', 'answerlattice_studio'].includes(requestedPlanId)
         ? requestedPlanId

@@ -52,7 +52,7 @@ type ComplianceStoreLookupResult =
 
 async function revalidateCompliancePublicCache(sId: string, tId: string): Promise<boolean> {
     try {
-        revalidateTag(getComplianceCacheTag(sId));
+        revalidateTag(getComplianceCacheTag(sId), { expire: 0 });
         return false;
     } catch (error) {
         logRuntimeFailure('compliance_public_cache_revalidation_failed', error, {

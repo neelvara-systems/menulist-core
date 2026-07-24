@@ -1,36 +1,43 @@
 const { spawnSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const FUNCTIONS_DIR = path.join(ROOT, 'functions-answerlattice');
+const MENULIST_FUNCTIONS_DIR = path.join(ROOT, 'functions');
+const ANSWERLATTICE_FUNCTIONS_DIR = path.join(ROOT, 'functions-answerlattice');
 
 const ROOT_ALLOWED_HIGH_PACKAGES = new Map([
-  ['@mapbox/node-pre-gyp', 'fabric'],
-  ['canvas', 'fabric'],
-  ['fabric', 'fabric'],
-  ['next', 'next'],
-  ['next-pwa', 'next-pwa'],
-  ['rollup-plugin-terser', 'next-pwa'],
-  ['serialize-javascript', 'next-pwa'],
-  ['tar', 'fabric'],
-  ['workbox-build', 'next-pwa'],
-  ['workbox-webpack-plugin', 'next-pwa'],
+  ['postcss', 'next'],
 ]);
-const ROOT_MAX_HIGH_COUNT = ROOT_ALLOWED_HIGH_PACKAGES.size;
+const ROOT_ALLOWED_MODERATE_PACKAGES = new Map([
+  ['next', 'next'],
+]);
+const ROOT_MAX_HIGH_COUNT = 1;
+const ROOT_MAX_MODERATE_COUNT = 1;
 
 const REQUIRED_DIRECT_VERSIONS = {
   root: {
     '@sentry/nextjs': '10.66.0',
     axios: '1.18.1',
+    fabric: '7.4.0',
+    'firebase-admin': '14.2.0',
     jspdf: '4.2.1',
+    next: '16.2.11',
     nodemailer9: 'npm:nodemailer@9.0.3',
     'ua-parser-js': '2.0.10',
     uuid: '11.1.1',
     ws: '8.21.1',
   },
-  functions: {
-    'firebase-admin': '12.7.0',
-    'firebase-functions': '5.1.1',
+  menulistFunctions: {
+    '@sentry/node': '10.68.0',
+    'firebase-admin': '13.10.0',
+    'firebase-functions': '6.6.0',
+    nodemailer: '9.0.3',
+    razorpay: '2.9.8',
+  },
+  answerlatticeFunctions: {
+    'firebase-admin': '13.10.0',
+    'firebase-functions': '6.6.0',
     nodemailer: '9.0.3',
   },
 };
@@ -75,8 +82,57 @@ function verifyRootMailRuntime() {
   );
 }
 
-function runAudit(cwd, label) {
-  const result = spawnSync('npm', ['audit', '--omit=dev', '--json'], {
+function walkSourceFiles(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return walkSourceFiles(absolutePath);
+    return /\.(?:js|mjs|cjs|ts|tsx)$/.test(entry.name) ? [absolutePath] : [];
+  });
+}
+
+function verifyRootDependencyOverrides() {
+  const packageJson = readPackageJson(ROOT);
+  assert(
+    packageJson.overrides?.uuid === '11.1.1',
+    'Root UUID transitive security floor must stay overridden to 11.1.1',
+  );
+  assert(
+    packageJson.overrides?.next?.sharp === '0.35.3',
+    'Next optional Sharp runtime must stay overridden to 0.35.3',
+  );
+}
+
+function verifyFunctionsDependencyBoundary(cwd, label) {
+  const packageJson = readPackageJson(cwd);
+  assert(
+    packageJson.overrides?.uuid === '11.1.1',
+    `${label} UUID transitive security floor must stay overridden to 11.1.1`,
+  );
+  assert(
+    !packageJson.devDependencies?.['firebase-functions-test'],
+    `${label} must not reintroduce unused firebase-functions-test and its vulnerable ts-deepmerge chain`,
+  );
+}
+
+function verifyFirebaseAdminModularBoundary() {
+  const rootNamespaceImport = /(?:from\s+['"]firebase-admin['"]|require\(\s*['"]firebase-admin['"]\s*\))/;
+  const sourceDirectories = [
+    path.join(ROOT, 'src'),
+    path.join(MENULIST_FUNCTIONS_DIR, 'src'),
+    path.join(ANSWERLATTICE_FUNCTIONS_DIR, 'src'),
+  ];
+  const offenders = sourceDirectories.flatMap((directory) => walkSourceFiles(directory))
+    .filter((filePath) => rootNamespaceImport.test(fs.readFileSync(filePath, 'utf8')))
+    .map((filePath) => path.relative(ROOT, filePath));
+  assert(
+    offenders.length === 0,
+    `Firebase Admin root namespace imports are forbidden; use modular service entry points: ${offenders.join(', ')}`,
+  );
+}
+
+function runAudit(cwd, label, { omitDev = false } = {}) {
+  const args = ['audit', ...(omitDev ? ['--omit=dev'] : []), '--json'];
+  const result = spawnSync('npm', args, {
     cwd,
     encoding: 'utf8',
     maxBuffer: 20 * 1024 * 1024,
@@ -112,12 +168,23 @@ function getMigrationFamily(name, vulnerability) {
   return null;
 }
 
-function verifyRootAudit(report) {
+function verifyRootAudit(report, label) {
   const counts = report.metadata.vulnerabilities;
-  assert(counts.critical === 0, `Root production audit contains ${counts.critical} critical vulnerabilities`);
+  assert(
+    counts.critical === 0,
+    `${label} audit contains ${counts.critical} critical vulnerabilities`,
+  );
   assert(
     counts.high <= ROOT_MAX_HIGH_COUNT,
-    `Root production audit high count increased from the controlled baseline of ${ROOT_MAX_HIGH_COUNT} to ${counts.high}`,
+    `${label} audit high count increased from the controlled baseline of ${ROOT_MAX_HIGH_COUNT} to ${counts.high}`,
+  );
+  assert(
+    counts.moderate <= ROOT_MAX_MODERATE_COUNT,
+    `${label} audit moderate count increased from the controlled baseline of ${ROOT_MAX_MODERATE_COUNT} to ${counts.moderate}`,
+  );
+  assert(
+    counts.low === 0,
+    `${label} audit contains ${counts.low} low vulnerabilities`,
   );
 
   const unapprovedHighs = Object.entries(report.vulnerabilities)
@@ -131,7 +198,20 @@ function verifyRootAudit(report) {
 
   assert(
     unapprovedHighs.length === 0,
-    `Root production audit contains unapproved high vulnerabilities: ${unapprovedHighs.join(', ')}`,
+    `${label} audit contains unapproved high vulnerabilities: ${unapprovedHighs.join(', ')}`,
+  );
+
+  const unapprovedModerates = Object.entries(report.vulnerabilities)
+    .filter(([, vulnerability]) => vulnerability.severity === 'moderate')
+    .filter(([name, vulnerability]) => {
+      const expectedFamily = ROOT_ALLOWED_MODERATE_PACKAGES.get(name);
+      const family = getMigrationFamily(name, vulnerability);
+      return !expectedFamily || family !== expectedFamily;
+    })
+    .map(([name]) => name);
+  assert(
+    unapprovedModerates.length === 0,
+    `${label} audit contains unapproved moderate vulnerabilities: ${unapprovedModerates.join(', ')}`,
   );
 
   const directHighs = Object.entries(report.vulnerabilities)
@@ -142,36 +222,58 @@ function verifyRootAudit(report) {
   );
   assert(
     unexpectedDirectHighs.length === 0,
-    `Root production audit contains new direct high vulnerabilities: ${unexpectedDirectHighs.join(', ')}`,
+    `${label} audit contains new direct high vulnerabilities: ${unexpectedDirectHighs.join(', ')}`,
   );
 
   console.log(
-    `Root production audit accepted: ${counts.critical} critical, ${counts.high} high, `
-      + `${counts.moderate} moderate. Controlled high migration families: `
-      + `${[...new Set(ROOT_ALLOWED_HIGH_PACKAGES.values())].join(', ')}.`,
+    `${label} audit accepted: ${counts.critical} critical, ${counts.high} high, `
+      + `${counts.moderate} moderate. The only accepted family is Next's pinned PostCSS dependency.`,
   );
 }
 
-function verifyFunctionsAudit(report) {
+function verifyFunctionsAudit(report, label) {
   const counts = report.metadata.vulnerabilities;
   assert(
-    counts.critical === 0 && counts.high === 0,
-    `Answerlattice Functions production audit contains ${counts.critical} critical and ${counts.high} high vulnerabilities`,
+    counts.total === 0,
+    `${label} audit contains ${counts.total} vulnerabilities: ${counts.critical} critical, `
+      + `${counts.high} high, ${counts.moderate} moderate, ${counts.low} low`,
   );
-  console.log(
-    `Answerlattice Functions production audit accepted: ${counts.critical} critical, `
-      + `${counts.high} high, ${counts.moderate} moderate.`,
-  );
+  console.log(`${label} audit accepted: 0 vulnerabilities.`);
 }
 
 verifyDirectVersions(ROOT, REQUIRED_DIRECT_VERSIONS.root, 'Root runtime');
 verifyDirectVersions(
-  FUNCTIONS_DIR,
-  REQUIRED_DIRECT_VERSIONS.functions,
+  MENULIST_FUNCTIONS_DIR,
+  REQUIRED_DIRECT_VERSIONS.menulistFunctions,
+  'MenuList Functions runtime',
+);
+verifyDirectVersions(
+  ANSWERLATTICE_FUNCTIONS_DIR,
+  REQUIRED_DIRECT_VERSIONS.answerlatticeFunctions,
   'Answerlattice Functions runtime',
 );
 verifyRootMailRuntime();
-verifyRootAudit(runAudit(ROOT, 'Root production'));
-verifyFunctionsAudit(runAudit(FUNCTIONS_DIR, 'Answerlattice Functions production'));
+verifyRootDependencyOverrides();
+verifyFunctionsDependencyBoundary(MENULIST_FUNCTIONS_DIR, 'MenuList Functions');
+verifyFunctionsDependencyBoundary(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions');
+verifyFirebaseAdminModularBoundary();
+verifyRootAudit(runAudit(ROOT, 'Root full'), 'Root full');
+verifyRootAudit(runAudit(ROOT, 'Root production', { omitDev: true }), 'Root production');
+verifyFunctionsAudit(
+  runAudit(MENULIST_FUNCTIONS_DIR, 'MenuList Functions full'),
+  'MenuList Functions full',
+);
+verifyFunctionsAudit(
+  runAudit(MENULIST_FUNCTIONS_DIR, 'MenuList Functions production', { omitDev: true }),
+  'MenuList Functions production',
+);
+verifyFunctionsAudit(
+  runAudit(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions full'),
+  'Answerlattice Functions full',
+);
+verifyFunctionsAudit(
+  runAudit(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions production', { omitDev: true }),
+  'Answerlattice Functions production',
+);
 
-console.log('Answerlattice dependency security audit verification passed');
+console.log('Repository dependency security audit verification passed');

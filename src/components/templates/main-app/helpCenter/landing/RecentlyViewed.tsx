@@ -12,14 +12,14 @@ import {
 import { Card, Empty, Flex, List, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { LuClock3, LuFileText, LuInfo, LuSparkles, LuWorkflow } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
 // TYPE_LABEL moved inside component to use translations
 
-const TYPE_ICON: Record<RecentlyViewedEntry['type'], JSX.Element> = {
+const TYPE_ICON: Record<RecentlyViewedEntry['type'], ReactElement> = {
     article: <LuFileText size={16} />,
     changelog: <LuSparkles size={16} />,
     faq: <LuInfo size={16} />,

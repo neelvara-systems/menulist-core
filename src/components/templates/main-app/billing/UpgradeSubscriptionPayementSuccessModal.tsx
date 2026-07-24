@@ -1,7 +1,7 @@
 import Confetti from '@atoms/Confetti';
 import SectionHeading from '@shadcncomponents/SectionHeading';
 import { Button, Card, Modal, theme } from 'antd';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
 
@@ -23,12 +23,12 @@ const UpgradeSubscriptionPayementSuccessModal: React.FC<UpgradeSubscriptionPayem
         }
     }, [isOpen]);
 
-    const itemVariants = {
+    const itemVariants: Variants = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0 },
     };
 
-    const pathVariants = {
+    const pathVariants: Variants = {
         hidden: {
             pathLength: 0,
             opacity: 0,

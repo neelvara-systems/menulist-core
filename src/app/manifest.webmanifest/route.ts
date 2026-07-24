@@ -142,7 +142,7 @@ export async function GET() {
         // Global kill switch — owner-level opt-out lives on the store doc below.
         if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return emptyManifest();
 
-        const h = headers();
+        const h = await headers();
         // Tenant identity must come from the request Host authority. This route
         // is intentionally excluded from middleware, so do not accept
         // forwarded Host headers as a tenant selector or public manifest cache key.

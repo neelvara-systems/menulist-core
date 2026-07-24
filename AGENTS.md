@@ -122,7 +122,9 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Technology Stack Decisions
 
 - **Pinned package runtime**: Freeze follows the exact versions in `package.json` / lockfiles and is guarded by `npm run verify:dependency-freeze`; no version changes without explicit migration/security scope.
-- **Next.js 14.2.35**: Current pinned runtime for the 3-year freeze window.
+- **Next.js 16.2.11**: Current pinned runtime for the 3-year freeze window.
+- **Next 16 migration is locally complete**: The Node 22.23.1 / Next 16.2.11 / React 19.2.8 / Serwist 9.5.12 / Fabric 7.4.0 migration has no known remaining local implementation work when `verify:next-runtime-migration`, `verify:next-build-compatibility`, `verify:dependency-freeze`, typecheck, lint, and the maintained runtime/browser gates pass. Vercel preview/production smoke, physical-device PWA certification, Firebase QA deployment, and Git commit/push are release or operator evidence, not missing migration code.
+- **Next private PostCSS exception**: Next 16.2.11 privately pins PostCSS 8.4.31 while the root app pins patched PostCSS 8.5.23. Do not patch `node_modules`, override Next's private copy, install a canary/preview, use `npm audit fix --force`, or accept npm's proposed Next 9 downgrade. Before release readiness, check `npm view next dist-tags --json` and `npm view next@latest dependencies.postcss --json`. Upgrade only to a stable Next release whose private PostCSS is at least 8.5.18, then remove the audit exception and rerun the full migration/build/runtime matrix.
 - **Dual Platform**: Desktop (Ant Design + SCSS) vs mobile owner surfaces (Tailwind-driven mobile shell/screens; add `antd-mobile` only through an explicit dependency decision and freeze update)
 - **State Management**: Redux Toolkit + Redux Persist - no alternatives
 - **Backend**: Firebase (Firestore, Functions, Auth) - cost-optimized patterns
@@ -261,13 +263,15 @@ Do not casually modify these files. If a task requires changes here, read the se
 ### Tech Stack Freeze
 
 - **Source of truth**: `package.json`, `package-lock.json`, `functions/package.json`, `functions/package-lock.json`, `functions-answerlattice/package.json`, and `functions-answerlattice/package-lock.json`; enforce with `npm run verify:dependency-freeze`.
-- **Frameworks**: Next.js 14.2.35, React 18.3.1, TypeScript 5.8.3 in the root app.
+- **Frameworks**: Next.js 16.2.11, React 19.2.8, TypeScript 5.8.3 in the root app.
 - **UI**: Ant Design 5.25.1 for desktop; current mobile owner surfaces are Tailwind-driven and must not import `antd-mobile` unless the dependency is intentionally added and the freeze verifier is updated.
-- **State**: Redux Toolkit 1.9.7 and Redux Persist 6.0.0 only.
-- **Auth**: NextAuth.js 4.24.13.
-- **Backend**: Root Firebase client 11.7.3 and Firebase Admin 12.7.0; MenuList Functions pin Firebase Admin 13.5.0 and Firebase Functions 6.6.0; Answerlattice Functions pin Firebase Admin 12.7.0 and Firebase Functions 5.1.1.
+- **State**: Redux Toolkit 2.12.0, React Redux 9.3.0, and Redux Persist 6.0.0 only.
+- **Auth**: NextAuth.js 4.24.15.
+- **Runtime**: Root Node 22 with `.nvmrc` pinned to 22.23.1.
+- **PWA runtime**: Serwist 9.5.12 with isolated owner/customer/MyCodex worker contracts; do not restore `next-pwa` or the retired root `worker/index.js`.
+- **Backend**: Root Firebase client 11.7.3 and Firebase Admin 14.2.0 through modular entry points; MenuList and Answerlattice Functions pin Firebase Admin 13.10.0 and Firebase Functions 6.6.0 through modular entry points.
 - **AI SDK**: `@google/genai` 0.12.0.
-- **Editor**: Tiptap v2.11.0.
+- **Editors**: Tiptap v2.11.0 and Fabric.js 7.4.0; Fabric ships its own types.
 - **Styling**: Tailwind CSS for mobile, SASS/SCSS for desktop.
 
 ### Build Discipline Summary

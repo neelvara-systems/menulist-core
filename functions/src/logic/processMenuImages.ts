@@ -13,6 +13,7 @@
  */
 
 import { createPartFromUri, createUserContent, GenerateContentResponse } from "@google/genai";
+import { FieldValue } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import * as fs from 'fs';
 import {
@@ -29,7 +30,7 @@ import {
 } from "../constants/ai";
 import { FUNCTION_RETENTION_CONFIG } from "../constants/features";
 import { DB_COLLECTIONS } from "../constants/database";
-import { admin, firestoreAdmin } from "../firebaseAdmin";
+import { firestoreAdmin } from "../firebaseAdmin";
 import { genAIClient } from "../genAiClient";
 import { executeWithCircuitBreaker, geminiCircuitBreaker } from "../lib/circuitBreaker";
 import { logger } from "../lib/logger";
@@ -710,11 +711,11 @@ function buildOwnerExtractionActivity(transactionObject: TransactionObject): Rec
         action: transactionObject.action,
         billingMode: 'free',
         clientResponse: summarizeClientResponseForOperation(transactionObject.clientResponse),
-        createdOn: admin.firestore.FieldValue.serverTimestamp(),
+        createdOn: FieldValue.serverTimestamp(),
         fileId: transactionObject.fileId,
         files: summarizeFilesForOperation(transactionObject.files),
         jobId: transactionObject.jobId,
-        modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        modifiedOn: FieldValue.serverTimestamp(),
         processingTime: transactionObject.processingTime,
         projectId: transactionObject.projectId,
         sId: Number(storeId),

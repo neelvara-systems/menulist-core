@@ -11,17 +11,28 @@ const PACKAGE_PAIRS = [
     dir: '.',
     expectedCoreVersions: {
       '@google/genai': '0.12.0',
-      '@reduxjs/toolkit': '1.9.7',
+      '@reduxjs/toolkit': '2.12.0',
+      '@serwist/turbopack': '9.5.12',
+      '@swc/helpers': '0.5.23',
       '@tiptap/react': '2.11.0',
+      ajv: '8.20.0',
       antd: '5.25.1',
+      fabric: '7.4.0',
       firebase: '11.7.3',
-      'firebase-admin': '12.7.0',
-      next: '14.2.35',
-      'next-auth': '4.24.13',
-      react: '18.3.1',
-      'react-dom': '18.3.1',
+      'firebase-admin': '14.2.0',
+      next: '16.2.11',
+      'next-auth': '4.24.15',
+      'next-intl': '4.13.4',
+      react: '19.2.8',
+      'react-dom': '19.2.8',
+      'react-redux': '9.3.0',
       'redux-persist': '6.0.0',
+      serwist: '9.5.12',
+      postcss: '8.5.23',
+      picomatch: '4.0.5',
+      sass: '1.101.7',
       typescript: '5.8.3',
+      webpack: '5.109.0',
       zod: '3.25.76',
     },
   },
@@ -29,10 +40,12 @@ const PACKAGE_PAIRS = [
     label: 'MenuList Functions package',
     dir: 'functions',
     expectedCoreVersions: {
-      '@sentry/node': '8.55.0',
+      '@sentry/node': '10.68.0',
       '@upstash/redis': '1.35.7',
-      'firebase-admin': '13.5.0',
+      'firebase-admin': '13.10.0',
       'firebase-functions': '6.6.0',
+      nodemailer: '9.0.3',
+      razorpay: '2.9.8',
       typescript: '5.9.2',
     },
   },
@@ -40,8 +53,9 @@ const PACKAGE_PAIRS = [
     label: 'Answerlattice Functions package',
     dir: 'functions-answerlattice',
     expectedCoreVersions: {
-      'firebase-admin': '12.7.0',
-      'firebase-functions': '5.1.1',
+      'firebase-admin': '13.10.0',
+      'firebase-functions': '6.6.0',
+      nodemailer: '9.0.3',
       typescript: '5.9.3',
     },
   },
@@ -173,6 +187,41 @@ function verifyMobileLibraryBoundary() {
   }
 }
 
+function verifyRetiredRuntimeDependencies() {
+  const rootPackage = readJson('package.json');
+  for (const retiredDependency of ['next-pwa', '@emoji-mart/react']) {
+    assert(
+      !rootPackage.dependencies?.[retiredDependency]
+        && !rootPackage.devDependencies?.[retiredDependency],
+      `${retiredDependency} must remain removed after the Next 16 migration`,
+    );
+  }
+}
+
+function verifyRootRuntimeEnvironment() {
+  const rootPackage = readJson('package.json');
+  assert(
+    rootPackage.engines?.node === '22',
+    `Root Node engine must stay pinned to major 22, found ${rootPackage.engines?.node || 'missing'}`,
+  );
+  assert(
+    read('.nvmrc').trim() === '22.23.1',
+    `Root .nvmrc must stay pinned to 22.23.1, found ${read('.nvmrc').trim() || 'missing'}`,
+  );
+  assert(
+    rootPackage.overrides?.uuid === '11.1.1',
+    'Root UUID security override must stay pinned to 11.1.1',
+  );
+  assert(
+    rootPackage.overrides?.next?.sharp === '0.35.3',
+    'Next optional Sharp security override must stay pinned to 0.35.3',
+  );
+  assert(
+    !rootPackage.devDependencies?.['@types/fabric'],
+    '@types/fabric must remain removed because Fabric 7 ships its own types',
+  );
+}
+
 function verifyDocsAndRegistry() {
   const packageJson = readJson('package.json');
   assert(
@@ -242,6 +291,8 @@ for (const packagePair of PACKAGE_PAIRS) {
   verifyPackagePair(packagePair);
 }
 verifyMobileLibraryBoundary();
+verifyRetiredRuntimeDependencies();
+verifyRootRuntimeEnvironment();
 verifyDocsAndRegistry();
 
 console.log('Dependency freeze verification passed');

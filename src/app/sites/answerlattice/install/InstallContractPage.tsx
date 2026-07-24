@@ -13,9 +13,9 @@ import {
 
 const FALLBACK_INSTALL_DOC = ANSWERLATTICE_INSTALL_DOCS.find((doc) => doc.key === 'overview') || ANSWERLATTICE_INSTALL_DOCS[0]!;
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -28,9 +28,9 @@ function resolveDoc(key: AnswerlatticeInstallDocKey) {
     return getAnswerlatticeInstallDoc(key) || FALLBACK_INSTALL_DOC;
 }
 
-export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: AnswerlatticeInstallDocKey }) {
+export default async function AnswerlatticeInstallContractPage({ docKey }: { docKey: AnswerlatticeInstallDocKey }) {
     const doc = resolveDoc(docKey);
-    const basePath = getBasePath();
+    const basePath = await getBasePath();
     const navDocs = getAnswerlatticeInstallDocsForNavigation();
 
     return (

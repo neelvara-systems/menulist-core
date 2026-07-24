@@ -16,8 +16,8 @@ const escapeXml = (value: string) => value
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
-const getRequestDomain = (request: NextRequest) => {
-    const headerList = headers();
+const getRequestDomain = async (request: NextRequest) => {
+    const headerList = (await headers());
     return resolveHostedHelpRequestDomain({
         host: headerList.get('host'),
         queryDomain: request.nextUrl.searchParams.get('domain'),
@@ -27,7 +27,7 @@ const getRequestDomain = (request: NextRequest) => {
 };
 
 export async function GET(request: NextRequest) {
-    const host = getRequestDomain(request);
+    const host = await getRequestDomain(request);
     const site = await resolveHostedHelpSiteByDomain(host);
 
     if (!site || site.config.noIndex) {

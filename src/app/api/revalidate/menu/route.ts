@@ -251,7 +251,7 @@ async function handleRevalidateMenuCache(
 
         // Revalidate each tag
         for (const tag of tags) {
-            revalidateTag(tag);
+            revalidateTag(tag, { expire: 0 });
         }
 
         const ownerBusinessAssistant = requestedStoreId

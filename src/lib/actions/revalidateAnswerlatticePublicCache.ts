@@ -39,6 +39,6 @@ export async function revalidateAnswerlatticePublicCache(
     segment: AnswerlatticePublicCacheSegment = 'all',
 ) {
     const tags = getAnswerlatticePublicCacheTags(tId, sId, segment);
-    tags.forEach(tag => revalidateTag(tag));
+    tags.forEach(tag => revalidateTag(tag, { expire: 0 }));
     return tags;
 }

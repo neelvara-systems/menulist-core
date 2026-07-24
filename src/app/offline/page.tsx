@@ -1,7 +1,7 @@
 /**
  * Offline Fallback Page
  *
- * Served by the service worker (registered via next-pwa) when a navigation
+ * Served by the owner Serwist worker when a navigation
  * request fails due to no network connectivity. It serves installed owner and
  * customer PWAs without exposing cached private or stale business content.
  * they'd see the browser's generic "No internet" error.

@@ -19,9 +19,9 @@ export function buildProductFeatureMetadata(feature: AnswerlatticeProductFeature
     };
 }
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -30,8 +30,8 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function ProductFeatureRoutePage({ feature }: { feature: AnswerlatticeProductFeature }) {
-    const basePath = getBasePath();
+export default async function ProductFeatureRoutePage({ feature }: { feature: AnswerlatticeProductFeature }) {
+    const basePath = await getBasePath();
 
     return (
         <>

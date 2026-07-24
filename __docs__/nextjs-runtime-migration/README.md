@@ -1,22 +1,15 @@
 # Next.js Runtime Migration
 
-**Status:** PLAN READY FOR REVIEW — implementation has not started
+**Status:** LOCALLY IMPLEMENTED AND VERIFIED — deployment not performed
 **Created:** July 13, 2026
 **Scope:** Shared root web runtime for MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex, public sites, route handlers, and PWAs
-**Current runtime:** Next.js 14.2.35, React 18.3.1
-**Final target verified on July 13, 2026:** Next.js 16.2.10 Active LTS, React 19.2.7
-**Release boundary:** No dependency, runtime, Firebase, or deploy change was made while preparing this plan
+**Previous runtime:** Next.js 14.2.35, React 18.3.1
+**Current frozen runtime verified on July 24, 2026:** Next.js 16.2.11, React 19.2.8
+**Release boundary:** Local source/build/start evidence is complete. No Firebase or Vercel deploy was performed.
 
 ## Decision
 
-Migrate the shared root application to the current stable Active LTS line. Do not perform a direct package-only bump.
-
-The migration will use two framework checkpoints:
-
-1. Next.js 15.5.20 as a temporary compatibility checkpoint for React 19 and asynchronous request APIs.
-2. Next.js 16.2.10 as the only final frozen runtime.
-
-The first Next.js 16 build will intentionally use Webpack. Turbopack becomes the final production bundler only after the framework, routing, auth, cache, and production-start gates pass on Webpack. This separates framework regressions from bundler regressions.
+The shared root application now runs on the exact stable Next.js 16.2.11 and React 19.2.8 runtime. The migration was executed continuously end to end, with internal safety checks but no user-facing phase or stage pauses. Both Webpack and the default Turbopack production paths are retained and verified.
 
 The final state must also remove two legacy runtime liabilities:
 
@@ -54,7 +47,7 @@ The July 13 source inventory found:
 | Runtime config APIs | 0 | No `serverRuntimeConfig` or `publicRuntimeConfig` migration currently expected |
 | AMP usage | 0 | No AMP removal work currently expected |
 | Explicit `<Image quality>` props | 0 | Next 16 quality allowlist does not currently require a repo-wide prop migration |
-| Shared middleware | More than 800 lines, multi-product routing and security | Retain `middleware.ts` during the first Next 16 checkpoint; evaluate `proxy.ts` only as a later isolated change |
+| Shared request boundary | More than 800 lines, multi-product routing and security | Migrated to `src/proxy.ts`; production host/routing/security smoke remains equivalent |
 | Next configuration | Private `next/dist/**` imports, custom manifest/chunk plugin, custom Webpack, PWA, Sentry, intl, bundle analyzer | Replace or prove every integration; never port the Next 14 compatibility plugin by assumption |
 | Direct peer conflicts with React 19 / Next 16 | 7 package families | Resolve without `--force` or `--legacy-peer-deps` |
 
@@ -62,28 +55,28 @@ The synchronous header calls are concentrated in Answerlattice public/runtime ro
 
 ## Target package decisions
 
-These versions are the July 13 planning targets. The execution session must recheck stable versions and advisories immediately before changing the lockfile, then keep exact pins.
+These are the exact July 24 installed and frozen versions. Future changes require a separately verified dependency migration.
 
 | Package | Current | Planned target or action | Reason |
 |---|---:|---:|---|
-| `next` | 14.2.35 | 15.5.20 bridge, then 16.2.10 final | Supported migration path and final Active LTS |
-| `react`, `react-dom` | 18.3.1 | 19.2.7 | Official App Router generation for the final runtime |
+| `next` | 14.2.35 | 16.2.11 | Exact stable runtime |
+| `react`, `react-dom` | 18.3.1 | 19.2.8 | Exact React 19 runtime |
 | `@types/react` | 18.3.21 | 19.2.17 | React 19 type contract |
 | `@types/react-dom` | 18.3.7 | 19.2.3 | React 19 DOM type contract |
 | `typescript` | 5.8.3 | Keep 5.8.3 unless evidence requires change | Already exceeds Next 16 minimum; avoid unrelated drift |
-| `next-intl` | 3.26.5 | 4.13.2 | Current version excludes Next 16; target supports it |
+| `next-intl` | 3.26.5 | 4.13.4 | Next 16-compatible internationalization runtime |
 | `@ant-design/nextjs-registry` | 1.0.2 | 1.3.0 | Current version excludes Next 16; target supports it |
 | `@reduxjs/toolkit` | 1.9.7 | 2.12.0 | Current peer range excludes React 19 |
 | `react-redux` | 8.1.3 | 9.3.0 | Current peer range excludes React 19 |
 | `framer-motion` | 10.18.0 | 12.42.2 | Current peer range excludes React 19; keep existing import surface initially |
 | `@emoji-mart/react` | 1.1.1 | Remove | No React 19 peer support; only one repo consumer exists |
 | `@emoji-mart/data`, `emoji-mart` | 1.2.1 / 5.6.0 | Retain initially if their core APIs pass | Existing custom search/grid code can replace the unsupported React wrapper |
-| `eslint` | 8.57.1 | 9.39.2 first | Next 16 requires ESLint 9+; use flat config with lower migration risk than an incidental ESLint 10 jump |
-| `eslint-config-next` | 14.2.33 | 16.2.10 | Match the framework and flat-config contract |
-| `@next/bundle-analyzer` | 16.2.1 | 16.2.10 | Match the final Next patch |
+| `eslint` | 8.57.1 | 9.39.5 | Next 16 flat-config lint runtime |
+| `eslint-config-next` | 14.2.33 | 16.2.11 | Matches the framework |
+| `@next/bundle-analyzer` | 16.2.1 | 16.2.11 | Matches the framework |
 | `next-pwa` | 5.6.0 | Remove | Old direct high-risk dependency and Webpack-era integration |
-| `@serwist/turbopack`, `serwist`, `esbuild` | absent | 9.5.11 / 9.5.11 / 0.28.1 planning targets | Maintained Turbopack service-worker build path |
-| `next-auth` | 4.24.13 | Keep initially | Its peer contract already includes Next 16 and React 19; auth migration is out of scope |
+| `@serwist/turbopack`, `serwist`, `esbuild` | absent | 9.5.12 / 9.5.12 / 0.28.1 | Maintained Turbopack service-worker build path |
+| `next-auth` | 4.24.13 | 4.24.15 | React/Next-compatible v4 security patch |
 | `antd` | 5.25.1 | Keep | No UI-library major upgrade inside the framework migration |
 
 No install may use peer-dependency overrides. If the clean exact-pin install cannot resolve, stop and revise the package set.
@@ -107,13 +100,14 @@ No install may use peer-dependency overrides. If the clean exact-pin install can
 - [Test cases](./nextjs-runtime-migration_test-cases.md) — source, build/start, product, routing, cache, PWA, browser, performance, and security evidence.
 - [Mobile/PWA impact](./nextjs-runtime-migration_mobile-support.md) — mobile shell and service-worker acceptance contract.
 - [Firebase impact](./nextjs-runtime-migration_firebase.md) — explicit zero-schema/deploy boundary and cache-cost implications.
+- [Validation record](./nextjs-runtime-migration_validation.md) — exact local build, start, route, worker, audit, and verifier evidence.
 
 Marketing, website, and help-center documents are not created for this work because the migration adds no customer-visible capability or public claim. If execution changes behavior or public support requirements, that decision must reopen the content-layer review.
 
-## Execution authorization boundary
+## Execution boundary
 
-This plan does not authorize runtime edits. When implementation is approved, work starts at Phase 0 in the playbook. The current dirty worktree must first be saved into a known checkpoint; the migration must not overwrite or silently absorb unrelated package, configuration, middleware, route, docs, or verifier edits.
+The local migration is implemented. Vercel deployment and production-host/device certification remain separate explicit actions.
 
 ## Completion statement
 
-The migration is complete only when the final exact dependency set, async request APIs, cache semantics, Next configuration, production bundler, service workers, source gates, clean build, real `next start` HTTP matrix, cross-product browser matrix, audit review, and freeze documentation all pass on the same commit. A successful install, typecheck, or build alone is not completion.
+The repo-side migration is complete when the final exact dependency set, async request APIs, cache semantics, Next configuration, both production bundlers, service workers, source gates, clean builds, real `next start` HTTP matrix, audit review, and freeze documentation pass on the same worktree. External preview/device evidence is release certification, not unfinished source migration.

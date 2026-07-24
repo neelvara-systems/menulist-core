@@ -1,6 +1,7 @@
 import HelpCenter from "@template/main-app/helpCenter";
 
-function page({ params }: { params: { segments?: string[] } }) {
+async function page(props: { params: Promise<{ segments?: string[] }> }) {
+    const params = await props.params;
     const [tab, resourceType, resourceId] = params.segments || [];
 
     return (

@@ -1,4 +1,5 @@
-'use client';
+'use client';;
+import { use } from "react";
 
 /**
  * Answerlattice Dashboard — Team Access Subroute
@@ -13,11 +14,12 @@ const AnswerlatticeTeamAccess = dynamic(
 );
 
 interface AnswerlatticeTeamTabPageProps {
-    params: {
+    params: Promise<{
         tab: string;
-    };
+    }>;
 }
 
-export default function AnswerlatticeTeamTabPage({ params }: AnswerlatticeTeamTabPageProps) {
+export default function AnswerlatticeTeamTabPage(props: AnswerlatticeTeamTabPageProps) {
+    const params = use(props.params);
     return <AnswerlatticeTeamAccess initialTab={params.tab} />;
 }

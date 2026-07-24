@@ -157,11 +157,11 @@ export default getRequestConfig(async () => {
         let locale: Locale = defaultLocale;
 
         //2. get current user app locale (Get this from database affter saving user preferances into database)
-        const localLocale = normalizeLocalePreference(cookies().get(APP_LOCALE_COOKIES_KEY)?.value);
+        const localLocale = normalizeLocalePreference((await cookies()).get(APP_LOCALE_COOKIES_KEY)?.value);
 
         //3. get user browser locale if user accessing app first time or not selected any locale
         if (!localLocale) {
-            const headersList = headers()
+            const headersList = await headers()
             const negotiatorHeaders: Record<string, string> = {}
             headersList.forEach((value, key) => (negotiatorHeaders[key] = value))
             const languages = new Negotiator({ headers: negotiatorHeaders }).languages()
@@ -177,11 +177,11 @@ export default getRequestConfig(async () => {
         if (!locale) locale = defaultLocale;
 
         //4. get current calling route so that we can identify which apps locals needs to be imported
-        const referer = headers().get('referer');
+        const referer = (await headers()).get('referer');
 
         //5. Normalize/sanitize selected locale before handing it to next-intl.
         locale = normalizeLocalePreference(locale) || defaultLocale;
-        const timeZone = normalizeTimeZone(cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value);
+        const timeZone = normalizeTimeZone((await cookies()).get(APP_TIMEZONE_COOKIES_KEY)?.value);
 
         // Always load en-US as the fallback base.
         // Static imports avoid missing generated JSON chunks in Next dev after route-table rebuilds.

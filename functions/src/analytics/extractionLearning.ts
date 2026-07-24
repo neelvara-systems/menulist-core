@@ -17,7 +17,7 @@
  * @see __docs__/infrastructure-compounding/extraction-learning-loop_spec.md
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
@@ -66,7 +66,7 @@ const MAX_CHANGE_LOG_DOCUMENTS_PER_STORE = 50_000;
  * Aggregates EXTRACTION_CORRECTION events into platform-level patterns
  */
 export async function processExtractionLearningForAllStores(): Promise<ExtractionLearningResult> {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const result: ExtractionLearningResult = {
         totalCorrections: 0,
         storesProcessed: 0,

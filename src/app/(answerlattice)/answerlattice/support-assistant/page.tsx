@@ -1,14 +1,9 @@
-import dynamic from 'next/dynamic';
+import { AnswerlatticeOwnerSupportAssistantClient } from '@/components/templates/answerlattice/clientOnly/AnswerlatticeClientOnlyPages';
 
 export const metadata = {
     title: 'Daily Brief | Answerlattice',
 };
 
-const AnswerlatticeOwnerSupportAssistant = dynamic(
-    () => import('@/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant'),
-    { ssr: false },
-);
-
 export default function AnswerlatticeOwnerSupportAssistantPage() {
-    return <AnswerlatticeOwnerSupportAssistant />;
+    return <AnswerlatticeOwnerSupportAssistantClient />;
 }

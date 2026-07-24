@@ -107,19 +107,15 @@ const cleanEnvironment = () => {
 };
 
 const nextConfigLoader = [
-  "const Module = require('node:module');",
-  "const originalLoad = Module._load;",
-  "Module._load = function(request) {",
-  "  if (request === 'next-pwa') return () => (config) => config;",
-  "  return originalLoad.apply(this, arguments);",
-  "};",
-  "const config = require('./next.config.js');",
+  "(async () => {",
+  "const exportedConfig = require('./next.config.js');",
+  "const config = typeof exportedConfig === 'function' ? await exportedConfig() : exportedConfig;",
 ].join(" ");
 
 const loadNextConfig = (name, overrides) => {
   const child = spawnSync(process.execPath, [
     "-e",
-    `${nextConfigLoader} process.stdout.write(JSON.stringify(config.env) + '\\n');`,
+    `${nextConfigLoader} process.stdout.write(JSON.stringify(config.env) + '\\n'); })().catch((error) => { console.error(error); process.exit(1); });`,
   ], {
     cwd: ROOT,
     encoding: "utf8",

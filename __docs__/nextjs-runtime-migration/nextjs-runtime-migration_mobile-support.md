@@ -1,6 +1,6 @@
 # Next.js Runtime Migration — Mobile and PWA Support
 
-**Status:** PLANNED
+**Status:** LOCALLY IMPLEMENTED — device certification pending deployment
 **Mobile impact:** High regression risk, no new mobile feature
 **Primary surfaces:** MenuList owner MobileShell, public customer menu/PWA, MyCodex PWA, product public layouts
 
@@ -67,7 +67,7 @@ The migration must define old Workbox cache names and remove only obsolete owner
 Test all of:
 
 1. Fresh install with no prior service worker.
-2. Upgrade from current `next-pwa` worker.
+2. Replace the former `next-pwa` worker with the bounded Serwist worker.
 3. Two open tabs during worker update.
 4. Offline during update.
 5. Account logout and store switch after update.

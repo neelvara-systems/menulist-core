@@ -10,20 +10,22 @@ import {
 import type { Metadata } from 'next';
 
 type ResourcePageParams = {
-    params: {
+    params: Promise<{
         slug: string;
-    };
+    }>;
 };
 
 export function generateStaticParams() {
     return getWebsiteResourceSlugs().map((slug) => ({ slug }));
 }
 
-export function generateMetadata({ params }: ResourcePageParams): Metadata {
+export async function generateMetadata(props: ResourcePageParams): Promise<Metadata> {
+    const params = await props.params;
     return buildResourceArticleMetadata(params.slug, WEBSITE_RESOURCE_DEFAULT_LOCALE);
 }
 
-export default function ResourceArticlePage({ params }: ResourcePageParams) {
+export default async function ResourceArticlePage(props: ResourcePageParams) {
+    const params = await props.params;
     return (
         <DefaultWebsiteResourceLocaleBoundary>
             <ResourceArticlePageShell

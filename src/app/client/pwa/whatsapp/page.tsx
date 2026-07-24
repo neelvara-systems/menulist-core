@@ -30,11 +30,12 @@ function buildWaUrl(waNumber: string | undefined, fallbackPhone?: string, countr
     return phoneParam ? `https://wa.me/${phoneParam}` : null;
 }
 
-export default async function PwaWhatsAppHandoffPage({
-    searchParams,
-}: {
-    searchParams?: { lang?: string | string[] };
-}) {
+export default async function PwaWhatsAppHandoffPage(
+    props: {
+        searchParams?: Promise<{ lang?: string | string[] }>;
+    }
+) {
+    const searchParams = await props.searchParams;
     const tenant = await getTenantFromHeaders('PwaWhatsAppHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)

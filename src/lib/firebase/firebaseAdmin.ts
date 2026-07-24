@@ -1,10 +1,10 @@
-import * as admin from 'firebase-admin';
+import { admin } from './firebaseAdminCompat';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
 const DEFAULT_APP_NAME = '[DEFAULT]';
-const existingDefaultApp = admin.apps.find(app => app?.name === DEFAULT_APP_NAME);
+const existingDefaultApp = admin.getApps().find(app => app?.name === DEFAULT_APP_NAME);
 const firebaseAdminApp = existingDefaultApp || (() => {
     const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
@@ -38,8 +38,8 @@ const firebaseAdminApp = existingDefaultApp || (() => {
 })();
 
 const firestoreAdmin = admin.firestore(firebaseAdminApp);
-const storageAdmin = firebaseAdminApp.storage();
-const authAdmin = firebaseAdminApp.auth();
+const storageAdmin = admin.storage(firebaseAdminApp);
+const authAdmin = admin.auth(firebaseAdminApp);
 type VectorValue = ReturnType<typeof FieldValue.vector> & {
     values?: number[];
     _values?: number[];

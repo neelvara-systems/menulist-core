@@ -73,8 +73,8 @@ You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions m
 ## Technology Stack Constraints
 
 ### Frontend Framework
-- **Next.js 14.2.35** - Current pinned runtime; no version drift without constitutional/security review and `npm run verify:dependency-freeze` update
-- **React 18.3.1** - Use modern hooks and patterns only
+- **Next.js 16.2.11** - Current pinned runtime; no version drift without constitutional/security review and `npm run verify:dependency-freeze` update
+- **React 19.2.8** - Use modern hooks and patterns only
 - **TypeScript 5.8.3** - Strict type checking required
 
 ### UI Architecture

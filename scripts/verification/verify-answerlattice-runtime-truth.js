@@ -262,11 +262,14 @@ function verifyAnswerlatticeOperationalHardening() {
     'Answerlattice isolated TypeScript cache',
   );
 
-  assertIncludes(securityAudit, "'fabric'", 'Answerlattice audit controlled fabric migration');
   assertIncludes(securityAudit, "'next'", 'Answerlattice audit controlled Next migration');
-  assertIncludes(securityAudit, "'next-pwa'", 'Answerlattice audit controlled PWA migration');
+  assertIncludes(securityAudit, "['postcss', 'next']", 'Answerlattice audit controlled Next transitive advisory family');
   assertIncludes(securityAudit, 'counts.critical === 0', 'Answerlattice root critical dependency blocker');
-  assertIncludes(securityAudit, 'counts.critical === 0 && counts.high === 0', 'Answerlattice Functions high dependency blocker');
+  assertIncludes(securityAudit, 'ROOT_MAX_HIGH_COUNT = 1', 'Answerlattice root high dependency ceiling');
+  assertIncludes(securityAudit, 'ROOT_MAX_MODERATE_COUNT = 1', 'Answerlattice root moderate dependency ceiling');
+  assertIncludes(securityAudit, "packageJson.overrides?.uuid === '11.1.1'", 'Answerlattice secure transitive UUID floor');
+  assertIncludes(securityAudit, 'verifyFirebaseAdminModularBoundary', 'Answerlattice Firebase Admin modular import boundary');
+  assertIncludes(securityAudit, 'counts.total === 0', 'Answerlattice Functions zero-vulnerability dependency blocker');
   assertIncludes(
     securityAudit,
     "nodemailer9: 'npm:nodemailer@9.0.3'",
@@ -470,6 +473,7 @@ function verifyAnswerlatticeFirebaseForensicBoundaries() {
   const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
   const signalDal = read('src/database/answerlattice/signalEvents.ts');
   const signalEmitter = read('src/lib/answerlattice/signalEmitter.ts');
+  const signalEmitterServer = read('src/lib/answerlattice/signalEmitterServer.ts');
   const signalIdentity = read('src/lib/answerlattice/signalIdentity.ts');
   const supportEvidencePrivacy = read('src/data/shared/answerlatticeSupportEvidencePrivacy.ts');
   const supportEvidencePrivacyFunctions = read('functions-answerlattice/src/sharedData/answerlatticeSupportEvidencePrivacy.ts');
@@ -539,7 +543,7 @@ function verifyAnswerlatticeFirebaseForensicBoundaries() {
 
   assert(retentionApp === retentionFunctions, 'Answerlattice app and Functions retention policy must be byte-identical');
   assertIncludes(signalDal, "getAnswerlatticeRetentionExpiryMillis('signalEvents')", 'Answerlattice client signal TTL');
-  assertIncludes(signalEmitter, "getAnswerlatticeRetentionExpiryMillis('signalEvents', now.getTime())", 'Answerlattice server signal TTL');
+  assertIncludes(signalEmitterServer, "getAnswerlatticeRetentionExpiryMillis('signalEvents', now.getTime())", 'Answerlattice server signal TTL');
   assertNotIncludes(nightly, 'archiveExpiredSignals', 'Answerlattice nightly per-tenant signal cleanup query');
   assertIncludes(nightly, "signalRetention: 'firestore_ttl'", 'Answerlattice nightly signal retention diagnostics');
 
@@ -571,7 +575,7 @@ function verifyAnswerlatticeFirebaseForensicBoundaries() {
 }
 
 function verifyPublicApiAndWidgetIsolation() {
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
   const publicAnswers = read('src/app/api/answerlattice/public/v1/answers/route.ts');
   const publicEntities = read('src/app/api/answerlattice/public/v1/entities/route.ts');
   const publicSignals = read('src/app/api/answerlattice/public/v1/signals/route.ts');
@@ -3197,7 +3201,7 @@ function verifyAnswerlatticeFirebaseAdminInitializationBoundary() {
   ]);
   const sourceFiles = Array.from(new Set(roots.flatMap(listSourceFiles)));
   const defaultAdminImports = sourceFiles.filter((relPath) => (
-    read(relPath).includes('@lib/firebase/firebaseAdmin')
+    /from\s+['"]@lib\/firebase\/firebaseAdmin['"]/.test(read(relPath))
   ));
   const unexpectedDefaultAdminImports = defaultAdminImports.filter((relPath) => (
     !allowedDefaultAdminBridges.has(relPath)
@@ -6033,7 +6037,7 @@ function verifyAnswerlatticeCallableDiagnostics() {
     sharedAiUtils,
     [
       'if (!isAllowedKnowledgeSourceStoragePath(file, scope))',
-      'const fileBuffer = await admin.storage().bucket().file(file.storagePath).download();',
+      'const fileBuffer = await storageAdmin.bucket().file(file.storagePath).download();',
     ],
     'shared AI utils validates source storage path before download',
   );
@@ -6390,6 +6394,7 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   const diagnostics = read('src/lib/answerlattice/diagnostics.ts');
   const governanceIdBoundary = read('src/lib/answerlattice/governanceIdBoundary.ts');
   const signalEmitter = read('src/lib/answerlattice/signalEmitter.ts');
+  const signalEmitterServer = read('src/lib/answerlattice/signalEmitterServer.ts');
   const signalIdentity = read('src/lib/answerlattice/signalIdentity.ts');
   const supportEvidencePrivacy = read('src/data/shared/answerlatticeSupportEvidencePrivacy.ts');
   const supportEvidencePrivacyFunctions = read('functions-answerlattice/src/sharedData/answerlatticeSupportEvidencePrivacy.ts');
@@ -6495,6 +6500,7 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(signalEmitter, 'resolutionEventId', 'Answerlattice ticket resolution lifecycle identity');
   assertIncludes(signalEmitter, 'redactAnswerlatticeSupportEvidenceText', 'Answerlattice support evidence redaction');
   assertNotIncludes(signalEmitter, 'resolvedBy: params.resolvedBy', 'Answerlattice signal stored resolver identity');
+  assertNoDirectConsole(signalEmitterServer, 'Answerlattice server signal persistence');
   assertIncludes(signalIdentity, 'buildAnswerlatticeSignalPayloadFingerprint', 'Answerlattice signal payload fingerprint helper');
   assertIncludes(signalIdentity, 'buildAnswerlatticeSignalMemoryDedupKey', 'Answerlattice signal scoped memory identity helper');
   assert(
@@ -6505,9 +6511,9 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(signalEmitter, "const SIGNAL_UNRESOLVED_ENTITY_ID = 'unresolved';", 'Answerlattice signal unresolved entity fallback');
   assertIncludes(signalEmitter, 'const normalizeSignalEntityId = (value: unknown): string => (', 'Answerlattice signal entity ID normalizer');
   assertIncludes(signalEmitter, 'normalizeAnswerlatticeEntityId(value) || SIGNAL_UNRESOLVED_ENTITY_ID', 'Answerlattice signal entity ID boundary fallback');
-  assertIncludes(signalEmitter, 'entityId: normalizeSignalEntityId(params.entityId)', 'Answerlattice server signal normalized entity ID write');
   assertIncludes(signalEmitter, 'const normalizedEntityId = normalizeSignalEntityId(params.entityId);', 'Answerlattice signal normalized entity ID before client/server emit');
   assertIncludes(signalEmitter, 'entityId: normalizedEntityId', 'Answerlattice client signal normalized entity ID write');
+  assertIncludes(signalEmitterServer, 'entityId: params.entityId', 'Answerlattice server signal receives normalized entity ID');
   assertNotIncludes(signalEmitter, "entityId: params.entityId || 'unresolved'", 'Answerlattice signal raw/default entity ID write');
   assertNotIncludes(signalEmitter, 'error?.message', 'Answerlattice signal duplicate handling must not branch on raw exception text');
   [

@@ -1,5 +1,5 @@
 /**
- * Next.js Edge Middleware - Security Headers + Multi-Product & Multi-Tenant Routing
+ * Next.js Proxy - Security Headers + Multi-Product & Multi-Tenant Routing
  * ═══════════════════════════════════════════════════════════════════════════════════
  * 
  * Routing Priority:
@@ -18,7 +18,7 @@
  * @see src/constants/productDomains.ts — Multi-product domain registry
  * @see src/lib/multiTenant/domainResolver.ts — Domain type detection
  * 
- * This runs on EVERY request at the edge (before route handlers)
+ * This runs on every matched request before route handlers.
  */
 
 import { CSP_ALLOWLIST, CSP_DEV_SETTINGS, buildCSPDirective } from '@config/csp-allowlist';
@@ -565,10 +565,10 @@ function setMyCodexResponseHeaders(response: NextResponse): NextResponse {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Main Middleware
+// Main Proxy
 // ═══════════════════════════════════════════════════════════════
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const hostname = request.headers.get('host');
     const pathname = request.nextUrl.pathname;
     const domainInfo = resolveDomain(hostname);
@@ -913,6 +913,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public folder files
          */
-        '/((?!_next/static|_next/image|favicon.ico|sw\\.js|sw-customer\\.js|mycodex-sw\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|serwist(?:/|$)|sw\\.js|sw-customer\\.js|mycodex-sw\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
     ],
 };

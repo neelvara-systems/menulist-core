@@ -1,42 +1,46 @@
-Framework: Next.js (v14.2.35) with React (v18.3.1)
+Framework: Next.js (v16.2.11) with React (v19.2.8)
 Language: TypeScript (v5.8.3)
 Dependency freeze gate: npm run verify:dependency-freeze
+Next 16 migration status: locally complete; remaining Vercel/device/Firebase QA/Git evidence is external or operational, not missing migration code
+Next private PostCSS exception: Next 16.2.11 pins 8.4.31; root pins 8.5.23. Upgrade only when stable Next privately carries PostCSS >=8.5.18. Never use canary/preview, node_modules patches, private-pin overrides, npm audit fix --force, or the proposed Next 9 downgrade.
 
 UI Components:
 Ant Design (v5.25.1)
-Framer Motion (v10.18.0)
+Framer Motion (v12.42.2)
 React Icons (v4.12.0)
 
 State Management:
-Redux Toolkit (v1.9.7)
+Redux Toolkit (v2.12.0)
+React Redux (v9.3.0)
 Redux Persist (v6.0.0)
 
 Rich Text Editing:
 Tiptap Editor Suite (v2.11.0)
 
 Authentication:
-NextAuth.js (v4.24.13)
+NextAuth.js (v4.24.15)
 
 Backend Integration:
-Axios (v1.13.2)
+Axios (v1.18.1)
 Firebase client (v11.7.3)
-Firebase Admin root app (v12.7.0)
-MenuList Functions: firebase-admin (v13.5.0), firebase-functions (v6.6.0)
-Answerlattice Functions: firebase-admin (v12.7.0), firebase-functions (v5.1.1)
+Firebase Admin root app (v14.2.0, modular entry points through the repo compatibility boundary)
+MenuList Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
+Answerlattice Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
 Google GenAI SDK (@google/genai v0.12.0)
 
 Build Tools:
-SASS (v1.89.0)
-ESLint (v8.57.1)
+Node.js (v22; .nvmrc v22.23.1)
+SASS (v1.101.7)
+ESLint (v9.39.5)
 
 Image Processing:
 Compressor.js (v1.2.1)
 React Cropper (v2.3.3)
-Fabric.js (v5.3.0)
+Fabric.js (v7.4.0, bundled TypeScript types)
 
 Additional Features:
-PWA Support (next-pwa v5.6.0)
-Internationalization (next-intl v3.17.2)
+PWA Support (Serwist v9.5.12 with owner/customer/MyCodex worker isolation)
+Internationalization (next-intl v4.13.4)
 Date handling (date-fns v3.6.0)
 
 Mobile Support:

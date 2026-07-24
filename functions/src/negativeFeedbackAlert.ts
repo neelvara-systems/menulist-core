@@ -1,8 +1,9 @@
 // @ts-nocheck
 // Dormant legacy trigger. Keep excluded from function exports until upgraded to the current Functions API.
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from './constants/database';
+import { firestoreAdmin } from './firebaseAdmin';
 import { validateNetworkTargetUrl } from './utils/networkTarget';
 
 const logger = functions.logger;
@@ -191,11 +192,11 @@ async function sendSlackAlert(data: any) {
  */
 async function logToFirestore(data: any) {
     try {
-        await admin.firestore()
+        await firestoreAdmin
             .collection(DB_COLLECTIONS.NEGATIVE_FEEDBACK_ALERTS)
             .add({
                 ...data,
-                createdOn: admin.firestore.FieldValue.serverTimestamp(),
+                createdOn: FieldValue.serverTimestamp(),
                 resolved: false // Can be updated later by support team
             });
 	    } catch (error) {

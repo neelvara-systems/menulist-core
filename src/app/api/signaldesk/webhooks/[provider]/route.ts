@@ -20,8 +20,8 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 const resolveProvider = (provider: string) => PROVIDERS.has(provider) ? provider as "email" | "whatsapp" | "instagram" | "messenger" | "apify" : null;
 
-export async function GET(request: NextRequest, context: { params: { provider: string } }) {
-    const provider = resolveProvider(context.params.provider);
+export async function GET(request: NextRequest, context: { params: Promise<{ provider: string }> }) {
+    const provider = resolveProvider((await context.params).provider);
     if (!provider) return NextResponse.json({ error: "Unknown provider" }, { headers: NO_STORE_HEADERS, status: 404 });
 
     const challenge = verifySignalDeskWebhookChallenge(provider, request.nextUrl);
@@ -29,8 +29,8 @@ export async function GET(request: NextRequest, context: { params: { provider: s
     return new NextResponse(challenge, { headers: NO_STORE_HEADERS, status: 200 });
 }
 
-export async function POST(request: NextRequest, context: { params: { provider: string } }) {
-    const provider = resolveProvider(context.params.provider);
+export async function POST(request: NextRequest, context: { params: Promise<{ provider: string }> }) {
+    const provider = resolveProvider((await context.params).provider);
     if (!provider) return NextResponse.json({ error: "Unknown provider" }, { headers: NO_STORE_HEADERS, status: 404 });
 
     try {

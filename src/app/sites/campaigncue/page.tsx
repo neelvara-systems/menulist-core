@@ -596,9 +596,9 @@ const JSON_LD = {
     ],
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const headerList = headers();
+        const headerList = (await headers());
         const aliasBasePath = headerList.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -1020,8 +1020,8 @@ function FooterLinks({ basePath }: { basePath: string }) {
     );
 }
 
-export default function CampaignCueHomePage() {
-    const basePath = getBasePath();
+export default async function CampaignCueHomePage() {
+    const basePath = await getBasePath();
 
     return (
         <main className="campaigncue-site">

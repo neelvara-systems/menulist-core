@@ -35,9 +35,9 @@ import CampaignCueMobileNavigation from "../../components/CampaignCueMobileNavig
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-    params: {
+    params: Promise<{
         featureSlug: string;
-    };
+    }>;
 };
 
 type CampaignCueFeatureProofImage = {
@@ -84,7 +84,8 @@ const CAMPAIGNCUE_FEATURE_PROOF_IMAGES = {
     },
 } satisfies Record<CampaignCueWebsiteFeature["previewKind"], CampaignCueFeatureProofImage>;
 
-export function generateMetadata({ params }: PageProps): Metadata {
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+    const params = await props.params;
     const feature = getCampaignCueWebsiteFeature(params.featureSlug);
 
     if (!feature) {
@@ -108,9 +109,9 @@ export function generateMetadata({ params }: PageProps): Metadata {
     };
 }
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const headerList = headers();
+        const headerList = (await headers());
         const aliasBasePath = headerList.get("x-product-base-path") || "";
         if (aliasBasePath) return aliasBasePath;
 
@@ -390,11 +391,12 @@ function RelatedFeatureLinks({ feature, basePath }: { feature: CampaignCueWebsit
     );
 }
 
-export default function CampaignCueFeaturePage({ params }: PageProps) {
+export default async function CampaignCueFeaturePage(props: PageProps) {
+    const params = await props.params;
     const feature = getCampaignCueWebsiteFeature(params.featureSlug);
     if (!feature) notFound();
 
-    const basePath = getBasePath();
+    const basePath = await getBasePath();
 
     return (
         <main className="campaigncue-site campaigncue-feature-page">

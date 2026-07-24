@@ -1,3 +1,4 @@
+import { use } from "react";
 import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 /**
  * Public Menu Entry — Upload Page
@@ -33,11 +34,12 @@ export const metadata: Metadata = completeWebsiteMetadata({
     },
 });
 
-export default function CreateMenuPage({
-    searchParams,
-}: {
-    searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default function CreateMenuPage(
+    props: {
+        searchParams?: Promise<Record<string, string | string[] | undefined>>;
+    }
+) {
+    const searchParams = use(props.searchParams);
     const t = useTranslations('Website');
     const growthAcquisition = getGrowthAcquisitionFromSearchParams(searchParams);
 

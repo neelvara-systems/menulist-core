@@ -16,9 +16,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/proof' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -34,8 +34,8 @@ const METRICS = [
     ['First review loop', 'Approved answers, missed questions, stale-answer review'],
 ];
 
-export default function AnswerlatticeProofPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeProofPage() {
+    const basePath = await getBasePath();
     const verifiedProof = getAnswerlatticeVerifiedProofEntries();
 
     return (

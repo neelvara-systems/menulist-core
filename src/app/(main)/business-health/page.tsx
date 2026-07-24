@@ -8,7 +8,8 @@ const normalizeProjectId = (value?: string | string[]) => {
   return normalizeOwnerBusinessAssistantProjectId(raw) || undefined;
 };
 
-export default function Page({ searchParams }: { searchParams?: { projectId?: string | string[] } }) {
+export default async function Page(props: { searchParams?: Promise<{ projectId?: string | string[] }> }) {
+  const searchParams = await props.searchParams;
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_PAGE) {
     notFound();
   }

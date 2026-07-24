@@ -8,7 +8,7 @@ export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 export default async function MyCodexQueuePage() {
-    const host = headers().get('host') || '';
+    const host = (await headers()).get('host') || '';
     const isLocalDev = isMyCodexLocalDevelopmentHost(host);
     const docsTree = await getMyCodexDocsTree();
 

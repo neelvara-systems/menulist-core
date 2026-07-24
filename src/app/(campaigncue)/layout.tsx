@@ -55,7 +55,7 @@ export default async function CampaignCueAppLayout({ children }: { children: Rea
     const session = await getServerSession(authOptions);
 
     if (!session) {
-        const host = headers().get("host");
+        const host = (await headers()).get("host");
         const callbackUrl = isCampaignCueProductHostname(host)
             ? CAMPAIGNCUE_WORKSPACE_PATH
             : CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH;

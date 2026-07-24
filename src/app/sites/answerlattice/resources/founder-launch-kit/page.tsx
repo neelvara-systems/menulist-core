@@ -12,9 +12,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/resources/founder-launch-kit' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
         const host = h.get('host') || '';
@@ -42,8 +42,8 @@ const TOOL_PACKAGES = [
     ['Lovable', '/pre-onboarding/lovable.md'],
 ] as const;
 
-export default function AnswerlatticeFounderLaunchKitPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeFounderLaunchKitPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

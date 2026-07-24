@@ -364,7 +364,7 @@ export const POST = withAuth(
                     invalidateAssistant: (effectStoreId, effectTenantId) => (
                         invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
                     ),
-                    revalidate: (tag) => revalidateTag(tag),
+                    revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
                     touchScreen: (effectStoreId) => (
                         touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'adminSubdomainRename')
                     ),

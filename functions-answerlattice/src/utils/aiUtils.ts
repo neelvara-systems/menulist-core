@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functionsLogger from 'firebase-functions/logger';
 import { extractGeminiUsageMetadata, recordEmbeddingOperation } from '../answerlattice/aiOperationAccounting';
 import { answerlatticeGenAIClient } from '../genAiClient';
 import {
@@ -66,7 +66,7 @@ type AnswerlatticeEmbeddingArticle = {
 export const genrateEmbedding = async (
     article: AnswerlatticeEmbeddingArticle,
 ): Promise<number[]> => {
-    const logger = functions.logger;
+    const logger = functionsLogger;
     const rawTextToEmbed = [
         article.categoryTitle,
         article.sectionTitle,

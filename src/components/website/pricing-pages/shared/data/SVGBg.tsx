@@ -1,8 +1,8 @@
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 
 function SVGBg() {
-    const animationVariants = {
+    const animationVariants: Variants = {
         wave1: { x: [-20, 20], transition: { x: { repeat: Infinity, repeatType: "mirror", duration: 2, ease: "easeInOut", }, }, },
         wave2: { x: [20, -20], transition: { x: { repeat: Infinity, repeatType: "mirror", duration: 4, ease: "easeInOut", }, }, },
         wave3: { x: [-10, 10], transition: { x: { repeat: Infinity, repeatType: "mirror", duration: 6, ease: "easeInOut", }, }, },

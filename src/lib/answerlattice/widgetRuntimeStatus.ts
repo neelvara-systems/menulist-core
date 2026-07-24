@@ -1,6 +1,6 @@
 import { normalizeSurfaceKey, normalizeSurfaceRoutePattern, normalizeSurfaceToken } from './productSurfaceContent';
 import type { AnswerlatticeWidgetRuntimeStatus } from '@type/answerlattice';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import type { NextRequest } from 'next/server';
 
 const TELEMETRY_WRITE_INTERVAL_MS = 15 * 60 * 1000;

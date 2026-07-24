@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/quickstarts' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -76,8 +76,8 @@ const SAFE_CONTEXT = [
     ['Verify', 'widget loaded, origin allowed, route allowed, context received'],
 ];
 
-export default function AnswerlatticeQuickstartsPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeQuickstartsPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

@@ -24,10 +24,10 @@ export async function revalidateMenuCache(
     storeId: string | number,
     options: { tId?: string | number; projectId?: string | number } = {},
 ) {
-    revalidateTag(`menu-store-${storeId}`);
-    revalidateTag(`store-${storeId}`);
-    revalidateTag('client-stores');
-    revalidateTag('screen-data');
+    revalidateTag(`menu-store-${storeId}`, { expire: 0 });
+    revalidateTag(`store-${storeId}`, { expire: 0 });
+    revalidateTag('client-stores', { expire: 0 });
+    revalidateTag('screen-data', { expire: 0 });
     await touchDigitalScreenContentVersionForStoreServer(storeId, 'revalidateMenuCache');
     await invalidateOwnerBusinessAssistantPacketCache({
         tId: options.tId,

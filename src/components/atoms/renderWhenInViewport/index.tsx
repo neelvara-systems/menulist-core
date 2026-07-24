@@ -5,7 +5,7 @@ import { Spin } from 'antd';
 import { useRef } from 'react';
 
 function RenderWhenInViewport({ children, isLoading, styles = {} }) {
-    const elementRef = useRef();
+    const elementRef = useRef(null);
     const isVisible = useInViewport(elementRef);
     const antIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 

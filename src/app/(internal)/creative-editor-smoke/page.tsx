@@ -158,11 +158,12 @@ function buildSmokeDocument(variant: "default" | "stress"): CreativeEditorDocume
     });
 }
 
-export default function CreativeEditorSmokePage({
-    searchParams,
-}: {
-    searchParams?: { qa?: string; variant?: string };
-}) {
+export default async function CreativeEditorSmokePage(
+    props: {
+        searchParams?: Promise<{ qa?: string; variant?: string }>;
+    }
+) {
+    const searchParams = await props.searchParams;
     if (process.env.NODE_ENV === "production") {
         notFound();
     }

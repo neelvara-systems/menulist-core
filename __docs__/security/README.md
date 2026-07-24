@@ -118,6 +118,16 @@ This folder contains all security-related documentation for MenuListAI platform.
 - Domain format validation
 - Maintenance guide
 
+### `/dependency-security`
+
+**Pinned dependency, audit, and upstream-advisory policy**
+
+- Exact package and lockfile enforcement
+- Safe remediation and `--force` prohibition
+- Current Next/PostCSS upstream exception
+- Fabric 7, Firebase Admin 14, UUID, Sharp, and Node 22 migration boundaries
+- Release-time audit stop rules
+
 ## 🚀 Quick Start
 
 **New to the project?** Start here:
@@ -153,5 +163,5 @@ This folder contains all security-related documentation for MenuListAI platform.
 
 ---
 
-**Last Updated**: November 6, 2025  
+**Last Updated**: July 24, 2026
 **Maintained By**: Development Team

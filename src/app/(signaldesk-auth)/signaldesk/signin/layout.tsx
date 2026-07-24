@@ -35,8 +35,8 @@ export const viewport: Viewport = {
     viewportFit: "cover",
 };
 
-function getSignalDeskBasePath(): string {
-    return headers().get("x-product-base-path") === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
+async function getSignalDeskBasePath(): Promise<string> {
+    return (await headers()).get("x-product-base-path") === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
         ? SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
         : SIGNALDESK_BASE_PATH;
 }
@@ -58,7 +58,7 @@ export default async function SignalDeskSigninLayout({ children }: { children: R
         }
 
         const access = await getSignalDeskAccessContext(session);
-        redirect(access?.active ? getSignalDeskBasePath() : "/unauthorized");
+        redirect(access?.active ? await getSignalDeskBasePath() : "/unauthorized");
     }
 
     const locale = await getLocale();

@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import type {
     AnswerlatticeProductSurface,
     AnswerlatticeFaq,

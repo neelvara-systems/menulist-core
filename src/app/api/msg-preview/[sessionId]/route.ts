@@ -62,10 +62,8 @@ function tokensMatch(expected: string, provided: string): boolean {
     && crypto.timingSafeEqual(expectedBytes, providedBytes);
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { sessionId: string } },
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ sessionId: string }> }) {
+  const params = await props.params;
   const rawSessionId = params?.sessionId;
   let failureContext = getPreviewGetLogContext(rawSessionId);
 

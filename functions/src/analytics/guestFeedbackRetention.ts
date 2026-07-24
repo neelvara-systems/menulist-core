@@ -20,7 +20,7 @@
  * @see __docs__/projects/internal-feedback-system/internal-feedback-system_spec.md
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import {
@@ -66,7 +66,7 @@ const MAX_DOCS_PER_RUN = 1000;
  * @returns Summary of processed documents
  */
 export async function processGuestFeedbackRetention(): Promise<RetentionResult> {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const now = Timestamp.now();
 
     const result: RetentionResult = {

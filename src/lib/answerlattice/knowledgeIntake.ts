@@ -63,7 +63,7 @@ import {
     type AnswerlatticeKnowledgeIntakeJob,
     type AnswerlatticeKnowledgeSource,
 } from '@type/answerlattice';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import crypto from 'crypto';
 

@@ -20,7 +20,7 @@
  * @see __docs__/infrastructure-compounding/periodic-staleness-check_spec.md
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_RETENTION_CONFIG } from '../constants/features';
@@ -175,7 +175,7 @@ async function claimStalenessDetection(
  * The lifecycle messaging engine handles recipient resolution and delivery.
  */
 export async function checkStalenessForAllStores(): Promise<StalenessCheckResult> {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const result: StalenessCheckResult = {
         checked: 0,
         staleFound: 0,

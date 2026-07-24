@@ -561,7 +561,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                     invalidateAssistant: (storeId, effectTenantId) => (
                         invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: storeId })
                     ),
-                    revalidate: (tag) => revalidateTag(tag),
+                    revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
                     touchScreen: (storeId) => (
                         touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')
                     ),
@@ -661,7 +661,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                             ? invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
                             : Promise.resolve()
                     ),
-                    revalidate: (tag) => revalidateTag(tag),
+                    revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
                     touchScreen: (effectStoreId) => (
                         touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'platformEntityBlocks')
                     ),

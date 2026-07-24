@@ -35,7 +35,7 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -289,7 +289,7 @@ export async function POST(request: NextRequest) {
         // write and a retry of an already committed negative outcome.
         if (authoritativeOutcome === 'not_resolved' && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
             try {
-                const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
+                const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitterServer');
                 const { ANSWERLATTICE_SIGNAL_TYPE } = await import('@type/answerlattice');
                 const matchedEntityId = Array.isArray(historyData.matchedEntityIds)
                     ? historyData.matchedEntityIds.find((id: unknown) => typeof id === 'string' && Boolean(id.trim()))

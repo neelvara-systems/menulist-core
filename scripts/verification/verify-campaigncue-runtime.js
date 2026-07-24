@@ -963,7 +963,7 @@ function verifySharedCreativeEditor() {
   assertIncludes(editor, "drawerCollapsed", "Shared editor drawer collapse state");
   assertIncludes(editor, "clearSelection", "Shared editor clear selection action");
   assertIncludes(editor, "floatingSelectionToolbar", "Shared editor floating selected-layer toolbar");
-  assertIncludes(editor, "getBoundingRect(false, true)", "Shared editor floating toolbar uses viewport selection bounds");
+  assertIncludes(editor, "getBoundingRect()", "Shared editor floating toolbar uses Fabric 7 scene-plane selection bounds");
   assertIncludes(editor, "selectionBottom + FLOATING_SELECTION_TOOLBAR_GAP", "Shared editor floating toolbar anchors below selected layer bottom edge");
   assertIncludes(editor, "floatingToolbarSizeRef", "Shared editor measures floating toolbar width before clamping");
   assertIncludes(editor, "data-selection-bottom", "Shared editor exposes floating toolbar placement QA data");
@@ -1455,7 +1455,7 @@ function verifyProductConstantSeparation() {
 }
 
 function verifyRouteBoundary() {
-  const middleware = read("src/middleware.ts");
+  const middleware = read("src/proxy.ts");
   const productDomains = read("src/constants/productDomains.ts");
   const routingDoc = read("__docs__/url-routing-architecture/README.md");
   const boundaryDoc = read("__docs__/campaigncue/campaigncue-route-boundary.md");
@@ -1494,8 +1494,13 @@ function verifyRouteBoundary() {
   assertIncludes(boundaryDoc, "`campaigncue.ai/use-cases/small-business`", "CampaignCue route-boundary documents small-business use-case URL");
   assertIncludes(boundaryDoc, "`/api/*` and other internal bypass paths pass through before CampaignCue product-domain rewrites", "CampaignCue route-boundary API bypass rule");
   assertIncludes(boundaryDoc, "src/app/(campaigncue)/campaigncue/app/page.tsx", "CampaignCue route-boundary owner app path");
-  assertIncludes(nextConfig, "routes-manifest.json", "Next start routes manifest repair");
-  assertIncludes(nextConfig, "app-path-routes-manifest.json", "Next start app route manifest input");
+  assertNotIncludes(nextConfig, "MenuListServerChunkCompatPlugin", "retired Next 14 manifest repair");
+  assertNotIncludes(nextConfig, "next/dist/", "private Next.js manifest imports");
+  assertIncludes(
+    read("scripts/verification/verify-next-build-compatibility.js"),
+    "Next 16 build compatibility contract verified.",
+    "native Next 16 build/start compatibility gate",
+  );
 }
 
 function verifyDocsAlignment() {
@@ -1593,7 +1598,7 @@ function verifyDocsAlignment() {
   assertIncludes(publicSite, "Know what is safe and useful to promote today. Get the checked pack, staff handoff, and owner-controlled files ready to use.", "CampaignCue public hero reflects the governed operating-loop promise");
   assertIncludes(publicSite, "Copy or download", "CampaignCue public proof strip keeps a simple owner action label");
   assertIncludes(publicFeatureRoute, "getCampaignCueWebsiteFeature(params.featureSlug)", "CampaignCue feature route resolves pages from product-scoped feature constants");
-  assertIncludes(read("src/middleware.ts"), "isInvalidCampaignCuePublicFeaturePath", "CampaignCue middleware rejects unknown public feature slugs before rewrite");
+  assertIncludes(read("src/proxy.ts"), "isInvalidCampaignCuePublicFeaturePath", "CampaignCue proxy rejects unknown public feature slugs before rewrite");
   assertNotIncludes(publicFeatureRoute, "generateStaticParams", "CampaignCue feature route stays request-rendered for product base-path headers");
   assertNotIncludes(publicFeatureRoute, "dynamicParams = false", "CampaignCue feature route avoids brittle static-param rendering with middleware rewrites");
   assertIncludes(publicFeatureRoute, "generateMetadata", "CampaignCue feature route defines metadata from feature constants");

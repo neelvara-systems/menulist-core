@@ -25,37 +25,37 @@ const PREFERENCE_COOKIE_OPTIONS = {
 };
 
 export async function getUserLocale(): Promise<Locale> {
-    return normalizeLocalePreference(cookies().get(APP_LOCALE_COOKIES_KEY)?.value) || 'en-US';
+    return normalizeLocalePreference((await cookies()).get(APP_LOCALE_COOKIES_KEY)?.value) || 'en-US';
 }
 
 export async function setUserLocale(locale: Locale) {
     const normalized = normalizeLocalePreference(locale);
     if (!normalized) throw new Error('locale_preference_invalid');
-    cookies().set(APP_LOCALE_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
+    (await cookies()).set(APP_LOCALE_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function setUserTimezone(timeZone: string) {
     const normalized = normalizeTimeZone(timeZone, '');
     if (!normalized) throw new Error('timezone_preference_invalid');
-    cookies().set(APP_TIMEZONE_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
+    (await cookies()).set(APP_TIMEZONE_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function setUserDateFormat(format: string) {
     const normalized = normalizeDateFormatPreference(format);
     if (normalized !== format) throw new Error('date_format_preference_invalid');
-    cookies().set(APP_DATE_FORMAT_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
+    (await cookies()).set(APP_DATE_FORMAT_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function setUserTimeFormat(format: string) {
     const normalized = normalizeTimeFormatPreference(format);
     if (normalized !== format) throw new Error('time_format_preference_invalid');
-    cookies().set(APP_TIME_FORMAT_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
+    (await cookies()).set(APP_TIME_FORMAT_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function getUserDateFormat(): Promise<DateTimeFormatOptions> {
-    return getDateFormatOptions(cookies().get(APP_DATE_FORMAT_COOKIES_KEY)?.value);
+    return getDateFormatOptions((await cookies()).get(APP_DATE_FORMAT_COOKIES_KEY)?.value);
 }
 
 export async function getUserTimeFormat(): Promise<DateTimeFormatOptions> {
-    return getTimeFormatOptions(cookies().get(APP_TIME_FORMAT_COOKIES_KEY)?.value);
+    return getTimeFormatOptions((await cookies()).get(APP_TIME_FORMAT_COOKIES_KEY)?.value);
 }

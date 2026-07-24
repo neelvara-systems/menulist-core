@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import type { fabric } from "fabric";
+import type * as fabric from "fabric";
 import {
     LuAlignCenter,
     LuAlignCenterVertical,
@@ -1468,7 +1468,7 @@ export default function CreativeEditor({
     const zoomRef = useRef(zoom);
     const rightPanelModeRef = useRef<RightPanelMode>("properties");
     const isLoadingRef = useRef(false);
-    const clipboardRef = useRef<fabric.Object | fabric.ActiveSelection | null>(null);
+    const clipboardRef = useRef<fabric.FabricObject | fabric.ActiveSelection | null>(null);
     const historyRef = useRef<CreativeEditorDocument[]>([initialEditorDocument]);
     const historyLabelsRef = useRef<string[]>(["Opened design"]);
     const historyIndexRef = useRef(0);
@@ -1639,7 +1639,7 @@ export default function CreativeEditor({
                 : current);
             return;
         }
-        const rect = workspace.getBoundingRect(false, true);
+        const rect = workspace.getBoundingRect();
         const nextRect = {
             height: Math.max(0, rect.height),
             left: rect.left,
@@ -1720,9 +1720,9 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         const fabricApi = fabricApiRef.current;
         if (!canvas || !fabricApi) return;
-        const center = canvas.getCenter();
+        const center = canvas.getCenterPoint();
         const nextZoom = clampNumber(canvas.getZoom() + delta, 0.05, 4);
-        canvas.zoomToPoint(new fabricApi.Point(center.left, center.top), nextZoom);
+        canvas.zoomToPoint(new fabricApi.Point(center.x, center.y), nextZoom);
         canvas.requestRenderAll();
         syncZoomStateFromCanvas();
         refreshWorkspaceViewportMetrics();
@@ -1892,7 +1892,7 @@ export default function CreativeEditor({
             clearFloatingSelectionToolbar();
             return;
         }
-        const rect = activeObject.getBoundingRect(false, true);
+        const rect = activeObject.getBoundingRect();
         const canvasWidth = Math.max(1, canvas.getWidth());
         const canvasHeight = Math.max(1, canvas.getHeight());
         const anchorLeft = rect.left + rect.width / 2;
@@ -1931,7 +1931,7 @@ export default function CreativeEditor({
         ));
     }
 
-    function scheduleFloatingSelectionToolbarRefresh(options: { force?: boolean } | fabric.IEvent<Event> = {}) {
+    function scheduleFloatingSelectionToolbarRefresh(options: { force?: boolean } | fabric.TEvent<Event> = {}) {
         const force = "force" in options ? Boolean(options.force) : false;
         if (!force && isFormTarget(document.activeElement)) {
             pendingFloatingToolbarRefreshRef.current = true;
@@ -2029,12 +2029,12 @@ export default function CreativeEditor({
         addElement(element);
     };
 
-    const handlePolygonPointer = (event: fabric.IEvent<Event>) => {
+    const handlePolygonPointer = (event: fabric.TPointerEventInfo) => {
         const canvas = fabricCanvasRef.current;
         if (!canvas || interactionModeRef.current !== "polygon") return;
         const pointerEvent = event.e as MouseEvent;
         if (pointerEvent.detail > 1) return;
-        const pointer = canvas.getPointer(event.e);
+        const pointer = canvas.getScenePoint(event.e);
         const existingPoints = polygonDraftRef.current.points;
         const firstPoint = existingPoints[0];
         if (firstPoint && existingPoints.length >= 3) {
@@ -2130,11 +2130,40 @@ export default function CreativeEditor({
         }
     }
 
+    function convertGroupToActiveSelection(
+        canvas: fabric.Canvas,
+        fabricApi: FabricStatic,
+        group: fabric.Group,
+    ) {
+        canvas.discardActiveObject();
+        const objects = group.removeAll();
+        canvas.remove(group);
+        canvas.add(...objects);
+        const selection = new fabricApi.ActiveSelection(objects, { canvas });
+        canvas.setActiveObject(selection);
+        return selection;
+    }
+
+    function convertActiveSelectionToGroup(
+        canvas: fabric.Canvas,
+        fabricApi: FabricStatic,
+        selection: fabric.ActiveSelection,
+    ) {
+        const objects = selection.getObjects();
+        canvas.discardActiveObject();
+        canvas.remove(...objects);
+        const group = new fabricApi.Group(objects, { objectCaching: false });
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        return group;
+    }
+
     function releaseActiveGroupForPersistence(canvas: fabric.Canvas) {
         const activeObject = canvas.getActiveObject();
+        const fabricApi = fabricApiRef.current;
         const creativeType = (activeObject as CreativeFabricObject | undefined)?.creativeEditorType;
-        if (activeObject?.type === "group" && !creativeType) {
-            (activeObject as fabric.Group).toActiveSelection();
+        if (activeObject?.type === "group" && !creativeType && fabricApi) {
+            convertGroupToActiveSelection(canvas, fabricApi, activeObject as fabric.Group);
             canvas.requestRenderAll();
         }
     }
@@ -2337,7 +2366,7 @@ export default function CreativeEditor({
                 textBackgroundColor: element.textBackgroundColor || "",
                 underline: Boolean(element.underline),
                 width: element.width,
-            } as fabric.ITextboxOptions);
+            } as Partial<fabric.TextboxProps>);
         } else if (canFillElement(element)) {
             object.set({
                 fill: createLiveGradientFill(element, element.fill),
@@ -2431,7 +2460,7 @@ export default function CreativeEditor({
 
     useEffect(() => {
         let cancelled = false;
-        void import("fabric").then(({ fabric: fabricApi }) => {
+        void import("fabric").then((fabricApi) => {
             const canvasHost = canvasHostRef.current;
             if (cancelled || !canvasHost) return;
             const canvasElement = document.createElement("canvas");
@@ -2473,7 +2502,7 @@ export default function CreativeEditor({
                 setInspectorOpen(Boolean(selectedObjectId || active?.type === "activeSelection" || active?.type === "group"));
                 scheduleFloatingSelectionToolbarRefresh();
             };
-            const handlePathCreated = (event: fabric.IEvent<Event> & { path?: fabric.Path }) => {
+            const handlePathCreated = (event: { path: fabric.FabricObject }) => {
                 const path = event.path as CreativeFabricObject | undefined;
                 if (!path) return;
                 path.id = buildCreativeEditorId("layer");
@@ -2526,11 +2555,20 @@ export default function CreativeEditor({
                 window.cancelAnimationFrame(workspaceViewportFrameRef.current);
                 workspaceViewportFrameRef.current = null;
             }
-            fabricCanvasRef.current?.dispose();
+            const canvas = fabricCanvasRef.current;
             fabricCanvasRef.current = null;
             fabricApiRef.current = null;
             canvasElementRef.current = null;
-            canvasHostRef.current?.replaceChildren();
+            const clearCanvasHost = () => {
+                canvasHostRef.current?.replaceChildren();
+            };
+            if (canvas) {
+                // Fabric 7 disposal is asynchronous. Handle either outcome so an
+                // unmount cannot leave an unhandled rejection or a stale canvas.
+                void canvas.dispose().then(clearCanvasHost, clearCanvasHost);
+            } else {
+                clearCanvasHost();
+            }
         };
         // Fabric is intentionally initialized once; document changes are loaded through commitDocument.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2849,42 +2887,51 @@ export default function CreativeEditor({
                     setNotice("Locked or protected layers cannot be copied.");
                     return;
                 }
-                activeObject.clone((cloned: fabric.Object | fabric.ActiveSelection) => {
-                    clipboardRef.current = cloned;
-                }, CREATIVE_EDITOR_FABRIC_ATTRIBUTES);
+                void activeObject.clone(CREATIVE_EDITOR_FABRIC_ATTRIBUTES)
+                    .then((cloned: fabric.FabricObject | fabric.ActiveSelection) => {
+                        clipboardRef.current = cloned;
+                    })
+                    .catch((error) => {
+                        showCreativeEditorFailure("creative_editor_copy_failed", error, "Layer could not be copied.");
+                    });
                 return;
             }
             if (isMod && event.key.toLowerCase() === "v" && clipboardRef.current) {
                 event.preventDefault();
-                clipboardRef.current.clone((cloned: fabric.Object | fabric.ActiveSelection) => {
-                    const clonedObjects = "getObjects" in cloned
-                        ? (cloned as fabric.ActiveSelection).getObjects()
-                        : [cloned as fabric.Object];
-                    if (clonedObjects.some((object) => Boolean((object as CreativeFabricObject).printFrameLocked))) {
-                        setNotice("Protected print-frame layers cannot be pasted.");
-                        return;
-                    }
-                    const cloneAsObject = cloned as CreativeFabricObject;
-                    cloneAsObject.left = (cloneAsObject.left || 0) + 24;
-                    cloneAsObject.top = (cloneAsObject.top || 0) + 24;
-                    if ("forEachObject" in cloned) {
-                        (cloned as fabric.ActiveSelection).canvas = canvas;
-                        (cloned as fabric.ActiveSelection).forEachObject((object) => {
-                            const editable = object as CreativeFabricObject;
-                            editable.id = buildCreativeEditorId("layer");
-                            editable.name = `${editable.name || "Layer"} copy`;
-                            canvas.add(object);
-                        });
-                    } else {
-                        cloneAsObject.id = buildCreativeEditorId("layer");
-                        cloneAsObject.name = `${cloneAsObject.name || "Layer"} copy`;
-                        canvas.add(cloned);
-                    }
-                    canvas.setActiveObject(cloned);
-                    canvas.requestRenderAll();
-                    syncDocumentFromCanvas(true, "Pasted layer");
-                    scheduleFloatingSelectionToolbarRefresh();
-                }, CREATIVE_EDITOR_FABRIC_ATTRIBUTES);
+                void clipboardRef.current.clone(CREATIVE_EDITOR_FABRIC_ATTRIBUTES)
+                    .then((cloned: fabric.FabricObject | fabric.ActiveSelection) => {
+                        const clonedObjects = "getObjects" in cloned
+                            ? (cloned as fabric.ActiveSelection).getObjects()
+                            : [cloned as fabric.FabricObject];
+                        if (clonedObjects.some((object) => Boolean((object as CreativeFabricObject).printFrameLocked))) {
+                            setNotice("Protected print-frame layers cannot be pasted.");
+                            return;
+                        }
+                        const cloneAsObject = cloned as CreativeFabricObject;
+                        cloneAsObject.left = (cloneAsObject.left || 0) + 24;
+                        cloneAsObject.top = (cloneAsObject.top || 0) + 24;
+                        if (cloned instanceof fabricApi.ActiveSelection) {
+                            const objects = cloned.removeAll();
+                            objects.forEach((object) => {
+                                const editable = object as CreativeFabricObject;
+                                editable.id = buildCreativeEditorId("layer");
+                                editable.name = `${editable.name || "Layer"} copy`;
+                            });
+                            canvas.add(...objects);
+                            canvas.setActiveObject(new fabricApi.ActiveSelection(objects, { canvas }));
+                        } else {
+                            cloneAsObject.id = buildCreativeEditorId("layer");
+                            cloneAsObject.name = `${cloneAsObject.name || "Layer"} copy`;
+                            canvas.add(cloned);
+                            canvas.setActiveObject(cloned);
+                        }
+                        canvas.requestRenderAll();
+                        syncDocumentFromCanvas(true, "Pasted layer");
+                        scheduleFloatingSelectionToolbarRefresh();
+                    })
+                    .catch((error) => {
+                        showCreativeEditorFailure("creative_editor_paste_failed", error, "Layer could not be pasted.");
+                    });
                 return;
             }
             if (isMod && key === "g" && activeObject) {
@@ -2894,12 +2941,12 @@ export default function CreativeEditor({
                     return;
                 }
                 if (event.shiftKey && activeObject.type === "group") {
-                    (activeObject as fabric.Group).toActiveSelection();
+                    convertGroupToActiveSelection(canvas, fabricApi, activeObject as fabric.Group);
                     canvas.requestRenderAll();
                     syncDocumentFromCanvas(true, "Ungrouped layers");
                     scheduleFloatingSelectionToolbarRefresh();
                 } else if (!event.shiftKey && activeObject.type === "activeSelection") {
-                    (activeObject as fabric.ActiveSelection).toGroup();
+                    convertActiveSelectionToGroup(canvas, fabricApi, activeObject as fabric.ActiveSelection);
                     canvas.requestRenderAll();
                     syncDocumentFromCanvas(true, "Grouped layers");
                     scheduleFloatingSelectionToolbarRefresh();
@@ -2986,7 +3033,7 @@ export default function CreativeEditor({
                     setNotice("Unlock selected layers before editing them.");
                     return;
                 }
-                const transformTarget = activeObject as fabric.Object;
+                const transformTarget = activeObject as fabric.FabricObject;
                 const delta = event.shiftKey || event.altKey ? 10 : 1;
                 if (isMod) {
                     const width = Math.max(1, transformTarget.getScaledWidth());
@@ -3011,7 +3058,9 @@ export default function CreativeEditor({
             }
             if (isArrowKey && !activeObject) {
                 event.preventDefault();
-                const viewport = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+                const viewport: fabric.TMat2D = canvas.viewportTransform
+                    ? [...canvas.viewportTransform] as fabric.TMat2D
+                    : [1, 0, 0, 1, 0, 0];
                 const delta = event.shiftKey ? 80 : 24;
                 viewport[4] += event.key === "ArrowLeft" ? delta : event.key === "ArrowRight" ? -delta : 0;
                 viewport[5] += event.key === "ArrowUp" ? delta : event.key === "ArrowDown" ? -delta : 0;
@@ -3823,18 +3872,34 @@ export default function CreativeEditor({
             setNotice("Locked or protected layers cannot be duplicated.");
             return;
         }
-        activeObject.clone((cloned: fabric.Object | fabric.ActiveSelection) => {
-            const cloneAsObject = cloned as CreativeFabricObject;
-            cloneAsObject.id = buildCreativeEditorId("layer");
-            cloneAsObject.name = `${cloneAsObject.name || "Layer"} copy`;
-            cloneAsObject.left = (cloneAsObject.left || 0) + 28;
-            cloneAsObject.top = (cloneAsObject.top || 0) + 28;
-            canvas.add(cloned);
-            canvas.setActiveObject(cloned);
-            canvas.requestRenderAll();
-            syncDocumentFromCanvas(true, "Duplicated layer");
-            scheduleFloatingSelectionToolbarRefresh();
-        }, CREATIVE_EDITOR_FABRIC_ATTRIBUTES);
+        void activeObject.clone(CREATIVE_EDITOR_FABRIC_ATTRIBUTES)
+            .then((cloned: fabric.FabricObject | fabric.ActiveSelection) => {
+                const cloneAsObject = cloned as CreativeFabricObject;
+                cloneAsObject.left = (cloneAsObject.left || 0) + 28;
+                cloneAsObject.top = (cloneAsObject.top || 0) + 28;
+                const fabricApi = fabricApiRef.current;
+                if (cloned.type === "activeSelection" && fabricApi) {
+                    const objects = (cloned as fabric.ActiveSelection).removeAll();
+                    objects.forEach((object) => {
+                        const editable = object as CreativeFabricObject;
+                        editable.id = buildCreativeEditorId("layer");
+                        editable.name = `${editable.name || "Layer"} copy`;
+                    });
+                    canvas.add(...objects);
+                    canvas.setActiveObject(new fabricApi.ActiveSelection(objects, { canvas }));
+                } else {
+                    cloneAsObject.id = buildCreativeEditorId("layer");
+                    cloneAsObject.name = `${cloneAsObject.name || "Layer"} copy`;
+                    canvas.add(cloned);
+                    canvas.setActiveObject(cloned);
+                }
+                canvas.requestRenderAll();
+                syncDocumentFromCanvas(true, "Duplicated layer");
+                scheduleFloatingSelectionToolbarRefresh();
+            })
+            .catch((error) => {
+                showCreativeEditorFailure("creative_editor_duplicate_failed", error, "Layer could not be duplicated.");
+            });
     };
 
     const toggleSelectedLock = () => {
@@ -3866,10 +3931,10 @@ export default function CreativeEditor({
             setNotice("Unlock this layer before moving it.");
             return;
         }
-        if (action === "front") object.bringToFront();
-        if (action === "forward") object.bringForward();
-        if (action === "backward") object.sendBackwards();
-        if (action === "back") object.sendToBack();
+        if (action === "front") canvas.bringObjectToFront(object);
+        if (action === "forward") canvas.bringObjectForward(object);
+        if (action === "backward") canvas.sendObjectBackwards(object);
+        if (action === "back") canvas.sendObjectToBack(object);
         keepWorkspaceAtBack(canvas);
         canvas.setActiveObject(object);
         canvas.requestRenderAll();
@@ -3970,7 +4035,7 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject() as CreativeFabricObject | undefined;
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject) || activeObject.locked) return;
-        const rect = activeObject.getBoundingRect(false, true);
+        const rect = activeObject.getBoundingRect();
         let targetLeft = rect.left;
         let targetTop = rect.top;
         if (alignment === "left") targetLeft = 0;
@@ -3992,8 +4057,9 @@ export default function CreativeEditor({
     const distributeSelection = (axis: "x" | "y") => {
         if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
+        const fabricApi = fabricApiRef.current;
         const activeObject = canvas?.getActiveObject();
-        if (!canvas || !activeObject || activeObject.type !== "activeSelection") {
+        if (!canvas || !fabricApi || !activeObject || activeObject.type !== "activeSelection") {
             setNotice("Select at least three layers first.");
             return;
         }
@@ -4004,14 +4070,14 @@ export default function CreativeEditor({
             return;
         }
         const sorted = [...objects].sort((a, b) => {
-            const aRect = a.getBoundingRect(true, true);
-            const bRect = b.getBoundingRect(true, true);
+            const aRect = a.getBoundingRect();
+            const bRect = b.getBoundingRect();
             return axis === "x" ? aRect.left - bRect.left : aRect.top - bRect.top;
         });
-        const firstRect = sorted[0].getBoundingRect(true, true);
-        const lastRect = sorted[sorted.length - 1].getBoundingRect(true, true);
+        const firstRect = sorted[0].getBoundingRect();
+        const lastRect = sorted[sorted.length - 1].getBoundingRect();
         const totalSize = sorted.reduce((sum, object) => {
-            const rect = object.getBoundingRect(true, true);
+            const rect = object.getBoundingRect();
             return sum + (axis === "x" ? rect.width : rect.height);
         }, 0);
         const span = axis === "x"
@@ -4020,7 +4086,7 @@ export default function CreativeEditor({
         const gap = (span - totalSize) / (sorted.length - 1);
         let cursor = axis === "x" ? firstRect.left + firstRect.width + gap : firstRect.top + firstRect.height + gap;
         sorted.slice(1, -1).forEach((object) => {
-            const rect = object.getBoundingRect(true, true);
+            const rect = object.getBoundingRect();
             if (axis === "x") {
                 object.set({ left: (object.left || 0) + cursor - rect.left });
                 cursor += rect.width + gap;
@@ -4195,7 +4261,9 @@ export default function CreativeEditor({
                 else if (object.type === "image") editable.creativeEditorType = "image";
             }
             if (editable.creativeEditorType === "image") {
-                editable.src = editable.src || (object as fabric.Image).getSrc?.() || "";
+                editable.creativeEditorSrc = editable.creativeEditorSrc
+                    || (object as unknown as fabric.FabricImage).getSrc?.()
+                    || "";
             }
         });
     };
@@ -4463,7 +4531,9 @@ export default function CreativeEditor({
     };
 
     const withWorkspaceExportViewport = <T,>(canvas: fabric.Canvas, callback: () => T) => {
-        const previousTransform = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
+        const previousTransform: fabric.TMat2D | null = canvas.viewportTransform
+            ? [...canvas.viewportTransform] as fabric.TMat2D
+            : null;
         canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
         canvas.renderAll();
         try {
@@ -4496,14 +4566,14 @@ export default function CreativeEditor({
         const exportBox = getWorkspaceExportBox(canvas, latestDocument.canvas);
         if (type === "svg") {
             const svg = withHiddenWatermark(() => withWorkspaceExportViewport(canvas, () => canvas.toSVG({
-                height: exportBox.height,
+                height: String(exportBox.height),
                 viewBox: {
                     height: exportBox.height,
                     width: exportBox.width,
                     x: exportBox.left,
                     y: exportBox.top,
                 },
-                width: exportBox.width,
+                width: String(exportBox.width),
             })));
             const filename = buildCreativeEditorFilename(latestDocument, "svg");
             const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -4891,8 +4961,9 @@ export default function CreativeEditor({
     const groupSelection = () => {
         if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
+        const fabricApi = fabricApiRef.current;
         const activeObject = canvas?.getActiveObject();
-        if (!canvas || !activeObject || activeObject.type !== "activeSelection") {
+        if (!canvas || !fabricApi || !activeObject || activeObject.type !== "activeSelection") {
             setNotice("Select more than one layer first.");
             return;
         }
@@ -4905,7 +4976,7 @@ export default function CreativeEditor({
             setNotice("Unlock selected layers before grouping.");
             return;
         }
-        (activeObject as fabric.ActiveSelection).toGroup();
+        convertActiveSelectionToGroup(canvas, fabricApi, activeObject as fabric.ActiveSelection);
         canvas.requestRenderAll();
         scheduleFloatingSelectionToolbarRefresh();
         setNotice("Selected layers grouped for this edit.");
@@ -4914,12 +4985,13 @@ export default function CreativeEditor({
     const ungroupSelection = () => {
         if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
+        const fabricApi = fabricApiRef.current;
         const activeObject = canvas?.getActiveObject();
-        if (!canvas || !activeObject || activeObject.type !== "group") {
+        if (!canvas || !fabricApi || !activeObject || activeObject.type !== "group") {
             setNotice("Select a grouped layer first.");
             return;
         }
-        (activeObject as fabric.Group).toActiveSelection();
+        convertGroupToActiveSelection(canvas, fabricApi, activeObject as fabric.Group);
         canvas.requestRenderAll();
         syncDocumentFromCanvas(true, "Ungrouped layers");
         scheduleFloatingSelectionToolbarRefresh();

@@ -365,7 +365,7 @@ function verifyEnvironmentTargets() {
   const productDomains = read('src/constants/productDomains.ts');
   const urls = read('src/constants/urls.ts');
   const envValidation = read('src/lib/env/validateEnv.ts');
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
   const deploymentTargets = read('src/constants/deploymentTargets.ts');
   const productIds = read('src/constants/product.ts');
   const myCodexAuth = read('src/lib/mycodex/auth.ts');
@@ -775,7 +775,10 @@ function verifyEnvironmentTargets() {
   assertIncludes(productSetupDoc, 'HTTP Error: 403, The caller does not have permission.', 'Product setup doc latest Cloud Resource Manager blocker');
   assertNotIncludes(productSetupDoc, 'firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json', 'Product setup doc stale MenuList QA deploy command shape');
   assert(rootPackageJson.scripts.typecheck === 'tsc --noEmit --incremental false --pretty false', 'Root package must expose an incremental-safe typecheck script');
-  assert(rootPackageJson.scripts['build:verify'] === 'npm run typecheck', 'Root build:verify must delegate to the typecheck script');
+  assert(
+    rootPackageJson.scripts['build:verify'] === 'npm run typecheck && npm run lint',
+    'Root build:verify must delegate to the Next 16 typecheck and flat-config lint scripts',
+  );
   assert(rootTsconfig.compilerOptions?.tsBuildInfoFile === '.next/cache/tsconfig.tsbuildinfo', 'Root TypeScript build-info cache must stay under ignored .next/cache');
   assert(rootPackageJson.scripts['verify:mycodex-pwa-assets'] === 'node scripts/verification/verify-mycodex-pwa-assets.js', 'Root package must expose the MyCodex PWA static verifier');
   assert(rootPackageJson.scripts['verify:signaldesk-security-rules'] === 'node scripts/verification/verify-signaldesk-security-rules.js', 'Root package must expose the SignalDesk security rules static verifier');
@@ -2361,7 +2364,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(setClaimsRoute, 'const canonicalWorkspace = canonicalStoreSnapshot.exists', 'Set claims canonical store workspace source gate');
   assertIncludes(setClaimsRoute, 'const claimTenantScope = canonicalWorkspace.tenantScope;', 'Set claims tenant claim derives from canonical workspace');
   assertIncludes(setClaimsRoute, "storeIds: productId === PRODUCT_IDS.ANSWERLATTICE\n                ? [claimStoreScope.documentId]", 'Set claims scopes Answerlattice tokens to the selected canonical membership');
-  assertIncludes(setClaimsRoute, ': getStoreIdsClaim(dbUser))', 'Set claims retains valid non-Answerlattice product-profile memberships');
+  assertIncludes(setClaimsRoute, '...getStoreIdsClaim(dbUser),', 'Set claims retains valid non-Answerlattice product-profile memberships');
   assertIncludes(setClaimsRoute, 'claimStoreScope.documentId,', 'Set claims includes the canonical selected store in membership claims');
   assertIncludes(paymentHandlerHook, 'const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {', 'Payment handler post-onboarding source gate');
   assertIncludes(paymentHandlerHook, "fetch('/api/onboarding/create-subscription'", 'Payment handler onboarding API source gate');
@@ -2720,7 +2723,7 @@ function verifyMenuListDiscovery() {
   const clientMenuPage = read('src/app/client/[[...slug]]/page.tsx');
   const homepage = read('src/app/(website)/page.tsx');
   const nextConfig = read('next.config.js');
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
   assertIncludes(featureConfig, 'ENABLE_AGENT_DISCOVERY: false', 'MenuList agent discovery reserved flag default');
   assertIncludes(featureConfig, 'RESERVED ONLY — No code is connected to this flag', 'MenuList agent discovery reserved flag source comment');
   assertIncludes(featureConfig, 'Production: Keep false until an approved endpoint reads it', 'MenuList agent discovery reserved flag production boundary');
@@ -2920,7 +2923,7 @@ function verifyMenuListDiscovery() {
   assertIncludes(clientMenuPage, '&& !metadataProjectResult', 'MenuList stale public menu noindex guard');
   assertIncludes(clientMenuPage, "reason: 'missing_menu_content' as const", 'MenuList stale public menu noindex reason');
   assertIncludes(clientMenuPage, 'missingProjectFallbackCanonical', 'MenuList stale public menu canonical fallback');
-  assertIncludes(clientMenuPage, 'Menu not available | ${resolvedStoreName}', 'MenuList stale public menu title');
+  assertIncludes(clientMenuPage, "metadataT('menu.metadataUnavailableTitle', { businessName: resolvedStoreName })", 'MenuList localized stale public menu title');
   assertIncludes(clientMenuPage, 'let resolvedPublicTruthRobots = publicTruthRobots', 'MenuList stale public menu detail noindex guard');
   assertIncludes(clientMenuPage, 'contextSegments.length >= 2', 'MenuList stale public menu detail noindex guard');
   assertIncludes(clientMenuPage, 'Menu detail not available | ${resolvedStoreName}', 'MenuList stale public menu detail title');
@@ -3123,7 +3126,7 @@ function verifyAnswerlatticeDiscovery() {
   const productFeatureRoute = read('src/app/sites/answerlattice/product/ProductFeatureRoutePage.tsx');
   const siteConfig = read('src/app/sites/answerlattice/siteConfig.ts');
   const layout = read('src/app/sites/answerlattice/layout.tsx');
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
   const productDomains = read('src/constants/productDomains.ts');
   const llmsContract = read('src/lib/answerlattice/installContract/contract.ts');
   const renderedLlms = answerlatticeInstallContract.renderAnswerlatticeLlmsTxt();
@@ -3242,9 +3245,10 @@ function verifyAnswerlatticeDiscovery() {
     'src/app/widget/v1/answerlattice-widget.js/route.ts',
   ].filter((file) => exists(file));
   const publicClaimCopy = publicClaimFiles.map((file) => read(file)).join('\n');
+  const publicBrandCopy = publicClaimCopy.replaceAll('X-Answerlattice-Widget-Runtime', '');
 
-  assert(!/\bCanonica\b/.test(publicClaimCopy), 'AnswerLattice public copy must not use Canonica as the standalone public brand');
-  assert(!/\bAnswerlattice\b/.test(publicClaimCopy), 'AnswerLattice public copy must use AnswerLattice as the standalone public brand');
+  assert(!/\bCanonica\b/.test(publicBrandCopy), 'AnswerLattice public copy must not use Canonica as the standalone public brand');
+  assert(!/\bAnswerlattice\b/.test(publicBrandCopy), 'AnswerLattice public copy must use AnswerLattice as the standalone public brand');
   for (const phrase of ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS.forbiddenPhrases.filter((phrase) => phrase !== 'Canonica')) {
     assertNotIncludes(publicClaimCopy.toLowerCase(), phrase.toLowerCase(), `AnswerLattice public forbidden claim ${phrase}`);
   }

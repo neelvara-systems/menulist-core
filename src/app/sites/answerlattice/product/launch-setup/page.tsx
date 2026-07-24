@@ -11,9 +11,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/product/launch-setup' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -22,8 +22,8 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-export default function LaunchSetupProductPage() {
-    const basePath = getBasePath();
+export default async function LaunchSetupProductPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

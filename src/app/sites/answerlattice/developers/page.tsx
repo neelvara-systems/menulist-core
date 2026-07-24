@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/developers' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -32,8 +32,8 @@ const DEVELOPER_START_LINKS = [
     { label: 'Widget contract', href: '/install/contracts.md', description: 'Stable v1 script URL, browser API, safe context, and compatibility policy.' },
 ];
 
-export default function AnswerlatticeDevelopersPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeDevelopersPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

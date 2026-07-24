@@ -15,7 +15,7 @@ import { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import type { AnswerlatticeReadableChangelogEntry, AnswerlatticeReadableChangelogPage } from '@lib/answerlattice/publicContentBoundary';
 import { generateGradientFromHex } from '@util/utils';
 import { Badge, Button, Empty, Flex, Grid, Input, Layout, List, Popover, Typography, message, theme } from 'antd';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
@@ -26,7 +26,7 @@ import ChangelogPreview from './ChangelogPreview';
 const { Title, Text } = Typography;
 const { Content, Sider } = Layout;
 
-const containerVariants = {
+const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
         opacity: 1,
@@ -36,7 +36,7 @@ const containerVariants = {
     },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
     hidden: { y: 20, opacity: 0 },
     visible: {
         y: 0,

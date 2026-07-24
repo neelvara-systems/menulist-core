@@ -11,7 +11,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import {
     AnswerlatticeSignalReplayConflictError,
     emitAnswerlatticeSignal,
-} from '@lib/answerlattice/signalEmitter';
+} from '@lib/answerlattice/signalEmitterServer';
 import {
     ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,
     answerlatticePublicApiError,

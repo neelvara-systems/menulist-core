@@ -683,7 +683,9 @@ function getComplianceMetadata(
 }
 
 // Generate metadata for SEO
-export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
     const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang);
     const requestedItemId = Array.isArray(searchParams?.item) ? searchParams?.item[0] : searchParams?.item;
@@ -1525,8 +1527,8 @@ function optimizeLanguagePayload(projectData: any, _requestedLanguage?: string |
 }
 
 interface PageProps {
-    params: { slug?: string[] };
-    searchParams?: { lang?: string | string[]; item?: string | string[] };
+    params: Promise<{ slug?: string[] }>;
+    searchParams?: Promise<{ lang?: string | string[]; item?: string | string[] }>;
 }
 
 function getLocalizedValue(
@@ -1997,7 +1999,7 @@ async function MenuContent({
     }
 
     // Per-store cached wrappers — tags enable precise per-store invalidation (GPT FIX 2)
-    // When owner saves menu → revalidateTag(`menu-store-${sId}`) clears only their cache
+    // When owner saves menu → revalidateTag(`menu-store-${sId}`, { expire: 0 }) clears only their cache
     const getCachedProject = unstable_cache(
         getProjectBySlugOrDefault,
         ['client-menu-project'],
@@ -2250,7 +2252,9 @@ async function MenuContent({
 
 // Page entry point — skeleton renders instantly, data streams when ready (Customer Infra Hardening - TASK 5)
 // When ENABLE_OBP is true: root = OBP, "menu" slug = default project, other slugs = specific projects
-export default function ClientMenuPage({ params, searchParams }: PageProps) {
+export default async function ClientMenuPage(props: PageProps) {
+    const searchParams = await props.searchParams;
+    const params = await props.params;
     const slug = params.slug?.[0];
     const allSlugs = params.slug || [];
     const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang);

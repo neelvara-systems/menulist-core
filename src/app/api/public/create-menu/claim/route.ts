@@ -755,10 +755,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }));
 
         const cacheEffects = [
-            { name: 'menu-store-tag', run: async () => revalidateTag(`menu-store-${result.storeId}`) },
-            { name: 'store-tag', run: async () => revalidateTag(`store-${result.storeId}`) },
-            { name: 'client-stores-tag', run: async () => revalidateTag('client-stores') },
-            { name: 'screen-data-tag', run: async () => revalidateTag('screen-data') },
+            { name: 'menu-store-tag', run: async () => revalidateTag(`menu-store-${result.storeId}`, { expire: 0 }) },
+            { name: 'store-tag', run: async () => revalidateTag(`store-${result.storeId}`, { expire: 0 }) },
+            { name: 'client-stores-tag', run: async () => revalidateTag('client-stores', { expire: 0 }) },
+            { name: 'screen-data-tag', run: async () => revalidateTag('screen-data', { expire: 0 }) },
             {
                 name: 'screen-content-version',
                 run: async () => touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim'),

@@ -81,7 +81,7 @@ const ItemFormView = memo((
         lang: string;
         itemData: ExtractedDataItem | null;
         categoriesList: any[];
-        renderEditableContent: (lang: string, content: string, id: string, attributeId?: string) => JSX.Element;
+        renderEditableContent: (lang: string, content: string, id: string, attributeId?: string) => React.ReactElement;
         handleRetryTranslation: (language: string) => Promise<void>;
         handleAddAttribute: () => void;
         handleDeleteAttribute: (attributeId: string) => void;

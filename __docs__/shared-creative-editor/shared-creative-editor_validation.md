@@ -6,6 +6,32 @@
 
 Reviewed the shared editor failure-notice paths after the production-hardening sweep found raw exception messages reaching the editor status notice and AI tool findings. Canvas/Fabric load, AI suggestion copy, AI tool action, Design Cue request/apply, JSON import, image import/replace, clipboard copy, export bundle, export, and template-save failures now flow through one bounded runtime diagnostic helper before showing fixed product-neutral copy.
 
+## Fabric 7.4 migration verification — July 24, 2026
+
+The editor moved from Fabric 5.3.0 to 7.4.0 to remove the critical native canvas/tar advisory chain. This was a behavior migration rather than a type-only update:
+
+- left/top object origins are explicitly retained so neutral document coordinates do not shift under Fabric 7's centered defaults;
+- image loading, object cloning, copy, paste, and duplicate use Promise APIs;
+- image filters use the exported Fabric 7 filter namespace;
+- editor image metadata uses `creativeEditorSrc` instead of colliding with Fabric's protected `src`;
+- stack changes run on the canvas collection;
+- temporary group/ungroup rebuilds the object tree while preserving scene coordinates;
+- canvas disposal is awaited asynchronously;
+- SVG dimensions follow Fabric 7 string option types while PNG crop/export remains numeric.
+
+Verified locally:
+
+- `npm run typecheck`
+- `npm run verify:creative-editor-smoke`
+- `node scripts/verification/verify-campaigncue-runtime.js`
+- `scripts/verification/test-creative-editor-fabric7-boundary.mjs` checks coordinate identity before/after group/ungroup, metadata cloning, filters, stacking, PNG output, and disposal against the installed Fabric runtime.
+- `/creative-editor-smoke?qa=1` passed all 10 development-browser checks with 17 final layers and no console errors.
+- `/creative-editor-smoke?qa=1&variant=stress` passed all 10 development-browser checks with 89 final layers and no console errors.
+
+The browser pass also corrected the development probe's stale QR drawer label from `Add QR code` to the current owner-facing `Add plain QR`. The actual QR insertion path was not broken; after the selector correction, plain QR and barcode insertion passed through normal editor history.
+
+No Firebase read/write, provider call, product persistence, or public output contract was added by this migration.
+
 ### Expected Runtime Behavior
 
 - Static owner guidance such as unsupported file type, unsupported clipboard, and invalid editor JSON remains visible as local copy.

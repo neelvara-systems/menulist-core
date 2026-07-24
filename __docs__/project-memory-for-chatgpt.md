@@ -152,8 +152,8 @@ Observed behavior:
 ## 5) Stack and execution constraints
 
 ### 5.1 Core stack (current package reality)
-- Next.js 14.2.35, React 18.3.1, TypeScript 5.8.3 strict mode.
-- Firebase client 11.7.3, root Firebase Admin 12.7.0, MenuList Functions Firebase Admin 13.5.0 / Firebase Functions 6.6.0, Answerlattice Functions Firebase Admin 12.7.0 / Firebase Functions 5.1.1, NextAuth 4.24.13.
+- Next.js 16.2.11, React 19.2.8, TypeScript 5.8.3 strict mode.
+- Node 22 (`.nvmrc` 22.23.1), Firebase client 11.7.3, root Firebase Admin 14.2.0 through modular entry points, MenuList and Answerlattice Functions Firebase Admin 13.10.0 / Firebase Functions 6.6.0 through modular entry points, NextAuth 4.24.15.
 - Ant Design 5.25.1 on desktop, Tailwind-driven mobile surfaces in the current desktop/mobile split.
 - Redux Toolkit + Redux Persist, SWR, Sentry, Upstash, Zod.
 

@@ -24,7 +24,7 @@
  * @see __docs__/infrastructure-compounding/store-truth-confidence_spec.md
  */
 
-import * as admin from 'firebase-admin';
+import { firestoreAdmin } from '../firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import {
@@ -143,7 +143,7 @@ const STALE_THRESHOLD_DAYS = 90;
  * Compute store truth confidence scores for all stores
  */
 export async function computeStoreTruthConfidenceForAllStores(): Promise<StoreTruthConfidenceResult> {
-    const db = admin.firestore();
+    const db = firestoreAdmin;
     const result: StoreTruthConfidenceResult = {
         processed: 0,
         averageScore: 0,

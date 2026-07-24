@@ -25,23 +25,22 @@ function stripJsComments(content) {
 
 const nextConfig = read('next.config.js');
 const executableNextConfig = stripJsComments(nextConfig);
-[
-  'register: false',
-  'skipWaiting: true',
-  'reloadOnOnline: false',
-  'cacheStartUrl: false',
-  'buildExcludes: [/\\.map$/]',
-  'publicExcludes: [',
-].forEach((token) => assertIncludes(nextConfig, token, 'owner PWA build boundary'));
+const worker = read('src/app/sw.ts');
+const serwistRoute = read('src/app/serwist/[path]/route.ts');
+assertIncludes(nextConfig, "withSerwist(nextConfig)", 'owner PWA build boundary');
+assertIncludes(worker, 'skipWaiting: true', 'owner PWA immediate worker activation');
+assertIncludes(worker, 'clientsClaim: true', 'owner PWA client claim');
+assertIncludes(serwistRoute, "additionalPrecacheEntries: [{ url: '/offline', revision }]", 'owner PWA offline fallback');
+assertIncludes(serwistRoute, "`${distDir}/static/**/*.css`", 'owner PWA bounded style precache');
+assert(!serwistRoute.includes('**/*.js'), 'owner PWA must not precache every product JavaScript chunk');
 for (const cacheName of ['owner-dashboard-pages', 'auth-pages', 'screen-pages']) {
   assert(!executableNextConfig.includes(`cacheName: '${cacheName}'`), `owner PWA must not cache ${cacheName}`);
 }
 for (const token of ['firestore.googleapis.com', 'firebasestorage.googleapis.com', '/api/public', "urlPattern: /^\\/_client"]) {
-    assert(!executableNextConfig.includes(token), `owner PWA runtime cache must exclude ${token}`);
+    assert(!worker.includes(token), `owner PWA runtime cache must exclude ${token}`);
 }
 assert(!executableNextConfig.includes("cacheName: 'static-assets'"), 'owner PWA must not use a broad extension runtime cache');
 
-const worker = read('worker/index.js');
 for (const cacheName of ['start-url', 'owner-dashboard-pages', 'auth-pages', 'screen-pages', 'firebase-images', 'static-assets']) {
   assertIncludes(worker, `'${cacheName}'`, `retired owner cache cleanup for ${cacheName}`);
 }

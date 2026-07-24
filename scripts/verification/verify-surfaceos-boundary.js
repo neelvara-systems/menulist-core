@@ -76,7 +76,7 @@ const allowedRuntimeReferences = new Set([
   "src/constants/productDomains.ts",
   "src/constants/urls.ts",
   "src/lib/multiTenant/domainResolver.ts",
-  "src/middleware.ts",
+  "src/proxy.ts",
 ]);
 const unexpectedRuntimeReferences = [
   ...listFiles("src"),

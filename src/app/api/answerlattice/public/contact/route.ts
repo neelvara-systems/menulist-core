@@ -16,7 +16,7 @@ import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebase
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import {

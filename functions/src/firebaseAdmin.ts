@@ -1,4 +1,7 @@
-import * as admin from 'firebase-admin';
+import { deleteApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import * as functions from 'firebase-functions';
 
 // dotenv is loaded once in index.ts (entrypoint) — NOT here.
@@ -8,7 +11,7 @@ import * as functions from 'firebase-functions';
 // them. Running only the Functions emulator continues to use cloud services,
 // while running `functions,firestore` gives isolated local Firestore tests.
 
-admin.initializeApp();
+const firebaseApp = getApps()[0] ?? initializeApp();
 const logger = functions.logger;
 logger.log("🔥 Firebase Admin initialized.");
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
@@ -19,10 +22,18 @@ if (process.env.FUNCTIONS_EMULATOR === 'true') {
     });
 }
 
-const firestoreAdmin = admin.firestore();
+const firestoreAdmin = getFirestore(firebaseApp);
 firestoreAdmin.settings({ ignoreUndefinedProperties: true });
-const storageAdmin = admin.storage();
-const authAdmin = admin.auth();
-const Vector = (admin.firestore as any).VectorValue;
+const storageAdmin = getStorage(firebaseApp);
+const authAdmin = getAuth(firebaseApp);
+const admin = {
+    app: () => ({
+        delete: () => deleteApp(firebaseApp),
+    }),
+    firestore: {
+        FieldValue,
+        Timestamp,
+    },
+};
 
-export { admin, authAdmin, firestoreAdmin, storageAdmin, Vector };
+export { admin, authAdmin, firestoreAdmin, storageAdmin };

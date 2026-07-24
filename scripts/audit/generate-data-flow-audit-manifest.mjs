@@ -101,7 +101,7 @@ function exclusionFor(file) {
   if (GENERATED_PUBLIC_PATTERNS.some((pattern) => pattern.test(file))) {
     return {
       reason: 'generated PWA/service-worker artifact; next.config.js and worker source remain in scope',
-      generator: 'next-pwa via npm run build',
+      generator: 'Serwist via npm run build',
     };
   }
 
@@ -191,7 +191,7 @@ function categoryFor(file) {
   if (file.startsWith('scripts/verification/') || /\/(verify|test)-[^/]+\.[cm]?[jt]s$/.test(file)) return 'verifier/test';
   if (file.startsWith('functions/') || file.startsWith('functions-answerlattice/') || file.startsWith('functions-signaldesk/')) return 'firebase-functions';
   if (file.startsWith('src/app/api/') && /^route\.[jt]sx?$/.test(basename)) return 'api-route';
-  if (file === 'src/middleware.ts' || file === 'middleware.ts') return 'middleware/routing';
+  if (file === 'src/proxy.ts' || file === 'proxy.ts') return 'proxy/routing';
   if (file.startsWith('src/app/') && /^(page|layout|template|loading|error|not-found|route)\.[jt]sx?$/.test(basename)) return 'nextjs-entrypoint';
   if (file.startsWith('src/database/')) return 'data-access-layer';
   if (file.startsWith('src/redux/')) return 'redux-state';

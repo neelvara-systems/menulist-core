@@ -31,7 +31,7 @@ const sanitizeTenantLogContext = (logContext: string): string => (
  *                   Purely cosmetic — aids debugging which page triggered the error.
  */
 export async function getTenantFromHeaders(logContext = 'ClientPage'): Promise<TenantInfo> {
-    const headersList = headers();
+    const headersList = await headers();
     const requestHost = headersList.get('host');
     const identity = resolveTenantRequestIdentity(requestHost, {
         subdomain: headersList.get('x-tenant-subdomain'),

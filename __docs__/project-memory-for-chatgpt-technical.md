@@ -73,9 +73,9 @@ Skipping cache invalidation is a common regression source for stale public conte
 
 ## 7) Stack and freeze expectations
 
-- Next.js App Router with `next` runtime 14.2.35.
-- Firebase/Firestore/Auth: root client 11.7.3, root admin 12.7.0, MenuList Functions admin 13.5.0/functions 6.6.0, Answerlattice Functions admin 12.7.0/functions 5.1.1.
-- NextAuth 4.24.13
+- Next.js App Router with `next` runtime 16.2.11.
+- Firebase/Firestore/Auth: root client 11.7.3, root admin 14.2.0, MenuList and Answerlattice Functions admin 13.10.0/functions 6.6.0 through modular entry points.
+- NextAuth 4.24.15
 - Redux Toolkit + Redux Persist
 - TypeScript strict mode + Zod-style validations where applicable
 - Sentry + instrumentation modules in production paths

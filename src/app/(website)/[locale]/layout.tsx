@@ -17,9 +17,9 @@ import teIN from 'public/locales/menulist.ai/te-IN.json';
 
 type LocaleLayoutProps = {
     children: React.ReactNode;
-    params: {
+    params: Promise<{
         locale: string;
-    };
+    }>;
 };
 
 const localeMessages: Record<string, Record<string, unknown>> = {
@@ -72,7 +72,13 @@ export function generateStaticParams() {
     return getWebsiteResourceLocaleStaticParams();
 }
 
-export default function WebsiteResourceLocaleLayout({ children, params }: LocaleLayoutProps) {
+export default async function WebsiteResourceLocaleLayout(props: LocaleLayoutProps) {
+    const params = await props.params;
+
+    const {
+        children
+    } = props;
+
     if (!isReviewedWebsiteResourceLocale(params.locale)) {
         notFound();
     }

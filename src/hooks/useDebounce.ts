@@ -56,7 +56,7 @@ export function _debounce(func, delay = 1000) {
 
 
 const useDebounce = (callback) => {
-    const ref: any = useRef();
+    const ref: any = useRef(undefined);
 
     useEffect(() => {
         ref.current = callback;

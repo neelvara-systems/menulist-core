@@ -45,7 +45,7 @@ Passed on the final worktree:
 - `npm --prefix packages/answerlattice-web run build`
 - `npm run test:answerlattice-integration-adapter-boundaries`
 
-Security-policy result: root runtime has zero critical findings and ten accepted high findings limited to the controlled `next`, `fabric`, and `next-pwa` migration families. Answerlattice Functions have zero critical/high findings and eight moderate findings.
+Security-policy result: root runtime has zero critical findings and retains one high plus one moderate npm entry for the same stable Next 16.2.11 nested PostCSS chain. Fabric 7.4.0 cleared the former native canvas/tar family; Firebase Admin 14.2.0 and the UUID 11.1.1 compatibility override cleared the root Firebase/Storage/ExcelJS moderate chain. Answerlattice Functions now pin the stable Firebase Admin 13.10.0 / Firebase Functions 6.6.0 pair through modular entry points and report zero vulnerabilities in both full and production audits after a clean install.
 
 ## Deployment evidence
 

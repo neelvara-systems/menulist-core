@@ -20,11 +20,12 @@ import PwaExternalRedirectClient from '../PwaExternalRedirectClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function PwaReservationHandoffPage({
-    searchParams,
-}: {
-    searchParams?: { lang?: string | string[] };
-}) {
+export default async function PwaReservationHandoffPage(
+    props: {
+        searchParams?: Promise<{ lang?: string | string[] }>;
+    }
+) {
+    const searchParams = await props.searchParams;
     const tenant = await getTenantFromHeaders('PwaReservationHandoff');
     const store = tenant.subdomain
         ? await getStoreBySubdomain(tenant.subdomain)

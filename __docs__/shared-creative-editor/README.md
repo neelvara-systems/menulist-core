@@ -90,6 +90,7 @@ Product surface
 
 | Version | Date | Notes |
 | --- | --- | --- |
+| 3.0 | July 24, 2026 | Migrated the runtime to Fabric.js 7.4.0, preserved left/top neutral-document coordinates, moved clone/image operations to Promises, adopted collection stack APIs and coordinate-safe temporary grouping, removed `@types/fabric`, and added an executable Fabric 7 boundary verifier. |
 | 2.5 | June 28, 2026 | Bounded shared editor runtime/provider/callback failure notices through `showCreativeEditorFailure()` so exception text is logged as bounded diagnostics and fixed product-neutral copy reaches the editor UI. |
 | 2.4 | June 15, 2026 | Added optional product-owned template save callback used by MenuList printable assets. The shared editor still performs no direct Firebase writes. |
 | 2.3 | June 15, 2026 | Added a MyCodex-hosted deployed editor preview route at `/creative-editor-test`, gated by `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE`, so the editor can be tested temporarily on `www.menulist.digital` without weakening the production-blocked smoke route. |

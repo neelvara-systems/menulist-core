@@ -31,7 +31,7 @@ import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebase
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import * as admin from 'firebase-admin';
+import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';

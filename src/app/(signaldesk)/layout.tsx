@@ -41,8 +41,8 @@ export const viewport: Viewport = {
     viewportFit: "cover",
 };
 
-function getSignalDeskBasePath(): string {
-    const basePath = headers().get("x-product-base-path");
+async function getSignalDeskBasePath(): Promise<string> {
+    const basePath = (await headers()).get("x-product-base-path");
     return basePath === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
         ? SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
         : SIGNALDESK_BASE_PATH;
@@ -59,7 +59,7 @@ export default async function SignalDeskLayout({ children }: { children: ReactNo
         notFound();
     }
 
-    const basePath = getSignalDeskBasePath();
+    const basePath = await getSignalDeskBasePath();
     const session = await getServerSession(authOptions);
     if (!session) {
         redirect(`${getSignalDeskSigninPath(basePath)}?callbackUrl=${encodeURIComponent(basePath)}`);

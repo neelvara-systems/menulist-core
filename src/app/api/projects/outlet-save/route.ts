@@ -446,7 +446,7 @@ const runLinkedOutletPostCommitEffects = async ({
                     projectId,
                 })
             ),
-            revalidate: (tag) => revalidateTag(tag),
+            revalidate: (tag) => revalidateTag(tag, { expire: 0 }),
             touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, reason),
         },
     });

@@ -42,9 +42,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const headersList = headers();
+        const headersList = (await headers());
         const aliasBasePath = headersList.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -1351,8 +1351,8 @@ function FounderFitBoundarySection() {
     );
 }
 
-export default function AnswerlatticeHomePage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeHomePage() {
+    const basePath = await getBasePath();
 
     return (
         <>

@@ -362,7 +362,7 @@ function verifyResolverSourceBoundary() {
   const neelvaraDomains = read('src/constants/neelvara/domains.ts');
   const resolver = read('src/lib/multiTenant/domainResolver.ts');
   const hostAuthority = read('src/lib/routing/hostAuthority.ts');
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
   const tenantHeaders = read('src/lib/multiTenant/getTenantFromHeaders.ts');
   const manifestRoute = read('src/app/manifest.webmanifest/route.ts');
 
@@ -582,7 +582,7 @@ function verifyPublicPathSegmentBoundary() {
 }
 
 function verifyMiddlewareBoundary() {
-  const middleware = read('src/middleware.ts');
+  const middleware = read('src/proxy.ts');
 
   assertOrder(
     middleware,

@@ -151,7 +151,7 @@ export default function SessionProvider({ children, session }: Props) {
     const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData;
 
     // Reference to store previous session key for comparison
-    const prevSessionKeyRef = useRef<string>();
+    const prevSessionKeyRef = useRef<string | undefined>(undefined);
     const providerSessionScopeKeyRef = useRef<string | null | undefined>(undefined);
 
     const resetScopedProviderState = useCallback(() => {

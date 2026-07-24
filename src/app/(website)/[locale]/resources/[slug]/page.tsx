@@ -13,10 +13,10 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 type LocalizedResourceArticlePageParams = {
-    params: {
+    params: Promise<{
         locale: string;
         slug: string;
-    };
+    }>;
 };
 
 export function generateStaticParams() {
@@ -25,7 +25,8 @@ export function generateStaticParams() {
     ));
 }
 
-export function generateMetadata({ params }: LocalizedResourceArticlePageParams): Metadata {
+export async function generateMetadata(props: LocalizedResourceArticlePageParams): Promise<Metadata> {
+    const params = await props.params;
     if (!isReviewedWebsiteResourceLocale(params.locale)) {
         return {
             title: 'Resource Not Found - MenuList',
@@ -39,7 +40,8 @@ export function generateMetadata({ params }: LocalizedResourceArticlePageParams)
     return buildResourceArticleMetadata(params.slug, params.locale);
 }
 
-export default function LocalizedResourceArticlePage({ params }: LocalizedResourceArticlePageParams) {
+export default async function LocalizedResourceArticlePage(props: LocalizedResourceArticlePageParams) {
+    const params = await props.params;
     if (!isReviewedWebsiteResourceLocale(params.locale)) {
         notFound();
     }

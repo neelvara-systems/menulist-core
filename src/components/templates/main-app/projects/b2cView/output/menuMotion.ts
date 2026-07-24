@@ -1,10 +1,12 @@
-export const menuSpringTransition = {
+import type { Transition } from 'framer-motion';
+
+export const menuSpringTransition: Transition = {
     type: 'spring',
     damping: 25,
     stiffness: 300,
 };
 
-export const menuFadeTransition = {
+export const menuFadeTransition: Transition = {
     duration: 0.16,
     ease: 'easeOut',
 };

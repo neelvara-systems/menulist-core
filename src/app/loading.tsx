@@ -3,9 +3,9 @@ import { headers } from 'next/headers';
 
 export type ServerSidePageLoaderBrand = BrandedPageLoaderBrand;
 
-function getRequestLoaderBrand(): ServerSidePageLoaderBrand {
+async function getRequestLoaderBrand(): Promise<ServerSidePageLoaderBrand> {
     try {
-        const h = headers();
+        const h = (await headers());
         const productId = h.get('x-product-id');
         if (productId === 'answerlattice') return 'answerlattice';
         if (productId === 'campaigncue') return 'campaigncue';
@@ -15,14 +15,14 @@ function getRequestLoaderBrand(): ServerSidePageLoaderBrand {
     }
 }
 
-function ServerSidePageLoader({
+async function ServerSidePageLoader({
     page,
     brand,
 }: {
     page?: string;
     brand?: ServerSidePageLoaderBrand;
 }) {
-    const resolvedBrand = brand || getRequestLoaderBrand();
+    const resolvedBrand = brand || await getRequestLoaderBrand();
     return <BrandedPageLoader page={page} brand={resolvedBrand} />
 }
 

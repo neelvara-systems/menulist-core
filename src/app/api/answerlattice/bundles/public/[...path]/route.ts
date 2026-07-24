@@ -117,10 +117,10 @@ export function OPTIONS(request: NextRequest) {
     return handlePublicApiCorsPreflight(request);
 }
 
-export async function GET(request: NextRequest, context: { params: { path?: string[] } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ path?: string[] }> }) {
     let requestedPath = '';
     try {
-        requestedPath = (context.params.path || []).join('/');
+        requestedPath = ((await context.params).path || []).join('/');
         if (!PUBLIC_BUNDLE_PATH_PATTERN.test(requestedPath) || requestedPath.includes('..')) {
             return jsonResponse(request, { error: 'Not found' }, { status: 404 });
         }

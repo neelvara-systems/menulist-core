@@ -13,7 +13,7 @@ import { normalizeAnswerlatticeCanonicalAnswerId } from '@lib/answerlattice/gove
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
-import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
+import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitterServer';
 import { normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import {
     ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,

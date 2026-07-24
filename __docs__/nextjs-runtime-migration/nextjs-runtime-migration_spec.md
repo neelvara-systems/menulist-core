@@ -1,13 +1,13 @@
 # Next.js Runtime Migration Specification
 
-**Status:** PLANNED — no implementation evidence yet
+**Status:** LOCALLY IMPLEMENTED AND VERIFIED
 **Risk class:** Critical shared-runtime migration
-**Final target:** Next.js 16.2.10 Active LTS with React 19.2.7
+**Final target:** Next.js 16.2.11 with React 19.2.8
 **Applies to:** Root Next.js application and every product/surface hosted by it
 
 ## 1. Problem statement
 
-The root app is frozen on Next.js 14.2.35. That major is unsupported under the current Next.js support policy and is a direct high-severity production audit finding. The supported target is not compatible with several current framework-adjacent packages and removes or changes runtime contracts used throughout the repository.
+The root app was frozen on Next.js 14.2.35. It is now frozen on Next.js 16.2.11 and React 19.2.8 after the shared runtime, framework-adjacent dependencies, request APIs, cache calls, service worker, and production build paths were migrated together.
 
 This migration must improve the support and security posture without changing product behavior, public truth, tenant isolation, service-worker boundaries, or Firebase contracts.
 
@@ -42,18 +42,9 @@ This migration must improve the support and security posture without changing pr
 
 Next.js 16 is Active LTS. Next.js 15 is Maintenance LTS and is used only to expose migration warnings and isolate the React/request-API transition. The freeze is updated only for the Next 16 final state.
 
-### ADR-2 — Use checkpointed migration, not a single mixed diff
+### ADR-2 — Execute continuously with reversible safety gates
 
-The required checkpoints are:
-
-1. Current-runtime baseline.
-2. Framework-adjacent dependency compatibility on Next 14/React 18 where possible.
-3. Next 15.5.20 plus React 19 and async request APIs.
-4. Next 16.2.10 on Webpack.
-5. Next 16.2.10 on Turbopack plus Serwist.
-6. Final cross-product verification and freeze.
-
-Every checkpoint must be independently revertible. A later checkpoint cannot be used to explain away an earlier failing gate.
+The migration ran as one uninterrupted end-to-end operation. Baseline, dependency, source, Webpack, Turbopack, start/smoke, and final verification checks were internal safety gates rather than user-facing phases or approval stops. The original base commit remains the rollback anchor.
 
 ### ADR-3 — Remove the custom Next 14 build-output compatibility layer by default
 
@@ -77,17 +68,11 @@ The initial Next 16 scripts use `next build --webpack`. After that passes, each 
 
 The final normal build must use Turbopack. `build:analyze` may remain an explicitly diagnostic Webpack command if the analyzer requires it; it must not define production correctness.
 
-### ADR-5 — Keep middleware semantics stable before considering `proxy.ts`
+### ADR-5 — Adopt the Next 16 proxy convention after runtime parity
 
-Next 16 deprecates `middleware.ts` in favor of `proxy.ts`, but proxy uses the Node.js runtime and does not support Edge. The repo's middleware is a large multi-product routing and security boundary and is already under active worktree edits.
+Next 16 deprecates `middleware.ts` in favor of `proxy.ts`; proxy uses the Node.js runtime rather than Edge. The repo's large multi-product routing and security boundary was migrated only after the native Next 16 build and route behavior were proven.
 
-Therefore:
-
-1. Keep `src/middleware.ts` and its function name for the first green Next 16 Webpack and Turbopack checkpoints.
-2. Prove routing, security headers, CSP, cookies, redirects, rewrites, and latency first.
-3. Evaluate `proxy.ts` in a separate commit after all other gates pass.
-4. Adopt proxy only if the Node runtime is acceptable and the complete route/security matrix remains equivalent.
-5. If the proxy gate fails, retain middleware with the deprecation explicitly recorded; do not block the supported framework upgrade on a naming/runtime migration.
+The final state uses `src/proxy.ts` and exports `proxy`. Routing, security headers, CSP, cookies, redirects, rewrites, product-domain behavior, and production-start HTTP results were checked after the convention change. All active verifiers now read the proxy boundary.
 
 ### ADR-6 — Cache calls are classified by consistency requirement
 
@@ -131,7 +116,7 @@ The React wrapper for Emoji Mart is removed rather than installed against an uns
 
 ### ADR-9 — ESLint moves to the CLI and flat config
 
-Next 16 removes `next lint` and the `eslint` option in `next.config.js`. The target starts with ESLint 9.39.2 and `eslint-config-next@16.2.10` using flat config.
+Next 16 removes `next lint` and the `eslint` option in `next.config.js`. The final runtime uses ESLint 9.39.5 and `eslint-config-next@16.2.11` with flat config.
 
 The migration must update:
 
@@ -230,4 +215,4 @@ The final commit must satisfy all of the following:
 
 ## 9. Planning evidence limits
 
-The counts and package versions in this document are a July 13, 2026 source/registry snapshot. They are not implementation evidence. Files are actively changing in the shared worktree, so Phase 0 must regenerate the inventory and record the clean migration base before edits.
+The original counts are the July 13, 2026 planning inventory. Installed versions and implementation evidence are current to July 24, 2026 and are recorded in `nextjs-runtime-migration_validation.md`.

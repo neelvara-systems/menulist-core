@@ -18,9 +18,9 @@ export const metadata: Metadata = {
     },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -227,8 +227,8 @@ const FAQ_GROUPS = [
     },
 ];
 
-export default function AnswerlatticeFaqPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticeFaqPage() {
+    const basePath = await getBasePath();
     const faqJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'FAQPage',

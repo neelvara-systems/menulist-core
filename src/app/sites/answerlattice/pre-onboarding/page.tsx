@@ -24,9 +24,9 @@ export const metadata: Metadata = {
     alternates: { canonical: '/pre-onboarding' },
 };
 
-function getBasePath(): string {
+async function getBasePath(): Promise<string> {
     try {
-        const h = headers();
+        const h = (await headers());
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
 
@@ -80,8 +80,8 @@ const SAFETY_ITEMS = [
     'No live support until sources, product surfaces, widget context, and test questions pass.',
 ];
 
-export default function AnswerlatticePreOnboardingPage() {
-    const basePath = getBasePath();
+export default async function AnswerlatticePreOnboardingPage() {
+    const basePath = await getBasePath();
 
     return (
         <>

@@ -163,8 +163,9 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { storeId: string; formFactor: string } },
+    props: { params: Promise<{ storeId: string; formFactor: string }> }
 ) {
+    const params = await props.params;
     const form = parseFormFactor(params.formFactor);
     if (!form) {
         return new Response('Unsupported screenshot form factor', { status: 404 });
