@@ -1,7 +1,29 @@
 # Maps Place Check - Validation
 
-**Status:** PASS LOCALLY - QA FUNCTION DEPLOY BLOCKED BY FIREBASE CLI AUTHENTICATION
-**Date:** July 19, 2026
+**Status:** PASS LOCALLY - QA FUNCTION/PROVIDER EVIDENCE BLOCKED BY FIREBASE CLI AUTHENTICATION; CONFIRMATION UI BLOCKED BY COLLISION POLICY
+**Date:** July 22, 2026
+
+## July 22, 2026 Hardening Addendum
+
+The provider-backed callable and embedded, provider-neutral store binding remain
+unchanged in this pass. New confirmation is now fail-closed while
+`ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK` is disabled in either the client adapter
+or direct store DAL. Removing an existing binding remains available while the
+feature is disabled.
+
+The current embedded binding does not establish cross-store uniqueness for a
+provider Place ID. A grounded-candidate confirmation UI therefore cannot be
+released after provider smoke alone. Activation also requires a
+server-authoritative policy that detects collisions, fails closed, preserves
+tenant isolation, and supports reviewed, reversible correction. No speculative
+identity registry, collection, index, rule, or hot-path read was added while the
+feature remains disabled.
+
+`npm run verify:functions-deploy-preflight` passed on July 22. The Firebase CLI
+then failed the read-only `firebase projects:list --json` authentication check,
+so a deploy or provider smoke could not produce current remote evidence. This
+pass changed no Function source, Firestore rule/index, or Storage rule and did
+not attempt a Firebase deploy from the mixed worktree.
 
 ## Checklist
 
@@ -30,6 +52,9 @@
 | Invalid or caller-forged generic identity updates fail closed | PASS | `src/database/stores/index.tsx:491` through `src/database/stores/index.tsx:504` reject direct identity metadata and reject invalid Maps-link values rather than treating them as clears |
 | Owner desktop, mobile, and embedded save paths preserve unrelated identity freshness | PASS | `MobileOfficialPageScreen.tsx:747`, `businessSettings/index.tsx:1298`, and `projects/b2cView/index.tsx:221` use `getStoreDeepDifference` before `updateStore`, so unchanged Maps links are omitted instead of restamping confirmation time |
 | Grounded candidate confirmation is explicit | PASS | `src/lib/public-truth-tools/mapsPlaceCheckClient.ts:91` through `src/lib/public-truth-tools/mapsPlaceCheckClient.ts:117` require a confirmation candidate and the DAL revalidates it before persistence |
+| New confirmation is feature-gated in both client and DAL | PASS | `confirmMapsPlaceCheckIdentity` and `confirmExternalLocationIdentity` independently reject while `ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK` is false |
+| Removal remains available while disabled | PASS | Neither removal path is blocked by the confirmation feature flag |
+| Cross-store provider-ID collision handling | ACTIVATION BLOCKER | No server-authoritative uniqueness claim exists yet; the Business Truth Contract prohibits releasing confirmation UI until fail-closed, reviewable, reversible collision handling exists |
 | Stable identity requires attributable source evidence | PASS | `src/lib/public-truth-tools/externalLocationIdentity.ts:55` through `src/lib/public-truth-tools/externalLocationIdentity.ts:83` accept the Place ID and URI only when both occur on the same bounded Maps grounding source |
 | Confirmation cannot manufacture a browser-side GBP claim | PASS | `src/database/stores/index.tsx:997` through `src/database/stores/index.tsx:1004` accept only `google_maps` plus `maps_place_check` for browser confirmation |
 | Confirmation and removal recheck current store truth | PASS | `src/database/stores/index.tsx:955` through `src/database/stores/index.tsx:977` validate tenant/store/availability; both mutations run the check inside Firestore transactions at `src/database/stores/index.tsx:1016` and `src/database/stores/index.tsx:1067` |
@@ -56,14 +81,25 @@
 | `npx tsc --noEmit --incremental false --pretty false` | PASS |
 | Focused ESLint on touched TypeScript and verifier files | PASS |
 | `npm run verify:functions-deploy-preflight` | PASS |
+| `npm run verify:official-business-page-boundary` | PASS |
+| `npm run verify:public-truth-tools` | PASS |
+| `npm run test:public-truth-tools-runtime` | PASS |
+| `npm run verify:doc-npm-scripts` | PASS |
+| `npm run docs:check-links` | PASS - 0 broken links; 62 pre-existing naming warnings outside this slice |
+| `npm run typecheck` | PASS after aligning the root script to the committed non-incremental verifier contract |
+| `firebase projects:list --json` | BLOCKED - `Failed to authenticate, have you run firebase login?` |
 | `firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive` | BLOCKED BEFORE UPLOAD - `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed |
 | `npm run verify:ai-accounting` | BLOCKED OUTSIDE THIS SLICE - the current worktree reports 50 owner-safe mobile enhancement-pack locale-message mismatches; none involve Maps Place Check or external identity files |
-| `npm run verify:agent-readiness` | BLOCKED OUTSIDE THIS SLICE - `package.json` currently uses `tsc --noEmit --incremental --pretty false`, while the verifier requires the exact non-incremental script |
+| `npm run verify:agent-readiness` | BLOCKED OUTSIDE THIS SLICE after the typecheck-contract repair - the aggregate verifier next stopped on pre-existing set-claims source-token drift; the focused MenuList truth, OBP, Platform Pull, Maps, TypeScript, lint, and docs gates pass |
 | `git diff --check -- [touched paths]` | PASS |
 
 ## Runtime Notes
 
 - The callable is remotely current only after a Firebase Functions deployment succeeds.
+- Current Maps Place Check retry evidence must start with `npm run verify:functions-deploy-preflight`, followed by `firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive` only from an isolated reviewed source state with authenticated project access.
+- The older command shape is historical only. Do not reuse the older command shape from that attempt.
+- Latest July 5 raw-provider-output retry completed predeploy lint/build, then failed before upload with Cloud Resource Manager HTTP 403 caller permission.
+- The July 5, 2026 raw-provider-output boundary retry also completed predeploy lint/build and failed before upload with Cloud Resource Manager HTTP 403 caller permission for `menulist-qa`.
 - The July 19 cross-check changed the existing Maps Function identity parser: Place IDs and source URLs now come only from validated grounding metadata, long valid Place IDs are preserved, and oversized or invalid values are rejected rather than truncated.
 - `npm run verify:functions-deploy-preflight` passed. The scoped `menulist-qa` deploy was then attempted and stopped before upload because Firebase CLI authentication is unavailable. No remote Function revision changed.
 - The older July 3 and July 5 Cloud Resource Manager IAM failures remain historical evidence for earlier deploy attempts; the current blocker is the Firebase CLI authentication error recorded above.
@@ -83,5 +119,6 @@ The provider-neutral, reversible location-identity foundation is complete and
 verified locally across Functions parsing, owner desktop/mobile/embedded writes,
 store scope, public-output exclusion, outlet isolation, Firebase cost, and docs.
 The scoped QA Function deploy remains pending because Firebase CLI authentication
-failed before upload. Maps Place Check stays flag-off and must not be enabled
-until the QA deploy and a real attributed provider smoke both succeed.
+fails before project access. Maps Place Check stays flag-off and must not be
+enabled until the QA deploy, a real attributed provider smoke, and the
+server-authoritative collision policy all succeed.

@@ -107,7 +107,7 @@ function generateCSV(data: DashboardData): string {
   lines.push('## Summary Metrics');
   lines.push(csvRow(['Metric', 'Value']));
   lines.push(csvRow(['Total Chats', data.summary.totalChats]));
-  lines.push(csvRow(['Satisfaction Rate', `${data.summary.satisfactionRate}%`]));
+  lines.push(csvRow(['Positive Feedback Share', `${data.summary.satisfactionRate}%`]));
   lines.push(csvRow(['Avg Messages per Chat', data.summary.avgMessagesPerChat]));
   lines.push(csvRow(['Knowledge Gaps', data.summary.knowledgeGaps]));
   lines.push('');
@@ -155,7 +155,6 @@ function generateJSON(data: DashboardData): string {
       topQuestions: data.topQuestions,
       knowledgeGaps: data.knowledgeGaps,
       feedback: data.feedback,
-      health: data.health,
     },
   };
 
@@ -182,7 +181,7 @@ function generateMarkdown(data: DashboardData): string {
   lines.push('| Metric | Value |');
   lines.push('|--------|-------|');
   lines.push(`| Total Conversations | ${data.summary.totalChats.toLocaleString()} |`);
-  lines.push(`| Satisfaction Rate | ${data.summary.satisfactionRate.toFixed(1)}% |`);
+  lines.push(`| Positive Feedback Share | ${data.summary.satisfactionRate.toFixed(1)}% |`);
   lines.push(`| Avg Messages/Chat | ${data.summary.avgMessagesPerChat.toFixed(1)} |`);
   lines.push(`| Knowledge Gaps | ${data.summary.knowledgeGaps} |`);
   lines.push('');
@@ -192,7 +191,7 @@ function generateMarkdown(data: DashboardData): string {
     lines.push('### Trends');
     lines.push('');
     lines.push(`- **Chats:** ${data.summary.trends.chatsChange >= 0 ? '+' : ''}${data.summary.trends.chatsChange.toFixed(1)}%`);
-    lines.push(`- **Satisfaction:** ${data.summary.trends.satisfactionChange >= 0 ? '+' : ''}${data.summary.trends.satisfactionChange.toFixed(1)}%`);
+    lines.push(`- **Positive feedback share:** ${data.summary.trends.satisfactionChange >= 0 ? '+' : ''}${data.summary.trends.satisfactionChange.toFixed(1)}%`);
     lines.push('');
   }
 

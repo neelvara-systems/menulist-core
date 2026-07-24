@@ -123,7 +123,7 @@ Current production contract:
 | `menuVersion`          | Monotonic increment on publish  |
 | `lastPublishedAt`      | Server-side timestamp           |
 | `dateModified`         | In schema.org output (ISO 8601) |
-| Menu snapshots         | Immutable on every publish      |
+| Menu snapshots         | Best-effort short-term immutable publish evidence; `menuVersion` is authoritative |
 | MOL (15 change types)  | Append-only event ledger        |
 | Store Truth Confidence | Nightly composite score         |
 | MCE validation stamps  | `_mce` metadata on project      |

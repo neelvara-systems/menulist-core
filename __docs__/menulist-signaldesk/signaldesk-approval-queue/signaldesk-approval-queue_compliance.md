@@ -1,47 +1,39 @@
-# SignalDesk Approval Queue - Compliance Policy
+# SignalDesk Approval Queue - Compliance
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
+**Status:** Implemented and fail-closed
+**Last Updated:** July 21, 2026
 
-## Core Rule
+## Human Authority
 
-Approval is not a rubber stamp. It is the policy gate.
+Approval is a human decision over one exact prepared email/export action. The
+server permission is `draft.approve`. AI, templates, imports, packet
+recommendations, and operators without that permission cannot create approval.
 
-## Required Review Context
+## Current Invalidators
 
-Approver must see:
+Approval fails when any material authority is missing or changed, including:
 
-- target summary;
-- source policy state;
-- evidence packet;
-- rejected facts;
-- draft text if applicable;
-- suppression state;
-- channel eligibility;
-- kill switch state;
-- prior contact history.
+- target identity, latest draft/approval, segment, next action, or suppression;
+- current source lifecycle, permitted use, expiry, or contact permission;
+- exact contact identity/source-run binding;
+- evidence, rejected facts, or current-menu diagnostic;
+- template status, channel, variables, text fingerprint, or unsupported claims;
+- CTA identity/fingerprint or sender identity/fingerprint/readiness;
+- prior conversation, contact, outcome, unsubscribe, complaint, or DNC truth;
+- packet action fingerprint, channel, route, or recommendation.
 
-## Approval Invalidators
+The browser cannot waive these checks. A stale loaded packet may still be
+rejected by the transaction-current server.
 
-Approval becomes invalid if:
+## Rejection And Replay
 
-- suppression changes;
-- evidence expires;
-- source policy pauses;
-- channel policy pauses;
-- target becomes duplicate/held;
-- kill switch activates;
-- draft changes after approval.
+Rejection uses a maintained reason enum. `other` requires an explanatory note.
+An exact same-actor and same-request-fingerprint retry is a historical acknowledgement only; it does not
+re-authorize current contact or delivery. Conflicting terminal requests fail.
 
-## Role Rules
+## Downstream Boundary
 
-- Operators may request approvals.
-- Growth managers may approve ordinary drafts if policy allows.
-- Compliance reviewer approves risky source/channel/evidence items.
-- Founder admin approves source/provider/channel exceptions.
-
-## Mobile Rule
-
-No mobile approval.
-
-Emergency pause on mobile is allowed, but approval requires desktop context.
+Approved means eligible for a separately guarded manual export/handoff. It does
+not mean sent, published, opted in, owner-converted, or safe for another channel.
+Every downstream rail revalidates its own current source, contact, suppression,
+CTA, sender, and kill-switch authority. Provider sending remains disabled.

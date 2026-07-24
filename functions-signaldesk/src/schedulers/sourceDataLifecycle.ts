@@ -150,6 +150,7 @@ export interface SignalDeskSourceDataLifecycleResult
   duePolicyOverflow: boolean;
   dueAiDetailOverflow: boolean;
   dueEnrichmentOverflow: boolean;
+  dueEvidenceOverflow: boolean;
   dueProviderOverflow: boolean;
   dueTargetOverflow: boolean;
   failedAuthorityCount: number;
@@ -174,6 +175,7 @@ export interface SignalDeskSourceDataLifecycleResult
   scannedDuePolicyCount: number;
   scannedDueAiDetailCount: number;
   scannedDueEnrichmentCount: number;
+  scannedDueEvidenceCount: number;
   scannedDueProviderCount: number;
   scannedDueTargetCount: number;
   scannedNegativeProviderCount: number;
@@ -186,6 +188,7 @@ export interface SignalDeskSourceDataLifecycleResult
   stepLimitReached: boolean;
   scrubbedExpiredAiDetailCount: number;
   scrubbedExpiredEnrichmentCount: number;
+  scrubbedExpiredEvidenceCount: number;
   targetLifecycleBackfillCompleted: boolean;
 }
 
@@ -350,6 +353,7 @@ const emptyResult = (): SignalDeskSourceDataLifecycleResult => ({
   duePolicyOverflow: false,
   dueAiDetailOverflow: false,
   dueEnrichmentOverflow: false,
+  dueEvidenceOverflow: false,
   dueProviderOverflow: false,
   dueTargetOverflow: false,
   failedAuthorityCount: 0,
@@ -374,6 +378,7 @@ const emptyResult = (): SignalDeskSourceDataLifecycleResult => ({
   scannedDuePolicyCount: 0,
   scannedDueAiDetailCount: 0,
   scannedDueEnrichmentCount: 0,
+  scannedDueEvidenceCount: 0,
   scannedDueProviderCount: 0,
   scannedDueTargetCount: 0,
   scannedNegativeProviderCount: 0,
@@ -386,6 +391,7 @@ const emptyResult = (): SignalDeskSourceDataLifecycleResult => ({
   stepLimitReached: false,
   scrubbedExpiredAiDetailCount: 0,
   scrubbedExpiredEnrichmentCount: 0,
+  scrubbedExpiredEvidenceCount: 0,
   targetLifecycleBackfillCompleted: false,
 });
 
@@ -4249,6 +4255,117 @@ const reconcileDueEnrichmentResults = async (params: {
   return { overflow: bounded.overflow, scanned: bounded.documents.length, scrubbed };
 };
 
+const evidenceExpiryPatch = (params: {
+  data: Record<string, unknown>;
+  expiresAtMillis: number;
+  failureCode?: string | null;
+  now: Timestamp;
+  token: string;
+}): Record<string, unknown> => ({
+  ...dependencyPatch({ action: "evidence", data: params.data, now: params.now, token: params.token }).patch,
+  sourceDataExpiredAt: params.now,
+  sourceDataLifecycleInputFailureCode: params.failureCode || null,
+  sourceDataLifecycleInputNormalizedAt: params.failureCode ? params.now : null,
+  sourceDataLifecycleReason: params.failureCode
+    ? "malformed-evidence-record-expired"
+    : "evidence-record-expired",
+  sourceDataPayloadStored: false,
+  sourceDataRecordExpiresAt: Timestamp.fromMillis(params.expiresAtMillis),
+});
+
+const reconcileDueEvidencePackets = async (params: {
+  firestore: Firestore;
+  limit: number;
+  now: Timestamp;
+}): Promise<{ overflow: boolean; scanned: number; scrubbed: number }> => {
+  const bounded = boundedDocuments((await params.firestore
+    .collection(SIGNALDESK_COLLECTIONS.EVIDENCE_PACKETS)
+    .where("pId", "==", SIGNALDESK_PRODUCT_CODE)
+    .where("sourceDataLifecycleState", "==", "active")
+    .where("sourceDataExpiresAt", "<=", params.now)
+    .orderBy("sourceDataExpiresAt", "asc")
+    .orderBy(FieldPath.documentId(), "asc")
+    .limit(params.limit + 1)
+    .get()).docs, params.limit);
+  let scrubbed = 0;
+  for (const candidate of bounded.documents) {
+    const changed = await params.firestore.runTransaction(async transaction => {
+      const summaryRef = params.firestore.collection(SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES)
+        .doc(candidate.id);
+      const [detailSnapshot, summarySnapshot] = await Promise.all([
+        transaction.get(candidate.ref),
+        transaction.get(summaryRef),
+      ]);
+      if (!detailSnapshot.exists) return false;
+      const detail = asRecord(detailSnapshot.data());
+      if (detail.pId !== SIGNALDESK_PRODUCT_CODE || detail.sourceDataLifecycleState !== "active") return false;
+      const expiresAtMillis = requireTimestamp(
+        detail.sourceDataExpiresAt,
+        "SIGNALDESK_EVIDENCE_EXPIRY_INVALID",
+      );
+      if (expiresAtMillis > params.now.toMillis()) return false;
+      let failureCode: string | null = null;
+      try {
+        const identity = requireId(detail.evidencePacketId, "SIGNALDESK_EVIDENCE_IDENTITY_INVALID");
+        if (identity !== detailSnapshot.id) throw new Error("SIGNALDESK_EVIDENCE_IDENTITY_MISMATCH");
+        const targetId = requireId(detail.targetId, "SIGNALDESK_EVIDENCE_TARGET_INVALID");
+        requireId(detail.sourcePolicyId, "SIGNALDESK_EVIDENCE_POLICY_INVALID");
+        requireId(detail.sourceRunId, "SIGNALDESK_EVIDENCE_RUN_INVALID");
+        if (summarySnapshot.exists) {
+          const summary = asRecord(summarySnapshot.data());
+          if (
+            summary.pId !== SIGNALDESK_PRODUCT_CODE
+            || summary.evidencePacketId !== detailSnapshot.id
+            || summary.targetId !== targetId
+          ) throw new Error("SIGNALDESK_EVIDENCE_SUMMARY_LINEAGE_INVALID");
+        }
+      } catch (error) {
+        failureCode = lifecycleFailureCode(error);
+      }
+      const token = lifecycleToken("target", [
+        "evidence-record-expiry",
+        detailSnapshot.id,
+        expiresAtMillis,
+        failureCode,
+      ]);
+      transaction.set(detailSnapshot.ref, evidenceExpiryPatch({
+        data: detail,
+        expiresAtMillis,
+        failureCode,
+        now: params.now,
+        token,
+      }), { merge: true });
+      if (summarySnapshot.exists && asRecord(summarySnapshot.data()).pId === SIGNALDESK_PRODUCT_CODE) {
+        transaction.set(summaryRef, evidenceExpiryPatch({
+          data: asRecord(summarySnapshot.data()),
+          expiresAtMillis,
+          failureCode,
+          now: params.now,
+          token,
+        }), { merge: true });
+      }
+      const auditRef = params.firestore.collection(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS)
+        .doc(lifecycleAuditId("evidence-record-expired", token));
+      transaction.create(auditRef, {
+        action: failureCode
+          ? "source_data_evidence_record_malformed_scrubbed"
+          : "source_data_evidence_record_expired",
+        actorId: SYSTEM_ACTOR_ID,
+        actorRole: SYSTEM_ACTOR_ROLE,
+        auditEventId: auditRef.id,
+        createdAt: params.now,
+        entityId: detailSnapshot.id,
+        entityType: "evidencePacket",
+        pId: SIGNALDESK_PRODUCT_CODE,
+        reason: failureCode || "record-retention-expired",
+      });
+      return true;
+    });
+    if (changed) scrubbed += 1;
+  }
+  return { overflow: bounded.overflow, scanned: bounded.documents.length, scrubbed };
+};
+
 const aiDetailIdentity = (snapshot: DocumentSnapshot): string => {
   const data = asRecord(snapshot.data());
   const identity = requireId(data.aiRunId ?? data.scoreId, "SIGNALDESK_AI_DETAIL_IDENTITY_INVALID");
@@ -4498,6 +4615,15 @@ export async function runSignalDeskSourceDataLifecycle(
   result.dueEnrichmentOverflow = dueEnrichment.overflow;
   result.scannedDueEnrichmentCount = dueEnrichment.scanned;
   result.scrubbedExpiredEnrichmentCount = dueEnrichment.scrubbed;
+
+  const dueEvidence = await reconcileDueEvidencePackets({
+    firestore,
+    limit: authorityLimit,
+    now,
+  });
+  result.dueEvidenceOverflow = dueEvidence.overflow;
+  result.scannedDueEvidenceCount = dueEvidence.scanned;
+  result.scrubbedExpiredEvidenceCount = dueEvidence.scrubbed;
 
   const dueTargets = boundedDocuments((await targetCollection
     .where("pId", "==", SIGNALDESK_PRODUCT_CODE)

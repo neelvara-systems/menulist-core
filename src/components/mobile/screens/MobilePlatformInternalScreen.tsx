@@ -85,7 +85,7 @@ const KBGeneration = dynamic(() => import('@template/platform/KBGeneration'), { 
 const Changelog = dynamic(() => import('@template/platform/changelog'), { loading: RouteLoading, ssr: false });
 const ChatManagement = dynamic(() => import('@template/platform/chatManagement'), { loading: RouteLoading, ssr: false });
 const ChatInsights = dynamic(() => import('@template/platform/chatManagement/ChatInsights'), { loading: RouteLoading, ssr: false });
-const ChatBackfill = dynamic(() => import('@template/platform/admin/AnalyticsBackfill'), { loading: RouteLoading, ssr: false });
+const ChatBackfill = dynamic(() => import('@template/answerlattice/platform/AnalyticsBackfill'), { loading: RouteLoading, ssr: false });
 const ChatWeeklyDigest = dynamic(() => import('@template/platform/chatManagement/WeeklyDigest'), { loading: RouteLoading, ssr: false });
 const ChatRoiCalculator = dynamic(() => import('@template/platform/chatManagement/ROICalculator'), { loading: RouteLoading, ssr: false });
 const AnswerlatticeIntakeMonitor = dynamic(() => import('@template/main-app/platform/answerlatticeIntakeMonitor'), { loading: RouteLoading, ssr: false });

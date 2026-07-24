@@ -1,6 +1,9 @@
-import { FieldValue, Firestore, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Firestore, Timestamp, Transaction } from "firebase-admin/firestore";
 import { ANSWERLATTICE_CACHE_VERSIONS_COLLECTION } from "../types/constants";
-import { appendCompiledContextSourceChange } from "./compiledContextVersions";
+import {
+    appendCompiledContextSourceChanges,
+    type AnswerlatticeContextSourceKey,
+} from "./compiledContextVersions";
 
 export const ANSWERLATTICE_CACHE_SOURCES = {
     KB: "kb",
@@ -47,12 +50,56 @@ export const getAnswerlatticeCacheVersionBumpData = (
     return data;
 };
 
+const isValidStoredCacheVersion = (value: unknown) => {
+    if (typeof value === 'number') return Number.isSafeInteger(value) && value > 0;
+    if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return false;
+    return Number.isSafeInteger(Number(value));
+};
+
+export const appendAnswerlatticeCacheVersionBump = async (
+    transaction: Transaction,
+    db: Firestore,
+    source: AnswerlatticeCacheSource,
+    tId: number,
+    sId: number,
+    metadata?: CacheVersionBumpMetadata,
+    additionalContextSources: readonly AnswerlatticeContextSourceKey[] = [],
+) => {
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
+        throw new Error("Cannot update Answerlattice cache version without valid tenant and store scope.");
+    }
+    const cacheVersionRef = db.collection(ANSWERLATTICE_CACHE_VERSIONS_COLLECTION)
+        .doc(getAnswerlatticeCacheVersionDocId(source, tId, sId));
+    const cacheVersionSnapshot = await transaction.get(cacheVersionRef);
+    const cacheVersion = cacheVersionSnapshot.data();
+    if (cacheVersionSnapshot.exists && (
+        cacheVersion?.pId !== 'AL'
+        || cacheVersion?.tId !== tId
+        || cacheVersion?.sId !== sId
+        || cacheVersion?.source !== source
+        || !isValidStoredCacheVersion(cacheVersion?.version)
+    )) {
+        throw new Error('Answerlattice cache-version ownership conflict.');
+    }
+    await appendCompiledContextSourceChanges(transaction, db, [source, ...additionalContextSources], tId, sId, {
+        reason: metadata?.reason || `${source}_cache_version_bumped`,
+        sourceId: metadata?.sourceId,
+        sourceType: metadata?.sourceType,
+    });
+    transaction.set(
+        cacheVersionRef,
+        getAnswerlatticeCacheVersionBumpData(source, tId, sId, metadata),
+        { merge: true },
+    );
+};
+
 export const bumpAnswerlatticeCacheVersion = async (
     db: Firestore,
     source: AnswerlatticeCacheSource,
     tId: number,
     sId: number,
     metadata?: CacheVersionBumpMetadata,
+    additionalContextSources: readonly AnswerlatticeContextSourceKey[] = [],
 ) => {
     if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
         throw new Error("Cannot update Answerlattice cache version without valid tenant and store scope.");
@@ -60,17 +107,15 @@ export const bumpAnswerlatticeCacheVersion = async (
     const tenantId = tId;
     const storeId = sId;
 
-    const batch = db.batch();
-    batch.set(
-        db.collection(ANSWERLATTICE_CACHE_VERSIONS_COLLECTION)
-            .doc(getAnswerlatticeCacheVersionDocId(source, tenantId, storeId)),
-        getAnswerlatticeCacheVersionBumpData(source, tenantId, storeId, metadata),
-        { merge: true },
-    );
-    appendCompiledContextSourceChange(batch, db, source, tenantId, storeId, {
-        reason: metadata?.reason || `${source}_cache_version_bumped`,
-        sourceId: metadata?.sourceId,
-        sourceType: metadata?.sourceType,
+    await db.runTransaction(async transaction => {
+        await appendAnswerlatticeCacheVersionBump(
+            transaction,
+            db,
+            source,
+            tenantId,
+            storeId,
+            metadata,
+            additionalContextSources,
+        );
     });
-    await batch.commit();
 };

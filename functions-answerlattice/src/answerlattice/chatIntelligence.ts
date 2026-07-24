@@ -4,6 +4,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 
 const PRODUCT_ID = 'AL';
+const INSIGHT_SCHEMA_VERSION = 2;
 const SOURCE_DAYS = 14;
 const CURRENT_DAYS = 7;
 const MAX_TEXT_LENGTH = 1_000;
@@ -25,6 +26,24 @@ export type AnswerlatticeChatIntelligenceResult = {
     feedbackWritten: boolean;
     weeklyWritten: boolean;
 };
+
+export async function invalidateAnswerlatticeChatIntelligence(
+    tId: number,
+    sId: number,
+): Promise<void> {
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
+        throw new Error('answerlattice_chat_intelligence_scope_invalid');
+    }
+    const insightCollection = db.collection(DB_COLLECTIONS.INSIGHTS)
+        .doc(String(tId))
+        .collection(DB_COLLECTIONS.STORES)
+        .doc(String(sId))
+        .collection(DB_COLLECTIONS.AI);
+    const batch = db.batch();
+    batch.delete(insightCollection.doc('feedback'));
+    batch.delete(insightCollection.doc('weekly'));
+    await batch.commit();
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -169,9 +188,13 @@ const aggregateDays = (days: ChatAnalyticsDay[]) => {
         positiveFeedback,
         negativeFeedback,
         totalFeedback,
-        satisfactionRate: totalFeedback > 0 ? (positiveFeedback / totalFeedback) * 100 : 0,
-        topQuestions: Array.from(questions.values()).sort((a, b) => b.count - a.count).slice(0, 10),
-        knowledgeGaps: Array.from(gaps.values()).sort((a, b) => b.count - a.count).slice(0, 20),
+        positiveFeedbackShare: totalFeedback > 0 ? (positiveFeedback / totalFeedback) * 100 : null,
+        topQuestions: Array.from(questions.values())
+            .sort((a, b) => b.count - a.count || a.question.localeCompare(b.question, 'en-US'))
+            .slice(0, 10),
+        knowledgeGaps: Array.from(gaps.values())
+            .sort((a, b) => b.count - a.count || a.question.localeCompare(b.question, 'en-US'))
+            .slice(0, 20),
     };
 };
 
@@ -207,21 +230,29 @@ const buildWeeklyPayload = (days: ChatAnalyticsDay[], weekStart: string, weekEnd
     const currentWeekComplete = hasCompleteSevenDayRange(currentDays, weekStart);
     const comparisonComplete = currentWeekComplete
         && hasCompleteSevenDayRange(previousDays, previousStart);
-    const volumeChange = previous.totalChats > 0
+    const volumeChangePercent = previous.totalChats > 0
         ? ((current.totalChats - previous.totalChats) / previous.totalChats) * 100
-        : 0;
-    const satisfactionChange = previous.satisfactionRate > 0
-        ? current.satisfactionRate - previous.satisfactionRate
-        : 0;
-    const topCategory = current.topQuestions[0]?.question || 'No recurring question';
+        : null;
+    const positiveFeedbackSharePointChange = (
+        current.positiveFeedbackShare !== null
+        && previous.positiveFeedbackShare !== null
+    )
+        ? current.positiveFeedbackShare - previous.positiveFeedbackShare
+        : null;
+    const topCategory = (current.topQuestions[0]?.question || 'No recurring question').slice(0, 120);
     const conversationLabel = current.totalChats === 1 ? 'conversation' : 'conversations';
+    const recordedFeedbackClause = current.positiveFeedbackShare === null
+        ? 'No feedback outcomes were recorded'
+        : `Recorded positive feedback was ${current.positiveFeedbackShare.toFixed(1)}%`;
     const narrative = current.totalChats > 0
-        ? `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. Recorded positive feedback was ${current.satisfactionRate.toFixed(1)}%, and the most frequent question was "${topCategory}".`
+        ? `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. ${recordedFeedbackClause}, and the most frequent question was "${topCategory}".`
         : `No conversations were recorded for the week ending ${weekEnd}.`;
     const highlights = current.totalChats > 0
         ? [
             `${current.totalChats} ${conversationLabel} reviewed`,
-            `${current.satisfactionRate.toFixed(1)}% positive feedback across recorded outcomes`,
+            current.positiveFeedbackShare === null
+                ? 'No feedback outcomes were recorded'
+                : `${current.positiveFeedbackShare.toFixed(1)}% positive feedback across recorded outcomes`,
             `${current.knowledgeGaps.length} recurring answer gaps identified`,
         ]
         : ['No conversation activity was recorded in this period.'];
@@ -231,12 +262,13 @@ const buildWeeklyPayload = (days: ChatAnalyticsDay[], weekStart: string, weekEnd
 
     const payload = {
         pId: PRODUCT_ID,
+        schemaVersion: INSIGHT_SCHEMA_VERSION,
         weekStart,
         weekEnd,
         narrative,
         highlights,
         recommendations,
-        keyMetrics: { volumeChange, satisfactionChange, topCategory },
+        keyMetrics: { volumeChangePercent, positiveFeedbackSharePointChange, topCategory },
         sourceCompleteness: {
             currentDays: currentDays.length,
             previousDays: previousDays.length,
@@ -263,12 +295,12 @@ const buildFeedbackPayload = (days: ChatAnalyticsDay[], date: string) => {
         : `No recurring answer gaps were recorded in the last ${CURRENT_DAYS} UTC days.`;
     const payload = {
         pId: PRODUCT_ID,
+        schemaVersion: INSIGHT_SCHEMA_VERSION,
         date,
         themes,
         summary,
         topIssues: themes.slice(0, 5).map((theme) => theme.theme),
         recommendations: themes.slice(0, 5).flatMap((theme) => theme.suggestedActions),
-        totalFeedbackAnalyzed: current.negativeFeedback,
         generationMode: 'deterministic',
         promptVersion: 'deterministic-v1',
     };
@@ -327,7 +359,7 @@ export async function syncAnswerlatticeChatIntelligence(
             sId,
             sourceHash: feedback.sourceHash,
             generatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true }));
+        }));
     }
     if (weekly && weeklyWritten) {
         writes.push(weeklyRef.set({
@@ -336,7 +368,7 @@ export async function syncAnswerlatticeChatIntelligence(
             sId,
             sourceHash: weekly.sourceHash,
             generatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true }));
+        }));
     }
     await Promise.all(writes);
 

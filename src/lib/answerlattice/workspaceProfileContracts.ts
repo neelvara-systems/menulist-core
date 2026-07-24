@@ -29,13 +29,18 @@ export const isSafeAnswerlatticeProductUrl = (value: string): boolean => {
     }
 };
 
+export const isValidAnswerlatticeSupportEmail = (value: string): boolean => (
+    value.length <= 160
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+);
+
 const ProductUrlSchema = z.string().trim().max(300).refine(
     value => value === '' || isSafeAnswerlatticeProductUrl(value),
     { message: 'Product URL must be an HTTP or HTTPS URL without credentials.' },
 );
 
 const SupportEmailSchema = z.string().trim().max(160).refine(
-    value => value === '' || z.string().email().safeParse(value).success,
+    value => value === '' || isValidAnswerlatticeSupportEmail(value),
     { message: 'Invalid support email.' },
 );
 
@@ -131,11 +136,19 @@ const normalizePersistedString = (value: unknown, maxLength: number): string => 
     typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
 );
 
+const firstPersistedString = (values: unknown[], maxLength: number): string => {
+    for (const value of values) {
+        const normalized = normalizePersistedString(value, maxLength);
+        if (normalized) return normalized;
+    }
+    return '';
+};
+
 export const buildAnswerlatticeWorkspaceProfileFromStore = (
     storeData: Record<string, unknown>,
 ): AnswerlatticeWorkspaceProfile => {
-    const productName = normalizePersistedString(
-        storeData.productName || storeData.name,
+    const productName = firstPersistedString(
+        [storeData.productName, storeData.name, storeData.companyName],
         120,
     );
     const productUrlCandidate = normalizePersistedString(storeData.productUrl, 300);
@@ -164,6 +177,32 @@ export const buildAnswerlatticeWorkspaceProfileFromStore = (
         businessDayEndTime: normalizeAnswerlatticeBusinessDayEndTime(
             normalizePersistedString(storeData.businessDayEndTime, 5),
         ),
+    };
+};
+
+export type AnswerlatticeCompiledWorkspaceProduct = {
+    name: string;
+    url: string | null;
+    supportEmail: string | null;
+    billingModel: typeof ANSWERLATTICE_WORKSPACE_BILLING_MODELS[number];
+    timeZone: string;
+    businessDayEndTime: string;
+};
+
+export const projectAnswerlatticeCompiledWorkspaceProduct = (
+    value: unknown,
+): AnswerlatticeCompiledWorkspaceProduct => {
+    const storeData = value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+    const profile = buildAnswerlatticeWorkspaceProfileFromStore(storeData);
+    return {
+        name: profile.productName || 'Product',
+        url: profile.productUrl || null,
+        supportEmail: profile.supportEmail || null,
+        billingModel: profile.billingModel,
+        timeZone: profile.timeZone,
+        businessDayEndTime: profile.businessDayEndTime,
     };
 };
 

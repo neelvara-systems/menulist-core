@@ -1193,6 +1193,7 @@ const conversationSummarySchema = z.object({
     conversationId: canonicalId(3, 200),
     lastInboundAt: z.unknown().optional(),
     lastInboundOccurredAt: z.unknown().optional(),
+    latestMessageExportId: canonicalId(3, 200).optional(),
     lastMessagePreview: nullableText(1, 180),
     lastOutboundAt: z.unknown().optional(),
     legalRetentionReviewReason: z.enum([

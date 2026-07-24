@@ -1,58 +1,78 @@
-# SignalDesk AI Intelligence - Firebase Cost Plan
+# SignalDesk AI Intelligence - Firebase and Cost Contract
 
-**Status:** Current runtime and cost contract
-**Created:** June 23, 2026
-**Cost impact now:** Local/emulator verification only; no deployed SignalDesk project writes.
-**Last Updated:** July 11, 2026
+**Status:** Local source complete; QA index deployment pending
+**Last Updated:** July 21, 2026
 
 ## Collections
 
-| Collection | Purpose | Normal reads |
-| --- | --- | --- |
-| `signaldeskAiWorkerRuns` | Rules scores, provider child runs, and parent AI volume-run summaries | Private AI/control-room workspace |
-| `signaldeskAiOperationLedger` | Per-provider AI operation and estimated cost | Audit/cost investigation |
-| `signaldeskDecisionSnapshots` | Compact decision evidence | Private review |
-| `signaldeskModelRoutes` | Task model, provider, confidence, escalation, and per-run cap | AI workspace/configuration |
-| `signaldeskModelEvals` | Cumulative provider and founder-review quality | AI workspace |
-| `signaldeskProviderAccounts` / `signaldeskBudgetPolicies` | AI provider readiness and spend authority | Preflight and control room |
-| `signaldeskCostDailySummaries` | Compact daily estimated AI/provider/Firestore cost | Control room |
-| `signaldeskAuditEvents` / `signaldeskRunTimelines` | Founder action and batch progress evidence | Audit/control room |
+| Collection | Purpose |
+| --- | --- |
+| `signaldeskAiWorkerRuns` | Rules scores, provider assists, volume parents, and the global volume lock. |
+| `signaldeskAiOperationLedger` | Compact operation and estimated-cost evidence. |
+| `signaldeskDecisionSnapshots` | Typed internal decision evidence. |
+| `signaldeskIdempotencyKeys` | Actor-bound paid-call claims, reservations, completion, and unresolved outcomes. |
+| `signaldeskModelRoutes` | Task provider/model/status/cost authority. |
+| `signaldeskModelEvals` | Cumulative provider and founder-review quality counters. |
+| `signaldeskProviderAccounts` | Provider readiness, caps, reserved spend, and settled spend. |
+| `signaldeskBudgetPolicies` | Optional provider budget authority and reservation. |
+| `signaldeskCostDailySummaries` | Compact Firestore/provider cost estimate. |
+| `signaldeskAuditEvents` / `signaldeskRunTimelines` | Stable operator and recovery evidence. |
 
-## Read / Write Model
+All collections are in the dedicated SignalDesk Firebase boundary. Browser writes are denied; protected server actions own mutation.
 
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Display score | 1-2 | 0 | Summary docs only. |
-| Run AI score | 3-8 | 3-6 | Target, evidence, source policy, cache; result, run, summary. |
-| Cache hit | 1-2 | 0-1 | May update lastUsedAt. |
-| Eval run | Bounded | Bounded | Admin only, not dashboard source. |
-| Founder shadow review | 2 required transactional reads plus optional existing revenue summary | Existing AI run + model eval + optional revenue summary + audit/timeline/cost | No new collection or provider call. |
-| AI volume start | Target/task route and provider/budget preflight, bounded by 5 targets and 3 tasks | Parent worker run + audit + timeline + cost summary | No provider call until maximum estimated cost passes. |
-| AI volume child | Target + source policy + optional evidence + task route + critic route + provider/budget controls | Existing assist run ledger: child worker run, decision snapshot, AI operation ledger, model eval, provider/budget spend, timeline, audit, daily cost | Two routine calls; third call only on critic/confidence/rejected-fact escalation. |
-| AI volume finish | Parent worker run | Parent status/counters/child IDs + audit + timeline + cost summary | Stable failure codes only; no raw provider error persisted. |
-| AI volume stale recovery | Existing parent + maximum 20 same-parent worker rows + global lock | Existing parent terminal state + conditional owned-lock release + audit + timeline + cost summary | No provider call. Keeps at most 15 child IDs; the single-field `volumeRunId` query needs no composite index. |
+## Cost Shape
 
-## Cost Controls
-
-- Cache by target ID + evidence hash + worker version.
-- Do not run AI from list pages.
-- Do not include full histories.
-- Do not run AI in webhook/request critical path.
-- Store compact outputs.
-- Daily model spend summary required.
-- Founder maximum estimated batch cost is required and capped by API schema.
-- Provider and budget authority is checked for child calls even after batch preflight.
-- Batch size is capped at five targets, three tasks, and three model calls per target/task pair.
+| Flow | Provider calls | Firestore behavior |
+| --- | ---: | --- |
+| Rules score first run | 0 | One transaction reads target/policy/score and creates score, decision, ledger, target update, audit, and daily cost. |
+| Rules score exact replay | 0 | Transactional reads; no write. |
+| Standalone assist | 1 | Preflight reads, one reservation/claim transaction, one final settlement transaction. |
+| Multi-pass child | 2 routine, 3 maximum | Same assist reservation/settlement boundary; parent lock prevents overlapping volume spend. |
+| Volume parent start/finish | 0 directly | One parent/lock transaction and one bounded terminal update; child calls carry provider cost. |
+| Interrupted parent recovery | 0 | Parent plus at most 20 same-parent child rows, then one terminal transaction. |
+| Exact shadow-review replay | 0 | Existing run/eval reads; no writes. |
+| Changed shadow review | 0 | Existing run/eval and optional revenue summary; updates those records plus audit, timeline, and daily cost. |
+| AI workspace | 0 | Three queries, each capped at 30 valid rows, plus model routes/evals, targets, and evidence lists. |
 
 ## Indexes
 
-AI workspace reads the latest bounded `signaldeskAiWorkerRuns` list by existing `createdAt`. Volume Mode adds no collection or composite index.
+AI workspace category fairness requires:
+
+```txt
+signaldeskAiWorkerRuns:
+  pId ASC
+  workerType ASC
+  createdAt DESC
+```
+
+AI detail cleanup separately uses:
+
+```txt
+signaldeskAiWorkerRuns:
+  pId ASC
+  aiDetailLifecycleState ASC
+  aiDetailExpiresAt ASC
+```
+
+The volume-child recovery query uses `volumeRunId` with a single-field index and needs no composite index.
 
 ## Retention
 
-| Data | Default |
-| --- | --- |
-| Latest AI summaries | Until superseded/deleted |
-| Worker run summaries | 90-180 days |
-| Eval runs | 12 months |
-| Cost summaries | 24 months |
+AI source-derived detail expires after exactly 90 days. Cleanup nulls or clears `output`, `initialOutput`, `instruction`, critic reasons, review reason, detailed reasons, and parent target IDs. It retains compact run identity, task/provider/model, cost, confidence/counts, review decision/identity, lifecycle timestamps, and separate immutable audit evidence.
+
+Model-eval, ledger, audit, and daily summary retention is governed by their own SignalDesk policies; this feature does not invent generic 12- or 24-month defaults.
+
+## Deployment
+
+The typed workspace query adds one Firestore composite index. Deploy only the SignalDesk index target to `menulist-signaldesk-qa` after local verification. The existing source-data lifecycle Function also needs its separately documented QA deployment before 90-day scrubbing is considered live. No MenuList Firebase target is involved.
+
+## Cost Rules
+
+- No AI on list rendering.
+- No raw provider payload persistence.
+- No unbounded history reads.
+- No second cache collection.
+- No scheduled provider generation.
+- Exact paid retries do not repeat calls.
+- Volume is capped at 15 pairs and 45 calls.
+- Provider account and budget reservation are checked transactionally before execution and settled to actual bounded cost.

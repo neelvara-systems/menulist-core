@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuExternalLink, LuMessageCircle, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -89,12 +89,14 @@ function areSocialMapsEqual(left: Record<string, string>, right: Record<string, 
     return JSON.stringify(leftEntries) === JSON.stringify(rightEntries);
 }
 
-export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
+function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdvancedSettingsScreenProps) {
     const t = useTranslations('MobileAdvancedSettings');
     const tMobile = useTranslations('MobileSettings');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
+    const isMountedRef = useRef(true);
+    const saveInFlightRef = useRef(false);
 
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>(sanitizeSocialMediaMap(storeDetails?.socialMedia));
     const [feedbackEnabled, setFeedbackEnabled] = useState(storeDetails?.feedbackEnabled !== false);
@@ -189,19 +191,42 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     );
 
     const saveField = async (updates: Record<string, any>) => {
-        if (!storeDetails?.storeId) return false;
+        if (!storeDetails?.storeId || saveInFlightRef.current) return false;
+        const sourceStoreDetails = storeDetails;
+        const expectedStoreId = sourceStoreDetails.storeId;
+        const expectedTenantId = sourceStoreDetails.tenantId;
+        saveInFlightRef.current = true;
         setIsSaving(true);
         try {
             const writeResult = await updateStore({
-                ...getStoreDeepDifference(updates, storeDetails),
-                storeId: storeDetails.storeId,
+                ...getStoreDeepDifference(updates, sourceStoreDetails),
+                storeId: expectedStoreId,
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_advanced_settings_store_update_rejected',
             );
-            setStoreDetails({ ...storeDetails, ...updates });
+            if (!isMountedRef.current) return true;
+            setStoreDetails((currentStoreDetails: typeof storeDetails) => {
+                if (
+                    currentStoreDetails?.storeId !== expectedStoreId
+                    || currentStoreDetails?.tenantId !== expectedTenantId
+                ) {
+                    return currentStoreDetails;
+                }
+
+                const settledUpdates: Record<string, any> = {};
+                Object.entries(updates).forEach(([key, value]) => {
+                    if (currentStoreDetails[key] === sourceStoreDetails[key]) {
+                        settledUpdates[key] = value;
+                    }
+                });
+
+                return Object.keys(settledUpdates).length > 0
+                    ? { ...currentStoreDetails, ...settledUpdates }
+                    : currentStoreDetails;
+            });
             Toast.show({ content: t('saved'), duration: 1000 });
             return true;
         } catch (error) {
@@ -213,10 +238,15 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                 hasFeedbackEnabledUpdate: Object.prototype.hasOwnProperty.call(updates, 'feedbackEnabled'),
                 hasFeedbackDefaultsUpdate: Boolean(updates.feedbackDefaults),
             });
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
+            if (isMountedRef.current) {
+                Toast.show({ content: t('failedToSave'), duration: 2000 });
+            }
             return false;
         } finally {
-            setIsSaving(false);
+            saveInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsSaving(false);
+            }
         }
     };
 
@@ -408,6 +438,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     ) : null;
 
     useEffect(() => {
+        if (saveInFlightRef.current) return;
         const nextSocialMedia = sanitizeSocialMediaMap(storeDetails?.socialMedia);
         const nextFeedbackDraft = getInitialFeedbackDraft(storeDetails);
 
@@ -422,6 +453,10 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         setCollectEmail(nextFeedbackDraft.collectEmail);
         setCollectEmailRequired(nextFeedbackDraft.collectEmailRequired);
     }, [storeDetails]);
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const handleReset = () => {
         if (showSocial) {
@@ -806,4 +841,11 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
             </Popup>
         </Flex>
     );
+}
+
+export default function MobileAdvancedSettingsScreen(props: MobileAdvancedSettingsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}::${props.mode || 'all'}`;
+
+    return <MobileAdvancedSettingsScreenContent key={scopeKey} {...props} />;
 }

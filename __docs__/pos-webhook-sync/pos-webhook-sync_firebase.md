@@ -1,7 +1,7 @@
 # External Menu Sync — Firebase and Cost Contract
 
 > **Status:** Implemented in source
-> **Last code-truth review:** July 16, 2026
+> **Last code-truth review:** July 21, 2026
 
 ## Data model
 
@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | `stores/{storeId}` | Non-secret config, connection status, menu/secret versions, counters | Existing tenant/store rules; clients cannot add/change/delete legacy `posSync.webhookSecret` |
 | `posSyncSecrets/{tenantId}_{storeId}` | Canonical HMAC secret and version | Deny all; Admin SDK only |
-| `stores/{storeId}/posDeliveryLogs/{deliveryId}` | Bounded delivery result | Store-scoped read; server write |
+| `stores/{storeId}/posDeliveryLogs/{deliveryId}` | Bounded delivery result | Exact parent-tenant plus store-membership read (or platform admin); all client writes denied |
 | `menuChangeLog/{tenantId}/{storeId}` | Secret rotation audit event | Existing feature rules |
 
 No Storage bucket, Firestore index, Cloud Function, scheduler, or delivery queue is added.
@@ -105,15 +105,17 @@ The browser debounce is intentionally low-cost but not durable. A closed tab can
 `firestore.rules` enforces:
 
 - `posSyncSecrets` deny all clients, including platform sessions;
+- delivery-log reads require the parent store to exist plus matching tenant and store claims (platform admin may read); unauthenticated, wrong-tenant and wrong-store reads fail;
+- delivery-log create/update/delete is denied to every client, including platform sessions; the protected Admin delivery route is the only writer;
 - client store creates cannot include `posSync.webhookSecret`;
 - client store updates must preserve an existing legacy secret exactly and cannot add, change, or delete it;
 - Admin SDK performs migration/deletion after protected route authorization.
 
 The preservation exception prevents an unrelated owner store update from breaking before coordinated migration. It does not authorize new client secret writes.
 
-## Deployment dependency
+## Deployment dependency and current status
 
-Rules and app must be released in the documented order. The rules change is not safe to deploy ahead of the compatible secret API/UI because the prior deployed UI writes the legacy field. No rules deploy was performed as part of a source-only pass without the corresponding app release authorization.
+Rules and app must be released in the documented order. The legacy secret boundary is not safe to deploy ahead of a compatible secret API/UI because the prior UI writes the legacy field. The July 21 delivery-history rule is backward-compatible with that boundary and was attempted as a scoped MenuList QA rules-only deploy after emulator validation. Firebase CLI stopped before upload with `Failed to authenticate, have you run firebase login?`; QA therefore retains the prior rules until an authorized login and rerun. No Vercel deploy was authorized or performed.
 
 ## Verification
 
@@ -128,5 +130,9 @@ The rules emulator proves:
 - an owner can change non-secret POS config while a legacy secret is preserved;
 - an owner cannot add, replace, or delete the legacy secret;
 - an owner can save POS config containing only a non-secret version marker.
+- owner/staff/platform reads of the exact delivery log succeed where intended;
+- the desktop `orderBy(sentAt desc) + limit(20)` query succeeds for an authorized store member;
+- wrong-tenant, wrong-store and unauthenticated delivery-log reads fail;
+- owner, staff and platform delivery-log creates/updates fail.
 
 No focused gate calls a real provider or writes a production Firebase project.

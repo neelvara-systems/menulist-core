@@ -1,52 +1,23 @@
-# SignalDesk Demand Signals - Compliance Policy
+# SignalDesk Demand Signals - Compliance
 
-**Status:** Initial policy
+**Status:** Runtime-enforced internal boundary
 **Created:** June 23, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Principle
 
-Warm demand signals are useful only if they stay privacy-bounded. SignalDesk must measure business opportunity without turning public MenuList usage into customer surveillance.
+Demand is business-operating evidence, not permission to identify or contact an anonymous customer.
 
-## Allowed Signals
+## Enforced Rules
 
-- Aggregated QR/menu-link activity.
-- Business-facing claim/setup clicks.
-- Operator-entered partner referrals.
-- Route-token events tied to approved growth actions.
-- Customer request signals only when stored as compact, non-identifying events.
+- The action API accepts only operation key, enumerated signal type/surface, optional target ID, and optional target name paired with a target ID.
+- Unknown payload fields are rejected by a strict schema.
+- General demand stores no person or business label.
+- Target-scoped demand uses current SignalDesk target truth and ignores the caller label.
+- No email, phone, IP address, device ID, fingerprint, customer session, message, or raw MenuList payload is accepted.
+- Demand does not clear suppression, create contact authority, create a target, or trigger outreach.
+- Client Firestore writes remain denied and raw demand events are not exposed in the workspace.
 
-## Blocked Signals
+## Future Public Hook Gate
 
-- Customer identity from anonymous scans.
-- Cross-business customer tracking.
-- Raw device fingerprints.
-- Full IP address retention in SignalDesk docs.
-- Sensitive category inference.
-- Automatic contact enrichment from anonymous customer behavior.
-
-## Prospect Creation Rule
-
-A target or prospect review item can be created from:
-
-- owner/business-facing action,
-- partner/referral submission,
-- operator-verified business signal,
-- valid route-token outcome.
-
-A target must not be created from anonymous customer scan activity alone.
-
-## Suppression Rule
-
-Demand does not override opt-out. If a target or channel identity is suppressed, the signal may be recorded for aggregate learning, but outreach remains blocked.
-
-## Surface-Hook Review
-
-Every MenuList surface hook must document:
-
-- source surface,
-- allowed purpose,
-- stored fields,
-- blocked fields,
-- retention,
-- summary impact,
-- privacy review owner.
+A future MenuList surface hook is not covered by the current operator action. It requires separate consent/privacy review, abuse/rate-limit design, payload and retention contract, cost ceiling, public-source attribution rules, tests, and deployment approval. Anonymous scans must remain aggregate and must never create a target by themselves.

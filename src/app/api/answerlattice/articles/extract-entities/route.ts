@@ -9,11 +9,17 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
-import { ANSWERLATTICE_CACHE_SOURCES, getAnswerlatticeCacheVersionDocId } from '@lib/answerlattice/cacheVersionManifest';
-import { getAnswerlatticeBundleManifestDocId, getAnswerlatticeSourceVersionsDocId } from '@lib/answerlattice/compiledContext';
+import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
 import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { upsertAnswerlatticeExtractedEntityCandidate } from '@lib/answerlattice/ontologyServer';
+import {
+    AnswerlatticeInvalidationOwnershipError,
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+    type AnswerlatticeInvalidationOwnership,
+} from '@lib/answerlattice/invalidationOwnership';
 import {
     ANSWERLATTICE_KB_ARTICLE_ID_MAX_LENGTH,
     normalizeAnswerlatticeKbArticleId,
@@ -73,12 +79,12 @@ const buildArticleSourceFingerprint = (value: Record<string, unknown>): string =
 const addArticleEntityLinkInvalidationWrites = (
     transaction: Transaction,
     scope: { tId: number; sId: number },
+    ownership: AnswerlatticeInvalidationOwnership,
     articleId: string,
 ) => {
     const now = FieldValue.serverTimestamp();
     transaction.set(
-        answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
-            .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId)),
+        ownership.cacheVersionRefs[ANSWERLATTICE_CACHE_SOURCES.KB]!,
         {
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
@@ -93,9 +99,9 @@ const addArticleEntityLinkInvalidationWrites = (
         { merge: true },
     );
     transaction.set(
-        answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeSourceVersionsDocId(scope.tId, scope.sId)),
+        ownership.sourceVersionsRef,
         {
+            ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
             schemaVersion: 1,
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
@@ -109,9 +115,9 @@ const addArticleEntityLinkInvalidationWrites = (
         { merge: true },
     );
     transaction.set(
-        answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeBundleManifestDocId(scope.tId, scope.sId)),
+        ownership.manifestRef,
         {
+            ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
             schemaVersion: 1,
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
@@ -292,6 +298,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     || normalizedStoredEntityIds.some((entityId, index) => entityId !== normalizedNextEntityIds[index]);
 
                 if (entityLinksChanged) {
+                    const invalidationOwnership = await readAnswerlatticeInvalidationOwnership({
+                        cacheSources: [ANSWERLATTICE_CACHE_SOURCES.KB],
+                        db: answerlatticeFirestoreAdmin,
+                        scope: { tId: tenantId, sId: storeId },
+                        transaction,
+                    });
                     transaction.update(articleRef, {
                         entityIds: normalizedNextEntityIds,
                         modifiedOn: FieldValue.serverTimestamp(),
@@ -299,6 +311,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     addArticleEntityLinkInvalidationWrites(
                         transaction,
                         { tId: tenantId, sId: storeId },
+                        invalidationOwnership,
                         article.id,
                     );
                 }
@@ -314,6 +327,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const existingEntitiesSnap = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tenantId)
             .where('sId', '==', storeId)
             .limit(500)
@@ -423,6 +437,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (error instanceof ArticleEntityExtractionConflictError) {
             return NextResponse.json(
                 { error: 'The article changed while entity extraction was running. Retry from the latest article.' },
+                { status: 409 },
+            );
+        }
+        if (error instanceof AnswerlatticeInvalidationOwnershipError) {
+            return NextResponse.json(
+                { error: 'Article cache state is invalid for this workspace.' },
                 { status: 409 },
             );
         }

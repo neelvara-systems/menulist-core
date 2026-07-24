@@ -1,7 +1,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { collection, doc, getDoc, getDocs, limit, query, runTransaction, where } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
+import { appendAnswerlatticeCompiledContextSourceChange } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticeProductSurfaceId } from '@lib/answerlattice/productSurfaceIdBoundary';
@@ -182,6 +183,7 @@ export const getProductSurfacesForSession = async (scopeOverride?: ProductSurfac
         const scope = await requireScope(scopeOverride);
         const q = query(
             getCollectionRef(),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT + 1),
@@ -237,12 +239,18 @@ export const saveProductSurface = async (input: unknown) => {
                         throw new Error('Product surface context keys cannot be changed after creation.');
                     }
                 }
+                await appendAnswerlatticeCompiledContextSourceChange(
+                    transaction,
+                    'surfaces',
+                    scope.tId,
+                    scope.sId,
+                    {
+                        reason: 'product_surface_save',
+                        sourceId: docId,
+                        sourceType: COLLECTION,
+                    },
+                );
                 transaction.set(surfaceRef, composedData, { merge: true });
-            });
-            await markAnswerlatticeCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
-                reason: 'product_surface_save',
-                sourceId: docId,
-                sourceType: COLLECTION,
             });
             return {
                 ...composedData,
@@ -281,12 +289,18 @@ export const archiveProductSurface = async (surface: Pick<AnswerlatticeProductSu
                 if (!existing || existing.key !== normalizeSurfaceKey(surface.key)) {
                     throw new Error('Product surface is not available for this workspace.');
                 }
+                await appendAnswerlatticeCompiledContextSourceChange(
+                    transaction,
+                    'surfaces',
+                    scope.tId,
+                    scope.sId,
+                    {
+                        reason: 'product_surface_archive',
+                        sourceId: surfaceId,
+                        sourceType: COLLECTION,
+                    },
+                );
                 transaction.set(surfaceRef, composedData, { merge: true });
-            });
-            await markAnswerlatticeCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
-                reason: 'product_surface_archive',
-                sourceId: surfaceId,
-                sourceType: COLLECTION,
             });
             return {
                 id: surfaceId,

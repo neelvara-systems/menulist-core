@@ -7,6 +7,7 @@ import {
     getBillingFirestoreAdminForProduct,
 } from './productBillingServer';
 import { isAnswerlatticeBillingProduct } from './productBillingPlans';
+import { getProductSubscriptionBillingScope } from './productSubscriptionScopeBoundary';
 import { normalizeBillingSubscriptionDocumentId } from './subscriptionDocumentIdBoundary';
 import {
     normalizeBillingTopupDocumentId,
@@ -28,6 +29,102 @@ export type ProductTopupSettlementResult = {
     subscription: FirestoreSubscriptionDoc;
 };
 
+export async function persistPendingProductTopupSnapshot(params: {
+    amount: number;
+    billingDb: FirebaseFirestore.Firestore;
+    billingStoreId: number;
+    creditsAdded: number;
+    currency: string;
+    order: ProviderEntity;
+    packId: string;
+    packName: string;
+    productId: ProductId;
+    storeId: number;
+    tenantId: number;
+    userId: string;
+}): Promise<'created' | 'replayed'> {
+    const orderId = normalizeBillingTopupDocumentId(params.order?.id);
+    if (!orderId) {
+        throw new Error('Pending top-up provider order id is invalid.');
+    }
+    const packType = isAnswerlatticeBillingProduct(params.productId)
+        ? 'answerlattice_credit_pack'
+        : 'ai_enhancement_pack';
+    const candidate = {
+        amount: params.amount,
+        billingStoreId: params.billingStoreId,
+        createdOn: admin.firestore.FieldValue.serverTimestamp(),
+        creditsAdded: params.creditsAdded,
+        currency: params.currency,
+        packId: params.packId,
+        packName: params.packName,
+        paymentProvider: 'razorpay',
+        pId: params.productId,
+        productId: params.productId,
+        providerOrderId: orderId,
+        sId: params.storeId,
+        status: 'pending',
+        storeId: params.storeId,
+        tId: params.tenantId,
+        tenantId: params.tenantId,
+        type: packType,
+        uId: params.userId,
+        updatedOn: admin.firestore.FieldValue.serverTimestamp(),
+        userId: params.userId,
+    };
+    const candidateSettlement = resolveVerifiedTopupSettlement({
+        expectedOrderId: orderId,
+        expectedPaymentId: '',
+        expectedProductId: params.productId,
+        expectedStoreId: params.storeId,
+        expectedTenantId: params.tenantId,
+        order: params.order,
+        topupSnapshot: candidate,
+    });
+    if (
+        !candidateSettlement
+        || candidateSettlement.billingStoreId !== params.billingStoreId
+        || typeof params.userId !== 'string'
+        || params.userId.length === 0
+        || params.userId.length > 256
+    ) {
+        throw new Error('Pending top-up snapshot is invalid.');
+    }
+
+    const topupRef = params.billingDb.collection(DB_COLLECTIONS.TOPUPS).doc(orderId);
+    return params.billingDb.runTransaction(async (tx) => {
+        const currentSnap = await tx.get(topupRef);
+        if (!currentSnap.exists) {
+            tx.create(topupRef, candidate);
+            return 'created' as const;
+        }
+
+        const current = currentSnap.data();
+        const currentSettlement = resolveVerifiedTopupSettlement({
+            expectedOrderId: orderId,
+            expectedPaymentId: '',
+            expectedProductId: params.productId,
+            expectedStoreId: params.storeId,
+            expectedTenantId: params.tenantId,
+            order: params.order,
+            topupSnapshot: current,
+        });
+        if (
+            !currentSettlement
+            || currentSettlement.billingStoreId !== params.billingStoreId
+            || current?.status !== 'pending'
+            || current?.paymentProvider !== 'razorpay'
+            || current?.type !== packType
+            || current?.userId !== params.userId
+            || current?.uId !== params.userId
+            || current?.createdOn == null
+        ) {
+            throw new Error('Pending top-up order identity conflict.');
+        }
+        return 'replayed' as const;
+    });
+}
+
 /**
  * Applies a provider-confirmed top-up without relying on the browser callback.
  * The signed webhook path and the authenticated checkout callback both settle
@@ -47,8 +144,10 @@ export async function settleProductTopupFromProvider(params: {
     const notes = order?.notes && typeof order.notes === 'object' && !Array.isArray(order.notes)
         ? order.notes
         : null;
-    const tenantScope = normalizeBillingTopupScopeDocumentId(notes?.tenantId ?? notes?.tId);
-    const storeScope = normalizeBillingTopupScopeDocumentId(notes?.storeId ?? notes?.sId);
+    const tenantScope = normalizeBillingTopupScopeDocumentId(notes?.tenantId);
+    const compactTenantScope = normalizeBillingTopupScopeDocumentId(notes?.tId);
+    const storeScope = normalizeBillingTopupScopeDocumentId(notes?.storeId);
+    const compactStoreScope = normalizeBillingTopupScopeDocumentId(notes?.sId);
 
     if (
         !orderId
@@ -57,7 +156,11 @@ export async function settleProductTopupFromProvider(params: {
         || payment?.status !== 'captured'
         || !notes
         || !tenantScope
+        || !compactTenantScope
+        || compactTenantScope.numericId !== tenantScope.numericId
         || !storeScope
+        || !compactStoreScope
+        || compactStoreScope.numericId !== storeScope.numericId
     ) {
         throw new Error('Provider top-up payload is incomplete or invalid.');
     }
@@ -84,15 +187,13 @@ export async function settleProductTopupFromProvider(params: {
 
     const subscription = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
     const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);
-    const subscriptionTenantId = Number(subscription?.tenantId ?? subscription?.tId);
-    const subscriptionStoreId = Number(subscription?.storeId ?? subscription?.sId);
+    const subscriptionScope = getProductSubscriptionBillingScope(productId, subscription);
     if (
         !subscription
         || !subscriptionId
-        || !Number.isSafeInteger(subscriptionTenantId)
-        || subscriptionTenantId !== tenantId
-        || !Number.isSafeInteger(subscriptionStoreId)
-        || subscriptionStoreId <= 0
+        || !subscriptionScope
+        || subscriptionScope.tenantId !== tenantId
+        || initialSettlement.billingStoreId !== subscriptionScope.storeId
     ) {
         throw new Error('No current subscription is available for the paid top-up.');
     }
@@ -130,10 +231,20 @@ export async function settleProductTopupFromProvider(params: {
                 throw new Error('Paid top-up no longer matches its provider evidence.');
             }
 
+            const currentSubscription = resolveCurrentTopupSubscriptionSettlement({
+                expectedProductId: productId,
+                expectedStoreId: subscriptionScope.storeId,
+                expectedTenantId: subscriptionScope.tenantId,
+                subscriptionSnapshot: subscriptionData,
+            });
+            if (!currentSubscription || existingSettlement.billingStoreId !== currentSubscription.storeId) {
+                throw new Error('Paid top-up subscription requires reconciliation.');
+            }
+
             return {
                 alreadyApplied: true,
                 applied: false,
-                newBalance: Number(subscriptionData?.topUpCredits ?? topupData.creditsAdded ?? 0),
+                newBalance: currentSubscription.topUpCredits,
                 settlement: existingSettlement,
             };
         }
@@ -149,18 +260,24 @@ export async function settleProductTopupFromProvider(params: {
             topupSnapshot: topupData,
         });
         const currentSubscription = resolveCurrentTopupSubscriptionSettlement({
-            allowMissingProductId: !isAnswerlatticeProduct,
             expectedProductId: productId,
-            expectedStoreId: subscriptionStoreId,
-            expectedTenantId: subscriptionTenantId,
+            expectedStoreId: subscriptionScope.storeId,
+            expectedTenantId: subscriptionScope.tenantId,
             subscriptionSnapshot: subscriptionData,
         });
-        if (!transactionSettlement || !currentSubscription) {
+        if (
+            !transactionSettlement
+            || !currentSubscription
+            || transactionSettlement.billingStoreId !== currentSubscription.storeId
+        ) {
             throw new Error('Top-up or subscription changed before settlement.');
         }
 
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
         const newBalance = currentSubscription.topUpCredits + transactionSettlement.creditsToAdd;
+        if (!Number.isSafeInteger(newBalance)) {
+            throw new Error('Top-up credit balance exceeds the supported range.');
+        }
         tx.set(subscriptionRef, {
             topUpCredits: newBalance,
             modifiedOn: serverNow,

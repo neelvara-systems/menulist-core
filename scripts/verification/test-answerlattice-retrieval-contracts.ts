@@ -146,6 +146,22 @@ assert.deepEqual(normalizeAnswerlatticePublicCitations([{
     title: 'Tokenized URL',
     url: 'https://docs.example.com/private?access_token=secret',
 }]), []);
+for (const sensitiveQueryKey of ['accessToken', 'apiKey', 'clientSecret', 'refreshToken', 'sig']) {
+    assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+        id: `citation-${sensitiveQueryKey}`,
+        title: 'Sensitive URL',
+        url: `https://docs.example.com/private?${sensitiveQueryKey}=secret`,
+    }]), [], `public citation projection must reject ${sensitiveQueryKey}`);
+}
+assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+    id: 'citation-nonsensitive-suffix',
+    title: 'Monkey guide',
+    url: 'https://docs.example.com/guide?monkey=capuchin',
+}]), [{
+    id: 'citation-nonsensitive-suffix',
+    title: 'Monkey guide',
+    url: 'https://docs.example.com/guide?monkey=capuchin',
+}], 'ordinary query keys ending in key-like letters must remain valid');
 assert.deepEqual(normalizeAnswerlatticePublicCitations([{
     id: 'citation-valid-fd-host',
     title: 'Valid public documentation host',

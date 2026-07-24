@@ -75,6 +75,7 @@ export interface NotificationPayload {
 type NotificationLogTarget = {
     db: Firestore;
     collectionName: string;
+    productId: ProductId | string;
 };
 
 // ================================================================
@@ -110,6 +111,7 @@ function getNotificationLogTarget(productId?: ProductId | string): NotificationL
             return {
                 db: answerlatticeFirestoreAdmin,
                 collectionName: DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS,
+                productId: PRODUCT_IDS.ANSWERLATTICE,
             };
         }
         return null;
@@ -118,6 +120,7 @@ function getNotificationLogTarget(productId?: ProductId | string): NotificationL
     return {
         db: admin.firestore(),
         collectionName: NOTIFICATION_LOGS,
+        productId: productId || PRODUCT_IDS.MENULIST,
     };
 }
 
@@ -193,6 +196,7 @@ async function isRateLimited(target: NotificationLogTarget, recipientEmail: stri
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const snap = await target.db.collection(target.collectionName)
+            .where('productId', '==', target.productId)
             .where('recipientEmail', '==', recipientEmail)
             .where('status', '==', 'sent')
             .where('createdAt', '>=', Timestamp.fromDate(today))

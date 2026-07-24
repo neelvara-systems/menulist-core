@@ -18,6 +18,7 @@ import {
     revalidatePublicClientCacheForProject,
 } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { parseMasterOperationalState } from "@lib/multiOutlet/masterOperationalState";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { MULTI_OUTLET_ACTION_REQUEST_POLICY } from "@lib/multiOutlet/outletActionResponseGuards";
 import {
@@ -377,8 +378,15 @@ export const linkStoreToMaster = async (
                     );
                     const signalSnap = await getDoc(signalRef);
                     if (signalSnap.exists()) {
-                        currentVersion =
-                            signalSnap.data()?.operationalVersion ?? 0;
+                        const signal = parseMasterOperationalState(signalSnap.data());
+                        if (signal) currentVersion = signal.operationalVersion;
+                        else {
+                            logMultiOutletFailure(
+                                'master_update_awareness_initial_signal_invalid',
+                                new Error('Invalid master operational state'),
+                                getMultiOutletProjectLogContext(storeProjectId, masterProjectId),
+                            );
+                        }
                     }
 
                     initialSnapshot = createMasterSnapshot(
@@ -502,8 +510,15 @@ export const switchStoreMaster = async (
                     );
                     const signalSnap = await getDoc(signalRef);
                     if (signalSnap.exists()) {
-                        currentVersion =
-                            signalSnap.data()?.operationalVersion ?? 0;
+                        const signal = parseMasterOperationalState(signalSnap.data());
+                        if (signal) currentVersion = signal.operationalVersion;
+                        else {
+                            logMultiOutletFailure(
+                                'master_update_awareness_switch_signal_invalid',
+                                new Error('Invalid master operational state'),
+                                getMultiOutletProjectLogContext(storeProjectId, newMasterProjectId),
+                            );
+                        }
                     }
 
                     initialSnapshot = createMasterSnapshot(

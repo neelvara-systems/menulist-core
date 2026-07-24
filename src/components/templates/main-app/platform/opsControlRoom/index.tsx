@@ -16,7 +16,7 @@ import { Alert, Button, Card, Divider, Modal, Select, Spin, Tag, Typography, mes
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const { Title, Text } = Typography;
 
@@ -44,9 +44,16 @@ function OpsControlRoom() {
     const [safeModeLoading, setSafeModeLoading] = useState(false);
     const [muteLoading, setMuteLoading] = useState(false);
     const [republishLoading, setRepublishLoading] = useState(false);
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
     const hasSessionUser = Boolean(session?.user);
+    const isMountedRef = useRef(true);
+    const isPlatformRef = useRef(isPlatform);
+    const latestLoadRequestRef = useRef(0);
+    const safeModeInFlightRef = useRef(false);
+    const muteInFlightRef = useRef(false);
+    const republishInFlightRef = useRef(false);
+    isPlatformRef.current = isPlatform;
     const {
         error: storesError,
         loading: storesLoading,
@@ -62,15 +69,20 @@ function OpsControlRoom() {
     }
 
     const loadData = useCallback(async () => {
+        if (!isPlatform) return;
+        const requestId = latestLoadRequestRef.current + 1;
+        latestLoadRequestRef.current = requestId;
         setLoading(true);
         setLoadError(false);
         try {
             const snapshot = await getOpsControlRoomSnapshot();
+            if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setSystemState(snapshot.systemState);
             setAdoption(snapshot.adoption);
             setIntegrity(snapshot.integrity);
             setAlerts(snapshot.alerts);
         } catch (error) {
+            if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setLoadError(true);
             logOpsFailure('ops_control_room_load_failed', error, {
                 hasSessionUser,
@@ -79,21 +91,41 @@ function OpsControlRoom() {
             });
             message.error('Failed to load ops data');
         } finally {
-            setLoading(false);
+            if (
+                isMountedRef.current
+                && isPlatformRef.current
+                && latestLoadRequestRef.current === requestId
+            ) {
+                setLoading(false);
+            }
         }
     }, [hasSessionUser, isPlatform, platformRole]);
 
     useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            latestLoadRequestRef.current += 1;
+            safeModeInFlightRef.current = false;
+            muteInFlightRef.current = false;
+            republishInFlightRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
         if (status === 'loading') return;
         if (!isPlatform) {
+            latestLoadRequestRef.current += 1;
             setLoading(false);
             return;
         }
-        loadData();
+        void loadData();
     }, [isPlatform, loadData, status]);
 
     // SAFE_MODE toggle
-    const toggleSafeMode = async (action: 'activate' | 'deactivate') => {
+    const toggleSafeMode = (action: 'activate' | 'deactivate') => {
+        if (safeModeInFlightRef.current) return;
+        safeModeInFlightRef.current = true;
         const confirmMsg = action === 'activate'
             ? 'This will stop guarded AI generation and provider-upload paths. Public menus and publishing remain available. Continue?'
             : 'This will restore guarded AI generation and provider-upload paths. Continue?';
@@ -103,7 +135,14 @@ function OpsControlRoom() {
             content: confirmMsg,
             okText: action === 'activate' ? 'Enable SAFE_MODE' : 'Disable SAFE_MODE',
             okButtonProps: { danger: action === 'activate' },
+            onCancel: () => {
+                safeModeInFlightRef.current = false;
+            },
             onOk: async () => {
+                if (!isMountedRef.current || !isPlatformRef.current) {
+                    safeModeInFlightRef.current = false;
+                    return;
+                }
                 setSafeModeLoading(true);
                 try {
                     const res = await fetch('/api/ops/safe-mode', {
@@ -117,43 +156,57 @@ function OpsControlRoom() {
                         ...getBoundedOpsStringContext('endpoint', '/api/ops/safe-mode'),
                     });
                     if (!data) throw new Error('ops_control_room_safe_mode_response_unavailable');
+                    if (!isMountedRef.current || !isPlatformRef.current) return;
                     message.success(`SAFE_MODE ${data.SAFE_MODE ? 'enabled' : 'disabled'}`);
                     await loadData();
                 } catch (error) {
                     logOpsFailure('ops_control_room_safe_mode_toggle_failed', error, {
                         ...getBoundedOpsStringContext('action', action),
                     });
-                    message.error('Failed to toggle SAFE_MODE');
+                    if (isMountedRef.current && isPlatformRef.current) {
+                        message.error('Failed to toggle SAFE_MODE');
+                    }
                 } finally {
-                    setSafeModeLoading(false);
+                    safeModeInFlightRef.current = false;
+                    if (isMountedRef.current) setSafeModeLoading(false);
                 }
             },
         });
     };
 
     // Force Republish
-    const handleForceRepublish = async () => {
-        if (!selectedStore) {
-            message.warning('Select a store first');
+    const handleForceRepublish = () => {
+        if (!selectedStore || republishInFlightRef.current) {
+            if (!selectedStore) message.warning('Select a store first');
             return;
         }
+        republishInFlightRef.current = true;
+        const republishStore = selectedStore;
         Modal.confirm({
             title: 'Force Republish',
-            content: `This will force republish all active menu projects for ${selectedStore.name || `store ${selectedStore.sId}`}. Continue?`,
+            content: `This will force republish all active menu projects for ${republishStore.name || `store ${republishStore.sId}`}. Continue?`,
+            onCancel: () => {
+                republishInFlightRef.current = false;
+            },
             onOk: async () => {
+                if (!isMountedRef.current || !isPlatformRef.current) {
+                    republishInFlightRef.current = false;
+                    return;
+                }
                 setRepublishLoading(true);
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const fns = getFunctions();
                     const forceRepublishFn = httpsCallable(fns, 'forceRepublish');
-                    const result: any = await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
+                    const result = await forceRepublishFn({ storeId: republishStore.sId, tenantId: republishStore.tId });
                     if (!isOpsControlRoomForceRepublishResponse(result.data)) {
                         logInvalidOpsControlRoomForceRepublishResponse(result.data, {
-                            ...getBoundedOpsStringContext('storeId', selectedStore.sId),
-                            ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
+                            ...getBoundedOpsStringContext('storeId', republishStore.sId),
+                            ...getBoundedOpsStringContext('tenantId', republishStore.tId),
                         });
                         throw new Error('ops_control_room_force_republish_response_invalid');
                     }
+                    if (!isMountedRef.current || !isPlatformRef.current) return;
                     const verification = result.data.verification;
                     const projectCount = result.data.projectCount;
                     if (result.data.success === false) {
@@ -164,12 +217,15 @@ function OpsControlRoom() {
                     await loadData();
                 } catch (error) {
                     logOpsFailure('ops_control_room_force_republish_failed', error, {
-                        ...getBoundedOpsStringContext('storeId', selectedStore.sId),
-                        ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
+                        ...getBoundedOpsStringContext('storeId', republishStore.sId),
+                        ...getBoundedOpsStringContext('tenantId', republishStore.tId),
                     });
-                    message.error('Force republish failed');
+                    if (isMountedRef.current && isPlatformRef.current) {
+                        message.error('Force republish failed');
+                    }
                 } finally {
-                    setRepublishLoading(false);
+                    republishInFlightRef.current = false;
+                    if (isMountedRef.current) setRepublishLoading(false);
                 }
             },
         });
@@ -177,6 +233,8 @@ function OpsControlRoom() {
 
     // Mute alerts
     const muteAlerts = async () => {
+        if (muteInFlightRef.current) return;
+        muteInFlightRef.current = true;
         setMuteLoading(true);
         try {
             const res = await fetch('/api/ops/mute-alerts', {
@@ -190,15 +248,19 @@ function OpsControlRoom() {
                 durationMinutes: 20,
             });
             if (!data) throw new Error('ops_control_room_mute_alerts_response_unavailable');
+            if (!isMountedRef.current || !isPlatformRef.current) return;
             message.success(`Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`);
             await loadData();
         } catch (error) {
             logOpsFailure('ops_control_room_mute_alerts_failed', error, {
                 durationMinutes: 20,
             });
-            message.error('Failed to mute alerts');
+            if (isMountedRef.current && isPlatformRef.current) {
+                message.error('Failed to mute alerts');
+            }
         } finally {
-            setMuteLoading(false);
+            muteInFlightRef.current = false;
+            if (isMountedRef.current) setMuteLoading(false);
         }
     };
 
@@ -215,7 +277,7 @@ function OpsControlRoom() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 8 }}>
                 <Title level={3} style={{ margin: 0 }}>Ops Control Room</Title>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxWidth: '100%' }}>
-                    <Button onClick={loadData} loading={loading}>Refresh</Button>
+                    <Button onClick={() => { void loadData(); }} loading={loading}>Refresh</Button>
                     <Button type="default" href="/ops/scheduler">Scheduler Monitor</Button>
                     <Button type="default" href="/ops/extraction">Extraction Monitor</Button>
                     <Button type="default" href="/platform/cost-posture">Cost Posture</Button>
@@ -331,6 +393,7 @@ function OpsControlRoom() {
                             type="primary"
                             onClick={() => toggleSafeMode('deactivate')}
                             loading={safeModeLoading}
+                            disabled={safeModeLoading}
                         >
                             Disable SAFE_MODE
                         </Button>
@@ -339,6 +402,7 @@ function OpsControlRoom() {
                             danger
                             onClick={() => toggleSafeMode('activate')}
                             loading={safeModeLoading}
+                            disabled={safeModeLoading}
                         >
                             Enable SAFE_MODE
                         </Button>
@@ -346,7 +410,7 @@ function OpsControlRoom() {
                     <Button
                         onClick={muteAlerts}
                         loading={muteLoading}
-                        disabled={systemState?.alertsMuted}
+                        disabled={systemState?.alertsMuted || muteLoading}
                     >
                         Mute Alerts 20min
                     </Button>
@@ -370,7 +434,7 @@ function OpsControlRoom() {
                         ghost
                         onClick={handleForceRepublish}
                         loading={republishLoading}
-                        disabled={!selectedStore}
+                        disabled={!selectedStore || republishLoading}
                         size="small"
                     >
                         Force Republish

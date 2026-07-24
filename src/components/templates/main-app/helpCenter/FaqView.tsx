@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { helpCenterArticleRouting, helpCenterTabRouting } from '@constant/navigations';
 import { updateFaqFeedbackGeneric } from '@database/feedback/genericFeedback';
 import { useFeedback } from '@hook/useFeedback';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { fetchAnswerlatticePublicFaqs } from '@lib/answerlattice/publicContentClient';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import FeedbackSection from '@molecules/FeedbackSection';
@@ -92,12 +93,14 @@ const FaqView = () => {
     const [loading, setLoading] = useState(Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT));
     const [faqs, setFaqs] = useState<AnswerlatticePublicFaq[]>([]);
     const [failed, setFailed] = useState(false);
+    const requestScope = useAnswerlatticePublicContentRequestScope();
 
     useEffect(() => {
-        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) return;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT || !requestScope) return;
         let mounted = true;
         setLoading(true);
-        fetchAnswerlatticePublicFaqs()
+        setFaqs([]);
+        fetchAnswerlatticePublicFaqs(requestScope)
             .then((items = []) => {
                 if (!mounted) return;
                 setFaqs(items);
@@ -111,7 +114,7 @@ const FaqView = () => {
                 if (mounted) setLoading(false);
             });
         return () => { mounted = false; };
-    }, []);
+    }, [requestScope]);
 
     const items = useMemo(
         () => faqs.map(faq => ({

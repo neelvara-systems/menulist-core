@@ -442,6 +442,25 @@ function verifyDedicatedAnswerlatticeFirebase() {
   assertIncludes(runtimeTruthScript, 'npm run test:answerlattice-chat-analytics:shared-rules', 'Answerlattice runtime truth aggregate shared chat-analytics rules test');
 }
 
+function verifyAnswerlatticeEmulatorCredentialIsolation() {
+  const packageJson = JSON.parse(read('package.json'));
+  const emulatorScripts = Object.entries(packageJson.scripts || {}).filter(([name, command]) => (
+    name.startsWith('test:answerlattice-')
+    && name.endsWith(':emulator')
+    && typeof command === 'string'
+    && command.includes('firebase emulators:exec')
+  ));
+
+  assert(emulatorScripts.length > 0, 'Answerlattice Firebase emulator scripts must be present');
+  emulatorScripts.forEach(([name, command]) => {
+    const credentialClears = command.match(/env -u GOOGLE_APPLICATION_CREDENTIALS/g) || [];
+    assert(
+      credentialClears.length >= 2,
+      `${name} must clear ambient Google application credentials for both the Firebase CLI and nested test process`,
+    );
+  });
+}
+
 function verifyAnswerlatticeFirebaseForensicBoundaries() {
   const accessControl = read('src/lib/answerlattice/accessControl.ts');
   const dedicatedRules = read('firestore-answerlattice.rules');
@@ -558,15 +577,19 @@ function verifyPublicApiAndWidgetIsolation() {
   const publicSignals = read('src/app/api/answerlattice/public/v1/signals/route.ts');
   const widgetSearch = read('src/app/api/widget/search/route.ts');
   const widgetConfig = read('src/app/api/widget/config/route.ts');
+  const widgetEscalation = read('src/app/api/widget/escalation/route.ts');
+  const widgetGuidanceOutcome = read('src/app/api/widget/guidance-outcome/route.ts');
   const widgetActivity = read('src/app/api/answerlattice/widget-activity/route.ts');
   const widgetFeedback = read('src/app/api/widget/feedback/route.ts');
   const widgetClient = read('src/app/widget/[apiKey]/WidgetClient.tsx');
   const widgetEmbedClient = read('src/app/widget/embed/WidgetEmbedClient.tsx');
   const widgetLoader = read('public/widget/answerlattice-widget.js');
   const widgetConfigContracts = read('src/lib/answerlattice/widgetConfig.ts');
+  const widgetKeyManager = read('src/lib/answerlattice/widgetKeyManager.ts');
   const widgetRuntimeToken = read('src/lib/answerlattice/widgetRuntimeTokenServer.ts');
   const widgetManagement = read('src/components/templates/answerlattice/widgetManagement/AnswerlatticeWidgetManagement.tsx');
   const predictiveHelp = read('src/app/api/answerlattice/predictive-help/route.ts');
+  const predictiveInteraction = read('src/app/api/answerlattice/predictive-interaction/route.ts');
   const mcpRoute = read('src/app/api/answerlattice/mcp/route.ts');
   const mcpSession = read('src/app/api/answerlattice/mcp/session/route.ts');
   const mcpSessionToken = read('src/lib/answerlattice/mcpSession.ts');
@@ -626,6 +649,10 @@ function verifyPublicApiAndWidgetIsolation() {
   assertNotIncludes(publicAuth, 'const tId = Number(storeData.tenantId || storeData.tId)', 'Answerlattice public API must not loosely coerce tenant scope');
   assertIncludes(sharedAuth, 'answerlatticeFirestoreAdmin', 'Shared public API auth Answerlattice DB selection');
   assertIncludes(sharedAuth, 'Answerlattice API key validation failed closed because Answerlattice Firestore Admin is not configured', 'Shared public API auth fail-closed behavior');
+  assertIncludes(sharedAuth, 'resolveAnswerlatticeWidgetStoreScope', 'Shared widget credential exact scope resolver');
+  assertIncludes(sharedAuth, 'normalizeConsistentAnswerlatticeScopeDocumentIds', 'Shared widget credential alias-agreement guard');
+  assertIncludes(sharedAuth, 'isAnswerlatticeActiveStoreInScope(store, { tenantId, storeId }, storeDocumentId)', 'Shared widget credential active exact store guard');
+  assertIncludes(sharedAuth, 'answerlatticeScope,', 'Shared widget credential carries its validated scope to consumers');
   assertIncludes(publicApiKeyRoute, 'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_INTEGRATIONS', 'Answerlattice public API key permission guard');
   assertIncludes(publicApiKeyRoute, 'origin !== request.nextUrl.origin', 'Answerlattice public API key same-origin management guard');
   assertIncludes(publicApiKeyRoute, "return keyResponse({ error: 'Access denied' }, { status: 403 })", 'Answerlattice public API key incomplete-admission guard');
@@ -710,6 +737,11 @@ function verifyPublicApiAndWidgetIsolation() {
   assertIncludes(widgetRuntimeToken, "process.env.ANSWERLATTICE_WIDGET_RUNTIME_SECRET", 'Answerlattice widget runtime dedicated secret');
   assertIncludes(widgetRuntimeToken, 'getScopeBinding(scope)', 'Answerlattice widget runtime key/workspace binding');
   assertIncludes(widgetRuntimeToken, 'timingSafeEqual', 'Answerlattice widget runtime constant-time signature verification');
+  assertIncludes(widgetRuntimeToken, 'WIDGET_RUNTIME_API_KEY_PATTERN', 'Answerlattice widget runtime exact key shape');
+  assertIncludes(widgetRuntimeToken, 'normalizeNowMs', 'Answerlattice widget runtime exact time boundary');
+  assertNotIncludes(widgetRuntimeToken, 'const tId = Number(scope.tId);', 'Answerlattice widget runtime must not coerce tenant scope');
+  assertNotIncludes(widgetRuntimeToken, 'const sId = Number(scope.sId);', 'Answerlattice widget runtime must not coerce store scope');
+  assertNotIncludes(widgetRuntimeToken, 'const requestedTtl = Number(', 'Answerlattice widget runtime must not coerce token TTL');
   assertIncludes(widgetLoader, 'runtimeAuthorizationToken', 'Answerlattice loader runtime authorization handoff');
   assertIncludes(widgetLoader, 'scheduleRuntimeAuthorizationRefresh', 'Answerlattice loader runtime authorization refresh');
   assertIncludes(widgetLoader, "iframe.src = widgetHost + '/widget/embed';", 'Answerlattice loader key-free iframe URL');
@@ -719,16 +751,55 @@ function verifyPublicApiAndWidgetIsolation() {
   assertIncludes(widgetLoader, 'runtimeDenied', 'Answerlattice loader terminal runtime denial state');
   assertIncludes(widgetLoader, "url.searchParams.set('path', runtimePath)", 'Answerlattice loader safe install telemetry path');
   assertNotIncludes(widgetLoader, "pattern.slice(-1) === '*'", 'Answerlattice loader rejects loose route wildcard matching');
+  assertIncludes(widgetLoader, "'answerlattice-widget-config:' + apiKey + ':' + widgetHost", 'Answerlattice loader full-key config cache isolation');
+  assertIncludes(widgetLoader, "'answerlattice-predictive-session:' + apiKey", 'Answerlattice loader full-key predictive session isolation');
+  assertNotIncludes(widgetLoader, 'apiKey.slice(0, 14)', 'Answerlattice loader must not truncate tenant credential cache identity');
+  assertIncludes(widgetLoader, 'remoteConfigResponseMaxBytes = 64 * 1024', 'Answerlattice loader config response cap');
+  assertIncludes(widgetLoader, 'return readJsonResponseWithLimit(response, remoteConfigResponseMaxBytes);', 'Answerlattice loader bounded config response parser');
+  assertNotIncludes(widgetLoader, 'return response.json();', 'Answerlattice loader raw config response parser');
+  assertIncludes(widgetLoader, "typeof response.body.getReader !== 'function'", 'Answerlattice loader fail-closed streaming response support');
+  assertIncludes(widgetLoader, 'totalBytes > maxBytes', 'Answerlattice loader byte-accurate streamed response cap');
+  assertIncludes(widgetLoader, 'return reader.cancel()', 'Answerlattice loader cancels oversized response streams');
+  assertIncludes(widgetLoader, 'return readJsonResponseWithLimit(response, 32768);', 'Answerlattice loader predictive response uses shared streaming cap');
+  assertNotIncludes(widgetLoader, 'return response.text().then(function (body)', 'Answerlattice loader must not buffer predictive responses before its cap');
+  assertIncludes(widgetLoader, 'Number.isSafeInteger(data.configVersion)', 'Answerlattice loader exact config version DTO guard');
+  assertIncludes(widgetLoader, "typeof data.capabilities.predictiveSupport !== 'boolean'", 'Answerlattice loader exact capability DTO guard');
+  assertOrder(widgetLoader, [
+    'data.capabilities.contextBundles !== Boolean(nextBundleConfig)',
+    'if (!applyRuntimeAuthorization(runtimeAuthorization))',
+    'contextBundleConfig = nextBundleConfig;',
+  ], 'Answerlattice loader validates the complete config envelope before runtime state mutation');
   assertIncludes(widgetEmbedClient, "event.data?.type !== 'answerlattice-widget-bootstrap'", 'Answerlattice key-free iframe bootstrap receiver');
   assertIncludes(widgetEmbedClient, 'event.source !== window.parent', 'Answerlattice iframe bootstrap parent-source guard');
+  assertIncludes(widgetEmbedClient, 'rawApiKey !== nextApiKey || !WIDGET_KEY_PATTERN.test(nextApiKey)', 'Answerlattice iframe bootstrap exact widget-key boundary');
   assertIncludes(widgetConfigContracts, 'StrictWidgetAllowedOriginsSaveSchema', 'Answerlattice widget strict origin save validation');
+  assertIncludes(widgetKeyManager, 'normalizeWidgetKeyScopes', 'Answerlattice widget managed-key exact scope normalization');
+  assertIncludes(widgetKeyManager, "rawRecord.status !== 'active' && rawRecord.status !== 'revoked'", 'Answerlattice widget managed-key exact status admission');
+  assertIncludes(widgetKeyManager, "rawRecord.productId !== PRODUCT_IDS.ANSWERLATTICE", 'Answerlattice widget managed-key exact product admission');
+  assertIncludes(widgetKeyManager, "rawRecord.purpose !== 'answerlattice_widget'", 'Answerlattice widget managed-key exact purpose admission');
+  assertIncludes(widgetKeyManager, 'legacyHash && !hasManagedKeyHashes', 'Answerlattice widget legacy fallback cannot resurrect a malformed managed key');
+  assertIncludes(widgetConfigContracts, 'normalizeAnswerlatticeWidgetConfigVersion', 'Answerlattice widget exact config-version projection');
+  assertIncludes(widgetConfig, 'normalizeAnswerlatticeActiveTriggerCount(data.activeTriggerCount)', 'Answerlattice widget exact predictive capability count');
+  assertNotIncludes(widgetConfig, 'Number(data.activeTriggerCount || 0)', 'Answerlattice widget must not coerce predictive capability count');
+  assertNotIncludes(widgetConfig, 'Number(storeData.widgetConfigVersion || 0)', 'Answerlattice widget must not coerce public config version');
   assertIncludes(widgetConfigContracts, 'StrictWidgetBlockedRoutesSaveSchema', 'Answerlattice widget strict blocked-route save validation');
   assertIncludes(widgetConfigContracts, 'if (parsed.username || parsed.password || parsed.search || parsed.hash) return null;', 'Answerlattice widget origin credential/query rejection');
   assertIncludes(widgetClient, "WIDGET_RUNTIME_TOKEN_HEADER = 'X-Answerlattice-Widget-Runtime'", 'Answerlattice iframe runtime authorization header');
   assertIncludes(widgetClient, "referrerPolicy: 'no-referrer'", 'Answerlattice iframe API referrer suppression');
   assertIncludes(predictiveHelp, "hasPublicApiCredentialScope(credential, 'widget:predictive')", 'Answerlattice predictive widget scope');
-  assertIncludes(predictiveHelp, 'normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId)', 'Answerlattice predictive widget exact tenant scope');
-  assertNotIncludes(predictiveHelp, 'const tId = Number(storeData.tenantId || storeData.tId)', 'Answerlattice predictive widget must not loosely coerce tenant scope');
+  [
+    ['widget search', widgetSearch],
+    ['widget config', widgetConfig],
+    ['widget feedback', widgetFeedback],
+    ['widget escalation', widgetEscalation],
+    ['widget guidance outcome', widgetGuidanceOutcome],
+    ['predictive help', predictiveHelp],
+    ['predictive interaction', predictiveInteraction],
+  ].forEach(([label, source]) => {
+    assertIncludes(source, 'answerlatticeScope', `Answerlattice ${label} consumes the credential-validated scope`);
+    assertNotIncludes(source, 'storeData.tenantId ?? storeData.tId', `Answerlattice ${label} must not reselect a tenant alias after credential validation`);
+    assertNotIncludes(source, 'storeData.id ?? storeData.sId', `Answerlattice ${label} must not reselect a store alias after credential validation`);
+  });
   assertIncludes(widgetSearch, 'credential.productId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice widget search product guard');
   assertIncludes(widgetConfig, 'credential.productId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice widget config product guard');
   assertIncludes(widgetFeedback, 'credential.productId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice widget feedback product guard');
@@ -760,9 +831,8 @@ function verifyPublicApiAndWidgetIsolation() {
   assertNotIncludes(widgetConfig, 'storeId: sId', 'Answerlattice widget config raw store diagnostic');
   assertNotIncludes(widgetConfig, 'hasActivePredictiveTriggers(db, tId, sId).catch(() => false)', 'Answerlattice widget config silent predictive summary fallback');
   assertNotIncludes(widgetConfig, 'getReadyPublicBundleConfig(tId, sId).catch(() => null)', 'Answerlattice widget config silent bundle manifest fallback');
-  assertIncludes(widgetFeedback, "import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';", 'Answerlattice widget feedback canonical workspace scope import');
-  assertIncludes(widgetFeedback, 'const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice widget feedback credential tenant guard');
-  assertIncludes(widgetFeedback, 'const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);', 'Answerlattice widget feedback credential store guard');
+  assertIncludes(widgetFeedback, 'const tId = answerlatticeScope?.tenantId;', 'Answerlattice widget feedback credential tenant guard');
+  assertIncludes(widgetFeedback, 'const sId = answerlatticeScope?.storeId;', 'Answerlattice widget feedback credential store guard');
   assertIncludes(widgetFeedback, 'normalizeAnswerlatticeScopeDocumentId(current.tId) !== tId', 'Answerlattice widget feedback history tenant guard');
   assertIncludes(widgetFeedback, 'normalizeAnswerlatticeScopeDocumentId(current.sId) !== sId', 'Answerlattice widget feedback history store guard');
   assertNotIncludes(widgetFeedback, 'Number(current.tId)', 'Answerlattice widget feedback coercive history tenant guard');
@@ -817,6 +887,21 @@ function verifyPublicApiAndWidgetIsolation() {
   assertIncludes(widgetManagement, 'ANSWERLATTICE_WIDGET_KEY_REVOKE_FAILED', 'Answerlattice widget management fixed key-revoke copy');
   assertIncludes(widgetManagement, 'ANSWERLATTICE_HOSTED_HELP_SETTINGS_SAVE_FAILED', 'Answerlattice widget management fixed hosted-help-save copy');
   assertIncludes(widgetManagement, 'ANSWERLATTICE_HOSTED_HELP_DNS_CHECK_FAILED', 'Answerlattice widget management fixed hosted-help-DNS copy');
+  assertIncludes(widgetManagement, 'const keyGenerationInFlightRef = useRef(false)', 'Answerlattice widget management synchronous key-generation lock');
+  assertIncludes(widgetManagement, 'if (keyGenerationInFlightRef.current) return', 'Answerlattice widget management duplicate key-generation admission guard');
+  assertIncludes(widgetManagement, 'keyGenerationInFlightRef.current = true', 'Answerlattice widget management key-generation lock claim');
+  assertIncludes(widgetManagement, 'keyGenerationInFlightRef.current = false', 'Answerlattice widget management key-generation lock release');
+  assertIncludes(widgetManagement, 'WIDGET_KEY_PATTERN.test(record.apiKey)', 'Answerlattice widget management exact raw-key response admission');
+  assertIncludes(widgetManagement, 'isSafeIntegerInRange(value.keyLimit, 1, 100)', 'Answerlattice widget management exact key-limit response admission');
+  assertIncludes(widgetManagement, 'new Set(value.keys.map((key) => key.id)).size !== value.keys.length', 'Answerlattice widget management duplicate response key rejection');
+  assertIncludes(widgetManagement, 'value.hasWidgetKey !== (value.keys.length > 0)', 'Answerlattice widget management inconsistent key-presence response rejection');
+  assertNotIncludes(widgetManagement, 'setKeyLimit(Number(data.keyLimit', 'Answerlattice widget management key-limit response coercion');
+  assertIncludes(widgetManagement, 'isAnswerlatticeWidgetRuntimeStatus(value.runtimeStatus)', 'Answerlattice widget management exact runtime-status response admission');
+  assertIncludes(widgetManagement, 'value.items.length <= 12', 'Answerlattice widget management bounded activity response admission');
+  assertIncludes(widgetManagement, 'new Set(value.items.map((item) => item.id)).size === value.items.length', 'Answerlattice widget management unique activity response IDs');
+  assertIncludes(widgetManagement, 'StrictHostedHelpConfigSaveSchema.safeParse(value.config).success', 'Answerlattice widget management exact hosted-help config response admission');
+  assertIncludes(widgetManagement, 'value.domainStatuses.length <= 5', 'Answerlattice widget management bounded hosted-help status response');
+  assertNotIncludes(widgetManagement, 'isFiniteNumber(value.referenceCount)', 'Answerlattice widget management must not admit fractional activity counters');
   assertIncludes(widgetManagement, 'ANSWERLATTICE_WIDGET_MANAGEMENT_RESPONSE_JSON_MAX_BYTES', 'Answerlattice widget management response body cap');
   assertIncludes(widgetManagement, 'ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY', 'Answerlattice widget management shared request policy');
   assertIncludes(widgetManagement, "cache: 'no-store'", 'Answerlattice widget management requests bypass browser cache');
@@ -897,6 +982,8 @@ function verifyPublicApiAndWidgetIsolation() {
 function verifyAnswerlatticeDashboardFailureCopy() {
   const dashboard = read('src/app/(answerlattice)/answerlattice/dashboard/page.tsx');
   const accessProvider = read('src/providers/answerlatticeAccessProvider.tsx');
+  const latestRequestGuard = read('src/lib/runtime/latestRequestGuard.ts');
+  const latestRequestGuardTests = read('scripts/verification/test-latest-request-guard.ts');
   const accessControl = read('src/lib/answerlattice/accessControl.ts');
   const accessRoute = read('src/app/api/answerlattice/access/route.ts');
   const permissions = read('src/constants/answerlattice/permissions.ts');
@@ -911,6 +998,7 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   const customerFlowChecklist = read('src/components/templates/answerlattice/content/AnswerlatticeCustomerFlowChecklist.tsx');
   const surfaceReadinessMatrix = read('src/components/templates/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix.tsx');
   const operations = read('src/components/templates/answerlattice/activation/AnswerlatticeOperationsPanel.tsx');
+  const operationsStatus = read('src/app/api/answerlattice/operations/status/route.ts');
   const weeklyDigest = read('src/components/templates/answerlattice/weeklyDigest/AnswerlatticeWeeklyDigest.tsx');
   const activationDashboardResponseClient = read('src/lib/answerlattice/activationDashboardResponseClient.ts');
   const faqManagement = read('src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx');
@@ -946,6 +1034,14 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(accessProvider, 'answerlattice_access_provider_response_parse_failed', 'Answerlattice access provider parse diagnostic');
   assertIncludes(accessProvider, 'answerlattice_access_provider_response_rejected', 'Answerlattice access provider rejected diagnostic');
   assertIncludes(accessProvider, 'answerlattice_access_provider_response_invalid', 'Answerlattice access provider invalid diagnostic');
+  assertIncludes(accessProvider, 'const sessionAccessIdentity = [', 'Answerlattice access provider session/workspace identity');
+  assertIncludes(accessProvider, 'const requestId = requestGuard.begin();', 'Answerlattice access provider latest-request claim');
+  assertIncludes(accessProvider, 'if (!requestGuard.isCurrent(requestId)) return;', 'Answerlattice access provider stale-response refusal');
+  assertIncludes(accessProvider, 'requestGuard?.invalidate();', 'Answerlattice access provider effect cleanup invalidation');
+  assertIncludes(accessProvider, '}, [sessionAccessIdentity, status]);', 'Answerlattice access provider reloads after session/workspace change');
+  assertIncludes(latestRequestGuard, 'requestId => requestId === latestRequestId', 'Answerlattice latest-request exact settlement guard');
+  assertIncludes(latestRequestGuardTests, "assert.equal(guard.isCurrent(oldWorkspaceRequest), false", 'Answerlattice stale workspace response regression');
+  assertIncludes(latestRequestGuardTests, "assert.equal(guard.isCurrent(newWorkspaceRequest), false", 'Answerlattice unmounted/session-changed response regression');
   assertNotIncludes(accessProvider, 'response.json().catch(() => ({}))', 'Answerlattice access provider direct JSON fallback');
   assertNotIncludes(accessProvider, "data.error || 'Could not load Answerlattice access'", 'Answerlattice access provider raw response error copy');
   assertNotIncludes(accessProvider, 'loadError?.message', 'Answerlattice access provider raw browser exception copy');
@@ -1022,6 +1118,12 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(activationDashboardResponseClient, 'value.content.surfaceReadiness.length > 8', 'Answerlattice activation bounded surface readiness response');
   assertIncludes(activationDashboardResponseClient, 'value.steps.length > 20', 'Answerlattice activation bounded step response');
   assertIncludes(activationDashboardResponseClient, 'isAnswerlatticeOperationsStatusResponse', 'Answerlattice operations response shape guard');
+  assertIncludes(activationDashboardResponseClient, 'isSafeIntegerBetween(governanceTask.lastDurationMs, 0, Number.MAX_SAFE_INTEGER)', 'Answerlattice operations nested duration response boundary');
+  assertIncludes(activationDashboardResponseClient, 'value.readModel.workspaceRunMatches === value.latestRuns.length', 'Answerlattice operations read-model run-count consistency');
+  assertIncludes(activationDashboardResponseClient, 'normalizeAnswerlatticeOperationsMetric', 'Answerlattice operations exact persisted metric projector');
+  assertIncludes(operationsStatus, 'normalizeAnswerlatticeOperationsMetric(data.durationMs)', 'Answerlattice operations run duration exact projection');
+  assertIncludes(operationsStatus, 'normalizeAnswerlatticeOperationsMetric(governanceTask.lastDurationMs)', 'Answerlattice operations task duration exact projection');
+  assertNotIncludes(operationsStatus, 'Number(governanceTask.lastDurationMs || 0)', 'Answerlattice operations task duration coercion');
   assertIncludes(activationDashboardResponseClient, 'isAnswerlatticeNotificationTestResponse', 'Answerlattice notification test response shape guard');
   assertIncludes(activationDashboardResponseClient, 'isAnswerlatticeCompiledContextRebuildResponse', 'Answerlattice compiled context rebuild response shape guard');
   assertIncludes(activationDashboardResponseClient, 'isBoundedEmailAddress(value.recipientEmail)', 'Answerlattice notification response email boundary');
@@ -1495,6 +1597,9 @@ function verifyAnswerlatticeHookFailureCopy() {
   const mutationProposalDal = read('src/database/answerlattice/mutationProposals.ts');
   const supportBoard = read('src/hooks/answerlattice/useSupportBoard.ts');
   const frictionInsights = read('src/hooks/answerlattice/useFrictionInsights.ts');
+  const frictionScopeState = read('src/hooks/answerlattice/frictionInsightsScopeState.ts');
+  const frictionDal = read('src/database/answerlattice/frictionStats.ts');
+  const analyticsContracts = read('src/lib/answerlattice/analyticsIntelligenceContracts.ts');
 
   assertIncludes(entityCandidates, 'ANSWERLATTICE_ENTITY_CANDIDATES_LOAD_FAILED', 'Answerlattice entity candidates fixed load copy');
   assertIncludes(entityCandidates, 'ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED', 'Answerlattice entity candidates fixed reject copy');
@@ -1541,6 +1646,20 @@ function verifyAnswerlatticeHookFailureCopy() {
   assertIncludes(supportBoard, 'getSupportBoardSummaryLogContext', 'Answerlattice Support Board summary bounded context helper');
   assertNotIncludes(supportBoard, 'getAnswerlatticeSupportBoardSummary(tId, sId).catch(() => null)', 'Answerlattice Support Board silent summary fallback');
   assertIncludes(frictionInsights, 'ANSWERLATTICE_FRICTION_DATA_LOAD_FAILED', 'Answerlattice friction insights fixed load copy');
+  assertIncludes(frictionInsights, 'projectFrictionInsightsStateForScope(state, tId, sId)', 'Answerlattice friction hook current-scope state projection');
+  assertIncludes(frictionInsights, 'setState({ scopeKey, snapshot: null, insight: null, loading: true, error: null });', 'Answerlattice friction hook immediate stale-scope clearing');
+  assertIncludes(frictionScopeState, 'if (state.scopeKey !== requestedScopeKey)', 'Answerlattice friction state cross-scope rejection');
+  assertIncludes(frictionScopeState, 'return { snapshot: null, insight: null, loading: true, error: null };', 'Answerlattice friction state safe scope-transition projection');
+  assertIncludes(frictionDal, 'if (!hasExactFrictionScope(tId, sId)) return null;', 'Answerlattice friction DAL exact scope admission');
+  assertIncludes(analyticsContracts, "pId: 'AL',", 'Answerlattice friction parser exact owner DTO projection');
+  assertNotIncludes(
+    analyticsContracts.slice(
+      analyticsContracts.indexOf('export function parseAnswerlatticeFrictionSnapshot'),
+      analyticsContracts.indexOf('export function parseAnswerlatticeWeeklySummary'),
+    ),
+    'as unknown as',
+    'Answerlattice friction owner DTO projectors must not return unchecked persisted objects',
+  );
 
   [
     ['Answerlattice entity candidates hook', entityCandidates],
@@ -1624,6 +1743,7 @@ function verifyPublicWidgetRequestAdmission() {
   const publicSignals = read('src/app/api/answerlattice/public/v1/signals/route.ts');
   const widgetSearch = read('src/app/api/widget/search/route.ts');
   const widgetFeedback = read('src/app/api/widget/feedback/route.ts');
+  const widgetLoader = read('public/widget/answerlattice-widget.js');
   const predictiveHelp = read('src/app/api/answerlattice/predictive-help/route.ts');
   const predictiveInteraction = read('src/app/api/answerlattice/predictive-interaction/route.ts');
   const publicContact = read('src/app/api/answerlattice/public/contact/route.ts');
@@ -1639,11 +1759,12 @@ function verifyPublicWidgetRequestAdmission() {
   assertOrder(
     widgetSearch,
     [
-      'const rateLimitResult = await checkRateLimit({',
+      'const preAuthRateLimitResult = await checkRateLimit({',
       'const authResult = await validatePublicApiKey(apiKey, {',
       'credential.productId !== PRODUCT_IDS.ANSWERLATTICE',
       "hasPublicApiCredentialScope(credential, 'widget:search')",
       'isAnswerlatticeWidgetRuntimeRequestAuthorized({',
+      'const rateLimitResult = await checkRateLimit({',
       'readBoundedJsonBody(request, WIDGET_SEARCH_MAX_BODY_BYTES',
       'WidgetSearchRequestSchema.safeParse(bodyResult.data)',
       'coreSearch({',
@@ -1735,6 +1856,11 @@ function verifyPublicWidgetRequestAdmission() {
   assertIncludes(predictiveInteraction, 'ENABLE_ANSWERLATTICE_SIGNAL_MUTATION', 'Answerlattice predictive interaction respects signal mutation gate');
   assertIncludes(predictiveInteraction, 'emitSuggestionSignal({', 'Answerlattice predictive interaction emits governed signals');
   assertNotIncludes(predictiveInteraction, 'request.json()', 'Answerlattice predictive interaction raw JSON parser');
+  assertNotIncludes(widgetLoader, 'predictiveSuggestionCache', 'Answerlattice widget must not retain predictive results outside server cooldown/publication truth');
+  assertIncludes(widgetLoader, 'var predictiveRequestGeneration = 0;', 'Answerlattice widget predictive request generation');
+  assertIncludes(widgetLoader, 'var predictiveRequestInFlightKey = null;', 'Answerlattice widget predictive same-context request coalescing');
+  assertIncludes(widgetLoader, 'if (requestGeneration !== predictiveRequestGeneration) return null;', 'Answerlattice widget stale predictive response rejection');
+  assertIncludes(widgetLoader, 'function cancelPredictiveRequest()', 'Answerlattice widget predictive request cancellation boundary');
   assertOrder(
     predictiveInteraction,
     [
@@ -1745,7 +1871,7 @@ function verifyPublicWidgetRequestAdmission() {
       'isAnswerlatticeWidgetRuntimeRequestAuthorized({',
       'readBoundedJsonBody(request, ANSWERLATTICE_PREDICTIVE_MAX_BODY_BYTES',
       'AnswerlatticePredictiveInteractionSchema.safeParse(bodyResult.data)',
-      'const triggerIndex = await loadTriggerIndex(tId, sId);',
+      'const triggerIndex = await loadTriggerIndex(tId, sId, { bypassCache: true });',
       'emitSuggestionSignal({',
     ],
     'Answerlattice predictive interaction admission order',
@@ -1877,6 +2003,11 @@ function verifyProtectedReadRateLimitGuards() {
   assertIncludes(activationSummary, "applyAnswerlatticeDashboardReadRateLimit(_request, session, 'activation-summary')", 'Answerlattice activation summary read limiter');
   assertIncludes(activationSummary, "logRuntimeFailure('answerlattice_activation_summary_route_failed'", 'Answerlattice activation summary bounded diagnostics');
   assertIncludes(activationSummary, 'isAnswerlatticeSubscriptionInScope(data, { tId, sId })', 'Answerlattice activation summary exact legacy subscription scope');
+  assertIncludes(activationSummary, 'const usedLegacySubscriptionFallback = !isAnswerlatticeSubscriptionInScope(', 'Answerlattice activation invalid embedded subscription uses bounded fallback');
+  assertIncludes(activationSummary, ".where('tenantId', '==', tId)", 'Answerlattice activation summary constrains legacy subscription tenant before its bounded read');
+  assertIncludes(activationSummary, ".where('storeId', '==', sId)", 'Answerlattice activation summary constrains legacy subscription store before its bounded read');
+  assertIncludes(activationSummary, ".where('tId', '==', tId)", 'Answerlattice activation summary constrains duplicate legacy subscription tenant alias before its bounded read');
+  assertIncludes(activationSummary, ".where('sId', '==', sId)", 'Answerlattice activation summary constrains duplicate legacy subscription store alias before its bounded read');
   assertIncludes(activationSummary, 'if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id))', 'Answerlattice activation summary exact store ownership');
   assertIncludes(activationSummary, 'parseAnswerlatticeCoverageData(coverageSnap.data(), { tenantId: tId, storeId: sId })', 'Answerlattice activation summary scoped coverage parser');
   assertIncludes(activationSummary, 'parseAnswerlatticeTrustMetrics(trustSnap.data(), { tenantId: tId, storeId: sId })', 'Answerlattice activation summary scoped trust parser');
@@ -1909,8 +2040,13 @@ function verifyProtectedReadRateLimitGuards() {
   assertIncludes(widgetActivity, 'canonicalIsoTimestampToMillis', 'Answerlattice widget activity canonical timestamp normalizer');
   assertIncludes(widgetActivity, 'new Date(millis).toISOString() === normalized', 'Answerlattice widget activity timestamp round-trip guard');
   assertIncludes(widgetActivity, 'timestampLikeToMillis(value)', 'Answerlattice widget activity shared timestamp normalization');
+  assertIncludes(widgetActivity, 'data.pId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice widget activity fallback product identity');
   assertIncludes(widgetActivity, 'normalizeAnswerlatticeScopeDocumentId(data.tId) === tenantId', 'Answerlattice widget activity fallback tenant scope normalization');
   assertIncludes(widgetActivity, 'normalizeAnswerlatticeScopeDocumentId(data.sId) === storeId', 'Answerlattice widget activity fallback store scope normalization');
+  assert(
+    (widgetActivity.match(/\.where\('pId', '==', PRODUCT_IDS\.ANSWERLATTICE\)/g) || []).length >= 2,
+    'Answerlattice widget activity indexed and fallback queries must constrain exact product identity',
+  );
   assertOrder(
     widgetActivity,
     [
@@ -1929,8 +2065,10 @@ function verifyProtectedReadRateLimitGuards() {
   assertNotIncludes(widgetActivity, 'Date.parse(String(value))', 'Answerlattice widget activity permissive string timestamp parser');
   assertNotIncludes(widgetActivity, 'new Date(value)', 'Answerlattice widget activity permissive date constructor parser');
   assertIncludes(helpWidgetImpl, 'widget activity timestamp boundary', 'Help Widget implementation docs record widget activity timestamp boundary');
+  assertIncludes(helpWidgetImpl, 'constrain exact `pId: AL` before tenant/store/order/limit', 'Help Widget implementation docs record widget activity product partition');
   assertIncludes(helpWidgetImpl, 'widget management persisted scope checks fail closed', 'Help Widget implementation docs record widget management persisted scope boundary');
   assertIncludes(helpWidgetFirebase, 'Widget activity timestamp normalization', 'Help Widget Firebase docs record widget activity timestamp boundary');
+  assertIncludes(helpWidgetFirebase, '`pId + tId + sId + mountContext + createdOn desc`', 'Help Widget Firebase docs record widget activity product-partitioned index');
   assertIncludes(helpWidgetFirebase, 'Widget management persisted scope checks fail closed', 'Help Widget Firebase docs record widget management persisted scope boundary');
   assertIncludes(productionAudit, 'Answerlattice widget activity timestamp boundary checkpoint', 'Production audit records widget activity timestamp boundary');
   assertIncludes(productionAudit, 'Answerlattice management route persisted scope checkpoint', 'Production audit records management route persisted scope boundary');
@@ -2271,6 +2409,9 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   const workspaceProfile = read('src/app/api/answerlattice/workspace-profile/route.ts');
   const workspaceProfileContracts = read('src/lib/answerlattice/workspaceProfileContracts.ts');
   const workspaceProfileServer = read('src/lib/answerlattice/workspaceProfileServer.ts');
+  const appContextBundleBuilder = read('src/lib/answerlattice/contextBundleBuilderServer.ts');
+  const functionsContextBundleBuilder = read('functions-answerlattice/src/answerlattice/contextBundleBuilder.ts');
+  const functionsWorkspaceProfileBoundary = read('functions-answerlattice/src/answerlattice/workspaceProfileBoundary.ts');
   const workspaceProfileClient = read('src/components/templates/answerlattice/AnswerlatticeSettings.tsx');
   const widgetConfig = read('src/app/api/answerlattice/widget-config/route.ts');
   const integrations = read('src/app/api/answerlattice/integrations/route.ts');
@@ -2295,7 +2436,15 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   assertIncludes(workspaceProfile, "'X-Content-Type-Options': 'nosniff'", 'Answerlattice workspace profile no-sniff response boundary');
   assertIncludes(workspaceProfile, "'Retry-After': String(retryAfter)", 'Answerlattice workspace profile retry timing');
   assertIncludes(workspaceProfileContracts, 'isSafeAnswerlatticeProductUrl', 'Answerlattice workspace profile HTTP(S)-only URL contract');
+  assertIncludes(workspaceProfileContracts, 'projectAnswerlatticeCompiledWorkspaceProduct', 'Answerlattice app compiled profile exact projection');
   assertIncludes(workspaceProfileContracts, 'isValidAnswerlatticeTimeZone', 'Answerlattice workspace profile IANA timezone contract');
+  assertIncludes(appContextBundleBuilder, 'projectAnswerlatticeCompiledWorkspaceProduct(store)', 'Answerlattice app bundle projects stored workspace profile');
+  assertIncludes(functionsContextBundleBuilder, 'projectAnswerlatticeCompiledWorkspaceProduct(source.store)', 'Answerlattice Functions bundle projects stored workspace profile');
+  assertIncludes(functionsWorkspaceProfileBoundary, 'projectAnswerlatticeCompiledWorkspaceProduct', 'Answerlattice Functions compiled profile exact projection');
+  assertIncludes(functionsWorkspaceProfileBoundary, "parsed.username === ''", 'Answerlattice Functions compiled profile rejects URL credentials');
+  assertIncludes(functionsWorkspaceProfileBoundary, "billingModel: BILLING_MODELS.has(billingModel)", 'Answerlattice Functions compiled profile admits exact billing models');
+  assertNotIncludes(appContextBundleBuilder, 'url: store.productUrl || null', 'Answerlattice app bundle raw product URL projection');
+  assertNotIncludes(functionsContextBundleBuilder, 'url: (source.store as any).productUrl || null', 'Answerlattice Functions bundle raw product URL projection');
   assertIncludes(workspaceProfileServer, 'params.db.runTransaction(async transaction =>', 'Answerlattice workspace profile atomic save transaction');
   assertIncludes(workspaceProfileServer, 'appendAnswerlatticeTenantSummaryAdmin(transaction', 'Answerlattice workspace profile atomic scheduler-registry sync');
   assertIncludes(workspaceProfileServer, 'transaction.set(sourceVersionsRef, {', 'Answerlattice workspace profile atomic source-version update');
@@ -2346,8 +2495,15 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   assertIncludes(integrations, 'const nextConfig = await db.runTransaction(async (transaction) => {', 'Answerlattice integration settings write ownership transaction');
   assertIncludes(integrations, 'const currentSnapshot = await transaction.get(docRef);', 'Answerlattice integration settings revalidates current ownership in transaction');
   assertIncludes(integrations, 'transaction.set(docRef, next, { merge: true });', 'Answerlattice integration settings writes from validated transaction snapshot');
-  assertIncludes(integrations, '&& !url.search', 'Answerlattice integration settings rejects Slack webhook query strings');
-  assertIncludes(integrations, '&& !url.hash', 'Answerlattice integration settings rejects Slack webhook fragments');
+  assertIncludes(integrationContracts, '&& !url.username', 'Answerlattice integration settings rejects Slack webhook username credentials');
+  assertIncludes(integrationContracts, '&& !url.password', 'Answerlattice integration settings rejects Slack webhook password credentials');
+  assertIncludes(integrationContracts, '&& !url.port', 'Answerlattice integration settings rejects Slack webhook nonstandard ports');
+  assertIncludes(integrationContracts, '&& !url.search', 'Answerlattice integration settings rejects Slack webhook query strings');
+  assertIncludes(integrationContracts, '&& !url.hash', 'Answerlattice integration settings rejects Slack webhook fragments');
+  assertIncludes(integrations, 'normalizeAnswerlatticeSlackWebhookUrl(existingSlack.webhookUrl)', 'Answerlattice integration settings revalidates legacy stored Slack webhook');
+  assertIncludes(integrations, 'projectAnswerlatticeWorkflowIntegrationStoredConfig(data)', 'Answerlattice integration settings projects stored config before owner response');
+  assertIncludes(integrationTest, 'projectAnswerlatticeWorkflowIntegrationStoredConfig(config)', 'Answerlattice integration test requires projected valid stored destinations');
+  assertIncludes(integrationSafety, 'if (url.username || url.password || url.port) return', 'Answerlattice Functions reject credential-bearing or nonstandard-port Slack destinations');
   assertIncludes(integrations, '...identity,', 'Answerlattice integration settings persists product and scope identity');
   assertNotIncludes(integrations, 'linear: isRecord(existing.linear)', 'Answerlattice owner settings must not rewrite controlled adapter state from a stale read');
   assertNotIncludes(integrations, 'github: isRecord(existing.github)', 'Answerlattice owner settings must not rewrite controlled adapter state from a stale read');
@@ -2474,14 +2630,12 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   assertIncludes(hostedHelp, "logRuntimeFailure('answerlattice_hosted_help_settings_load_failed'", 'Answerlattice hosted help load bounded diagnostics');
   assertIncludes(hostedHelp, "logRuntimeFailure('answerlattice_hosted_help_domain_add_failed'", 'Answerlattice hosted help provider-add bounded diagnostics');
   assertIncludes(hostedHelp, "logRuntimeFailure('answerlattice_hosted_help_registry_delete_scope_mismatch'", 'Answerlattice hosted help registry mismatch bounded diagnostics');
-  assertIncludes(hostedHelp, "logRuntimeFailure('answerlattice_hosted_help_domain_removal_failed'", 'Answerlattice hosted help removal bounded diagnostics');
+  assertIncludes(hostedHelp, "failureCode: 'answerlattice_hosted_help_domain_removal_failed'", 'Answerlattice hosted help removal bounded diagnostics');
   assertIncludes(hostedHelp, "logRuntimeFailure('answerlattice_hosted_help_settings_save_failed'", 'Answerlattice hosted help save bounded diagnostics');
   assertIncludes(hostedHelp, "...getHostedHelpProviderErrorContext(addResult.data)", 'Answerlattice hosted help flattened provider diagnostics');
-  assertIncludes(hostedHelp, "getBoundedRuntimeStringContext('domain', normalized)", 'Answerlattice hosted help bounded registry domain metadata');
   assertIncludes(hostedHelp, "getBoundedRuntimeStringContext('domain', domain)", 'Answerlattice hosted help bounded removal domain metadata');
-  assertIncludes(hostedHelp, 'normalizeAnswerlatticeScopeDocumentId(registry?.tId) === scope.tenantId', 'Answerlattice hosted help registry tenant scope normalization');
-  assertIncludes(hostedHelp, 'normalizeAnswerlatticeScopeDocumentId(registry?.sId) === scope.storeId', 'Answerlattice hosted help registry store scope normalization');
-  assertIncludes(hostedHelp, 'const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice hosted help store tenant scope normalization');
+  assertIncludes(hostedHelp, 'resolveAnswerlatticeHostedHelpRegistryScope(registry)', 'Answerlattice hosted help registry exact scope normalization');
+  assertIncludes(hostedHelp, 'isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)', 'Answerlattice hosted help exact store scope normalization');
   assertOrder(
     hostedHelp,
     [
@@ -2527,6 +2681,13 @@ function verifyAnswerlatticePaidPlanPackaging() {
   assertIncludes(activationSummary, 'const hasRuntimeContext = hasWidgetSeenRecently && hasRuntimeContextMarker;', 'Answerlattice activation context freshness boundary');
   assertIncludes(activationSummary, 'stage: getReadinessStage(launchProof.ready, steps)', 'Answerlattice activation live stage requires complete launch proof');
   assertIncludes(activationSummary, 'widgetRuntimeProofCurrent: hasWidgetSeenRecently', 'Answerlattice activation signature tracks runtime proof freshness');
+  assertIncludes(activationSummary, 'if (!isAnswerlatticeSubscriptionInScope(value, scope)) return null;', 'Answerlattice activation embedded subscription exact product/workspace scope');
+  assertIncludes(activationSummary, "const subscriptionStatus = subscription?.status || '';", 'Answerlattice activation exact subscription status');
+  assertNotIncludes(activationSummary, ".toLowerCase();\n    const licenseStatus", 'Answerlattice activation subscription status coercion');
+  assertNotIncludes(activationSummary, 'const normalized = Number(value);', 'Answerlattice activation count coercion');
+  const widgetRuntimeStatus = read('src/lib/answerlattice/widgetRuntimeStatus.ts');
+  assertIncludes(widgetRuntimeStatus, 'Number.isSafeInteger(value.seenCount)', 'Answerlattice widget runtime exact seen-count boundary');
+  assertNotIncludes(widgetRuntimeStatus, 'Number.isFinite(Number(value.seenCount))', 'Answerlattice widget runtime seen-count coercion');
 
   assertIncludes(onboard, "const BillingModelSchema = z.enum(['subscription', 'usage', 'one_time', 'not_sure']);", 'Answerlattice onboarding paid billing model schema');
   assertIncludes(onboard, "planId: z.string().trim().max(80).optional().default('answerlattice_starter')", 'Answerlattice onboarding defaults to Starter');
@@ -2585,6 +2746,14 @@ function verifyAnswerlatticeTransactionsDiagnostics() {
   assertIncludes(transactions, 'logRuntimeFailure(ANSWERLATTICE_BILLING_HISTORY_LOAD_FAILED, billingResult.reason', 'Answerlattice transactions billing-history bounded failure log');
   assertIncludes(transactions, 'logRuntimeFailure(ANSWERLATTICE_SUPPORT_CREDIT_USAGE_LOAD_FAILED, aiOperationsResult.reason', 'Answerlattice transactions support-credit bounded failure log');
   assertIncludes(transactions, 'logRuntimeFailure(ANSWERLATTICE_SUPPORT_CREDIT_USAGE_MORE_LOAD_FAILED, error', 'Answerlattice transactions load-more bounded failure log');
+  assertIncludes(transactions, 'const scopeKey = scope ? `${scope.tenantId}:${scope.storeId}` : null;', 'Answerlattice transactions exact workspace display key');
+  assertIncludes(transactions, 'const requestId = requestGuard.begin();', 'Answerlattice transactions latest-request claim');
+  assertIncludes(transactions, 'if (!requestGuard.isCurrent(requestId)) return;', 'Answerlattice transactions stale initial/load-more refusal');
+  assertIncludes(transactions, 'const visibleBillingHistory = dataScopeKey === scopeKey ? billingHistory : [];', 'Answerlattice transactions billing-history scope partition');
+  assertIncludes(transactions, 'const visibleAiOperations = dataScopeKey === scopeKey ? aiOperations : [];', 'Answerlattice transactions AI-operation scope partition');
+  assertIncludes(transactions, 'requestGuardRef.current?.invalidate();', 'Answerlattice transactions cleanup invalidation');
+  assertNotIncludes(transactions, 'dataSource={aiOperations}', 'Answerlattice transactions must not render unpartitioned AI-operation state');
+  assertNotIncludes(transactions, 'billingHistory={billingHistory}', 'Answerlattice transactions must not render unpartitioned billing-history state');
   assertNotIncludes(transactions, "import { logger } from '@lib/monitoring/logger';", 'Answerlattice transactions raw logger import');
   assertNotIncludes(transactions, "logger.error('Failed to load Answerlattice billing history', billingResult.reason);", 'Answerlattice transactions raw billing-history reason log');
   assertNotIncludes(transactions, "logger.error('Failed to load Answerlattice support credit usage', aiOperationsResult.reason);", 'Answerlattice transactions raw support-credit reason log');
@@ -2844,10 +3013,18 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboard, "interval: z.literal('MONTH').optional().default('MONTH')", 'Answerlattice public onboarding accepts monthly billing only');
   assertIncludes(onboard, 'normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url)', 'Answerlattice onboarding normalizes provider checkout URL');
   assertIncludes(onboard, 'normalizeRazorpaySubscriptionCheckoutUrl(raw.shortUrl)', 'Answerlattice onboarding normalizes recovered checkout URL');
-  assertIncludes(onboard, "productId !== PRODUCT_IDS.ANSWERLATTICE", 'Answerlattice onboarding resume user product guard');
   assertIncludes(onboard, 'answerlatticeProvisioningOwnershipMatches(storeData, existingScope)', 'Answerlattice onboarding resume exact store ownership guard');
+  assertIncludes(onboard, 'user.pId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding resume requires exact primary product alias');
+  assertIncludes(onboard, 'user.productId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding resume requires exact compatibility product alias');
+  assertIncludes(onboard, 'compactTenantId !== tenantId', 'Answerlattice onboarding resume requires agreeing tenant aliases');
+  assertIncludes(onboard, 'compactStoreId !== storeId', 'Answerlattice onboarding resume requires agreeing store aliases');
   assertIncludes(onboardingProvisioningServer, 'answerlatticeProvisioningOwnershipMatches', 'Answerlattice onboarding transaction product and attempt ownership helper');
-  assertIncludes(onboardingProvisioningServer, '(data.pId ?? data.productId) === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding transaction exact product ownership guard');
+  assertIncludes(onboardingProvisioningServer, 'data.pId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding ownership requires exact primary product alias');
+  assertIncludes(onboardingProvisioningServer, 'data.productId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding ownership requires exact compatibility product alias');
+  assertIncludes(onboardingProvisioningServer, "hasExactProvisioningScopeId(data, ['tId', 'tenantId'], scope.tenantId, 'tenantId')", 'Answerlattice onboarding ownership requires exact tenant aliases');
+  assertIncludes(onboardingProvisioningServer, "hasExactProvisioningScopeId(data, ['sId', 'storeId'], scope.storeId, 'storeId')", 'Answerlattice onboarding ownership requires exact store aliases');
+  assertIncludes(onboardingProvisioningServer, 'isAnswerlatticeSubscriptionInScope(subscriptionData, {', 'Answerlattice onboarding subscription mutations use exact persisted product and scope authority');
+  assertNotIncludes(onboardingProvisioningServer, '(data.pId ?? data.productId) === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding must not infer product ownership from one alias');
   assertNotIncludes(onboardingProvisioningServer, 'trim().toUpperCase()', 'Answerlattice onboarding provisioning must not normalize malformed product identity');
   assertIncludes(checkoutUrl, "url.hostname.toLowerCase() !== RAZORPAY_HOSTED_PAYMENT_HOST", 'Answerlattice checkout URL exact provider-host guard');
   assertIncludes(checkoutUrl, "url.protocol !== 'https:'", 'Answerlattice checkout URL HTTPS guard');
@@ -3045,7 +3222,7 @@ function verifyAnswerlatticeFirebaseAdminInitializationBoundary() {
   assertIncludes(vectorEmbeddings, "import { AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';", 'Answerlattice vector helper product-owned vector factory');
   assertNotIncludes(accessControl, "import { FieldValue } from 'firebase-admin/firestore';", 'Answerlattice access control read path does not need a write sentinel');
   assertIncludes(intakeUsageLedger, "import { Timestamp } from 'firebase-admin/firestore';", 'Answerlattice intake usage direct Timestamp utility');
-  assertIncludes(aiAccounting, "import { FieldValue } from 'firebase-admin/firestore';", 'Answerlattice AI accounting direct FieldValue utility');
+  assertIncludes(aiAccounting, "import { FieldValue, Timestamp } from 'firebase-admin/firestore';", 'Answerlattice AI accounting direct Firestore utilities');
   assertIncludes(entityExtraction, "import { FieldValue, type Transaction } from 'firebase-admin/firestore';", 'Answerlattice entity extraction direct Firestore utilities');
   assertIncludes(draftRegeneration, "import { FieldValue, Timestamp } from 'firebase-admin/firestore';", 'Answerlattice draft regeneration direct Firestore utilities');
   assertIncludes(answerTestRollback, "import { FieldValue } from 'firebase-admin/firestore';", 'Answerlattice answer-test rollback direct FieldValue utility');
@@ -3187,14 +3364,16 @@ function verifyProtectedAiRequestAdmission() {
   assertIncludes(entityExtraction, 'const entityIds = await syncArticleEntityIds([]);', 'Answerlattice entity extraction clears stale links after confirmed short content');
   assertIncludes(entityExtraction, 'const matchedEntityIds = await syncArticleEntityIds(result?.matchedEntityIds);', 'Answerlattice entity extraction synchronizes only confirmed provider matches');
   assertIncludes(entityExtraction, 'const addArticleEntityLinkInvalidationWrites = (', 'Answerlattice entity extraction centralizes transaction-owned invalidation writes');
-  assertIncludes(entityExtraction, 'getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.KB', 'Answerlattice entity extraction invalidates the KB cache version in the article transaction');
-  assertIncludes(entityExtraction, 'getAnswerlatticeSourceVersionsDocId(scope.tId, scope.sId)', 'Answerlattice entity extraction invalidates compiled source versions in the article transaction');
-  assertIncludes(entityExtraction, 'getAnswerlatticeBundleManifestDocId(scope.tId, scope.sId)', 'Answerlattice entity extraction marks the compiled bundle stale in the article transaction');
+  assertIncludes(entityExtraction, 'readAnswerlatticeInvalidationOwnership({', 'Answerlattice entity extraction verifies deterministic invalidation ownership in the article transaction');
+  assertIncludes(entityExtraction, 'ownership.cacheVersionRefs[ANSWERLATTICE_CACHE_SOURCES.KB]!', 'Answerlattice entity extraction invalidates the owned KB cache version in the article transaction');
+  assertIncludes(entityExtraction, 'getAnswerlatticeMissingSourceVersionsBase(scope)', 'Answerlattice entity extraction creates a complete first source-version document');
+  assertIncludes(entityExtraction, 'getAnswerlatticeMissingBundleManifestBase(scope)', 'Answerlattice entity extraction creates a complete first bundle manifest');
   assertIncludes(entityExtraction, 'ANSWERLATTICE_CACHE_SOURCES.KB', 'Answerlattice entity extraction uses the KB cache source');
   assertIncludes(entityExtraction, "lastReason: 'article_entity_links_updated'", 'Answerlattice entity extraction cache invalidation reason');
   assertOrder(
     entityExtraction,
     [
+      'const invalidationOwnership = await readAnswerlatticeInvalidationOwnership({',
       'transaction.update(articleRef, {',
       'addArticleEntityLinkInvalidationWrites(',
     ],
@@ -3634,6 +3813,9 @@ function verifySearchAndRetrievalTruth() {
   const cacheVersionServer = read('src/lib/answerlattice/cacheVersionServer.ts');
   const instantCache = read('src/lib/answerlattice/instantCache.ts');
   const publicAnswerContracts = read('src/lib/answerlattice/publicAnswerContracts.ts');
+  const functionsPublicCitationBoundary = read('functions-answerlattice/src/answerlattice/publicCitationBoundary.ts');
+  const retrievalContractTests = read('scripts/verification/test-answerlattice-retrieval-contracts.ts');
+  const contextBundleVersionTests = read('scripts/verification/test-answerlattice-context-bundle-version-boundary.ts');
   const publicAnswersRoute = read('src/app/api/answerlattice/public/v1/answers/route.ts');
   const widgetSearchRoute = read('src/app/api/widget/search/route.ts');
   const widgetClient = read('src/app/widget/[apiKey]/WidgetClient.tsx');
@@ -3665,6 +3847,7 @@ function verifySearchAndRetrievalTruth() {
   const faqManagement = read('src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx');
   const productSurfaces = read('src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx');
   const helpCenterSearch = read('src/app/api/helpCenter/search-kb/route.ts');
+  const helpCenterSearchResponse = read('src/lib/search/helpCenterSearchResponse.ts');
   const articleEmbeddingRoute = read('src/app/api/helpCenter/article-embedding/route.ts');
   const articleEmbeddingServer = read('src/lib/answerlattice/articleEmbeddingServer.ts');
   const aiSearchModal = read('src/components/organisms/AISearchModal/AiSearchBarComponent.tsx');
@@ -3682,6 +3865,9 @@ function verifySearchAndRetrievalTruth() {
   const aiSearchHistoryDal = read('src/database/aiSearchHistory/index.ts');
   const aiSearchHistoryServer = read('src/database/aiSearchHistory/server.ts');
   const helpChatHandlers = read('src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts');
+  const helpChatData = read('src/components/templates/main-app/helpChat/hooks/useChatData.ts');
+  const helpChatIndex = read('src/components/templates/main-app/helpChat/index.tsx');
+  const devChatUtils = read('src/database/devUtils/index.ts');
   const platformMessageBubble = read('src/components/templates/platform/chatManagement/MessageBubble.tsx');
   const platformConversationDetail = read('src/components/templates/platform/chatManagement/ConversationDetail.tsx');
   const platformConversationDrawer = read('src/components/templates/platform/chatManagement/ConversationDrawer.tsx');
@@ -3689,6 +3875,8 @@ function verifySearchAndRetrievalTruth() {
   const platformTeamNoteModal = read('src/components/templates/platform/chatManagement/TeamNoteModal.tsx');
   const platformWeeklyDigest = read('src/components/templates/platform/chatManagement/WeeklyDigest.tsx');
   const platformRoiCalculator = read('src/components/templates/platform/chatManagement/ROICalculator.tsx');
+  const roiMetricsContracts = read('src/lib/answerlattice/roiMetricsContracts.ts');
+  const roiMetricsRoute = read('src/app/api/analytics/roi-metrics/route.ts');
   const answerlatticeSupportClipboard = read('src/lib/answerlattice/supportClipboard.ts');
   const knowledgeBaseSpec = read('__docs__/answerlattice/knowledge-base/knowledge-base_spec.md');
   const knowledgeBaseImpl = read('__docs__/answerlattice/knowledge-base/knowledge-base_impl.md');
@@ -3697,6 +3885,7 @@ function verifySearchAndRetrievalTruth() {
   const kbGenerationImpl = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_impl.md');
   const kbGenerationFirebase = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_firebase.md');
   const aiQnaSpec = read('__docs__/answerlattice/ai-qna-chatbot/ai-qna-chatbot_spec.md');
+  const aiQnaImpl = read('__docs__/answerlattice/ai-qna-chatbot/ai-qna-chatbot_impl.md');
   const aiQnaFirebase = read('__docs__/answerlattice/ai-qna-chatbot/ai-qna-chatbot_firebase.md');
   const chatMonitoringImpl = read('__docs__/answerlattice/chat-monitoring/chat-monitoring_impl.md');
   const faqManagementImpl = read('__docs__/answerlattice/faq-management/faq-management_impl.md');
@@ -3823,16 +4012,24 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(publicAnswerContracts, 'return { id, title, url };', 'Answerlattice public citation contract emits only public citation fields');
   assertIncludes(publicAnswerContracts, "parsed.protocol !== 'https:' && parsed.protocol !== 'http:'", 'Answerlattice public citations allow only HTTP or HTTPS URLs');
   assertIncludes(publicAnswerContracts, "normalized.startsWith('::ffff:')", 'Answerlattice public citations reject IPv4-mapped private hosts');
+  assertIncludes(publicAnswerContracts, 'SENSITIVE_QUERY_KEY_COMPACT_PATTERN', 'Answerlattice public citations reject compact and camel-case secret query keys');
+  assertIncludes(publicAnswerContracts, ".replace(/([a-z0-9])([A-Z])/g, '$1_$2')", 'Answerlattice public citations normalize camel-case query keys');
+  assertIncludes(functionsPublicCitationBoundary, 'SENSITIVE_QUERY_KEY_COMPACT_PATTERN', 'Answerlattice Functions citation projection rejects compact secret query keys');
+  assertIncludes(functionsPublicCitationBoundary, 'Array.from(parsed.searchParams.keys()).some(isSensitiveQueryKey)', 'Answerlattice Functions citation query-key enforcement');
+  assertIncludes(retrievalContractTests, "['accessToken', 'apiKey', 'clientSecret', 'refreshToken', 'sig']", 'Answerlattice public citation secret-key regression matrix');
+  assertIncludes(contextBundleVersionTests, "['accessToken', 'apiKey', 'clientSecret', 'refreshToken', 'sig']", 'Answerlattice Functions citation secret-key regression matrix');
+  assertIncludes(retrievalContractTests, "url: 'https://docs.example.com/guide?monkey=capuchin'", 'Answerlattice citation query-key false-positive regression');
   assertNotIncludes(publicAnswersRoute, 'evidenceReferenceIds', 'Answerlattice public answers must not expose internal evidence IDs');
   assertIncludes(publicAnswersRoute, 'normalizeAnswerlatticePublicCitations(result.citations)', 'Answerlattice public answers route revalidates public citations');
   assertIncludes(publicAnswersRoute, 'normalizeAnswerlatticeScopeClarification(result.clarification)', 'Answerlattice public answers route revalidates clarification metadata');
   assertIncludes(widgetSearchRoute, 'normalizeAnswerlatticePublicCitations(result.citations)', 'Answerlattice widget route revalidates public citations');
-  assertIncludes(helpCenterSearch, 'normalizeAnswerlatticePublicCitations(result.citations)', 'Answerlattice Help Center route revalidates public citations');
+  assertIncludes(helpCenterSearch, 'projectHelpCenterSearchResponse(result)', 'Answerlattice Help Center route uses the exact public response projector');
+  assertIncludes(helpCenterSearchResponse, 'normalizeAnswerlatticePublicCitations(result.citations)', 'Answerlattice Help Center response projector revalidates public citations');
   assertIncludes(knowledgeIntake, 'proposedEvidence: {\n                        sourceIds: evidenceSourceIds,\n                        citations: [],', 'Answerlattice Knowledge Intake carries private evidence into canonical governance');
-  assertIncludes(retrievalQualityImpl, 'canon:v4', 'Answerlattice retrieval-quality docs record the validated cache namespace');
+  assertIncludes(retrievalQualityImpl, 'canon:v5', 'Answerlattice retrieval-quality docs record the validated cache namespace');
   assertIncludes(retrievalQualityImpl, 'Customer-facing paths receive only `{ id, title, url }`', 'Answerlattice retrieval-quality docs record the public evidence boundary');
-  assertIncludes(retrievalQualityFirebase, 'No Firestore rule, Firestore index, Storage rule, or Answerlattice Cloud Function changed.', 'Answerlattice retrieval-quality docs record deployment scope');
-  assertIncludes(retrievalQualityTests, 'configured Upstash Redis write/read using `canon:v4`', 'Answerlattice retrieval-quality docs preserve external cache proof boundary');
+  assertIncludes(retrievalQualityFirebase, 'The dedicated Functions public-citation projector used by context-bundle repair changed', 'Answerlattice retrieval-quality docs record dedicated Functions deployment scope');
+  assertIncludes(retrievalQualityTests, 'configured Upstash Redis write/read using `canon:v5` with distinct query/context keys', 'Answerlattice retrieval-quality docs preserve external cache proof boundary');
   assertIncludes(canonical, 'evaluateCanonicalAnswerScope', 'Answerlattice canonical retrieval enforces plan, role, and state scope before ranking');
   assertIncludes(canonical, "? 'canonical_scope_context_required'", 'Answerlattice canonical retrieval fails closed when restricted context is missing');
   assertIncludes(canonical, ": 'canonical_scope_not_covered'", 'Answerlattice canonical retrieval refuses mismatched restricted context');
@@ -3850,8 +4047,11 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(searchCore, "const SEARCH_CACHE_VERSION = 'rag-v4';", 'Answerlattice search bypasses pre-scope cache entries');
   assertIncludes(searchCore, 'canonicalSourceVersion', 'Answerlattice non-canonical cache keys include governed truth version');
   assertIncludes(cacheFreshness, 'const canonicalManifestFresh = await isVersionManifestFresh(', 'Answerlattice FAQ and RAG cache entries yield to changed canonical truth');
-  assertIncludes(instantCache, 'canon:v4:', 'Answerlattice instant cache bypasses pre-validation and raw-segment entries');
-  assertIncludes(instantCache, "createHash('sha256')", 'Answerlattice instant cache hashes entity and applicability key segments');
+  assertIncludes(instantCache, 'canon:v5:', 'Answerlattice instant cache bypasses pre-query/context-validation and raw-segment entries');
+  assertIncludes(instantCache, ':q:${hashSegment(normalizedQuery)}:c:${hashSegment(contextToken)}:', 'Answerlattice instant cache isolates normalized query and complete retrieval context');
+  assertIncludes(searchCore, '&& !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH', 'Answerlattice instant cache bypasses graph-aware selection until graph state is independently versioned');
+  assertIncludes(instantCache, "createHash('sha256')", 'Answerlattice instant cache hashes query, context, entity and applicability key segments');
+  assertIncludes(canonical, "&& intent === 'how_to'", 'Answerlattice procedure affinity applies only to classified how-to requests');
   assertIncludes(instantCache, 'export const normalizeCachedCanonicalAnswer = (', 'Answerlattice instant cache validates Redis payloads before delivery');
   assertIncludes(instantCache, "Buffer.byteLength(JSON.stringify(normalized), 'utf8')", 'Answerlattice instant cache validates cached payload UTF-8 bytes');
   assertIncludes(instantCache, "answer.status !== 'active'", 'Answerlattice instant cache admits active canonical answers only');
@@ -3904,11 +4104,13 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(faq, 'if (!articleId) return [];', 'Answerlattice FAQ retrieval malformed linked article guard');
   assertIncludes(faq, '.doc(articleId)', 'Answerlattice FAQ retrieval normalized linked article document ref');
   assertNotIncludes(faq, '.doc(faq.articleId)', 'Answerlattice FAQ retrieval raw linked article document ref');
-  assertIncludes(faq, "articleRecord.pId !== 'AL'", 'Answerlattice FAQ article exact product guard');
-  assertIncludes(faq, 'normalizeAnswerlatticeScopeDocumentId(articleRecord.tId) !== normalizeAnswerlatticeScopeDocumentId(faq.tId)', 'Answerlattice FAQ article exact tenant guard');
-  assertIncludes(faq, 'normalizeAnswerlatticeScopeDocumentId(articleRecord.sId) !== normalizeAnswerlatticeScopeDocumentId(faq.sId)', 'Answerlattice FAQ article exact store guard');
-  assertNotIncludes(faq, 'Number(articleRecord.tId', 'Answerlattice FAQ article must not loosely coerce persisted tenant scope');
-  assertIncludes(faq, "article.status !== 'published'", 'Answerlattice FAQ article published guard');
+  assertIncludes(faq, "value.pId !== 'AL'", 'Answerlattice FAQ article exact product guard');
+  assertIncludes(faq, 'normalizeAnswerlatticeScopeDocumentId(value.tId) !== normalizeAnswerlatticeScopeDocumentId(scope.tId)', 'Answerlattice FAQ article exact tenant guard');
+  assertIncludes(faq, 'normalizeAnswerlatticeScopeDocumentId(value.sId) !== normalizeAnswerlatticeScopeDocumentId(scope.sId)', 'Answerlattice FAQ article exact store guard');
+  assertNotIncludes(faq, 'Number(value.tId', 'Answerlattice FAQ article must not loosely coerce persisted tenant scope');
+  assertIncludes(faq, "value.status !== 'published'", 'Answerlattice FAQ article published guard');
+  assertIncludes(faq, 'value.active !== true', 'Answerlattice FAQ article explicit active guard');
+  assertIncludes(faq, 'value.deleted === true', 'Answerlattice FAQ article deleted guard');
   assertIncludes(faqIdBoundary, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Answerlattice FAQ ID boundary imports shared Firestore guard');
   assertIncludes(faqIdBoundary, 'export const ANSWERLATTICE_FAQ_ID_MAX_LENGTH = 180;', 'Answerlattice FAQ ID boundary length cap');
   assertIncludes(faqIdBoundary, 'export function normalizeAnswerlatticeFaqId(value: unknown): string | null {', 'Answerlattice FAQ ID boundary exports normalizer');
@@ -4233,6 +4435,8 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(productSurfacesDal, 'A product surface already uses this context key.', 'Answerlattice product surface duplicate context-key rejection');
   assertIncludes(productSurfacesDal, 'Product surface context keys cannot be changed after creation.', 'Answerlattice product surface immutable context key');
   assertIncludes(productSurfacesDal, 'sourceId: docId,', 'Answerlattice product surface save source ID is normalized');
+  assertIncludes(productSurfacesDal, 'await appendAnswerlatticeCompiledContextSourceChange(', 'Answerlattice product surface mutation and source invalidation share one ownership-reading transaction');
+  assertNotIncludes(productSurfacesDal, 'await markAnswerlatticeCompiledContextSourceChanged(', 'Answerlattice product surface mutation has no post-commit invalidation gap');
   assertIncludes(productSurfacesDal, 'const surfaceId = normalizeAnswerlatticeProductSurfaceId(surface.id);', 'Answerlattice product surface archive normalizes ID');
   assertIncludes(productSurfacesDal, 'transaction.set(surfaceRef, composedData, { merge: true });', 'Answerlattice product surface mutation uses transaction-scoped normalized ref');
   assertIncludes(productSurfacesDal, 'sourceId: surfaceId,', 'Answerlattice product surface archive source ID is normalized');
@@ -4409,6 +4613,18 @@ function verifySearchAndRetrievalTruth() {
   assertNotIncludes(helpChatApi, '(data as any).error', 'Answerlattice HelpChat API must not throw raw search route response text');
   assertIncludes(aiSearchHistoryDal, 'assertAiSearchHistoryFeedbackUpdateSucceeded', 'Answerlattice search-history feedback acknowledgement guard');
   assertIncludes(aiSearchHistoryDal, 'satisfies AiSearchHistoryFeedbackUpdateResult', 'Answerlattice search-history feedback explicit result');
+  assertIncludes(aiSearchHistoryDal, 'normalizeAnswerlatticeScopeDocumentId(current.tId) !== scope.tenantId', 'Answerlattice search-history browser feedback exact persisted tenant scope');
+  assertIncludes(aiSearchHistoryDal, "if (current.uId !== actorId) throw new Error('ai_search_history_feedback_actor_invalid');", 'Answerlattice search-history browser feedback exact record actor');
+  assertNotIncludes(aiSearchHistoryDal, 'Number(current.tId) !== scope.tenantId', 'Answerlattice search-history browser feedback must not coerce persisted tenant scope');
+  assertNotIncludes(aiSearchHistoryDal, 'export const addAiSearchHistory =', 'Answerlattice browser DAL must not expose a write denied by Firestore rules');
+  assertNotIncludes(aiSearchHistoryDal, 'export const findCachedSearchByCacheKey =', 'Answerlattice browser DAL must not expose the server-owned raw cache-key query');
+  assert(
+    (aiSearchActionButtons.match(/assertAiSearchHistoryFeedbackUpdateSucceeded\(result, searchHistoryId\)/g) || []).length === 2,
+    'Answerlattice AI Search positive and negative feedback must validate the exact DAL acknowledgement',
+  );
+  assertIncludes(searchCore, "import { addAiSearchHistoryServer, findCachedSearchByCacheKeyServer } from '@database/aiSearchHistory/server';", 'Answerlattice search core uses the server-owned search-history DAL');
+  assertIncludes(searchCore, 'await findCachedSearchByCacheKeyServer(', 'Answerlattice search core uses the server-only cache lookup');
+  assertIncludes(searchCore, 'return await addAiSearchHistoryServer(data);', 'Answerlattice search core uses the server-only cache writer');
   assertIncludes(aiSearchHistoryServer, "import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';", 'Answerlattice search-history server imports shared strict scope normalizer');
   assertIncludes(aiSearchHistoryServer, 'const getAiSearchHistoryScope = (source: { tId?: unknown; sId?: unknown } | null | undefined): AiSearchHistoryScope | null =>', 'Answerlattice search-history server scope resolver');
   assertIncludes(aiSearchHistoryServer, 'const scope = getAiSearchHistoryScope(data);', 'Answerlattice search-history writer normalizes scope before compose');
@@ -4419,6 +4635,26 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(aiSearchHistoryServer, "if (!scope) return null;", 'Answerlattice search-history cache lookup fails closed for malformed scope');
   assertIncludes(aiSearchHistoryServer, ".where('tId', '==', scope.tId)", 'Answerlattice search-history cache lookup uses normalized tenant scope');
   assertIncludes(aiSearchHistoryServer, ".where('sId', '==', scope.sId)", 'Answerlattice search-history cache lookup uses normalized store scope');
+  assertIncludes(aiSearchHistoryServer, 'cacheKey: hashSearchCacheKey(data.cacheKey)', 'Answerlattice search-history writer stores a hashed cache key');
+  assertIncludes(aiSearchHistoryServer, ".where('cacheKey', '==', hashSearchCacheKey(cacheKey))", 'Answerlattice search-history reader queries the hashed cache key');
+  assertIncludes(aiQnaImpl, '`addAiSearchHistoryServer(data)`', 'AI QnA implementation docs name the server-owned search-history writer');
+  assertIncludes(aiQnaImpl, '`findCachedSearchByCacheKeyServer(cacheKey, session)`', 'AI QnA implementation docs name the server-owned cache lookup');
+  assertIncludes(helpCenterImpl, '`addAiSearchHistoryServer(data)`', 'Help Center implementation docs name the server-owned search-history writer');
+  assertIncludes(helpCenterImpl, '`findCachedSearchByCacheKeyServer(cacheKey, session)`', 'Help Center implementation docs name the server-owned cache lookup');
+  [answerlatticeIndexes, sharedIndexes].forEach((config, index) => {
+    const label = index === 0 ? 'dedicated' : 'shared';
+    const shapes = new Set(config.indexes
+      .filter((entry) => entry.collectionGroup === 'aiSearchHistory')
+      .map((entry) => entry.fields.map((field) => `${field.fieldPath}:${field.order || field.arrayConfig || ''}`).join(',')));
+    assert(
+      shapes.has('pId:ASCENDING,tId:ASCENDING,sId:ASCENDING,canonical:ASCENDING,createdOn:DESCENDING'),
+      `Answerlattice ${label} indexes must include the product-partitioned canonical-miss history shape`,
+    );
+    assert(
+      shapes.has('pId:ASCENDING,tId:ASCENDING,sId:ASCENDING,mountContext:ASCENDING,createdOn:DESCENDING'),
+      `Answerlattice ${label} indexes must include the product-partitioned widget-activity history shape`,
+    );
+  });
   assertIncludes(aiQnaFirebase, 'Search-history server scope hardening is cost-neutral', 'AI QnA Firebase docs must document search-history server scope cost boundary');
   assertIncludes(dataInventoryEvidence, 'Server search history writer normalizes exact tenant/store scope', 'Answerlattice data inventory evidence must document search-history server scope boundary');
   assertIncludes(productionAudit, 'Answerlattice search-history server scope boundary checkpoint: fixed in source.', 'Production readiness audit must document search-history server scope boundary');
@@ -4441,7 +4677,15 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(chatSessionsDal, 'satisfies ChatSessionDeleteResult', 'Answerlattice chat session delete explicit result');
   assertIncludes(chatSessionsDal, 'resolveAnswerlatticeSessionScope(session)', 'Answerlattice chat session shared exact scope resolver');
   assertIncludes(chatSessionsDal, 'normalizeAnswerlatticeChatSessionId(sessionId)', 'Answerlattice chat session document ID normalizer');
-  assertIncludes(chatSessionsDal, 'const context = await getRequiredChatReadContext();', 'Answerlattice chat session reads derive authoritative active scope');
+  assertIncludes(chatSessionsDal, 'const getRequiredChatReadContext = (session: unknown)', 'Answerlattice chat session reads bind to their initiating session');
+  assert(
+    (chatSessionsDal.match(/getRequiredChatReadContext\(session\)/g) || []).length >= 8,
+    'Answerlattice chat session reads consistently retain initiating scope',
+  );
+  assertIncludes(chatSessionsDal, 'answerlattice_chat_expected_scope_changed', 'Answerlattice chat mutation expected-scope rejection');
+  assertIncludes(chatSessionsDal, 'answerlattice_chat_expected_actor_changed', 'Answerlattice user-owned chat mutations reject a changed initiating actor');
+  assertIncludes(chatSessionsDal, 'requireExpectedChatSessionActorScope(context, expectedActorScope);', 'Answerlattice user-owned chat writes bind initiating tenant/workspace/actor before target I/O');
+  assertIncludes(chatSessionsDal, 'requireExpectedChatSessionScope(context.scope, expectedScope);', 'Answerlattice chat mutations bind initiating workspace scope before reads or writes');
   assertIncludes(chatSessionsDal, 'session: scopedSession', 'Answerlattice chat image upload path uses normalized scope');
   assertIncludes(chatSessionsDal, "throw new Error('answerlattice_chat_image_data_url_required')", 'Answerlattice chat image upload rejects untrusted remote sources');
   assertIncludes(chatSessionsDal, 'chatSessionImagesBelongToScope({ messages }, context.scope)', 'Answerlattice chat create validates image ownership');
@@ -4472,7 +4716,20 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(chatMediaReferences, '!retained.has(normalized)', 'Answerlattice chat image cleanup retained-reference subtraction');
   assertIncludes(chatMediaReferences, 'isAnswerlatticeChatImageStoragePath', 'Answerlattice chat image scope path validator');
   assertIncludes(chatSessionContracts, "throw new Error('answerlattice_chat_image_invalid')", 'Answerlattice chat image serializer rejects malformed media metadata');
-  assertIncludes(helpChatHandlers, 'await discardUnpersistedChatImage(uploadedImage);', 'HelpChat cleans an upload when search fails before persistence');
+  assertIncludes(helpChatHandlers, 'await discardUnpersistedChatImage(uploadedImage, initiatingSession);', 'HelpChat cleans a failed upload in its initiating workspace');
+  assertIncludes(helpChatData, 'getAnswerlatticeUserChatSessionsCacheKey(scope, userId)', 'HelpChat SWR identity includes exact Answerlattice tenant/workspace/actor');
+  assertIncludes(chatSessionContracts, "['answerlattice-user-chat-sessions', tId, sId, actorId]", 'HelpChat cache-key contract partitions exact tenant/workspace/actor');
+  assertNotIncludes(helpChatData, '`user-chat-sessions-${loggedInSession.tId}-${loggedInSession.uId}`', 'HelpChat SWR identity must not use MenuList root scope or omit workspace');
+  assertIncludes(helpChatHandlers, 'saveChatSession(newSession, initiatingActorScope)', 'HelpChat create binds the initiating tenant/workspace/actor');
+  assertIncludes(helpChatHandlers, 'expectedActorScope: initiatingActorScope', 'HelpChat append and feedback paths bind the initiating actor scope');
+  assertIncludes(helpChatHandlers, 'replaceChatSessionMessageBranch(', 'HelpChat retry uses the explicit branch-replacement contract');
+  assertIncludes(helpChatHandlers, 'deleteChatSession(sessionId, initiatingActorScope)', 'HelpChat delete carries its initiating tenant/workspace/actor');
+  assertIncludes(devChatUtils, 'deleteChatSession(sessionId, expectedActorScope)', 'Development bulk cleanup carries its initiating tenant/workspace/actor');
+  assertIncludes(helpChatHandlers, 'if (!isCurrentActorScope(initiatingActorScope))', 'HelpChat async completions require current mounted actor scope before UI settlement');
+  assertIncludes(helpChatIndex, 'key={actorScopeKey}', 'HelpChat remounts all local state when tenant/workspace/actor identity changes');
+  assertIncludes(helpChatApi, 'tId: expectedActorScope.tId', 'HelpChat negative signal uses Answerlattice initiating tenant scope');
+  assertIncludes(helpChatApi, 'sId: expectedActorScope.sId', 'HelpChat negative signal uses Answerlattice initiating workspace scope');
+  assertNotIncludes(helpChatApi, 'tId: loggedInSession?.tId', 'HelpChat feedback must not emit MenuList root tenant scope');
   assertIncludes(storageCleanupResults, "result.status === 'fulfilled' && result.value.success === true", 'Storage cleanup counts explicit successful acknowledgements only');
   assertNotIncludes(chatSessionsDal, 'collectChatImageUrls({ ...data, messages }', 'Answerlattice chat create failure must not delete media after an ambiguous transaction outcome');
   assertIncludes(changelogDal, 'answerlattice_changelog_ambiguous_persistence_media_retained', 'Answerlattice changelog preserves media when the persistence outcome is ambiguous');
@@ -4485,6 +4742,8 @@ function verifySearchAndRetrievalTruth() {
     'Answerlattice changelog prepared-media cleanup must occur only before persistence, when action validation fails',
   );
   assertIncludes(chatSessionsDal, "if (messageIndex < 0) throw new Error('answerlattice_chat_feedback_message_not_found');", 'Answerlattice chat feedback requires an existing linked message');
+  assertIncludes(chatSessionsDal, "if (current.uId !== context.userId || searchHistory.uId !== context.userId)", 'Answerlattice Help Chat feedback rechecks record-actor ownership inside the transaction');
+  assertIncludes(chatSessionsDal, "throw new Error('answerlattice_chat_feedback_actor_invalid')", 'Answerlattice Help Chat feedback rejects cross-user record linkage before writes');
   assertIncludes(chatSessionsDal, 'normalizeAnswerlatticeScopeDocumentId(searchHistory.tId) !== context.scope.tId', 'Answerlattice chat feedback exact search-history tenant guard');
   assertIncludes(chatSessionsDal, 'transaction.update(searchHistoryRef, {', 'Answerlattice chat feedback updates session and search history atomically');
   assertNotIncludes(chatSessionsDal, 'Number(searchHistory.tId) !== context.scope.tId', 'Answerlattice chat feedback must not coerce persisted tenant scope');
@@ -4500,6 +4759,9 @@ function verifySearchAndRetrievalTruth() {
     assertIncludes(rules, 'function isValidAnswerlatticeChatSessionDocument(data)', `Answerlattice ${label} rules chat runtime payload guard`);
     assertIncludes(rules, 'isValidAnswerlatticeChatActor(request.resource.data)', `Answerlattice ${label} rules chat actor guard`);
     assertIncludes(rules, 'isValidAnswerlatticeChatSessionUpdate(resource.data, request.resource.data)', `Answerlattice ${label} rules chat immutable/update guard`);
+    assertIncludes(rules, 'function isAnswerlatticeRecordActorOrPlatformSupport(data)', `Answerlattice ${label} rules record-owner mutation guard`);
+    assertIncludes(rules, "!after.diff(before).affectedKeys().hasAny(['messages'])", `Answerlattice ${label} rules restrict cross-user chat message mutation`);
+    assertIncludes(rules, '&& isAnswerlatticeRecordActorOrPlatformSupport(before)', `Answerlattice ${label} rules restrict cross-user search feedback mutation`);
   });
   const requiredChatIndexShapes = [
     'pId:ASCENDING,tId:ASCENDING,sId:ASCENDING,uId:ASCENDING,modifiedOn:DESCENDING',
@@ -4533,16 +4795,29 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(platformConversationDetail, 'platform_chat_metadata_session_update_rejected', 'Platform chat metadata update rejection code');
   assertIncludes(platformConversationDrawer, 'platform_chat_drawer_internal_note_update_rejected', 'Platform conversation drawer note update rejection code');
   assertIncludes(platformConversationsList, 'platform_chat_batch_status_update_rejected', 'Platform conversation batch status update rejection code');
+  assertIncludes(platformConversationsList, 'getAnswerlatticeChatWorkspaceScopeKey', 'Platform conversation cache keys use exact Answerlattice workspace scope');
+  assertIncludes(platformConversationsList, 'isAnswerlatticeChatWorkspaceScopeAcknowledgement', 'Platform conversation pages verify exact Answerlattice scope acknowledgement');
+  assertIncludes(platformConversationsList, 'allSessionsScopeKey === scopeKey', 'Platform conversation state masks stale workspace rows');
+  assertNotIncludes(platformConversationsList, '`conversations-${loggedInSession.tId}-${loggedInSession.sId}', 'Platform conversation cache keys must not use MenuList root scope');
   assertIncludes(platformConversationsList, "import { escapeCSVValue } from '@util/exportUtils';", 'Platform conversation CSV export must use the shared CSV cell sanitizer.');
   assertIncludes(platformConversationsList, "].map(escapeCSVValue).join(',')", 'Platform conversation CSV export must sanitize header cells.');
   assertIncludes(platformConversationsList, "].map(escapeCSVValue);", 'Platform conversation CSV export must sanitize row cells.');
   assertNotIncludes(platformConversationsList, 'const escapeCSV =', 'Platform conversation CSV export must not keep private CSV escaping.');
+  assertIncludes(platformConversationsList, "'Positive Feedback Share'", 'Platform conversation CSV preserves recorded feedback units.');
+  assertNotIncludes(platformConversationsList, "'Satisfaction %'", 'Platform conversation CSV must not infer satisfaction.');
+  assertIncludes(platformConversationDetail, '**Recorded feedback:**', 'Platform transcript exports literal feedback counts.');
+  assertIncludes(platformConversationDetail, '% positive feedback', 'Platform detail labels positive feedback share literally.');
+  assertNotIncludes(platformConversationDetail, '**Satisfaction:**', 'Platform detail export must not infer satisfaction.');
+  assertIncludes(platformConversationDrawer, '**Recorded feedback:**', 'Platform drawer export uses literal feedback counts.');
+  assertNotIncludes(platformConversationDrawer, '**Satisfaction:**', 'Platform drawer export must not infer satisfaction.');
   assertIncludes(chatMonitoringImpl, 'Conversation CSV spreadsheet formula boundary', 'Chat Monitoring docs must document conversation CSV spreadsheet formula hardening.');
   assertIncludes(productionAudit, 'Answerlattice conversation CSV spreadsheet formula boundary checkpoint: fixed in source.', 'Production readiness audit must document Answerlattice conversation CSV spreadsheet formula hardening.');
   assertIncludes(changelog, 'Answerlattice Conversation CSV Spreadsheet Formula Boundary', 'Changelog must document Answerlattice conversation CSV spreadsheet formula hardening.');
   assertIncludes(platformTeamNoteModal, 'platform_chat_team_note_update_rejected', 'Platform team note update rejection code');
   assertIncludes(platformWeeklyDigest, 'answerlatticeFirebaseClient', 'Platform weekly digest uses the dedicated Answerlattice project');
   assertIncludes(platformWeeklyDigest, 'parseAnswerlatticeWeeklySummary', 'Platform weekly digest validates persisted scope and content');
+  assertIncludes(platformWeeklyDigest, 'requestOwnerRef.current !== requestOwner', 'Platform weekly digest rejects obsolete request settlement');
+  assertIncludes(platformWeeklyDigest, 'setDigest(null);', 'Platform weekly digest clears prior workspace truth before loading');
   assertIncludes(platformWeeklyDigest, 'Weekly digests are prepared every Sunday UTC by the Answerlattice scheduler', 'Platform weekly digest truthful scheduler copy');
   assertNotIncludes(platformWeeklyDigest, '/api/analytics/weekly-narrative/', 'Platform weekly digest must not call retired manual generation routes');
   assertNotIncludes(platformWeeklyDigest, 'Regenerate', 'Platform weekly digest must not expose ungoverned provider regeneration');
@@ -4553,7 +4828,7 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(platformRoiCalculator, "redirect: 'manual'", 'Platform ROI metrics request does not follow redirects');
   assertIncludes(platformRoiCalculator, 'ROI_METRICS_REQUEST_POLICY)', 'Platform ROI metrics fetch applies request policy');
   assertIncludes(platformRoiCalculator, 'readJsonResponseWithLimit<unknown>', 'Platform ROI metrics bounded response parser');
-  assertIncludes(platformRoiCalculator, 'isRoiMetricsApiResponse', 'Platform ROI metrics response guard');
+  assertIncludes(platformRoiCalculator, 'parseAnswerlatticeRoiMetricsApiResponse', 'Platform ROI metrics response guard');
   assertIncludes(platformRoiCalculator, 'platform_roi_metrics_response_parse_failed', 'Platform ROI metrics response parse diagnostic');
   assertIncludes(platformRoiCalculator, 'platform_roi_metrics_response_rejected', 'Platform ROI metrics response rejected diagnostic');
   assertIncludes(platformRoiCalculator, 'platform_roi_metrics_response_invalid', 'Platform ROI metrics response invalid diagnostic');
@@ -4565,8 +4840,20 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(platformRoiCalculator, 'hasClipboardWrite', 'Platform ROI share copy clipboard support metadata');
   assertIncludes(platformRoiCalculator, 'hasCopyFallback', 'Platform ROI share copy fallback support metadata');
   assertNotIncludes(platformRoiCalculator, 'navigator.clipboard.writeText(shareText);\n        message.success', 'Platform ROI share copy direct clipboard success path');
-  assertIncludes(platformRoiCalculator, 'paybackPeriod: number | null', 'Platform ROI metrics nullable payback type');
-  assertIncludes(platformRoiCalculator, 'value.paybackPeriod === null', 'Platform ROI metrics nullable payback guard');
+  assertIncludes(roiMetricsContracts, 'estimatedPaybackPeriod: number | null', 'Platform ROI metrics nullable estimated payback type');
+  assertIncludes(roiMetricsContracts, 'value.estimatedPaybackPeriod === null', 'Platform ROI metrics nullable estimated payback guard');
+  assertIncludes(roiMetricsContracts, 'assumedMinutesSavedPerConversation', 'Platform ROI metrics exposes its time-saving assumption');
+  assertIncludes(roiMetricsRoute, 'qnaConversations: stats.qnaChats || 0', 'ROI route uses the real Q&A aggregate field');
+  assertIncludes(roiMetricsRoute, 'assistantConversations: stats.assistantChats || 0', 'ROI route uses the real assistant aggregate field');
+  assertNotIncludes(roiMetricsRoute, 'resolvedConversations', 'ROI route must not invent resolution outcomes');
+  assertNotIncludes(roiMetricsContracts, 'estimatedRevenueProtected', 'ROI browser DTO must not admit unsupported revenue attribution');
+  assertNotIncludes(platformRoiCalculator, 'MenuListAI Chat Analytics', 'Answerlattice ROI exports must not carry MenuList product attribution');
+  assertIncludes(roiMetricsContracts, "hasExactKeys(value, ['tId', 'sId', 'metrics', 'params', 'dateRange'])", 'Platform ROI metrics exact DTO projection');
+  assertIncludes(roiMetricsContracts, 'isAnswerlatticeChatWorkspaceScopeAcknowledgement', 'Platform ROI metrics exact workspace acknowledgement');
+  assertNotIncludes(roiMetricsRoute, 'analyticsData,', 'ROI route must not return its internal analytics input');
+  assertIncludes(roiMetricsRoute, 'resolveAnswerlatticeSessionScope(session)', 'ROI route derives Answerlattice product scope');
+  assertIncludes(roiMetricsRoute, 'applyAnalyticsReadRateLimit(scopedSession', 'ROI route rate limits by Answerlattice scope');
+  assertIncludes(platformRoiCalculator, 'requestOwnerRef.current !== requestOwner', 'Platform ROI metrics rejects obsolete request settlement');
   assertIncludes(platformRoiCalculator, 'formatPayback = (months: number | null)', 'Platform ROI metrics nullable payback display');
   assertNotIncludes(platformRoiCalculator, 'const result = await response.json();', 'Platform ROI metrics direct JSON fallback');
   assertNotIncludes(platformRoiCalculator, "throw new Error('Failed to fetch ROI metrics')", 'Platform ROI metrics raw fetch failure');
@@ -4595,19 +4882,27 @@ function verifyHostedHelpRegistryTruth() {
   const client = read('src/components/templates/answerlattice/hostedHelp/HostedHelpClient.tsx');
   const publicRichText = read('src/lib/answerlattice/publicRichText.ts');
 
-  assertIncludes(server, "String(data.pId || '') !== PRODUCT_IDS.ANSWERLATTICE", 'Answerlattice hosted-help registry product guard');
+  assertIncludes(server, '!productIds.every(candidate => candidate === PRODUCT_IDS.ANSWERLATTICE)', 'Answerlattice hosted-help registry exact product guard');
   assertNotIncludes(server, 'String(data.pId || PRODUCT_IDS.ANSWERLATTICE)', 'Answerlattice hosted-help registry product guard');
-  assertIncludes(server, 'const tId = normalizeAnswerlatticeScopeDocumentId(data.tId);', 'Answerlattice hosted-help registry exact tenant scope');
-  assertIncludes(server, 'const sId = normalizeAnswerlatticeScopeDocumentId(data.sId);', 'Answerlattice hosted-help registry exact store scope');
+  assertIncludes(server, 'normalizeConsistentAnswerlatticeScopeDocumentIds([record.tId, record.tenantId])', 'Answerlattice hosted-help registry exact tenant aliases');
+  assertIncludes(server, 'normalizeConsistentAnswerlatticeScopeDocumentIds([record.sId, record.storeId])', 'Answerlattice hosted-help registry exact store aliases');
+  assertIncludes(server, 'data.domain !== normalizedDomain', 'Answerlattice hosted-help registry exact domain identity');
+  assertIncludes(server, 'data.enabled !== true', 'Answerlattice hosted-help registry exact publication flag');
+  assertIncludes(server, '!config.domains.includes(normalizedDomain)', 'Answerlattice hosted-help registry config/domain agreement');
   assertNotIncludes(server, 'const tId = Number(data.tId);', 'Answerlattice hosted-help registry must not loosely coerce scope');
   assertIncludes(settings, 'registryScopeMatches', 'Answerlattice hosted-help registry scope helper');
-  assertIncludes(settings, "String(registry?.pId || '') === PRODUCT_IDS.ANSWERLATTICE", 'Answerlattice hosted-help registry product ownership helper');
+  assertIncludes(settings, 'isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)', 'Answerlattice hosted-help exact store/product ownership');
+  assertNotIncludes(settings, 'storeData.tenantId ?? storeData.tId', 'Answerlattice hosted-help must not select one persisted tenant alias');
+  assertIncludes(settings, 'resolveAnswerlatticeHostedHelpRegistryScope(registry)', 'Answerlattice hosted-help registry exact ownership helper');
   assertIncludes(settings, 'isAnswerlatticeHostedHelpCandidateHostname(domain)', 'Answerlattice hosted-help routable domain admission');
   assertIncludes(settings, 'isReservedCustomDomainClaimCandidate(domain)', 'Answerlattice hosted-help reserved product-root admission');
   assertIncludes(settings, 'const domainsToProvision = nextDomains.filter(domain => !registryByDomain.has(domain));', 'Answerlattice hosted-help registry-proven provisioning');
   assertIncludes(settings, 'if (!addResult.ok) {', 'Answerlattice hosted-help unproven provider conflict rejection');
   assertNotIncludes(settings, '!addResult.ok && addResult.status !== 409', 'Answerlattice hosted-help unproven provider 409 acceptance');
-  assertIncludes(settings, 'removedRegistryByDomain', 'Answerlattice hosted-help removed-domain scope snapshot');
+  assertIncludes(settings, 'await db.runTransaction(async (transaction: FirebaseFirestore.Transaction)', 'Answerlattice hosted-help transaction-current ownership commit');
+  assertIncludes(settings, 'registryScopeMatches(currentRegistry, scope)', 'Answerlattice hosted-help transaction-current registry scope');
+  assertIncludes(settings, 'compensateHostedHelpProviderChanges', 'Answerlattice hosted-help checked provider compensation');
+  assertNotIncludes(settings, 'const batch = db.batch();', 'Answerlattice hosted-help must not commit from stale registry snapshots');
   assertIncludes(settings, "logRuntimeFailure('answerlattice_hosted_help_registry_delete_scope_mismatch'", 'Answerlattice hosted-help scoped delete bounded diagnostic');
   assertIncludes(settings, '...getHostedHelpProviderErrorContext(addResult.data)', 'Answerlattice hosted-help provider failure flattened log context');
   assertIncludes(settings, 'providerMessagePresent: message.length > 0', 'Answerlattice hosted-help provider failure records message presence only');
@@ -5042,6 +5337,8 @@ function verifyPredictiveTriggerPublicSummary() {
   const triggers = read('src/database/answerlattice/predictiveTriggers.ts');
   const predictiveTriggerHook = read('src/hooks/answerlattice/usePredictiveTriggers.ts');
   const predictiveEngine = read('src/lib/answerlattice/predictiveEngine.ts');
+  const predictiveRoute = read('src/app/api/answerlattice/predictive-help/route.ts');
+  const interactionRoute = read('src/app/api/answerlattice/predictive-interaction/route.ts');
   const runtimeSummaryContracts = read('src/lib/answerlattice/runtimeSummaryContracts.ts');
   const predictiveReadme = read('__docs__/answerlattice/predictive-support/README.md');
   const predictiveImpl = read('__docs__/answerlattice/predictive-support/predictive-support_impl.md');
@@ -5083,27 +5380,41 @@ function verifyPredictiveTriggerPublicSummary() {
   assertNotIncludes(runtimeSummaryContracts, '...trigger,\n            id: normalizedId,', 'Answerlattice predictive runtime summary must not expose arbitrary stored trigger fields');
   assertIncludes(predictiveEngine, '!Number.isSafeInteger(tId)', 'Answerlattice predictive runtime rejects malformed tenant scope');
   assertNotIncludes(predictiveEngine, 'const cacheKey = `${Number(tId)}:${Number(sId)}`;', 'Answerlattice predictive runtime cache must not coerce scope');
+  assertIncludes(predictiveEngine, 'const cacheKey = `${PRODUCT_IDS.ANSWERLATTICE}:${tId}:${sId}`;', 'Answerlattice predictive runtime cache partitions product, tenant and store');
+  assertIncludes(predictiveEngine, 'const currentLoad = triggerIndexLoads.get(cacheKey);', 'Answerlattice predictive summary cache coalesces concurrent misses');
+  assertIncludes(predictiveEngine, "tags: getAnswerlatticePublicCacheTags(tId, sId, 'predictive')", 'Answerlattice predictive runtime cache uses the owner-invalidated public tag');
+  assertIncludes(predictiveEngine, 'options: { bypassCache?: boolean } = {}', 'Answerlattice predictive summary loader supports current-state revalidation');
+  assertIncludes(predictiveEngine, "logRuntimeFailure('answerlattice_predictive_trigger_summary_load_failed'", 'Answerlattice predictive summary failures are observable with a fixed code');
+  assertIncludes(interactionRoute, 'loadTriggerIndex(tId, sId, { bypassCache: true })', 'Answerlattice predictive interaction revalidates current trigger truth without a stale cache hit');
+  assertIncludes(predictiveRoute, "'Cache-Control': 'private, no-store'", 'Answerlattice predictive empty and error responses are not cacheable');
   assertIncludes(triggers, 'const normalizedDocId = normalizeAnswerlatticePredictiveTriggerId(docId);', 'Answerlattice predictive trigger document ref normalizes trigger ID');
   assertIncludes(triggers, "if (!normalizedDocId) throw new Error('Invalid predictive trigger id');", 'Answerlattice predictive trigger document ref rejects malformed trigger ID');
   assertIncludes(triggers, 'return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);', 'Answerlattice predictive trigger document ref uses normalized trigger ID');
+  assertIncludes(triggers, 'expectedScope: { tId: number; sId: number },', 'Answerlattice predictive single-trigger read requires expected workspace scope');
+  assertIncludes(triggers, 'normalizePredictiveTriggerRecord(docSnap.id, docSnap.data(), scope)', 'Answerlattice predictive single-trigger read rejects a row outside expected scope');
   assertIncludes(triggers, 'const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(data.id);', 'Answerlattice predictive trigger update normalizes trigger ID');
-  assertIncludes(triggers, 'await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });', 'Answerlattice predictive trigger update writes normalized trigger ID');
+  assertIncludes(triggers, 'batch.set(getDocRef(normalizedTriggerId), composedData, { merge: true });', 'Answerlattice predictive trigger update writes normalized trigger ID in the atomic source/audit batch');
   assertIncludes(triggers, 'const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);', 'Answerlattice predictive trigger actions normalize trigger ID');
-  assertIncludes(triggers, 'await deleteDoc(getDocRef(normalizedTriggerId));', 'Answerlattice predictive trigger delete uses normalized trigger ID');
+  assertIncludes(triggers, 'batch.delete(getDocRef(normalizedTriggerId));', 'Answerlattice predictive trigger delete uses normalized trigger ID in the atomic source/audit batch');
   assertNotIncludes(triggers, 'doc(answerlatticeFirebaseClient, COLLECTION, docId)', 'Answerlattice predictive trigger DAL must not build raw trigger document refs');
   assertNotIncludes(triggers, 'setDoc(getDocRef(data.id), composedData', 'Answerlattice predictive trigger update must not write raw data ID');
   assertNotIncludes(triggers, 'setDoc(getDocRef(triggerId), composedData', 'Answerlattice predictive trigger actions must not write raw trigger ID');
   assertNotIncludes(triggers, 'deleteDoc(getDocRef(triggerId))', 'Answerlattice predictive trigger delete must not use raw trigger ID');
   assertIncludes(predictiveTriggerHook, "import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';", 'Answerlattice predictive trigger hook ID boundary import');
   assertIncludes(predictiveTriggerHook, 'const triggerId = normalizeAnswerlatticePredictiveTriggerId(data.id);', 'Answerlattice predictive trigger hook update normalizes trigger ID');
-  assertIncludes(predictiveTriggerHook, 'await updatePredictiveTrigger({ ...data, id: triggerId });', 'Answerlattice predictive trigger hook update sends normalized trigger ID');
+  assertIncludes(predictiveTriggerHook, 'const outcome = await updatePredictiveTrigger({ ...data, id: triggerId }, { tId, sId });', 'Answerlattice predictive trigger hook update sends normalized trigger ID and active workspace scope');
   assertIncludes(predictiveTriggerHook, 'const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);', 'Answerlattice predictive trigger hook actions normalize trigger ID');
-  assertIncludes(predictiveTriggerHook, 'entityId: normalizedTriggerId,', 'Answerlattice predictive trigger hook audit logs normalized trigger ID');
+  assertNotIncludes(predictiveTriggerHook, 'addAuditLog', 'Answerlattice predictive trigger hook must not write a second non-atomic audit event');
+  assertIncludes(triggers, 'batch.set(getAuditDocRef(), auditData);', 'Answerlattice predictive trigger source mutation and audit share one atomic batch');
+  assertIncludes(triggers, 'rebuildPredictiveTriggerSummaryAfterCommit', 'Answerlattice predictive trigger DAL distinguishes committed source truth from pending summary repair');
+  assertIncludes(predictiveTriggerHook, 'warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);', 'Answerlattice predictive trigger hook reports post-commit summary lag without treating the source mutation as failed');
   assertIncludes(triggers, 'rebuildPredictiveTriggerSummary', 'Answerlattice predictive trigger summary rebuild');
   assertIncludes(triggers, "doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, `predictiveTriggers_${tId}_${sId}`)", 'Answerlattice predictive trigger summary doc');
   assertIncludes(triggers, 'pId: PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice predictive trigger summary product guard');
   assertIncludes(triggers, 'activeTriggerCount', 'Answerlattice predictive trigger active count');
-  assertIncludes(triggers, "markAnswerlatticeCompiledContextSourceChanged('predictiveTriggers'", 'Answerlattice predictive trigger source invalidation');
+  assertIncludes(triggers, "await appendAnswerlatticeCompiledContextSourceChange(transaction, 'predictiveTriggers'", 'Answerlattice predictive trigger summary and source invalidation share one ownership-reading transaction');
+  assertIncludes(triggers, "'predictive',", 'Answerlattice predictive owner summary rebuild requests public predictive cache invalidation');
+  assertIncludes(triggers, '{ throwOnFailure: true }', 'Answerlattice predictive cache invalidation failure propagates into the explicit summary synchronization outcome');
   assertIncludes(triggers, "'predictive_trigger_create'", 'Answerlattice predictive trigger create refresh');
   assertIncludes(triggers, "'predictive_trigger_update'", 'Answerlattice predictive trigger update refresh');
   assertIncludes(triggers, "'predictive_trigger_delete'", 'Answerlattice predictive trigger delete refresh');
@@ -5579,7 +5890,8 @@ function verifyAnswerlatticeCallableDiagnostics() {
     assertIncludes(source, 'transaction.delete(articleSnap.ref)', `${label} deletes approved replacement articles only at final publication`);
     assertIncludes(source, 'status: INGESTION_JOB_STATUS.PUBLISHED', `${label} writes published status transactionally`);
     assertIncludes(source, 'errorMessage: null', `${label} clears stale failure text on publish`);
-    assertIncludes(source, "status: 'stale'", `${label} marks bundle manifest stale on publish`);
+    assertIncludes(source, 'await appendAnswerlatticeCacheVersionBump(', `${label} invalidates owned cache and compiled-context state on publish`);
+    assertIncludes(source, "['docsNav']", `${label} invalidates navigation and KB compiled-context sources together`);
     assertNotIncludes(source, 'error.message', `${label} must not persist raw finalization exception text`);
     assertNotIncludes(source, 'const id = Number(value);', `${label} must not loosely coerce persisted scope`);
   });
@@ -5774,9 +6086,14 @@ function verifyAnswerlatticeCallableDiagnostics() {
 function verifyChatAnalyticsDiagnostics() {
   const chatAnalytics = read('src/database/chatAnalytics/index.ts');
   const chatAnalyticsAggregation = read('functions-answerlattice/src/answerlattice/chatAnalyticsAggregation.ts');
+  const chatAnalyticsDeletionRecovery = read('functions-answerlattice/src/answerlattice/chatAnalyticsDeletionRecovery.ts');
   const chatAnalyticsBackfillBoundary = read('functions-answerlattice/src/answerlattice/chatAnalyticsBackfillBoundary.ts');
+  const callableAuth = read('functions-answerlattice/src/callableAuth.ts');
+  const callableAuthBoundary = read('functions-answerlattice/src/callableAuthBoundary.ts');
   const answerlatticeFunctionsIndex = read('functions-answerlattice/src/index.ts');
-  const chatAnalyticsService = read('src/services/chatAnalytics/index.ts');
+  const chatAnalyticsClient = read('src/lib/answerlattice/chatAnalyticsBackfillClient.ts');
+  const chatAnalyticsContracts = read('src/lib/answerlattice/chatAnalyticsBackfillContracts.ts');
+  const chatAnalyticsPlatformSurface = read('src/components/templates/answerlattice/platform/AnalyticsBackfill.tsx');
   const chatIntelligence = read('functions-answerlattice/src/answerlattice/chatIntelligence.ts');
   const answerlatticeNightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
   const kbGenerationWatchdog = read('functions-answerlattice/src/answerlattice/kbGenerationWatchdog.ts');
@@ -5802,8 +6119,13 @@ function verifyChatAnalyticsDiagnostics() {
   assertNoDirectConsole(chatAnalytics, 'Answerlattice chat analytics DAL');
   assertIncludes(chatAnalytics, 'logChatAnalyticsFailure', 'Answerlattice chat analytics bounded diagnostics');
   assertIncludes(chatAnalytics, "import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice chat analytics imports shared exact scope resolver');
-  assertIncludes(chatAnalytics, 'const getRequiredChatAnalyticsContext = async ()', 'Answerlattice chat analytics authoritative active-session context');
+  assertIncludes(chatAnalytics, 'const getRequiredChatAnalyticsContext = (session: unknown)', 'Answerlattice chat analytics binds reads to the initiating session');
   assertIncludes(chatAnalytics, 'const scope = resolveAnswerlatticeSessionScope(session);', 'Answerlattice chat analytics shared tenant/store normalization');
+  assertNotIncludes(chatAnalytics, "import getActiveSession from '@lib/auth/getActiveSession';", 'Answerlattice chat analytics must not replace captured scope with a later active session');
+  assert(
+    (chatAnalytics.match(/getRequiredChatAnalyticsContext\(session\)/g) || []).length >= 5,
+    'Answerlattice chat analytics reads must consistently resolve their captured session scope',
+  );
   assertIncludes(chatAnalytics, "where('tId', '==', scope.tId)", 'Answerlattice chat analytics reads use normalized tenant scope');
   assertIncludes(chatAnalytics, "where('sId', '==', scope.sId)", 'Answerlattice chat analytics reads use normalized store scope');
   assertIncludes(chatAnalytics, "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)", 'Answerlattice chat analytics reads enforce exact product scope');
@@ -5816,15 +6138,34 @@ function verifyChatAnalyticsDiagnostics() {
   assertIncludes(chatAnalyticsAggregation, 'sourceComplete', 'Answerlattice analytics surfaces bounded partial results');
   assertIncludes(chatAnalyticsAggregation, "const STATE_DOC_PREFIX = 'chatAnalyticsState';", 'Answerlattice analytics uses compact continuation state');
   assertIncludes(chatAnalyticsAggregation, 'export const backfillChatAnalyticsDays = async (', 'Answerlattice analytics owns dedicated historical backfill');
+  assertIncludes(chatAnalyticsAggregation, 'export const rebuildChatAnalyticsForDeletedSession = async (', 'Answerlattice analytics rebuilds the exact day after a hard delete');
+  assertIncludes(chatAnalyticsAggregation, 'const result = await aggregateDay(tId, sId, date);', 'Answerlattice delete recovery replaces the affected day from surviving truth');
+  assertIncludes(chatAnalyticsDeletionRecovery, 'recoverChatAnalyticsAfterDeletedSession', 'Answerlattice deletion recovery owns aggregate and insight repair');
+  assertIncludes(chatAnalyticsDeletionRecovery, 'syncAnswerlatticeChatIntelligence(', 'Answerlattice deletion recovery refreshes derived intelligence');
+  assertIncludes(chatAnalyticsDeletionRecovery, '// Run even when the aggregate source hash was already current.', 'Answerlattice deletion recovery remains retry-safe after partial completion');
+  assertIncludes(chatAnalyticsDeletionRecovery, "error.message !== 'answerlattice_chat_intelligence_source_invalid'", 'Answerlattice deletion recovery distinguishes invalid source from retryable failures');
+  assertIncludes(chatAnalyticsDeletionRecovery, 'invalidateAnswerlatticeChatIntelligence(tId, sId)', 'Answerlattice deletion recovery removes stale insight truth when recent sources are incomplete');
+  assertIncludes(chatIntelligence, 'export async function invalidateAnswerlatticeChatIntelligence(', 'Answerlattice intelligence owns atomic derived-document invalidation');
+  assertIncludes(chatIntelligence, "batch.delete(insightCollection.doc('feedback'))", 'Answerlattice intelligence invalidation deletes feedback truth');
+  assertIncludes(chatIntelligence, "batch.delete(insightCollection.doc('weekly'))", 'Answerlattice intelligence invalidation deletes weekly truth');
   assertIncludes(chatAnalyticsAggregation, 'export const acquireChatAnalyticsBackfillLease = async (', 'Answerlattice analytics backfill has an atomic lease');
+  assertIncludes(chatAnalyticsAggregation, 'isCurrentAnswerlatticePlatformCallableUser(userSnapshot.data(), operator)', 'Answerlattice analytics lease transaction rechecks current operator authority');
   assertIncludes(chatAnalyticsAggregation, "manualBackfillLeaseId: leaseId", 'Answerlattice analytics persists the scoped backfill lease');
+  assertIncludes(read('functions-answerlattice/src/index.ts'), 'export const answerlatticeChatAnalyticsOnDelete = onDocumentDeleted(', 'Answerlattice exports the chat-session delete trigger');
+  assertIncludes(read('functions-answerlattice/src/index.ts'), 'recoverChatAnalyticsAfterDeletedSession(', 'Answerlattice delete trigger invokes full derived-state recovery');
   assertIncludes(chatAnalyticsBackfillBoundary, 'parseAnswerlatticeChatAnalyticsBackfillInput', 'Answerlattice analytics backfill validates its request');
-  assertIncludes(chatAnalyticsBackfillBoundary, "store.pId === 'AL'", 'Answerlattice analytics backfill validates persisted product scope');
+  assertIncludes(chatAnalyticsBackfillBoundary, "productIds.every((entry) => entry === 'AL')", 'Answerlattice analytics backfill validates all persisted product aliases');
   assertIncludes(answerlatticeFunctionsIndex, 'export const backfillChatAnalytics = onCall(', 'Answerlattice runtime exports the dedicated backfill callable');
-  assertIncludes(answerlatticeFunctionsIndex, "assertAnswerlatticePlatformCallable(request, 'backfillChatAnalytics')", 'Answerlattice backfill requires platform callable authority');
+  assertIncludes(answerlatticeFunctionsIndex, "await assertAnswerlatticePlatformCallable(request, 'backfillChatAnalytics')", 'Answerlattice backfill requires current platform callable authority');
   assertIncludes(answerlatticeFunctionsIndex, 'isAnswerlatticeChatAnalyticsStoreScope(storeSnapshot.data(), input.tId, input.sId)', 'Answerlattice backfill revalidates persisted store scope');
-  assertIncludes(chatAnalyticsService, "httpsCallable(answerlatticeFunctions, 'backfillChatAnalytics')", 'Chat analytics service calls the dedicated Answerlattice runtime');
-  assertNotIncludes(chatAnalyticsService, "httpsCallable(functions, 'backfillAggregates')", 'Chat analytics service must not call the legacy MenuList backfill');
+  assertIncludes(callableAuth, ".collection(DB_COLLECTIONS.USERS).doc(userId).get()", 'Answerlattice platform callables re-read current product user authority');
+  assertIncludes(callableAuthBoundary, "normalizeAnswerlatticeCallableAccessRevision(userData.accessRevision ?? 0) === identity.accessRevision", 'Answerlattice platform callables reject stale durable access revisions');
+  assertIncludes(chatAnalyticsClient, "httpsCallable(answerlatticeFunctions, 'backfillChatAnalytics')", 'Chat analytics client calls the dedicated Answerlattice runtime');
+  assertNotIncludes(chatAnalyticsClient, "httpsCallable(functions, 'backfillAggregates')", 'Chat analytics client must not call the legacy MenuList backfill');
+  assertIncludes(chatAnalyticsContracts, 'normalizeAnswerlatticeChatAnalyticsScopeId(response.tId) !== expected.tId', 'Chat analytics client verifies response tenant acknowledgement');
+  assertIncludes(chatAnalyticsContracts, 'normalizeAnswerlatticeChatAnalyticsScopeId(response.sId) !== expected.sId', 'Chat analytics client verifies response workspace acknowledgement');
+  assertIncludes(chatAnalyticsPlatformSurface, 'useAnswerlatticePlatformWorkspaceOptions', 'Chat analytics platform surface uses Answerlattice workspace truth');
+  assertNotIncludes(chatAnalyticsPlatformSurface, 'usePlatformStoreSummaryOptions', 'Chat analytics platform surface must not use MenuList store truth');
   assertIncludes(answerlatticeNightly, "'chat_analytics_summary'", 'Answerlattice analytics runs inside the existing nightly scheduler');
   assertIncludes(answerlatticeNightly, 'expireStaleAnswerlatticeGenerationJobs', 'Answerlattice nightly owns KB timeout recovery');
   assertIncludes(kbGenerationWatchdog, "value.pId === PRODUCT_ID", 'Answerlattice KB watchdog validates exact persisted product scope');
@@ -5852,6 +6193,12 @@ function verifyChatAnalyticsDiagnostics() {
   assertIncludes(chatIntelligence, "generationMode: 'deterministic'", 'Answerlattice deterministic insight generation mode');
   assertIncludes(chatIntelligence, 'hasCompleteSevenDayRange', 'Answerlattice deterministic insight exact seven-day completeness');
   assertIncludes(chatIntelligence, 'sourceCompleteness:', 'Answerlattice deterministic insight source evidence');
+  assertIncludes(chatIntelligence, 'schemaVersion: INSIGHT_SCHEMA_VERSION', 'Answerlattice deterministic insight exact schema version');
+  assertIncludes(chatIntelligence, 'positiveFeedbackSharePointChange', 'Answerlattice weekly feedback metric uses literal percentage-point units');
+  assertIncludes(chatIntelligence, 'volumeChangePercent', 'Answerlattice weekly volume metric uses literal percentage units');
+  assertIncludes(chatIntelligence, 'positiveFeedbackShare: totalFeedback > 0', 'Answerlattice feedback share remains unavailable without recorded feedback');
+  assertNotIncludes(chatIntelligence, 'totalFeedbackAnalyzed:', 'Answerlattice feedback insight must not mislabel negative gap events as all feedback');
+  assertNotIncludes(chatIntelligence, '{ merge: true }', 'Answerlattice deterministic insight writes replace stale derived fields');
   assertIncludes(chatIntelligence, 'Recorded positive feedback was', 'Answerlattice weekly narrative must describe observed feedback rather than inferred satisfaction');
   assertIncludes(chatIntelligence, 'positive feedback across recorded outcomes', 'Answerlattice weekly highlights must describe observed feedback');
   assertIncludes(chatIntelligence, "where('pId', '==', PRODUCT_ID)", 'Answerlattice insight writer product scope');
@@ -5866,6 +6213,12 @@ function verifyChatAnalyticsDiagnostics() {
   assertIncludes(manualWeeklyRoute, 'limit: 2', 'Answerlattice manual weekly refresh has a bounded workspace limit');
   assertIncludes(manualWeeklyRoute, 'ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS', 'Answerlattice manual weekly refresh uses shared private response headers');
   assertIncludes(manualWeeklyRoute, "generationMode: 'deterministic'", 'Answerlattice manual weekly refresh is deterministic');
+  assertIncludes(manualWeeklyRoute, 'schemaVersion: WEEKLY_INSIGHT_SCHEMA_VERSION', 'Answerlattice manual weekly refresh writes the current exact schema');
+  assertIncludes(manualWeeklyRoute, 'volumeChangePercent', 'Answerlattice manual weekly volume metric carries percent units');
+  assertIncludes(manualWeeklyRoute, 'positiveFeedbackSharePointChange', 'Answerlattice manual weekly feedback metric carries percentage-point units');
+  assertIncludes(manualWeeklyRoute, 'currentPositiveFeedbackShare !== null', 'Answerlattice manual weekly feedback comparison requires both denominators');
+  assertNotIncludes(manualWeeklyRoute, 'satisfactionChange', 'Answerlattice manual weekly refresh must not restore satisfaction terminology');
+  assertNotIncludes(manualWeeklyRoute, '{ merge: true }', 'Answerlattice manual weekly refresh replaces stale derived fields');
   assertIncludes(manualWeeklyRoute, "currentInsight.get('sourceHash') !== sourceHash", 'Answerlattice manual weekly refresh hash-skips unchanged writes');
   assertIncludes(manualWeeklyRoute, 'const comparablePreviousDays = previousSourceComplete ? previousDays : [];', 'Answerlattice weekly comparison excludes incomplete prior source');
   assertIncludes(manualWeeklyRoute, 'previousDays: comparablePreviousDays.length,', 'Answerlattice weekly source evidence counts only admitted prior days');
@@ -5895,7 +6248,7 @@ function verifyChatAnalyticsDiagnostics() {
   assertNotIncludes(platformWeeklyDigest, 'generate-local', 'Platform weekly digest must not call retired model-assisted regeneration');
   assertIncludes(weeklyDigestReadme, 'Sunday UTC', 'Weekly Digest README scheduler boundary');
   assertIncludes(weeklyDigestReadme, 'email-delivery system', 'Weekly Digest README delivery non-claim');
-  assertIncludes(weeklyDigestImpl, 'writes only changed insight documents', 'Weekly Digest implementation idempotency contract');
+  assertIncludes(weeklyDigestImpl, 'writes only changed schema-v2 insight documents by exact replacement', 'Weekly Digest implementation idempotency contract');
   assertIncludes(weeklyDigestFirebase, 'two queries limited to seven daily rows', 'Weekly Digest Firebase manual read ceiling');
   assertIncludes(weeklyDigestFirebase, 'One query limited to 14 daily rows', 'Weekly Digest Firebase scheduled read ceiling');
   assertIncludes(weeklyDigestFirebase, 'No model prompt, response, token usage, or AI operation is stored.', 'Weekly Digest Firebase no-provider boundary');
@@ -6062,6 +6415,10 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   const billingDocumentIdBoundary = read('src/lib/answerlattice/billingDocumentIdBoundary.ts');
   const billingScopeBoundary = read('src/lib/answerlattice/billingScopeBoundary.ts');
   const aiAccounting = read('src/lib/answerlattice/aiAccounting.ts');
+  const supportSearchAccountingTest = read('scripts/verification/test-answerlattice-support-search-accounting-emulator.ts');
+  const supportSearchAccounting = read('src/lib/answerlattice/supportSearchAccounting.ts');
+  const aiCapacityReservationRecovery = read('functions-answerlattice/src/answerlattice/aiCapacityReservationRecovery.ts');
+  const masterScheduler = read('functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts');
   const billing = read('src/database/answerlattice/billing.ts');
   const billingUi = read('src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx');
   const intakeUsageLedger = read('src/lib/answerlattice/intakeUsageLedger.ts');
@@ -6134,10 +6491,12 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertNotIncludes(signalEmitter, 'const sId = Number(params.sId);', 'Answerlattice signal must not coerce store scope');
   assertIncludes(signalEmitter, 'answerlattice_signal_emit_failed', 'Answerlattice signal emit failure diagnostic');
   assertIncludes(signalEmitter, 'answerlattice_signal_replay_conflict', 'Answerlattice signal conflicting replay rejection');
+  assertIncludes(signalEmitter, 'buildAnswerlatticeSignalMemoryDedupKey', 'Answerlattice signal tenant-scoped process dedupe');
   assertIncludes(signalEmitter, 'resolutionEventId', 'Answerlattice ticket resolution lifecycle identity');
   assertIncludes(signalEmitter, 'redactAnswerlatticeSupportEvidenceText', 'Answerlattice support evidence redaction');
   assertNotIncludes(signalEmitter, 'resolvedBy: params.resolvedBy', 'Answerlattice signal stored resolver identity');
   assertIncludes(signalIdentity, 'buildAnswerlatticeSignalPayloadFingerprint', 'Answerlattice signal payload fingerprint helper');
+  assertIncludes(signalIdentity, 'buildAnswerlatticeSignalMemoryDedupKey', 'Answerlattice signal scoped memory identity helper');
   assert(
     supportEvidencePrivacy === supportEvidencePrivacyFunctions,
     'Answerlattice support evidence privacy shared mirror',
@@ -6221,7 +6580,7 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(governanceContracts, 'AnswerlatticeStoredMutationProposalSchema', 'Answerlattice canonical governance stored proposal schema');
   assertIncludes(governanceServer, 'await assertEntityBindings(transaction, scope, entityIds, candidate.status === \'active\');', 'Answerlattice canonical governance entity binding validation');
   assertIncludes(governanceServer, 'await assertNoActiveOverlap(transaction, scope, candidate, answerId);', 'Answerlattice canonical governance overlap validation');
-  assertIncludes(governanceServer, 'addInvalidationWrites(transaction, scope, {', 'Answerlattice canonical governance cache and context invalidation');
+  assertIncludes(governanceServer, 'addInvalidationWrites(transaction, scope, invalidationOwnership, invalidationOptions);', 'Answerlattice canonical governance cache and context invalidation');
   assertIncludes(signalEvents, 'normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds', 'Answerlattice signal event query resolved entity ID imports');
   assertIncludes(signalEvents, 'const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);', 'Answerlattice signal event query resolved entity ID');
   assertIncludes(signalEvents, "where('entityId', '==', normalizedEntityId)", 'Answerlattice signal event normalized query key');
@@ -6305,7 +6664,23 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(billingDocumentIdBoundary, 'isValidFirestoreDocumentId(documentId)', 'Answerlattice billing document ID Firestore guard');
   assertIncludes(aiAccounting, 'normalizeAnswerlatticeSubscriptionId,', 'Answerlattice AI accounting subscription ID boundary import');
   assertIncludes(aiAccounting, 'const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription?.id);', 'Answerlattice AI accounting normalizes subscription ID before refs');
-  assertIncludes(aiAccounting, 'if (!normalizedSubscriptionId || Number(subscription.monthlyCreditsAllowance || 0) <= 0) {', 'Answerlattice AI accounting skips monthly refresh before malformed refs');
+  assertIncludes(aiAccounting, 'const initialCredits = getExactSubscriptionCredits(subscription);', 'Answerlattice AI accounting validates monthly refresh credit scalars');
+  assertIncludes(aiAccounting, 'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)', 'Answerlattice AI accounting exact monthly-credit scalar boundary');
+  assertIncludes(aiAccounting, 'const storedUnitsConsumed = getPositiveCreditInteger(existing.unitsConsumed);', 'Answerlattice AI accounting exact replay unit boundary');
+  assertNotIncludes(aiAccounting, 'Number(existing.unitsConsumed', 'Answerlattice AI accounting must not coerce replay units');
+  assertNotIncludes(productBillingServer, 'Number.isFinite(Number(data.monthlyCredits))', 'Answerlattice subscription loading must preserve malformed credits for rejection');
+  assertIncludes(supportSearchAccountingTest, 'numeric-string subscription balances must not authorize Answerlattice provider work', 'Answerlattice numeric-string credit regression');
+  assertIncludes(supportSearchAccountingTest, 'numeric-string balance evidence must not satisfy Answerlattice idempotent replay', 'Answerlattice replay balance regression');
+  assertIncludes(supportSearchAccounting, 'reserveAnswerlatticeAiOperationCapacity', 'Answerlattice support search reserves before provider work');
+  assertIncludes(supportSearchAccounting, 'refundAnswerlatticeAiOperationReservation', 'Answerlattice support search refunds unused/failed reservations');
+  assertIncludes(aiCapacityReservationRecovery, 'recoverAnswerlatticeAiCapacityReservations', 'Answerlattice stale AI reservation recovery');
+  assertIncludes(masterScheduler, "name: 'ai_capacity_reservation_recovery'", 'Answerlattice AI recovery existing scheduler task');
+  assertIncludes(masterScheduler, 'if (result.errors > 0)', 'Answerlattice AI recovery incomplete task failure boundary');
+  assertIncludes(masterScheduler, 'ANSWERLATTICE_AI_CAPACITY_RESERVATION_RECOVERY_INCOMPLETE', 'Answerlattice AI recovery fixed failure code');
+  assertIncludes(supportSearchAccountingTest, 'support-search credits must be reserved before provider work', 'Answerlattice pre-provider reservation regression');
+  assertIncludes(supportSearchAccountingTest, 'a stale preloaded subscription must not reset credits after current scope changed', 'Answerlattice monthly-reset current-scope regression');
+  assertIncludes(supportSearchAccountingTest, 'a stale subscription object must not renew a reservation after current status changed', 'Answerlattice reservation-renewal current-status regression');
+  assertIncludes(supportSearchAccountingTest, 'malformed recovery evidence must not mint support credits', 'Answerlattice recovery exact-evidence regression');
   assertIncludes(aiAccounting, "throw new Error('Answerlattice subscription is not available.');", 'Answerlattice AI accounting fails closed before malformed credit-debit refs');
   assertIncludes(aiAccounting, 'const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);', 'Answerlattice AI accounting subscription refs use normalized ID');
   assertIncludes(aiAccounting, 'normalizeAnswerlatticeBillingScopeDocumentId(scope.tId)', 'Answerlattice AI accounting normalizes tenant scope before write refs');
@@ -6313,7 +6688,8 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertNotIncludes(aiAccounting, 'const isSubscriptionInScope = (', 'Answerlattice AI accounting must not retain a coercive local subscription guard');
   assertIncludes(billingScopeBoundary, 'export const getAnswerlatticeBillingRecordScope = (', 'Answerlattice exact persisted billing scope resolver');
   assertIncludes(billingScopeBoundary, 'export const isAnswerlatticeSubscriptionInScope = (', 'Answerlattice exact subscription ownership boundary');
-  assertIncludes(billingScopeBoundary, 'productValues.every((value) => value === PRODUCT_IDS.ANSWERLATTICE)', 'Answerlattice subscription exact product guard');
+  assertIncludes(billingScopeBoundary, 'record.pId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice subscription exact pId guard');
+  assertIncludes(billingScopeBoundary, 'record.productId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice subscription exact productId guard');
   assertIncludes(billingScopeBoundary, "typeof value === 'number'", 'Answerlattice persisted billing scope numeric-type guard');
   assertIncludes(billingScopeBoundary, "const tId = getExactNumericScope(record, ['tId', 'tenantId']);", 'Answerlattice subscription exact tenant aliases');
   assertIncludes(billingScopeBoundary, "const sId = getExactNumericScope(record, ['sId', 'storeId']);", 'Answerlattice subscription exact store aliases');
@@ -6336,12 +6712,16 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(billing, 'throw error;', 'Answerlattice active subscription failures propagate instead of presenting false absence');
   assertNotIncludes(billing, 'Number(item.tenantId ?? item.tId)', 'Answerlattice billing history must not coerce tenant ownership');
   assertNotIncludes(billing, 'Number(item.storeId ?? item.sId)', 'Answerlattice billing history must not coerce store ownership');
+  assertIncludes(billing, "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)", 'Answerlattice billing queries exact primary product alias');
+  assertIncludes(billing, "where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)", 'Answerlattice billing queries exact compatibility product alias');
   assertIncludes(billing, "where('event', 'in', ['subscription.charged', 'order.paid'])", 'Answerlattice billing filters paid history in Firestore');
   assertIncludes(billing, "orderBy('created_at', 'desc')", 'Answerlattice billing orders paid history before limit');
   assertIncludes(answerlatticeIndexes, '"collectionGroup": "payment_transactions"', 'Answerlattice billing history composite index');
-  assertIncludes(productBillingServer, 'getAnswerlatticeBillingRecordScope,', 'Answerlattice server billing imports exact persisted record scope');
-  assertIncludes(productBillingServer, '&& !getAnswerlatticeBillingRecordScope(subscription)', 'Answerlattice direct subscription reads reject malformed persisted identity');
-  assertIncludes(productBillingServer, '&& !getAnswerlatticeBillingRecordScope(current)', 'Answerlattice billing mutations reject malformed persisted identity');
+  assertIncludes(answerlatticeIndexes, '"fieldPath": "productId"', 'Answerlattice billing history product-alias composite index');
+  assertIncludes(productBillingServer, '!getProductSubscriptionBillingScope(productId, subscription)', 'Answerlattice direct subscription reads reject malformed persisted identity');
+  assertIncludes(productBillingServer, '!getProductSubscriptionBillingScope(productId, current)', 'Answerlattice billing mutations reject malformed persisted identity');
+  assertIncludes(productBillingServer, ".where('tId', '==', tenantScope.numericId)", 'Answerlattice server billing constrains duplicate tenant alias before its bounded read');
+  assertIncludes(productBillingServer, ".where('sId', '==', storeScope.numericId)", 'Answerlattice server billing constrains duplicate store alias before its bounded read');
   assertIncludes(billingUi, 'const [hasBillingLoadError, setHasBillingLoadError] = useState(false);', 'Answerlattice billing exposes an explicit load-failure state');
   assertIncludes(billingUi, 'disabled={isLoading || hasBillingLoadError || !scope}', 'Answerlattice billing blocks plan mutation while billing truth is unavailable');
   assertIncludes(billingUi, 'message="Billing could not be loaded"', 'Answerlattice billing renders a fail-closed load error');
@@ -6358,11 +6738,18 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(intakeUsageLedger, "throw new Error('Answerlattice intake usage scope does not match this workspace.');", 'Answerlattice intake ledger tenant/store scope gate');
   assertIncludes(intakeUsageLedger, 'isAnswerlatticeIntakeLedgerInScope(', 'Answerlattice intake ledger scope helper boundary');
   assertIncludes(intakeUsageLedger, 'isAnswerlatticeSubscriptionInScope(', 'Answerlattice intake ledger exact subscription ownership');
+  assertIncludes(intakeUsageLedger, 'subscription.productId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice intake active subscription requires the exact compatibility product alias');
   assertIncludes(intakeUsageLedger, 'isAnswerlatticeStoreInScope(', 'Answerlattice intake ledger exact store ownership');
   assertNotIncludes(intakeUsageLedger, "String(storeData.pId ?? storeData.productId ?? '').trim().toUpperCase()", 'Answerlattice intake ledger must not normalize malformed store product identity');
   assertNotIncludes(knowledgeIntake, 'trim().toUpperCase() !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice Knowledge Intake must not normalize malformed persisted product identity');
   assertNotIncludes(knowledgeIntakeApi, 'trim().toUpperCase()', 'Answerlattice Knowledge Intake API must not normalize malformed store/subscription product identity');
-  assertIncludes(knowledgeIntakeApi, 'const storeProductId = storeData.pId ?? storeData.productId;', 'Answerlattice Knowledge Intake API exact store product identity');
+  assertIncludes(knowledgeIntakeApi, 'isAnswerlatticeStoreInScope(storeData, { tenantId: tId, storeId: sId }, storeSnap.id)', 'Answerlattice Knowledge Intake API exact store identity');
+  assertNotIncludes(knowledgeIntakeApi, 'storeData.tenantId ?? storeData.tId', 'Answerlattice Knowledge Intake API must not accept conflicting store tenant aliases');
+  assertNotIncludes(knowledgeIntakeApi, 'storeData.pId ?? storeData.productId', 'Answerlattice Knowledge Intake API must not accept conflicting store product aliases');
+  [intakeUsageLedger, knowledgeIntakeApi].forEach((source) => {
+    assertIncludes(source, ".where('tId', '==',", 'Answerlattice paid intake fallback constrains duplicate tenant alias before its bounded read');
+    assertIncludes(source, ".where('sId', '==',", 'Answerlattice paid intake fallback constrains duplicate store alias before its bounded read');
+  });
   assertIncludes(intakeUsageLedger, 'resolveAnswerlatticeIntakeRefundAllocation({', 'Answerlattice intake refund billing-period boundary');
   assertIncludes(intakeUsageSettlement, 'export function isAnswerlatticeIntakeLedgerInScope(', 'Answerlattice intake pure ledger scope boundary');
   assertIncludes(intakeUsageSettlement, 'data.pId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice intake ledger exact product identity');
@@ -6448,6 +6835,8 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(queryEmbeddings, 'answerlattice_query_embedding_stale_delete_failed', 'Answerlattice query embedding stale-delete failure diagnostic');
   assertIncludes(queryEmbeddings, "getBoundedAnswerlatticeStringContext('cacheKey', cacheKey)", 'Answerlattice query embedding bounded cache-key metadata');
   assertIncludes(queryEmbeddings, 'cacheAgeDays', 'Answerlattice query embedding bounded cache age metadata');
+  assertIncludes(queryEmbeddings, 'docRef.delete({ lastUpdateTime: docSnap.updateTime })', 'Answerlattice query embedding snapshot-preconditioned stale delete');
+  assertIncludes(queryEmbeddings, 'expiresMs <= now', 'Answerlattice query embedding explicit expiry admission');
   assertNotIncludes(entityExtraction, 'Failed to store entity candidate "', 'Answerlattice entity extraction raw entity-name diagnostic');
   assertNotIncludes(entities, "markAnswerlatticeTenantHasEntities(data.tId, data.sId, 'entity_created').catch(() => undefined)", 'Answerlattice entity tenant summary marker silent catch');
   assertNotIncludes(signalMutation, 'Failed to create mutation proposal for entity', 'Answerlattice mutation raw entity diagnostic');
@@ -6659,6 +7048,9 @@ function verifyWorkflowIntegrationAdapterSafety() {
 
 function verifyAnswerlatticeRetentionDiagnostics() {
   const dataRetention = read('functions-answerlattice/src/answerlattice/dataRetention.ts');
+  const contentFeedbackEmulator = read('scripts/verification/test-answerlattice-content-feedback-emulator.ts');
+  const dedicatedIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
+  const sharedIndexes = JSON.parse(read('firestore.indexes.json'));
 
   assertIncludes(dataRetention, "const RETENTION_TASK_FAILED = 'ANSWERLATTICE_RETENTION_TASK_FAILED';", 'Answerlattice retention fixed task failure code');
   assertIncludes(dataRetention, 'function getRetentionErrorContext', 'Answerlattice retention bounded source error context');
@@ -6670,6 +7062,29 @@ function verifyAnswerlatticeRetentionDiagnostics() {
   assertNotIncludes(dataRetention, 'const message = error instanceof Error ? error.message : String(error);', 'Answerlattice retention raw exception message extraction');
   assertNotIncludes(dataRetention, 'result.errors.push(`${name}: ${message}`);', 'Answerlattice retention raw scheduler error text');
   assertNotIncludes(dataRetention, "logger.warn('[Answerlattice Retention] Cleanup task failed', { name, error: message });", 'Answerlattice retention raw logger error text');
+  assertIncludes(dataRetention, "productField: 'pId'", 'Answerlattice shared legacy retention product field');
+  assertIncludes(dataRetention, "productValue: 'AL'", 'Answerlattice shared legacy retention exact product value');
+  assertIncludes(dataRetention, ".where(params.productField, '==', params.productValue)", 'Answerlattice shared legacy retention product query predicate');
+  assertIncludes(contentFeedbackEmulator, "doc('ml-expired').get()).exists, true", 'Answerlattice shared legacy retention foreign-product preservation');
+  for (const [indexes, label] of [[dedicatedIndexes, 'dedicated'], [sharedIndexes, 'shared']]) {
+    assert(
+      indexes.indexes.some((index) => index.collectionGroup === 'queryEmbeddings'
+        && index.fields?.map((field) => `${field.fieldPath}:${field.order}`).join('|') === 'pId:ASCENDING|createdAt:ASCENDING'),
+      `Answerlattice ${label} query-embedding legacy-retention product index`,
+    );
+    assert(
+      indexes.indexes.some((index) => index.collectionGroup === 'aiSearchHistory'
+        && index.fields?.map((field) => `${field.fieldPath}:${field.order}`).join('|') === 'pId:ASCENDING|createdOn:ASCENDING'),
+      `Answerlattice ${label} search-history legacy-retention product index`,
+    );
+    for (const collectionGroup of ['ownerNotificationEvents', 'ownerNotificationDeliveries', 'ownerNotificationRateLimits']) {
+      assert(
+        indexes.indexes.some((index) => index.collectionGroup === collectionGroup
+          && index.fields?.map((field) => `${field.fieldPath}:${field.order}`).join('|') === 'productId:ASCENDING|expiresAt:ASCENDING'),
+        `Answerlattice ${label} ${collectionGroup} legacy-retention product index`,
+      );
+    }
+  }
 }
 
 function verifyAnswerlatticeNightlySchedulerDiagnostics() {
@@ -6914,6 +7329,10 @@ function verifyAnswerlatticeTicketKnowledgeDiagnostics() {
   assertIncludes(nightly, "where('timestamp', '<', input.to)", 'Answerlattice mutation impact exact window boundary');
   assertIncludes(nightly, 'from: Timestamp.fromMillis(implementedAtMillis - windowMillis)', 'Answerlattice mutation impact pre-window');
   assertIncludes(nightly, 'to: Timestamp.fromMillis(implementedAtMillis + windowMillis)', 'Answerlattice mutation impact post-window');
+  assert(
+    (nightly.match(/\.collection\(DB_COLLECTIONS\.AI_SEARCH_HISTORY\)\n\s+\.where\('pId', '==', 'AL'\)/g) || []).length >= 2,
+    'Answerlattice coverage and recurring-fallback search-history queries must constrain exact product identity',
+  );
   assertIncludes(mutationProposals, 'buildAnswerlatticeManualMutationProposalId', 'Answerlattice manual proposal deterministic identity');
   assertIncludes(mutationProposals, "action: 'mutation_proposal_created_manual'", 'Answerlattice manual proposal audit');
   assertIncludes(mutationProposals, 'answerlattice_mutation_proposal_replay_conflict', 'Answerlattice manual proposal changed replay rejection');
@@ -6928,12 +7347,46 @@ function verifyAnswerlatticeTicketKnowledgeDiagnostics() {
 function verifyAnswerlatticeFrictionDiagnostics() {
   const frictionInsight = read('functions-answerlattice/src/answerlattice/frictionInsight.ts');
   const frictionAggregation = read('functions-answerlattice/src/answerlattice/frictionAggregation.ts');
+  const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
+  const packageJson = JSON.parse(read('package.json'));
+  const emulatorCommand = packageJson.scripts?.['test:answerlattice-friction-insight-state:emulator'] || '';
+  const frictionSpec = read('__docs__/answerlattice/product-friction-intelligence/product-friction-intelligence_spec.md');
+  const frictionImpl = read('__docs__/answerlattice/product-friction-intelligence/product-friction-intelligence_impl.md');
+  const frictionFirebase = read('__docs__/answerlattice/product-friction-intelligence/product-friction-intelligence_firebase.md');
+  const dedicatedIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
+  const sharedIndexes = JSON.parse(read('firestore.indexes.json'));
 
   assertIncludes(frictionInsight, "const ANSWERLATTICE_FRICTION_INSIGHT_GEMINI_FAILED = 'ANSWERLATTICE_FRICTION_INSIGHT_GEMINI_FAILED';", 'Answerlattice friction insight Gemini failure code');
   assertIncludes(frictionInsight, "const ANSWERLATTICE_FRICTION_INSIGHT_FAILED = 'ANSWERLATTICE_FRICTION_INSIGHT_FAILED';", 'Answerlattice friction insight fatal failure code');
   assertIncludes(frictionInsight, 'function getFrictionInsightSourceErrorContext', 'Answerlattice friction insight bounded source error context');
   assertIncludes(frictionInsight, 'function getFrictionInsightScopeContext', 'Answerlattice friction insight bounded scope context');
   assertIncludes(frictionInsight, 'return { generated: false, skippedReason: ANSWERLATTICE_FRICTION_INSIGHT_FAILED };', 'Answerlattice friction insight fixed failure skipped reason');
+  assertIncludes(frictionInsight, 'export function normalizeFrictionInsightSourceSnapshot', 'Answerlattice friction insight strict source boundary');
+  assertIncludes(frictionInsight, 'export async function commitFrictionInsightIfSnapshotCurrent', 'Answerlattice friction insight transaction-current writer');
+  assertIncludes(frictionInsight, 'const currentSnapshot = await transaction.get(snapshotRef);', 'Answerlattice friction insight transaction-current source read');
+  assertIncludes(frictionInsight, 'transaction.set(insightRef, {', 'Answerlattice friction insight exact replacement write');
+  assertIncludes(frictionInsight, "Buffer.byteLength(text, 'utf8') > MAX_FRICTION_INSIGHT_RESPONSE_BYTES", 'Answerlattice friction insight bounded provider response');
+  assertIncludes(frictionInsight, "return { generated: false, skippedReason: 'invalid_scope' };", 'Answerlattice friction insight exact scope admission');
+  assertIncludes(frictionInsight, 'export function buildFrictionInsightAccountingClientResponse', 'Answerlattice friction insight rejected-response accounting projection');
+  assertOrder(
+    frictionInsight,
+    [
+      'const aiResult = await callGeminiForFrictionInsight',
+      'if (!aiResult) {',
+      'await recordGeminiCallOperation({',
+      'if (!aiResult.insight) {',
+      'const committed = await commitFrictionInsightIfSnapshotCurrent',
+    ],
+    'Answerlattice friction insight accounts every completed provider response before output rejection or publication',
+  );
+  assertIncludes(nightly, 'skippedReason: taskResult.skippedReason || null', 'Answerlattice friction insight scheduler skip reason projection');
+  assertIncludes(nightly, 'aggregateFrictionStats(tId, sId, readObserver, new Date(startedAtMs))', 'Answerlattice friction aggregation fixed scheduler-run clock');
+  assertIncludes(nightly, 'cleanupExpiredFrictionStats(tId, sId, 90, 100, new Date(startedAtMs))', 'Answerlattice friction cleanup fixed scheduler-run clock');
+  assertIncludes(nightly, 'const dayOfWeek = new Date(startedAtMs).getUTCDay();', 'Answerlattice weekly friction fixed scheduler-run day');
+  assertNotIncludes(frictionInsight, '}, { merge: true });', 'Answerlattice friction insight stale merge writer');
+  assertNotIncludes(frictionInsight, '.map((e: any)', 'Answerlattice friction insight untyped source entity projection');
+  assertNotIncludes(frictionInsight, 'Number(e.last7d?', 'Answerlattice friction insight source metric coercion');
+  assert(emulatorCommand.split('env -u GOOGLE_APPLICATION_CREDENTIALS -u ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS').length - 1 >= 2, 'Answerlattice friction insight emulator must isolate parent and child credentials');
   assertNotIncludes(frictionInsight, "logger.error('[Answerlattice Friction Insight] Gemini call failed', { error });", 'Answerlattice friction insight raw Gemini error log');
   assertNotIncludes(frictionInsight, "logger.info('[Answerlattice Friction Insight] Generated', { tId, sId, overallHealth: aiResult.insight.overallHealth });", 'Answerlattice friction insight raw success scope log');
   assertNotIncludes(frictionInsight, "logger.error('[Answerlattice Friction Insight] Failed', { tId, sId, error });", 'Answerlattice friction insight raw fatal error log');
@@ -6946,7 +7399,28 @@ function verifyAnswerlatticeFrictionDiagnostics() {
   assertIncludes(frictionAggregation, "import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';", 'Answerlattice friction aggregation entity ID boundary import');
   assertIncludes(frictionAggregation, 'const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);', 'Answerlattice friction aggregation signal entity ID normalization');
   assertIncludes(frictionAggregation, 'const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);', 'Answerlattice friction aggregation search-history entity ID normalization');
-  assertIncludes(frictionAggregation, 'const eid = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);', 'Answerlattice friction aggregation historical entity ID normalization');
+  assertIncludes(frictionAggregation, ".collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)\n            .where('pId', '==', 'AL')", 'Answerlattice friction search-history query product partition');
+  assertIncludes(frictionAggregation, 'export function normalizeFrictionDailyStat', 'Answerlattice friction historical row boundary');
+  assertIncludes(frictionAggregation, ".collection(DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS)\n            .where('pId', '==', 'AL')", 'Answerlattice friction history and cleanup product partition');
+  assertIncludes(frictionAggregation, 'const stat = normalizeFrictionDailyStat(doc.data(), tId, sId);', 'Answerlattice friction history exact row admission');
+  assertIncludes(frictionAggregation, 'result.cleaned = snapshot.size;', 'Answerlattice friction cleanup post-commit count');
+  assertIncludes(frictionAggregation, 'throw new Error(ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED);', 'Answerlattice friction cleanup failure propagation');
+  assertNotIncludes(frictionAggregation, 'data.queryCount || 0', 'Answerlattice friction history query-count coercion');
+  assertNotIncludes(frictionAggregation, 'data.frictionScore || 0', 'Answerlattice friction history score coercion');
+  assertNotIncludes(frictionAggregation, '}, { merge: true });', 'Answerlattice friction derived-state stale merge writers');
+  for (const [label, manifest] of [['dedicated', dedicatedIndexes], ['shared', sharedIndexes]]) {
+    assert(
+      manifest.indexes.some((index) => index.collectionGroup === 'answerlattice_frictionDailyStats'
+        && JSON.stringify(index.fields.map((field) => field.fieldPath)) === JSON.stringify(['pId', 'tId', 'sId', 'date'])),
+      `Answerlattice ${label} friction history/cleanup index must include exact product and scope`,
+    );
+  }
+  assertIncludes(frictionSpec, 'queried by exact `pId: AL + tId + sId` before the read cap', 'Answerlattice friction specification product-partitioned history window');
+  assertIncludes(frictionSpec, 'transaction-current source fingerprint check and exact document replacement', 'Answerlattice friction specification transaction-current advisory publication');
+  assertIncludes(frictionImpl, 'after exact `pId: AL` query partitioning', 'Answerlattice friction implementation product-partitioned history window');
+  assertIncludes(frictionImpl, 'one Firestore transaction re-reads and fully normalizes the source snapshot', 'Answerlattice friction implementation transaction-current advisory publication');
+  assertIncludes(frictionFirebase, '`pId + tId + sId + canonical + createdOn desc`', 'Answerlattice friction Firebase product-partitioned history index');
+  assertIncludes(frictionFirebase, 'exact replacement inside a transaction', 'Answerlattice friction Firebase exact advisory replacement');
   assertNotIncludes(frictionAggregation, "logger.error('[Answerlattice Friction] Aggregation failed', { tId, sId, error });", 'Answerlattice friction aggregation raw failure log');
   assertNotIncludes(frictionAggregation, "logger.error('[Answerlattice Friction] Stats cleanup failed', { tId, sId, retentionDays, batchLimit, error });", 'Answerlattice friction cleanup raw failure log');
 }
@@ -7042,8 +7516,11 @@ function verifyAnswerlatticeDraftGeneratorDiagnostics() {
 function verifyAnswerlatticeSupportBoardSyncDiagnostics() {
   const entityIdBoundary = read('functions-answerlattice/src/answerlattice/entityIdBoundary.ts');
   const supportBoardSync = read('functions-answerlattice/src/answerlattice/supportBoardSync.ts');
+  const supportBoardSummary = read('functions-answerlattice/src/answerlattice/supportBoardSummary.ts');
+  const supportBoardDal = read('src/database/answerlattice/supportBoard.ts');
   const supportBoardReadme = read('__docs__/answerlattice/support-board/README.md');
   const supportBoardImpl = read('__docs__/answerlattice/support-board/support-board_impl.md');
+  const supportBoardFirebase = read('__docs__/answerlattice/support-board/support-board_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
 
@@ -7054,6 +7531,12 @@ function verifyAnswerlatticeSupportBoardSyncDiagnostics() {
   assertIncludes(supportBoardSync, 'const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);', 'Answerlattice Support Board sync signal entity ID normalization');
   assertIncludes(supportBoardSync, 'const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(doc.data().entityId);', 'Answerlattice Support Board sync source signal entity ID normalization');
   assertIncludes(supportBoardSync, 'const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(id);', 'Answerlattice Support Board sync source entity ID set normalization');
+  assertIncludes(supportBoardSync, ".collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)\n            .where('pId', '==', PRODUCT_ID)", 'Answerlattice Support Board search-history query product partition');
+  assertIncludes(supportBoardSync, ".collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)\n            .where('pId', '==', PRODUCT_ID)", 'Answerlattice Support Board drift query product partition');
+  assertIncludes(supportBoardSync, ".collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)\n        .where('pId', '==', PRODUCT_ID)", 'Answerlattice Support Board release query product partition');
+  assertIncludes(supportBoardSync, 'existing.pId !== PRODUCT_ID || existing.tId !== tId || existing.sId !== sId', 'Answerlattice Support Board deterministic card conflict guard');
+  assertIncludes(supportBoardSummary, ".where('pId', '==', PRODUCT_ID)", 'Answerlattice Support Board live count product partition');
+  assertIncludes(supportBoardDal, "where('pId', '==', 'AL')", 'Answerlattice Support Board client query product partition');
   assertNotIncludes(supportBoardSync, 'entityIds.filter(Boolean)', 'Answerlattice Support Board sync raw entity ID filter');
   assertNotIncludes(supportBoardSync, "typeof id === 'string' && id && id !== 'unresolved'", 'Answerlattice Support Board sync raw source entity ID guard');
   assertIncludes(supportBoardSync, "const ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED = 'ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED';", 'Answerlattice Support Board sync fixed failure code');
@@ -7070,6 +7553,9 @@ function verifyAnswerlatticeSupportBoardSyncDiagnostics() {
   assertIncludes(supportBoardSync, '...getSupportBoardScopeContext(tId, sId)', 'Answerlattice Support Board sync bounded scope log context');
   assertIncludes(supportBoardSync, 'exampleCount: number;', 'Answerlattice Support Board sync tracks source examples by count only');
   assertIncludes(supportBoardSync, 'this derived card stores counts and context only', 'Answerlattice Support Board sync documents count-only derived card text');
+  assertIncludes(supportBoardImpl, 'Search history, signal events, drifted canonical answers, release-impact inputs, live aggregate counts, the client board list', 'Answerlattice Support Board implementation product-partitioned source and consumer windows');
+  assertIncludes(supportBoardFirebase, '`pId asc, tId asc, sId asc, canonical asc, createdOn desc`', 'Answerlattice Support Board Firebase product-partitioned history index');
+  assertIncludes(supportBoardFirebase, '`pId asc, tId asc, sId asc, status asc, modifiedOn desc`', 'Answerlattice Support Board Firebase product-partitioned card index');
   assertNotIncludes(supportBoardSync, 'const message = error instanceof Error ? error.message : String(error);', 'Answerlattice Support Board sync raw error text extraction');
   assertNotIncludes(supportBoardSync, "logger.info('[Answerlattice SupportBoard] Nightly sync complete', {\n                tId,\n                sId,", 'Answerlattice Support Board sync raw success scope log');
   assertNotIncludes(supportBoardSync, "logger.error('[Answerlattice SupportBoard] Nightly sync failed', {\n            tId,\n            sId,\n            error: message,\n        });", 'Answerlattice Support Board sync raw failure log');
@@ -7238,6 +7724,8 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   const appCacheVersionClient = read('src/lib/answerlattice/cacheVersionClient.ts');
   const appCacheVersionAdmin = read('src/lib/answerlattice/cacheVersionAdmin.ts');
   const appSourceVersionsClient = read('src/lib/answerlattice/compiledSourceVersionsClient.ts');
+  const appInvalidationOwnershipClient = read('src/lib/answerlattice/invalidationOwnershipClient.ts');
+  const appInvalidationControlPlane = read('src/lib/answerlattice/invalidationControlPlane.ts');
   const appBuilder = read('src/lib/answerlattice/contextBundleBuilderServer.ts');
   const functionsCacheVersion = read('functions-answerlattice/src/answerlattice/cacheVersionManifest.ts');
   const functionsVersions = read('functions-answerlattice/src/answerlattice/compiledContextVersions.ts');
@@ -7271,11 +7759,19 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
     assertIncludes(content, 'resolveAnswerlatticeExistingBundleVersion(existingManifest)', `Answerlattice ${label} existing manifest version admission`);
     assertIncludes(content, 'getAnswerlatticeBundleBuildClaimDecision(currentManifest, currentLock, startedAt.toMillis())', `Answerlattice ${label} transactional build-claim decision`);
     assertIncludes(content, 'db.runTransaction(async (transaction) => {', `Answerlattice ${label} atomic build lease`);
-    assertIncludes(content, 'currentLockSnap.data()?.lockId !== lockId', `Answerlattice ${label} lease-owned finalization`);
+    assertIncludes(content, 'currentLock?.lockId !== lockId', `Answerlattice ${label} lease-owned finalization`);
     assertIncludes(content, 'bundleVersion,', `Answerlattice ${label} reserved bundle version persisted in lease`);
     assertIncludes(content, 'hasExactAnswerlatticeReadyBundleVersions(existingManifest)', `Answerlattice ${label} exact ready skip`);
     assertNotIncludes(content, 'Number(existingManifest?.bundleVersion || existingManifest?.activeVersion || 0) + 1', `Answerlattice ${label} loose next bundle version`);
+    assertNotIncludes(content, 'Number(source.predictive?.activeTriggerCount || 0)', `Answerlattice ${label} bundle must not coerce predictive capability count`);
+    assertNotIncludes(content, 'Number((source.predictive as any)?.activeTriggerCount || 0)', `Answerlattice ${label} bundle must not coerce predictive capability count`);
+    assertNotIncludes(content, 'Number(store.widgetConfigVersion || 0)', `Answerlattice ${label} bundle must not coerce widget config version`);
+    assertNotIncludes(content, 'Number((source.store as any).widgetConfigVersion || 0)', `Answerlattice ${label} bundle must not coerce widget config version`);
   });
+  assertIncludes(appBuilder, 'normalizeAnswerlatticeWidgetConfigVersion(store.widgetConfigVersion)', 'Answerlattice app bundle exact widget config version');
+  assertIncludes(appBuilder, 'normalizeAnswerlatticeActiveTriggerCount(source.predictive?.activeTriggerCount)', 'Answerlattice app bundle exact predictive capability count');
+  assertIncludes(functionsBuilder, 'normalizeNonNegativeSafeInteger((source.store as any).widgetConfigVersion)', 'Answerlattice Functions bundle exact widget config version');
+  assertIncludes(functionsBuilder, 'normalizeNonNegativeSafeInteger((source.predictive as any)?.activeTriggerCount)', 'Answerlattice Functions bundle exact predictive capability count');
   assertIncludes(retention, 'normalizeAnswerlatticeStoredBundleVersion(manifest?.activeVersion ?? manifest?.bundleVersion)', 'Answerlattice retention exact active version');
   assertIncludes(retention, 'normalizeAnswerlatticeStoredBundleVersion(match[1])', 'Answerlattice retention exact Storage path version');
   assertNotIncludes(retention, 'const activeVersion = Number(manifest?.activeVersion', 'Answerlattice retention loose active version');
@@ -7292,13 +7788,21 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   assertIncludes(appVersions, 'ref.path !== expectedPath', 'Answerlattice bundle references reject manifest path substitution');
   assertIncludes(appCacheVersion, "typeof value !== 'string' || !/^[1-9]\\d*$/.test(value)", 'Answerlattice cache-version canonical legacy parser');
   assertIncludes(appCacheVersion, 'Number.isSafeInteger(version)', 'Answerlattice cache-version safe integer admission');
-  assertIncludes(appSourceVersionsClient, 'export const appendAnswerlatticeCompiledContextSourceChange', 'Answerlattice client batch-composable source invalidation');
-  assertIncludes(appCacheVersionClient, 'appendAnswerlatticeCompiledContextSourceChange(writer, source, tenantId, storeId, metadata);', 'Answerlattice client cache/source invalidation in one atomic writer');
+  assertIncludes(appSourceVersionsClient, 'export const appendAnswerlatticeCompiledContextSourceChange = async', 'Answerlattice client transaction-composable source invalidation');
+  assertIncludes(appSourceVersionsClient, 'readAnswerlatticeClientInvalidationOwnership({ scope, transaction })', 'Answerlattice client source invalidation reads deterministic ownership before writes');
+  assertIncludes(appSourceVersionsClient, 'getAnswerlatticeMissingBundleManifestBase(scope)', 'Answerlattice client source invalidation creates a complete missing manifest');
+  assertIncludes(appCacheVersionClient, 'const ownership = await readAnswerlatticeClientInvalidationOwnership({', 'Answerlattice client cache invalidation reads cache/source/manifest ownership together');
+  assertIncludes(appCacheVersionClient, 'transaction.set(ownership.cacheVersionRefs[source]!', 'Answerlattice client cache invalidation uses the owned deterministic cache ref');
+  assertIncludes(appCacheVersionClient, 'ownership,', 'Answerlattice client cache/source invalidation reuses one transaction-current ownership read');
+  assertIncludes(appInvalidationOwnershipClient, 'isAnswerlatticeContextBundleManifestForScope(manifestSnapshot.data()', 'Answerlattice client rejects malformed or foreign deterministic manifests');
+  assertIncludes(appInvalidationOwnershipClient, 'normalizeCacheVersion(data.version) === undefined', 'Answerlattice client rejects malformed deterministic cache versions');
+  assertIncludes(appInvalidationControlPlane, 'activeVersion: 0', 'Answerlattice client missing-manifest base is complete');
   assertNotIncludes(appCacheVersionClient, 'await markAnswerlatticeCompiledContextSourceChanged', 'Answerlattice client sequential cache/source invalidation');
-  assertIncludes(appCacheVersionAdmin, 'appendAnswerlatticeCompiledContextSourceChangeAdmin(batch, source, tenantId, storeId, metadata);', 'Answerlattice Admin cache/source invalidation in one batch');
+  assertIncludes(appCacheVersionAdmin, 'readAnswerlatticeInvalidationOwnership({', 'Answerlattice Admin verifies cache/source invalidation ownership transactionally');
+  assertIncludes(appCacheVersionAdmin, 'transaction.set(ownership.cacheVersionRefs[source]!', 'Answerlattice Admin cache/source invalidation uses the owned deterministic cache ref');
   assertNotIncludes(appCacheVersionAdmin, 'await markAnswerlatticeCompiledContextSourceChangedAdmin', 'Answerlattice Admin sequential cache/source invalidation');
-  assertIncludes(functionsVersions, 'export const appendCompiledContextSourceChange', 'Answerlattice Functions batch-composable source invalidation');
-  assertIncludes(functionsCacheVersion, 'appendCompiledContextSourceChange(batch, db, source, tenantId, storeId, {', 'Answerlattice Functions cache/source invalidation in one batch');
+  assertIncludes(functionsVersions, 'export const appendCompiledContextSourceChange', 'Answerlattice Functions transaction-composable source invalidation');
+  assertIncludes(functionsCacheVersion, 'await appendCompiledContextSourceChanges(transaction, db, [source, ...additionalContextSources]', 'Answerlattice Functions cache/source invalidation in one ownership-checked transaction');
   assertNotIncludes(functionsCacheVersion, 'await markCompiledContextSourceChanged', 'Answerlattice Functions sequential cache/source invalidation');
   assert(
     functionsCacheVersion === read('functions/src/answerlattice/cacheVersionManifest.ts'),
@@ -7311,7 +7815,10 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   assertIncludes(functionsBuilder, "rawSourceVersions.pId !== 'AL'", 'Answerlattice Functions source-version exact product ownership');
   assertIncludes(functionsBuilder, 'rawSourceVersions.tId !== tenantId', 'Answerlattice Functions source-version exact tenant ownership');
   assertIncludes(functionsBuilder, '!areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersions)', 'Answerlattice Functions source-version counter contract');
-  assertIncludes(functionsBuilder, '!areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersionsAtEnd)', 'Answerlattice Functions source-version completion recheck');
+  assertIncludes(appBuilder, 'transaction.get(sourceVersionsRef)', 'Answerlattice app source-version completion recheck is transaction-current');
+  assertIncludes(appBuilder, '!areAnswerlatticeCompiledSourceVersionsValid(currentSourceVersions)', 'Answerlattice app source-version completion ownership validation');
+  assertIncludes(functionsBuilder, 'transaction.get(sourceVersionsRef)', 'Answerlattice Functions source-version completion recheck is transaction-current');
+  assertIncludes(functionsBuilder, '!areAnswerlatticeCompiledSourceVersionsValid(currentSourceVersions)', 'Answerlattice Functions source-version completion ownership validation');
   [appBuilder, functionsBuilder].forEach((content, index) => {
     const label = index === 0 ? 'app' : 'Functions';
     assertIncludes(content, 'maxCount + 1', `Answerlattice ${label} bundle source overflow detection`);
@@ -7334,11 +7841,20 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
 
 function verifyAnswerlatticeAiProviderHealthDiagnostics() {
   const aiProviderHealth = read('functions-answerlattice/src/answerlattice/aiProviderHealth.ts');
+  const packageJson = JSON.parse(read('package.json'));
+  const emulatorCommand = packageJson.scripts?.['test:answerlattice-ai-provider-health-state:emulator'] || '';
 
   assertIncludes(aiProviderHealth, "const ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED = 'ANSWERLATTICE_AI_PROVIDER_HEALTH_CHECK_FAILED';", 'Answerlattice AI provider health fixed failure code');
   assertIncludes(aiProviderHealth, "const ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE = 'ANSWERLATTICE_AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE';", 'Answerlattice AI provider health unexpected response code');
+  assertIncludes(aiProviderHealth, "const ANSWERLATTICE_AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED = 'ANSWERLATTICE_AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED';", 'Answerlattice AI provider health state-write failure code');
   assertIncludes(aiProviderHealth, 'function getProviderHealthSourceErrorContext', 'Answerlattice AI provider health bounded source error context');
   assertIncludes(aiProviderHealth, 'function getProviderHealthFailureCode', 'Answerlattice AI provider health fixed failure resolver');
+  assertIncludes(aiProviderHealth, 'export async function replaceAnswerlatticeAiProviderHealthState', 'Answerlattice AI provider health exact success-state writer');
+  assertIncludes(aiProviderHealth, 'await replaceAnswerlatticeAiProviderHealthState(details);', 'Answerlattice AI provider health exact success-state use');
+  assertIncludes(aiProviderHealth, 'const previousCompletedMillis = timestampMillis(current.lastCompletedAt);', 'Answerlattice AI provider health single safe previous timestamp projection');
+  assertIncludes(aiProviderHealth, "new Date(lastCompletedMillis).toISOString().slice(0, 10) !== lastCompletedDayKey", 'Answerlattice AI provider health completion day/timestamp coherence');
+  assertIncludes(aiProviderHealth, 'function getSafeErrorName', 'Answerlattice AI provider health nonthrowing error-name projection');
+  assertIncludes(aiProviderHealth, 'failureCode: ANSWERLATTICE_AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED', 'Answerlattice AI provider health state-write diagnostic');
   assertIncludes(aiProviderHealth, 'error: failureCode', 'Answerlattice AI provider health fixed stored error');
   assertIncludes(aiProviderHealth, '...getProviderHealthSourceErrorContext(error)', 'Answerlattice AI provider health bounded source metadata');
   assertIncludes(aiProviderHealth, 'throw new Error(failureCode);', 'Answerlattice AI provider health fixed thrown scheduler error');
@@ -7349,6 +7865,8 @@ function verifyAnswerlatticeAiProviderHealthDiagnostics() {
   assertNotIncludes(aiProviderHealth, 'error: message', 'Answerlattice AI provider health raw stored error text');
   assertNotIncludes(aiProviderHealth, 'Answerlattice Gemini provider health check failed: ${message}', 'Answerlattice AI provider health raw thrown error text');
   assertNotIncludes(aiProviderHealth, 'Gemini health check returned an unexpected response.', 'Answerlattice AI provider health raw unexpected response text');
+  assertNotIncludes(aiProviderHealth, 'ref.set(details, { merge: true })', 'Answerlattice AI provider health recovered state must prune stale fields');
+  assert(emulatorCommand.split('env -u GOOGLE_APPLICATION_CREDENTIALS -u ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS').length - 1 >= 2, 'Answerlattice AI provider health emulator must isolate parent and child credentials');
 }
 
 function verifyAnswerlatticeGovernanceDiagnostics() {
@@ -8021,11 +8539,16 @@ function verifyAnswerlatticeFounderSupportControlsRuntime() {
   assertIncludes(knownIssuesClient, "kind: 'known_issue'", 'Known Issue owner CRUD payload');
   assertIncludes(knownIssuesClient, "!normalizedStatusPageUrl.startsWith('https:')", 'Known Issue public HTTPS status page boundary');
   assertIncludes(predictiveEngine, "if (trigger.kind !== 'known_issue') return true;", 'Known Issue runtime window gate');
-  assertIncludes(predictiveEngine, "const onCooldown = await checkCooldown(userId, trigger.id, trigger.kind !== 'known_issue');", 'Known Issue visibility is not hidden by ordinary prompt cooldown');
+  assertIncludes(predictiveEngine, "trigger.kind !== 'known_issue'", 'Known Issue visibility bypasses ordinary prompt cooldown');
+  assertIncludes(predictiveEngine, '&& !await claimCooldown(userId, trigger.id, tId, sId, trigger.cooldownHours)', 'Ordinary predictive prompts atomically claim a workspace-scoped cooldown');
+  assertNotIncludes(predictiveEngine, 'redis.exists(', 'Answerlattice predictive cooldown must not use a racy read-before-write');
+  assertNotIncludes(predictiveEngine, 'setCooldown(', 'Answerlattice predictive cooldown must not use an unawaited post-selection write');
   assertIncludes(predictiveSync, "if (trigger.kind === 'known_issue' || trigger.action?.type === 'known_issue') continue;", 'Known Issue notices are excluded from automatic effectiveness scoring');
 
   assertIncludes(widgetSecurity, "algorithm: 'Ed25519'", 'Verified visitor asymmetric signing contract');
   assertIncludes(widgetSecurity, "if (payload.aud !== 'answerlattice-widget') return null;", 'Verified visitor audience boundary');
+  assertIncludes(widgetSecurity, 'const normalizeVerifiedVisitorSubject = (value: unknown)', 'Verified visitor opaque subject boundary');
+  assertIncludes(widgetSecurity, 'const id = normalizeVerifiedVisitorSubject(payload.sub);', 'Verified visitor exact subject identity');
   assertIncludes(widgetSecurity, 'ANSWERLATTICE_VERIFIED_CONTEXT_MAX_TOKEN_AGE_SECONDS = 10 * 60', 'Verified visitor maximum token age');
   assertIncludes(widgetSecurity, "parsed.protocol !== 'https:'", 'External evidence HTTPS boundary');
   assertIncludes(widgetSecurity, '|| parsed.port', 'External evidence rejects explicit ports');
@@ -8046,7 +8569,9 @@ function verifyAnswerlatticeFounderSupportControlsRuntime() {
         `buildAnswerlatticeRateLimitKey('${rateKey}'`,
         'requireAnswerlatticePermission(',
         'getStore(access)',
-        'store.ref.set({',
+        'answerlatticeFirestoreAdmin.runTransaction',
+        'isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)',
+        'transaction.set(store.ref,',
       ],
       `Widget security ${label} admission order`,
     );
@@ -8064,9 +8589,26 @@ function verifyAnswerlatticeFounderSupportControlsRuntime() {
   );
   assertIncludes(widgetSecurityRoute, "buildAnswerlatticeRateLimitKey('answerlattice-widget-signing-key', userId, sessionScope.tenantId, sessionScope.storeId)", 'Widget security signing-key shared mutation budget');
   assertIncludes(widgetSecurityRoute, 'privateKeyShownOnce: true', 'Verified visitor private key is returned once');
+  assertIncludes(widgetSecurityRoute, 'isAnswerlatticeStoreInScope(data, access.scope, snapshot.id)', 'Widget security exact store/product ownership');
+  assertNotIncludes(widgetSecurityRoute, 'data.tId ?? data.tenantId', 'Widget security must not select one persisted tenant alias');
+  assert((widgetSecurityRoute.match(/answerlatticeFirestoreAdmin\.runTransaction/g) || []).length >= 3, 'Widget security key rotate, evidence-host save and key disable must revalidate transaction-current ownership');
+  assertIncludes(widgetSecurityRoute, 'isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)', 'Widget security transaction-current store/product ownership');
+  assert((widgetSecurityRoute.match(/failClosedOnProviderError: true/g) || []).length >= 3, 'Widget security mutations must explicitly fail closed when rate limiting is unavailable');
+  assert((widgetSecurityRoute.match(/isRateLimitUnavailable\(rateLimit\)/g) || []).length >= 3, 'Widget security mutations must distinguish provider unavailability from ordinary limits');
+  assertIncludes(widgetSecurityRoute, 'normalized.some((host, index) => host !== parsed.data.evidenceAllowedHosts[index])', 'Widget security exact canonical evidence-host mutation contract');
+  assertIncludes(widgetSecurityRoute, 'WIDGET_SECURITY_ROTATION_MIN_INTERVAL_MS', 'Widget security concurrent rotation exclusion window');
+  assertIncludes(widgetSecurityRoute, 'throw new WidgetSecurityRotationConflictError()', 'Widget security transaction-current duplicate rotation rejection');
+  assert((widgetSecurityRoute.match(/return \{ \.\.\.currentData,/g) || []).length >= 3, 'Widget security mutation responses must project transaction-current store state');
   assertNotIncludes(widgetSecurityRoute, 'privateKeyPkcs8: record', 'Verified visitor private key is not persisted in the public key record');
   assertIncludes(widgetSecurityClient, 'const RESPONSE_MAX_BYTES = 64 * 1024;', 'Widget security browser response cap');
   assertIncludes(widgetSecurityClient, 'payload.privateKeyShownOnce !== true', 'Widget security one-time key response guard');
+  assertIncludes(widgetSecurityClient, 'keyMutationInFlightRef.current', 'Widget security synchronous key-mutation admission lock');
+  assertIncludes(widgetSecurityClient, 'hostSaveInFlightRef.current', 'Widget security synchronous evidence-host admission lock');
+  assertIncludes(widgetSecurityClient, "message.info('Wait for the current evidence host change to finish.');", 'Widget security concurrent evidence-host action visibility');
+  assertIncludes(widgetSecurityClient, 'if (!isCanonicalEvidenceHost(raw))', 'Widget security canonical evidence-host client admission');
+  assertIncludes(widgetSecurityClient, 'PRIVATE_KEY_PKCS8_PATTERN.test(response.privateKeyPkcs8)', 'Widget security exact one-time private-key response boundary');
+  assertIncludes(widgetSecurityClient, 'new Set(response.evidenceAllowedHosts).size === response.evidenceAllowedHosts.length', 'Widget security unique host response boundary');
+  assert((widgetSecurityClient.match(/<Input\.TextArea value=\{privateKey \|\| ''\}/g) || []).length === 1, 'Widget security must render the one-time private key in exactly one field');
   assertIncludes(widgetSecurityClient, 'const { privateKeyPkcs8, ...publicResponse } = payload;', 'Widget security strips private key from durable client state');
   assertIncludes(widgetSecurityClient, 'setData(publicResponse);', 'Widget security stores only public response state');
   assertIncludes(widgetSecurityClient, 'setPrivateKey(privateKeyPkcs8);', 'Widget security isolates one-time private key state');
@@ -8074,13 +8616,17 @@ function verifyAnswerlatticeFounderSupportControlsRuntime() {
   assertIncludes(widgetSecurityClient, "cache: 'no-store'", 'Widget security browser no-store requests');
   assertIncludes(widgetSecurityClient, "credentials: 'same-origin'", 'Widget security browser same-origin requests');
   assertIncludes(widgetSecurityClient, "redirect: 'manual'", 'Widget security browser redirect boundary');
-  assertIncludes(widgetSearchRoute, 'const verifiedContextRejected = hasVerifiedContextToken && !verifiedVisitor;', 'Invalid visitor token detection');
-  assertIncludes(widgetSearchRoute, 'const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Widget search exact tenant scope');
-  assertIncludes(widgetSearchRoute, 'const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);', 'Widget search exact store scope');
+  assertIncludes(widgetSearchRoute, 'const tId = answerlatticeScope?.tenantId;', 'Widget search uses credential-validated tenant scope');
+  assertIncludes(widgetSearchRoute, 'const sId = answerlatticeScope?.storeId;', 'Widget search uses credential-validated store scope');
   assertNotIncludes(widgetSearchRoute, 'const tId = Number(storeData.tenantId || storeData.tId);', 'Widget search loose tenant scope');
   assertNotIncludes(widgetSearchRoute, 'const sId = Number(storeData.id || storeId);', 'Widget search loose store scope');
-  assertIncludes(widgetSearchRoute, '? stripUnverifiedSensitiveContext(body.context)', 'Invalid visitor token degrades to non-sensitive page context');
+  assertIncludes(widgetSearchRoute, 'verifiedVisitor\n                        ? body.context\n                        : stripUnverifiedSensitiveContext(body.context)', 'Only verified visitor tokens may supply sensitive page context');
+  assertNotIncludes(widgetSearchRoute, 'verifiedContextRejected\n                        ? stripUnverifiedSensitiveContext(body.context)', 'Unsigned visitor context must not bypass sensitive-field stripping');
   assertIncludes(widgetSearchRoute, 'const acceptUnsignedVisitor = !hasVerifiedContextToken;', 'Rejected signed identity does not fall back to unsigned identity');
+  assertIncludes(widgetSearchRoute, 'const publicGraphExpansion = normalizeWidgetGraphExpansion(result.graphExpansion);', 'Widget search graph public projection');
+  assertIncludes(widgetSearchRoute, 'if (publicGraphExpansion) response.graphExpansion = publicGraphExpansion;', 'Widget search omits empty public graph output');
+  assertNotIncludes(widgetSearchRoute, 'interactionDetected: result.graphExpansion.interactionDetected || null', 'Widget search must not expose internal interaction rule identity');
+  assertNotIncludes(widgetSearchRoute, 'relatedSuggestions: result.graphExpansion.relatedSuggestions || []', 'Widget search must not expose internal related entity identity');
   assertIncludes(searchCore, 'visitorVerified: true', 'Verified visitor state is retained in private search activity');
   assertIncludes(searchCore, 'debugEvidenceLinks: evidenceLinks', 'Bounded debug evidence is retained with private search activity');
   assertIncludes(widgetLoader, 'identifySigned: function', 'Widget signed identity runtime API');
@@ -8384,7 +8930,9 @@ function verifyAnswerlatticeAdvancedBrandingBoundary() {
   assertIncludes(contracts, 'parsed.protocol !== \'https:\'', 'Advanced branding HTTPS-only asset and legal links');
   assertIncludes(contracts, 'parsed.username', 'Advanced branding URL credential rejection');
   assertIncludes(contracts, 'parsed.hash', 'Advanced branding URL fragment rejection');
-  assertIncludes(contracts, 'if (/\\s/.test(value))', 'Advanced branding URL whitespace rejection');
+  assertIncludes(contracts, 'const HttpsUrlPattern = /^https:\\/\\/', 'Advanced branding rule-expressible URL policy');
+  assertIncludes(contracts, 'const SupportEmailPattern = /^[A-Za-z0-9', 'Advanced branding rule-expressible support-email policy');
+  assertIncludes(contracts, 'if (!HttpsUrlPattern.test(value))', 'Advanced branding URL policy enforcement');
   assertIncludes(contracts, 'isAnswerlatticeAdvancedBrandingHttpsUrl', 'Advanced branding shared browser URL validator');
   assertIncludes(contracts, '}).strict();', 'Advanced branding unknown-field rejection');
   assertIncludes(brandingDal, 'normalizeAnswerlatticeScopeDocumentId', 'Advanced branding exact scope normalization');
@@ -8406,19 +8954,54 @@ function verifyAnswerlatticeAdvancedBrandingBoundary() {
     assertIncludes(rules, 'data.branding.keys().hasOnly([', `Advanced branding ${label} nested field allowlist`);
     assertIncludes(rules, 'isAnswerlatticeBrandingDoc(document)', `Advanced branding ${label} document classifier`);
     assertIncludes(rules, '&& isValidAnswerlatticeBrandingProfile(request.resource.data)', `Advanced branding ${label} write validation`);
+    assertIncludes(rules, "data[field].matches('^https://([A-Za-z0-9]", `Advanced branding ${label} rule-expressible URL policy`);
+    assertIncludes(rules, "data.branding.supportEmail.matches('^[A-Za-z0-9", `Advanced branding ${label} rule-expressible email policy`);
   });
 
   assertIncludes(rulesTests, "customCss: 'body { display: none; }'", 'Advanced branding rules reject custom CSS');
   assertIncludes(rulesTests, "logoUrl: 'http://example.com/logo.png'", 'Advanced branding rules reject insecure asset URL');
   assertIncludes(rulesTests, "logoUrl: 'https://cdn.example.com/logo@2x.png?version=1'", 'Advanced branding rules allow safe path and query characters');
+  assertIncludes(rulesTests, "logoUrl: 'https://?x'", 'Advanced branding rules reject missing URL authority');
+  assertIncludes(rulesTests, "logoUrl: 'https://cdn.example.com:invalid/logo.png'", 'Advanced branding rules reject invalid ports');
+  assertIncludes(rulesTests, "supportEmail: 'a..b@example.com'", 'Advanced branding rules reject invalid mailbox dot atoms');
   assertIncludes(contractTests, "fontFamily: 'url(https://attacker.example/font)'", 'Advanced branding contracts reject custom fonts');
+  assertIncludes(contractTests, "logoUrl: 'https://?x'", 'Advanced branding contracts reject missing URL authority');
+  assertIncludes(contractTests, "supportEmail: 'a@b..example.com'", 'Advanced branding contracts reject invalid domain labels');
   assertIncludes(systemInventory, 'Validated private profile prototype; customer delivery absent; disabled by default', 'Advanced branding inventory truth');
   assertIncludes(featureTracker, '### Feature 39 — Advanced White Label', 'Advanced branding feature tracker');
   assertIncludes(featureTracker, '**Status:** Local source complete', 'Advanced branding feature completion state');
   assertIncludes(readme, 'No customer-facing runtime consumes this profile.', 'Advanced branding dossier runtime boundary');
 }
 
+function verifyAnswerlatticeFunctionsAiAccountingBoundary() {
+  const accounting = read('functions-answerlattice/src/answerlattice/aiOperationAccounting.ts');
+  const packageJson = JSON.parse(read('package.json'));
+  const emulatorCommand = packageJson.scripts?.['test:answerlattice-functions-ai-accounting:emulator'] || '';
+
+  [
+    'function normalizeNonNegativeSafeInteger',
+    'function normalizePositiveScopeId',
+    'function normalizeAnswerlatticeFunctionsAiOperationInput',
+    'function normalizeAnswerlatticeFunctionsClientResponse',
+    'function getAiAccountingErrorContext',
+    'sourceErrorName:',
+    'sourceErrorCode:',
+    'sourceStatusCode:',
+  ].forEach((token) => assertIncludes(accounting, token, 'Answerlattice Functions AI accounting boundary'));
+  [
+    'const tenantId = Number(input.tId)',
+    'const storeId = Number(input.sId)',
+    'embeddingDimensions: Number(params.dimensions',
+    '\n            error,',
+    'tId: input.tId',
+    'sId: input.sId',
+  ].forEach((token) => assertNotIncludes(accounting, token, 'Answerlattice Functions AI accounting unsafe coercion/logging'));
+  assert(emulatorCommand.includes('env -u GOOGLE_APPLICATION_CREDENTIALS -u ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS'), 'Answerlattice Functions AI accounting emulator must clear ambient credentials in parent and child processes');
+  assert(emulatorCommand.split('env -u GOOGLE_APPLICATION_CREDENTIALS -u ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS').length - 1 >= 2, 'Answerlattice Functions AI accounting emulator must isolate both credential boundaries');
+}
+
 verifyDedicatedAnswerlatticeFirebase();
+verifyAnswerlatticeEmulatorCredentialIsolation();
 verifyAnswerlatticeFirebaseForensicBoundaries();
 verifyNoAnswerlatticeDirectBodyParsers();
 verifyAnswerlatticePreOnboardingPromptModal();
@@ -8486,6 +9069,7 @@ verifyAnswerlatticeSignalQualityBoundary();
 verifyAnswerlatticeNativeHelpdeskConnectorBoundary();
 verifyAnswerlatticeAutonomousActionBoundary();
 verifyAnswerlatticeAdvancedBrandingBoundary();
+verifyAnswerlatticeFunctionsAiAccountingBoundary();
 verifyAnswerlatticePinnedIconBoundary();
 verifyAnswerlatticeFeatureInventoryTruth();
 verifyAnswerlatticeFeatureAuditTrackerTruth();

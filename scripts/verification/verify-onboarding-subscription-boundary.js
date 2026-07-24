@@ -46,6 +46,16 @@ for (const token of [
 for (const token of ['findOnboardingProviderSubscriptionForAttempt', 'isOnboardingProviderSubscription', 'isMatchingPersistedOnboardingSubscription', 'resolveOnboardingPlanPrice']) {
   requireText(subscriptionBoundary, token, 'onboarding subscription boundary');
 }
+for (const token of [
+  'record.pId === DEFAULT_PRODUCT_ID',
+  'record.productId === DEFAULT_PRODUCT_ID',
+  'record.userId === params.userId',
+  'record.uId === params.userId',
+  'record.tenantId === params.tenantId',
+  'record.tId === params.tenantId',
+  'record.storeId === params.storeId',
+  'record.sId === params.storeId',
+]) requireText(subscriptionBoundary, token, 'exact persisted onboarding subscription identity');
 
 const persistenceWrite = route.indexOf('await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);');
 const cancellation = route.indexOf('await razorpayClient.subscriptions.cancel(params.providerSubscriptionId, false);');

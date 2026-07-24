@@ -2,7 +2,11 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticePublicCitations } from '@lib/answerlattice/publicAnswerContracts';
-import { normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
+import { normalizeAnswerlatticeActiveTriggerCount } from '@lib/answerlattice/predictiveSupportContracts';
+import {
+    normalizeAnswerlatticeWidgetConfigVersion,
+    normalizeWidgetConfig,
+} from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin, answerlatticeStorageAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type {
@@ -24,12 +28,14 @@ import {
     ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
     ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
     EMPTY_BUNDLE_STATS,
+    areAnswerlatticeCompiledSourceVersionsValid,
     buildAnswerlatticeRouteKey,
     compiledSourceVersionsEqual,
     getAnswerlatticeContextBundleObjectMaxBytes,
     getAnswerlatticeBundleBuildClaimDecision,
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
+    getAnswerlatticeSourceVersionsDocId,
     hasExactAnswerlatticeReadyBundleVersions,
     getPrivateBundlePath,
     getPublicBundlePath,
@@ -39,12 +45,14 @@ import {
     resolveAnswerlatticeExistingBundleVersion,
 } from './compiledContext';
 import { getAnswerlatticeCompiledSourceVersionsAdmin } from './compiledSourceVersionsAdmin';
+import { getAnswerlatticeMissingBundleManifestBase } from './invalidationOwnership';
 import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
 import {
     getContextContentSummaryDocId,
     normalizeAnswerlatticeSurfaceContentSummary,
 } from './productSurfaceContent';
 import { rebuildProductSurfaceContentSummaryServer } from './productSurfaceContentServer';
+import { projectAnswerlatticeCompiledWorkspaceProduct } from './workspaceProfileContracts';
 
 const MAX_ENTITIES_FOR_BUNDLE = 1_000;
 const MAX_RELATIONS_FOR_BUNDLE = 2_000;
@@ -68,6 +76,23 @@ const ANSWERLATTICE_CONTEXT_BUNDLE_REQUESTERS = ['owner', 'system'] as const;
 
 type BuildReason = typeof ANSWERLATTICE_CONTEXT_BUNDLE_BUILD_REASONS[number];
 type BuildRequester = typeof ANSWERLATTICE_CONTEXT_BUNDLE_REQUESTERS[number];
+
+const isAnswerlatticeContextBundleLockForScope = (
+    value: unknown,
+    tId: number,
+    sId: number,
+): value is Record<string, unknown> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const lock = value as Record<string, unknown>;
+    return lock.schemaVersion === ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION
+        && lock.pId === PRODUCT_IDS.ANSWERLATTICE
+        && lock.tId === tId
+        && lock.sId === sId
+        && typeof lock.lockId === 'string'
+        && lock.lockId.length > 0
+        && normalizeAnswerlatticeStoredBundleVersion(lock.bundleVersion) !== null
+        && ['building', 'released', 'failed'].includes(String(lock.status));
+};
 
 type BundleCacheEntry = {
     expiresAt: number;
@@ -375,6 +400,7 @@ const loadSourceData = async (tId: number, sId: number) => {
             }),
         loadBoundedDocs<AnswerlatticeEntity>(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId),
             MAX_ENTITIES_FOR_BUNDLE,
@@ -382,6 +408,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         ),
         loadBoundedDocs<AnswerlatticeEntityRelation>(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId),
             MAX_RELATIONS_FOR_BUNDLE,
@@ -389,6 +416,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         ),
         loadBoundedDocs<AnswerlatticeCanonicalAnswer>(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'active'),
@@ -397,6 +425,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         ),
         loadBoundedDocs<AnswerlatticeProductSurface>(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId),
             MAX_SURFACES_FOR_BUNDLE,
@@ -404,6 +433,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         ),
         loadBoundedDocs<KnowledgeBaseArticleType>(
             db.collection(DB_COLLECTIONS.KB_ARTICLES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'published'),
@@ -412,6 +442,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         ),
         loadBoundedDocs<AnswerlatticeFaq>(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'published')
@@ -421,6 +452,7 @@ const loadSourceData = async (tId: number, sId: number) => {
         ),
         loadBoundedDocs(
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', tId)
                 .where('sId', '==', sId),
             MAX_RELEASES_FOR_BUNDLE,
@@ -469,14 +501,7 @@ const buildBundleObjects = (params: {
 }) => {
     const { tId, sId, bundleVersion, publicBundleId, sourceVersions, generatedAt, source } = params;
     const store = source.store as Record<string, any>;
-    const product = {
-        name: store.productName || store.name || store.companyName || 'Product',
-        url: store.productUrl || null,
-        supportEmail: store.supportEmail || null,
-        billingModel: store.billingModel || null,
-        timeZone: store.timeZone || 'UTC',
-        businessDayEndTime: store.businessDayEndTime || '00:00',
-    };
+    const product = projectAnswerlatticeCompiledWorkspaceProduct(store);
     const publicProduct = {
         name: product.name,
         url: product.url,
@@ -543,7 +568,7 @@ const buildBundleObjects = (params: {
             routes: Object.keys(routeBundles).length,
         },
         capabilities: {
-            predictiveSupport: Number(source.predictive?.activeTriggerCount || 0) > 0,
+            predictiveSupport: (normalizeAnswerlatticeActiveTriggerCount(source.predictive?.activeTriggerCount) ?? 0) > 0,
         },
     };
 
@@ -553,12 +578,12 @@ const buildBundleObjects = (params: {
         generatedAt,
         product: publicProduct,
         widget: {
-            configVersion: Number(store.widgetConfigVersion || 0),
+            configVersion: normalizeAnswerlatticeWidgetConfigVersion(store.widgetConfigVersion),
             config: normalizeWidgetConfig(store.widgetConfig),
         },
         capabilities: {
             contextBundles: true,
-            predictiveSupport: Number(source.predictive?.activeTriggerCount || 0) > 0,
+            predictiveSupport: (normalizeAnswerlatticeActiveTriggerCount(source.predictive?.activeTriggerCount) ?? 0) > 0,
         },
         paths: {
             contextIndex: `context-index.json`,
@@ -796,6 +821,7 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
     const db = getDb();
     const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
     const lockRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleLockDocId(tenantId, storeId));
+    const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId));
     const startedAt = Timestamp.now();
     const lockId = `bundle_${tenantId}_${storeId}_${randomUUID()}`;
 
@@ -827,6 +853,12 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
         ]);
         const currentManifest = currentManifestSnap.exists ? currentManifestSnap.data() : null;
         const currentLock = currentLockSnap.exists ? currentLockSnap.data() : null;
+        if (currentManifest && !isAnswerlatticeContextBundleManifestForScope(currentManifest, tenantId, storeId)) {
+            throw new Error('Invalid Answerlattice context bundle manifest.');
+        }
+        if (currentLock && !isAnswerlatticeContextBundleLockForScope(currentLock, tenantId, storeId)) {
+            throw new Error('Invalid Answerlattice context bundle build lock.');
+        }
         const decision = getAnswerlatticeBundleBuildClaimDecision(currentManifest, currentLock, startedAt.toMillis());
         if (decision.status === 'active') {
             throw new Error('Answerlattice context bundle build is already in progress.');
@@ -847,8 +879,11 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             sourceVersionsAtStart: normalizedStartVersions,
             requestedBy: buildRequester,
             reason: buildReason,
-        }, { merge: true });
+        });
         transaction.set(manifestRef, {
+            ...(!currentManifestSnap.exists
+                ? getAnswerlatticeMissingBundleManifestBase({ tId: tenantId, sId: storeId })
+                : {}),
             schemaVersion: ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: tenantId,
@@ -908,8 +943,6 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             privateBytesTotal += ref.bytes;
         }
 
-        const sourceVersionsAtEnd = normalizeCompiledSourceVersions(await getAnswerlatticeCompiledSourceVersionsAdmin(tenantId, storeId));
-        const superseded = !compiledSourceVersionsEqual(normalizedStartVersions, sourceVersionsAtEnd);
         const stats: AnswerlatticeContextBundleStats = {
             ...EMPTY_BUNDLE_STATS,
             entities: source.entities.length,
@@ -925,27 +958,68 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             bytesTotal: publicBytesTotal + privateBytesTotal,
         };
         const manifestHash = sha256(stableStringify({ bundles, sourceVersions: normalizedStartVersions, stats }));
-        const manifest: AnswerlatticeContextBundleManifest = {
-            schemaVersion: ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            tId: tenantId,
-            sId: storeId,
-            publicBundleId,
-            bundleVersion,
-            activeVersion: superseded ? claimedActiveVersion : bundleVersion,
-            lastReadyVersion: superseded ? claimedLastReadyVersion : bundleVersion,
-            status: superseded ? 'superseded' : 'ready',
-            generatedAt: Timestamp.fromDate(new Date(generatedAt)) as any,
-            lastBuildStartedAt: startedAt as any,
-            lastBuildCompletedAt: Timestamp.now() as any,
-            lastBuildError: null,
-            staleReason: superseded ? 'source_versions_changed_during_build' : null,
-            hash: manifestHash,
-            sourceVersions: superseded ? sourceVersionsAtEnd : normalizedStartVersions,
-            stats,
-            bundles,
-            limits: ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
-        };
+        const manifest = await db.runTransaction(async (transaction): Promise<AnswerlatticeContextBundleManifest> => {
+            const [currentSourceVersionsSnap, currentManifestSnap, currentLockSnap] = await Promise.all([
+                transaction.get(sourceVersionsRef),
+                transaction.get(manifestRef),
+                transaction.get(lockRef),
+            ]);
+            const currentSourceVersions = currentSourceVersionsSnap.data();
+            const currentManifest = currentManifestSnap.data();
+            const currentLock = currentLockSnap.data();
+            if (
+                !currentSourceVersionsSnap.exists
+                || currentSourceVersions?.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || currentSourceVersions?.tId !== tenantId
+                || currentSourceVersions?.sId !== storeId
+                || !areAnswerlatticeCompiledSourceVersionsValid(currentSourceVersions)
+                || !currentManifestSnap.exists
+                || !isAnswerlatticeContextBundleManifestForScope(currentManifest, tenantId, storeId)
+                || (currentManifest?.status !== 'building' && currentManifest?.status !== 'stale')
+                || !currentLockSnap.exists
+                || !isAnswerlatticeContextBundleLockForScope(currentLock, tenantId, storeId)
+                || currentLock?.lockId !== lockId
+                || currentLock?.status !== 'building'
+                || currentLock?.bundleVersion !== claim.bundleVersion
+            ) {
+                throw new Error('Answerlattice context bundle build lease was lost.');
+            }
+            const sourceVersionsAtCommit = normalizeCompiledSourceVersions(currentSourceVersions);
+            const superseded = currentManifest?.status === 'stale'
+                || !compiledSourceVersionsEqual(normalizedStartVersions, sourceVersionsAtCommit);
+            const committedManifest: AnswerlatticeContextBundleManifest = {
+                schemaVersion: ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: tenantId,
+                sId: storeId,
+                publicBundleId,
+                bundleVersion,
+                activeVersion: superseded ? claimedActiveVersion : bundleVersion,
+                lastReadyVersion: superseded ? claimedLastReadyVersion : bundleVersion,
+                status: superseded ? 'superseded' : 'ready',
+                generatedAt: Timestamp.fromDate(new Date(generatedAt)) as any,
+                lastBuildStartedAt: startedAt as any,
+                lastBuildCompletedAt: Timestamp.now() as any,
+                lastBuildError: null,
+                staleReason: superseded ? 'source_versions_changed_during_build' : null,
+                hash: manifestHash,
+                sourceVersions: superseded ? sourceVersionsAtCommit : normalizedStartVersions,
+                stats,
+                bundles,
+                limits: ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
+            };
+            transaction.set(manifestRef, {
+                ...committedManifest,
+                updatedAt: FieldValue.serverTimestamp(),
+                reason: buildReason,
+                requestedBy: buildRequester,
+            }, { merge: true });
+            transaction.set(lockRef, {
+                status: 'released',
+                completedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return committedManifest;
+        });
 
         const publicManifest = {
             schemaVersion: manifest.schemaVersion,
@@ -962,7 +1036,6 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             lastBuildStartedAt: toIso(manifest.lastBuildStartedAt),
             lastBuildCompletedAt: toIso(manifest.lastBuildCompletedAt),
         };
-
         await uploadBundleManifestObjectBestEffort(
             getPublicBundlePath(publicBundleId, bundleVersion, 'manifest.json'),
             publicManifest,
@@ -975,27 +1048,9 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             PRIVATE_BUNDLE_CACHE_CONTROL,
             { tId: tenantId, sId: storeId, bundleVersion, visibility: 'private' },
         );
-
-        await db.runTransaction(async (transaction) => {
-            const currentLockSnap = await transaction.get(lockRef);
-            if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) {
-                throw new Error('Answerlattice context bundle build lease was lost.');
-            }
-            transaction.set(manifestRef, {
-                ...manifest,
-                updatedAt: FieldValue.serverTimestamp(),
-                reason: buildReason,
-                requestedBy: buildRequester,
-            }, { merge: true });
-            transaction.set(lockRef, {
-                status: 'released',
-                completedAt: FieldValue.serverTimestamp(),
-            }, { merge: true });
-        });
-        bundleManifestCache.set(`${tenantId}_${storeId}`, {
-            value: { ...manifest, id: manifestRef.id },
-            expiresAt: Date.now() + MANIFEST_CACHE_TTL_MS,
-        });
+        // A source invalidation may commit immediately after finalization. Do not
+        // overwrite that newer Firestore truth with a process-local ready entry.
+        bundleManifestCache.delete(`${tenantId}_${storeId}`);
 
         return { ...manifest, id: manifestRef.id };
     } catch (error) {
@@ -1023,20 +1078,36 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
             }
         });
         await db.runTransaction(async (transaction) => {
-            const currentLockSnap = await transaction.get(lockRef);
-            if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) return;
-            transaction.set(manifestRef, {
-                schemaVersion: ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
-                pId: PRODUCT_IDS.ANSWERLATTICE,
-                tId: tenantId,
-                sId: storeId,
-                status: claimedLastReadyVersion ? 'stale' : 'failed',
-                lastBuildError: 'build_failed',
-                lastBuildCompletedAt: FieldValue.serverTimestamp(),
-                staleReason: 'build_failed',
-                activeVersion: claimedActiveVersion,
-                lastReadyVersion: claimedLastReadyVersion,
-            }, { merge: true });
+            const [currentManifestSnap, currentLockSnap] = await Promise.all([
+                transaction.get(manifestRef),
+                transaction.get(lockRef),
+            ]);
+            const currentManifest = currentManifestSnap.data();
+            const currentLock = currentLockSnap.data();
+            if (
+                !currentManifestSnap.exists
+                || !isAnswerlatticeContextBundleManifestForScope(currentManifest, tenantId, storeId)
+                || (currentManifest?.status !== 'building' && currentManifest?.status !== 'stale')
+                || !currentLockSnap.exists
+                || !isAnswerlatticeContextBundleLockForScope(currentLock, tenantId, storeId)
+                || currentLock?.lockId !== lockId
+                || currentLock?.status !== 'building'
+                || currentLock?.bundleVersion !== claim.bundleVersion
+            ) return;
+            if (currentManifest?.status === 'building') {
+                transaction.set(manifestRef, {
+                    schemaVersion: ANSWERLATTICE_CONTEXT_BUNDLE_SCHEMA_VERSION,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    tId: tenantId,
+                    sId: storeId,
+                    status: claimedLastReadyVersion ? 'stale' : 'failed',
+                    lastBuildError: 'build_failed',
+                    lastBuildCompletedAt: FieldValue.serverTimestamp(),
+                    staleReason: 'build_failed',
+                    activeVersion: claimedActiveVersion,
+                    lastReadyVersion: claimedLastReadyVersion,
+                }, { merge: true });
+            }
             transaction.set(lockRef, {
                 status: 'failed',
                 completedAt: FieldValue.serverTimestamp(),

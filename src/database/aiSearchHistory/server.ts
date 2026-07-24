@@ -7,6 +7,7 @@ import {
     normalizeAnswerlatticeScopeClarification,
 } from '@lib/answerlattice/publicAnswerContracts';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
@@ -19,6 +20,13 @@ const MAX_QUERY_CHARS = 500;
 const MAX_ANSWER_CHARS = 12000;
 const MAX_REFERENCE_COUNT = 8;
 const MAX_CITATION_COUNT = 8;
+const MAX_SUGGESTED_QUESTION_COUNT = 3;
+const MAX_SUGGESTED_QUESTION_CHARS = 240;
+const RESPONSE_CACHE_VERSION = 2 as const;
+const ANSWER_SOURCES = new Set(['canonical', 'faq', 'rag', 'cache', 'empty']);
+const ANSWER_TYPES = new Set(['explanation', 'navigation', 'procedure', 'faq']);
+const CONFIDENCE_LEVELS = new Set(['high', 'medium', 'low', 'none']);
+const MOUNT_CONTEXTS = new Set(['help_center', 'widget', 'api']);
 
 type AiSearchHistoryWritePayload = Omit<AiSearchHistory, 'id'> & {
     pId: typeof PRODUCT_IDS.ANSWERLATTICE;
@@ -66,14 +74,17 @@ const hashSearchCacheKey = (value: unknown): string => (
 const compactSearchReference = (value: unknown): AiSearchHistoryReference | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const source = value as Record<string, unknown>;
-    if (typeof source.id !== 'string' || !source.id.trim() || source.id.length > 180) return null;
+    const referenceId = normalizeAnswerlatticeKbArticleId(source.id);
+    if (!referenceId || referenceId !== source.id) return null;
     const boundedString = (key: string, maxLength = 240): string | undefined => (
         typeof source[key] === 'string' ? (source[key] as string).slice(0, maxLength) : undefined
     );
+    const title = boundedString('title');
+    if (!title?.trim()) return null;
     const score = Number(source.similarityScore);
     return {
-        id: source.id,
-        ...(boundedString('title') !== undefined ? { title: boundedString('title') } : {}),
+        id: referenceId,
+        title,
         ...(boundedString('url', 500) !== undefined ? { url: boundedString('url', 500) } : {}),
         ...(boundedString('categoryId', 180) !== undefined ? { categoryId: boundedString('categoryId', 180) } : {}),
         ...(boundedString('sectionId', 180) !== undefined ? { sectionId: boundedString('sectionId', 180) } : {}),
@@ -97,6 +108,14 @@ const compactAiSearchHistoryPayload = (
         craftedAnswer: typeof craftedAnswer === 'string' ? craftedAnswer : '',
         references: Array.isArray(data.references) ? data.references : [],
         citations: Array.isArray(data.citations) ? data.citations : [],
+        suggestedQuestions: Array.isArray(data.suggestedQuestions)
+            ? data.suggestedQuestions
+                .filter((question): question is string => typeof question === 'string')
+                .map(question => question.trim().slice(0, MAX_SUGGESTED_QUESTION_CHARS))
+                .filter(Boolean)
+                .slice(0, MAX_SUGGESTED_QUESTION_COUNT)
+            : [],
+        responseCacheVersion: RESPONSE_CACHE_VERSION,
         ...(typeof generatedQueryFromImage === 'string' ? { generatedQueryFromImage } : {}),
         ...(typeof imageUrl === 'string' ? { imageUrl } : {}),
     };
@@ -170,7 +189,7 @@ export const addAiSearchHistoryServer = async (data: AiSearchHistoryWriteInput) 
 
 export const findCachedSearchByCacheKeyServer = async (
     cacheKey: string,
-    session: LoginUserType
+    session: Pick<LoginUserType, 'tId' | 'sId'>,
 ): Promise<AiSearchHistory | null> => {
     const scope = getAiSearchHistoryScope(session);
     if (!scope) return null;
@@ -196,6 +215,26 @@ export const findCachedSearchByCacheKeyServer = async (
     const citations = normalizeAnswerlatticePublicCitations(data.citations);
     const clarification = normalizeAnswerlatticeScopeClarification(data.clarification);
     const guidedProcedure = AnswerlatticeProcedureSchema.safeParse(data.guidedProcedure);
+    const suggestedQuestions = Array.isArray(data.suggestedQuestions)
+        ? data.suggestedQuestions.filter((question: unknown): question is string => (
+            typeof question === 'string'
+            && Boolean(question.trim())
+            && question.length <= MAX_SUGGESTED_QUESTION_CHARS
+        ))
+        : [];
+    const answerSource = typeof data.answerSource === 'string' && ANSWER_SOURCES.has(data.answerSource)
+        ? data.answerSource as AiSearchHistory['answerSource']
+        : undefined;
+    const persistedAnswerType = typeof data.answerType === 'string' && ANSWER_TYPES.has(data.answerType)
+        ? data.answerType as AiSearchHistory['answerType']
+        : undefined;
+    const answerType = persistedAnswerType || (guidedProcedure.success ? 'procedure' : undefined);
+    const confidence = typeof data.confidence === 'string' && CONFIDENCE_LEVELS.has(data.confidence)
+        ? data.confidence as AiSearchHistory['confidence']
+        : undefined;
+    const mountContext = typeof data.mountContext === 'string' && MOUNT_CONTEXTS.has(data.mountContext)
+        ? data.mountContext as AiSearchHistory['mountContext']
+        : undefined;
     let expiresAtMs = 0;
     try {
         expiresAtMs = typeof data.expiresAt?.toMillis === 'function'
@@ -206,6 +245,7 @@ export const findCachedSearchByCacheKeyServer = async (
     }
     if (
         data.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || data.responseCacheVersion !== RESPONSE_CACHE_VERSION
         || Number(data.tId) !== scope.tId
         || Number(data.sId) !== scope.sId
         || !query
@@ -219,9 +259,19 @@ export const findCachedSearchByCacheKeyServer = async (
         || !Array.isArray(data.references)
         || data.references.length > MAX_REFERENCE_COUNT
         || references.length !== data.references.length
+        || !Array.isArray(data.suggestedQuestions)
+        || data.suggestedQuestions.length > MAX_SUGGESTED_QUESTION_COUNT
+        || suggestedQuestions.length !== data.suggestedQuestions.length
         || (data.citations !== undefined && (!Array.isArray(data.citations)
             || data.citations.length > MAX_CITATION_COUNT
             || citations.length !== data.citations.length))
+        || (data.answerSource !== undefined && answerSource === undefined)
+        || (data.answerType !== undefined && persistedAnswerType === undefined)
+        || (data.confidence !== undefined && confidence === undefined)
+        || (data.mountContext !== undefined && mountContext === undefined)
+        || (data.drifted !== undefined && typeof data.drifted !== 'boolean')
+        || (data.guidedProcedure !== undefined && !guidedProcedure.success)
+        || (answerType === 'procedure' && !guidedProcedure.success)
     ) {
         return null;
     }
@@ -232,6 +282,8 @@ export const findCachedSearchByCacheKeyServer = async (
         cacheKey: storedCacheKey,
         craftedAnswer: data.craftedAnswer,
         references,
+        suggestedQuestions,
+        responseCacheVersion: RESPONSE_CACHE_VERSION,
         ...(citations.length > 0 ? { citations } : {}),
         tId: scope.tId,
         sId: scope.sId,
@@ -244,16 +296,18 @@ export const findCachedSearchByCacheKeyServer = async (
             ? { guidedProcedure: guidedProcedure.data }
             : {}),
         ...(typeof data.faqAnswerId === 'string' ? { faqAnswerId: data.faqAnswerId } : {}),
-        ...(typeof data.answerSource === 'string' ? { answerSource: data.answerSource } : {}),
+        ...(answerSource ? { answerSource } : {}),
+        ...(answerType ? { answerType } : {}),
+        ...(typeof data.drifted === 'boolean' ? { drifted: data.drifted } : {}),
         ...(typeof data.fallbackReason === 'string' ? { fallbackReason: data.fallbackReason } : {}),
         ...(clarification ? { clarification } : {}),
-        ...(typeof data.confidence === 'string' ? { confidence: data.confidence } : {}),
+        ...(confidence ? { confidence } : {}),
         ...(Array.isArray(data.matchedEntityIds)
             ? { matchedEntityIds: data.matchedEntityIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 50) }
             : {}),
         ...(data.sourceVersions && typeof data.sourceVersions === 'object' && !Array.isArray(data.sourceVersions)
             ? { sourceVersions: data.sourceVersions }
             : {}),
-        ...(typeof data.mountContext === 'string' ? { mountContext: data.mountContext } : {}),
+        ...(mountContext ? { mountContext } : {}),
     };
 };

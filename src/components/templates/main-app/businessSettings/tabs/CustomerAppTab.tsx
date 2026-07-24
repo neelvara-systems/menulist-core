@@ -94,6 +94,10 @@ interface CustomerAppTabProps {
 export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
+    const customerAppScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+    const customerAppScopeKeyRef = useRef(customerAppScopeKey);
+    customerAppScopeKeyRef.current = customerAppScopeKey;
+    const componentActiveRef = useRef(true);
 
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
@@ -137,6 +141,13 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
     );
     const hasIconChanges = removeIconOnSave || selectedIconUrl !== originalDraft.iconUrl;
     const hasUnsavedChanges = hasSettingsChanges || hasIconChanges;
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
 
     // Re-sync when storeDetails changes (e.g., store switch)
     useEffect(() => {
@@ -204,6 +215,9 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
 
     const handleSave = async () => {
         if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
+        const requestScopeKey = `${String(expectedTenantId)}:${String(expectedStoreId)}`;
         setSaving(true);
         try {
             const settingsPatch: {
@@ -224,7 +238,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 );
             }
             if (Object.keys(settingsPatch).length > 0) {
-                const settingsResult = await updatePWASettings(storeDetails.storeId, settingsPatch);
+                const settingsResult = await updatePWASettings(expectedStoreId, settingsPatch);
                 assertPWASettingsUpdateSucceeded(settingsResult);
                 if ('pwaShortName' in settingsPatch) {
                     const nextBusinessCopyMeta = buildBusinessCopyManualOverrideMeta({
@@ -237,17 +251,27 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                             storeDetails?.businessCopyMeta || {},
                             { detectRemovedRootKeys: true },
                         ),
-                        storeId: storeDetails.storeId,
+                        storeId: expectedStoreId,
                     });
                     assertStoreUpdateSucceeded(
                         metaResult,
-                        storeDetails.storeId,
+                        expectedStoreId,
                         'customer_app_business_copy_meta_update_rejected',
                     );
-                    setStoreDetails((previous: any) => ({
-                        ...previous,
-                        businessCopyMeta: nextBusinessCopyMeta,
-                    }));
+                    if (
+                        componentActiveRef.current
+                        && customerAppScopeKeyRef.current === requestScopeKey
+                    ) {
+                        setStoreDetails((previous: any) => {
+                            if (
+                                String(previous?.tenantId ?? '') !== String(expectedTenantId)
+                                || String(previous?.storeId ?? '') !== String(expectedStoreId)
+                            ) {
+                                return previous;
+                            }
+                            return { ...previous, businessCopyMeta: nextBusinessCopyMeta };
+                        });
+                    }
                 }
             }
 
@@ -266,51 +290,68 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 const iconResult = await replacePWAIconOverride({
                     file: prepared.file,
                     previousUrl: nextIconUrl,
-                    tenantId: storeDetails.tenantId,
-                    storeId: storeDetails.storeId,
+                    tenantId: expectedTenantId,
+                    storeId: expectedStoreId,
                 });
                 nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
                 nextIconUrl = iconResult.url;
             } else if (removeIconOnSave && nextIconUrl) {
                 const iconResult = await removePWAIconOverride({
                     previousUrl: nextIconUrl,
-                    tenantId: storeDetails.tenantId,
-                    storeId: storeDetails.storeId,
+                    tenantId: expectedTenantId,
+                    storeId: expectedStoreId,
                 });
                 nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
                 nextIconUrl = '';
             }
-            if (hasIconChanges) {
-                setStoreDetails((previous: any) => ({
-                    ...previous,
-                    publicPresence: {
-                        ...(previous?.publicPresence || {}),
-                        pwaIconMode: nextIconUrl ? 'override' : 'generated',
-                        pwaIconOverrideUrl: nextIconUrl || null,
-                        ...(nextIconUpdatedAt ? { pwaIconUpdatedAt: nextIconUpdatedAt } : {}),
-                    },
-                }));
+            if (
+                hasIconChanges
+                && componentActiveRef.current
+                && customerAppScopeKeyRef.current === requestScopeKey
+            ) {
+                setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(expectedTenantId)
+                        || String(previous?.storeId ?? '') !== String(expectedStoreId)
+                    ) {
+                        return previous;
+                    }
+                    return {
+                        ...previous,
+                        publicPresence: {
+                            ...(previous?.publicPresence || {}),
+                            pwaIconMode: nextIconUrl ? 'override' : 'generated',
+                            pwaIconOverrideUrl: nextIconUrl || null,
+                            ...(nextIconUpdatedAt ? { pwaIconUpdatedAt: nextIconUpdatedAt } : {}),
+                        },
+                    };
+                });
             }
 
-            setSavedIconUrl(nextIconUrl);
-            setSelectedIcon(
-                nextIconUrl
-                    ? {
-                        name: 'customer-app-icon',
-                        size: 0,
-                        type: '',
-                        url: nextIconUrl,
-                    }
-                    : null,
-            );
-            setRemoveIconOnSave(false);
-            setOriginalDraft({
-                enableInstallableApp,
-                promoteInstallation,
-                iconUrl: nextIconUrl,
-            });
-            setOriginalLocalizedShortNameDrafts(localizedShortNameDrafts);
-            message.success('Customer App settings saved');
+            if (
+                componentActiveRef.current
+                && customerAppScopeKeyRef.current === requestScopeKey
+            ) {
+                setSavedIconUrl(nextIconUrl);
+                setSelectedIcon(
+                    nextIconUrl
+                        ? {
+                            name: 'customer-app-icon',
+                            size: 0,
+                            type: '',
+                            url: nextIconUrl,
+                        }
+                        : null,
+                );
+                setRemoveIconOnSave(false);
+                setOriginalDraft({
+                    enableInstallableApp,
+                    promoteInstallation,
+                    iconUrl: nextIconUrl,
+                });
+                setOriginalLocalizedShortNameDrafts(localizedShortNameDrafts);
+                message.success('Customer App settings saved');
+            }
         } catch (err) {
             logPwaTrackingFailure('customer_app_desktop_settings_save_failed', err, {
                 ...getBoundedPwaStringContext('storeId', storeDetails?.storeId),
@@ -321,9 +362,19 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 removeIconOnSave,
                 managedLanguageCount: managedLanguages.length,
             });
-            message.error('Could not save. Please try again.');
+            if (
+                componentActiveRef.current
+                && customerAppScopeKeyRef.current === requestScopeKey
+            ) {
+                message.error('Could not save. Please try again.');
+            }
         } finally {
-            setSaving(false);
+            if (
+                componentActiveRef.current
+                && customerAppScopeKeyRef.current === requestScopeKey
+            ) {
+                setSaving(false);
+            }
         }
     };
 

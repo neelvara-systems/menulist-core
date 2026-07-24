@@ -1,7 +1,8 @@
 # SignalDesk Foundation - Specification
 
-**Status:** Initial planning spec
+**Status:** Runtime-backed specification
 **Created:** June 23, 2026
+**Last Updated:** July 21, 2026
 **Audience:** Founder, growth team, implementers
 
 ## Executive Summary
@@ -23,7 +24,7 @@ Before SignalDesk can import targets, score opportunities, draft messages, route
 | --- | --- |
 | Keep SignalDesk private | No public route, no owner/customer access, internal auth only. |
 | Control operator power | Roles define who can view, reveal, approve, send/export, configure, and pause. |
-| Preserve audit trail | Every mutation and sensitive read writes an audit event. |
+| Preserve audit trail | Every committed governed mutation and raw contact reveal writes a durable audit event in the same settlement boundary. |
 | Prevent runaway outbound | Kill switches can pause global outbound, channel, source, campaign, AI worker, or export. |
 | Keep mobile safe | Mobile allows emergency pause and summary view only. |
 
@@ -36,7 +37,13 @@ Before SignalDesk can import targets, score opportunities, draft messages, route
 | Operator | Work queue, review evidence, create drafts, classify replies, request approvals. | Final policy approval, provider config, contact export unless allowed. |
 | Compliance reviewer | Review source/channel/suppression/contact reveal issues. | Normal campaign execution unless also assigned. |
 | Read-only analyst | View summaries and attribution. | PII reveal, sends, approvals, configuration. |
-| System worker | Execute approved worker tasks. | Human approval, policy override, contact reveal. |
+| System worker | Service identity only; not admitted through human team membership. | Sign-in, human approval, policy override, contact reveal. |
+
+## Access Authority
+
+SignalDesk membership is not standalone authority. Every protected page and API request must first resolve the signed-in user against current MenuList user truth. Deleted, blocked, deactivated, auth-disabled, email-mismatched, or session-revoked users fail closed before platform role or SignalDesk membership is considered.
+
+Platform authority comes from the current user record, not the session's cached `platformRole`. Non-platform users must resolve to exactly one active, correctly shaped `signaldeskTeamMembers` row bound by user ID or canonical login email. Ambiguous rows fail closed.
 
 ## Required Capabilities
 
@@ -44,7 +51,7 @@ Before SignalDesk can import targets, score opportunities, draft messages, route
 | --- | --- | --- |
 | SDF-R001 | Internal-only access gate. | P0 |
 | SDF-R002 | Role matrix for every sensitive action. | P0 |
-| SDF-R003 | Audit event on every mutation. | P0 |
+| SDF-R003 | Coupled audit event on every committed governed mutation. | P0 |
 | SDF-R004 | Audit event on raw contact reveal. | P0 |
 | SDF-R005 | Kill switches by global, channel, campaign, source, AI worker, and export scope. | P0 |
 | SDF-R006 | Stale policy/config warning. | P0 |
@@ -60,9 +67,12 @@ Before SignalDesk can import targets, score opportunities, draft messages, route
 | `email` | Blocks email send/export rail. |
 | `whatsapp` | Blocks assisted/API WhatsApp action. |
 | `instagram` | Blocks Instagram/Messenger actions. |
+| `messenger` | Blocks Messenger actions independently when needed. |
 | `source-provider` | Blocks a source adapter or run. |
 | `ai-worker` | Blocks one AI worker from running. |
 | `campaign` | Blocks one campaign/sequence. |
+| `content-distribution` | Blocks content review, schedule, and distribution actions. |
+| `trust-partner` | Blocks trust-partner and referral operations. |
 | `menu-list-bridge` | Blocks route creation/outcome bridge actions if needed. |
 
 ## Out Of Scope
@@ -87,3 +97,11 @@ Those belong to later module doc sets.
 - Active global outbound kill switch blocks sends/exports.
 - Mobile can pause global outbound but cannot send or approve.
 - Founder admin can add a partner by login email, assign a role, and audit the membership change.
+- A stale platform-role session cannot retain founder authority after the current user role changes.
+- Blocking, deleting, deactivating, or revoking the current user removes SignalDesk access without waiting for the SignalDesk membership row to change.
+- Human team mutation cannot create a `system-worker` membership.
+- Concurrent or ambiguous member identities cannot create duplicate active authority.
+- Self-deactivation is checked against the persisted member identity, not caller-submitted replacement identity.
+- Audit history returns newest-first in stable 50-event pages and can load older pages without skipping events that share a timestamp.
+- Audit rows retain classifications and entity identifiers, not raw target names, evidence, messages, recipients, or operator free text.
+- Rejected authentication, authorization, validation, and malformed-cursor requests use bounded security/runtime diagnostics rather than attacker-amplifiable durable audit writes.

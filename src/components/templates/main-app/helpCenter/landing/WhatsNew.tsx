@@ -8,6 +8,7 @@ import { LuArrowRight } from 'react-icons/lu';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { fetchAnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentClient';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import ChangelogPreview from '@template/platform/changelog/ChangelogPreview';
 import ChangelogTagRenderer from '@template/platform/changelog/ChangelogTagRenderer';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
@@ -49,19 +50,23 @@ function WhatsNew() {
     const screens = Grid.useBreakpoint();
     const [selectedEntry, setSelectedEntry] = useState<AnswerlatticePublicChangelogEntry | null>(null);
     const [changelog, setChangelog] = useState<AnswerlatticePublicChangelogPage | null>(null);
-
-    const fetchInitialData = async () => {
-        try {
-            const changelogData = await fetchAnswerlatticePublicChangelogPage();
-            setChangelog(changelogData);
-        } catch (error) {
-            message.error(t('failedToLoadChangelog'));
-        }
-    };
+    const requestScope = useAnswerlatticePublicContentRequestScope();
 
     useEffect(() => {
-        fetchInitialData();
-    }, []);
+        if (!requestScope) return;
+        let mounted = true;
+        setChangelog(null);
+        fetchAnswerlatticePublicChangelogPage(requestScope)
+            .then((changelogData) => {
+                if (mounted) setChangelog(changelogData);
+            })
+            .catch(() => {
+                if (mounted) message.error(t('failedToLoadChangelog'));
+            });
+        return () => {
+            mounted = false;
+        };
+    }, [requestScope, t]);
 
     const latestEntries = useMemo(() => changelog?.entries?.slice(0, 3) || [], [changelog?.entries]);
     const isMobile = screens.md === false;

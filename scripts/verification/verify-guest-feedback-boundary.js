@@ -334,6 +334,7 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(rules, '&& belongsToTenantById(resource.data.tId)', 'Guest Feedback Firestore status-update tenant gate');
   assertIncludes(rules, '&& belongsToStoreById(resource.data.sId)', 'Guest Feedback Firestore status-update store gate');
   assertIncludes(rules, 'request.resource.data.modifiedBy == request.auth.uid', 'Guest Feedback modifier identity gate');
+  assertIncludes(rules, 'request.resource.data.modifiedOn == request.time', 'Guest Feedback server-authoritative modification time');
   assertIncludes(rules, "request.resource.data.status in ['new', 'resolved']", 'Guest Feedback status enum rule');
   assertIncludes(rules, "request.resource.data.needsAttention == (resource.data.rating <= 3 && request.resource.data.status == 'new')", 'Guest Feedback attention invariant rule');
   assertIncludes(rules, 'request.resource.data.ownerNote.size() <= 300', 'Guest Feedback owner note rule cap');
@@ -350,9 +351,16 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(clientDal, 'assertFeedbackListLoadSucceeded', 'Guest Feedback list acknowledgement helper');
   assertIncludes(clientDal, 'assertFeedbackCountLoadSucceeded', 'Guest Feedback count acknowledgement helper');
   assertIncludes(clientDal, 'assertFeedbackStatusUpdateSucceeded', 'Guest Feedback status acknowledgement helper');
+  assertIncludes(clientDal, 'expectedFeedbackId === undefined || resultId === expectedFeedbackId', 'Guest Feedback status acknowledgement exact response identity');
+  assertIncludes(clientDal, 'ids.has(item.id)', 'Guest Feedback list acknowledgement duplicate identity rejection');
+  assertIncludes(clientDal, 'item.tId !== expectedScope.tenantId', 'Guest Feedback list acknowledgement tenant scope');
+  assertIncludes(clientDal, 'item.sId !== expectedScope.storeId', 'Guest Feedback list acknowledgement store scope');
+  assertIncludes(clientDal, 'candidate.lastDocId === candidate.items.at(-1)?.id', 'Guest Feedback list acknowledgement cursor coherence');
+  assertIncludes(clientDal, 'Number.isSafeInteger(result)', 'Guest Feedback count acknowledgement integer boundary');
   assertIncludes(clientDal, 'const session = await getActiveSession();', 'Guest Feedback client DAL session boundary');
   assertIncludes(clientDal, 'export const normalizeGuestFeedbackRecord = (value: unknown, id: string): GuestFeedback | null => {', 'Guest Feedback persisted DTO normalizer');
   assertIncludes(clientDal, 'const scope = resolveSessionScope(session);', 'Guest Feedback exact active-store scope');
+  assertIncludes(clientDal, 'assertExpectedFeedbackScope(scope, expectedScope);', 'Guest Feedback caller/session scope agreement');
   assertIncludes(clientDal, "where('tId', '==', scope.tenantId)", 'Guest Feedback client DAL tenant query');
   assertIncludes(clientDal, "where('sId', '==', scope.storeId)", 'Guest Feedback client DAL store query');
   assertIncludes(clientDal, 'const constraints: QueryConstraint[] = [', 'Guest Feedback typed query constraints');
@@ -361,6 +369,8 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(clientDal, 'const items = normalizedPage.slice(0, pageSize);', 'Guest Feedback pagination applies after complete DTO validation');
   assertNotIncludes(clientDal, 'if (feedback) {\n                        items.push(feedback);', 'Guest Feedback list must not silently skip malformed persisted rows');
   assertIncludes(clientDal, 'return runTransaction(firebaseClient, async (transaction) => {', 'Guest Feedback atomic status update');
+  assertIncludes(clientDal, 'modifiedOn: serverTimestamp()', 'Guest Feedback server-authoritative status timestamp write');
+  assertNotIncludes(clientDal, 'modifiedOn: Timestamp.now()', 'Guest Feedback browser-authored status timestamp');
   assertIncludes(clientDal, 'const snapshot = await getCountFromServer(q);', 'Guest Feedback count aggregation');
   assertNotIncludes(clientDal, 'export const submitGuestFeedback = async', 'Guest Feedback dead client create helper');
   assertNotIncludes(clientDal, 'export const logFeedbackMOLEvent = async', 'Guest Feedback dead client event helper');
@@ -392,6 +402,82 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(scheduler, 'throw new Error(GUEST_FEEDBACK_RETENTION_TASK_FAILED);', 'Guest Feedback retention partial failures fail the scheduler task');
 }
 
+function verifyOwnerDtoRuntime() {
+  const { Timestamp } = require('firebase/firestore');
+  const {
+    assertFeedbackCountLoadSucceeded,
+    assertFeedbackStatusUpdateSucceeded,
+    isGuestFeedbackListResult,
+  } = require(path.join(ROOT, 'src/database/guestFeedback/index.ts'));
+  const feedback = {
+    id: 'feedback_1',
+    tId: 1,
+    sId: 101,
+    projectId: '1-menu-101',
+    rating: 2,
+    source: 'direct_link',
+    status: 'new',
+    needsAttention: true,
+    createdBy: 'guest',
+    createdOn: Timestamp.fromMillis(1_000),
+    expiresOn: Timestamp.fromMillis(2_000),
+  };
+  const scope = { tenantId: 1, storeId: 101 };
+
+  assert(
+    isGuestFeedbackListResult({
+      items: [feedback],
+      hasMore: true,
+      lastDocId: feedback.id,
+    }, scope),
+    'Guest Feedback owner list must accept one coherent exact-scope page',
+  );
+  assert(
+    !isGuestFeedbackListResult({
+      items: [{ ...feedback, sId: 102 }],
+      hasMore: false,
+      lastDocId: feedback.id,
+    }, scope),
+    'Guest Feedback owner list must reject a cross-store row',
+  );
+  assert(
+    !isGuestFeedbackListResult({
+      items: [feedback, { ...feedback }],
+      hasMore: false,
+      lastDocId: feedback.id,
+    }, scope),
+    'Guest Feedback owner list must reject duplicate row identities',
+  );
+  assert(
+    !isGuestFeedbackListResult({
+      items: [feedback],
+      hasMore: false,
+      lastDocId: 'feedback_2',
+    }, scope),
+    'Guest Feedback owner list must reject a cursor that does not match the last row',
+  );
+
+  let rejectedWrongStatusIdentity = false;
+  try {
+    assertFeedbackStatusUpdateSucceeded(
+      { ...feedback, id: 'feedback_2' },
+      feedback.id,
+      'new',
+    );
+  } catch {
+    rejectedWrongStatusIdentity = true;
+  }
+  assert(rejectedWrongStatusIdentity, 'Guest Feedback status acknowledgement must reject another row identity');
+
+  let rejectedFractionalCount = false;
+  try {
+    assertFeedbackCountLoadSucceeded(0.5);
+  } catch {
+    rejectedFractionalCount = true;
+  }
+  assert(rejectedFractionalCount, 'Guest Feedback count acknowledgement must reject fractional values');
+}
+
 function verifyOwnerDesktopMobile() {
   const desktop = read('src/components/templates/main-app/feedback/index.tsx');
   const desktopCard = read('src/components/templates/main-app/feedback/FeedbackCard.tsx');
@@ -406,9 +492,17 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(desktop, 'assertFeedbackCountLoadSucceeded(', 'Guest Feedback desktop count acknowledgement');
   assertIncludes(desktop, 'assertFeedbackStatusUpdateSucceeded(', 'Guest Feedback desktop status acknowledgement');
   assertIncludes(desktop, 'feedback_inbox_list_load_rejected', 'Guest Feedback desktop list rejection code');
+  assertIncludes(desktop, "'feedback_inbox_list_load_rejected',\n                expectedScope,", 'Guest Feedback desktop list acknowledgement scope');
   assertIncludes(desktop, 'feedback_inbox_count_load_rejected', 'Guest Feedback desktop count rejection code');
   assertIncludes(desktop, 'feedback_inbox_status_update_rejected', 'Guest Feedback desktop status rejection code');
   assertIncludes(desktop, 'logFeedbackInboxFailure', 'Guest Feedback desktop bounded diagnostics');
+  assertIncludes(desktop, 'return <FeedbackInboxContent key={scopeKey} {...props} />;', 'Guest Feedback desktop tenant/store keyed state lifetime');
+  assertIncludes(desktop, 'getFeedbackList(filter, 50, cursorId || undefined, expectedScope)', 'Guest Feedback desktop list retains captured tenant/store scope');
+  assertIncludes(desktop, "getFeedbackCount('needs_attention', expectedScope)", 'Guest Feedback desktop count retains captured tenant/store scope');
+  assertIncludes(desktop, 'latestRequestRef.current !== requestId', 'Guest Feedback desktop latest request settlement');
+  assertIncludes(desktop, 'mutationInFlightRef.current', 'Guest Feedback desktop status duplicate admission');
+  assertIncludes(desktop, 'feedbackItemsRef.current.find((item) => item.id === feedbackId) !== sourceItem', 'Guest Feedback desktop source-row mutation ownership');
+  assertIncludes(desktop, 'await fetchFeedback(false, null);', 'Guest Feedback desktop committed status race reconciliation');
   assertIncludes(desktopCard, 'generateWhatsAppLink', 'Guest Feedback desktop WhatsApp contact helper');
   assertIncludes(desktopCard, 'isValidWhatsAppNumber', 'Guest Feedback desktop WhatsApp validation');
   assertIncludes(desktopCard, 'buildFeedbackReplyTemplates', 'Guest Feedback desktop reply draft helper');
@@ -434,12 +528,17 @@ function verifyOwnerDesktopMobile() {
 
   assertIncludes(mobile, 'assertFeedbackListLoadSucceeded(', 'Guest Feedback mobile list acknowledgement');
   assertIncludes(mobile, 'mobile_feedback_list_load_rejected', 'Guest Feedback mobile list rejection code');
+  assertIncludes(mobile, "'mobile_feedback_list_load_rejected',\n                expectedScope,", 'Guest Feedback mobile list acknowledgement scope');
   assertIncludes(mobile, 'copyMobileFeedbackLinkToClipboard', 'Guest Feedback mobile acknowledged copy helper');
   assertIncludes(mobile, "const copied = document.execCommand('copy');", 'Guest Feedback mobile copy fallback acknowledgement');
   assertIncludes(mobile, 'mobile_feedback_link_copy_failed', 'Guest Feedback mobile copy failure diagnostic');
   assertIncludes(mobile, 'openMobilePublicLink(feedbackUrl', 'Guest Feedback mobile shell-safe public link open');
   assertIncludes(mobile, 'mobile_feedback_native_share_failed', 'Guest Feedback mobile native share diagnostic');
   assertIncludes(mobile, 'logMobileOwnerFailure', 'Guest Feedback mobile bounded diagnostics');
+  assertIncludes(mobile, 'return <MobileFeedbackScreenContent key={scopeKey} {...props} />;', 'Guest Feedback mobile tenant/store keyed state lifetime');
+  assertIncludes(mobile, 'getFeedbackList(targetFilter, 50, cursorId || undefined, expectedScope)', 'Guest Feedback mobile list retains captured tenant/store scope');
+  assertIncludes(mobile, 'latestRequestRef.current !== requestId', 'Guest Feedback mobile latest request settlement');
+  assertIncludes(mobile, 'loadMoreInFlightRef.current', 'Guest Feedback mobile pagination duplicate admission');
   assertIncludes(mobile, "Toast.show({ content: t('failedToLoad')", 'Guest Feedback mobile visible load failure');
   assertIncludes(mobile, 'setHasMore(result.hasMore)', 'Guest Feedback mobile pagination state');
   assertIncludes(mobile, 'setLastDocId(result.lastDocId)', 'Guest Feedback mobile cursor state');
@@ -453,6 +552,10 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(mobileDetail, 'mobile_feedback_reply_copy_failed', 'Guest Feedback mobile reply copy diagnostic');
   assertIncludes(mobileDetail, 'generateWhatsAppLink', 'Guest Feedback mobile manual WhatsApp handoff');
   assertIncludes(mobileDetail, 'const [isResolving, setIsResolving] = useState(false)', 'Guest Feedback mobile resolve double-tap guard');
+  assertIncludes(mobileDetail, 'resolveInFlightRef.current', 'Guest Feedback mobile resolve synchronous duplicate admission');
+  assertIncludes(mobileDetail, 'updateFeedbackStatus(', 'Guest Feedback mobile scoped status mutation');
+  assertIncludes(mobileDetail, 'sourceScope,', 'Guest Feedback mobile status mutation retains captured tenant/store scope');
+  assertIncludes(mobileDetail, 'isExpectedOperation(sourceScope, sourceFeedback)', 'Guest Feedback mobile detail liveness/scope/source ownership');
   assertIncludes(mobileDetail, 'buildFeedbackReplyTemplates', 'Guest Feedback mobile reply draft helper');
   assertIncludes(mobileDetail, 'replyTemplates.map', 'Guest Feedback mobile reply draft selector');
   assertIncludes(mobileDetail, 'maxLength={500}', 'Guest Feedback mobile reply cap');
@@ -560,6 +663,7 @@ const checks = [
   ['public submit route', verifyPublicSubmitRoute],
   ['public page and form', verifyPublicPageAndForm],
   ['Firestore DAL and retention', verifyFirestoreDalAndRetention],
+  ['owner DTO runtime', verifyOwnerDtoRuntime],
   ['owner desktop and mobile', verifyOwnerDesktopMobile],
   ['docs parity', verifyDocsParity],
 ];

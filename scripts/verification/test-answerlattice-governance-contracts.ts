@@ -269,6 +269,26 @@ assert.equal(
     true,
     'entity merge must rebuild the survivor search index instead of changing synonyms alone',
 );
+assert.match(
+    governanceServerSource,
+    /survivorIndexes\.empty[\s\S]*deterministicSurvivorIndexSnapshot\.exists[\s\S]*!searchIndexIsOwnedBy/,
+    'entity merge must reject a deterministic survivor search-index row outside exact ownership',
+);
+assert.match(
+    governanceServerSource,
+    /relationTargetSnapshots[\s\S]*!relationIsOwnedBy\(snapshot\.data\(\), scope, mutation\.target\.value\)/,
+    'entity merge must reject deterministic relation targets outside exact ownership',
+);
+assert.equal(
+    /transaction\.set\(db\.collection\(AUDIT_COLLECTION\)/.test(governanceServerSource),
+    false,
+    'deterministic governance audit rows must use create-only writes so collisions cannot be overwritten',
+);
+assert.match(
+    governanceServerSource,
+    /readInvalidationOwnership\(transaction, scope, invalidationOptions\)[\s\S]*addInvalidationWrites\(transaction, scope, invalidationOwnership, invalidationOptions\)/,
+    'governance mutations must read transaction-current source, manifest and cache invalidation ownership before writes',
+);
 assert.equal(
     governanceServerSource.includes('Number(proposal.confidenceScore'),
     false,

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
     buildExtractionCostMetricsFromOperations,
     buildHealthMetricsFromJobs,
@@ -113,5 +115,29 @@ assert.equal(malformedDetails.projectId, '');
 assert.equal(malformedDetails.status, 'unknown');
 assert.equal(malformedDetails.result, null);
 assert.equal(malformedDetails.transaction, null);
+
+const mobileMonitorSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/mobile/screens/MobileExtractionMonitorScreen.tsx'),
+    'utf8',
+);
+for (const expectedBoundary of [
+    'const isMountedRef = useRef(true);',
+    'const latestRequestRef = useRef(0);',
+    'latestRequestRef.current !== requestId',
+    'latestRequestRef.current === requestId',
+    'latestRequestRef.current += 1;',
+    'if (filter === jobFilter) return;',
+    'onClick={() => selectJobFilter(filter)}',
+]) {
+    assert.ok(
+        mobileMonitorSource.includes(expectedBoundary),
+        `mobile extraction monitor must retain request ownership boundary: ${expectedBoundary}`,
+    );
+}
+assert.equal(
+    mobileMonitorSource.includes('onClick={() => setJobFilter(filter)}'),
+    false,
+    'filter changes must invalidate the prior request before changing the active filter',
+);
 
 console.log('Extraction monitor data boundary checks passed.');

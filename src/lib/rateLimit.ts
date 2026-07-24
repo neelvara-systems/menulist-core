@@ -21,6 +21,7 @@
 
 import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
+import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { secureError } from '@lib/security/secureLogger';
 
 // Initialize Upstash client (only if rate limiting is enabled)
@@ -35,6 +36,28 @@ const RATE_LIMIT_PROVIDER_TIMEOUT_MS = 1500;
 const RATE_LIMIT_PROVIDER_BYPASS_MS = 60_000;
 const RATE_LIMIT_PROVIDER_TIMEOUT_CODE = 'RATE_LIMIT_PROVIDER_TIMEOUT';
 let rateLimitProviderBypassUntil = 0;
+
+const ATOMIC_SLIDING_WINDOW_SCRIPT = `
+local key = KEYS[1]
+local windowStart = tonumber(ARGV[1])
+local now = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local member = ARGV[4]
+local ttlSeconds = tonumber(ARGV[5])
+
+redis.call('ZREMRANGEBYSCORE', key, 0, windowStart)
+local current = redis.call('ZCARD', key)
+if current >= limit then
+    local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+    local oldestTimestamp = now
+    if oldest[2] then oldestTimestamp = tonumber(oldest[2]) end
+    return {0, current, oldestTimestamp}
+end
+
+redis.call('ZADD', key, now, member)
+redis.call('EXPIRE', key, ttlSeconds)
+return {1, current + 1, now}
+`;
 
 class RateLimitProviderTimeoutError extends Error {
     readonly code = RATE_LIMIT_PROVIDER_TIMEOUT_CODE;
@@ -178,43 +201,32 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
     const windowStart = now - (window * 1000);
 
     try {
-        // Use Upstash pipeline for atomic operations
-        const pipeline = upstash.pipeline();
-
-        // 1. Remove old entries (outside current window)
-        pipeline.zremrangebyscore(key, 0, windowStart);
-
-        // 2. Count current requests in window
-        pipeline.zcard(key);
-
-        // 3. Add current request
-        pipeline.zadd(key, { score: now, member: now });
-
-        // 4. Set expiration (cleanup old keys automatically)
-        pipeline.expire(key, window * 2); // 2x window for safety
-
-        // Execute all commands atomically
-        const results = await withRateLimitTimeout(pipeline.exec());
-
-        // results[1] is the count BEFORE adding current request
-        const currentCount = (results[1] as number) || 0;
+        const atomicResult = await withRateLimitTimeout(upstash.eval<
+            [string, string, string, string, string],
+            [number, number, number]
+        >(
+            ATOMIC_SLIDING_WINDOW_SCRIPT,
+            [key],
+            [
+                String(windowStart),
+                String(now),
+                String(limit),
+                `${now}:${createRandomIdSegment(24)}`,
+                String(window * 2),
+            ],
+        ));
+        if (
+            !Array.isArray(atomicResult)
+            || atomicResult.length !== 3
+            || !atomicResult.every(value => Number.isSafeInteger(value) && value >= 0)
+            || (atomicResult[0] !== 0 && atomicResult[0] !== 1)
+        ) {
+            throw new Error('Rate limit provider returned an invalid atomic result');
+        }
+        const [allowedFlag, currentCount, oldestTimestamp] = atomicResult;
 
         // Check if limit exceeded
-        if (currentCount >= limit) {
-            // Get oldest request to calculate reset time
-            const oldest = await withRateLimitTimeout(upstash.zrange(key, 0, 0, { withScores: true }));
-            
-            // Parse the oldest timestamp from Upstash response
-            // Upstash returns: [member1, score1, member2, score2, ...]
-            let oldestTimestamp = now;
-            if (Array.isArray(oldest) && oldest.length >= 2) {
-                // Format is [member, score]
-                oldestTimestamp = Number(oldest[1]) || now;
-            } else if (oldest && typeof oldest === 'object' && 'score' in oldest) {
-                // Alternative format: { score: number, member: string }
-                oldestTimestamp = Number((oldest as any).score) || now;
-            }
-            
+        if (allowedFlag === 0) {
             const resetAt = oldestTimestamp + (window * 1000);
 
             return {
@@ -230,9 +242,9 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
         const resetAt = now + (window * 1000);
         return {
             allowed: true,
-            remaining: limit - currentCount - 1, // -1 for current request
+            remaining: Math.max(limit - currentCount, 0),
             resetAt,
-            current: currentCount + 1
+            current: currentCount,
         };
 
     } catch (error) {

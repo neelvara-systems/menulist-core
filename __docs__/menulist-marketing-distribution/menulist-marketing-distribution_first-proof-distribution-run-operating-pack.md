@@ -28,6 +28,8 @@ permissioned activation
 
 This pack does not authorize contact, proof use, publication, partner outreach, spend, or external account access.
 
+SignalDesk may open Content with a target-scoped `proofTargetId` preparation hint only after the durable target projection records an activation time, evidence reference, approved `menulist-signed` or `owner-reviewed-manual` integrity, and two distinct surfaces. The client then uses already loaded target, permission, source, and pod summaries to prefill the existing Content Rail only. It performs no write, creates no proof permission/source/asset/draft automatically, and cannot move any entry gate from `Blocked` to `Pass`.
+
 ## Entry Gates
 
 Every gate must be `Pass` before the SignalDesk content asset can move from `hold` to `ready`.

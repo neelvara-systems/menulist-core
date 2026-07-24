@@ -1,13 +1,12 @@
-import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { doc, increment, Timestamp, writeBatch, type Transaction, type WriteBatch } from '@firebase/firestore';
+import { increment, runTransaction, Timestamp, type Transaction } from '@firebase/firestore';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 
 import {
     AnswerlatticeCacheSource,
-    getAnswerlatticeCacheVersionDocId,
 } from './cacheVersionManifest';
 import { appendAnswerlatticeCompiledContextSourceChange } from './compiledSourceVersionsClient';
+import { readAnswerlatticeClientInvalidationOwnership } from './invalidationOwnershipClient';
 
 type CacheVersionBumpMetadata = {
     reason?: string;
@@ -40,13 +39,13 @@ export const bumpAnswerlatticeCacheVersion = async (
         throw new Error('Cannot update Answerlattice cache version without valid tenant and store scope.');
     }
 
-    const batch = writeBatch(answerlatticeFirebaseClient);
-    appendAnswerlatticeCacheInvalidation(batch, source, tId, sId, metadata);
-    await batch.commit();
+    await runTransaction(answerlatticeFirebaseClient, async transaction => {
+        await appendAnswerlatticeCacheInvalidation(transaction, source, tId, sId, metadata);
+    });
 };
 
-export const appendAnswerlatticeCacheInvalidation = (
-    writer: WriteBatch | Transaction,
+export const appendAnswerlatticeCacheInvalidation = async (
+    transaction: Transaction,
     source: AnswerlatticeCacheSource,
     tId: number,
     sId: number,
@@ -57,11 +56,11 @@ export const appendAnswerlatticeCacheInvalidation = (
     }
     const tenantId = tId;
     const storeId = sId;
-    const ref = doc(
-        answerlatticeFirebaseClient,
-        DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS,
-        getAnswerlatticeCacheVersionDocId(source, tenantId, storeId),
-    );
+    const ownership = await readAnswerlatticeClientInvalidationOwnership({
+        cacheSources: [source],
+        scope: { tId: tenantId, sId: storeId },
+        transaction,
+    });
     const versionUpdate = {
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: tenantId,
@@ -71,10 +70,13 @@ export const appendAnswerlatticeCacheInvalidation = (
         modifiedOn: Timestamp.now(),
         ...sanitizeMetadata(metadata),
     };
-    if ('commit' in writer) {
-        writer.set(ref, versionUpdate, { merge: true });
-    } else {
-        writer.set(ref, versionUpdate, { merge: true });
-    }
-    appendAnswerlatticeCompiledContextSourceChange(writer, source, tenantId, storeId, metadata);
+    transaction.set(ownership.cacheVersionRefs[source]!, versionUpdate, { merge: true });
+    await appendAnswerlatticeCompiledContextSourceChange(
+        transaction,
+        source,
+        tenantId,
+        storeId,
+        metadata,
+        ownership,
+    );
 };

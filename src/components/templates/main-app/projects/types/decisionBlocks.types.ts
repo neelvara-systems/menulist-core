@@ -10,8 +10,6 @@
  * - This handles rush-hour sellouts gracefully
  */
 
-import { Timestamp } from 'firebase/firestore';
-
 // ============================================
 // DECISION BLOCK DATA
 // ============================================
@@ -21,9 +19,9 @@ import { Timestamp } from 'firebase/firestore';
  */
 export interface DecisionBlockEntry {
     itemId: string;                      // Reference to the menu item
-    score: number;                       // Computed score (for debugging/analytics)
+    score?: number;                      // Internal writer detail; omitted from the public DTO
     reason: string;                      // i18n key (e.g., "decision.popular.food.favorite")
-    reasonParams?: Record<string, any>;  // Optional params for interpolation { minutes: 5 }
+    reasonParams?: { minutes: number };  // Optional public interpolation value
     isPinned?: boolean;                  // True if owner manually pinned this item
 }
 
@@ -46,8 +44,8 @@ export interface PrecomputedDecisionBlocks {
     quickPick: DecisionBlockEntry[];
     bestValue: DecisionBlockEntry[];
 
-    computedAt: Timestamp;    // When Cloud Function ran
-    validUntil: Date;         // TTL - fallback to local computation if expired
+    computedAt: string;       // ISO timestamp from the server public projector
+    validUntil: string;       // ISO TTL from the server public projector
 
     statsUsed: {
         totalItems: number;

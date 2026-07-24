@@ -1092,7 +1092,14 @@ export interface AnswerlatticeOperationsTaskSummary {
     lastDurationMs: number;
     lastActivity: boolean;
     lastError: string | null;
-    lastDetails: Record<string, any>;
+    lastDetails: Record<string, unknown>;
+}
+
+export interface AnswerlatticeOperationsWorkspaceDetails {
+    nightlyStatus: string | null;
+    tenantStatus: string | null;
+    taskCount: number;
+    errorCount: number;
 }
 
 export interface AnswerlatticeOperationsWorkspaceSummary {
@@ -1103,7 +1110,7 @@ export interface AnswerlatticeOperationsWorkspaceSummary {
     lastCompletedAt: string | null;
     lastFailedLocalDate: string | null;
     lastFailedAt: string | null;
-    lastDetails: Record<string, any>;
+    lastDetails: AnswerlatticeOperationsWorkspaceDetails;
 }
 
 export interface AnswerlatticeOperationsRunSummary {
@@ -1116,7 +1123,7 @@ export interface AnswerlatticeOperationsRunSummary {
     tenantStatus: AnswerlatticeOwnerOperationStatus | null;
     taskCount: number;
     errorCount: number;
-    totals: Record<string, any>;
+    totals: Record<string, unknown>;
 }
 
 export interface AnswerlatticeOperationsStatusSummary {

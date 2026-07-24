@@ -384,7 +384,7 @@ function BusinessSettingsPresenceMonitorCard({
     );
 }
 
-function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
+function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails }) {
     const { userPermissions } = useContext(PlatformGlobalDataContext);
     const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
         && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
@@ -405,6 +405,11 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     });
     const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [activeSection, setActiveSection] = useState(0);
+    const businessSettingsScopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeBusinessSettingsScopeRef = useRef(businessSettingsScopeKey);
+    const componentActiveRef = useRef(true);
+    const settingsSaveInFlightRef = useRef(false);
+    const [isSettingsSaving, setIsSettingsSaving] = useState(false);
     const obpPhotoDeleteQueueRef = useRef<string[]>([]);
     const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>({});
@@ -413,6 +418,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     );
     const [workingHoursDirty, setWorkingHoursDirty] = useState(false);
     const [workingHoursDirtyDays, setWorkingHoursDirtyDays] = useState<string[]>([]);
+    activeBusinessSettingsScopeRef.current = businessSettingsScopeKey;
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
     const updatePosSyncStoreState = useCallback((updates: Record<string, any>) => {
         setStoreDetails((previous: any) => applyPosSyncStoreUpdates(previous || {}, updates));
     }, [setStoreDetails]);
@@ -590,7 +602,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         <BusinessAttributesTab />
                     ) : null}
                     {FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? (
-                        <CustomerAppTab />
+                        <CustomerAppTab
+                            key={`${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}
+                        />
                     ) : null}
                 </Flex>
             ),
@@ -619,130 +633,176 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         </Typography.Text>
                     </Card>
                     <DomainSettingsTab
+                        key={`${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}
                         scrollRef={publicTruthFocusRefs.current.domainSettings}
                         storeDetails={storeDetails}
                         onStoreStateUpdate={(updates) => {
-                            setStoreDetails({ ...storeDetails, ...updates });
+                            const expectedTenantId = storeDetails?.tenantId;
+                            const expectedStoreId = storeDetails?.storeId;
+                            setStoreDetails((previous: any) => {
+                                if (
+                                    String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                                    || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                                ) {
+                                    return previous;
+                                }
+                                return { ...previous, ...updates };
+                            });
                         }}
                         onStoreUpdate={async (updates) => {
-                            const storeUpdate = { storeId: storeDetails.storeId, ...updates };
+                            const expectedTenantId = storeDetails?.tenantId;
+                            const expectedStoreId = storeDetails?.storeId;
+                            const storeUpdate = { storeId: expectedStoreId, ...updates };
                             const writeResult = await updateStore(storeUpdate);
                             assertStoreUpdateSucceeded(
                                 writeResult,
-                                storeDetails.storeId,
+                                expectedStoreId,
                                 'desktop_domain_settings_subdomain_store_update_rejected',
                             );
-                            setStoreDetails({ ...storeDetails, ...updates });
+                            setStoreDetails((previous: any) => {
+                                if (
+                                    String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                                    || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                                ) {
+                                    return previous;
+                                }
+                                return { ...previous, ...updates };
+                            });
                         }}
                     />
                     {FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? (
                         <BusinessCopySetupTab
+                            key={`business-copy:${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}
                             onApplyGeneratedCopy={async (generated, projectId) => {
-                                if (!storeDetails?.storeId) return;
+                                const expectedStoreDetails = storeDetails;
+                                const expectedTenantId = expectedStoreDetails?.tenantId;
+                                const expectedStoreId = expectedStoreDetails?.storeId;
+                                const expectedScopeKey = `${String(expectedTenantId ?? '')}::${String(expectedStoreId ?? '')}`;
+                                if (!expectedStoreId) return;
 
                                 const localized = await localizeBusinessCopyResult({
                                     generated,
                                     projectId,
-                                    storeDetails,
+                                    storeDetails: expectedStoreDetails,
                                 });
+                                if (activeBusinessSettingsScopeRef.current !== expectedScopeKey) {
+                                    return { translationIncomplete: true };
+                                }
                                 const nextPublicPresence = {
-                                    ...(storeDetails?.publicPresence || {}),
+                                    ...(expectedStoreDetails?.publicPresence || {}),
                                     descriptor: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.descriptor,
+                                        expectedStoreDetails?.publicPresence?.descriptor,
                                         localized.descriptor,
                                     ),
                                     knownFor: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.knownFor,
+                                        expectedStoreDetails?.publicPresence?.knownFor,
                                         localized.knownFor,
                                     ),
                                     specialNote: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.specialNote,
+                                        expectedStoreDetails?.publicPresence?.specialNote,
                                         localized.specialNote,
                                     ),
                                 };
 
                                 const nextStoreUpdate: any = {
                                     businessCopyMeta: buildBusinessCopyGeneratedMeta({
-                                        existingMeta: storeDetails?.businessCopyMeta,
+                                        existingMeta: expectedStoreDetails?.businessCopyMeta,
                                         includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
                                         projectId,
                                         sourceLanguage: getStoreSourceLanguage(),
-                                        storeDetails,
+                                        storeDetails: expectedStoreDetails,
                                     }),
-                                    keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
-                                    metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
-                                    metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
+                                    keywords: mergeLocalizedKeywordField(expectedStoreDetails?.keywords, localized.keywords),
+                                    metaDescription: mergeLocalizedField(expectedStoreDetails?.metaDescription, localized.metaDescription),
+                                    metaTitle: mergeLocalizedField(expectedStoreDetails?.metaTitle, localized.metaTitle),
                                     ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
                                         ? {
                                             pwaSettings: {
-                                                ...(storeDetails?.pwaSettings || {}),
+                                                ...(expectedStoreDetails?.pwaSettings || {}),
                                                 pwaShortName: mergeLocalizedField(
-                                                    storeDetails?.pwaSettings?.pwaShortName,
+                                                    expectedStoreDetails?.pwaSettings?.pwaShortName,
                                                     localized.pwaShortName,
                                                 ),
                                             },
                                         }
                                         : {}),
                                     publicPresence: nextPublicPresence,
-                                    storeId: storeDetails.storeId,
-                                    tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
+                                    storeId: expectedStoreId,
+                                    tagline: mergeLocalizedField(expectedStoreDetails?.tagline, localized.tagline),
                                 };
                                 const writeResult = await updateStore({
-                                    ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
-                                    storeId: storeDetails.storeId,
+                                    ...getStoreDeepDifference(nextStoreUpdate, expectedStoreDetails),
+                                    storeId: expectedStoreId,
                                 });
                                 assertStoreUpdateSucceeded(
                                     writeResult,
-                                    storeDetails.storeId,
+                                    expectedStoreId,
                                     'desktop_business_copy_store_update_rejected',
                                 );
 
-                                setStoreDetails({
-                                    ...storeDetails,
-                                    keywords: nextStoreUpdate.keywords,
-                                    metaDescription: nextStoreUpdate.metaDescription,
-                                    metaTitle: nextStoreUpdate.metaTitle,
-                                    businessCopyMeta: nextStoreUpdate.businessCopyMeta,
-                                    publicPresence: nextPublicPresence,
-                                    pwaSettings: {
-                                        ...(storeDetails?.pwaSettings || {}),
-                                        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
-                                            ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
-                                            : {}),
-                                    },
-                                    tagline: nextStoreUpdate.tagline,
-                                });
+                                setStoreDetails((previous: any) => (
+                                    String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')
+                                    && String(previous?.storeId ?? '') === String(expectedStoreId ?? '')
+                                        ? {
+                                            ...previous,
+                                            keywords: nextStoreUpdate.keywords,
+                                            metaDescription: nextStoreUpdate.metaDescription,
+                                            metaTitle: nextStoreUpdate.metaTitle,
+                                            businessCopyMeta: nextStoreUpdate.businessCopyMeta,
+                                            publicPresence: {
+                                                ...(previous?.publicPresence || {}),
+                                                descriptor: nextPublicPresence.descriptor,
+                                                knownFor: nextPublicPresence.knownFor,
+                                                specialNote: nextPublicPresence.specialNote,
+                                            },
+                                            pwaSettings: {
+                                                ...(previous?.pwaSettings || {}),
+                                                ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
+                                                    ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                                    : {}),
+                                            },
+                                            tagline: nextStoreUpdate.tagline,
+                                        }
+                                        : previous
+                                ));
                                 return { translationIncomplete: localized.translationIncomplete === true };
                             }}
                             onGenerateMissingTranslations={async (projectId) => {
-                                if (!storeDetails?.storeId) return false;
+                                const expectedStoreDetails = storeDetails;
+                                const expectedTenantId = expectedStoreDetails?.tenantId;
+                                const expectedStoreId = expectedStoreDetails?.storeId;
+                                const expectedScopeKey = `${String(expectedTenantId ?? '')}::${String(expectedStoreId ?? '')}`;
+                                if (!expectedStoreId) return false;
 
                                 const localized = await syncMissingBusinessCopyTranslations({
                                     includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
                                     projectId,
-                                    storeDetails,
+                                    storeDetails: expectedStoreDetails,
                                 });
+                                if (activeBusinessSettingsScopeRef.current !== expectedScopeKey) {
+                                    return false;
+                                }
 
                                 if (!localized) {
                                     return false;
                                 }
 
-                                const nextCoverage = computeBusinessCopyCoverage(storeDetails, {
+                                const nextCoverage = computeBusinessCopyCoverage(expectedStoreDetails, {
                                     includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
                                 });
 
                                 const nextPublicPresence = {
-                                    ...(storeDetails?.publicPresence || {}),
+                                    ...(expectedStoreDetails?.publicPresence || {}),
                                     descriptor: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.descriptor,
+                                        expectedStoreDetails?.publicPresence?.descriptor,
                                         localized.descriptor,
                                     ),
                                     knownFor: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.knownFor,
+                                        expectedStoreDetails?.publicPresence?.knownFor,
                                         localized.knownFor,
                                     ),
                                     specialNote: mergeLocalizedField(
-                                        storeDetails?.publicPresence?.specialNote,
+                                        expectedStoreDetails?.publicPresence?.specialNote,
                                         localized.specialNote,
                                     ),
                                 };
@@ -750,52 +810,62 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 const nextStoreUpdate: any = {
                                     businessCopyMeta: buildBusinessCopyRepairMeta({
                                         coverageFields: nextCoverage.fields,
-                                        existingMeta: storeDetails?.businessCopyMeta,
+                                        existingMeta: expectedStoreDetails?.businessCopyMeta,
                                         referenceLanguage: nextCoverage.referenceLanguage,
                                     }),
-                                    metaDescription: mergeLocalizedField(storeDetails?.metaDescription, localized.metaDescription),
-                                    metaTitle: mergeLocalizedField(storeDetails?.metaTitle, localized.metaTitle),
-                                    keywords: mergeLocalizedKeywordField(storeDetails?.keywords, localized.keywords),
+                                    metaDescription: mergeLocalizedField(expectedStoreDetails?.metaDescription, localized.metaDescription),
+                                    metaTitle: mergeLocalizedField(expectedStoreDetails?.metaTitle, localized.metaTitle),
+                                    keywords: mergeLocalizedKeywordField(expectedStoreDetails?.keywords, localized.keywords),
                                     ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
                                         ? {
                                             pwaSettings: {
-                                                ...(storeDetails?.pwaSettings || {}),
+                                                ...(expectedStoreDetails?.pwaSettings || {}),
                                                 pwaShortName: mergeLocalizedField(
-                                                    storeDetails?.pwaSettings?.pwaShortName,
+                                                    expectedStoreDetails?.pwaSettings?.pwaShortName,
                                                     localized.pwaShortName,
                                                 ),
                                             },
                                         }
                                         : {}),
                                     publicPresence: nextPublicPresence,
-                                    storeId: storeDetails.storeId,
-                                    tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
+                                    storeId: expectedStoreId,
+                                    tagline: mergeLocalizedField(expectedStoreDetails?.tagline, localized.tagline),
                                 };
                                 const writeResult = await updateStore({
-                                    ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
-                                    storeId: storeDetails.storeId,
+                                    ...getStoreDeepDifference(nextStoreUpdate, expectedStoreDetails),
+                                    storeId: expectedStoreId,
                                 });
                                 assertStoreUpdateSucceeded(
                                     writeResult,
-                                    storeDetails.storeId,
+                                    expectedStoreId,
                                     'desktop_business_copy_translation_store_update_rejected',
                                 );
 
-                                setStoreDetails({
-                                    ...storeDetails,
-                                    keywords: nextStoreUpdate.keywords,
-                                    metaDescription: nextStoreUpdate.metaDescription,
-                                    metaTitle: nextStoreUpdate.metaTitle,
-                                    businessCopyMeta: nextStoreUpdate.businessCopyMeta,
-                                    publicPresence: nextPublicPresence,
-                                    pwaSettings: {
-                                        ...(storeDetails?.pwaSettings || {}),
-                                        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
-                                            ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
-                                            : {}),
-                                    },
-                                    tagline: nextStoreUpdate.tagline,
-                                });
+                                setStoreDetails((previous: any) => (
+                                    String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')
+                                    && String(previous?.storeId ?? '') === String(expectedStoreId ?? '')
+                                        ? {
+                                            ...previous,
+                                            keywords: nextStoreUpdate.keywords,
+                                            metaDescription: nextStoreUpdate.metaDescription,
+                                            metaTitle: nextStoreUpdate.metaTitle,
+                                            businessCopyMeta: nextStoreUpdate.businessCopyMeta,
+                                            publicPresence: {
+                                                ...(previous?.publicPresence || {}),
+                                                descriptor: nextPublicPresence.descriptor,
+                                                knownFor: nextPublicPresence.knownFor,
+                                                specialNote: nextPublicPresence.specialNote,
+                                            },
+                                            pwaSettings: {
+                                                ...(previous?.pwaSettings || {}),
+                                                ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                                                    ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                                    : {}),
+                                            },
+                                            tagline: nextStoreUpdate.tagline,
+                                        }
+                                        : previous
+                                ));
 
                                 return true;
                             }}
@@ -812,6 +882,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         </div>
                     ) : null}
                     <IntegrationsTab
+                        key={`integrations:${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}
                         setStoreDetails={setStoreDetails}
                         storeDetails={storeDetails}
                     />
@@ -886,13 +957,40 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuTimer />,
             tab: (
                 <TimeSlotPresetsTab
+                    key={`time-slot-presets:${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}
                     scrollRef={scrollRefs.current[canAccessDigitalScreens ? 5 : 4]}
                     tenantId={storeDetails?.tenantId}
                     storeId={storeDetails?.storeId}
                     presets={timeSlotPresets}
+                    pendingCascade={storeDetails?.timeSlotPresetCascadePending}
+                    onCascadeRecovered={(operationId) => {
+                        const expectedTenantId = storeDetails?.tenantId;
+                        const expectedStoreId = storeDetails?.storeId;
+                        setStoreDetails((previous: any) => {
+                            if (
+                                String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                                || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                                || previous?.timeSlotPresetCascadePending?.operationId !== operationId
+                            ) {
+                                return previous;
+                            }
+                            const { timeSlotPresetCascadePending: _pendingCascade, ...rest } = previous;
+                            return rest;
+                        });
+                    }}
                     onPresetsChange={(presets) => {
+                        const expectedTenantId = storeDetails?.tenantId;
+                        const expectedStoreId = storeDetails?.storeId;
+                        if (activeBusinessSettingsScopeRef.current !== `${String(expectedTenantId ?? '')}::${String(expectedStoreId ?? '')}`) {
+                            return;
+                        }
                         setTimeSlotPresets(presets);
-                        setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: presets }));
+                        setStoreDetails((previous: any) => (
+                            String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')
+                            && String(previous?.storeId ?? '') === String(expectedStoreId ?? '')
+                                ? { ...previous, timeSlotPresets: presets }
+                                : previous
+                        ));
                     }}
                 />
             ),
@@ -925,18 +1023,29 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuShield />,
             tab: (
                 <PosSyncTab
+                    key={`${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}
                     scrollRef={scrollRefs.current[canAccessDigitalScreens ? 8 : 7]}
                     storeDetails={storeDetails}
                     onStoreStateUpdate={updatePosSyncStoreState}
                     onStoreUpdate={async (updates) => {
+                        const expectedTenantId = storeDetails?.tenantId;
+                        const expectedStoreId = storeDetails?.storeId;
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
                         const writeResult = await updateStore(storeUpdate);
                         assertStoreUpdateSucceeded(
                             writeResult,
-                            storeDetails.storeId,
+                            expectedStoreId,
                             'desktop_pos_sync_store_update_rejected',
                         );
-                        setStoreDetails((previous: any) => applyPosSyncStoreUpdates(previous || storeDetails, updates));
+                        setStoreDetails((previous: any) => {
+                            if (
+                                String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                                || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                            ) {
+                                return previous;
+                            }
+                            return applyPosSyncStoreUpdates(previous || storeDetails, updates);
+                        });
                     }}
                 />
             ),
@@ -1081,6 +1190,17 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     };
 
     const addUpdateDetails = async (changesToUpload: any) => {
+        const requestScopeKey = businessSettingsScopeKey;
+        if (
+            settingsSaveInFlightRef.current
+            || !componentActiveRef.current
+            || activeBusinessSettingsScopeRef.current !== requestScopeKey
+        ) {
+            return;
+        }
+        settingsSaveInFlightRef.current = true;
+        setIsSettingsSaving(true);
+        try {
         const trimmedReviewUrl = reviewUrl.trim();
         const storedReviewUrl = typeof storeDetails?.reviewUrl === 'string'
             ? storeDetails.reviewUrl.trim()
@@ -1316,8 +1436,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     'desktop_business_settings_store_update_rejected',
                 );
                 if ('workingHours' in updatedChanges) {
-                    setWorkingHoursDirty(false);
-                    setWorkingHoursDirtyDays([]);
+                    if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                        setWorkingHoursDirty(false);
+                        setWorkingHoursDirtyDays([]);
+                    }
                 }
                 const nextStoreDetails = mergeStoreNestedUpdateWithCurrent(
                     mergeStoreNestedUpdateWithCurrent(storeDetails, changesToUpload),
@@ -1327,12 +1449,18 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     obpPhotoDeleteQueue,
                     nextStoreDetails.publicPresence,
                 );
-                obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
-                    obpPhotoDeleteQueueRef.current,
-                    obpPhotoDeleteQueue,
-                    failedPhotoDeletes,
-                );
-                if (savedDetails?.logo) {
+                if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                    obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
+                        obpPhotoDeleteQueueRef.current,
+                        obpPhotoDeleteQueue,
+                        failedPhotoDeletes,
+                    );
+                }
+                if (
+                    savedDetails?.logo
+                    && componentActiveRef.current
+                    && activeBusinessSettingsScopeRef.current === requestScopeKey
+                ) {
                     setSelectedFile({
                         name: savedDetails.logo,
                         size: 0,
@@ -1365,23 +1493,31 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 'desktop_business_settings_tenant_update_rejected',
                             );
                         }
-                        setStoreDetails(nextStoreDetails as any);
+                        if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                            setStoreDetails(nextStoreDetails as any);
+                        }
                     } else {
-                        setStoreDetails(nextStoreDetails as any);
+                        if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                            setStoreDetails(nextStoreDetails as any);
+                        }
                     }
                 } else {
-                    setStoreDetails(nextStoreDetails as any);
+                    if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                        setStoreDetails(nextStoreDetails as any);
+                    }
                 }
             } else {
                 const failedPhotoDeletes = await deleteQueuedOBPPhotos(
                     obpPhotoDeleteQueue,
                     changesToUpload.publicPresence ?? storeDetails?.publicPresence,
                 );
-                obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
-                    obpPhotoDeleteQueueRef.current,
-                    obpPhotoDeleteQueue,
-                    failedPhotoDeletes,
-                );
+                if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                    obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
+                        obpPhotoDeleteQueueRef.current,
+                        obpPhotoDeleteQueue,
+                        failedPhotoDeletes,
+                    );
+                }
             }
         } else {
             const normalizedTenantPhone = normalizePhoneNumberForStorage({
@@ -1414,12 +1550,20 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 obpPhotoDeleteQueue,
                 savedDetails?.publicPresence ?? changesToUpload.publicPresence,
             );
-            obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
-                obpPhotoDeleteQueueRef.current,
-                obpPhotoDeleteQueue,
-                failedPhotoDeletes,
-            );
-            setStoreDetails({ ...changesToUpload, ...savedDetails });
+            if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
+                    obpPhotoDeleteQueueRef.current,
+                    obpPhotoDeleteQueue,
+                    failedPhotoDeletes,
+                );
+                setStoreDetails({ ...changesToUpload, ...savedDetails });
+            }
+        }
+        } finally {
+            settingsSaveInFlightRef.current = false;
+            if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+                setIsSettingsSaving(false);
+            }
         }
     };
 
@@ -1572,6 +1716,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                             type="primary"
                                             htmlType="submit"
                                             icon={<LuSave />}
+                                            loading={isSettingsSaving}
                                         >
                                             {t('saveChanges')}
                                         </Button>
@@ -1614,4 +1759,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     );
 }
 
-export default BusinessSettings;
+export default function BusinessSettings(props) {
+    const scopeKey = `${String(props.storeDetails?.tenantId ?? '')}::${String(props.storeDetails?.storeId ?? '')}`;
+    return <BusinessSettingsContent key={scopeKey} {...props} />;
+}

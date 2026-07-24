@@ -197,10 +197,10 @@ Behavior is determined by how many keys are configured in environment variables.
 | Feature           | File                                                     | SDK             | Model constant | Cost/Call | Frequency  |
 | ----------------- | -------------------------------------------------------- | --------------- | -------------- | --------- | ---------- |
 | Menu Extraction   | `functions/src/logic/processMenuImages.ts`               | `@google/genai` | `AI_MODEL`     | ~$0.001   | Per upload |
-| Feedback Analysis | `functions/src/services/gemini/feedbackAnalysis.ts`      | `@google/genai` | `AI_MODEL`     | ~$0.001   | Nightly    |
+| Feedback Analysis | `functions/src/services/gemini/feedbackAnalysis.ts`      | `@google/genai` | `AI_MODEL`     | No active runtime cost | Dormant compatibility source |
 | Owner Dashboard   | `functions/src/services/gemini/ownerDashboardSummary.ts` | `@google/genai` | `OWNER_ANALYTICS_AI_MODEL` | ~$0.001 | Nightly |
-| Weekly Narrative  | `functions/src/analytics/weeklyNarrative.ts`             | `@google/genai` | `AI_MODEL`     | ~$0.001   | Weekly     |
-| KB Quality        | `functions/src/analytics/kbQuality.ts`                   | `@google/genai` | `AI_MODEL`     | ~$0.001   | Nightly    |
+| Weekly Narrative  | `functions/src/analytics/weeklyNarrative.ts`             | `@google/genai` | `AI_MODEL`     | No active runtime cost | Dormant compatibility source |
+| KB Quality        | `functions/src/analytics/kbQuality.ts`                   | `@google/genai` | `AI_MODEL`     | No active runtime cost | Dormant compatibility source |
 | AI Provider Health | `functions/src/schedulers/aiProviderHealth.ts`          | `@google/genai` | `AI_MODEL`     | tiny      | Daily      |
 
 ### Frontend API Routes (Client → Server → Gemini)

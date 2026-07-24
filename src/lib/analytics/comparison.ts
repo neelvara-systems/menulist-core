@@ -3,17 +3,28 @@
  * Calculates week-over-week, month-over-month, and custom period comparisons
  */
 
-import type { AnalyticsSummary } from './dal';
-
 // ================================================================
 // TYPES
 // ================================================================
 
+export interface AnalyticsSummary {
+  totalChats: number;
+  positiveFeedbackShare: number | null;
+  avgMessagesPerChat: number;
+  totalMessages: number;
+  totalFeedback: number;
+  positiveCount: number;
+  negativeCount: number;
+}
+
 export interface ComparisonResult {
-  current: number;
-  previous: number;
-  change: number;
-  changePercent: number;
+  current: number | null;
+  previous: number | null;
+  change: number | null;
+  changePercent: number | null;
+  displayChange: number | null;
+  changeUnit: 'percent' | 'percentage-points';
+  available: boolean;
   trend: 'up' | 'down' | 'stable';
   isPositive: boolean; // Whether the trend is good for business
 }
@@ -21,7 +32,7 @@ export interface ComparisonResult {
 export interface PeriodComparison {
   volume: ComparisonResult;
   totalMessages: ComparisonResult;
-  satisfaction: ComparisonResult;
+  positiveFeedbackShare: ComparisonResult;
   avgMessages: ComparisonResult;
 }
 
@@ -49,10 +60,9 @@ export function compareMetrics(
       previous.totalMessages,
       true // More answered messages indicates more support usage
     ),
-    satisfaction: calculateChange(
-      current.satisfactionRate,
-      previous.satisfactionRate,
-      true // Higher satisfaction is positive
+    positiveFeedbackShare: calculatePointChange(
+      current.positiveFeedbackShare,
+      previous.positiveFeedbackShare,
     ),
     avgMessages: calculateChange(
       current.avgMessagesPerChat,
@@ -97,8 +107,54 @@ function calculateChange(
     previous: safePrevious,
     change,
     changePercent,
+    displayChange: changePercent,
+    changeUnit: 'percent',
+    available: true,
     trend,
     isPositive,
+  };
+}
+
+function calculatePointChange(
+  current: number | null,
+  previous: number | null,
+): ComparisonResult {
+  const safeCurrent = (
+    typeof current === 'number'
+    && Number.isFinite(current)
+    && current >= 0
+    && current <= 100
+  ) ? current : null;
+  const safePrevious = (
+    typeof previous === 'number'
+    && Number.isFinite(previous)
+    && previous >= 0
+    && previous <= 100
+  ) ? previous : null;
+  if (safeCurrent === null || safePrevious === null) {
+    return {
+      current: safeCurrent,
+      previous: safePrevious,
+      change: null,
+      changePercent: null,
+      displayChange: null,
+      changeUnit: 'percentage-points',
+      available: false,
+      trend: 'stable',
+      isPositive: true,
+    };
+  }
+  const change = safeCurrent - safePrevious;
+  return {
+    current: safeCurrent,
+    previous: safePrevious,
+    change,
+    changePercent: safePrevious > 0 ? (change / safePrevious) * 100 : null,
+    displayChange: change,
+    changeUnit: 'percentage-points',
+    available: true,
+    trend: Math.abs(change) < 2 ? 'stable' : change > 0 ? 'up' : 'down',
+    isPositive: change >= 0,
   };
 }
 
@@ -188,7 +244,10 @@ export function formatComparison(result: ComparisonResult): {
   color: string;
   icon: '↑' | '↓' | '→';
 } {
-  const { changePercent, trend, isPositive } = result;
+  const { displayChange, changeUnit, trend, isPositive } = result;
+  if (!result.available || displayChange === null) {
+    return { text: 'Not available', color: '#8c8c8c', icon: '→' };
+  }
 
   let icon: '↑' | '↓' | '→';
   let color: string;
@@ -204,10 +263,11 @@ export function formatComparison(result: ComparisonResult): {
     color = isPositive ? '#52c41a' : '#ff4d4f';
   }
 
-  const percentText = Math.abs(changePercent).toFixed(1);
+  const changeText = Math.abs(displayChange).toFixed(1);
+  const suffix = changeUnit === 'percentage-points' ? ' pp' : '%';
   const text = trend === 'stable' 
     ? 'No change' 
-    : `${icon} ${percentText}%`;
+    : `${icon} ${changeText}${suffix}`;
 
   return { text, color, icon };
 }

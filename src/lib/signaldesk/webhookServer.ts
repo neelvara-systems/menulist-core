@@ -22,6 +22,8 @@ import {
     canonicalizeSignalDeskWebhookIdentity,
     classifySignalDeskWebhookInboundMessage,
     getSignalDeskWebhookLegalRetentionFields,
+    isSignalDeskInboxReviewState,
+    isSignalDeskSafetyReplyState,
     isSignalDeskWebhookTargetRetentionHeld,
     parseSignalDeskWebhookChannelHealthDocument,
     parseSignalDeskWebhookContactAuthority,
@@ -250,22 +252,6 @@ const verifyApifySecret = (headers: Headers) => {
     const provided = headers.get("x-signaldesk-webhook-secret") || headers.get("x-apify-webhook-secret") || "";
     return Boolean(secret && provided && safeEqual(provided, secret));
 };
-
-const requiresInboxReview = (state: string) => (
-    state === "needs_review"
-    || state === "interested"
-    || state === "complaint"
-    || state === "privacy_request"
-    || state === "legal_request"
-);
-
-const isSafetyState = (state: string) => (
-    state === "dnc"
-    || state === "wrong_contact"
-    || state === "complaint"
-    || state === "privacy_request"
-    || state === "legal_request"
-);
 
 export function verifySignalDeskWebhookChallenge(provider: SignalDeskWebhookProvider, url: URL) {
     if (provider !== "whatsapp" && provider !== "instagram" && provider !== "messenger") return null;
@@ -774,13 +760,13 @@ const processNormalizedWebhookEvent = async (params: {
             outOfOrder = Boolean(lastInboundMillis && eventOccurredAtMillis < lastInboundMillis);
             currentConversationState = conversationAuthority?.state || "";
             const targetSuppressed = target.suppressionStatus !== "clear";
-            if (outOfOrder || (targetSuppressed && isSafetyState(currentConversationState) && !isSafetyState(inboundState))) {
+            if (outOfOrder || (targetSuppressed && isSignalDeskSafetyReplyState(currentConversationState) && !isSignalDeskSafetyReplyState(inboundState))) {
                 projectedInboundState = (currentConversationState || inboundState) as SignalDeskWebhookInboundState;
             }
             conversationId = conversationRef.id;
             if (!outOfOrder) {
-                const previousNeedsReview = requiresInboxReview(currentConversationState);
-                const nextNeedsReview = requiresInboxReview(projectedInboundState);
+                const previousNeedsReview = isSignalDeskInboxReviewState(currentConversationState);
+                const nextNeedsReview = isSignalDeskInboxReviewState(projectedInboundState);
                 if (previousNeedsReview !== nextNeedsReview) {
                     queueRef = db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES);
                     const queueSnap = await transaction.get(queueRef);

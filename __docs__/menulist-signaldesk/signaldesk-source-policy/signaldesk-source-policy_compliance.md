@@ -1,65 +1,51 @@
-# SignalDesk Source Policy - Compliance Policy
+# SignalDesk Source Policy Safety Contract
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
+**Status:** Runtime-backed product policy; external legal/provider approval remains owner-controlled
+**Last verified:** July 21, 2026
 
 ## Core Rule
 
-Source provider availability does not equal permission.
+Data availability is not permission to retain, personalize, contact, export, publish, or send.
 
-Every source needs a written policy before use.
+SignalDesk records a bounded source policy, but it does not determine whether a provider's current terms or a jurisdiction permit a proposed use. The owner/compliance reviewer must verify that basis before activation.
 
-## External Guardrails
+## Safe Defaults
 
-The project-level research memo records current source constraints:
+- Public-business research is candidate/evidence only.
+- Contact and personalization are off unless a permissioned basis is recorded.
+- Contact channels require their matching allowed field.
+- Raw provider payload defaults to `never-store`.
+- Provider policies require provider approval, budget authority, feature readiness, and current policy authority.
+- Source-policy permission does not bypass suppression, recipient authority, sender readiness, unsubscribe, approval, budget, or kill switches.
+- Provider send remains disabled.
 
-- Google Maps Platform terms restrict scraping/bulk storage and use to create or augment advertising products (`../menulist-signaldesk_compliance.md` links to the research memo).
-- GBP APIs must not be used for lead generation.
-- Foursquare PAYG Places terms prohibit using Places Data to contact businesses as prospective customers.
-- FHRS/FHIS data is useful as official UK establishment identity/evidence, but it is not owner contact permission and public rating/image use needs separate accuracy and non-endorsement review.
-- Apify-style scraping availability is not permission; the implemented Apify Source Broker still requires an env-controlled Actor, provider source policy, owner provider approval, budget cap, and source-policy contact-use enforcement.
+## Owner Review Checklist
 
-## Required Policy Fields
+Before policy creation or renewal, verify:
 
-| Field | Why |
-| --- | --- |
-| Provider | Determines source-specific restrictions. |
-| Allowed fields | Prevents accidental storage/use of restricted fields. |
-| Blocked fields | Explicitly drops risky data. |
-| May use for outreach | Prevents "we have data, so contact them" logic. |
-| May use in evidence | Controls what operators/AI can cite. |
-| May use in outbound copy | Controls what can be said to a target. |
-| Retention days | Prevents stale raw data accumulation. |
-| Approval owner | Creates accountability. |
+1. source/provider identity and access method;
+2. current terms URL/version or documented internal review basis;
+3. exact allowed and blocked fields;
+4. whether evidence, storage, personalization, contact, and provider execution are permitted independently;
+5. permitted contact channels and evidence for contact authority;
+6. attribution requirements and prohibited uses;
+7. raw-payload policy, refresh method, retention period, and review expiry;
+8. provider budget and operational pause state where applicable.
 
-## Blocked Defaults
+## Renewal Meaning
 
-Unless explicitly approved:
+Renewal confirms the same immutable authority basis for another bounded period. It is not an in-place terms editor. If provider terms, source type, fields, contact rights, prohibited uses, or retention basis change, create a new policy and establish fresh lineage.
 
-- no source-provider data in outbound copy;
-- no raw scraped payload in Firestore;
-- no public artifact from provider content;
-- no review/photo/menu/profile content storage;
-- no cold WhatsApp from public phone data;
-- no contact from Foursquare PAYG data;
-- no GBP API lead mining.
-- no Apify source data used for outreach unless contact use is explicitly approved and the normal suppression, evidence, draft, and human approval gates pass.
-- no public-business research row gains contact or personalization permission without a separate permissioned manual introduction or referral basis.
+Renewal does not restore scrubbed data or authorize old targets automatically.
 
-## Approval Workflow
+## Incident Response
 
-1. Draft source policy.
-2. Record source URL/terms or internal source basis.
-3. Define fields and retention.
-4. Define outreach eligibility.
-5. Founder/admin approves.
-6. First source run uses small cap.
-7. Review held/rejected rows before scale.
+If a source basis becomes uncertain:
 
-## Open Questions
+- block or let the policy expire;
+- activate the relevant desktop control, or use the mobile global emergency pause for urgent outbound risk;
+- do not renew until the basis is reviewed;
+- inspect audit/lifecycle evidence;
+- rerun/import only after corrected authority exists.
 
-| Question | Owner |
-| --- | --- |
-| First approved manual source | Founder |
-| Whether paid source providers are allowed | Founder + compliance review |
-| Exact retention classes | Founder + compliance review |
+No automated AI or provider output may approve its own source policy.

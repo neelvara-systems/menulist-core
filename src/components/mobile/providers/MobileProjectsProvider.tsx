@@ -1,7 +1,8 @@
 'use client'
 
-import { getProjectDataWithoutLoader, getProjectsListWithoutLoader } from '@database/projects';
+import { getProjectDataWithoutLoader, getProjectsListWithoutLoader, type ProjectExpectedScope } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { removeObjRef } from '@util/utils';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -44,6 +45,39 @@ const MobileProjectsContext = createContext<MobileProjectsContextValue>({
     upsertCachedProject: () => { },
 });
 
+function resolveMobileProjectScope(
+    storeDetails: { storeId?: unknown; tenantId?: unknown } | null | undefined,
+    session: { sId?: unknown; tId?: unknown } | null | undefined,
+): ProjectExpectedScope | null {
+    const storeId = Number(storeDetails?.storeId);
+    const tenantId = Number(storeDetails?.tenantId);
+    const sessionStoreId = Number(session?.sId);
+    const sessionTenantId = Number(session?.tId);
+    if (
+        !Number.isSafeInteger(storeId)
+        || storeId <= 0
+        || !Number.isSafeInteger(tenantId)
+        || tenantId <= 0
+        || sessionStoreId !== storeId
+        || sessionTenantId !== tenantId
+    ) {
+        return null;
+    }
+    return { sId: storeId, tId: tenantId };
+}
+
+function projectMatchesMobileScope(
+    projectId: unknown,
+    scope: ProjectExpectedScope,
+): projectId is string {
+    const projectScope = normalizeMultiOutletProjectId(projectId);
+    return Boolean(
+        projectScope
+        && projectScope.tId === scope.tId
+        && projectScope.sId === scope.sId
+    );
+}
+
 export function useMobileProjects() {
     return useContext(MobileProjectsContext);
 }
@@ -57,17 +91,23 @@ export default function MobileProjectsProvider({
 }) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const loggedInSession = useClientAuthSession();
-    const sessionStoreId = loggedInSession?.sId || null;
-    const sessionTenantId = loggedInSession?.tId || null;
     const [projectsList, setProjectsList] = useState<ProjectSummary[]>([]);
     const [projectsById, setProjectsById] = useState<Record<string, any>>({});
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const hydratedStoreIdRef = useRef<string | number | null>(null);
+    const currentScope = resolveMobileProjectScope(storeDetails, loggedInSession);
+    const currentScopeRef = useRef<ProjectExpectedScope | null>(currentScope);
+    currentScopeRef.current = currentScope;
+    const latestProjectsRequestRef = useRef(0);
+    const hydratedScopeKeyRef = useRef<string | null>(null);
     const hasHydratedRef = useRef(false);
     const inFlightProjectLoadsRef = useRef<Record<string, Promise<any>>>({});
     const projectsListRef = useRef<ProjectSummary[]>([]);
     const projectsByIdRef = useRef<Record<string, any>>({});
+    const isExpectedScope = useCallback((expectedScope: ProjectExpectedScope) => (
+        currentScopeRef.current?.tId === expectedScope.tId
+        && currentScopeRef.current?.sId === expectedScope.sId
+    ), []);
 
     useEffect(() => {
         projectsListRef.current = projectsList;
@@ -83,62 +123,85 @@ export default function MobileProjectsProvider({
     ) => {
         const nextProjectId = projectId || null;
         if (!nextProjectId) return null;
-        if (!sessionStoreId || !sessionTenantId) return null;
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !projectMatchesMobileScope(nextProjectId, expectedScope)) return null;
 
         if (!options?.force && projectsByIdRef.current[nextProjectId]) {
             return projectsByIdRef.current[nextProjectId];
         }
 
-        if (!options?.force && inFlightProjectLoadsRef.current[nextProjectId]) {
-            return inFlightProjectLoadsRef.current[nextProjectId];
+        const requestKey = `${expectedScope.tId}:${expectedScope.sId}:${nextProjectId}`;
+        if (!options?.force && inFlightProjectLoadsRef.current[requestKey]) {
+            return inFlightProjectLoadsRef.current[requestKey];
         }
 
-        const request = getProjectDataWithoutLoader(nextProjectId)
+        let request: Promise<any>;
+        request = getProjectDataWithoutLoader(nextProjectId, expectedScope)
             .then((project) => {
+                if (
+                    !isExpectedScope(expectedScope)
+                    || inFlightProjectLoadsRef.current[requestKey] !== request
+                ) return null;
                 const sanitizedProject = removeObjRef(project);
-                setProjectsById((prev) => ({
-                    ...prev,
-                    [nextProjectId]: sanitizedProject,
-                }));
+                setProjectsById((prev) => {
+                    if (
+                        !isExpectedScope(expectedScope)
+                        || inFlightProjectLoadsRef.current[requestKey] !== request
+                    ) return prev;
+                    const next = {
+                        ...prev,
+                        [nextProjectId]: sanitizedProject,
+                    };
+                    projectsByIdRef.current = next;
+                    return next;
+                });
                 return sanitizedProject;
             })
             .finally(() => {
-                delete inFlightProjectLoadsRef.current[nextProjectId];
+                if (inFlightProjectLoadsRef.current[requestKey] === request) {
+                    delete inFlightProjectLoadsRef.current[requestKey];
+                }
             });
 
-        inFlightProjectLoadsRef.current[nextProjectId] = request;
+        inFlightProjectLoadsRef.current[requestKey] = request;
         return request;
-    }, [sessionStoreId, sessionTenantId]);
+    }, [isExpectedScope]);
 
     const refreshProjects = useCallback(async (options?: { force?: boolean; loadSelectedProject?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => {
-        const storeId = storeDetails?.storeId;
-        if (!sessionStoreId || !sessionTenantId) {
+        const expectedScope = currentScopeRef.current;
+        const requestId = latestProjectsRequestRef.current + 1;
+        latestProjectsRequestRef.current = requestId;
+        if (!expectedScope) {
             setProjectsList([]);
             setProjectsById({});
             setSelectedProjectId(null);
-            return;
-        }
-        if (!storeId) {
-            setProjectsList([]);
-            setProjectsById({});
-            setSelectedProjectId(null);
+            projectsListRef.current = [];
+            projectsByIdRef.current = {};
+            hasHydratedRef.current = false;
+            hydratedScopeKeyRef.current = null;
             setIsLoading(false);
             return;
         }
+        const storeId = expectedScope.sId;
+        const scopeKey = `${expectedScope.tId}:${expectedScope.sId}`;
 
         const shouldForce = options?.force ?? false;
         const shouldShowLoader = options?.showLoader ?? !hasHydratedRef.current;
         const shouldLoadSelectedProject = options?.loadSelectedProject ?? true;
 
-        if (!shouldForce && hasHydratedRef.current && hydratedStoreIdRef.current === storeId) {
+        if (!shouldForce && hasHydratedRef.current && hydratedScopeKeyRef.current === scopeKey) {
             if (options?.preferredProjectId !== undefined) {
                 const resolvedProject = resolveMobileSelectedProject(projectsListRef.current, options.preferredProjectId || null);
-                const preferred = resolvedProject?.projectId || null;
+                const preferred = resolvedProject
+                    && projectMatchesMobileScope(resolvedProject.projectId, expectedScope)
+                    ? resolvedProject.projectId
+                    : null;
                 if (shouldLoadSelectedProject) {
                     await loadProjectIntoCache(preferred);
                 }
-                setSelectedProjectId(preferred);
-                setStoredMobileProjectId(preferred, storeId);
+                if (!isExpectedScope(expectedScope)) return;
+                setSelectedProjectId((current) => isExpectedScope(expectedScope) ? preferred : current);
+                setStoredMobileProjectId(preferred, storeId, expectedScope.tId);
             }
             return;
         }
@@ -148,46 +211,79 @@ export default function MobileProjectsProvider({
                 setIsLoading(true);
             }
 
-            const result = await getProjectsListWithoutLoader(true);
-            const summaries = (result?.projects || []) as ProjectSummary[];
+            const result = await getProjectsListWithoutLoader(true, expectedScope);
+            if (
+                latestProjectsRequestRef.current !== requestId
+                || !isExpectedScope(expectedScope)
+            ) {
+                return;
+            }
+            const summaries = ((result?.projects || []) as ProjectSummary[])
+                .filter((project) => projectMatchesMobileScope(project.projectId, expectedScope));
             const resolvedProject = resolveMobileSelectedProject(
                 summaries,
-                options?.preferredProjectId || getStoredMobileProjectId(storeId)
+                options?.preferredProjectId || getStoredMobileProjectId(storeId, expectedScope.tId)
             );
             const resolvedProjectId = resolvedProject?.projectId || null;
 
-            setProjectsList(summaries);
-            setSelectedProjectId(resolvedProjectId);
-            setStoredMobileProjectId(resolvedProjectId, storeId);
+            projectsListRef.current = summaries;
+            setProjectsList((current) => isExpectedScope(expectedScope) ? summaries : current);
+            setSelectedProjectId((current) => isExpectedScope(expectedScope) ? resolvedProjectId : current);
+            setStoredMobileProjectId(resolvedProjectId, storeId, expectedScope.tId);
 
             if (summaries.length === 0) {
-                setProjectsById({});
+                setProjectsById((current) => {
+                    if (!isExpectedScope(expectedScope)) return current;
+                    projectsByIdRef.current = {};
+                    return {};
+                });
             } else {
                 const validProjectIds = new Set(summaries.map((project) => project.projectId));
-                setProjectsById((prev) => Object.fromEntries(
-                    Object.entries(prev).filter(([projectId]) => validProjectIds.has(projectId))
-                ));
+                setProjectsById((prev) => {
+                    if (!isExpectedScope(expectedScope)) return prev;
+                    const next = Object.fromEntries(
+                        Object.entries(prev)
+                            .filter(([projectId]) => validProjectIds.has(projectId))
+                    );
+                    projectsByIdRef.current = next;
+                    return next;
+                });
 
                 if (resolvedProjectId && shouldLoadSelectedProject) {
                     await loadProjectIntoCache(resolvedProjectId, { force: shouldForce });
                 }
             }
 
-            hydratedStoreIdRef.current = storeId;
+            if (
+                latestProjectsRequestRef.current !== requestId
+                || !isExpectedScope(expectedScope)
+            ) {
+                return;
+            }
+            hydratedScopeKeyRef.current = scopeKey;
             hasHydratedRef.current = true;
         } finally {
-            if (shouldShowLoader) {
+            if (
+                shouldShowLoader
+                && latestProjectsRequestRef.current === requestId
+                && isExpectedScope(expectedScope)
+            ) {
                 setIsLoading(false);
             }
         }
-    }, [loadProjectIntoCache, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
+    }, [isExpectedScope, loadProjectIntoCache]);
 
     const refreshCachedProject = useCallback(async (
         projectId?: string | null,
         options?: { showLoader?: boolean }
     ) => {
         const nextProjectId = projectId || selectedProjectId || null;
-        if (!nextProjectId || !sessionStoreId || !sessionTenantId) {
+        const expectedScope = currentScopeRef.current;
+        if (
+            !nextProjectId
+            || !expectedScope
+            || !projectMatchesMobileScope(nextProjectId, expectedScope)
+        ) {
             return null;
         }
 
@@ -200,16 +296,19 @@ export default function MobileProjectsProvider({
 
             return await loadProjectIntoCache(nextProjectId, { force: true });
         } finally {
-            if (shouldShowLoader) {
+            if (shouldShowLoader && isExpectedScope(expectedScope)) {
                 setIsLoading(false);
             }
         }
-    }, [loadProjectIntoCache, sessionStoreId, sessionTenantId, selectedProjectId]);
+    }, [isExpectedScope, loadProjectIntoCache, selectedProjectId]);
 
     useEffect(() => {
-        if (!storeDetails?.storeId) {
+        latestProjectsRequestRef.current += 1;
+        if (!currentScope) {
             hasHydratedRef.current = false;
-            hydratedStoreIdRef.current = null;
+            hydratedScopeKeyRef.current = null;
+            projectsListRef.current = [];
+            projectsByIdRef.current = {};
             setProjectsList([]);
             setProjectsById({});
             setSelectedProjectId(null);
@@ -217,21 +316,12 @@ export default function MobileProjectsProvider({
             return;
         }
 
-        if (!sessionStoreId || !sessionTenantId) {
+        const scopeKey = `${currentScope.tId}:${currentScope.sId}`;
+        if (hydratedScopeKeyRef.current !== scopeKey) {
             hasHydratedRef.current = false;
-            hydratedStoreIdRef.current = null;
-            setProjectsList([]);
-            setProjectsById({});
-            setSelectedProjectId(null);
-            setIsLoading(true);
-            return;
-        }
-
-        const storeId = storeDetails.storeId;
-
-        if (hydratedStoreIdRef.current !== storeId) {
-            hasHydratedRef.current = false;
-            hydratedStoreIdRef.current = null;
+            hydratedScopeKeyRef.current = null;
+            projectsListRef.current = [];
+            projectsByIdRef.current = {};
             setProjectsList([]);
             setProjectsById({});
             setSelectedProjectId(null);
@@ -242,7 +332,7 @@ export default function MobileProjectsProvider({
             loadSelectedProject: false,
             showLoader: true,
         });
-    }, [refreshProjects, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
+    }, [currentScope?.sId, currentScope?.tId, refreshProjects]);
 
     useEffect(() => {
         if (!eagerLoadSelectedProject || !selectedProjectId || projectsByIdRef.current[selectedProjectId]) return;
@@ -251,18 +341,22 @@ export default function MobileProjectsProvider({
     }, [eagerLoadSelectedProject, loadProjectIntoCache, selectedProjectId]);
 
     const selectProject = useCallback(async (projectId?: string | null) => {
-        if (!sessionStoreId || !sessionTenantId) return;
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope) return;
 
         const resolvedProject = resolveMobileSelectedProject(projectsListRef.current, projectId || null);
-        const nextProjectId = resolvedProject?.projectId || null;
+        const nextProjectId = resolvedProject
+            && projectMatchesMobileScope(resolvedProject.projectId, expectedScope)
+            ? resolvedProject.projectId
+            : null;
         const needsFetch = Boolean(nextProjectId) && !projectsByIdRef.current[nextProjectId];
 
         if (needsFetch) {
             setIsLoading(true);
         }
 
-        setSelectedProjectId(nextProjectId);
-        setStoredMobileProjectId(nextProjectId, storeDetails?.storeId);
+        setSelectedProjectId((current) => isExpectedScope(expectedScope) ? nextProjectId : current);
+        setStoredMobileProjectId(nextProjectId, expectedScope.sId, expectedScope.tId);
 
         try {
             if (needsFetch) {
@@ -270,14 +364,18 @@ export default function MobileProjectsProvider({
             }
 
         } finally {
-            if (needsFetch) {
+            if (needsFetch && isExpectedScope(expectedScope)) {
                 setIsLoading(false);
             }
         }
-    }, [loadProjectIntoCache, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
+    }, [isExpectedScope, loadProjectIntoCache]);
 
     const upsertCachedProject = useCallback((project: any) => {
-        if (!project?.projectId) return;
+        const expectedScope = currentScopeRef.current;
+        if (
+            !expectedScope
+            || !projectMatchesMobileScope(project?.projectId, expectedScope)
+        ) return;
 
         const nextProject = removeObjRef(project);
 
@@ -309,28 +407,40 @@ export default function MobileProjectsProvider({
         })();
         projectsListRef.current = nextProjectsList;
 
-        setProjectsById((prev) => ({
-            ...prev,
-            [nextProject.projectId]: nextProject,
-        }));
+        setProjectsById((prev) => isExpectedScope(expectedScope)
+            ? {
+                ...prev,
+                [nextProject.projectId]: nextProject,
+            }
+            : prev);
 
-        setProjectsList(nextProjectsList);
-    }, []);
+        if (isExpectedScope(expectedScope)) {
+            setProjectsList(nextProjectsList);
+        }
+    }, [isExpectedScope]);
 
     const removeCachedProject = useCallback((projectId: string) => {
+        const expectedScope = currentScopeRef.current;
+        if (
+            !expectedScope
+            || !projectMatchesMobileScope(projectId, expectedScope)
+        ) return;
         const nextProjectsById = { ...projectsByIdRef.current };
         delete nextProjectsById[projectId];
         projectsByIdRef.current = nextProjectsById;
         projectsListRef.current = projectsListRef.current.filter((project) => project.projectId !== projectId);
 
         setProjectsById((prev) => {
+            if (!isExpectedScope(expectedScope)) return prev;
             const next = { ...prev };
             delete next[projectId];
             return next;
         });
-        setProjectsList(projectsListRef.current);
-        setSelectedProjectId((prev) => prev === projectId ? null : prev);
-    }, []);
+        if (isExpectedScope(expectedScope)) {
+            setProjectsList(projectsListRef.current);
+            setSelectedProjectId((prev) => prev === projectId ? null : prev);
+        }
+    }, [isExpectedScope]);
 
     const selectedProject = useMemo(
         () => (selectedProjectId ? projectsById[selectedProjectId] || null : null),
@@ -342,19 +452,25 @@ export default function MobileProjectsProvider({
         [projectsList, selectedProjectId]
     );
 
+    const hasCurrentHydratedScope = Boolean(
+        currentScope
+        && hasHydratedRef.current
+        && hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`
+    );
     const value = useMemo<MobileProjectsContextValue>(() => ({
-        isLoading,
-        projectsById,
-        projectsList,
+        isLoading: !hasCurrentHydratedScope || isLoading,
+        projectsById: hasCurrentHydratedScope ? projectsById : {},
+        projectsList: hasCurrentHydratedScope ? projectsList : [],
         refreshCachedProject,
         refreshProjects,
         removeCachedProject,
-        selectedProject,
-        selectedProjectId,
-        selectedProjectSummary,
+        selectedProject: hasCurrentHydratedScope ? selectedProject : null,
+        selectedProjectId: hasCurrentHydratedScope ? selectedProjectId : null,
+        selectedProjectSummary: hasCurrentHydratedScope ? selectedProjectSummary : null,
         selectProject,
         upsertCachedProject,
     }), [
+        hasCurrentHydratedScope,
         isLoading,
         projectsById,
         projectsList,

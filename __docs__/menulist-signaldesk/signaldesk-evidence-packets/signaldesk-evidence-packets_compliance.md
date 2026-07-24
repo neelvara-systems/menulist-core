@@ -1,61 +1,48 @@
-# SignalDesk Evidence Packets - Compliance Policy
+# SignalDesk Evidence Packets - Compliance
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
+**Status:** Enforced in current runtime
+**Last Updated:** July 21, 2026
 
-## Core Rule
+## Authority Rule
 
-Evidence must make outreach safer, not more aggressive.
+Data availability is not permission. Evidence creation revalidates the current
+source policy and target source lifecycle inside the transaction. A previous UI
+decision, score, packet, or policy renewal cannot bypass current authority.
 
-## Allowed Evidence
+## Allowed Facts
 
-- facts from approved source policy;
-- MenuList first-party outcomes/signals;
-- operator notes marked as human-entered;
-- referral context when explicit;
-- paid-intent context from provider forms/clicks;
-- public website facts when not restricted and not stored beyond policy.
+The active packet may carry only bounded target summary facts already admitted
+under source policy: display name, category, city, website, current-list URL,
+opportunity classification, source confidence, and source policy/run references.
 
-## Blocked Evidence
+Raw contacts, permission evidence text, provider payloads, ratings, reviews,
+photos, menu content, operator notes, and arbitrary model output are excluded.
 
-- restricted provider fields;
-- Google/Foursquare photos, reviews, tips, profile content, ratings, or menus unless policy explicitly allows internal temporary review;
-- inferred customer behavior without proof;
-- invented menu items, prices, offers, hours, or claims;
-- raw contact values in evidence text unless required;
-- facts with expired source retention.
+## Required Rejections
 
-## Outbound Claim Rules
+Packets state that owner control and mobile accessibility are unverified and
+reject unsupported customer-loss, sales-impact, ranking, and platform-partnership
+claims. A missing URL is an observed absence in approved source data, not proof
+that a business has no menu.
 
-Outbound copy may only cite:
+## Downstream Use
 
-- facts marked `allowedForOutbound`;
-- simple, non-accusatory observations;
-- MenuList's own product offer.
+`draft-personalization` appears only when current source policy permits it.
+Downstream draft, approval, route, outcome, export, and send boundaries re-read
+their own current authority; the packet is not a standing permission grant.
 
-Outbound copy must not say:
+## Privacy And Audit
 
-- "we scraped";
-- "customers are leaving";
-- "you are losing sales";
-- "Google will rank you";
-- "WhatsApp/Google/Meta partner";
-- "we verified your business";
-- "we already built your official page".
+- Detail is server-only; summary is protected SignalDesk internal data.
+- No raw contact or free-form operator text enters packet or packet-create audit.
+- Exact retries do not create duplicate audit/cost rows.
+- Expiry replaces source-derived content with a bounded tombstone and records a
+  deterministic system audit.
+- Direct browser writes remain denied.
 
-## Takedown / Complaint
+## Dispute And Takedown
 
-If a target challenges evidence:
-
-1. pause target;
-2. freeze related evidence packet;
-3. create incident or review item;
-4. remove blocked facts;
-5. update source policy if issue is systemic.
-
-## Open Questions
-
-| Question | Owner |
-| --- | --- |
-| Evidence expiry default per source type | Founder + compliance review |
-| Whether evidence bundles can include screenshots | Founder + compliance review |
+The current runtime uses suppression, target holds, source-policy blocking, kill
+switches, and source-data lifecycle reconciliation. It does not implement an
+editable evidence-fact workflow. Correct the governing source/target authority,
+then regenerate; do not mutate an old deterministic packet in place.

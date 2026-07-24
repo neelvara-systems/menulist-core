@@ -22,7 +22,6 @@ import {
     ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN,
     ANSWERLATTICE_PREDICTIVE_MAX_BODY_BYTES,
 } from '@lib/answerlattice/predictiveSupportContracts';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
     ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
     isAnswerlatticeWidgetRuntimeRequestAuthorized,
@@ -52,7 +51,13 @@ const PredictiveHelpRequestSchema = z.object({
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
 const emptyCorsResponse = (request: NextRequest, init?: ResponseInit): NextResponse => (
-    withPublicApiCors(new NextResponse(null, init), request)
+    withPublicApiCors(new NextResponse(null, {
+        ...init,
+        headers: {
+            ...Object.fromEntries(new Headers(init?.headers).entries()),
+            'Cache-Control': 'private, no-store',
+        },
+    }), request)
 );
 
 export function OPTIONS(request: NextRequest) {
@@ -134,10 +139,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Extract tenant context from authenticated API key (never trust body for tId/sId)
-        const { storeData, storeId } = authResult;
-        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
-        if (!tId || !sId) {
+        const { answerlatticeScope, storeData, storeId } = authResult;
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
+        if (!tId || !sId || String(sId) !== storeId) {
             logRuntimeFailure('answerlattice_predictive_help_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });

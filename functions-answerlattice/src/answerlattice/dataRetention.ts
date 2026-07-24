@@ -4,7 +4,9 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import {
     getAnswerlatticeBundleManifestDocId,
+    isOwnedAnswerlatticeBundleManifest,
     normalizeAnswerlatticeStoredBundleVersion,
+    shouldDeleteAnswerlatticeContextBundleVersion,
 } from './compiledContextVersions';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
 import {
@@ -106,9 +108,14 @@ async function deleteDocsOlderThan(params: {
     timestampField: string;
     retentionKey: AnswerlatticeRetentionKey;
     limit: number;
+    productField?: 'pId' | 'productId';
+    productValue?: 'AL';
 }): Promise<number> {
-    const snap = await db
-        .collection(params.collectionName)
+    const collection = db.collection(params.collectionName);
+    const productScopedQuery = params.productField && params.productValue
+        ? collection.where(params.productField, '==', params.productValue)
+        : collection;
+    const snap = await productScopedQuery
         .where(params.timestampField, '<', cutoffFor(params.retentionKey))
         .limit(params.limit)
         .get();
@@ -191,7 +198,7 @@ async function cleanupTenantContextBundleVersions(
     if (!manifestSnap.exists) return 0;
 
     const manifest = manifestSnap.data() || {};
-    if (manifest.pId !== 'AL' || manifest.tId !== tId || manifest.sId !== sId) return 0;
+    if (!isOwnedAnswerlatticeBundleManifest(manifest, tId, sId)) return 0;
     const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion ?? manifest.bundleVersion);
     const lastRetentionCleanedVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.lastRetentionCleanedVersion);
     if (!activeVersion || (lastRetentionCleanedVersion !== null && lastRetentionCleanedVersion >= activeVersion)) return 0;
@@ -216,7 +223,7 @@ async function cleanupTenantContextBundleVersions(
         for (const file of files) {
             if (deleted >= storageDeleteLimit) break;
             const version = extractBundleVersion(file.name);
-            if (!version || keepVersions.has(version)) continue;
+            if (!version || !shouldDeleteAnswerlatticeContextBundleVersion(version, activeVersion, keepVersions)) continue;
 
             await file.delete({ ignoreNotFound: true } as any);
             deleted += 1;
@@ -224,10 +231,21 @@ async function cleanupTenantContextBundleVersions(
     }
 
     if (!listingWasTruncated && deleted < storageDeleteLimit) {
-        await manifestSnap.ref.set({
-            lastRetentionCleanedVersion: activeVersion,
-            lastRetentionCleanedAt: Timestamp.now(),
-        }, { merge: true });
+        await db.runTransaction(async transaction => {
+            const currentManifestSnap = await transaction.get(manifestSnap.ref);
+            const currentManifest = currentManifestSnap.data();
+            if (
+                !currentManifestSnap.exists
+                || !isOwnedAnswerlatticeBundleManifest(currentManifest, tId, sId)
+                || normalizeAnswerlatticeStoredBundleVersion(
+                    currentManifest.activeVersion ?? currentManifest.bundleVersion,
+                ) !== activeVersion
+            ) return;
+            transaction.update(manifestSnap.ref, {
+                lastRetentionCleanedVersion: activeVersion,
+                lastRetentionCleanedAt: Timestamp.now(),
+            });
+        });
     }
 
     return deleted;
@@ -277,6 +295,8 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             timestampField: 'createdAt',
             retentionKey: 'notificationLogs',
             limit: batchLimit,
+            productField: 'productId',
+            productValue: 'AL',
         });
     });
 
@@ -286,6 +306,8 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             timestampField: 'createdAt',
             retentionKey: 'ownerNotificationEvents',
             limit: batchLimit,
+            productField: 'productId',
+            productValue: 'AL',
         });
     });
 
@@ -295,6 +317,8 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             timestampField: 'createdAt',
             retentionKey: 'ownerNotificationDeliveries',
             limit: batchLimit,
+            productField: 'productId',
+            productValue: 'AL',
         });
     });
 
@@ -304,6 +328,8 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             timestampField: 'updatedAt',
             retentionKey: 'ownerNotificationRateLimits',
             limit: batchLimit,
+            productField: 'productId',
+            productValue: 'AL',
         });
     });
 
@@ -322,6 +348,8 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             timestampField: 'createdAt',
             retentionKey: 'queryEmbeddings',
             limit: batchLimit,
+            productField: 'pId',
+            productValue: 'AL',
         });
     });
 
@@ -331,6 +359,8 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
             timestampField: 'createdOn',
             retentionKey: 'aiSearchHistory',
             limit: batchLimit,
+            productField: 'pId',
+            productValue: 'AL',
         });
     });
 

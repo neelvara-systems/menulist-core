@@ -2,7 +2,7 @@
 
 **Status:** Current code-truth reference
 
-**Last verified:** July 16, 2026
+**Last verified:** July 23, 2026
 
 **Current Source Contract:** Working-hours status and time-slot presets are implemented from existing store/project truth. Holiday calendars and exception managers are not shipped runtime.
 
@@ -21,7 +21,9 @@ Run `npm run verify:working-hours-boundary`. It includes deterministic weekly-ho
 - Public open/closed status from saved weekly working hours uses one canonical evaluator. A Friday `22:00-02:00` range owns its Saturday after-midnight portion, and the close boundary is exclusive.
 - Comma-separated historical ranges are read safely and rendered in structured data, but the owner editors intentionally manage one regular range per day. Editing one day preserves untouched historical ranges on other days.
 - Desktop Business Settings and MobileShell support regular weekly-hour edits. Mobile Today supports a quick edit of the current store-timezone weekday.
+- Desktop Business Settings, mobile full-week hours, and Mobile Today remount by exact tenant/store. Delayed acknowledgement, rollback, loading, dialog and success state cannot settle into a newly selected store.
 - Store-level time-slot presets are reusable category windows. Category `days` restrictions use the weekday on which an overnight slot starts, and the end minute is exclusive.
+- Preset edits/deletes atomically persist the store change with a durable pending-cascade marker. Desktop and mobile reconcile the marker against the exact tenant/store project set, repeat required cache invalidation after partial progress, clear it only after acknowledged project/cache work, and retry an interrupted marker when that store screen is opened again.
 - Decision Blocks use the same category time-slot evaluator as normal customer category rendering.
 - Store writes use the existing DAL, acknowledgement, public-cache invalidation, and screen-version invalidation paths.
 - Holiday calendars and date-specific exception managers are not shipped. For a one-off closure, use Temporary Status or today's hours.

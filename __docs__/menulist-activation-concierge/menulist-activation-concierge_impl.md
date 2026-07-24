@@ -1,7 +1,7 @@
 # MenuList Activation Concierge - Implementation
 
 **Status:** Local source complete
-**Last reviewed:** July 16, 2026
+**Last reviewed:** July 22, 2026
 
 ## Decision implemented
 
@@ -27,3 +27,5 @@ The global starter banner and desktop/mobile Presence Monitor consume this summa
 ## Separation
 
 There is no public Activation Concierge route and no public SignalDesk route. SignalDesk workflow code must not call MenuList starter/presence mutation helpers or write MenuList stores/projects/billing/public output.
+
+The SignalDesk Daily activation desk may copy the established anonymous founder-pilot `/create-menu` URL for a founder-reviewed manual handoff. That client-only action performs no MenuList or SignalDesk write, creates no route token, includes no target/contact identifier, and grants no activation authority. The existing MenuList create-menu, preview, publish, starter banner, Share, Presence Monitor, and Menu Setup Progress surfaces continue to own the complete activation lifecycle. SignalDesk can show a journey stage only from its already loaded outcome and activation summaries after the result is observed.

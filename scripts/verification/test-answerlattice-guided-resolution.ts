@@ -235,6 +235,10 @@ assert.ok(!loader.includes('activeGuidanceTarget.click('));
 assert.ok(!loader.includes('eval('));
 assert.ok(widgetClient.includes("type === 'answerlattice-guidance-host-reset'"));
 assert.ok(widgetClient.includes("fetch('/api/widget/guidance-outcome'"));
+assert.ok(widgetClient.includes('GUIDANCE_OUTCOME_MAX_ATTEMPTS = 2'));
+assert.ok(widgetClient.includes('const requestBody = JSON.stringify({'));
+assert.ok(widgetClient.includes('body: requestBody'));
+assert.ok(widgetClient.includes('guidanceOutcomeSentRef.current.delete(outcomeKey)'));
 assert.ok(widgetClient.includes('step.stepOrder === index + 1'));
 assert.ok(
     widgetClient.includes('!activeGuidance.procedure.steps[activeGuidance.stepIndex]?.expectedEvent'),
@@ -250,7 +254,20 @@ assert.ok(outcomeRoute.includes('requestId: outcomeIdempotencyKey'));
 assert.ok(outcomeRoute.includes("hasPublicApiCredentialScope(credential, 'widget:feedback')"));
 assert.ok(widgetSearchRoute.includes('result.canonical && result.procedure'));
 assert.ok(searchCore.includes('guidedProcedure: answer.answerType === \'procedure\''), 'canonical history must retain the exact served procedure snapshot');
+assert.ok(
+    searchCore.includes('craftedAnswer: answer.content.detailedExplanation || answer.content.structuredSummary,'),
+    'canonical history must cache the exact answer text served to the requester',
+);
+assert.ok(
+    searchCore.includes('procedure: cachedResult.guidedProcedure,'),
+    'search-history cache replay must restore the validated guided procedure',
+);
+assert.ok(
+    searchCore.indexOf('return withSavedSearchHistory({', searchCore.indexOf("logType: 'CACHE_HIT'")) > 0,
+    'each search-history cache hit must create a fresh request history and feedback target',
+);
 assert.ok(searchHistoryServer.includes('AnswerlatticeProcedureSchema.safeParse(data.guidedProcedure)'), 'search-history persistence must validate procedure snapshots before storage');
+assert.ok(searchHistoryServer.includes('data.responseCacheVersion !== RESPONSE_CACHE_VERSION'), 'legacy compact history must not replay as a complete response');
 assert.ok(widgetClient.includes("onClick={() => openEscalationForm(msg)}"), 'Still stuck must open the explicit support handoff');
 assert.ok(widgetClient.includes("endGuidance('escalated')"), 'a guide is escalated only after the support request succeeds');
 assert.ok(helpDoc.includes('only after the support request is created'), 'help copy must not claim escalation before ticket creation');

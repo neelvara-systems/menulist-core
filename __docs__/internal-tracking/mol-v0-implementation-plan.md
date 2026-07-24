@@ -461,7 +461,7 @@ async function detectAndLogChanges(
 
 #### Task 1.4: Menu Item State (Optional Enhancement)
 
-**File**: `src/database/menuItemState/index.ts` — NEW (if implemented)
+**File**: `src/database/menuItemState/index.ts` — not implemented. The current server-owned rolling metric shape is local to `functions/src/analytics/menuDriftMetrics.ts`; no browser item-state DAL or duplicate app persistence type is certified.
 
 **Functions**:
 
@@ -490,7 +490,7 @@ getAllItemStates(projectId: string): Promise<MenuItemState[]>
 
 **Schedule**: Nightly at 3 AM UTC (after other analytics)
 
-**Current runtime correction (July 13, 2026):** Project documents are read from `projects/{tId}/{sId}/{projectId}`; the top-level `projects` documents are tenant containers and are not queried as projects. The task reads each active store's 30-day MOL window once in 500-document timestamp/document-ID pages with a 50,000-document per-store/run budget, consumes detailed events and bounded `MENU_REVISION_SUMMARY.itemDriftChanges`, partitions contributions by the authoritative project document ID, and writes per-item metrics in batches of 400. Existing derived metrics are paged and removed when their contribution leaves the rolling window, so an old count cannot remain current. The 30-day source window cannot prove a 180-day price-staleness claim; `_priceStale` is therefore `null` with `unavailable_outside_rolling_window` unless the available timestamp can answer the threshold. This removes the former project-count multiplier and false non-stale defaults. Default revision summaries and publish events are not replacement-debounced; pathological compact-summary overflow is retained through detailed price/availability events.
+**Current runtime correction (July 22, 2026):** Project documents are read from `projects/{tId}/{sId}/{projectId}`; the top-level `projects` documents are tenant containers and are not queried as projects. Client writes use `serverTimestamp()` and rules require canonical `timestamp` (plus the supported legacy `createdOn`) to equal `request.time`. The task captures one upper timestamp per run and reads each active store's bounded 30-day MOL window once in 500-document timestamp/document-ID pages with a 50,000-document per-store/run budget, so future-dated legacy/Admin rows cannot poison current counters. It consumes detailed events and bounded `MENU_REVISION_SUMMARY.itemDriftChanges`, partitions contributions by the authoritative project document ID, and writes per-item metrics in batches of 400. Existing derived metrics are paged and removed when their contribution leaves the rolling window, so an old count cannot remain current. Each surviving metric is a complete exact replacement, preventing unknown legacy fields or removed derived fields from surviving a recomputation. The 30-day source window cannot prove a 180-day price-staleness claim; `_priceStale` is therefore `null` with `unavailable_outside_rolling_window` unless the available timestamp can answer the threshold. This removes the former project-count multiplier and false non-stale defaults. Default revision summaries and publish events are not replacement-debounced; pathological compact-summary overflow is retained through detailed price/availability events.
 
 **Logic**:
 

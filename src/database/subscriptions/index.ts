@@ -1,29 +1,35 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { PRODUCT_IDS } from "@constant/product";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import {
-    normalizeBillingSubscriptionDocumentId,
     normalizeBillingSubscriptionScopeDocumentId,
 } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { MinimalStoreDataType } from "@type/platform/store";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { getGracePeriodInfo } from "@util/razorpay";
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp, where } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 const activeSubscriptionRequests = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();
 
+const projectExactSubscriptionForScope = (
+    data: unknown,
+    id: string,
+    tenantId: number,
+    storeId: number,
+): FirestoreSubscriptionDoc | null => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const subscription = { ...(data as FirestoreSubscriptionDoc), id };
+    const scope = getMenuListSubscriptionEntitlementScope(subscription);
+    return scope?.tenantId === tenantId && scope.storeId === storeId ? subscription : null;
+};
+
 // Helper function to get subscription collection reference
 export const getCollectionRef = () => collection(firebaseClient, COLLECTION);
-
-const getDocRef = (docId: string) => {
-    const normalizedDocId = normalizeBillingSubscriptionDocumentId(docId);
-    if (!normalizedDocId) throw new Error("Invalid billing subscription id.");
-    return doc(getCollectionRef(), normalizedDocId);
-};
 
 // ── Subscription Status Reference ──
 // active: The user is in good standing and is scheduled to be billed again.
@@ -45,10 +51,14 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
     const now = Timestamp.now();
     const q = query(
         getCollectionRef(),
+        where("pId", "==", PRODUCT_IDS.MENULIST),
+        where("productId", "==", PRODUCT_IDS.MENULIST),
         where("status", "in", ["active", "past_due", "cancelled", "paused"]),
         where("cycleEndDate", ">=", now),
         where("tenantId", "==", tenantScope.numericId),
+        where("tId", "==", tenantScope.numericId),
         where("storeId", "==", storeScope.numericId),
+        where("sId", "==", storeScope.numericId),
         orderBy("cycleEndDate", "desc"),
         limit(1)
     );
@@ -60,36 +70,59 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
         // A paused sub should still be visible for support recovery from the billing page.
         const pausedFallbackQuery = query(
             getCollectionRef(),
+            where("pId", "==", PRODUCT_IDS.MENULIST),
+            where("productId", "==", PRODUCT_IDS.MENULIST),
             where("status", "==", "paused"),
             where("tenantId", "==", tenantScope.numericId),
+            where("tId", "==", tenantScope.numericId),
             where("storeId", "==", storeScope.numericId),
+            where("sId", "==", storeScope.numericId),
             limit(1)
         );
         const pausedSnapshot = await getDocs(pausedFallbackQuery);
         if (!pausedSnapshot.empty) {
             const pausedDoc = pausedSnapshot.docs[0];
-            return { ...pausedDoc.data(), id: pausedDoc.id } as FirestoreSubscriptionDoc;
+            return projectExactSubscriptionForScope(
+                pausedDoc.data(),
+                pausedDoc.id,
+                tenantScope.numericId,
+                storeScope.numericId,
+            );
         }
         // Pending subscriptions have not started a billing cycle yet, so they
         // do not have cycle dates. Keep them visible on Billing so the owner
         // can complete a reseller or self-serve Razorpay checkout.
         const pendingQuery = query(
             getCollectionRef(),
+            where("pId", "==", PRODUCT_IDS.MENULIST),
+            where("productId", "==", PRODUCT_IDS.MENULIST),
             where("status", "==", "pending"),
             where("tenantId", "==", tenantScope.numericId),
+            where("tId", "==", tenantScope.numericId),
             where("storeId", "==", storeScope.numericId),
+            where("sId", "==", storeScope.numericId),
             limit(1)
         );
         const pendingSnapshot = await getDocs(pendingQuery);
         if (!pendingSnapshot.empty) {
             const pendingDoc = pendingSnapshot.docs[0];
-            return { ...pendingDoc.data(), id: pendingDoc.id } as FirestoreSubscriptionDoc;
+            return projectExactSubscriptionForScope(
+                pendingDoc.data(),
+                pendingDoc.id,
+                tenantScope.numericId,
+                storeScope.numericId,
+            );
         }
         return null;
     }
 
     const docSnap = querySnapshot.docs[0];
-    return { ...docSnap.data(), id: docSnap.id } as FirestoreSubscriptionDoc;
+    return projectExactSubscriptionForScope(
+        docSnap.data(),
+        docSnap.id,
+        tenantScope.numericId,
+        storeScope.numericId,
+    );
 };
 
 /**
@@ -207,56 +240,3 @@ export const getActiveSubscriptionForStore = async (
     }
     return await request;
 };
-
-
-/**
- * Creates the initial subscription document in Firestore with a 'pending' status,
- * using the Razorpay Subscription ID as the Firestore Document ID.
- * @param providerSubscriptionId - The ID from Razorpay, which will be used as the document ID.
- * @param data - The details for the new subscription.
- */
-export const createInitialSubscription = async (providerSubscriptionId: string, data: Omit<FirestoreSubscriptionDoc, "id">): Promise<void> => {
-    return await apiCallComposer(
-        async () => {
-            const docRef = getDocRef(providerSubscriptionId); // Use the provider ID for the doc ref
-            const processedData = await requestBodyComposer(data, { isNew: true });
-            await setDoc(docRef, processedData); // Use setDoc to create with a specific ID
-        },
-        "createInitialSubscription"
-    );
-};
-
-/**
- * Updates an existing subscription document in Firestore.
- * @param subscriptionId - The Firestore document ID of the subscription.
- * @param data - The data to update.
- */
-export const updateSubscription = async (subscriptionId: string, data: Partial<FirestoreSubscriptionDoc>): Promise<void> => {
-    return await apiCallComposer(
-        async () => {
-            const docRef = getDocRef(subscriptionId);
-            const processedData = await requestBodyComposer(data, { isNew: false });
-            await setDoc(docRef, processedData, { merge: true });
-        },
-        "updateSubscription"
-    );
-};
-
-export const getSubscriptionById = async (id: string) => {
-    return await apiCallComposer(
-        async () => {
-            const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(id);
-            if (!normalizedSubscriptionId) return null;
-
-            const collectionDocRef = doc(getCollectionRef(), normalizedSubscriptionId);
-            const docSnap = await getDoc(collectionDocRef);
-            if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id };
-            } else {
-                return null
-            }
-        },
-        id,
-        "getSubscriptionById"
-    );
-}

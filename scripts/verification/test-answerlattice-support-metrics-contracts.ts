@@ -14,6 +14,10 @@ import {
     parseAnswerlatticeFrictionSnapshot,
     parseAnswerlatticeTrustMetrics,
 } from '@lib/answerlattice/analyticsIntelligenceContracts';
+import {
+    getAnswerlatticeFrictionScopeKey,
+    projectFrictionInsightsStateForScope,
+} from '@hook/answerlattice/frictionInsightsScopeState';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const timestamp = (seconds: number) => ({ seconds, nanoseconds: 0 });
@@ -51,11 +55,17 @@ const coverage = {
     window: rollingWindow,
     coverage: { date: '2026-07-18', hits: 7, misses: 3, rate: 70, total: 10 },
 };
-assert.ok(parseAnswerlatticeCoverageData(coverage, scope));
+const projectedCoverage = parseAnswerlatticeCoverageData({
+    ...coverage,
+    privateLegacyPayload: 'must-not-reach-owner-state',
+}, scope);
+assert.ok(projectedCoverage);
+assert.equal('privateLegacyPayload' in projectedCoverage, false);
 assert.equal(parseAnswerlatticeCoverageData({ ...coverage, tId: '7' }, scope), null);
 assert.equal(parseAnswerlatticeCoverageData({ ...coverage, schemaVersion: 1 }, scope), null);
 assert.equal(parseAnswerlatticeCoverageData({ ...coverage, window: { ...rollingWindow, complete: false } }, scope), null);
 assert.equal(parseAnswerlatticeCoverageData({ ...coverage, coverage: { ...coverage.coverage, total: 9 } }, scope), null);
+assert.equal(parseAnswerlatticeCoverageData({ ...coverage, coverage: { ...coverage.coverage, rate: 71 } }, scope), null);
 
 const trust = {
     ...storedScope,
@@ -93,14 +103,31 @@ const trust = {
     }],
     escalationBreakdown: { knowledgeGap: 1, lowConfidence: 1, entityMismatch: 0, retrievalFailure: 0, userRequested: 1, total: 2 },
 };
-assert.ok(parseAnswerlatticeTrustMetrics(trust, scope));
+const projectedTrust = parseAnswerlatticeTrustMetrics({
+    ...trust,
+    privateLegacyPayload: 'must-not-reach-owner-state',
+}, scope);
+assert.ok(projectedTrust);
+assert.equal('privateLegacyPayload' in projectedTrust, false);
 assert.equal(parseAnswerlatticeTrustMetrics({ ...trust, sourceCompleteness: { ...trust.sourceCompleteness, complete: false } }, scope), null);
 assert.equal(parseAnswerlatticeTrustMetrics({ ...trust, topFailingEntities: [{ ...trust.topFailingEntities[0], entityId: '' }] }, scope), null);
+assert.equal(parseAnswerlatticeTrustMetrics({
+    ...trust,
+    topFailingEntities: [{ ...trust.topFailingEntities[0], reliabilityScore: 'unknown' }],
+}, scope), null);
+assert.equal(parseAnswerlatticeTrustMetrics({
+    ...trust,
+    escalationBreakdown: { ...trust.escalationBreakdown, entityMismatch: 'unknown' },
+}, scope), null);
+assert.equal(parseAnswerlatticeTrustMetrics({
+    ...trust,
+    nonEscalation: { ...trust.nonEscalation, rate: 79 },
+}, scope), null);
 
 const calendarWindow = {
     kind: 'utc_calendar_7_days',
-    startAt: timestamp(100),
-    endAt: timestamp(200),
+    startAt: timestamp(Date.parse('2026-07-11T00:00:00.000Z') / 1_000),
+    endAt: timestamp(Date.parse('2026-07-17T23:59:59.000Z') / 1_000),
     complete: true,
     sourceLimit: 500,
     observedCount: 14,
@@ -114,8 +141,23 @@ const frictionSnapshot = {
     schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
     lastUpdated: timestamp(210),
     window: calendarWindow,
-    topFrictionEntities: [],
-    emergingTopics: [],
+    topFrictionEntities: [{
+        entityId: 'billing',
+        entityName: 'Billing',
+        entityType: 'feature',
+        last7d: { queryCount: 8, escalationCount: 1, lowConfidenceCount: 2, frictionScore: 10 },
+        previous7d: { queryCount: 4, frictionScore: 5 },
+        trendDirection: 'rising',
+        trendScore: 2,
+    }],
+    emergingTopics: [{
+        entityId: 'billing',
+        entityName: 'Billing',
+        entityType: 'feature',
+        queryCount: 8,
+        escalationRate: 0.125,
+        firstSeenDate: '2026-07-11',
+    }],
     frictionLevel: 'LOW',
     totalWeightedLoad: 10,
     overallHealth: 'LOW',
@@ -124,8 +166,28 @@ const frictionSnapshot = {
     unmappedEvidenceCount: 0,
     legacyDailyStatCount: 0,
 };
-assert.ok(parseAnswerlatticeFrictionSnapshot(frictionSnapshot, scope));
+const projectedFrictionSnapshot = parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    privateLegacyPayload: 'must-not-reach-owner-state',
+}, scope);
+assert.ok(projectedFrictionSnapshot);
+assert.equal('privateLegacyPayload' in projectedFrictionSnapshot, false);
 assert.equal(parseAnswerlatticeFrictionSnapshot({ ...frictionSnapshot, frictionLevel: 'HEALTHY' }, scope), null);
+assert.equal(parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    topFrictionEntities: [frictionSnapshot.topFrictionEntities[0], frictionSnapshot.topFrictionEntities[0]],
+}, scope), null);
+assert.equal(parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    topFrictionEntities: [{
+        ...frictionSnapshot.topFrictionEntities[0],
+        last7d: { ...frictionSnapshot.topFrictionEntities[0].last7d, escalationCount: 9 },
+    }],
+}, scope), null);
+assert.equal(parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    window: { ...calendarWindow, currentStartDate: '2026-07-10' },
+}, scope), null);
 
 const frictionInsight = {
     ...storedScope,
@@ -138,9 +200,48 @@ const frictionInsight = {
     sourceSnapshotUpdatedAt: timestamp(210),
     suggestedActions: [{ entityId: 'billing', action: 'Review the approved billing answer and recent fallback evidence.' }],
     frictionLevel: 'LOW',
+    promptVersion: 'friction-insight-v1',
+    generatedAt: timestamp(220),
 };
-assert.ok(parseAnswerlatticeFrictionInsight(frictionInsight, scope));
+const projectedFrictionInsight = parseAnswerlatticeFrictionInsight({
+    ...frictionInsight,
+    summary: '  Billing questions rose\n and need evidence review.  ',
+    privateProviderPayload: 'must-not-reach-owner-state',
+}, scope);
+assert.ok(projectedFrictionInsight);
+assert.equal(projectedFrictionInsight.summary, 'Billing questions rose and need evidence review.');
+assert.equal('privateProviderPayload' in projectedFrictionInsight, false);
 assert.equal(parseAnswerlatticeFrictionInsight({ ...frictionInsight, advisory: false }, scope), null);
+assert.equal(parseAnswerlatticeFrictionInsight({ ...frictionInsight, promptVersion: undefined }, scope), null);
+assert.equal(parseAnswerlatticeFrictionInsight({ ...frictionInsight, generatedAt: undefined }, scope), null);
+assert.equal(parseAnswerlatticeFrictionInsight({ ...frictionInsight, weekEnd: '2026-07-18' }, scope), null);
+assert.equal(parseAnswerlatticeFrictionInsight({
+    ...frictionInsight,
+    suggestedActions: [frictionInsight.suggestedActions[0], frictionInsight.suggestedActions[0]],
+}, scope), null);
+
+const scopeKey = getAnswerlatticeFrictionScopeKey(scope.tenantId, scope.storeId);
+assert.equal(scopeKey, '7:9');
+assert.equal(getAnswerlatticeFrictionScopeKey(0, scope.storeId), null);
+const tenantAState = {
+    scopeKey,
+    snapshot: projectedFrictionSnapshot,
+    insight: projectedFrictionInsight,
+    loading: false,
+    error: 'prior scope error',
+};
+assert.deepEqual(projectFrictionInsightsStateForScope(tenantAState, 8, 10), {
+    snapshot: null,
+    insight: null,
+    loading: true,
+    error: null,
+});
+assert.deepEqual(projectFrictionInsightsStateForScope(tenantAState, 0, 0), {
+    snapshot: null,
+    insight: null,
+    loading: false,
+    error: null,
+});
 
 const rootShared = fs.readFileSync(path.join(ROOT, 'src/data/shared/answerlatticeSupportMetrics.ts'), 'utf8');
 const functionShared = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/sharedData/answerlatticeSupportMetrics.ts'), 'utf8');

@@ -1,7 +1,8 @@
 # SignalDesk Trust Partner Rail - Specification
 
-**Status:** Runtime implemented for internal testing; real partner outreach and spend remain founder-approved
+**Status:** Feature 17 locally source-complete; real partner outreach and spend remain manual and founder-approved
 **Created:** June 24, 2026
+**Last Updated:** July 21, 2026
 
 ## Executive Summary
 
@@ -9,7 +10,7 @@ Trust Partner Rail helps MenuList test trust-based distribution without hiring a
 
 The source article is useful because it describes a system for high-speed distribution testing, not because MenuList should become a consumer-app influencer machine. MenuList should adapt the system to B2B/local business trust channels: restaurant consultants, food/local creators with operator audiences, menu photographers, local business communities, POS/payment partners, agencies, accountants, and SMB operators who can credibly introduce MenuList.
 
-The founder should approve niches, budgets, briefs, and renewal decisions. SignalDesk should handle discovery, scoring, tracking, reminders, result capture, and recommendations.
+SignalDesk records partner scoring, test plans, briefs, approved deals, deliverables, attributable metrics, and evidence-backed recommendations. Policy approvers can plan tests and recommendations; only the founder can approve/activate partners or spend. Discovery, contact, contracts, payment, publication, and provider send remain outside this rail.
 
 ## Goals
 
@@ -87,8 +88,8 @@ Each partner niche needs three to five attempts before SignalDesk recommends a d
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | SDTP-R001 | Partner profile must include type, audience, geography, channel, trust score, and source notes. | P0 |
-| SDTP-R002 | Deal records must store flat fee, deliverables, post dates, budget cap, status, and owner approval. | P0 |
-| SDTP-R003 | No partner deal can be approved without disclosure and banned-claim checklist. | P0 |
+| SDTP-R002 | Deal records must store flat fee, deliverable count, due date when supplied, budget authority, approval state, reservation evidence, and payment state. | P0 |
+| SDTP-R003 | Only founder-admin may approve/activate partners or approve spend; briefs separately require disclosure text and approved/banned claim rails. | P0 |
 | SDTP-R004 | Briefs must use approved MenuList claims only. | P0 |
 | SDTP-R005 | A niche test must track 3-5 partner attempts before continue/cut recommendation. | P0 |
 | SDTP-R006 | Renewal must use outcome data, not views alone. | P0 |
@@ -96,6 +97,9 @@ Each partner niche needs three to five attempts before SignalDesk recommends a d
 | SDTP-R008 | Partner source data must follow SignalDesk source policy and retention rules. | P0 |
 | SDTP-R009 | Founder must approve first niche, first partner offer, and first budget cap. | P0 |
 | SDTP-R010 | Public partner portal, automated contracts, and payment execution stay out of scope until explicitly approved. | P1 |
+| SDTP-R011 | Forward-moving partner work must stop while the trust-partner pause is active; evidence, holds, and cuts remain recordable. | P0 |
+| SDTP-R012 | Observed metrics require a matching live deliverable with a canonical credential-free HTTP(S) post URL. | P0 |
+| SDTP-R013 | Retry-sensitive mutations must converge on one entity and one set of audit/timeline/cost effects. | P0 |
 
 ## Success Metrics
 
@@ -123,7 +127,7 @@ Each partner niche needs three to five attempts before SignalDesk recommends a d
 
 No constitution-level doctrine was created. The article contains a useful SignalDesk feature framework, but not a MenuList-wide product doctrine. The durable rule lives inside this feature: trust channels must be tested by outcome, not vanity reach.
 
-## Open Questions
+## Owner-Controlled Runtime Decisions
 
 | Question | Default |
 | --- | --- |

@@ -45,7 +45,10 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { deleteChatSession } from '@database/chatSessions';
+import {
+    deleteChatSession,
+} from '@database/chatSessions';
+import type { AnswerlatticeChatSessionActorScope } from '@lib/answerlattice/chatSessionContracts';
 import {
     normalizeDevChatCleanupSessionIds,
     summarizeDevChatCleanupResults,
@@ -90,7 +93,10 @@ const logDevCleanupDiagnostic = (diagnosticCode: string, context: Record<string,
  * //   collections: ['chatSessions']
  * // }
  */
-export async function clearCurrentUserChatSessions(rawSessionIds: unknown) {
+export async function clearCurrentUserChatSessions(
+    rawSessionIds: unknown,
+    expectedActorScope: AnswerlatticeChatSessionActorScope,
+) {
     // Double-check we're in development
     if (process.env.NODE_ENV === 'production') {
         throw new Error('This function is disabled in production.');
@@ -105,7 +111,10 @@ export async function clearCurrentUserChatSessions(rawSessionIds: unknown) {
         const results: PromiseSettledResult<unknown>[] = [];
         for (const sessionId of sessionIds) {
             try {
-                results.push({ status: 'fulfilled', value: await deleteChatSession(sessionId) });
+                results.push({
+                    status: 'fulfilled',
+                    value: await deleteChatSession(sessionId, expectedActorScope),
+                });
             } catch (reason) {
                 results.push({ status: 'rejected', reason });
             }

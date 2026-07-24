@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+    normalizeAnswerlatticeWidgetConfigVersion,
     normalizeWidgetAllowedOrigin,
     normalizeWidgetBlockedRoute,
     parseWidgetConfigSaveInput,
@@ -37,6 +38,10 @@ assert.equal(normalizeWidgetAllowedOrigin('https://example.com?preview=1'), null
 assert.equal(normalizeWidgetAllowedOrigin('ftp://example.com'), null);
 assert.equal(normalizeWidgetBlockedRoute('/billing*'), null);
 assert.equal(normalizeWidgetBlockedRoute('/billing/*'), '/billing/*');
+assert.equal(normalizeAnswerlatticeWidgetConfigVersion(7), 7);
+for (const invalidVersion of ['7', 7.5, -1, Number.MAX_SAFE_INTEGER + 1, Number.POSITIVE_INFINITY]) {
+    assert.equal(normalizeAnswerlatticeWidgetConfigVersion(invalidVersion), 0);
+}
 
 assert.throws(() => parseWidgetConfigSaveInput({
     config: {},
@@ -77,8 +82,28 @@ assert.ok(loader.includes('runtimeDenied'));
 assert.ok(loader.includes("url.searchParams.set('path', runtimePath)"));
 assert.ok(loader.includes("referrerPolicy: 'no-referrer'"));
 assert.ok(!loader.includes("pattern.slice(-1) === '*'"));
+assert.ok(loader.includes("'answerlattice-widget-config:' + apiKey + ':' + widgetHost"));
+assert.ok(loader.includes("'answerlattice-predictive-session:' + apiKey"));
+assert.ok(!loader.includes('apiKey.slice(0, 14)'));
+assert.ok(loader.includes('remoteConfigResponseMaxBytes = 64 * 1024'));
+assert.ok(loader.includes('return readJsonResponseWithLimit(response, remoteConfigResponseMaxBytes);'));
+assert.ok(!loader.includes('return response.json();'));
+assert.ok(loader.includes("typeof response.body.getReader !== 'function'"));
+assert.ok(loader.includes('totalBytes > maxBytes'));
+assert.ok(loader.includes('return reader.cancel()'));
+assert.ok(loader.includes('return readJsonResponseWithLimit(response, 32768);'));
+assert.ok(!loader.includes('return response.text().then(function (body)'));
+assert.ok(loader.includes('Number.isSafeInteger(data.configVersion)'));
+assert.ok(loader.includes("typeof data.capabilities.predictiveSupport !== 'boolean'"));
+assert.ok(loader.includes('data.capabilities.contextBundles !== Boolean(nextBundleConfig)'));
+assert.ok(loader.indexOf('data.capabilities.contextBundles !== Boolean(nextBundleConfig)') < loader.indexOf('if (!applyRuntimeAuthorization(runtimeAuthorization))'));
+assert.ok(loader.includes('Number.isSafeInteger(value.bundleVersion)'));
+assert.ok(loader.includes('Number.isSafeInteger(expiresAt)'));
 assert.ok(embedClient.includes("event.data?.type !== 'answerlattice-widget-bootstrap'"));
 assert.ok(embedClient.includes('event.source !== window.parent'));
+assert.ok(embedClient.includes('rawApiKey !== nextApiKey || !WIDGET_KEY_PATTERN.test(nextApiKey)'));
+assert.ok(widgetClient.includes('Number.isInteger(input.contextVersion)'));
+assert.ok(!widgetClient.includes('output.contextVersion = Math.floor(input.contextVersion)'));
 assertPublicWidgetFetchHasNoReferrerPolicy('/api/widget/guidance-outcome');
 assertPublicWidgetFetchHasNoReferrerPolicy('/api/widget/search');
 assertPublicWidgetFetchHasNoReferrerPolicy('/api/widget/feedback');
@@ -92,6 +117,9 @@ assert.ok(publicWidgetConfigRoute.includes("'Cache-Control': 'no-store'"));
 assert.ok(publicWidgetConfigRoute.includes("buildErrorResponse(request, { error: 'Origin not allowed' }, 403)"));
 assert.ok(widgetActivityRoute.includes("'Cache-Control': 'private, no-store'"));
 assert.ok(widgetActivityRoute.includes('canonicalIsoTimestampToMillis'));
+assert.ok(widgetActivityRoute.includes('if (!Number.isFinite(date.getTime())) return null;'));
+assert.ok(widgetActivityRoute.includes('data.pId === PRODUCT_IDS.ANSWERLATTICE'));
 assert.ok(widgetActivityRoute.includes('normalizeAnswerlatticeScopeDocumentId(data.tId) === tenantId'));
+assert.ok((widgetActivityRoute.match(/\.where\('pId', '==', PRODUCT_IDS\.ANSWERLATTICE\)/g) || []).length >= 2);
 
 process.stdout.write('Answerlattice widget configuration contracts passed.\n');

@@ -16,7 +16,10 @@ import {
     shouldExposePublicLanguageSwitcher,
 } from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
-import { createPublicCustomerTranslator } from "@lib/localization/publicCustomerMessages";
+import {
+    createPublicCustomerTranslator,
+    type PublicCustomerTranslator,
+} from "@lib/localization/publicCustomerMessages";
 import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
@@ -229,7 +232,12 @@ function getFullAddress(store: any): string | null {
     return parts.length > 0 ? parts.join(', ') : null;
 }
 
-function getFreshnessText(modifiedOn: any, t: (key: string) => string): string | null {
+function getFreshnessText(
+    modifiedOn: any,
+    translate: PublicCustomerTranslator,
+    locale: string,
+    timeZone?: string,
+): string | null {
     if (!modifiedOn) return null;
 
     let date: Date;
@@ -259,12 +267,34 @@ function getFreshnessText(modifiedOn: any, t: (key: string) => string): string |
 
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 1) return t('publicInfoVerifiedToday');
-    if (diffDays < 7) return t('publicInfoVerifiedThisWeek');
-    if (diffDays < 30) return t('publicInfoVerifiedThisMonth');
-    return null;
+    if (diffMs < -5 * 60 * 1000) {
+        logOBPResolvedSurfaceFailure('public_obp_freshness_timestamp_parse_failed', new Error('future_modified_on'), {
+            modifiedOn,
+        });
+        return null;
+    }
+    try {
+        const dayFormatter = new Intl.DateTimeFormat('en-CA-u-ca-gregory-nu-latn', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            ...(timeZone ? { timeZone } : {}),
+        });
+        if (dayFormatter.format(date) === dayFormatter.format(now)) {
+            return translate('menu.updatedToday');
+        }
+        const dateLabel = new Intl.DateTimeFormat(locale, {
+            dateStyle: 'medium',
+            ...(timeZone ? { timeZone } : {}),
+        }).format(date);
+        return translate('menu.updatedOn', { date: dateLabel });
+    } catch (error) {
+        logOBPResolvedSurfaceFailure('public_obp_freshness_timestamp_parse_failed', error, {
+            modifiedOn,
+            timeZone,
+        });
+        return null;
+    }
 }
 
 function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t: (key: string) => string, todayKey?: string): ReactNode | null {
@@ -539,9 +569,10 @@ export default function OBPResolvedSurface({
     const pp = store?.publicPresence || {};
     const contentLanguage = resolveStorePublicLanguage(store, requestedLanguage);
     const publicCustomerT = createPublicCustomerTranslator(contentLanguage);
+    const customerLocale = getNextIntlLocaleForPublicLanguage(contentLanguage);
     const iconVariant: OBPIconVariant = pp.iconVariant === 'emoji' ? 'emoji' : 'icons';
     const isPermanentlyClosed = store?.permanentlyClosed === true;
-    const t = getOBPTranslations(getNextIntlLocaleForPublicLanguage(contentLanguage));
+    const t = getOBPTranslations(customerLocale);
     const languageOptions = getPublicLanguageOptions(store);
     const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
@@ -721,7 +752,12 @@ export default function OBPResolvedSurface({
     const dietaryAttributeKeys = new Set(['vegetarian', 'vegan', 'halal', 'glutenFree']);
     const dietaryAttributeTags = allAttributeTags.filter((attribute) => dietaryAttributeKeys.has(attribute.key));
     const amenityAttributeTags = allAttributeTags.filter((attribute) => !dietaryAttributeKeys.has(attribute.key));
-    const freshnessText = getFreshnessText(store?.modifiedOn, t);
+    const freshnessText = getFreshnessText(
+        store?.modifiedOn,
+        publicCustomerT,
+        customerLocale,
+        store?.timeZone,
+    );
     const establishedYear = pp.establishedYear;
     const knownFor = getLocalizedText(pp.knownFor, contentLanguage, getPrimaryLocalizedLanguage(pp.knownFor, contentLanguage), '');
     const rawSpecialNote = getLocalizedPublicText(pp.specialNote, contentLanguage, '');

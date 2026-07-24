@@ -102,6 +102,7 @@ A provisioned but unpaid workspace cannot consume licensed Knowledge Intake or p
 
 | Date | Change |
 |------|--------|
+| 2026-07-22 | Required exact dual-product identity for onboarding resume, pending-subscription persistence, provider recovery, and compensation; conflicting subscriptions now remain unchanged |
 | 2026-07-19 | Linked post-onboarding profile ownership to the dedicated revisioned, atomically synchronized Workspace Profile feature |
 | 2026-07-19 | Added known-provider-ID preservation, stale-retry cleanup, duplicate-email fail-closed admission, and HTTP(S)-only credential-free product URLs |
 | 2026-07-19 | Hardened indeterminate provider recovery, removed automatic cancellation after provider ambiguity, made local finalization the rollback boundary, tightened recovered-response validation and cache policy, and added emulator-backed recovery/compensation proof |

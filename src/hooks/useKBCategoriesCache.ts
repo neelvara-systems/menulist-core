@@ -1,9 +1,12 @@
 import { fetchAnswerlatticePublicCategories } from '@lib/answerlattice/publicContentClient';
-import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
+import {
+    useAnswerlatticeCacheScope,
+    useAnswerlatticePublicContentRequestScope,
+} from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Timestamp } from 'firebase/firestore';
-import { useCallback, useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo, useRef } from 'react';
 
 const categoriesFetchInFlight = new Map<string, Promise<KnowledgeBaseCategoriesType | null>>();
 
@@ -18,6 +21,9 @@ const normalizeCategoriesPayload = (value: any): KnowledgeBaseCategoriesType | n
 export const useKBCategoriesCache = () => {
     const { cachedKBCategories, setCachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const scopeKey = useAnswerlatticeCacheScope();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
+    const currentScopeKeyRef = useRef(scopeKey);
+    currentScopeKeyRef.current = scopeKey;
 
     const cachedCategories = useMemo(
         () => cachedKBCategories?.scopeKey === scopeKey
@@ -32,13 +38,13 @@ export const useKBCategoriesCache = () => {
     }, [scopeKey, setCachedKBCategories]);
 
     const getCategoriesCached = useCallback(async (options?: { forceRefresh?: boolean }) => {
-        if (!scopeKey) return null;
+        if (!scopeKey || !requestScope) return null;
         if (!options?.forceRefresh && cachedCategories) {
             return cachedCategories;
         }
 
         if (!categoriesFetchInFlight.has(scopeKey)) {
-            const request = fetchAnswerlatticePublicCategories()
+            const request = fetchAnswerlatticePublicCategories(requestScope)
                 .then((result) => normalizeCategoriesPayload(result))
                 .finally(() => {
                     categoriesFetchInFlight.delete(scopeKey);
@@ -47,9 +53,10 @@ export const useKBCategoriesCache = () => {
         }
 
         const result = await categoriesFetchInFlight.get(scopeKey)!;
+        if (currentScopeKeyRef.current !== scopeKey) return null;
         setCategoriesCache(result);
         return result;
-    }, [cachedCategories, scopeKey, setCategoriesCache]);
+    }, [cachedCategories, requestScope, scopeKey, setCategoriesCache]);
 
     return {
         categoriesData: cachedCategories,

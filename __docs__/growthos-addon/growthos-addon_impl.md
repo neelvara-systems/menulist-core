@@ -61,6 +61,10 @@ The legacy Social Content owner generator is deleted, not feature-flagged. Exist
 
 ## 3. Entitlement Gate
 
+### Exact paid-subscription entitlement
+
+GrowthOS paid access requires an exact current MenuList subscription: both `pId` and `productId` are `ML`; both numeric tenant aliases agree; both numeric store aliases agree; and the subscription tenant equals the current session/store tenant. Status/cycle and Pro/Premium plan checks run only after that identity projection. An Answerlattice, foreign-tenant, incomplete, conflicting, or coercible persisted subscription cannot unlock Growth Kits. Master-plan inheritance remains valid within the same tenant.
+
 Implemented entitlement helpers:
 
 ```txt

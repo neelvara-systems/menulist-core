@@ -306,22 +306,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 input: {
                     action: ACTION,
                     billingMode: 'billable',
-                    businessType: promptBusinessType || null,
                     chargePerCredit: CHARGE_PER_CREDIT,
                     clientResponse: getReviewReplyClientResponseSummary({
                         rating,
                         reply,
                         source: usedFallback ? 'fallback' : 'ai',
                     }),
-                    generationConfig: {
-                        maxOutputTokens: 200,
-                        temperature: 0.7,
-                    },
                     geminiResponse: result,
                     model: AI_MODEL,
                     processingTime,
-                    rating,
-                    reviewLength: promptReviewText.length,
                     tokenPerCredit: TOKENS_PER_CREDIT,
                     unitsConsumed,
                     realCostPaise: getRealCostPaise(ACTION),

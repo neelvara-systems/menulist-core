@@ -46,7 +46,7 @@ src/lib/answerlattice/onboardingProvisioningServer.ts # Transactional attempt st
 - Same `platformSummary/summary` counter pattern
 - Same `createDefaultRoles()` for RBAC
 - Same `FirestoreSubscriptionDoc` type
-- Same `createInitialSubscription()` DAL function
+- Same product-aware server subscription abstraction, routed to Answerlattice Firestore with exact dual-`AL` persisted identity
 
 ### 2. OnboardingForm (`OnboardingForm.tsx`)
 
@@ -143,6 +143,7 @@ payment_pending -> active/trialing        (shared verified payment lifecycle)
 Answerlattice uses the same collection names but, in separate mode, writes them to the Answerlattice Firebase project. Documents are identified by:
 - `onboardingSource: 'ANSWERLATTICE_ONBOARDING'` on tenant + store docs
 - `pId: 'AL'` and `productId: 'AL'` on tenant + store/user/subscription scope where the current compatibility shape requires both
+- Resume, provider-recovery, pending-subscription persistence, and compensation require both product aliases and both agreeing numeric tenant/store aliases before they reuse or mutate an existing row. A missing or conflicting alias is not repaired opportunistically: the flow fails closed so onboarding cannot claim or cancel another product's subscription.
 - `businessType: 'SaaS'` + `businessIndustry: 'B2B'`
 - Widget key prefix: `al_*` (vs `ml_*` for MenuList), persisted under `answerlatticeWidgetApi`
 

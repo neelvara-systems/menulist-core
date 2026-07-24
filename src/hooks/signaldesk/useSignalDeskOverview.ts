@@ -7,6 +7,8 @@ import {
     type SignalDeskAction,
     type SignalDeskActionResult,
 } from "@database/signaldesk";
+import { getSignalDeskAuditCursor, SIGNALDESK_AUDIT_PAGE_SIZE } from "@lib/signaldesk/auditContracts";
+import { getSignalDeskTargetCursor, SIGNALDESK_TARGET_PAGE_SIZE } from "@lib/signaldesk/targetContracts";
 import type {
     SignalDeskAiVolumeRunSummary,
     SignalDeskContentSourceSummary,
@@ -86,8 +88,14 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
     const [data, setData] = useState<SignalDeskWorkspaceResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [auditHasMore, setAuditHasMore] = useState(false);
+    const [auditLoadingMore, setAuditLoadingMore] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [targetHasMore, setTargetHasMore] = useState(false);
+    const [targetLoadingMore, setTargetLoadingMore] = useState(false);
     const latestRequestRef = useRef(createSignalDeskLatestRequestCoordinator());
+    const auditLoadControllerRef = useRef<AbortController | null>(null);
+    const targetLoadControllerRef = useRef<AbortController | null>(null);
     const killSwitchRetryRef = useRef<{ idempotencyKey: string; requestKey: string } | null>(null);
     const mountedRef = useRef(true);
     const pendingActionCountRef = useRef(0);
@@ -100,6 +108,8 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
         return () => {
             mountedRef.current = false;
             latestRequestRef.current.dispose();
+            auditLoadControllerRef.current?.abort();
+            targetLoadControllerRef.current?.abort();
         };
     }, []);
 
@@ -120,7 +130,17 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
         }
         try {
             const nextData = await getSignalDeskWorkspace(section, { signal: request.signal });
-            if (canCommit()) setData(nextData);
+            if (canCommit()) {
+                setData(nextData);
+                setAuditHasMore(
+                    section === "audit"
+                    && nextData.workspace.auditEvents.length === SIGNALDESK_AUDIT_PAGE_SIZE,
+                );
+                setTargetHasMore(
+                    section === "targets"
+                    && nextData.workspace.targets.length === SIGNALDESK_TARGET_PAGE_SIZE,
+                );
+            }
         } catch (loadError) {
             if (canCommit() && !isAbortError(loadError)) {
                 setError(loadError instanceof Error ? loadError.message : "SignalDesk unavailable");
@@ -130,6 +150,98 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
             request.finish();
         }
     }, [section]);
+
+    const loadOlderAuditEvents = useCallback(async () => {
+        if (
+            section !== "audit"
+            || auditLoadingMore
+            || !auditHasMore
+            || data?.workspace.section !== "audit"
+        ) return;
+        const auditCursor = getSignalDeskAuditCursor(data.workspace.auditEvents.at(-1));
+        if (!auditCursor) {
+            setAuditHasMore(false);
+            return;
+        }
+        auditLoadControllerRef.current?.abort();
+        const controller = new AbortController();
+        auditLoadControllerRef.current = controller;
+        setAuditLoadingMore(true);
+        setError(null);
+        try {
+            const nextData = await getSignalDeskWorkspace("audit", {
+                auditCursor,
+                signal: controller.signal,
+            });
+            if (!mountedRef.current || controller.signal.aborted || currentSectionRef.current !== "audit") return;
+            setData((current) => {
+                if (!current || current.workspace.section !== "audit") return current;
+                const events = new Map(current.workspace.auditEvents.map((event) => [event.auditEventId, event]));
+                nextData.workspace.auditEvents.forEach((event) => events.set(event.auditEventId, event));
+                return {
+                    ...current,
+                    workspace: {
+                        ...current.workspace,
+                        auditEvents: Array.from(events.values()),
+                    },
+                };
+            });
+            setAuditHasMore(nextData.workspace.auditEvents.length === SIGNALDESK_AUDIT_PAGE_SIZE);
+        } catch (loadError) {
+            if (mountedRef.current && !isAbortError(loadError)) {
+                setError(loadError instanceof Error ? loadError.message : "SignalDesk audit unavailable");
+            }
+        } finally {
+            if (auditLoadControllerRef.current === controller) auditLoadControllerRef.current = null;
+            if (mountedRef.current) setAuditLoadingMore(false);
+        }
+    }, [auditHasMore, auditLoadingMore, data, section]);
+
+    const loadOlderTargets = useCallback(async () => {
+        if (
+            section !== "targets"
+            || targetLoadingMore
+            || !targetHasMore
+            || data?.workspace.section !== "targets"
+        ) return;
+        const targetCursor = getSignalDeskTargetCursor(data.workspace.targets.at(-1));
+        if (!targetCursor) {
+            setTargetHasMore(false);
+            return;
+        }
+        targetLoadControllerRef.current?.abort();
+        const controller = new AbortController();
+        targetLoadControllerRef.current = controller;
+        setTargetLoadingMore(true);
+        setError(null);
+        try {
+            const nextData = await getSignalDeskWorkspace("targets", {
+                signal: controller.signal,
+                targetCursor,
+            });
+            if (!mountedRef.current || controller.signal.aborted || currentSectionRef.current !== "targets") return;
+            setData((current) => {
+                if (!current || current.workspace.section !== "targets") return current;
+                const targets = new Map(current.workspace.targets.map((target) => [target.targetId, target]));
+                nextData.workspace.targets.forEach((target) => targets.set(target.targetId, target));
+                return {
+                    ...current,
+                    workspace: {
+                        ...current.workspace,
+                        targets: Array.from(targets.values()),
+                    },
+                };
+            });
+            setTargetHasMore(nextData.workspace.targets.length === SIGNALDESK_TARGET_PAGE_SIZE);
+        } catch (loadError) {
+            if (mountedRef.current && !isAbortError(loadError)) {
+                setError(loadError instanceof Error ? loadError.message : "SignalDesk targets unavailable");
+            }
+        } finally {
+            if (targetLoadControllerRef.current === controller) targetLoadControllerRef.current = null;
+            if (mountedRef.current) setTargetLoadingMore(false);
+        }
+    }, [data, section, targetHasMore, targetLoadingMore]);
 
     useEffect(() => {
         void refresh();
@@ -203,12 +315,18 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
     }, [refresh]);
 
     return {
+        auditHasMore,
+        auditLoadingMore,
         data: data?.workspace.section === section ? data : null,
         error,
+        loadOlderAuditEvents,
+        loadOlderTargets,
         loading,
         refresh,
         runAction,
         saving,
+        targetHasMore,
+        targetLoadingMore,
         updateKillSwitch,
     };
 }

@@ -132,7 +132,7 @@ These contracts are audited across every relevant feature and receive a final sy
 - added bounded public citation URL admission for credentials, sensitive query keys, local/private/link-local/multicast/reserved networks, and IPv4-mapped private IPv6 addresses;
 - added structured plan/role/state clarification and allowlisted public fallback reasons;
 - made canonical confidence depend on validation score plus entity-match evidence;
-- moved Redis canonical entries to `canon:v4` (superseding the earlier `canon:v3` migration) so raw entity/applicability key segments are hashed and cached payloads are runtime-validated while retaining evaluated confidence and approved citations;
+- moved Redis canonical entries to `canon:v5` (superseding `canon:v4`) so normalized query, complete context and raw entity/applicability segments are hashed, distinct request identities cannot collide, graph-aware selection stays live until independently versioned, and cached payloads are runtime-validated while retaining evaluated confidence and approved citations;
 - kept canonical citations separate from KB references in widget, Help Center, Help Chat, and AI Search;
 - enabled Answer Tests to evaluate canonical evidence and approved runtime citations;
 - made search emulator commands clear inherited ADC so their separate Firebase proof is reproducible;
@@ -153,7 +153,7 @@ These contracts are audited across every relevant feature and receive a final sy
 - `git diff --check`
 
 **Deployment:** Not required. No Firestore rules, indexes, Storage rules, or Answerlattice Cloud Functions changed.  
-**External evidence:** Configured Upstash `canon:v4` read/write, authenticated hosted desktop and narrow-width governance review, deployed widget/Help Center/Help Chat/public API citation and clarification smoke, and a representative first-client Answer Test set remain pending and are not included in local source completion.
+**External evidence:** Configured Upstash `canon:v5` read/write with distinct query/context identities, authenticated hosted desktop and narrow-width governance review, deployed widget/Help Center/Help Chat/public API citation and clarification smoke, and a representative first-client Answer Test set remain pending and are not included in local source completion.
 
 ### Feature 3 — Knowledge Intake, source discovery, media, and repeated replies
 
@@ -563,7 +563,7 @@ These contracts are audited across every relevant feature and receive a final sy
 
 **Dossiers:** `__docs__/answerlattice/compiled-context-distribution/README.md` and `__docs__/answerlattice/instant-response-infrastructure/README.md`
 
-**Verified flow:** governed source/cache-version writes -> exact source/manifest initialization -> transactional build lease and unique version -> cap-plus-one approved-source reads -> public/private projection -> file-specific UTF-8 size checks -> immutable Storage publication -> source recheck and ready/superseded selection -> exact manifest/ref validation -> public API/MCP reads or documented fallback -> `canon:v4` payload/freshness validation -> live retrieval fallback.
+**Verified flow:** governed source/cache-version writes -> exact source/manifest initialization -> transactional build lease and unique version -> cap-plus-one approved-source reads -> public/private projection -> file-specific UTF-8 size checks -> immutable Storage publication -> source recheck and ready/superseded selection -> exact manifest/ref validation -> public API/MCP reads or documented fallback -> `canon:v5` query/context/payload/freshness validation or graph-aware live bypass -> live retrieval fallback.
 
 **Hardening completed:**
 
@@ -575,7 +575,7 @@ These contracts are audited across every relevant feature and receive a final sy
 - validated ready manifest product/scope/version/source/ref/hash/byte contracts and derived exact immutable Storage paths instead of trusting arbitrary persisted refs;
 - preserved the last-ready version on source changes and failures, marked mid-build source changes superseded, and cleaned only the failed version's unreferenced prefixes best effort;
 - aligned Functions citation, store, context-summary, predictive-summary, and source-limit behavior with the app builder;
-- moved canonical Redis keys to `canon:v4`, hashing raw entity/plan/role/state segments and validating untrusted IDs, version, timestamp, confidence, procedure, source versions, citations, and UTF-8 payload bytes before delivery;
+- moved canonical Redis keys to `canon:v5`, hashing normalized query, complete context and raw entity/plan/role/state segments, bypassing graph-aware selection until independently versioned, and validating untrusted IDs, version, timestamp, confidence, procedure, source versions, citations, and UTF-8 payload bytes before delivery;
 - limited Redis writes to active reviewer-cleared canonical truth, made invalid-entry cleanup observable, rejected non-canonical history without references, and enforced persisted search-history expiry;
 - disabled widget bundle bootstrap because the widget does not consume those files, while preserving rollout-gated Public API bundle preference and disabled-by-default MCP;
 - removed unsupported latency, hit-rate, free-tier, cost-savings, zero-configuration, and zero-staleness claims from maintained dossiers and public website copy.
@@ -596,7 +596,7 @@ These contracts are audited across every relevant feature and receive a final sy
 
 **Monitored limits:** Public bootstrap/routes stop at 50 KB, other public objects at 512 KiB, private objects at 2 MiB, MCP output at 24 KB, manifest memory cache at 60 seconds, and bundle-object memory cache at 10 minutes. Builder source caps fail closed; partition before a workspace exceeds them. `branding` and `mcpPolicy` remain reserved source counters whose bundle serialization status requires verification.
 
-**External evidence:** Authenticated QA Function deployment and scheduled repair readback, configured Upstash `canon:v4` read/write plus latency/cost evidence, Storage/CDN/fallback metrics, rollout-gated Public API/MCP smoke, and any future widget bundle-consumption proof remain outside local source completion.
+**External evidence:** Authenticated QA Function deployment and scheduled repair readback, configured Upstash `canon:v5` read/write plus query/context separation and latency/cost evidence, Storage/CDN/fallback metrics, rollout-gated Public API/MCP smoke, and any future widget bundle-consumption proof remain outside local source completion.
 
 ### Feature 15 — Widget configuration, keys, origins, access, and branding
 

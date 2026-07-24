@@ -1,7 +1,7 @@
 # MenuList Activation Concierge
 
 **Status:** Local source complete; internal orchestration name only
-**Last reviewed:** July 16, 2026
+**Last reviewed:** July 22, 2026
 
 Activation Concierge is not a new route or public product. It is the existing starter setup handoff across create-menu success, the global starter banner, Use MenuList, Mobile Share, Search & Discovery, Presence Monitor, and Menu Setup Progress.
 
@@ -22,6 +22,8 @@ These signals prove an owner setup action, not customer use, third-party platfor
 - No standalone `/activation-concierge` page.
 - No activation collection, event stream, API, listener, or scheduler.
 - SignalDesk remains observer-only for MenuList truth and has no public MenuList route.
+- SignalDesk may copy the existing anonymous founder-pilot setup URL for a reviewed manual handoff. The URL carries campaign attribution only: it contains no target identifier, route token, contact data, or authority to mutate MenuList.
+- MenuList remains the sole owner of upload, preview, publish, starter activation, and public truth. SignalDesk records progress only after the result is observed through its existing outcome/activation workflow.
 - Subscription/billing remains the existing Razorpay flow.
 - Public proof publication remains unshipped and cannot be inferred from activation actions.
 

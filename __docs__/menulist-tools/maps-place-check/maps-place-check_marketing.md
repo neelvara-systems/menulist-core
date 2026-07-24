@@ -19,3 +19,6 @@ Use this as quiet public-truth infrastructure:
 ## Sales Boundary
 
 This is not a standalone product or CampaignCue feature. It is a MenuList verification layer that supports setup, drift review, and multi-location identity confidence.
+
+Do not present grounded Place-ID confirmation as available until provider smoke,
+attribution, and cross-store collision-policy gates are all complete.

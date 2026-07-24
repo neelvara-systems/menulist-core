@@ -48,6 +48,8 @@ The July 13, 2026 custom-domain claim hardening is shared server infrastructure 
 
 The July 16 parity pass moves mobile custom-domain availability to the authenticated `GET /api/domain?candidate=` advisory boundary, so mobile no longer depends on a browser Firestore query for cross-store uniqueness. Mobile add now requires `success: true` plus a returned domain, applies the returned verified boolean, and prefers explicit status booleans over stale store context. Explicit provider downgrade clears the verified badge. Successful add/remove responses with pending derived effects show fixed background refresh/cleanup copy. No mobile-only DAL, provider path, or persistence contract was added.
 
+The July 23 tenant/store settlement boundary keys `MobileDomainSettingsScreen` by exact current scope. Switching stores remounts the screen before paint; status, subdomain checks and domain checks reject older responses; save/add/remove completions compare the originating tenant/store before changing context, loading state, or owner copy. This adds no request, provider call, Firestore operation, cache mutation, route or setting.
+
 Mobile and desktop also share `normalizeVercelDomainDnsRecords()`: apex instructions use Vercel's preferred IPv4/A response, subdomain instructions use the project-specific preferred CNAME, and TXT challenges preserve provider name/value. If the provider response has no unambiguous guidance, mobile shows a retry message and never fabricates a generic CNAME.
 
 ---

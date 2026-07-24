@@ -11,6 +11,7 @@
 | Sources change during build | New version is marked superseded and does not replace the active pointer. |
 | Build fails after uploads | Failed version prefixes are deleted best effort; last-ready pointer remains. |
 | Public manifest download | Contains no tenant/workspace IDs, source versions, private refs, stats, or limits. |
+| Malformed owned-store workspace fields | App and Functions builders produce the same exact safe product projection; raw nested/private fields and unsafe URL/email values never enter public or private bundle objects. |
 | Widget config with bootstrap flag off | Returns legacy governed config without bundle pointers. |
 | Public API invalid/missing private bundle | Falls back to bounded Firestore path. |
 | MCP invalid/missing bundle | Tool call fails closed with bounded output. |

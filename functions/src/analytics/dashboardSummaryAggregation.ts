@@ -1795,6 +1795,21 @@ function buildIntelligence7dSnapshot(
     };
 }
 
+export async function writeIntelligence7dSnapshot(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    settlementDate: string,
+    dailyMap: Map<string, Record<string, any>>,
+): Promise<void> {
+    // This is a complete scheduler-owned projection. Merge semantics retain
+    // omitted nested map keys and would let deleted/stale item IDs accumulate.
+    await db.collection(ANALYTICS_COLLECTION).doc(`${tId}_${sId}_${projectId}_intelligence_7d`).set(
+        buildIntelligence7dSnapshot(tId, sId, projectId, settlementDate, dailyMap),
+    );
+}
+
 function compactAnalyticsDay(date: string, data: Record<string, any>) {
     const viewsByItem = readAnalyticsMap(data, 'viewsByItem');
     const clicksByItem = readAnalyticsMap(data, 'clicksByItem');
@@ -2403,10 +2418,7 @@ async function writeMenuDashboardSummary(
         modifiedOn: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    await db.collection(ANALYTICS_COLLECTION).doc(`${tId}_${sId}_${projectId}_intelligence_7d`).set(
-        buildIntelligence7dSnapshot(tId, sId, projectId, settlementDate, dailyMap),
-        { merge: true },
-    );
+    await writeIntelligence7dSnapshot(db, tId, sId, projectId, settlementDate, dailyMap);
 }
 
 export async function writeDashboardSummaryDocument(

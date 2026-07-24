@@ -119,6 +119,7 @@ function normalizeSlackWebhook(value: unknown): string {
         const url = new URL(trimmed);
         if (url.protocol !== 'https:') return '';
         if (url.hostname !== 'hooks.slack.com') return '';
+        if (url.username || url.password || url.port) return '';
         if (!url.pathname.startsWith('/services/')) return '';
         if (url.search || url.hash) return '';
         return url.toString();
@@ -156,7 +157,7 @@ function normalizeToken(value: unknown, maxLength = 300): string {
 export function normalizeSlackConfig(value: unknown): SlackConfig {
     const data = asRecord(value);
     const webhookUrl = normalizeSlackWebhook(data.webhookUrl);
-    const channel = safeText(data.channel, 80);
+    const channel = typeof data.channel === 'string' ? safeText(data.channel, 80) : '';
     const eventFilters = normalizeEventFilters(data.eventFilters);
     return {
         enabled: normalizeBoolean(data.enabled) && Boolean(webhookUrl),
@@ -180,7 +181,7 @@ export function normalizeEmailConfig(value: unknown): EmailConfig {
 export function normalizeLinearConfig(value: unknown): LinearConfig {
     const data = asRecord(value);
     const apiKey = normalizeToken(data.apiKey);
-    const teamId = safeText(data.teamId, 120);
+    const teamId = typeof data.teamId === 'string' ? safeText(data.teamId, 120) : '';
     const eventFilters = normalizeEventFilters(data.eventFilters);
     return {
         enabled: normalizeBoolean(data.enabled) && Boolean(apiKey) && Boolean(teamId),
@@ -216,9 +217,14 @@ function normalizeCircuitBreaker(value: unknown): IntegrationConfig['circuitBrea
     const out: IntegrationConfig['circuitBreaker'] = { ...fallback };
     for (const adapter of Object.values(ADAPTER_TYPES) as AdapterType[]) {
         const state = asRecord(data[adapter]);
-        const failures = Number(state.consecutiveFailures || 0);
+        const failures = state.consecutiveFailures;
         out[adapter] = {
-            consecutiveFailures: Number.isFinite(failures) ? Math.max(0, Math.min(failures, 1000)) : 0,
+            consecutiveFailures: typeof failures === 'number'
+                && Number.isSafeInteger(failures)
+                && failures >= 0
+                && failures <= 1000
+                ? failures
+                : 0,
             disabledAt: state.disabledAt instanceof Timestamp ? state.disabledAt : null,
             probeStartedAt: state.probeStartedAt instanceof Timestamp ? state.probeStartedAt : null,
         };

@@ -9,8 +9,10 @@ import {
     getAnswerlatticeBundleBuildClaimDecision,
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
+    getMissingAnswerlatticeBundleManifestBase,
     hasExactAnswerlatticeReadyBundleVersions,
     getAnswerlatticeSourceVersionsDocId,
+    isOwnedAnswerlatticeBundleManifest,
     normalizeAnswerlatticeStoredBundleVersion,
     normalizeCompiledSourceVersions,
     resolveAnswerlatticeExistingBundleVersion,
@@ -18,6 +20,7 @@ import {
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { normalizeAnswerlatticeFunctionPublicCitations } from './publicCitationBoundary';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
+import { projectAnswerlatticeCompiledWorkspaceProduct } from './workspaceProfileBoundary';
 
 const SCHEMA_VERSION = 1;
 const BUNDLE_ROOT = 'answerlattice-context';
@@ -42,6 +45,23 @@ const ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE
 const ANSWERLATTICE_CONTEXT_BUNDLE_SOURCE_LIMIT_EXCEEDED = 'ANSWERLATTICE_CONTEXT_BUNDLE_SOURCE_LIMIT_EXCEEDED';
 
 type BuildStatus = 'ready' | 'skipped' | 'superseded' | 'failed';
+
+const isAnswerlatticeContextBundleLockForScope = (
+    value: unknown,
+    tId: number,
+    sId: number,
+): value is Record<string, unknown> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const lock = value as Record<string, unknown>;
+    return lock.schemaVersion === SCHEMA_VERSION
+        && lock.pId === 'AL'
+        && lock.tId === tId
+        && lock.sId === sId
+        && typeof lock.lockId === 'string'
+        && lock.lockId.length > 0
+        && normalizeAnswerlatticeStoredBundleVersion(lock.bundleVersion) !== null
+        && ['building', 'released', 'failed'].includes(String(lock.status));
+};
 
 export interface ContextBundleRepairResult {
     status: BuildStatus;
@@ -203,6 +223,10 @@ const getScopedPlatformSummary = (snap: FirebaseFirestore.DocumentSnapshot, tId:
     const data = snap.exists ? snap.data() : null;
     return data && data.pId === 'AL' && data.tId === tId && data.sId === sId ? data : null;
 };
+
+const normalizeNonNegativeSafeInteger = (value: unknown): number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+);
 
 const compactEntity = (entity: any) => ({
     id: entity.id,
@@ -447,13 +471,13 @@ const loadSourceData = async (tId: number, sId: number) => {
     ] = await Promise.all([
         db.collection(DB_COLLECTIONS.STORES).doc(String(sId)).get(),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`contextContent_${tId}_${sId}`).get(),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('tId', '==', tId).where('sId', '==', sId), MAX_ENTITIES, 'entities'),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('tId', '==', tId).where('sId', '==', sId), MAX_RELATIONS, 'entity_relations'),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'active'), MAX_CANONICAL, 'canonical_answers'),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES).where('tId', '==', tId).where('sId', '==', sId), MAX_SURFACES, 'product_surfaces'),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.KB_ARTICLES).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published'), MAX_ARTICLES, 'articles'),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published').where('active', '==', true), MAX_FAQS, 'faqs'),
-        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES).where('tId', '==', tId).where('sId', '==', sId), MAX_RELEASES, 'releases'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId), MAX_ENTITIES, 'entities'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId), MAX_RELATIONS, 'entity_relations'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'active'), MAX_CANONICAL, 'canonical_answers'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId), MAX_SURFACES, 'product_surfaces'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.KB_ARTICLES).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published'), MAX_ARTICLES, 'articles'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'published').where('active', '==', true), MAX_FAQS, 'faqs'),
+        loadBoundedDocs(db.collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES).where('pId', '==', 'AL').where('tId', '==', tId).where('sId', '==', sId), MAX_RELEASES, 'releases'),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`predictiveTriggers_${tId}_${sId}`).get(),
         loadChangelogEntries(tId, sId),
     ]);
@@ -486,14 +510,7 @@ const buildObjects = (params: {
     source: Awaited<ReturnType<typeof loadSourceData>>;
 }) => {
     const { tId, sId, publicBundleId, bundleVersion, sourceVersions, generatedAt, source } = params;
-    const product = {
-        name: (source.store as any).productName || (source.store as any).name || (source.store as any).companyName || 'Product',
-        url: (source.store as any).productUrl || null,
-        supportEmail: (source.store as any).supportEmail || null,
-        billingModel: (source.store as any).billingModel || null,
-        timeZone: (source.store as any).timeZone || 'UTC',
-        businessDayEndTime: (source.store as any).businessDayEndTime || '00:00',
-    };
+    const product = projectAnswerlatticeCompiledWorkspaceProduct(source.store);
     const publicProduct = {
         name: product.name,
         url: product.url,
@@ -547,12 +564,12 @@ const buildObjects = (params: {
             generatedAt,
             product: publicProduct,
             widget: {
-                configVersion: Number((source.store as any).widgetConfigVersion || 0),
+                configVersion: normalizeNonNegativeSafeInteger((source.store as any).widgetConfigVersion),
                 config: normalizeWidgetConfig((source.store as any).widgetConfig),
             },
             capabilities: {
                 contextBundles: true,
-                predictiveSupport: Number((source.predictive as any)?.activeTriggerCount || 0) > 0,
+                predictiveSupport: normalizeNonNegativeSafeInteger((source.predictive as any)?.activeTriggerCount) > 0,
             },
             paths: {
                 contextIndex: 'context-index.json',
@@ -623,7 +640,7 @@ const buildObjects = (params: {
                 routes: Object.keys(routeBundles).length,
             },
             capabilities: {
-                predictiveSupport: Number((source.predictive as any)?.activeTriggerCount || 0) > 0,
+                predictiveSupport: normalizeNonNegativeSafeInteger((source.predictive as any)?.activeTriggerCount) > 0,
             },
         },
         'mcp/entity-index.json': { schemaVersion: SCHEMA_VERSION, bundleVersion, generatedAt, entities, relations },
@@ -657,9 +674,9 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
 
     const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
     const lockRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleLockDocId(tenantId, storeId));
-    const sourceVersionsSnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId))
-        .get();
+    const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId));
+    const sourceVersionsSnap = await sourceVersionsRef.get();
     const manifestSnap = await manifestRef.get();
     const rawSourceVersions = sourceVersionsSnap.exists ? sourceVersionsSnap.data() : null;
     if (rawSourceVersions && (
@@ -672,15 +689,7 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     }
     const sourceVersions = normalizeCompiledSourceVersions(rawSourceVersions);
     const existingManifest = manifestSnap.exists ? manifestSnap.data() || null : null;
-    if (existingManifest && (
-        existingManifest.pId !== 'AL'
-        || existingManifest.tId !== tenantId
-        || existingManifest.sId !== storeId
-        || !areAnswerlatticeCompiledSourceVersionsValid(existingManifest.sourceVersions)
-        || !existingManifest.bundles
-        || typeof existingManifest.bundles !== 'object'
-        || Array.isArray(existingManifest.bundles)
-    )) {
+    if (existingManifest && !isOwnedAnswerlatticeBundleManifest(existingManifest, tenantId, storeId)) {
         return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_manifest_scope' };
     }
     const existingBundleVersion = resolveAnswerlatticeExistingBundleVersion(existingManifest);
@@ -703,12 +712,37 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     const startedAt = Timestamp.now();
     const lockId = `bundle_${tenantId}_${storeId}_${randomUUID()}`;
     const claim = await db.runTransaction(async (transaction) => {
-        const [currentManifestSnap, currentLockSnap] = await Promise.all([
+        const [currentSourceVersionsSnap, currentManifestSnap, currentLockSnap] = await Promise.all([
+            transaction.get(sourceVersionsRef),
             transaction.get(manifestRef),
             transaction.get(lockRef),
         ]);
+        const currentRawSourceVersions = currentSourceVersionsSnap.exists
+            ? currentSourceVersionsSnap.data() || null
+            : null;
         const currentManifest = currentManifestSnap.exists ? currentManifestSnap.data() || null : null;
         const currentLock = currentLockSnap.exists ? currentLockSnap.data() || null : null;
+        if (currentRawSourceVersions && (
+            currentRawSourceVersions.pId !== 'AL'
+            || currentRawSourceVersions.tId !== tenantId
+            || currentRawSourceVersions.sId !== storeId
+            || !areAnswerlatticeCompiledSourceVersionsValid(currentRawSourceVersions)
+        )) {
+            return { status: 'invalid_source' as const, existingManifest: currentManifest, bundleVersion: 0 };
+        }
+        const currentSourceVersions = normalizeCompiledSourceVersions(currentRawSourceVersions);
+        if (!compiledSourceVersionsEqual(currentSourceVersions, sourceVersions)) {
+            return { status: 'source_changed' as const, existingManifest: currentManifest, bundleVersion: 0 };
+        }
+        if (
+            currentManifest
+            && !isOwnedAnswerlatticeBundleManifest(currentManifest, tenantId, storeId)
+        ) {
+            return { status: 'invalid_manifest_scope' as const, existingManifest: currentManifest, bundleVersion: 0 };
+        }
+        if (currentLock && !isAnswerlatticeContextBundleLockForScope(currentLock, tenantId, storeId)) {
+            return { status: 'invalid_lock_scope' as const, existingManifest: currentManifest, bundleVersion: 0 };
+        }
         const decision = getAnswerlatticeBundleBuildClaimDecision(currentManifest, currentLock, startedAt.toMillis());
         if (decision.status !== 'claimable') {
             return { status: decision.status, existingManifest: currentManifest, bundleVersion: decision.bundleVersion };
@@ -727,9 +761,12 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             expiresAt: Timestamp.fromMillis(startedAt.toMillis() + 10 * 60 * 1000),
             reason: 'nightly_repair',
             requestedBy: 'system:answerlattice_nightly',
-            sourceVersionsAtStart: sourceVersions,
-        }, { merge: true });
+            sourceVersionsAtStart: currentSourceVersions,
+        });
         transaction.set(manifestRef, {
+            ...(!currentManifestSnap.exists
+                ? getMissingAnswerlatticeBundleManifestBase(tenantId, storeId)
+                : {}),
             schemaVersion: SCHEMA_VERSION,
             pId: 'AL',
             tId: tenantId,
@@ -753,6 +790,16 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     }
     if (claim.status === 'invalid') {
         return { status: 'failed', rebuilt: false, bundleVersion: existingBundleVersion, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
+    }
+    if (claim.status !== 'claimed') {
+        return {
+            status: 'failed',
+            rebuilt: false,
+            bundleVersion: existingBundleVersion,
+            bytesTotal: 0,
+            routes: 0,
+            error: claim.status,
+        };
     }
     const bundleVersion = claim.bundleVersion;
     const claimedManifest = claim.existingManifest;
@@ -779,18 +826,6 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             privateBytesTotal += ref.bytes;
         }
 
-        const sourceVersionsAtEndSnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId))
-            .get();
-        const rawSourceVersionsAtEnd = sourceVersionsAtEndSnap.exists ? sourceVersionsAtEndSnap.data() : null;
-        if (rawSourceVersionsAtEnd && (
-            rawSourceVersionsAtEnd.pId !== 'AL'
-            || rawSourceVersionsAtEnd.tId !== tenantId
-            || rawSourceVersionsAtEnd.sId !== storeId
-            || !areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersionsAtEnd)
-        )) throw new Error('invalid_source_versions');
-        const sourceVersionsAtEnd = normalizeCompiledSourceVersions(rawSourceVersionsAtEnd);
-        const superseded = !compiledSourceVersionsEqual(sourceVersions, sourceVersionsAtEnd);
         const stats = {
             entities: source.entities.length,
             entityRelations: source.relations.length,
@@ -804,37 +839,72 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             privateBytesTotal,
             bytesTotal: publicBytesTotal + privateBytesTotal,
         };
-        const manifest = {
-            schemaVersion: SCHEMA_VERSION,
-            pId: 'AL',
-            tId: tenantId,
-            sId: storeId,
-            publicBundleId,
-            bundleVersion,
-            activeVersion: superseded ? existingActiveVersion : bundleVersion,
-            lastReadyVersion: superseded ? existingLastReadyVersion : bundleVersion,
-            status: superseded ? 'superseded' : 'ready',
-            generatedAt: Timestamp.fromDate(new Date(generatedAt)),
-            lastBuildStartedAt: startedAt,
-            lastBuildCompletedAt: Timestamp.now(),
-            lastBuildError: null,
-            staleReason: superseded ? 'source_versions_changed_during_build' : null,
-            hash: sha256(stableStringify({ bundles, sourceVersions, stats })),
-            sourceVersions: superseded ? sourceVersionsAtEnd : sourceVersions,
-            stats,
-            bundles,
-            limits: {
-                maxPublicBootstrapBytes: 50000,
-                maxPublicRouteBytes: 50000,
-                maxPublicObjectBytes: MAX_PUBLIC_OBJECT_BYTES,
-                maxPrivateObjectBytes: MAX_PRIVATE_OBJECT_BYTES,
-                maxMcpResponseBytes: 24000,
-                maxMcpToolCallsPerMinute: 60,
-            },
-            updatedAt: FieldValue.serverTimestamp(),
-            reason: 'nightly_repair',
-            requestedBy: 'system:answerlattice_nightly',
-        };
+        const manifestHash = sha256(stableStringify({ bundles, sourceVersions, stats }));
+        const manifest = await db.runTransaction(async (transaction) => {
+            const [currentSourceVersionsSnap, currentManifestSnap, currentLockSnap] = await Promise.all([
+                transaction.get(sourceVersionsRef),
+                transaction.get(manifestRef),
+                transaction.get(lockRef),
+            ]);
+            const currentSourceVersions = currentSourceVersionsSnap.data();
+            const currentManifest = currentManifestSnap.data();
+            const currentLock = currentLockSnap.data();
+            if (
+                !currentSourceVersionsSnap.exists
+                || currentSourceVersions?.pId !== 'AL'
+                || currentSourceVersions?.tId !== tenantId
+                || currentSourceVersions?.sId !== storeId
+                || !areAnswerlatticeCompiledSourceVersionsValid(currentSourceVersions)
+                || !currentManifestSnap.exists
+                || !isOwnedAnswerlatticeBundleManifest(currentManifest, tenantId, storeId)
+                || (currentManifest?.status !== 'building' && currentManifest?.status !== 'stale')
+                || !currentLockSnap.exists
+                || !isAnswerlatticeContextBundleLockForScope(currentLock, tenantId, storeId)
+                || currentLock?.lockId !== lockId
+                || currentLock?.status !== 'building'
+                || currentLock?.bundleVersion !== bundleVersion
+            ) {
+                throw new Error('context_bundle_build_lease_lost');
+            }
+            const sourceVersionsAtCommit = normalizeCompiledSourceVersions(currentSourceVersions);
+            const superseded = currentManifest?.status === 'stale'
+                || !compiledSourceVersionsEqual(sourceVersions, sourceVersionsAtCommit);
+            const status: BuildStatus = superseded ? 'superseded' : 'ready';
+            const committedManifest = {
+                schemaVersion: SCHEMA_VERSION,
+                pId: 'AL',
+                tId: tenantId,
+                sId: storeId,
+                publicBundleId,
+                bundleVersion,
+                activeVersion: superseded ? existingActiveVersion : bundleVersion,
+                lastReadyVersion: superseded ? existingLastReadyVersion : bundleVersion,
+                status,
+                generatedAt: Timestamp.fromDate(new Date(generatedAt)),
+                lastBuildStartedAt: startedAt,
+                lastBuildCompletedAt: Timestamp.now(),
+                lastBuildError: null,
+                staleReason: superseded ? 'source_versions_changed_during_build' : null,
+                hash: manifestHash,
+                sourceVersions: superseded ? sourceVersionsAtCommit : sourceVersions,
+                stats,
+                bundles,
+                limits: {
+                    maxPublicBootstrapBytes: 50000,
+                    maxPublicRouteBytes: 50000,
+                    maxPublicObjectBytes: MAX_PUBLIC_OBJECT_BYTES,
+                    maxPrivateObjectBytes: MAX_PRIVATE_OBJECT_BYTES,
+                    maxMcpResponseBytes: 24000,
+                    maxMcpToolCallsPerMinute: 60,
+                },
+                updatedAt: FieldValue.serverTimestamp(),
+                reason: 'nightly_repair',
+                requestedBy: 'system:answerlattice_nightly',
+            };
+            transaction.set(manifestRef, committedManifest, { merge: true });
+            transaction.set(lockRef, { status: 'released', completedAt: FieldValue.serverTimestamp() }, { merge: true });
+            return committedManifest;
+        });
 
         const publicManifest = {
             schemaVersion: manifest.schemaVersion,
@@ -859,18 +929,9 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             PRIVATE_CACHE_CONTROL,
             { tId: tenantId, sId: storeId, bundleVersion, visibility: 'private' },
         );
-        await db.runTransaction(async (transaction) => {
-            const currentLockSnap = await transaction.get(lockRef);
-            if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) {
-                throw new Error('context_bundle_build_lease_lost');
-            }
-            transaction.set(manifestRef, manifest, { merge: true });
-            transaction.set(lockRef, { status: 'released', completedAt: FieldValue.serverTimestamp() }, { merge: true });
-        });
-
         return {
-            status: superseded ? 'superseded' : 'ready',
-            rebuilt: !superseded,
+            status: manifest.status,
+            rebuilt: manifest.status === 'ready',
             bundleVersion,
             bytesTotal: stats.bytesTotal,
             routes: stats.routes,
@@ -901,20 +962,36 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             }
         });
         await db.runTransaction(async (transaction) => {
-            const currentLockSnap = await transaction.get(lockRef);
-            if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) return;
-            transaction.set(manifestRef, {
-                schemaVersion: SCHEMA_VERSION,
-                pId: 'AL',
-                tId: tenantId,
-                sId: storeId,
-                status: existingLastReadyVersion ? 'stale' : 'failed',
-                lastBuildError: 'build_failed',
-                lastBuildCompletedAt: FieldValue.serverTimestamp(),
-                staleReason: 'build_failed',
-                activeVersion: existingActiveVersion,
-                lastReadyVersion: existingLastReadyVersion,
-            }, { merge: true });
+            const [currentManifestSnap, currentLockSnap] = await Promise.all([
+                transaction.get(manifestRef),
+                transaction.get(lockRef),
+            ]);
+            const currentManifest = currentManifestSnap.data();
+            const currentLock = currentLockSnap.data();
+            if (
+                !currentManifestSnap.exists
+                || !isOwnedAnswerlatticeBundleManifest(currentManifest, tenantId, storeId)
+                || (currentManifest?.status !== 'building' && currentManifest?.status !== 'stale')
+                || !currentLockSnap.exists
+                || !isAnswerlatticeContextBundleLockForScope(currentLock, tenantId, storeId)
+                || currentLock?.lockId !== lockId
+                || currentLock?.status !== 'building'
+                || currentLock?.bundleVersion !== bundleVersion
+            ) return;
+            if (currentManifest?.status === 'building') {
+                transaction.set(manifestRef, {
+                    schemaVersion: SCHEMA_VERSION,
+                    pId: 'AL',
+                    tId: tenantId,
+                    sId: storeId,
+                    status: existingLastReadyVersion ? 'stale' : 'failed',
+                    lastBuildError: 'build_failed',
+                    lastBuildCompletedAt: FieldValue.serverTimestamp(),
+                    staleReason: 'build_failed',
+                    activeVersion: existingActiveVersion,
+                    lastReadyVersion: existingLastReadyVersion,
+                }, { merge: true });
+            }
             transaction.set(lockRef, {
                 status: 'failed',
                 completedAt: FieldValue.serverTimestamp(),

@@ -568,6 +568,7 @@ export async function generateAnswerlatticeProductStarterPack(
     assertJobCanGeneratePack(initialJob);
 
     const sourcesSnapshot = await db.collection(SOURCES)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('jobId', '==', jobId)

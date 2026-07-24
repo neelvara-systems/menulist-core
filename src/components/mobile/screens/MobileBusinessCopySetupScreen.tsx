@@ -19,7 +19,7 @@ import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiC
 import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, List, Tag, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
@@ -37,7 +37,7 @@ interface MobileBusinessCopySetupScreenProps {
 
 const BUSINESS_COPY_CAPACITY_MESSAGE = 'Get more enhancements to continue. Visit Billing to add an enhancement pack.';
 
-export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusinessCopySetupScreenProps) {
+function MobileBusinessCopySetupScreenContent({ onBack }: MobileBusinessCopySetupScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMenu = useTranslations('MobileMenu');
     const formatter = useFormatter();
@@ -46,6 +46,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     const canGenerateBusinessCopy = userPermissions?.canGenerateDescriptions === true;
     const [isGenerating, setIsGenerating] = useState(false);
     const [isGeneratingTranslations, setIsGeneratingTranslations] = useState(false);
+    const businessCopyActionInFlightRef = useRef(false);
+    const businessCopyScopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeBusinessCopyScopeRef = useRef(businessCopyScopeKey);
+    const componentActiveRef = useRef(true);
     const contentLanguage = getStoreSourceLanguage();
     const sourceLanguage = GlobalLanguagesList.find((language) => language.code === contentLanguage);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
@@ -89,6 +93,14 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
         '',
     );
 
+    activeBusinessCopyScopeRef.current = businessCopyScopeKey;
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+
     const handleGenerate = async () => {
         if (!canGenerateBusinessCopy) return;
         if (!storeDetails?.name?.trim() || !storeDetails?.storeId) {
@@ -96,10 +108,16 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             return;
         }
 
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const requestScopeKey = businessCopyScopeKey;
+        if (businessCopyActionInFlightRef.current) return;
+        businessCopyActionInFlightRef.current = true;
         try {
             setIsGenerating(true);
 
             const projectContext = await getDefaultProjectAiContext(storeDetails);
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             const socialValues = [
                 ...Object.values(storeDetails?.socialMedia || {}),
@@ -150,6 +168,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     tenantName: storeDetails?.tenantName || '',
                 },
             });
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             if (!generated) {
                 Toast.show({ content: t('businessCopyFailed'), duration: 1500 });
@@ -161,6 +180,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 projectId: projectContext?.projectId,
                 storeDetails,
             });
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             const nextPublicPresence = {
                 ...(storeDetails?.publicPresence || {}),
@@ -201,34 +221,45 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     }
                     : {}),
                 publicPresence: nextPublicPresence,
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
                 tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
             };
             const writeResult = await updateStore({
                 ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_business_copy_store_update_rejected',
             );
 
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                keywords: nextStoreUpdate.keywords,
-                businessCopyMeta: nextStoreUpdate.businessCopyMeta,
-                metaDescription: nextStoreUpdate.metaDescription,
-                metaTitle: nextStoreUpdate.metaTitle,
-                publicPresence: nextPublicPresence,
-                pwaSettings: {
-                    ...(previous?.pwaSettings || {}),
-                    ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
-                        ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
-                        : {}),
-                },
-                tagline: nextStoreUpdate.tagline,
-            }));
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
+            setStoreDetails((previous: any) => (
+                String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')
+                && String(previous?.storeId ?? '') === String(expectedStoreId ?? '')
+                    ? {
+                        ...previous,
+                        keywords: nextStoreUpdate.keywords,
+                        businessCopyMeta: nextStoreUpdate.businessCopyMeta,
+                        metaDescription: nextStoreUpdate.metaDescription,
+                        metaTitle: nextStoreUpdate.metaTitle,
+                        publicPresence: {
+                            ...(previous?.publicPresence || {}),
+                            descriptor: nextPublicPresence.descriptor,
+                            knownFor: nextPublicPresence.knownFor,
+                            specialNote: nextPublicPresence.specialNote,
+                        },
+                        pwaSettings: {
+                            ...(previous?.pwaSettings || {}),
+                            ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && generated.pwaShortName.trim()
+                                ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                : {}),
+                        },
+                        tagline: nextStoreUpdate.tagline,
+                    }
+                    : previous
+            ));
 
             Toast.show({
                 content: t(localized.translationIncomplete ? 'businessCopyPartialSuccess' : 'businessCopySuccess'),
@@ -241,14 +272,19 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 coverageMissingFieldCount: coverage.missingFieldCount,
                 managedLanguageCount: managedLanguages.length,
             });
-            Toast.show({
-                content: error instanceof AICapacityError
-                    ? BUSINESS_COPY_CAPACITY_MESSAGE
-                    : t('businessCopyFailed'),
-                duration: 2000,
-            });
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                Toast.show({
+                    content: error instanceof AICapacityError
+                        ? BUSINESS_COPY_CAPACITY_MESSAGE
+                        : t('businessCopyFailed'),
+                    duration: 2000,
+                });
+            }
         } finally {
-            setIsGenerating(false);
+            businessCopyActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                setIsGenerating(false);
+            }
         }
     };
 
@@ -256,14 +292,21 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
         if (!canGenerateBusinessCopy) return;
         if (!storeDetails?.storeId) return;
 
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const requestScopeKey = businessCopyScopeKey;
+        if (businessCopyActionInFlightRef.current) return;
+        businessCopyActionInFlightRef.current = true;
         try {
             setIsGeneratingTranslations(true);
             const projectContext = await getDefaultProjectAiContext(storeDetails);
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
             const localized = await syncMissingBusinessCopyTranslations({
                 includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA,
                 projectId: projectContext?.projectId,
                 storeDetails,
             });
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             if (!localized) {
                 Toast.show({ content: t('businessCopyCoverageGenerateNoMissing'), duration: 1500 });
@@ -307,34 +350,45 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     }
                     : {}),
                 publicPresence: nextPublicPresence,
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
                 tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
             };
             const writeResult = await updateStore({
                 ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_business_copy_translation_store_update_rejected',
             );
 
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                keywords: nextStoreUpdate.keywords,
-                businessCopyMeta: nextStoreUpdate.businessCopyMeta,
-                metaDescription: nextStoreUpdate.metaDescription,
-                metaTitle: nextStoreUpdate.metaTitle,
-                publicPresence: nextPublicPresence,
-                pwaSettings: {
-                    ...(previous?.pwaSettings || {}),
-                    ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
-                        ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
-                        : {}),
-                },
-                tagline: nextStoreUpdate.tagline,
-            }));
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
+            setStoreDetails((previous: any) => (
+                String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')
+                && String(previous?.storeId ?? '') === String(expectedStoreId ?? '')
+                    ? {
+                        ...previous,
+                        keywords: nextStoreUpdate.keywords,
+                        businessCopyMeta: nextStoreUpdate.businessCopyMeta,
+                        metaDescription: nextStoreUpdate.metaDescription,
+                        metaTitle: nextStoreUpdate.metaTitle,
+                        publicPresence: {
+                            ...(previous?.publicPresence || {}),
+                            descriptor: nextPublicPresence.descriptor,
+                            knownFor: nextPublicPresence.knownFor,
+                            specialNote: nextPublicPresence.specialNote,
+                        },
+                        pwaSettings: {
+                            ...(previous?.pwaSettings || {}),
+                            ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
+                                ? { pwaShortName: nextStoreUpdate.pwaSettings.pwaShortName }
+                                : {}),
+                        },
+                        tagline: nextStoreUpdate.tagline,
+                    }
+                    : previous
+            ));
 
             Toast.show({ content: t('businessCopyCoverageGenerateSuccess'), duration: 1500 });
         } catch (error) {
@@ -345,14 +399,19 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 managedLanguageCount: managedLanguages.length,
                 repairableGapCount: coverage.repairableGapCount,
             });
-            Toast.show({
-                content: error instanceof AICapacityError
-                    ? BUSINESS_COPY_CAPACITY_MESSAGE
-                    : t('businessCopyCoverageGenerateFailed'),
-                duration: 2000,
-            });
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                Toast.show({
+                    content: error instanceof AICapacityError
+                        ? BUSINESS_COPY_CAPACITY_MESSAGE
+                        : t('businessCopyCoverageGenerateFailed'),
+                    duration: 2000,
+                });
+            }
         } finally {
-            setIsGeneratingTranslations(false);
+            businessCopyActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                setIsGeneratingTranslations(false);
+            }
         }
     };
 
@@ -436,6 +495,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                         {coverage.repairableGapCount > 0 && canGenerateBusinessCopy ? (
                             <Button
                                 block
+                                disabled={isGenerating}
                                 loading={isGeneratingTranslations}
                                 onClick={() => void handleGenerateMissingTranslations()}
                                 size="large"
@@ -467,6 +527,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     <Button
                         block
                         color="primary"
+                        disabled={isGeneratingTranslations}
                         loading={isGenerating}
                         onClick={() => void handleGenerate()}
                         size="large"
@@ -480,4 +541,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
             </Flex>
         </Flex>
     );
+}
+
+export default function MobileBusinessCopySetupScreen(props: MobileBusinessCopySetupScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+    return <MobileBusinessCopySetupScreenContent key={scopeKey} {...props} />;
 }

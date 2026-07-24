@@ -165,12 +165,14 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(businessSettings, 'normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence)', 'desktop owner public-link boundary');
   assertIncludes(mobileBasic, "storeDetails?.geo?.latitude !== undefined", 'mobile zero latitude hydration');
   assertIncludes(mobileBasic, 'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)', 'mobile shared geo boundary');
-  for (const rollbackField of ['countryCode', 'dialCode', 'phoneNumber']) {
-    assertIncludes(mobileBasic, `${rollbackField}: storeDetails.${rollbackField}`, `mobile phone rollback ${rollbackField}`);
-  }
-  assertIncludes(mobileBasic, 'phone: (storeDetails as any).phone', 'mobile canonical phone rollback');
+  assertIncludes(mobileBasic, 'Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)', 'mobile exact optimistic rollback ownership');
+  assertIncludes(mobileBasic, '? { ...previous, ...previousOptimisticValues }', 'mobile canonical field rollback projection');
   assertIncludes(mobileOfficial, 'normalizeOwnerPublicPresenceLinks(publicPresenceDraft)', 'mobile owner public-link boundary');
-  assertIncludes(mobileOfficial, 'businessCopyMeta: storeDetails.businessCopyMeta', 'mobile optimistic metadata rollback');
+  assertIncludes(mobileOfficial, 'businessCopyMeta: previousBusinessCopyMeta', 'mobile optimistic metadata rollback');
+  assertIncludes(mobileOfficial, '&& previous?.businessCopyMeta === payload.businessCopyMeta', 'mobile attempt-owned metadata rollback');
+  assertIncludes(mobileOfficial, '&& previous?.publicPresence === payload.publicPresence', 'mobile attempt-owned presence rollback');
+  assertIncludes(mobileOfficial, '|| presenceSaveInFlightRef.current', 'mobile in-flight save unmount cleanup guard');
+  assertIncludes(mobileOfficial, 'await deleteOBPPhotos([url]);', 'mobile obsolete uploaded media cleanup');
   assertIncludes(b2cView, 'normalizeOwnerPublicPresenceLinks(storeDraft?.publicPresence || {})', 'embedded editor owner public-link boundary');
 
   assertIncludes(officialTab, 'queuePhotoDelete(url);', 'desktop new upload cleanup candidate');

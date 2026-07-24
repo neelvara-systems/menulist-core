@@ -21,6 +21,7 @@ export const ANSWERLATTICE_DB_COLLECTIONS = {
     ANSWERLATTICE_FRICTION_DAILY_STATS: 'answerlattice_frictionDailyStats',
     ANSWERLATTICE_SCHEDULER_RUN_LOGS: 'answerlattice_schedulerRunLogs',
     ANSWERLATTICE_AI_OPERATIONS: 'answerlattice_aiOperations',
+    ANSWERLATTICE_AI_CAPACITY_RESERVATIONS: 'answerlattice_aiCapacityReservations',
     ANSWERLATTICE_CACHE_VERSIONS: 'answerlattice_cacheVersions',
     ANSWERLATTICE_NOTIFICATION_LOGS: 'answerlattice_notificationLogs',
     OWNER_NOTIFICATION_EVENTS: 'ownerNotificationEvents',

@@ -1,53 +1,57 @@
-# SignalDesk Control Room - Firebase Plan
+# SignalDesk Control Room - Firebase And Cost
 
-**Status:** Initial Firebase design
-**Created:** June 23, 2026
+**Status:** Current implementation
+**Revalidated:** July 21, 2026
 
-## Collections
+## Existing Collections
 
-| Collection | Purpose | Read Pattern |
-| --- | --- | --- |
-| `signaldeskControlRoomSummaries` | Overall health snapshot for dashboard. | Default dashboard read. |
-| `signaldeskChannelHealthSummaries` | Sender/channel health by day/channel. | Dashboard and channel detail. |
-| `signaldeskCostDailySummaries` | AI, Firestore, and provider cost posture. | Daily dashboard and alerts. |
-| `signaldeskIncidents` | Open/resolved operational incidents. | Incident queue. |
-| `signaldeskKillSwitches` | Global and scoped pause controls. | Read by write/action paths. |
-| `signaldeskAiEvalSummaries` | AI quality and override metrics. | Dashboard and eval review. |
-| `signaldeskSourceHealthSummaries` | Source quality and policy health. | Dashboard and source review. |
-| `signaldeskQueueSummaries` | Approval, inbox, and work-item backlog. | Dashboard. |
-
-## Required Fields
-
-| Object | Required fields |
+| Collection | Use |
 | --- | --- |
-| Kill switch | `killSwitchId`, `pId`, `scope`, `status`, `reason`, `activatedBy`, `activatedAt`, `deactivatedBy`, `deactivatedAt`, `updatedBy`, `updatedAt` |
-| Incident | `incidentId`, `type`, `severity`, `status`, `ownerId`, `openedAt`, `resolvedAt`, `resolutionNote` |
-| Cost summary | `summaryId`, `day`, `aiCostEstimate`, `firestoreReadEstimate`, `firestoreWriteEstimate`, `providerCostEstimate`, `updatedAt` |
-| Health summary | `summaryId`, `scope`, `status`, `metrics`, `staleAfter`, `updatedAt` |
+| `signaldeskControlRoomSummaries` | One canonical aggregate status/counter row. |
+| `signaldeskQueueSummaries` | Approval, inbox, review and overdue counts. |
+| `signaldeskCostDailySummaries` | Strict daily AI/provider and Firestore estimates. |
+| `signaldeskKillSwitches` | Eleven deterministic current scope documents. |
+| `signaldeskIncidents` | Producer-owned incident truth. |
+| `signaldeskIdempotencyKeys` | Actor/request-bound pause replay claims. |
+| `signaldeskAuditEvents` | Classification-only pause and producer audit history. |
 
-## Indexes
+No Control Room-specific collection, Storage object, listener, API cache,
+scheduler, or client write exists.
 
-| Query | Index |
-| --- | --- |
-| Open incidents | `status`, `severity`, `openedAt desc` |
-| Active kill switches | No composite index; overview point-reads the eleven canonical `scope_{scope}` documents and strictly projects active rows. |
-| Daily costs | `day desc` |
-| Channel health | `channel`, `day desc` |
-| Queue summaries | `scope`, `updatedAt desc` |
+## Read Cost
 
-## Cost Rules
+The base overview performs three summary point reads, eleven kill-switch point
+reads, and one unresolved-incident query. Incident documents are billed reads and
+are bounded to 501 attempted matches: more than 500 fails visibly. At most 50
+strict incidents enter the browser DTO.
 
-- Control room default load must read one overall summary plus bounded section summaries.
-- Kill-switch checks must be cheap and cacheable where safe.
-- The overview incident list is capped at 50 and its strict count scans at most 501 matching documents; the 501st row fails visibly instead of producing approximate truth.
-- Cost summaries should be updated by bounded jobs or feature write paths.
-- Raw event drill-down requires explicit admin action.
+The dedicated Controls section adds four bounded collection queries for budget
+policies, provider accounts, run timelines and self-service CTAs. It no longer
+loads the dashboard's research/lead collections.
+
+## Write Cost
+
+| Mutation | Estimated writes |
+| --- | ---: |
+| New pause activation/clear | 4 |
+| Exact idempotent replay | 0 |
+| Blocked mobile mutation | Existing bounded blocked-action audit after rate limiting |
+
+The four successful writes are switch, audit, claim and cost summary. The cost
+summary counts itself. Existing producer flows own incident and health-summary
+write costs.
+
+## Query/Index Posture
+
+- Kill switches use deterministic point reads; no query index is needed.
+- Unresolved incidents use `pId == SD` and `status in [open, acknowledged]`,
+  ordered by document ID with a strict ceiling.
+- No new index is introduced by this hardening pass.
+- Client Firestore writes remain denied; protected server routes own mutations.
 
 ## Retention
 
-| Data | Default |
-| --- | --- |
-| Kill switches | Scope documents retain current state; append-only audit events retain transition history. |
-| Incidents | Retain resolved incident history. |
-| Daily cost summaries | Retain for trend analysis and budget review. |
-| Health summaries | Retain rolling history; archive older records later. |
+Current scope documents retain current pause state and audit records retain
+transition evidence. Resolved incidents remain producer-owned historical truth.
+There is no Control Room-specific incident deletion or pause-expiry job. Any
+future retention change must preserve active safety and idempotency evidence.

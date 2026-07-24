@@ -4,7 +4,12 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { GROWTH_ACQUISITION_CAMPAIGN, GROWTH_ACQUISITION_MEDIUM, GROWTH_ACQUISITION_SOURCE } from '@lib/growth/acquisitionAttribution';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
-import { recordFounderRevenueMovement } from '@lib/ops/founderRevenueReadModel';
+import {
+    recordFounderRevenueMovement,
+    recordFounderSubscriptionMrrChange,
+    recordFounderSubscriptionNewMrr,
+} from '@lib/ops/founderRevenueReadModel';
+import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 
 const assert = (condition: unknown, message: string): void => {
     if (!condition) throw new Error(message);
@@ -22,6 +27,7 @@ const run = async (): Promise<void> => {
     const partnerDraftId = `growth-intelligence-partner-${suffix}`;
     const tooExpensiveMovementId = `growth-intelligence-churn-price-${suffix}`;
     const switchedProviderMovementId = `growth-intelligence-churn-switch-${suffix}`;
+    const lifecycleSubscriptionId = `growth-intelligence-subscription-${suffix}`;
     const occurredAt = new Date();
     const growthSummaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('founderMonitorGrowth');
     const revenueSummaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('founderMonitorRevenue');
@@ -79,6 +85,7 @@ const run = async (): Promise<void> => {
         id: tooExpensiveMovementId,
         kind: 'churn',
         occurredAt,
+        productId: 'ML',
         source: 'emulator:growth-intelligence',
     })));
     assert(churnResults.filter((result) => result.recorded).length === 1, 'Churn movement must record exactly once');
@@ -89,9 +96,196 @@ const run = async (): Promise<void> => {
         id: switchedProviderMovementId,
         kind: 'churn',
         occurredAt,
+        productId: 'ML',
         source: 'emulator:growth-intelligence',
     })));
     assert(switchedProviderResults.filter((result) => result.recorded).length === 1, 'Second churn reason must record exactly once');
+
+    const originalRunTransaction = firestoreAdmin.runTransaction.bind(firestoreAdmin);
+    (firestoreAdmin as any).runTransaction = async () => {
+        throw new Error('simulated-founder-revenue-write-failure');
+    };
+    try {
+        const optionalFailure = await recordFounderRevenueMovement({
+            amountPaise: 100,
+            id: `optional-failure-${suffix}`,
+            kind: 'cash_collected',
+            productId: 'ML',
+            source: 'emulator:growth-intelligence:optional-failure',
+        });
+        assert(!optionalFailure.recorded, 'Optional projection failure must remain observable as not recorded');
+
+        let requiredFailureRejected = false;
+        try {
+            await recordFounderRevenueMovement({
+                amountPaise: 100,
+                id: `required-failure-${suffix}`,
+                kind: 'cash_collected',
+                productId: 'ML',
+                requireDurableWrite: true,
+                source: 'emulator:growth-intelligence:required-failure',
+            });
+        } catch (error) {
+            requiredFailureRejected = String(error).includes('simulated-founder-revenue-write-failure');
+        }
+        assert(requiredFailureRejected, 'Required projection failure must reject so the caller can retry');
+    } finally {
+        (firestoreAdmin as any).runTransaction = originalRunTransaction;
+    }
+
+    let invalidRequiredMovementRejected = false;
+    try {
+        await recordFounderRevenueMovement({
+            amountPaise: 100,
+            id: '/',
+            kind: 'cash_collected',
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:invalid-required-id',
+        });
+    } catch (error) {
+        invalidRequiredMovementRejected = String(error).includes('identity is invalid');
+    }
+    assert(invalidRequiredMovementRejected, 'Required projection must reject an invalid movement identity');
+
+    const missingProductResult = await recordFounderRevenueMovement({
+        amountPaise: 100,
+        id: `missing-product-${suffix}`,
+        kind: 'cash_collected',
+        source: 'emulator:growth-intelligence:missing-product',
+    });
+    assert(!missingProductResult.recorded && missingProductResult.movementId === null, 'Missing product identity must not default into MenuList revenue');
+
+    const lifecycleSubscription: Partial<FirestoreSubscriptionDoc> & { id: string } = {
+        amount: 12000,
+        currency: 'INR',
+        id: lifecycleSubscriptionId,
+        pId: 'ML',
+        productId: 'ML',
+        planName: 'Growth Intelligence Test',
+        planType: 'MONTH',
+        quantity: 1,
+        sId: 202,
+        storeId: 202,
+        tId: 101,
+        tenantId: 101,
+    };
+    const newMrrResults = await Promise.all(Array.from({ length: 3 }, () => recordFounderSubscriptionNewMrr({
+        productId: 'ML',
+        requireDurableWrite: true,
+        source: 'emulator:growth-intelligence:new-mrr-replay',
+        subscription: lifecycleSubscription,
+    })));
+    assert(newMrrResults.filter((result) => result.recorded).length === 1, 'Required new-MRR replay must record exactly once');
+
+    const mrrChangeResults = await Promise.all(Array.from({ length: 3 }, () => recordFounderSubscriptionMrrChange({
+        eventKey: `quantity-change-${suffix}`,
+        previousSubscription: lifecycleSubscription,
+        productId: 'ML',
+        requireDurableWrite: true,
+        source: 'emulator:growth-intelligence:mrr-change-replay',
+        subscription: {
+            ...lifecycleSubscription,
+            quantity: 2,
+        },
+    })));
+    assert(mrrChangeResults.filter((result) => result.recorded).length === 1, 'Required MRR-change replay must record exactly once');
+
+    let conflictingSubscriptionScopeRejected = false;
+    try {
+        await recordFounderSubscriptionNewMrr({
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:conflicting-scope',
+            subscription: {
+                ...lifecycleSubscription,
+                sId: 999,
+            },
+        });
+    } catch (error) {
+        conflictingSubscriptionScopeRejected = String(error).includes('scope is invalid');
+    }
+    assert(conflictingSubscriptionScopeRejected, 'Required lifecycle projection must reject conflicting subscription aliases');
+
+    let malformedRequiredAmountRejected = false;
+    try {
+        await recordFounderRevenueMovement({
+            amountPaise: '100' as any,
+            id: `malformed-amount-${suffix}`,
+            kind: 'cash_collected',
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:malformed-amount',
+        });
+    } catch (error) {
+        malformedRequiredAmountRejected = String(error).includes('amount is invalid');
+    }
+    assert(malformedRequiredAmountRejected, 'Required movement must reject a coercible nonnumeric amount');
+
+    let malformedRequiredTimeRejected = false;
+    try {
+        await recordFounderRevenueMovement({
+            amountPaise: 100,
+            id: `malformed-time-${suffix}`,
+            kind: 'cash_collected',
+            occurredAt: 'not-a-real-time',
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:malformed-time',
+        });
+    } catch (error) {
+        malformedRequiredTimeRejected = String(error).includes('time is invalid');
+    }
+    assert(malformedRequiredTimeRejected, 'Required movement must reject an invalid event time');
+
+    let malformedSubscriptionAmountRejected = false;
+    try {
+        await recordFounderSubscriptionNewMrr({
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:malformed-subscription-amount',
+            subscription: {
+                ...lifecycleSubscription,
+                amount: '12000' as any,
+            },
+        });
+    } catch (error) {
+        malformedSubscriptionAmountRejected = String(error).includes('MRR amount is invalid');
+    }
+    assert(malformedSubscriptionAmountRejected, 'Required lifecycle movement must reject coercible subscription MRR');
+
+    let malformedRequiredScopeRejected = false;
+    try {
+        await recordFounderRevenueMovement({
+            amountPaise: 100,
+            id: `malformed-scope-${suffix}`,
+            kind: 'cash_collected',
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:malformed-scope',
+            storeId: '202',
+            tenantId: '101',
+        });
+    } catch (error) {
+        malformedRequiredScopeRejected = String(error).includes('scope is invalid');
+    }
+    assert(malformedRequiredScopeRejected, 'Required movement must reject coercible workspace scope');
+
+    let unscopedSubscriptionMovementRejected = false;
+    try {
+        await recordFounderRevenueMovement({
+            amountPaise: 100,
+            id: `unscoped-subscription-${suffix}`,
+            kind: 'cash_collected',
+            productId: 'ML',
+            requireDurableWrite: true,
+            source: 'emulator:growth-intelligence:unscoped-subscription',
+            subscriptionId: lifecycleSubscriptionId,
+        });
+    } catch (error) {
+        unscopedSubscriptionMovementRejected = String(error).includes('scope is invalid');
+    }
+    assert(unscopedSubscriptionMovementRejected, 'Required subscription movement must carry exact workspace scope');
 
     const revenueSummary = (await revenueSummaryRef.get()).data() || {};
     assert(revenueSummary.churnReasons?.too_expensive === 1, 'Price churn reason must be preserved');
@@ -102,6 +296,8 @@ const run = async (): Promise<void> => {
         partnerDraftRef.delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(tooExpensiveMovementId).delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(switchedProviderMovementId).delete(),
+        firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(`new_mrr:${lifecycleSubscriptionId}`).delete(),
+        firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(`expansion_mrr:${lifecycleSubscriptionId}:quantity-change-${suffix}`).delete(),
         growthSummaryRef.delete(),
         revenueSummaryRef.delete(),
         dailySummaryRef.delete(),

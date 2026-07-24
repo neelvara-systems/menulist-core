@@ -4,11 +4,13 @@ import type { GrowthOSAccessMode } from "@type/growthos";
 import type { StoreDataType } from "@type/platform/store";
 import type { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { hasValidSubscriptionAccess } from "@util/razorpay";
+import { isMenuListSubscriptionEntitledForTenant } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 
 export interface GrowthOSEntitlementInput {
     activeSubscription?: FirestoreSubscriptionDoc | null;
     storeDetails?: Partial<StoreDataType> | null;
     storeId?: string | number | null;
+    tenantId?: string | number | null;
 }
 
 export interface GrowthOSEntitlementResult {
@@ -35,8 +37,11 @@ export function isGrowthOSMasterEnabled(): boolean {
 
 function hasEligibleGrowthOSPlan(input: GrowthOSEntitlementInput): boolean {
     const subscription = input.activeSubscription || null;
+    const tenantId = input.tenantId ?? input.storeDetails?.tenantId;
     const activePlan = String(subscription?.planId || "").toLowerCase();
-    return hasValidSubscriptionAccess(subscription) && getPaidPlanIds().includes(activePlan);
+    return isMenuListSubscriptionEntitledForTenant(subscription, tenantId)
+        && hasValidSubscriptionAccess(subscription)
+        && getPaidPlanIds().includes(activePlan);
 }
 
 export function evaluateGrowthOSEntitlement(input: GrowthOSEntitlementInput = {}): GrowthOSEntitlementResult {

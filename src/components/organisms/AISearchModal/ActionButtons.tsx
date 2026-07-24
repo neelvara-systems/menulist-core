@@ -1,5 +1,8 @@
 'use client';
-import { updateAiSearchHistoryWithFeedback } from '@database/aiSearchHistory';
+import {
+    assertAiSearchHistoryFeedbackUpdateSucceeded,
+    updateAiSearchHistoryWithFeedback,
+} from '@database/aiSearchHistory';
 import {
     copyAnswerlatticeSupportTextToClipboard,
     hasAnswerlatticeSupportClipboardWrite,
@@ -43,7 +46,8 @@ export default function ActionButtons({ answer, onRegenerate, isTyping, searchHi
                 return;
             }
             try {
-                await updateAiSearchHistoryWithFeedback({ id: searchHistoryId, isGood: true });
+                const result = await updateAiSearchHistoryWithFeedback({ id: searchHistoryId, isGood: true });
+                assertAiSearchHistoryFeedbackUpdateSucceeded(result, searchHistoryId);
                 setFeedbackData({ isGood: true, reasons: [], comments: '' });
                 message.info('Thank you for your feedback!');
             } catch {
@@ -63,12 +67,13 @@ export default function ActionButtons({ answer, onRegenerate, isTyping, searchHi
             value,
             label: value.replace(/_/g, ' '),
         }));
-        await updateAiSearchHistoryWithFeedback({
+        const result = await updateAiSearchHistoryWithFeedback({
             id: searchHistoryId,
             isGood: false,
             reasonsToImprove,
             comments: values.comments || '',
         });
+        assertAiSearchHistoryFeedbackUpdateSucceeded(result, searchHistoryId);
         setFeedbackData({ isGood: false, reasons: values.reasons || [], comments: values.comments || '' });
         setFeedbackModalVisible(false);
         message.success('Thank you for your feedback!');

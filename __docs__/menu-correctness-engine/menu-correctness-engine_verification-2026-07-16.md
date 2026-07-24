@@ -38,7 +38,7 @@
 | Publish snapshot | At most 1 append-only write; oversized payloads skip |
 | Linked snapshot resolution | 0 extra reads; reuses the master document already fetched for publish admission |
 
-The existing `menu_snapshot_cleanup` task is the active retention path. It now rotates a deterministic bounded page across every known store, including inactive stores, instead of repeatedly scanning only the first 200 active rows. The ineffective `menuSnapshots` collection-group TTL instruction was removed because the snapshot documents live in dynamic store-named subcollections. No new scheduler, collection, index, rule, API route, or owner setting was added. `menuChangeLog` remains intentionally retained operational memory; normal mode is compact and every reader is capped/paginated.
+The existing `menu_snapshot_cleanup` task is the active retention path. It rotates a deterministic bounded page across every known store, including inactive stores, instead of repeatedly scanning only the first 200 active rows. Each selected store uses one bounded `createdAt` cutoff query, which drains both current rows and legacy snapshots created before `expiresAt` existed while honoring the current five-minute expiry tolerance. The ineffective `menuSnapshots` collection-group TTL instruction was removed because the snapshot documents live in dynamic store-named subcollections. No new scheduler, collection, index, rule, API route, or owner setting was added. `menuChangeLog` remains intentionally retained operational memory; normal mode is compact and every reader is capped/paginated.
 
 ## Verification
 

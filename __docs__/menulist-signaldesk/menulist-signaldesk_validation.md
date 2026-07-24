@@ -2,14 +2,133 @@
 
 **Status:** Governed source/research/content/partner rails, solo-founder Operating Layer, bounded Revenue Operating Layer, founder-controlled AI Volume Mode, hard mobile read-only enforcement, deterministic local E2E, and Firestore/Storage semantic rules tests implemented and locally validated.
 **Created:** June 23, 2026
-**Last Updated:** July 15, 2026
+**Last Updated:** July 22, 2026
+
+## Daily Activation Operator Loop - July 22, 2026
+
+- Verified Today consumes the existing ranked mission and live bounded summaries, removes resolved reply/approval work, deduplicates by target, caps the queue at five, and keeps discovery secondary.
+- Verified direct mutations retain existing server actions and advance only after durable success; `Next` is local focus only and never records completion.
+- Verified only current `verified` or `actionable` opportunities can expose direct score/evidence/draft preparation. Suppressed, expired, candidate, and contacted opportunities remain journey/review work even when an older research row recommends a direct action.
+- Verified the Target Journey is a read-only projection of already-loaded target, conversation, approval, outcome, and activation truth with no raw contact reveal.
+- Verified MenuList handoff copies only the existing anonymous founder-pilot URL, does not mint a route token, and does not send or write outcome/MenuList truth.
+- Verified activation-proof preparation first requires durable activation time, evidence reference, approved integrity, and two distinct target surfaces, then uses the existing Content response and permission/source authority to prefill review fields only. Missing authority remains blocked.
+- Verified the seven-day snapshot counts only existing route/upload/preview/publish outcomes and evidence-backed verified two-surface outcomes, links its cohort percentage by unique target ID, and derives stalls only from elapsed durable activation deadlines.
+- `npm run verify:signaldesk` passes 3,876 aggregate checks and includes the focused daily-activation test.
+- Workspace/client, action/client, and outcome contract suites pass.
+- Focused Operating Layer and outcome/proof/content Firestore E2E suites pass serially. Their bounded malformed/overflow diagnostics are expected negative-case evidence.
+- Exact root TypeScript, focused ESLint, dependency freeze, documentation npm-command references, documentation links, and diff whitespace checks pass. Documentation has zero broken links; the 62 naming warnings remain unrelated video artifacts.
+- The local app runs at `http://localhost:3000`. Both available browser sessions correctly redirected the protected dashboard to `/signaldesk/signin`; neither had an approved SignalDesk session. Authenticated desktop visual/interaction evidence therefore remains release-controlled and is not represented as complete.
+- No Function, Firestore rule/index, Storage rule, provider, or dependency changed in this slice. No Firebase or Vercel deployment was required or performed.
+
+## Feature 19 Revenue Operating Layer Cross-Check - July 21, 2026
+
+- Verified layered feature-flag enforcement, desktop-only Revenue admission, permission-gated controls, and budget-policy omission for non-configure roles.
+- Verified current source/contact/suppression authority before opportunity work, blocked-account pause, open-opportunity demotion, activation-only wins, and strict zero-value pre-qualification activation wins.
+- Verified founder-only approved envelopes, current referenced-control rereads, duplicate reference rejection, immutable approval time, and provider-send isolation.
+- Verified exact qualification, opportunity, offer, envelope, and activation-watch retries return existing truth without repeating audit/cost/summary effects.
+- Verified dashboard activation opportunities retain strict durable target activation truth when more recent global outcome rows displace the activation summary from the bounded common workspace window.
+- `SIGNALDESK_E2E_FOCUS=revenue npm run test:signaldesk:e2e:local`, `npm run typecheck`, and focused ESLint passed on the current worktree. Full SignalDesk and documentation gates are recorded below.
 **Scope:** Product identity, protected app shell, guarded APIs, internal acquisition and revenue workflow, gated provider/channel runtime, dedicated Firebase config/rules/indexes/storage rules, and functions skeleton.
+
+## Final 19-Feature Regression - July 21, 2026
+
+All nineteen frozen feature slices are source-complete on the current worktree.
+The final cross-feature pass found and corrected two aggregate-only issues:
+
+- the happy-path trust-metrics fixture now writes the same strict partner and
+  attributable live-deliverable shape required by production; production
+  validation was not weakened;
+- dashboard activation opportunities now use the target's durable verified
+  activation projection when the global 30-outcome workspace window omits an
+  older activation. The targeted Revenue transaction still rereads coupled
+  summary/event authority before commercial settlement.
+
+| Gate | Current result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - 3,876 checks. |
+| Focused Revenue, happy-path, webhook/DNC, outcome/proof/content, and manual-contact Firestore E2E | PASS. |
+| Root TypeScript and focused SignalDesk ESLint | PASS. |
+| SignalDesk Functions TypeScript build | PASS. The package has no separate lint script. |
+| Access boundary, workspace/client contracts, and Firestore/Storage semantic rules | PASS. Expected `PERMISSION_DENIED` lines are negative-case evidence. |
+| Dependency freeze, documentation links, and diff integrity | PASS. Documentation has zero broken links; the 62 naming warnings are unrelated video artifacts. |
+| Complete aggregate Firestore E2E | The current logic cleared every business assertion reached. Two fresh runs stopped in different late stages with the emulator-only bare error `Transaction is invalid or closed`; the same webhook/DNC and manual-contact stages passed independently. Retries stopped under the repeated-error rule, and concurrency assertions were not weakened or serialized. |
+
+Provider sending remains `false`; no live provider call, contact, export
+delivery, publication, spend, MenuList truth mutation, Firebase upload, or
+Vercel deployment occurred. The previously required QA index/scheduler deploy
+attempt remains blocked before upload by Firebase IAM and is still an owner
+action.
 
 ## Current Verdict
 
 **PASS WITH EXTERNAL BLOCKERS.** The SignalDesk internal workflow, gated runtime expansion, bounded commercial lifecycle, product-local auth gateway, and deterministic safety paths are implemented and locally validated. It is safe for a local desktop trial and a mobile observe/emergency-pause trial after signing in with a seeded active member. It is not cleared for real outreach or cloud production use.
 
 The implemented flow covers the existing access, source, target, evidence, draft, approval, inbox, outcome, demand, content, partner, provider/budget/model, mission, and control-room rails plus revenue accounts, deterministic commercial qualification, commercial opportunities, immutable standard offer versions, bounded operating envelopes, interested-reply revenue projection, automatic outcome-to-activation projection, read-time seven-day stall detection, compact revenue/founder-attention/spend summaries, and cost-capped multi-pass AI batches for internal review work.
+
+## Feature 1 - Product, Host, And Firebase Isolation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Product identity | SignalDesk retains product code `SD`, full-name environment variables, product-local app/API/constants/DAL/Functions paths, and dedicated QA/production Firebase project IDs. |
+| Host admission | Canonical `/signaldesk` and `/api/signaldesk` paths now return `404` with `noindex` on non-SignalDesk production hosts. The dedicated SignalDesk host, localhost path, and approved `menulist.digital/sd` alias retain their existing behavior. |
+| App-server Firebase | Client and Admin bootstraps continue to fail closed when mode, credentials, bucket, or project identity is missing, conflicting, or points at MenuList or another product. |
+| Functions Firebase | `functions-signaldesk` now resolves the runtime project before Admin initialization, permits only `menulist-signaldesk-qa`, `menulist-signaldesk`, or the isolated `demo-signaldesk*` emulator namespace, and rejects conflicting or foreign project declarations. An already-initialized default app must match the resolved project. |
+| Public and sister-product isolation | SignalDesk remains absent from public navigation, sitemap, MenuList owner/customer surfaces, and sister-product hosts. No new public route or data projection was added. |
+| Cost and schema | No collection, index, rule, Storage path, read, write, listener, scheduler, provider call, or dependency was added. The Functions guard runs in process before Firebase access. |
+| Evidence | Project-boundary tests, Functions TypeScript/build, root TypeScript and routing verifier, dependency freeze, access/rules/lifecycle suites, the 3,563-check SignalDesk verifier, and the 81-check live route/API smoke pass. |
+| Aggregate E2E status | The current-worktree aggregate progressed beyond the isolation setup but stopped in the separately modified approval/export negative fixture with `TEMPLATE_SHAPE_INVALID`. That template-projection change is outside Feature 1 and was not weakened or rewritten here. The last committed-branch aggregate remains recorded below as passed. |
+
+## Feature 2 - Sign-In, Session Freshness, And Team Access - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current identity | Every protected access resolution now calls the existing current-user authority helper. Blocked, deleted, deactivated, auth-disabled, email-mismatched, or session-revoked users fail before SignalDesk role/membership authority. |
+| Platform authority | Founder/platform access is derived from the current MenuList user record, not the cached session `platformRole`; a stale platform claim cannot retain access. |
+| Member admission | A non-platform user must resolve to exactly one active, correctly shaped human membership by document/user/email identity. Ambiguous rows, malformed permissions, wrong product identity, and `system-worker` human rows fail closed. |
+| Mutation integrity | Team-member mutation is transactional across bounded explicit/canonical/user/email candidates. It rejects ambiguous/rebound identity, missing explicit records, and self-deactivation based on persisted identity. Member, audit, and cost truth commit together. |
+| Desktop/mobile/API parity | Desktop layout, sign-in return path, protected APIs, and mobile read-only access share the same resolver. Mobile team configuration remains blocked. Direct SignalDesk Firestore reads remain platform-only; ordinary members use protected APIs. |
+| Cost | Each protected request adds one current MenuList user read. Non-platform requests add bounded membership lookups. A member mutation writes exactly member, audit, and daily-cost truth after bounded transaction reads; no listener, collection, index, Function, provider call, or dependency was added. |
+| Evidence | Root TypeScript, scoped ESLint, the 3,580-check SignalDesk verifier, access-boundary Firestore emulator, workspace/client and action/client contracts, and dedicated Firestore/Storage security-rules emulator pass. Expected `PERMISSION_DENIED` output in the rules run is negative-case proof. |
+| Deployment | App-side access and action code changed, but no Firebase rule/index/Function source changed. No Firebase or Vercel deployment was performed. Hosted sign-in/session-revocation QA remains release-controlled. |
+
+## Feature 3 - Audit History And Contact-Reveal Accountability - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Mutation evidence | Governed mutations append server-only audit truth in their transaction/batch. Audit rows contain product, actor/role, action, entity identity, stable event classification, and creation time. |
+| Privacy | Caller-supplied reason detail is reduced to `event:{action}`. Target names, contact values, messages, evidence, provider payloads, and operator free text are not persisted in audit rows. |
+| Contact reveal | Raw recipient return requires `contact.reveal` and appends `contact_recipient_reveal` in the same handoff transaction. Exact prepared-handoff replay returns `recipient: null` and cannot duplicate reveal or audit. |
+| Read authority | Audit workspace access requires `signaldesk.view` plus `audit.view`; read-only analysts and mobile workspace requests cannot open the section. Direct browser writes remain denied. |
+| History reachability | Desktop Audit loads stable 50-event pages ordered by `createdAt DESC` and document ID. The exact pair is validated as the next cursor, so same-timestamp rows are neither skipped nor duplicated. |
+| Malformed truth | Foreign-product/malformed audit rows are excluded through strict workspace projection. A bounded scan can continue to fill the valid page and emits aggregate diagnostics. |
+| Cost/index | Normal history requests read 50 documents. Only malformed rows can require additional 50-document scans, bounded by the existing ten-page ceiling. No listener, collection, composite index, write path, Function, dependency, or provider call was added. |
+| Evidence | Audit-boundary emulator, fresh-lineage/contact-reveal emulator, workspace/client contracts, dedicated rules emulator, root TypeScript, scoped ESLint, and the 3,594-check SignalDesk verifier pass. |
+| Deployment | App/server code changed but Firebase rules, indexes, Storage rules, and Functions did not. No Firebase or Vercel deployment was performed. Hosted desktop audit pagination remains release-controlled QA. |
+
+## Feature 4 - Kill Switches And Emergency Recovery - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Scope truth | Overview reads all eleven deterministic scope documents, strictly excludes malformed/foreign rows, and derives the exact active count without overwriting provider channel health. |
+| Transition integrity | Activation/deactivation uses one transaction for current state, actor-bound idempotency claim, switch write, and audit. Exact/concurrent retries return the first result; changed-input reuse conflicts. |
+| Audit privacy | The private switch retains the bounded operator reason. Its audit stores only `event:kill_switch_activate` or `event:kill_switch_deactivate`. |
+| Recovery state | Reactivation clears prior deactivation actor/time. Pauses do not auto-expire; an authorized explicit desktop deactivation is required. |
+| Mobile boundary | Mobile can view summary/active pauses and activate only a confirmed `global-outbound` emergency pause. Scoped activation and all clear operations fail closed. |
+| Cost/schema | Each transition reads claim and current scope, then writes switch, audit, and claim. No collection, index, listener, Function, provider call, or dependency was added. |
+| Evidence | Dedicated kill-switch/overview Firestore emulator, runtime verifier, root TypeScript, scoped ESLint, workspace/client contracts, docs links, and diff integrity pass. |
+| Deployment | App/server code changed only. Firebase rules, indexes, Storage rules, and Functions were unchanged; no Firebase or Vercel deployment was performed. |
+
+## Feature 5 - Target Registry - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Import admission | Manual and provider imports now enforce `ENABLE_MENULIST_SIGNALDESK_IMPORTS` before provider or Firestore mutation work. The desktop import form follows the same flag while existing target history remains readable. |
+| Identity and lifecycle | The existing all-or-nothing transaction retains source-policy authority, deterministic target/contact identity, permission evidence, suppression, provider lineage, and mature lifecycle state. Manual CSV remains capped at 50 rows; provider runs remain capped at 30. |
+| Privacy and security | Registry pages use the list-safe target summary projector and exclude contact values, notes, permission evidence, and provider payloads. Private detail/contact truth remains server-only, direct browser writes remain denied, and mobile registry/import mutation remains blocked. |
+| Reachability | Desktop now loads stable 30-row pages ordered by `updatedAt DESC` plus document ID. The exact pair is validated as the continuation cursor; same-timestamp rows cannot be skipped or duplicated. |
+| Malformed truth | Rejected target rows produce bounded aggregate diagnostics. Normal pages read 30 documents; corruption recovery can scan at most ten 30-document pages, replacing the retired up-to-1,000-document pre-slice scan without starving the existing 125-row malformed-data fixture. |
+| Evidence | Dedicated Target Registry emulator, 3,609-check SignalDesk verifier, workspace/client contracts, Firestore/Storage rules emulator, root TypeScript, scoped ESLint, documentation links, dependency freeze, and diff integrity pass. The complete local E2E clears the Target Registry stage and then stops in the next Source Policy feature on `SIGNALDESK_CONTACT_AUTHORITY_RECIPIENT_REQUIRED`; that boundary is carried into Feature 6 rather than attributed to this feature. |
+| Deployment | App/server code and docs changed only. Firebase rules, indexes, Storage rules, and Functions were unchanged; no Firebase or Vercel deployment was performed. |
 
 ## Content Source Settlement - July 15, 2026
 
@@ -393,30 +512,50 @@ The 2026-06-24 Codex audit blockers were closed for local validation only. Signa
 
 Additional fix found by E2E: the SignalDesk-local Firestore sanitizer now preserves Firestore transform sentinels such as `FieldValue.increment(...)`, so dashboard and cost counters update as numeric summary fields instead of empty objects.
 
+## Feature 18 Operating Layer Cross-Check - July 21, 2026
+
+| Boundary | Current evidence |
+| --- | --- |
+| Parent admission | Mission and legacy Opportunities pages, Mission workspace API, Operating mutations, market-pod recommendation, and Research execution all require the parent flag. |
+| Child isolation | Disabled Research, Content, Partner, or Revenue layers are not queried or ranked into Mission truth. |
+| Permissions | Mission/experiment use `target.review`; offer uses `signaldesk.configure`; reply uses `draft.create`; quality/recommendation/research use `source.configure`; pod review remains founder-admin. |
+| Replay | Reply playbook, source quality, and market recommendation exact retries create no repeated entity/audit/timeline/cost effects. |
+| Integrity | Suppression routing, canonical record shape, explicit source policy/run existence, and policy/run agreement fail closed. |
+| Cost | Maintained feature docs now include the daily-cost write and variable mission/research materialization instead of the older undercount. |
+| Mobile | Dashboard-only; Mission/Opportunities and all Operating mutations remain desktop-only and server-blocked on mobile. |
+| Infrastructure | No SignalDesk rules, indexes, Storage rules, or Functions changed; no Firebase deploy was required. |
+
+Fresh focused evidence:
+
+- `SIGNALDESK_E2E_FOCUS=operating npm run test:signaldesk:e2e:local` passed.
+- `npm run verify:signaldesk` passed with 3,845 source assertions.
+- `npm run typecheck` and focused ESLint passed.
+
 ## Solo-Founder Operating Layer Runtime - June 24, 2026
 
 The ChatGPT feedback review was adopted as an internal operating-layer slice: SignalDesk should choose and compress the next best founder decisions, not become another dashboard to babysit.
 
 | Area | Implementation Evidence |
 | --- | --- |
-| Route | `/signaldesk/mission` renders the Daily Growth Mission workspace and is included in the protected workspace API section allowlist. |
+| Route | `/signaldesk/mission` and legacy `/signaldesk/opportunities` render the private workspace only while the parent feature is enabled; the workspace API independently enforces the same gate. |
 | Actions | `create-daily-growth-mission`, `review-growth-mission`, `create-experiment-card`, `review-experiment-card`, `upsert-offer-cta`, `upsert-reply-playbook`, and `create-source-quality-snapshot` are protected, validated, permissioned actions. |
-| Runtime | `ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER` is true. Server actions write growth missions, experiment cards, offer CTAs, reply playbooks, source quality snapshots, audit events, run timelines, and daily cost summaries. |
+| Runtime | `ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER` governs the complete layer; Research also requires its child flag. Server actions write growth missions, experiment cards, offer CTAs, reply playbooks, source quality snapshots, audit events, run timelines, and daily cost summaries. |
 | UI | Mission screen includes a daily action queue, owner approve/hold/redirect/complete decisions, experiment cards, offer CTA library, reply playbooks, source quality snapshots, and a 7-day operating trial checklist. |
 | Firebase | Operating-layer collections are product-local, internally readable, client-write denied, and indexed for owner-decision/status/recommendation review flows. |
 | Boundary | No provider send, no paid campaign automation, no public SignalDesk page, no social auto-publish, no external paid adapter, and no MenuList store/menu/project/billing write was added. |
 
-## Content Distribution Rail Runtime - June 24, 2026
+## Feature 16 - Content Distribution Rail Source Completion - July 21, 2026
 
 The Distribution.ai review was adopted as a content repurposing pattern, not as a public social manager or auto-publish system. SignalDesk now has an internal rail for owned proof and channel-ready drafts.
 
 | Area | Implementation Evidence |
 | --- | --- |
-| Route | `/signaldesk/content` renders the Content Distribution workspace. |
-| Actions | `upsert-content-source`, `create-content-asset`, `generate-content-distribution-drafts`, `review-content-distribution-draft`, `schedule-content-distribution-draft`, and `record-content-performance` are protected, validated, permissioned actions. |
-| Runtime | `ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL` is true. Server actions write sources, assets, drafts, calendar items, performance summaries, audit events, run timelines, queue summaries, and cost summaries. |
+| Route | `/signaldesk/content`, the workspace API section, advanced link, UI actions, and server workflows all fail closed when the feature flag is disabled. |
+| Actions | Eight protected actions cover source, proof permission, asset create/review, draft create/review, schedule, and performance with distinct source/configure/create/approve/review permissions. |
+| Runtime | Proof target options are configure-only; eight content lists load concurrently. Source, proof, asset, draft, calendar, publication, reconciliation, and exact cost truth settle transactionally and exact retries add no second effect. |
 | Firebase | Content collections are product-local, internally readable, client-write denied, and indexed for future filtered views. |
-| Boundary | No auto-publish, no social scheduler adapter, no paid campaign automation, no provider send, no public page, and no deploy was added. |
+| Mobile | Current mobile workspace remains dashboard-only and cannot invoke Content mutations; the existing emergency pause contract does not create a mobile content editor. |
+| Boundary | No auto-publish, social scheduler adapter, paid campaign automation, provider send, public page, new collection, rule, index, Function, or Firebase deployment was added. App release and live operator smoke remain owner-controlled. |
 
 ## Market Pod Planner And Weekly Memo - June 24, 2026
 
@@ -1192,3 +1331,251 @@ legal, and provider reviews are complete. Provider sending remains disabled.
 
 No deploy, real send, paid provider call, contact, publication, public
 SignalDesk surface, or MenuList runtime/truth mutation occurred.
+
+## Feature 6 Source Policy Revalidation - July 21, 2026
+
+### Closed Contracts
+
+| Area | Current behavior |
+| --- | --- |
+| Create boundary | Strict shared schema, configure permission, mobile mutation block, route rate limit, actor/request-bound transaction, audit, control summary, and daily-cost update. |
+| Allowed use | Import, storage, personalization, contact, provider execution, evidence, and contact-channel/field relationships fail closed. Public-business research stays evidence-only. |
+| Renewal | `renew-source-policy` extends only review/expiry authority within the existing retention window. It preserves immutable terms and creation truth, rejects blocked/regressing/overlong changes, and provides exact retry with divergent-reuse conflict. |
+| Target safety | Renewal changes no target or source-derived document and cannot revive lifecycle-held/tombstoned data. Fresh data requires a new governed import/provider run. |
+| Owner UI | Desktop create and renew actions use the same server contract. Contact forces evidence; removing evidence clears contact/personalization. Mobile policy mutation remains blocked. |
+| Retention | The consolidated hourly scheduler retains independent task leases and runs bounded source-data lifecycle phases. App/runtime integration is locally complete; remote Functions/index deployment remains unverified. |
+| Documentation | All seven active Source Policy documents now describe actual schemas, collections, guards, costs, mobile posture, tests, and release state. Nonexistent policy-version/event/job collections were removed. |
+
+### Local Evidence
+
+| Gate | Result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - 3,630 assertions after renewal, UI, action, and emulator coverage were added. |
+| `npm run test:signaldesk:source-policy-boundary` | PASS - strict source negatives plus renewal replay/conflict/window/block/immutability/target-isolation behavior. |
+| Focused `source-import` Firestore emulator mode | PASS - strict policy/import lineage, malformed-row recovery, idempotency, and deduplication behavior. |
+| `npm run test:signaldesk:source-data-lifecycle` | PASS - bounded retention, retries, overflow, dependency handling, and independent scheduler leases. Expected negative lease warning was asserted by the suite. |
+| Root TypeScript and scoped SignalDesk ESLint | PASS - no diagnostics. |
+
+The source-import focused rerun initially encountered another current-worktree Firestore emulator on port 8080, then passed when rerun after that process exited. No Firebase or Vercel deployment, provider activation, contact, export delivery, or send was performed. Provider sending remains disabled.
+
+## Feature 7 AI Intelligence Revalidation - July 21, 2026
+
+### Closed Contracts
+
+| Area | Current behavior |
+| --- | --- |
+| Deterministic scoring | Target scoring remains a zero-provider transactional projection with current target/source-policy authority, deterministic identity, decision snapshot, ledger, audit, and daily-cost truth. |
+| Provider admission | AI Assist and AI Volume permit only active Gemini routes, enforce feature flags, permissions, mobile blocking, source authority, kill switches, provider budgets, actor-bound idempotency, and reservation before provider work. |
+| Prompt and output safety | Target, evidence, operator instructions, prior output, and candidate content are explicitly untrusted prompt data. Assist and critic requests use bounded output tokens, strict structured parsing, and no autonomous external action. |
+| Settlement and recovery | Provider success/failure, budget settlement, partial volume results, expired-parent recovery, shadow review, audit, timeline, and daily cost remain retry-safe. Exact repeated shadow review is a no-op instead of duplicating evidence or cost. |
+| Workspace reachability | Provider assists, volume parents, and deterministic scores use separate bounded 30-row queries so one run type cannot crowd another out. Desktop excludes predictably ineligible held/rejected/suppressed targets and unavailable model routes; mobile remains read-only. |
+| Retention and privacy | The existing 90-day lifecycle scrubs detailed AI input/output while retaining compact operational evidence. Workspace projections exclude raw provider payloads and reject malformed or foreign-product rows. |
+| Firebase cost | Workspace AI history uses three bounded queries instead of one misleading mixed query. The required composite index is `pId ASC, workerType ASC, createdAt DESC`; no collection, listener, scheduler, provider, or dependency was added. |
+| Documentation | All seven active AI Intelligence documents now match the current scoring, assist, volume, recovery, review, retention, mobile, cost, and release contracts. |
+
+### Local Evidence
+
+| Gate | Result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - 3,638 assertions. |
+| `npm run test:signaldesk:ai-intelligence-boundary` | PASS - deterministic scoring, assist, shadow review, volume, recovery, workspace reachability, and AI detail lifecycle. Expected malformed-fixture and provider-failure logs are negative-case evidence. |
+| Workspace/client/action contracts | PASS - 43 workspace collections plus current browser action contracts. |
+| Root TypeScript and scoped SignalDesk ESLint | PASS - no diagnostics. |
+| Documentation links and focused diff integrity | PASS - zero broken links and no whitespace errors in the feature slice. |
+
+The required QA index deployment was attempted with
+`firebase deploy --project menulist-signaldesk-qa --config firebase-signaldesk.json --only firestore:indexes --non-interactive`
+and stopped before upload with `Failed to authenticate, have you run firebase login?`.
+No remote index changed. Provider sending remains disabled and no Vercel deploy was performed.
+
+The current-worktree aggregate `test:signaldesk:fresh-lineage` reaches and passes
+the AI/retention portion, then stops in a separately modified outbound-contact
+negative fixture that expects target suppression while current source authority
+fails earlier with `SIGNALDESK_CONTACT_AUTHORITY_BINDING_STALE`. That unrelated
+feature assertion was not weakened during the AI audit.
+
+## Feature 8 Evidence Packets Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | Protected `create-evidence` requires `target.review`, desktop mode, strict current target/source lifecycle, and current source policy permitted for evidence. The desktop action mirrors loaded policy usability; the server remains authoritative. |
+| Identity | Deterministic identity covers approved uses, source lineage and observation, packet facts, diagnostic version, and suppression state. Exact/concurrent replay returns one packet without duplicate writes. |
+| Content/privacy | The private detail contains only bounded category/location/current-list/website facts and lifecycle lineage. The protected summary exposes confidence, uses, rejected claims, and versioned menu-presence diagnostic; no contact values, provider payloads, or operator notes are stored. |
+| Target progression | Only personalization-authorized, clear, non-held, non-rejected targets advance to `draft`. Evidence-only or blocked authority advances to `hold` instead of a guaranteed downstream failure. |
+| Downstream authority | Draft, approval, AI, route, and outcome flows continue to re-read their own current evidence/source/target authority. A packet grants no autonomous export, contact, send, publication, or MenuList mutation. |
+| Retention | Target lifecycle still scrubs all dependencies. A new bounded due-detail query also scrubs an expired historical packet and its paired summary even when the target has been refreshed to a later source window. |
+| Firebase cost | New packet: three transaction reads and five writes. Exact replay: bounded reads and zero writes. Historical expiry uses a bounded active/due query, two transaction reads, and detail/summary/audit writes. One composite index was added; no collection, listener, provider, dependency, or standalone scheduler was added. |
+| Documentation | All seven active Evidence Packets documents now describe actual runtime, cost, privacy, mobile, retention, and release state. Nonexistent expiry jobs, editable fact workflow, Storage bundles, and fixed 12-24 month retention claims were removed. |
+
+Local evidence passes `verify:signaldesk` (3,652 checks), the focused Evidence
+Packets E2E, the complete source-data lifecycle emulator, root TypeScript,
+Functions TypeScript, scoped lint, and diff integrity. The lifecycle suite's
+logged proof-permission lease failure is an expected negative assertion.
+
+The required QA deployment target is
+`firebase deploy --project menulist-signaldesk-qa --config firebase-signaldesk.json --only firestore:indexes,functions:signaldeskMaintenanceScheduler --non-interactive`.
+The required preflight passed Functions lint and TypeScript, then Firebase
+stopped before upload with `Failed to authenticate, have you run firebase login?`.
+No remote revision or index changed. No Vercel
+deployment, provider activation, contact, export delivery, or send was performed.
+
+## Feature 9 Draft Control Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | Protected `create-draft` requires `target.review`, desktop mode, active source lifecycle/policy, email contact and personalization rights, exact current contact authority, personalization evidence, clear suppression, no prior contact/outcome, current CTA, and ready sender. |
+| Template guard | Current templates must be active email templates. Every placeholder must be one of five supported variables and declared by the template. Unresolved variables and maintained prohibited claim categories fail before writes. |
+| Evidence authority | Draft creation recomputes the expected evidence identity from transaction-current target/source/policy/suppression truth. A packet from superseded target truth cannot be reused. |
+| Identity/replay | Draft identity covers exact subject/body plus evidence, policy, contact, CTA, sender, target, and template fingerprint authority. Exact/concurrent retries return one draft/approval/packet triad; partial durable truth fails closed. |
+| Approval continuity | Pending approval re-reads the current template. Missing, inactive, wrong-channel, changed, or legacy-unbound template authority blocks approval without advancing the queue. |
+| Owner UI/mobile | Desktop buttons disable when loaded policy, evidence, target, default template, preview CTA, or sender state is predictably unusable. Mobile remains observe-only and the API independently rejects mutation. |
+| Firebase/cost | A new draft creates eight bounded records; exact replay writes nothing. No new collection, index, rule, Function, listener, Storage object, dependency, or provider call was added. Existing source-data lifecycle governs draft retention. |
+| Documentation | All seven active Draft Control documents now describe the deterministic current runtime. Nonexistent packages, AI worker, template editor, detail/guardrail collections, and stale cost claims were removed. |
+
+Local evidence passes the focused Draft Control Firestore emulator, root
+TypeScript, focused ESLint, and the SignalDesk runtime verifier. The emulator's
+malformed-workspace diagnostics are expected strict-projection fixtures. No
+provider call, contact, export delivery, send, Firebase deploy, or Vercel deploy
+was performed for Feature 9.
+
+## Feature 10 Approval Queue Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | `review-approval` requires `draft.approve`, desktop mode, strict request validation, and a pending approval unless the request is an exact same-actor replay of the stored terminal decision. Packet refresh and export retain their separate `target.review` and `message.export` permissions. |
+| Queue reachability | The approvals workspace reads up to 30 pending items separately from the 30 most recent rows, strictly projects and priority-orders pending work, then deduplicates it ahead of terminal history. Recent completed work cannot crowd all actionable items out of the first response. |
+| Decision authority | Approval re-reads target/detail, approval, packet, draft, template, source policy, source run/contact, evidence, conversation, CTA, and sender inside one transaction and recomputes the exact action fingerprint. Any stale or prohibited authority blocks terminal writes. |
+| Replay/concurrency | Conflicting concurrent decisions permit one commit. An exact same-actor retry returns durable truth without another queue decrement, audit, or cost write; actor, status, note, or rejection-reason changes fail with `Approval is not pending`. |
+| Owner UI/mobile | Desktop Packet, Approve, Reject, and Export controls now require their actual permissions. Approve also requires the complete loaded packet contract, while server truth remains final. Mobile stays observe-only and API mutation is independently denied. |
+| Downstream boundary | Approval authorizes only the exact `email-export` unit. It does not export, hand off, send, publish, mutate MenuList truth, or enable provider sending. Every downstream rail revalidates its own authority. |
+| Firebase/cost | Pending-first visibility adds one bounded query and no listener/index. Terminal review remains an atomic seven-effect write set; exact replay is one read and zero writes. No collection, rule, index, Function, Storage, dependency, or provider call was added. |
+| Documentation | All seven active Approval Queue documents now match the existing collections and runtime. Nonexistent generic approval types, detail/event collections, expiry job, routes, and initial planning state were removed. |
+
+Local evidence passes the focused Approval Queue Firestore emulator, root
+TypeScript, focused ESLint, and the SignalDesk runtime verifier. Expected
+strict-projection diagnostics in the emulator are negative fixtures. Feature 10
+does not change Firebase infrastructure, so no Firebase deployment was required.
+No provider call, export delivery, send, Vercel deployment, or live contact was
+performed.
+
+## Feature 11 Email Rail Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Channel authority | Manual export, direct provider send, and sequencing now require both the approval and its exact draft to be email. Cross-channel reuse fails before any claim or provider work. |
+| Contact/sender authority | Every new action re-reads current source-policy, source-run/contact, suppression, prior-contact, CTA, sender, target, approval, and draft authority. Sender and contact fingerprints prevent substitution after approval. |
+| Replay/recovery | Deterministic completed actions replay redacted historical truth. An unchanged blocked sequencer handoff replays without effects; provider/account/env changes let the same handoff re-evaluate and recover in place. Ambiguous sends remain unresolved and cannot call the provider again. |
+| Workspace reachability | Channels reads approved actions and queued/ready handoffs and steps separately from recent history, strictly projects them, and deduplicates actionable rows first. |
+| Permissions/mobile | Handoff/queue require `message.export`; direct/sequence send requires `message.send`; sender controls require `channel.configure`. Mobile remains observe-only. |
+| Compliance/provider | SMTP validates From-domain authority, Reply-To, TLS/port, physical address, unsubscribe URL, timeouts, envelope, acknowledgement, shared provider/budget cap, and feature flag. Signed callbacks drive suppression/incidents. Provider send remains false. |
+| Firebase/cost | Existing collections and consolidated lifecycle scrubber are reused. Priority reads use automatic single-field indexes. No new collection, rule, index, Function, Storage object, listener, dependency, or provider call was added. |
+| Documentation | All eight active Email Rail documents now match real collections, status types, mobile behavior, webhook boundary, retention, and deployment state. Nonexistent email action/event/summary/unsubscribe collections were removed. |
+
+Local evidence passes the focused sender/outbound Firestore emulator, root
+TypeScript, focused ESLint, SignalDesk runtime, workspace/action/outbound
+contracts, access and source-lifecycle emulators, dependency freeze, docs links,
+and diff integrity. Feature 11 changes no Firebase infrastructure, so no Firebase
+deployment is required. No live provider call, contact, Vercel deployment, or
+external certification was performed.
+
+## Feature 12 Inbox Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Classification | Manual capture now imports the signed-webhook `rules-v1` classifier. Explicit negative intent is evaluated before positive keywords, so `Not interested` cannot become `interested`. |
+| Lineage/idempotency | Actor/key claims bind the exact conversation/message. Only the target's current non-`new` conversation is accepted; exact retries replay and changed facts conflict. |
+| Safety | DNC, wrong-contact, complaint, privacy, and legal replies write suppression synchronously. Complaint/privacy/legal also create incidents and pauses. A later non-safety reply cannot weaken safety state or qualify revenue. |
+| Queue/read model | Backlog changes only when current state crosses the actionable boundary and clamps at zero. Inbox priority-loads safety, then ordinary actionable summaries, then recent unique history, preventing engagement or terminal volume from hiding critical work. |
+| UI/access/mobile | Capture is bound to `latestConversationId`, mirrors `target.review`, and excludes `new` lineage. Mobile capture/manual-contact remains blocked and audited. |
+| Firebase/cost | Existing collections and the consolidated SignalDesk source lifecycle are reused. The actionable state query needs no composite index. Branch-specific write estimates now include queue, suppression, incident, control, and mission effects. |
+| Documentation | All seven Inbox documents were rebuilt from current runtime truth; planned detail, assignment, override, and nonexistent collection claims were removed. |
+
+Local evidence passes the focused Inbox Firestore emulator, root TypeScript,
+focused ESLint, SignalDesk runtime, access, source-lifecycle, workspace/client,
+dependency-freeze, docs-link, and diff gates. Feature 12 changes no Firebase
+rules, indexes, Storage rules, or Functions source, so no Firebase deployment is
+required. No provider send, live webhook, contact, Vercel deployment, or external
+certification was performed.
+
+## Feature 13 Outcome Bridge Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Route authority | New routes require active source lifecycle/policy/evidence, clear suppression, and the exact interested conversation. Optional action lineage must be the target's current exported/sent approval with its matching exported/sent draft; caller CTA/template values cannot override canonical draft truth. |
+| Receiver and replay | The bounded public receiver requires a five-minute raw-body HMAC, strict payload, active hash-only route authority, and actor-bound outcome idempotency. Exact accepted retries remain duplicates after revocation/retention; changed facts fail closed. |
+| Outcome lineage | Route, demand-signal, and manual outcomes retain distinct source authority and source-scoped daily summaries. Every projected summary is coupled to its strict latest event before client or revenue use. |
+| Suppression/MenuList boundary | Suppression blocks new route issuance and outreach. An authentic outcome may be retained without clearing suppression. SignalDesk never writes MenuList store, menu, billing, onboarding, or public truth. |
+| Access/mobile | Desktop manual Outcome requires `target.review`; token creation/revocation requires `signaldesk.configure`. Mobile receives dashboard overview only, cannot load Attribution, and all actions are rejected server-side. |
+| Firebase/cost | Route issuance writes four records; revocation writes three; manual/demand outcomes write eight; route outcomes write nine. A separate existing-revenue activation reconciliation adds six or seven writes. Exact replay writes zero. |
+| Documentation | All seven active Outcome Bridge documents now match implemented events, lineage, receiver, suppression, mobile, retention, cost, and production-pending contracts. |
+
+Local evidence passes the focused Outcome Bridge Firestore emulator, outcome
+contracts, root TypeScript, focused ESLint, SignalDesk runtime, access,
+workspace/client/action, source-lifecycle, dependency-freeze, docs-link, and diff
+gates. Feature 13 changes no Firebase rules, indexes, Storage rules, or Functions
+source, so no Firebase deployment is required. No provider send, production
+producer, live signed callback, MenuList mutation, Vercel deployment, or external
+certification was performed.
+
+## Feature 14 Demand Signals Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | Capture requires the Demand Signals master flag, `target.review`, strict action input, and desktop access. Mobile remains dashboard-only and every mobile mutation is rejected server-side. |
+| Identity | General signals retain no target identity. Target-scoped capture re-reads and strictly parses the current SignalDesk target; caller-supplied names, missing targets, and foreign product truth fail closed. Capture never creates a target. |
+| Replay/lineage | Actor-bound claims prove the exact strict event and its event-day strict summary before returning a duplicate. Changed input conflicts, missing replay truth fails, and UTC day rollover does not redirect replay to a newer summary. |
+| Suppression/safety | Demand evidence may be retained for a suppressed target but cannot clear suppression, create contact permission, authorize outreach, send, publish, or mutate MenuList truth. |
+| Aggregate producers | Content-performance and trust-partner metrics write target-neutral demand summaries only while the Demand Signals flag is enabled. Their existing records remain authoritative when demand aggregation is disabled. |
+| Workspace/mobile | Desktop Capture mirrors `target.review` and the feature flag. Workspace reads only bounded strict summaries, never raw demand events. Mobile receives overview data only. |
+| Firebase/cost | Manual capture writes event, summary, claim, audit, control, and cost records: six estimated writes. Exact replay writes zero. Content/trust actions add two demand effects only when enabled. Existing collections and automatic single-field query indexes are reused. |
+| Scale/retention | Daily deterministic summaries keep workspace reads bounded. Raw demand events are not client-readable. A public/high-volume producer remains prohibited until source, consent, retention, attribution, abuse, and cost policy are explicitly approved. |
+| Documentation | All seven active Demand Signals documents now describe current runtime truth rather than the retired public-hook/automatic-target plan. |
+
+Local evidence passes the focused Demand Signals Firestore emulator, root
+TypeScript, focused ESLint, SignalDesk runtime, access, workspace/client/action,
+source-lifecycle, dependency-freeze, docs-link, and diff gates. Feature 14
+changes no Firebase rules, indexes, Storage rules, or Functions source, so no
+Firebase deployment is required. No public tracking hook, provider call, send,
+contact, MenuList mutation, Vercel deployment, or external certification was
+performed.
+
+## Feature 15 Control Room Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Surface admission | `ENABLE_MENULIST_SIGNALDESK_CONTROL_ROOM` gates navigation, both page aliases and the protected Controls workspace read. Kill-switch enforcement and emergency pause infrastructure remain independent safety controls. |
+| Summary scope | Controls renders summary metrics, operating/safety/incident panels, pause controls, navigation, timelines, CTAs and investment holds. Dashboard research, target, scoring, evidence and draft actions are absent. |
+| Incident truth | Both `open` and `acknowledged` incidents are unresolved. Strict product/identity/timestamp projection excludes malformed rows, the list caps at 50, the UI shows the exact count, and more than 500 matches fails visibly. |
+| Pause mutation | Activation/clear requires the exact permission, bounded reason, rate limiting, explicit UI confirmation and actor/request idempotency. Current foreign or malformed scope truth fails closed. |
+| Replay/concurrency | Exact and concurrent exact retries converge on one transition. Changed facts conflict. Opposite authorized transitions serialize without malformed state or lost audits. |
+| Downstream enforcement | Source-provider, AI-worker, outbound/channel, campaign, content-distribution, trust-partner and MenuList-bridge paths retain their relevant current pause reads. Provider sending remains disabled. |
+| Mobile | Mobile receives only dashboard overview and may activate only confirmed `global-outbound`. Clear, scoped pause and the dedicated Controls workspace are rejected server-side and audited after rate limiting. |
+| Firebase/cost | Base overview uses three summary point reads, eleven pause point reads and one bounded unresolved query. Controls adds four bounded list queries. One transition writes switch, audit, claim and cost summary: four estimated writes; replay writes zero. |
+| Documentation | All seven active Control Room documents now describe implemented summary, incident, pause, mobile, cost and non-goal boundaries. Planned automatic thresholds, generic incident resolution, pause expiry and per-domain stale timers were removed. |
+
+Local evidence passes the focused kill-switch/overview Firestore emulator, root
+TypeScript, focused ESLint, SignalDesk runtime, access, workspace/client/action,
+source-lifecycle, dependency-freeze, docs-link, and diff gates. Feature 15
+changes no Firebase rules, indexes, Storage rules, or Functions source, so no
+Firebase deployment is required. No provider send, public route, contact,
+MenuList mutation, Vercel deployment, or external certification was performed.
+
+## Feature 17 Trust Partner Rail Revalidation - July 21, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | The master flag gates the direct page, workspace read, and all server actions. Mobile remains dashboard-only and all partner mutations are blocked. |
+| Access | Profile/deliverable/metric operations require source configure; tests/renewal require policy approve; briefs require draft create. Approved/active partner state and approved spend require session-derived founder-admin configure authority. |
+| Retry integrity | Profile, niche, deliverable, metric, and renewal operations use actor/key claims and Firestore transactions. Exact retries replay one entity; changed input conflicts. Deal and brief retain deterministic replay. |
+| Evidence | Observed metrics require the same partner's live deliverable with a canonical credential-free HTTP(S) post URL. Foreign, malformed, missing, or non-live lineage fails before writes. |
+| Recommendation | Renewal recommendation is derived from the latest ten strict metric rows. A conservative hold remains allowed; unsupported renew/retest/cut claims fail closed. |
+| Pause | The trust-partner pause blocks forward profile, test, approved deal, brief, deliverable and renew/retest work. Risk evidence, historical metrics, missed/paused states, hold/reject, and cut remain available. |
+| Firebase/cost | The section performs ten bounded list reads in parallel and omits budgets for non-configure callers. Exact writes are profile 5, niche 5, brief 4, deal 4/5, deliverable 5, metric 5/7, and renewal 6; replay writes zero. |
+| Documentation | All seven active Trust Partner documents now match the implemented route, permission, mobile, disclosure, cost, evidence, retry, and manual-execution boundaries. |
+
+Local evidence passes the focused provider-accounting Firestore emulator, root
+TypeScript, focused ESLint, SignalDesk runtime, workspace/access contracts,
+dependency-freeze, docs-link, and diff gates. Feature 17 changes no Firebase
+rules, indexes, Storage rules, or Functions source, so no Firebase deployment is
+required. No provider send, partner contact, contract, payment, publication,
+Vercel deployment, or external certification was performed.

@@ -1297,6 +1297,74 @@ const testPerRecordEnrichmentExpiry = async (): Promise<void> => {
   assert.equal(repeated.scrubbedExpiredEnrichmentCount, 0);
 };
 
+const testHistoricalEvidenceExpiresAfterTargetRefresh = async (): Promise<void> => {
+  await cleanup();
+  const policyId = "policy_future_evidence_record";
+  const targetId = "target_future_evidence_record";
+  const evidencePacketId = "evidence_historical_source_run";
+  const observedAt = Timestamp.fromMillis(BASE_NOW.getTime() - (5 * 86_400_000));
+  const expiresAt = Timestamp.fromMillis(BASE_NOW.getTime() - 1_000);
+  await seedPolicy({
+    expiresAt: new Date(BASE_NOW.getTime() + (30 * 24 * 60 * 60 * 1000)),
+    id: policyId,
+  });
+  await seedTarget(targetId, policyId);
+  const commonEvidence = {
+    allowedUse: ["evidence", "draft-personalization"],
+    confidence: "high",
+    createdAt: observedAt,
+    evidencePacketId,
+    pId: "SD",
+    rejectedFacts: ["Owner control was not verified."],
+    summary: "Sensitive historical evidence summary.",
+    targetId,
+    targetName: "Sensitive historical target",
+    updatedAt: observedAt,
+  };
+  await Promise.all([
+    db.collection(COLLECTIONS.evidence).doc(evidencePacketId).set({
+      ...commonEvidence,
+      facts: { currentListUrl: "https://example.test/historical-menu" },
+      sourceDataExpiresAt: expiresAt,
+      sourceDataLifecycleState: "active",
+      sourceDataObservedAt: observedAt,
+      sourcePolicyId: policyId,
+      sourceRunId: "run_historical_evidence",
+    }),
+    db.collection(COLLECTIONS.evidenceSummaries).doc(evidencePacketId).set(commonEvidence),
+  ]);
+
+  const result = await runSignalDeskSourceDataLifecycle({
+    firestore: db,
+    maxReconciliationSteps: 0,
+    now: Timestamp.fromDate(BASE_NOW),
+  });
+  assert.equal(result.scannedDueEvidenceCount, 1);
+  assert.equal(result.scrubbedExpiredEvidenceCount, 1);
+  const [target, detail, summary] = await Promise.all([
+    db.collection(COLLECTIONS.targets).doc(targetId).get(),
+    db.collection(COLLECTIONS.evidence).doc(evidencePacketId).get(),
+    db.collection(COLLECTIONS.evidenceSummaries).doc(evidencePacketId).get(),
+  ]);
+  assert.equal(target.get("sourceDataLifecycleState"), "active", "historical evidence expiry held the refreshed target");
+  for (const snapshot of [detail, summary]) {
+    assert.equal(snapshot.get("sourceDataLifecycleState"), "completed");
+    assert.equal(snapshot.get("targetName"), "Retained target record");
+    assert.equal(snapshot.get("summary"), "Source-derived evidence removed by retention policy.");
+    assert.deepEqual(snapshot.get("allowedUse"), []);
+    assert.equal(snapshot.get("sourceDataPayloadStored"), false);
+  }
+  assert.equal(detail.get("facts"), undefined);
+
+  const repeated = await runSignalDeskSourceDataLifecycle({
+    firestore: db,
+    maxReconciliationSteps: 0,
+    now: Timestamp.fromMillis(BASE_NOW.getTime() + 1_000),
+  });
+  assert.equal(repeated.scannedDueEvidenceCount, 0);
+  assert.equal(repeated.scrubbedExpiredEvidenceCount, 0);
+};
+
 const testAiDetailBackfillAndNinetyDayExpiry = async (): Promise<void> => {
   await cleanup();
   const oldCreatedAt = Timestamp.fromMillis(BASE_NOW.getTime() - (91 * 86_400_000));
@@ -1988,6 +2056,7 @@ const main = async (): Promise<void> => {
   await testExpandedDependencyRetentionAndSummaryReconciliation();
   await testMalformedProviderQuarantineAndPolicyBinding();
   await testPerRecordEnrichmentExpiry();
+  await testHistoricalEvidenceExpiresAfterTargetRefresh();
   await testAiDetailBackfillAndNinetyDayExpiry();
   await testTargetSpecificExpirySurvivesPolicyRenewal();
   await testMalformedCommercialOpportunityIsolation();

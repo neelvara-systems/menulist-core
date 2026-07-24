@@ -14,12 +14,13 @@ import {
 } from '@lib/posSync/testResponse';
 import { validatePosSyncWebhookUrl } from '@lib/posSync/webhookUrl';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { Modal, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCopy, LuEye, LuEyeOff, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, Input, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -124,12 +125,20 @@ async function readMobilePosSyncTestResponse(
     return payload;
 }
 
-export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps) {
+function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
     const t = useTranslations('PosSync');
     const tMobile = useTranslations('MobileSettings');
     const { data: session } = useSession();
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const posSyncScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+    const posSyncScopeKeyRef = useRef(posSyncScopeKey);
+    posSyncScopeKeyRef.current = posSyncScopeKey;
+    const componentActiveRef = useRef(true);
+    const connectionTestRequestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!connectionTestRequestGuardRef.current) {
+        connectionTestRequestGuardRef.current = createLatestRequestGuard();
+    }
     const [isSaving, setIsSaving] = useState(false);
     const [secretLoading, setSecretLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
@@ -164,6 +173,14 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     }));
 
     useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+            connectionTestRequestGuardRef.current!.invalidate();
+        };
+    }, []);
+
+    useEffect(() => {
         const nextDraft = {
             enabled: currentPosSync.enabled,
             webhookUrl: currentPosSync.webhookUrl,
@@ -189,6 +206,12 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             if (active) {
                 setWebhookSecret(result.secret);
                 setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(storeDetails.tenantId)
+                        || String(previous?.storeId ?? '') !== String(storeDetails.storeId)
+                    ) {
+                        return previous;
+                    }
                     const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
                     return {
                         ...previous,
@@ -216,25 +239,39 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
     const persistPosSync = async (nextPosSync: Record<string, any>) => {
         if (!storeDetails?.storeId) return false;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
+        const requestScopeKey = `${String(expectedTenantId ?? '')}:${String(expectedStoreId)}`;
 
         setIsSaving(true);
         try {
             const writeResult = await updateStore({
-                storeId: storeDetails.storeId,
-                tenantId: storeDetails.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
                 posSync: getStoreDeepDifference(nextPosSync, currentPosSync, {
                     detectRemovedRootKeys: true,
                 }),
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_pos_sync_store_update_rejected',
             );
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                posSync: nextPosSync,
-            }));
+            if (
+                !componentActiveRef.current
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return false;
+            }
+            setStoreDetails((previous: any) => {
+                if (
+                    String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                    || String(previous?.storeId ?? '') !== String(expectedStoreId)
+                ) {
+                    return previous;
+                }
+                return { ...previous, posSync: nextPosSync };
+            });
             return true;
         } catch (error) {
             logMobileOwnerFailure('mobile_pos_sync_settings_save_failed', error, {
@@ -248,10 +285,20 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 webhookSecretLength: webhookSecret.length,
                 webhookUrlChanged: String(nextPosSync.webhookUrl || '').trim() !== originalDraft.webhookUrl.trim(),
             });
-            Toast.show({ content: 'Failed to save external sync settings.', duration: 1500 });
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                Toast.show({ content: 'Failed to save external sync settings.', duration: 1500 });
+            }
             return false;
         } finally {
-            setIsSaving(false);
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setIsSaving(false);
+            }
         }
     };
 
@@ -269,6 +316,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     });
 
     const handleSave = async () => {
+        const requestScopeKey = posSyncScopeKey;
         const trimmedWebhookUrl = webhookUrl.trim();
         let normalizedWebhookUrl = trimmedWebhookUrl;
         if (enabled && trimmedWebhookUrl) {
@@ -288,24 +336,45 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     storeId: storeDetails?.storeId,
                     tenantId: storeDetails?.tenantId,
                 });
-                setWebhookSecret(result.secret);
-                setStoreDetails((previous: any) => {
-                    const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
-                    return {
-                        ...previous,
-                        posSync: { ...clientPosSync, secretVersion: result.version },
-                    };
-                });
+                if (
+                    componentActiveRef.current
+                    && posSyncScopeKeyRef.current === requestScopeKey
+                ) {
+                    setWebhookSecret(result.secret);
+                    setStoreDetails((previous: any) => {
+                        if (
+                            String(previous?.tenantId ?? '') !== String(storeDetails?.tenantId ?? '')
+                            || String(previous?.storeId ?? '') !== String(storeDetails?.storeId ?? '')
+                        ) {
+                            return previous;
+                        }
+                        const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
+                        return {
+                            ...previous,
+                            posSync: { ...clientPosSync, secretVersion: result.version },
+                        };
+                    });
+                }
             } catch (error) {
                 logMobileOwnerFailure(
                     'mobile_pos_sync_secret_ensure_failed',
                     error,
                     getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 );
-                Toast.show({ content: 'Could not prepare the verification secret. Try again.', duration: 1500 });
+                if (
+                    componentActiveRef.current
+                    && posSyncScopeKeyRef.current === requestScopeKey
+                ) {
+                    Toast.show({ content: 'Could not prepare the verification secret. Try again.', duration: 1500 });
+                }
                 return;
             } finally {
-                setSecretLoading(false);
+                if (
+                    componentActiveRef.current
+                    && posSyncScopeKeyRef.current === requestScopeKey
+                ) {
+                    setSecretLoading(false);
+                }
             }
         }
 
@@ -354,51 +423,80 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             return;
         }
 
+        const requestScopeKey = posSyncScopeKey;
+        const expectedStoreId = storeDetails?.storeId;
+        const expectedTenantId = storeDetails?.tenantId;
         const audit = buildSecretRotationAudit();
         setSecretLoading(true);
         try {
             const result = await requestPosSyncSecret({
                 action: 'rotate',
-                storeId: storeDetails?.storeId,
-                tenantId: storeDetails?.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
             });
-            setWebhookSecret(result.secret);
-            setSecretVisible(false);
-            setStoreDetails((previous: any) => {
-                const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
-                return {
-                    ...previous,
-                    posSync: {
-                        ...clientPosSync,
-                        consecutiveFailures: 0,
-                        lastError: '',
-                        secretRotatedAt: audit.secretRotatedAt,
-                        secretRotatedByEmail: audit.secretRotatedByEmail,
-                        secretRotatedByUserId: audit.secretRotatedByUserId,
-                        secretVersion: result.version,
-                        status: enabled ? 'healthy' : 'disabled',
-                    },
-                };
-            });
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setWebhookSecret(result.secret);
+                setSecretVisible(false);
+                setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                        || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                    ) {
+                        return previous;
+                    }
+                    const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
+                    return {
+                        ...previous,
+                        posSync: {
+                            ...clientPosSync,
+                            consecutiveFailures: 0,
+                            lastError: '',
+                            secretRotatedAt: audit.secretRotatedAt,
+                            secretRotatedByEmail: audit.secretRotatedByEmail,
+                            secretRotatedByUserId: audit.secretRotatedByUserId,
+                            secretVersion: result.version,
+                            status: enabled ? 'healthy' : 'disabled',
+                        },
+                    };
+                });
+            }
             logPosSyncSecretRotationAudit({
                 actorEmail: audit.secretRotatedByEmail,
                 actorUserId: audit.secretRotatedByUserId,
                 rotatedAt: audit.secretRotatedAt,
-                storeId: storeDetails?.storeId,
-                tenantId: storeDetails?.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
             });
-            setRegenerateSecretModalOpen(false);
-            setRegenerateSecretConfirmationText('');
-            Toast.show({ content: 'New secret generated. Use Copy to share it with your provider.', duration: 1500 });
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setRegenerateSecretModalOpen(false);
+                setRegenerateSecretConfirmationText('');
+                Toast.show({ content: 'New secret generated. Use Copy to share it with your provider.', duration: 1500 });
+            }
         } catch (error) {
             logMobileOwnerFailure(
                 'mobile_pos_sync_secret_rotation_save_failed',
                 error,
                 getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
             );
-            Toast.show({ content: 'Could not save the new secret. Try again.', duration: 1500 });
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                Toast.show({ content: 'Could not save the new secret. Try again.', duration: 1500 });
+            }
         } finally {
-            setSecretLoading(false);
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setSecretLoading(false);
+            }
         }
     };
 
@@ -429,6 +527,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
     const handleTest = async () => {
         if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        const requestScopeKey = posSyncScopeKey;
+        const requestId = connectionTestRequestGuardRef.current!.begin();
 
         setIsTesting(true);
         setTestResult(null);
@@ -443,6 +543,13 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 }),
             });
             const data = await readMobilePosSyncTestResponse(response, storeDetails.storeId, storeDetails.tenantId);
+            if (
+                !connectionTestRequestGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             if (response.ok && isSuccessfulPosSyncTestResponse(data)) {
                 setTestResult({
                     success: true,
@@ -467,13 +574,26 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 });
             }
         } catch (error) {
+            if (
+                !connectionTestRequestGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logMobileOwnerFailure('mobile_pos_sync_test_failed', error, getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId));
             setTestResult({
                 success: false,
                 message: POS_SYNC_CONNECTION_ISSUE_MESSAGE,
             });
         } finally {
-            setIsTesting(false);
+            if (
+                connectionTestRequestGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setIsTesting(false);
+            }
         }
     };
 
@@ -710,4 +830,11 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             </Modal>
         </Flex>
     );
+}
+
+export default function MobilePosSyncScreen(props: MobilePosSyncScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+
+    return <MobilePosSyncScreenContent key={scopeKey} {...props} />;
 }

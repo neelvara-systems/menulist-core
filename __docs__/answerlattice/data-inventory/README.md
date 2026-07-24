@@ -52,8 +52,8 @@ Answerlattice stores data in six broad layers:
 ## Most important audit observations
 
 - Answerlattice already has a stronger product boundary than MenuList's older shared support surfaces: dedicated Firebase client/admin runtime, dedicated rules/index files, and separate Cloud Functions under `functions-answerlattice/`.
-- The largest growth surface is `aiSearchHistory`. It is written on instant-cache hits, canonical hits, FAQ hits, no-result paths, and RAG answer generation. It now gets a 90-day `expiresAt`, bounded references/payload fields, and scheduler cleanup for legacy rows.
-- `queryEmbeddings` now gets a 30-day `expiresAt`, Firestore TTL coverage, best-effort stale document deletion on cache read, and a fixed bounded diagnostic if stale cleanup fails.
+- The largest growth surface is `aiSearchHistory`. It is written on instant-cache hits, canonical hits, FAQ hits, no-result paths, and RAG answer generation. It now gets a 90-day `expiresAt`, bounded references/payload fields, and optional legacy cleanup constrained to exact `pId: AL` before cutoff and limit.
+- `queryEmbeddings` gets a 30-day `expiresAt` and Firestore TTL coverage, while runtime reads independently require a valid creation time, reject explicit expiry without waiting for asynchronous TTL, and best-effort delete stale/invalid rows only when the read snapshot is still current. Cleanup failure diagnostics are bounded, and optional legacy cleanup is constrained to exact `pId: AL`.
 - Knowledge Intake redacts common secrets before storing source text and does not retain raw media after extraction, but it does keep source text, excerpts, hashes, review items, usage ledger rows, and published outputs until an explicit compaction/retention policy is implemented.
 - Signal events, integration events, delivery logs, and rate counters have `expiresAt` fields and Firestore TTL overrides. Signal writers use a 365-day retention window, while friction daily stats retain their bounded 90-day scheduler cleanup.
 - Scheduler run logs, generic notification logs, owner notification events/deliveries/rate counters, and public contact enquiries now get explicit Answerlattice `expiresAt` fields.
@@ -66,8 +66,8 @@ Answerlattice stores data in six broad layers:
 | Area | Implemented control |
 | --- | --- |
 | Product retention helpers | Added app-side and functions-side Answerlattice retention helpers with fixed platform windows. |
-| Search history | Added 90-day `expiresAt`, payload/reference caps, omitted vector-like fields, and legacy scheduler cleanup by `createdOn`. |
-| Query embeddings | Added 30-day `expiresAt`, stale-read deletion, TTL override, and scheduler cleanup by `createdAt`. |
+| Search history | Added 90-day `expiresAt`, payload/reference caps, omitted vector-like fields, and exact-Answerlattice legacy cleanup by `pId + createdOn`. |
+| Query embeddings | Added 30-day `expiresAt`, stale-read deletion, TTL override, and exact-Answerlattice legacy cleanup by `pId + createdAt`. |
 | Knowledge Intake counters | Review-item edits now update parent job status counters transactionally instead of rereading all sources and review items after each item edit. |
 | Master scheduler state | Task outcomes now store fixed failure codes plus bounded source-error metadata instead of raw exception text. |
 | Scheduler run logs | Added 90-day `expiresAt`, retention cleanup counts, fixed scheduler failure codes, and bounded diagnostic metadata to nightly run totals. |

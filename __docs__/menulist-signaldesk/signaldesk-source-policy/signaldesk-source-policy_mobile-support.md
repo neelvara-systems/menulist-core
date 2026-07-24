@@ -1,36 +1,25 @@
-# SignalDesk Source Policy - Mobile Support Assessment
+# SignalDesk Source Policy Mobile Support
 
-**Status:** Initial assessment
-**Created:** June 23, 2026
-**Mobile relevance decision:** No for editing; read-only status only.
+**Status:** Dashboard-only; policy mutation intentionally blocked
+**Last verified:** July 21, 2026
 
-## Admission Test
+## Decision
 
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Fail | Source policy changes are rare and high-risk. |
-| Speed | Fail | Requires careful review of terms, fields, and retention. |
-| Touch | Fail | Dense policy forms are not mobile-safe. |
-| Value | Partial | Founder may need to see if a source is paused. |
+Source-policy administration fails the mobile admission test. It is infrequent, high-risk, dense, and requires careful review of terms, fields, contact authority, retention, and downstream effects.
 
-## Mobile Allowed
+## Mobile Behavior
 
-- view source policy status summary;
-- view active source-provider pause;
-- activate source-provider kill switch.
+- SignalDesk detects mobile/coarse-pointer clients and presents the read-only control posture.
+- `create-source-policy`, `renew-source-policy`, provider runs, imports, source configuration, and scoped policy/kill-switch mutations are rejected by the server mobile-action class.
+- Mobile may view bounded policy and control summaries when the role has section permission.
+- Mobile may activate the separately governed `global-outbound` emergency pause with explicit mobile confirmation.
+- Mobile cannot clear that pause or activate/clear source-provider-specific pauses.
+- No raw provider payload or hidden contact data is exposed.
 
-## Mobile Blocked
+## Desktop Requirement
 
-- create source policy;
-- approve source policy;
-- edit allowed fields;
-- edit outreach eligibility;
-- start source run;
-- view raw source payload;
-- change retention.
+Use an authorized desktop session to create/renew policies, approve providers/budgets, run sources, or change source controls. The desktop UI and API still enforce the same permission, schema, policy, and idempotency rules.
 
-## Acceptance Criteria
+## Verification
 
-- Mobile cannot approve a source.
-- Mobile cannot start a source run.
-- Mobile can pause a source provider.
+The runtime verifier locks `renew-source-policy` and `create-source-policy` to the `mutate_policy` mobile class. Existing mobile access/action boundary tests cover the read-only posture and emergency-pause exception.

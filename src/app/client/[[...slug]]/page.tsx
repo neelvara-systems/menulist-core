@@ -49,6 +49,7 @@ import {
 } from "@lib/localization/publicCustomerMessages";
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { projectPublicDecisionBlocks } from "@lib/decisionBlocks/publicProjection";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
 import { buildCanonicalItemUrl } from "@lib/menu/itemTruthUrls";
 import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
@@ -271,40 +272,6 @@ async function getProjectData(projectId: string): Promise<any> {
         .get();
     if (!docSnap.exists) return null;
     return docSnap.data();
-}
-
-function getTimestampMillis(value: unknown): number | null {
-    if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
-    if (typeof value === 'string' || typeof value === 'number') {
-        const millis = new Date(value).getTime();
-        return Number.isNaN(millis) ? null : millis;
-    }
-    if (typeof value === 'object') {
-        const timestampLike = value as { toMillis?: () => number; toDate?: () => Date; seconds?: number; _seconds?: number };
-        if (typeof timestampLike.toMillis === 'function') {
-            const millis = timestampLike.toMillis();
-            return Number.isFinite(millis) ? millis : null;
-        }
-        if (typeof timestampLike.toDate === 'function') {
-            const date = timestampLike.toDate();
-            return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
-        }
-        const seconds = timestampLike.seconds ?? timestampLike._seconds;
-        return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds * 1000 : null;
-    }
-    return null;
-}
-
-function getUsableEmbeddedDecisionBlocks(projectData: any): any | null {
-    const blocks = projectData?.publicDecisionBlocks;
-    if (!blocks || typeof blocks !== 'object') return null;
-    const validUntilMs = getTimestampMillis(blocks.validUntil);
-    if (!validUntilMs || validUntilMs <= Date.now()) return null;
-    if (!Array.isArray(blocks.popular) && !Array.isArray(blocks.quickPick) && !Array.isArray(blocks.bestValue)) {
-        return null;
-    }
-    return blocks;
 }
 
 // Get all projects for a store and find by slug or default.
@@ -2074,6 +2041,7 @@ async function MenuContent({
     const result = await resolveSpecialMenuOverride(storeData, baseResult);
 
     const { projectData: rawProjectData, projectMetadata, redirectSlug, isMenuAliasFallback } = result;
+    const projectId = String(projectMetadata.projectId || projectMetadata.id || '');
 
     // URL Routing Architecture — ADR-3: 301 redirect from old slug to current slug
     // Preserves QR codes and shared links when project is renamed
@@ -2088,7 +2056,11 @@ async function MenuContent({
     }
 
     // Strip internal metadata before any customer-facing usage (TASK 7)
-    const embeddedDecisionBlocks = getUsableEmbeddedDecisionBlocks(rawProjectData);
+    const embeddedDecisionBlocks = projectPublicDecisionBlocks(rawProjectData?.publicDecisionBlocks, {
+        tId: String(storeData.tenantId),
+        sId: String(storeData.storeId),
+        projectId,
+    });
     const sanitized = serializeClientValue(sanitizeForClient(rawProjectData));
     const effectiveBusinessType = resolvePublicBusinessType(
         storeDetails?.businessType,
@@ -2114,8 +2086,6 @@ async function MenuContent({
     if (!clientStoreDetails) {
         notFound();
     }
-
-    const projectId = projectMetadata.projectId || projectMetadata.id;
 
     // Precomputed Decision Blocks are embedded in the already-loaded project read.
     const precomputedBlocks = serializeClientValue(embeddedDecisionBlocks);

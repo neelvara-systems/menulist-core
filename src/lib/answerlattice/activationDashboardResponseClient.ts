@@ -63,10 +63,21 @@ const isSafeIntegerBetween = (value: unknown, min: number, max: number): value i
     && value <= max
 );
 
+export const normalizeAnswerlatticeOperationsMetric = (
+    value: unknown,
+    max = Number.MAX_SAFE_INTEGER,
+): number => (
+    isSafeIntegerBetween(value, 0, max) ? value : 0
+);
+
 const isOptionalBoundedString = (value: unknown, maxLength: number): boolean => (
     value === undefined
     || value === null
     || (typeof value === 'string' && value.length <= maxLength)
+);
+
+const isNullableBoundedString = (value: unknown, maxLength: number): boolean => (
+    value === null || (typeof value === 'string' && value.length <= maxLength)
 );
 
 const isCanonicalIsoTimestamp = (value: unknown): value is string => {
@@ -77,6 +88,10 @@ const isCanonicalIsoTimestamp = (value: unknown): value is string => {
 
 const isOptionalCanonicalIsoTimestamp = (value: unknown): boolean => (
     value === undefined || value === null || isCanonicalIsoTimestamp(value)
+);
+
+const isNullableCanonicalIsoTimestamp = (value: unknown): boolean => (
+    value === null || isCanonicalIsoTimestamp(value)
 );
 
 const isPercentageOrNull = (value: unknown): boolean => (
@@ -98,6 +113,31 @@ const ACTIVATION_STEP_STATUSES = new Set(['complete', 'attention', 'pending', 'o
 const ACTIVATION_STAGES = new Set(['setup', 'install', 'knowledge', 'live']);
 const SURFACE_READINESS_STATUSES = new Set(['ready', 'needs_mapping', 'needs_articles', 'open_signals']);
 const COMPILED_CONTEXT_STATUSES = new Set(['empty', 'building', 'ready', 'stale', 'failed', 'superseded']);
+const OPERATION_STATUSES = new Set([
+    'completed',
+    'success',
+    'partial',
+    'running',
+    'skipped',
+    'not_started',
+    'failed',
+]);
+const OPERATIONS_RUN_READ_CAP_MAX = 20;
+
+const isNullableOperationStatus = (value: unknown): boolean => (
+    value === null || OPERATION_STATUSES.has(String(value))
+);
+
+const isOptionalLocalDate = (value: unknown): boolean => {
+    if (value === null) return true;
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const millis = Date.parse(`${value}T00:00:00.000Z`);
+    return Number.isFinite(millis) && new Date(millis).toISOString().slice(0, 10) === value;
+};
+
+const isEmptyRecord = (value: unknown): boolean => (
+    isRecord(value) && Object.keys(value).length === 0
+);
 
 const isActivationStep = (value: unknown): boolean => {
     if (!isRecord(value)) return false;
@@ -275,7 +315,7 @@ const isActivationSummary = (value: unknown): value is AnswerlatticeActivationSu
             || !(
                 value.subscription.amount === undefined
                 || value.subscription.amount === null
-                || (isFiniteNumber(value.subscription.amount) && value.subscription.amount >= 0 && value.subscription.amount <= 1_000_000_000)
+                || isSafeIntegerBetween(value.subscription.amount, 0, 1_000_000_000)
             )
             || (value.subscription.isBeta !== undefined && typeof value.subscription.isBeta !== 'boolean')
             || !isOptionalCanonicalIsoTimestamp(value.subscription.subscriptionEndDate)
@@ -346,13 +386,78 @@ const isActivationSummary = (value: unknown): value is AnswerlatticeActivationSu
 
 const isOperationsStatus = (value: unknown): value is AnswerlatticeOperationsStatusSummary => {
     if (!isRecord(value)) return false;
-    return (
-        isRecord(value.schedule)
-        && isRecord(value.masterScheduler)
-        && isRecord(value.workspace)
-        && Array.isArray(value.latestRuns)
-        && isRecord(value.readModel)
-    );
+    if (
+        !isRecord(value.schedule)
+        || typeof value.schedule.timeZone !== 'string'
+        || value.schedule.timeZone.length === 0
+        || value.schedule.timeZone.length > 120
+        || typeof value.schedule.businessDayEndTime !== 'string'
+        || !/^\d{2}:\d{2}$/.test(value.schedule.businessDayEndTime)
+        || typeof value.schedule.settlementLocalTime !== 'string'
+        || !/^\d{2}:\d{2}$/.test(value.schedule.settlementLocalTime)
+        || !isSafeIntegerBetween(value.schedule.settlementBufferMinutes, 0, 24 * 60)
+        || typeof value.schedule.description !== 'string'
+        || value.schedule.description.length > 500
+        || !isRecord(value.masterScheduler)
+        || typeof value.masterScheduler.schedulerName !== 'string'
+        || value.masterScheduler.schedulerName.length === 0
+        || value.masterScheduler.schedulerName.length > 160
+        || !isNullableCanonicalIsoTimestamp(value.masterScheduler.updatedAt)
+        || !isRecord(value.masterScheduler.governanceTask)
+    ) return false;
+
+    const governanceTask = value.masterScheduler.governanceTask;
+    if (
+        !isNullableOperationStatus(governanceTask.lastStatus)
+        || !isNullableBoundedString(governanceTask.lastRunId, 180)
+        || !isNullableCanonicalIsoTimestamp(governanceTask.lastAttemptAt)
+        || !isNullableCanonicalIsoTimestamp(governanceTask.lastFinishedAt)
+        || !isSafeIntegerBetween(governanceTask.lastDurationMs, 0, Number.MAX_SAFE_INTEGER)
+        || typeof governanceTask.lastActivity !== 'boolean'
+        || !isNullableBoundedString(governanceTask.lastError, 200)
+        || !isEmptyRecord(governanceTask.lastDetails)
+        || !isRecord(value.workspace)
+        || !OPERATION_STATUSES.has(String(value.workspace.status))
+        || !isOptionalLocalDate(value.workspace.lastAttemptedLocalDate)
+        || !isNullableCanonicalIsoTimestamp(value.workspace.lastAttemptedAt)
+        || !isOptionalLocalDate(value.workspace.lastCompletedLocalDate)
+        || !isNullableCanonicalIsoTimestamp(value.workspace.lastCompletedAt)
+        || !isOptionalLocalDate(value.workspace.lastFailedLocalDate)
+        || !isNullableCanonicalIsoTimestamp(value.workspace.lastFailedAt)
+        || !isRecord(value.workspace.lastDetails)
+        || !isNullableBoundedString(value.workspace.lastDetails.nightlyStatus, 80)
+        || !isNullableBoundedString(value.workspace.lastDetails.tenantStatus, 80)
+        || !isSafeIntegerBetween(value.workspace.lastDetails.taskCount, 0, 1_000_000)
+        || !isSafeIntegerBetween(value.workspace.lastDetails.errorCount, 0, 1_000_000)
+        || !Array.isArray(value.latestRuns)
+        || value.latestRuns.length > OPERATIONS_RUN_READ_CAP_MAX
+    ) return false;
+
+    const runsValid = value.latestRuns.every(run => (
+        isRecord(run)
+        && typeof run.id === 'string'
+        && run.id.length > 0
+        && run.id.length <= 180
+        && isNullableOperationStatus(run.status)
+        && isNullableBoundedString(run.trigger, 120)
+        && isNullableCanonicalIsoTimestamp(run.startedAt)
+        && isNullableCanonicalIsoTimestamp(run.completedAt)
+        && isSafeIntegerBetween(run.durationMs, 0, Number.MAX_SAFE_INTEGER)
+        && isNullableOperationStatus(run.tenantStatus)
+        && isSafeIntegerBetween(run.taskCount, 0, 1_000_000)
+        && isSafeIntegerBetween(run.errorCount, 0, 1_000_000)
+        && isEmptyRecord(run.totals)
+    ));
+    if (!runsValid || !isRecord(value.readModel)) return false;
+
+    return isSafeIntegerBetween(value.readModel.runLogReadCap, 1, OPERATIONS_RUN_READ_CAP_MAX)
+        && isSafeIntegerBetween(value.readModel.firestoreReads, 0, 100)
+        && value.readModel.firestoreReads === 3 + value.readModel.runLogReadCap
+        && typeof value.readModel.source === 'string'
+        && value.readModel.source.length > 0
+        && value.readModel.source.length <= 500
+        && isSafeIntegerBetween(value.readModel.workspaceRunMatches, 0, value.readModel.runLogReadCap)
+        && value.readModel.workspaceRunMatches === value.latestRuns.length;
 };
 
 export const isAnswerlatticeActivationSummaryResponse = (

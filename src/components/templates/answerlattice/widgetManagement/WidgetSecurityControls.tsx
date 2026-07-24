@@ -22,12 +22,15 @@ import {
     Typography,
     message,
 } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuCopy, LuExternalLink, LuKeyRound, LuPlus, LuRefreshCw, LuShieldCheck, LuTrash2 } from 'react-icons/lu';
 
 const { Paragraph, Text } = Typography;
 const RESPONSE_MAX_BYTES = 64 * 1024;
 const ACTION_BUTTON_STYLE = { minHeight: 44 };
+const PRIVATE_KEY_PKCS8_PATTERN = /^MC4CAQAwBQYDK2VwBCIEI[A-Za-z0-9+/]{43}$/;
+const PUBLIC_KEY_SPKI_PATTERN = /^MCowBQYDK2VwAyEA[A-Za-z0-9+/]{43}=$/;
+const KEY_ID_PATTERN = /^alk_[A-Za-z0-9]{20}$/;
 const WIDGET_SECURITY_COPY_FAILURE_CODES = {
     unavailable: 'answerlattice_widget_security_copy_unavailable',
     fallbackFailed: 'answerlattice_widget_security_copy_fallback_failed',
@@ -48,24 +51,61 @@ type WidgetSecurityResponse = {
     error?: string;
 };
 
+const isCanonicalIsoTimestamp = (value: unknown): value is string => {
+    if (typeof value !== 'string' || value.length < 20 || value.length > 40) return false;
+    const millis = Date.parse(value);
+    return Number.isFinite(millis) && new Date(millis).toISOString() === value;
+};
+
+const isCanonicalEvidenceHost = (value: unknown): value is string => {
+    if (typeof value !== 'string' || value.length < 1 || value.length > 253 || value !== value.toLowerCase()) return false;
+    try {
+        const parsed = new URL(`https://${value}`);
+        return parsed.hostname === value
+            && !parsed.username
+            && !parsed.password
+            && !parsed.port
+            && parsed.pathname === '/'
+            && !parsed.search
+            && !parsed.hash;
+    } catch {
+        return false;
+    }
+};
+
 const isWidgetSecurityResponse = (value: unknown): value is WidgetSecurityResponse => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const response = value as Record<string, unknown>;
+    const verifiedContext = response.verifiedContext as Record<string, unknown> | null;
     return Array.isArray(response.evidenceAllowedHosts)
-        && response.evidenceAllowedHosts.every(host => typeof host === 'string')
+        && response.evidenceAllowedHosts.length <= 10
+        && response.evidenceAllowedHosts.every(isCanonicalEvidenceHost)
+        && new Set(response.evidenceAllowedHosts).size === response.evidenceAllowedHosts.length
         && (response.verifiedContext === null || (
-            Boolean(response.verifiedContext)
-            && typeof response.verifiedContext === 'object'
-            && typeof (response.verifiedContext as any).keyId === 'string'
-            && typeof (response.verifiedContext as any).publicKeySpki === 'string'
-        ));
+            Boolean(verifiedContext)
+            && typeof verifiedContext === 'object'
+            && verifiedContext.enabled === true
+            && verifiedContext.algorithm === 'Ed25519'
+            && typeof verifiedContext.keyId === 'string'
+            && KEY_ID_PATTERN.test(verifiedContext.keyId)
+            && isCanonicalIsoTimestamp(verifiedContext.createdAt)
+            && (verifiedContext.rotatedAt === null || verifiedContext.rotatedAt === undefined || isCanonicalIsoTimestamp(verifiedContext.rotatedAt))
+            && typeof verifiedContext.publicKeySpki === 'string'
+            && PUBLIC_KEY_SPKI_PATTERN.test(verifiedContext.publicKeySpki)
+        ))
+        && (response.privateKeyPkcs8 === undefined || (
+            typeof response.privateKeyPkcs8 === 'string'
+            && PRIVATE_KEY_PKCS8_PATTERN.test(response.privateKeyPkcs8)
+            && response.privateKeyShownOnce === true
+        ))
+        && (response.privateKeyShownOnce === undefined || response.privateKeyShownOnce === true);
 };
 
-const getError = (payload: unknown, fallback: string) => (
-    payload && typeof payload === 'object' && typeof (payload as any).error === 'string'
-        ? (payload as any).error
-        : fallback
-);
+const getError = (payload: unknown, fallback: string) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return fallback;
+    const error = (payload as Record<string, unknown>).error;
+    return typeof error === 'string' && error.length > 0 && error.length <= 160 ? error : fallback;
+};
 
 export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean }) {
     const [data, setData] = useState<WidgetSecurityResponse | null>(null);
@@ -75,6 +115,8 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
     const [privateKey, setPrivateKey] = useState<string | null>(null);
     const [newHost, setNewHost] = useState('');
     const [hosts, setHosts] = useState<string[]>([]);
+    const keyMutationInFlightRef = useRef(false);
+    const hostSaveInFlightRef = useRef(false);
 
     const load = useCallback(async () => {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT && !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS) return;
@@ -101,6 +143,8 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
     }, [load]);
 
     const rotateKey = useCallback(async () => {
+        if (keyMutationInFlightRef.current) return;
+        keyMutationInFlightRef.current = true;
         setRotating(true);
         try {
             const response = await fetch('/api/answerlattice/widget-security', {
@@ -115,6 +159,7 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
                 || !isWidgetSecurityResponse(payload)
                 || payload.privateKeyShownOnce !== true
                 || typeof payload.privateKeyPkcs8 !== 'string'
+                || !PRIVATE_KEY_PKCS8_PATTERN.test(payload.privateKeyPkcs8)
             ) {
                 throw new Error(getError(payload, 'Could not create the signing key.'));
             }
@@ -124,11 +169,14 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not create the signing key.');
         } finally {
+            keyMutationInFlightRef.current = false;
             setRotating(false);
         }
     }, []);
 
     const disableKey = useCallback(async () => {
+        if (keyMutationInFlightRef.current) return;
+        keyMutationInFlightRef.current = true;
         setRotating(true);
         try {
             const response = await fetch('/api/answerlattice/widget-security', {
@@ -145,11 +193,14 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not disable verified context.');
         } finally {
+            keyMutationInFlightRef.current = false;
             setRotating(false);
         }
     }, []);
 
     const saveHosts = useCallback(async (nextHosts: string[]) => {
+        if (hostSaveInFlightRef.current) return;
+        hostSaveInFlightRef.current = true;
         setSavingHosts(true);
         try {
             const response = await fetch('/api/answerlattice/widget-security', {
@@ -168,13 +219,22 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not save evidence hosts.');
         } finally {
+            hostSaveInFlightRef.current = false;
             setSavingHosts(false);
         }
     }, []);
 
     const addHost = useCallback(() => {
+        if (hostSaveInFlightRef.current) {
+            message.info('Wait for the current evidence host change to finish.');
+            return;
+        }
         const raw = newHost.trim().toLowerCase();
         if (!raw || hosts.includes(raw)) return;
+        if (!isCanonicalEvidenceHost(raw)) {
+            message.error('Use an exact HTTPS hostname without a path, port, or credentials.');
+            return;
+        }
         const next = [...hosts, raw].slice(0, 10);
         setNewHost('');
         void saveHosts(next);

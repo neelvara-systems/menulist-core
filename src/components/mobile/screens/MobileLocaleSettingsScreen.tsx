@@ -19,7 +19,7 @@ import {
 } from '@lib/localization/config';
 import { getUTCDate } from '@util/dateTime';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -55,7 +55,7 @@ function getInitialLocaleForm(storeDetails: any) {
     };
 }
 
-export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopySetup }: MobileLocaleSettingsScreenProps) {
+function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: MobileLocaleSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
     const format = useFormatter();
@@ -65,7 +65,16 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState(getInitialLocaleForm(storeDetails));
     const [originalFormData, setOriginalFormData] = useState(() => getInitialLocaleForm(storeDetails));
+    const componentActiveRef = useRef(true);
+    const localeSaveInFlightRef = useRef(false);
     const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
 
     const languageOptions = useMemo(() => GlobalLanguagesList.map((lang) => ({
         label: lang.nativeName !== lang.name ? `${lang.nativeName} (${lang.name})` : lang.name,
@@ -130,16 +139,20 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
     };
 
     const handleSave = useCallback(async () => {
-        if (!storeDetails?.storeId) return;
+        if (!storeDetails?.storeId || !storeDetails?.tenantId || localeSaveInFlightRef.current) return;
+        localeSaveInFlightRef.current = true;
         setIsSaving(true);
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
+        const previousLocale = getInitialLocaleForm(storeDetails);
         const normalizedLanguagePolicy = normalizeStoreLanguagePolicy({
             activeLanguages: formData.activeLanguages,
             defaultLanguage: formData.defaultLanguage,
         });
 
         const payload = {
-            storeId: storeDetails.storeId,
-            tenantId: storeDetails.tenantId,
+            storeId: expectedStoreId,
+            tenantId: expectedTenantId,
             activeLanguages: normalizedLanguagePolicy.activeLanguages,
             currencyCode: formData.currencyCode,
             currencySymbol: formData.currencySymbol,
@@ -150,15 +163,20 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
             dateFormat: formData.dateFormat,
         };
 
-        setStoreDetails((previous: any) => ({ ...previous, ...payload }));
+        setStoreDetails((previous: any) => (
+            previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
+                ? { ...previous, ...payload }
+                : previous
+        ));
 
         try {
             const writeResult = await updateStore(payload);
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_locale_settings_store_update_rejected',
             );
+            if (!componentActiveRef.current) return;
             setFormData((previous) => ({
                 ...previous,
                 activeLanguages: normalizedLanguagePolicy.activeLanguages,
@@ -186,20 +204,27 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
                 timeFormatChanged: formData.timeFormat !== storeDetails.timeFormat,
                 businessDayEndTimeChanged: formData.businessDayEndTime !== storeDetails.businessDayEndTime,
             });
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                activeLanguages: storeDetails.activeLanguages,
-                currencyCode: storeDetails.currencyCode,
-                currencySymbol: storeDetails.currencySymbol,
-                defaultLanguage: storeDetails.defaultLanguage,
-                timeFormat: storeDetails.timeFormat,
-                timeZone: storeDetails.timeZone,
-                businessDayEndTime: storeDetails.businessDayEndTime,
-                dateFormat: storeDetails.dateFormat,
-            }));
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
+            setStoreDetails((previous: any) => {
+                const stillOwnsOptimisticState = (
+                    previous?.storeId === expectedStoreId
+                    && previous?.tenantId === expectedTenantId
+                    && previous?.activeLanguages === payload.activeLanguages
+                    && previous?.currencyCode === payload.currencyCode
+                    && previous?.currencySymbol === payload.currencySymbol
+                    && previous?.defaultLanguage === payload.defaultLanguage
+                    && previous?.timeFormat === payload.timeFormat
+                    && previous?.timeZone === payload.timeZone
+                    && previous?.businessDayEndTime === payload.businessDayEndTime
+                    && previous?.dateFormat === payload.dateFormat
+                );
+                return stillOwnsOptimisticState ? { ...previous, ...previousLocale } : previous;
+            });
+            if (componentActiveRef.current) {
+                Toast.show({ content: t('failedToSave'), duration: 2000 });
+            }
         } finally {
-            setIsSaving(false);
+            localeSaveInFlightRef.current = false;
+            if (componentActiveRef.current) setIsSaving(false);
         }
     }, [formData, setStoreDetails, storeDetails, t]);
 
@@ -376,4 +401,11 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
             </Flex>
         </Flex>
     );
+}
+
+export default function MobileLocaleSettingsScreen(props: MobileLocaleSettingsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileLocaleSettingsScreenContent key={scopeKey} {...props} />;
 }

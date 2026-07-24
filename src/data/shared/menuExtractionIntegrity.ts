@@ -30,6 +30,24 @@ export function findDuplicateMenuExtractionFileUids(
   return Array.from(duplicates).sort();
 }
 
+export function findInvalidMenuExtractionFileUidIndexes(
+  files: ReadonlyArray<{ uid?: unknown }>,
+): number[] {
+  const invalidIndexes: number[] = [];
+  files.forEach((file, index) => {
+    const uid = file?.uid;
+    if (
+      typeof uid !== "string"
+      || uid.length === 0
+      || uid.length > 120
+      || uid.trim() !== uid
+    ) {
+      invalidIndexes.push(index);
+    }
+  });
+  return invalidIndexes;
+}
+
 export function findInvalidMenuExtractionSourceIndexes(
   records: ReadonlyArray<{ sourceFileIndex?: unknown }>,
   sourceFileCount: number,
@@ -83,6 +101,9 @@ export function selectNewMenuExtractionProjectFiles<
   existingFiles: readonly TExisting[],
   incomingFiles: readonly TIncoming[],
 ): TIncoming[] {
+  if (findInvalidMenuExtractionFileUidIndexes(incomingFiles).length > 0) {
+    throw new Error("MENU_EXTRACTION_INVALID_INCOMING_FILE_UID");
+  }
   const duplicateIncomingUids = findDuplicateMenuExtractionFileUids(incomingFiles);
   if (duplicateIncomingUids.length > 0) {
     throw new Error("MENU_EXTRACTION_DUPLICATE_INCOMING_FILE_UID");

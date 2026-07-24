@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getGeneratedEmail } from '@constant/urls';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import {
     AuthUserIdentityConflictError,
@@ -161,6 +162,53 @@ const verifyAmbiguousAuthIdentitiesFailClosed = async (): Promise<void> => {
     assert.equal((await getAuthUserByEmail('unique@example.com'))?.id, 'unique-email-user');
 };
 
+const verifyLegacyPhoneOnlyUserGetsBoundLoginEmail = async (): Promise<void> => {
+    const challengeId = 'OtpLegacyPhoneOnly01';
+    const phoneE164 = '+919700000004';
+    const phoneUsername = phoneE164.replace(/\D/g, '');
+    const userId = 'legacy-phone-only-user';
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);
+    await userRef.set({
+        active: true,
+        authDisabled: false,
+        phone: phoneE164,
+        phoneUsername,
+    });
+    await seedChallenge({ challengeId, phoneE164 });
+
+    const verified = await verifyPhoneOtpChallenge({ challengeId, code: '246810' });
+    const persistedUser = (await userRef.get()).data();
+    assert.equal(persistedUser?.email, getGeneratedEmail(phoneE164));
+    const consumedUser = await consumePhoneOtpLoginToken({ token: verified.loginToken });
+    assert.equal(consumedUser.id, userId);
+};
+
+const verifyLegacyPhoneEmailConflictFailsClosed = async (): Promise<void> => {
+    const challengeId = 'OtpEmailConflict0001';
+    const phoneE164 = '+919700000005';
+    const phoneUsername = phoneE164.replace(/\D/g, '');
+    const phoneUserId = 'legacy-phone-conflict-user';
+    const phoneUserRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(phoneUserId);
+    const challengeRef = await seedChallenge({ challengeId, phoneE164 });
+    await Promise.all([
+        phoneUserRef.set({ phone: phoneE164, phoneUsername }),
+        firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc('generated-email-conflict-user').set({
+            email: getGeneratedEmail(phoneE164),
+        }),
+    ]);
+
+    await assert.rejects(
+        verifyPhoneOtpChallenge({ challengeId, code: '246810' }),
+        AuthUserIdentityConflictError,
+    );
+    const challenge = (await challengeRef.get()).data();
+    assert.equal(challenge?.status, 'pending');
+    assert.equal(challenge?.verificationOperationId, undefined);
+    const phoneUser = (await phoneUserRef.get()).data();
+    assert.equal(phoneUser?.email, undefined);
+    assert.equal(phoneUser?.phoneVerifiedAt, undefined);
+};
+
 const run = async (): Promise<void> => {
     assert(process.env.FIRESTORE_EMULATOR_HOST, 'FIRESTORE_EMULATOR_HOST is required');
     await verifyInvalidAttemptsCommit();
@@ -168,6 +216,8 @@ const run = async (): Promise<void> => {
     await verifyConcurrentSuccessAndOneTimeConsumption();
     await verifyExpiredLoginTokenCommits();
     await verifyAmbiguousAuthIdentitiesFailClosed();
+    await verifyLegacyPhoneOnlyUserGetsBoundLoginEmail();
+    await verifyLegacyPhoneEmailConflictFailsClosed();
     console.log('Phone OTP transaction emulator verification passed.');
 };
 

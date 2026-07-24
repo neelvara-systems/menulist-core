@@ -2,6 +2,7 @@
 
 import { deleteChangelogEntry, loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { useChangelogCache } from '@hook/useChangelogCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Divider, Flex, Grid, Layout, Modal, Steps, Typography, message } from 'antd';
@@ -32,6 +33,7 @@ function ChangelogTemplate() {
     const [entries, setEntries] = useState<any[]>([]);
     const [hasMore, setHasMore] = useState(true);
     const { clearCache: clearChangelogCache, getItem: getCachedChangelog } = useChangelogCache();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
@@ -79,11 +81,14 @@ function ChangelogTemplate() {
     }, [fetchLatestPage]);
 
     const loadMore = async () => {
-        if (!changelogPage) return;
+        if (!changelogPage || !requestScope) return;
 
         dispatch(startLoader('Loading More...'));
         try {
-            const olderPage: ChangelogPage | null = await loadOlderChangelogPage(changelogPage.pageNumber);
+            const olderPage: ChangelogPage | null = await loadOlderChangelogPage(
+                changelogPage.pageNumber,
+                requestScope,
+            );
             if (olderPage) {
                 setChangelogPage(olderPage as ChangelogPage);
                 setEntries(prev => sortEntries([...prev, ...olderPage.entries]));

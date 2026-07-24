@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Author:** Cascade (Lead Architect)  
-**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update)
+**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | July 22, 2026 (Truthful Update Semantics)
 **Audience:** CEO, PM, Clients (non-technical)
 
 ---
@@ -68,7 +68,7 @@
 - Info block: address, today's hours
 - Structured info section (AEO): full 7-day hours, cuisine types, price range, service modes, payment methods
 - Social links: Instagram, Facebook, Website
-- Freshness signal: "Info verified today/this week/this month"
+- Update signal: "Updated today" or "Updated {date}" from the store's generic `modifiedOn` timestamp. This is page-update evidence, not owner verification of every fact.
 - Established year: "Serving since [year]"
 - Permanent closure state: "Permanently Closed" with disabled menu CTA
 - Footer: "Official Page · Powered by MenuList" for non-Premium stores
@@ -157,7 +157,7 @@
 │                             │
 │   [Veg][WiFi][Parking]      │  ← Business attribute tags
 │   [IG] [FB] [Web]          │  ← Social links
-│   ✓ Info verified today     │  ← Freshness signal
+│   ✓ Updated today           │  ← Store-record update signal
 │                             │
 │  Official Page · MenuList   │  ← Authority footer
 └─────────────────────────────┘

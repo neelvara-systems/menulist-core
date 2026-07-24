@@ -35,12 +35,14 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
 
-const RequestSchema = z.object({
-    action: z.enum(['generate', 'revoke']),
-}).strict();
 const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;
 const PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
 const PUBLIC_API_KEY_RESPONSE_HEADERS = { 'Cache-Control': 'private, no-store' };
+const RequestSchema = z.object({
+    action: z.enum(['generate', 'revoke']),
+    storeId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH),
+    tenantId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH),
+}).strict();
 
 function getPublicApiKeyRateLimitResponse(result: {
     reason?: 'limit_exceeded' | 'provider_unavailable';
@@ -101,6 +103,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const validation = RequestSchema.safeParse(body);
     if (!validation.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+    const requestedTenantId = normalizeSessionDocumentId(validation.data.tenantId);
+    const requestedStoreId = normalizeSessionDocumentId(validation.data.storeId);
+    if (requestedTenantId !== tenantId || requestedStoreId !== storeId) {
+        return NextResponse.json(
+            { error: "Store context changed" },
+            { status: 409, headers: PUBLIC_API_KEY_RESPONSE_HEADERS },
+        );
     }
 
     const db = admin.firestore();
@@ -175,11 +185,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         if (apiKey) {
             logSecurityDiagnostic('public_api_key_generated', diagnosticContext);
-            return NextResponse.json({ apiKey }, { headers: PUBLIC_API_KEY_RESPONSE_HEADERS });
+            return NextResponse.json(
+                { apiKey, storeId, tenantId },
+                { headers: PUBLIC_API_KEY_RESPONSE_HEADERS },
+            );
         }
 
         logSecurityDiagnostic('public_api_key_revoked', diagnosticContext);
-        return NextResponse.json({ success: true }, { headers: PUBLIC_API_KEY_RESPONSE_HEADERS });
+        return NextResponse.json(
+            { success: true, storeId, tenantId },
+            { headers: PUBLIC_API_KEY_RESPONSE_HEADERS },
+        );
     } catch (error) {
         logSecurityFailure('public_api_key_management_failed', error, diagnosticContext);
         return NextResponse.json({ error: "Failed to manage API key" }, { status: 500 });

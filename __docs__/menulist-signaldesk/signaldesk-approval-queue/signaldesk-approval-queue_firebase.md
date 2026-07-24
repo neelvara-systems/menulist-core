@@ -1,37 +1,44 @@
-# SignalDesk Approval Queue - Firebase Cost Plan
+# SignalDesk Approval Queue - Firebase
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
-**Cost impact now:** None.
+**Status:** Implemented; no Feature 10 infrastructure deploy required
+**Last Updated:** July 21, 2026
 
-## Collections
+## Existing Collections
 
-| Collection | Purpose | Normal reads |
-| --- | --- | --- |
-| `signaldeskApprovalQueue` | Approval list rows and state | Paginated queue |
-| `signaldeskApprovalDetails` | Full approval context | Approval detail |
-| `signaldeskApprovalEvents` | Review/audit history | Approval detail/audit |
+| Collection | Stored purpose |
+| --- | --- |
+| `signaldeskApprovalQueue` | Compact queue and terminal decision state. |
+| `signaldeskApprovalPackets` | Owner-ready exact action snapshot. |
+| `signaldeskDraftSummaries` | Exact message unit and bound authorities. |
+| `signaldeskTargetSummaries` | Current workflow progression. |
+| `signaldeskQueueSummaries` | Compact backlog counters. |
+| `signaldeskAuditEvents` | Immutable operator decision evidence. |
+| `signaldeskCostDailySummaries` | Bounded Firestore operation estimates. |
 
-## Read / Write Model
+There are no `signaldeskApprovalDetails` or `signaldeskApprovalEvents`
+collections. There is no approval expiry job or real-time all-queue listener.
 
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Queue list | 1 query | 0 | Paginated summary. |
-| Approval detail | 4-10 | 0 | Related target/draft/evidence. |
-| Approve | 5-12 | 4-8 | Recheck guards, update approval, write event/audit/snapshot. |
-| Reject | 2-5 | 3-6 | Update approval, event, audit. |
-| Expiry job | Bounded query | Updates | Cap per run. |
+## Cost Model
 
-## Indexes
+| Flow | Bounded behavior |
+| --- | --- |
+| Approvals workspace | One pending query plus one recent query; packet and draft lists use existing bounded recent queries. |
+| Exact packet replay | Current authority reads; zero writes when content is identical. |
+| Packet refresh | Current authority reads; packet, optional approval link, timeline, audit, and cost writes. |
+| Terminal approval | Transaction-current authority reads and seven bounded writes/effects. |
+| Terminal rejection | Bounded queue-unit reads and the same atomic terminal write set. |
+| Exact terminal replay | One approval read; zero writes, counter changes, audits, or cost effects. |
 
-- `signaldeskApprovalQueue`: `status + updatedAt`
-- `signaldeskApprovalQueue`: `type + status + updatedAt`
-- `signaldeskApprovalQueue`: `targetId + updatedAt`
-- `signaldeskApprovalEvents`: `approvalId + createdAt`
+## Rules, Indexes, And Isolation
 
-## Cost Controls
+- `firestore-signaldesk.rules` permits SD platform-authorized reads and denies all client writes.
+- Server writes use the dedicated SignalDesk Firebase Admin boundary.
+- Pending-first reads use Firestore's automatic single-field `status` index.
+- The existing `status + priority + dueAt` composite remains available; Feature 10 adds no index.
+- Approval source-derived payload participates in the consolidated source-data lifecycle scrubber. Packet message/evidence fields are removed or held; non-sent draft text is scrubbed; queue counters reconcile once.
 
-- Queue reads summaries only.
-- Detail reads related docs on demand.
-- No real-time listener on all approvals.
-- Expiry job bounded.
+## Deployment
+
+Feature 10 changes only the Next.js server/client runtime, docs, and local
+verifiers. It changes no Function, Firestore rule/index, or Storage rule, so no
+Firebase deployment is required. A Vercel/app release remains owner-controlled.

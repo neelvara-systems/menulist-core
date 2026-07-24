@@ -16,6 +16,9 @@ import {
     type RazorpayPaymentResponse,
 } from '@lib/billing/paymentCheckoutBoundary';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeBillingSubscriptionScopeDocumentId } from '@lib/billing/subscriptionDocumentIdBoundary';
+import { getMenuListSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScopeBoundary';
 import { useSession } from 'next-auth/react';
 import { useCallback, useState } from 'react';
 import { getBoundedPaymentStringContext, getPaymentFlowLogContext, logPaymentFailure } from './paymentDiagnostics';
@@ -120,9 +123,14 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
     const productName = options.productName || 'MenuList.ai';
     const subscriptionCheckoutName = options.subscriptionCheckoutName || `${productName} Subscription`;
     const topupCheckoutName = options.topupCheckoutName || `${productName} Credit Pack`;
-    const hasBillingScope = Boolean(productId === PRODUCT_IDS.ANSWERLATTICE
-        ? ((session?.user as any)?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.tenantId || session?.user?.productId === PRODUCT_IDS.ANSWERLATTICE)
-        : (session?.user?.tenantId && session?.user?.storeId));
+    const hasBillingScope = productId === PRODUCT_IDS.ANSWERLATTICE
+        ? Boolean(resolveAnswerlatticeSessionScope(session))
+        : Boolean(
+            getMenuListSessionProviderScopeKey(session)
+            &&
+            normalizeBillingSubscriptionScopeDocumentId(session?.user?.tenantId)
+            && normalizeBillingSubscriptionScopeDocumentId(session?.user?.storeId)
+        );
     const buildPaymentLogContext = useCallback((flow: string, metadata: Record<string, unknown> = {}) => ({
         ...getPaymentFlowLogContext(flow, productId),
         hasSession: Boolean(session?.user?.id),
@@ -588,14 +596,6 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
     const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {
         return new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
             void (async () => {
-            const purchaseIntentString = localStorage.getItem('purchaseIntent');
-
-            if (!purchaseIntentString) {
-                logPaymentFailure('payment_onboarding_missing_purchase_intent', undefined, buildPaymentLogContext('post_onboarding'));
-                reject(new Error('Purchase intent is missing.'));
-                return;
-            }
-
             try {
                 const { businessName, businessIndustry, currency, plan, timeZone, businessDayEndTime } = purchaseIntent;
 

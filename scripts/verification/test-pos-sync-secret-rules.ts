@@ -7,7 +7,19 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+    collection,
+    deleteField,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    setDoc,
+    Timestamp,
+    updateDoc,
+} from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-pos-sync-secret-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -45,6 +57,18 @@ async function run(): Promise<void> {
                 tId: 1,
                 version: 1,
             });
+            await setDoc(doc(db, 'stores', '101', 'posDeliveryLogs', 'del_test_0123456789ab'), {
+                attempt: 1,
+                deliveryId: 'del_test_0123456789ab',
+                duration: 42,
+                error: null,
+                menuVersion: 3,
+                payloadHash: 'hash',
+                payloadSize: 100,
+                responseCode: 200,
+                sentAt: Timestamp.fromMillis(1_700_000_000_000),
+                status: 'success',
+            });
         });
 
         const ownerDb = testEnv.authenticatedContext('owner-1', {
@@ -56,10 +80,36 @@ async function run(): Promise<void> {
         const platformDb = testEnv.authenticatedContext('platform-1', {
             platformRole: 'PLATFORM', uId: 'platform-1',
         }).firestore();
+        const wrongTenantDb = testEnv.authenticatedContext('wrong-tenant', {
+            role: 'OWNER', storeId: '101', storeIds: ['101'], tenantId: '2', uId: 'wrong-tenant',
+        }).firestore();
+        const wrongStoreDb = testEnv.authenticatedContext('wrong-store', {
+            role: 'OWNER', storeId: '102', storeIds: ['102'], tenantId: '1', uId: 'wrong-store',
+        }).firestore();
+        const deliveryLogRef = doc(ownerDb, 'stores', '101', 'posDeliveryLogs', 'del_test_0123456789ab');
 
         for (const clientDb of [ownerDb, staffDb, platformDb, testEnv.unauthenticatedContext().firestore()]) {
             await assertFails(getDoc(doc(clientDb, 'posSyncSecrets', '1_101')));
             await assertFails(setDoc(doc(clientDb, 'posSyncSecrets', '1_102'), { secret: 'client-secret' }));
+        }
+
+        await assertSucceeds(getDoc(deliveryLogRef));
+        await assertSucceeds(getDoc(doc(staffDb, deliveryLogRef.path)));
+        await assertSucceeds(getDoc(doc(platformDb, deliveryLogRef.path)));
+        await assertSucceeds(getDocs(query(
+            collection(ownerDb, 'stores', '101', 'posDeliveryLogs'),
+            orderBy('sentAt', 'desc'),
+            limit(20),
+        )));
+        await assertFails(getDoc(doc(wrongTenantDb, deliveryLogRef.path)));
+        await assertFails(getDoc(doc(wrongStoreDb, deliveryLogRef.path)));
+        await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), deliveryLogRef.path)));
+        for (const clientDb of [ownerDb, staffDb, platformDb]) {
+            await assertFails(setDoc(
+                doc(clientDb, 'stores', '101', 'posDeliveryLogs', 'del_client_0123456789ab'),
+                { status: 'success' },
+            ));
+            await assertFails(updateDoc(doc(clientDb, deliveryLogRef.path), { status: 'failed' }));
         }
 
         await assertSucceeds(updateDoc(doc(ownerDb, 'stores', '101'), {

@@ -1,7 +1,8 @@
 # SignalDesk Content Distribution Rail - Compliance
 
-**Status:** Implemented for internal testing
+**Status:** Feature 16 locally source-complete
 **Date:** June 24, 2026
+**Last Updated:** July 21, 2026
 
 ## Rules
 
@@ -11,6 +12,8 @@
 - Partner briefs must not remove disclosure requirements from Trust Partner Rail.
 - Draft approval is required before scheduling.
 - Scheduling does not publish externally.
+- Customer proof requires an active, correctly scoped permission tied to the exact target. Hold, revocation, expiry, or source/CTA/pod authority reduction holds unpublished dependants and opens review evidence for already-published truth instead of rewriting history.
+- Proof target identity is immutable after creation; renewing an expired or revoked permission requires an explicit later grant time.
 
 ## Banned Defaults
 
@@ -22,3 +25,5 @@
 ## Manual Publishing Boundary
 
 The content calendar is an internal queue. Publishing remains a manual or later explicitly approved adapter step.
+
+Performance entry is evidence capture, not a publisher. Non-zero observations require the exact approved draft, deterministic calendar item, credential-free publication URL, and valid publication time. No social credential, provider call, third-party payload, or automatic post is accepted by this feature.

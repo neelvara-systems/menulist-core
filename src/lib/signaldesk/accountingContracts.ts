@@ -197,16 +197,15 @@ const DAILY_COST_VALUE_FIELDS = [
     "providerCostEstimate",
 ] as const;
 
-const DAILY_COST_CANONICAL_FIELDS = new Set([
-    ...DAILY_COST_VALUE_FIELDS,
-    "day",
-    "pId",
-    "updatedAt",
-]);
-
 const DAILY_COST_LEGACY_FIELDS = new Set([
     ...DAILY_COST_VALUE_FIELDS,
     "updatedAt",
+]);
+
+const DAILY_COST_FIELDS = new Set([
+    ...Array.from(DAILY_COST_LEGACY_FIELDS),
+    "day",
+    "pId",
 ]);
 
 const readDailyCostValue = (
@@ -243,7 +242,7 @@ export const parseSignalDeskDailyCostDocument = (
     if (
         data.pId !== SIGNALDESK_PRODUCT_CODE
         || data.day !== documentId
-        || Object.keys(data).some((key) => !DAILY_COST_CANONICAL_FIELDS.has(key))
+        || Object.keys(data).some((key) => !DAILY_COST_FIELDS.has(key))
     ) throw new Error("SIGNALDESK_DAILY_COST_SHAPE_INVALID");
     const updatedAt = timestampToIso(data.updatedAt);
     if (!updatedAt) throw new Error("SIGNALDESK_DAILY_COST_SHAPE_INVALID");

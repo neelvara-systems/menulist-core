@@ -345,6 +345,32 @@ const assertMobileGetHeaders = async () => {
     }
 };
 
+const assertAuditCursorRequest = async () => {
+    const originalFetch = globalThis.fetch;
+    let requestedUrl = "";
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+        requestedUrl = String(input);
+        return new Response(JSON.stringify({ data: validWorkspace("audit") }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200,
+        });
+    }) as typeof fetch;
+    try {
+        await getSignalDeskWorkspace("audit", {
+            auditCursor: {
+                auditEventId: "audit_event_050",
+                createdAt: "2026-07-21T10:00:00.000Z",
+            },
+        });
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+    const url = new URL(requestedUrl, "https://signaldesk.local");
+    assert.equal(url.searchParams.get("section"), "audit");
+    assert.equal(url.searchParams.get("auditAfter"), "2026-07-21T10:00:00.000Z");
+    assert.equal(url.searchParams.get("auditAfterId"), "audit_event_050");
+};
+
 const assertLatestResponseCoordinator = async () => {
     assert.equal(isSignalDeskRefreshCurrentSection("dashboard", "dashboard"), true);
     assert.equal(isSignalDeskRefreshCurrentSection("dashboard", "targets"), false);
@@ -388,6 +414,7 @@ const main = async () => {
     await assertMobileProjectionContracts();
     assertRuntimeSchemaContracts();
     await assertMobileGetHeaders();
+    await assertAuditCursorRequest();
     await assertLatestResponseCoordinator();
     console.log("SignalDesk workspace/client contract tests passed");
 };

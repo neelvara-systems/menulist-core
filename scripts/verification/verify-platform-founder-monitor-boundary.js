@@ -145,6 +145,7 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
 
   [
     'export type FounderRevenueMovementKind =',
+    'requireDurableWrite?: boolean;',
     "'new_mrr'",
     "'cash_collected'",
     "'failed_payment'",
@@ -167,10 +168,23 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     'if (!Number.isSafeInteger(numericStoreId) || numericStoreId <= 0 || String(numericStoreId) !== storeId) return null;',
     'return isValidFirestoreDocumentId(storeId) ? storeId : null;',
     'function shouldTrackProduct(productId: unknown): boolean',
-    'return normalizedProductId(productId) === PRODUCT_IDS.MENULIST;',
+    'return productId === PRODUCT_IDS.MENULIST;',
+    'function getRequiredMenuListSubscriptionScope',
+    'const scope = getMenuListSubscriptionEntitlementScope(subscription);',
+    "throw new Error('Founder subscription scope is invalid.');",
+    'function resolveMovementAmountPaise(value: unknown, requireDurableWrite: boolean | undefined): number',
+    "throw new Error('Founder revenue movement amount is invalid.');",
+    'function resolveMovementScope(',
+    "throw new Error('Founder revenue movement scope is invalid.');",
+    'const movementScope = resolveMovementScope(input);',
+    'function getFounderSubscriptionMrrPaiseForMovement(',
+    "throw new Error('Founder subscription MRR amount is invalid.');",
+    'const occurredAt = toDate(input.occurredAt, input.requireDurableWrite);',
+    "throw new Error('Founder revenue movement time is invalid.');",
     'function buildTransitionPaymentPayload',
     'const movementId = normalizeFounderRevenueMovementDocumentId(input.id);',
-    'const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);',
+    'storeId: normalizeFounderRevenueStoreDocumentId(input.storeId),',
+    'const { storeId, subscriptionId, tenantId } = movementScope;',
     'firestoreAdmin.runTransaction(async (transaction) => {',
     'const movementSnap = await transaction.get(movementRef);',
     'const recorded = await firestoreAdmin.runTransaction',
@@ -194,6 +208,7 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     "const eventKey = normalizeFounderRevenueMovementDocumentId(params.eventKey || 'change');",
     "deltaPaise > 0 ? 'expansion_mrr' : 'downgrade_mrr'",
     "logRuntimeFailure('founder_revenue_movement_record_failed'",
+    'if (input.requireDurableWrite) throw error;',
   ].forEach((token) => assertIncludes(source, token, 'Founder revenue read model'));
 
   assertOrder(source, [
@@ -201,7 +216,7 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     'firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(movementId)',
   ], 'Founder revenue movement ID guard order');
   assertOrder(source, [
-    'const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);',
+    'const movementScope = resolveMovementScope(input);',
     'firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(storeId)',
   ], 'Founder onboarding transition store ID guard order');
   assertOrder(source, [
@@ -217,6 +232,11 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     'const storeId = cleanText(value, 80);',
     'const storeId = cleanText(input.storeId, 80) || null;',
     "const eventKey = normalizeMovementId(params.eventKey || 'change');",
+    'function normalizedProductId(',
+    'params.subscription.storeId || params.subscription.sId',
+    'params.subscription.tenantId || params.subscription.tId',
+    'const amountPaise = Math.max(0, Math.round(safeNumber(input.amountPaise)));',
+    'const tenantId = cleanText(input.tenantId, 80) || null;',
   ].forEach((token) => assertNotIncludes(source, token, 'Founder revenue read model boundary'));
 }
 
@@ -237,7 +257,47 @@ function verifyRazorpayRuntime(webhook, verifySubscription, verifyTopup, cancelS
     'replacementMrrPaise',
     'await recordFounderSubscriptionNewMrr({',
     'await recordFounderSubscriptionChurn({',
+    'const subscriptionReads = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();',
+    'resolveRazorpayWebhookProductDeclaration(eventPayload)',
+    'resolveRazorpayWebhookSubscriptionId(eventPayload)',
+    'resolveRazorpayWebhookSubscriptionProduct({',
+    'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([',
+    "throw new Error('Razorpay webhook subscription product is unresolved.');",
+    'eventProductResolution.subscription',
+    'const eventSubscriptionId = eventProductResolution.subscriptionId;',
+    'const eventSubscriptionScope = eventSubscription',
+    'eventPayloadToUpload.tenantId = eventSubscriptionScope?.tenantId ?? null;',
+    'eventPayloadToUpload.storeId = eventSubscriptionScope?.storeId ?? null;',
+    'const resolvePaymentRevenueAmountPaise = () => requireRazorpayRevenueAmountPaise(',
+    'const resolvePaymentOccurredAt = () => resolveRazorpayRevenueOccurredAtMillis(',
+    'resolveRazorpaySubscriptionState(subscriptionEntity, internalSub.quantity)',
+    'resolveRazorpaySubscriptionQuantity(updatedSubEntity.quantity)',
+    'resolveSubscriptionReplacementEvidence(',
+    'const isSettledTopupEvent =',
+    'if (!isSettledTopupEvent)',
+    'const topupSubscriptionScope = getProductSubscriptionBillingScope(',
+    "source: `webhook:${event.event}:topup`",
   ].forEach((token) => assertIncludes(webhook, token, 'Razorpay webhook Founder Monitor runtime writes'));
+  assert(
+    (webhook.match(/requireDurableWrite: true/g) || []).length >= 8,
+    'Razorpay webhook cash, failure, refund and subscription lifecycle movements must require durable projection',
+  );
+  assertOrder(webhook, [
+    "source: 'webhook:subscription.updated'",
+    'const statusApplication = await applyProductSubscriptionWebhookEvent',
+  ], 'Subscription quantity MRR projection before state mutation');
+  assertOrder(webhook, [
+    'const topupApplication = await settleProductTopupFromProvider',
+    'const topupSubscriptionScope = getProductSubscriptionBillingScope(',
+    'await writeProductPaymentTransactionAudit(eventProductId, {',
+    "source: `webhook:${event.event}:topup`",
+  ], 'Top-up revenue scope after exact financial settlement');
+  assertNotIncludes(
+    webhook,
+    "event.event === 'subscription.charged' || (event.event === 'order.paid'",
+    'Unknown non-top-up orders must not enter MenuList collected-cash truth',
+  );
+  assertNotIncludes(webhook, '.catch(() => null)', 'Product resolution failures must remain retryable');
 
   [
     'recordFounderRevenueMovement',
@@ -246,19 +306,35 @@ function verifyRazorpayRuntime(webhook, verifySubscription, verifyTopup, cancelS
     "id: `cash:${razorpay_payment_id}`",
     "kind: 'cash_collected'",
     "source: 'api:verify-subscription:replacement'",
+    'requireDurableWrite: true',
+    'const paymentAmount = requireRazorpayRevenueAmountPaise(payment.amount);',
+    'const paymentOccurredAt = resolveRazorpayRevenueOccurredAtMillis(payment.created_at);',
+    'resolveRazorpaySubscriptionState(providerSubscription, internalSub.quantity)',
+    'resolveSubscriptionReplacementEvidence(',
     'await recordFounderSubscriptionNewMrr({',
   ].forEach((token) => assertIncludes(verifySubscription, token, 'Verify subscription Founder Monitor runtime writes'));
+  assert(
+    (verifySubscription.match(/requireDurableWrite: true/g) || []).length >= 3,
+    'Verify subscription cash and MRR projections must remain required on replay',
+  );
 
   [
     'recordFounderRevenueMovement',
     'const buildFounderTopupMovementId',
     'id: buildFounderTopupMovementId(razorpay_payment_id)',
     "kind: 'cash_collected'",
+    'requireDurableWrite: true',
+    'resolveRazorpayRevenueOccurredAtMillis((capturedPayment as any).created_at)',
   ].forEach((token) => assertIncludes(verifyTopup, token, 'Verify top-up Founder Monitor runtime writes'));
+  assertOrder(verifyTopup, [
+    'await recordFounderTopupRevenue(',
+    'const transactionResult = await billingDb.runTransaction',
+  ], 'Verify top-up required revenue projection before credit transaction');
 
   [
     'recordFounderSubscriptionChurn',
     'await recordFounderSubscriptionChurn({',
+    'requireDurableWrite: true',
     "source: 'api:cancel-subscription'",
   ].forEach((token) => assertIncludes(cancelSubscription, token, 'Cancel subscription Founder Monitor runtime writes'));
 
@@ -372,6 +448,14 @@ function verifyBackfillScript(backfillScript) {
     'movementFromSubscription',
     'movementsFromPaymentTransaction',
     'movementFromTopup',
+    "data.pId === PRODUCT_ID",
+    "data.productId === PRODUCT_ID",
+    "Number.isSafeInteger(tenantId)",
+    "data.tId === tenantId",
+    "Number.isSafeInteger(storeId)",
+    "data.sId === storeId",
+    ".where('pId', '==', PRODUCT_ID)",
+    ".where('productId', '==', PRODUCT_ID)",
     'writeMovement',
     'DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS',
     'DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS',
@@ -380,6 +464,7 @@ function verifyBackfillScript(backfillScript) {
     "id: `refund:${paymentId || `legacy:${hashPath(doc.ref.path)}`}`",
     'To apply after backup/review',
   ].forEach((token) => assertIncludes(backfillScript, token, 'Founder revenue backfill script'));
+  assertNotIncludes(backfillScript, 'data.productId || data.pId || PRODUCT_ID', 'Founder revenue backfill must not infer alias-less product identity');
 }
 
 function verifyDesktop(component) {
@@ -490,12 +575,12 @@ function verifyDocsAndPage() {
   });
   [
     'Founder revenue movement document IDs pass through `src/lib/firebase/firestoreDocumentId.ts`, and payment-to-live transition store IDs use exact positive numeric MenuList store document scope before the same Firestore document-ID guard.',
-    'malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric movement/store IDs return without creating invalid',
+    'Malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return for optional callers and reject required financial callers before any invalid',
   ].forEach((token) => assertIncludes(implDoc, token, 'Founder Monitor implementation document-ID boundary docs'));
   [
     'Founder Monitor revenue document-ID admission is Firebase-cost neutral',
     'validates movement IDs with `src/lib/firebase/firestoreDocumentId.ts` and requires transition store IDs to be exact positive numeric MenuList store document IDs before the same guard',
-    'malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return before invalid refs',
+    'malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return for optional callers and reject required financial callers before invalid refs',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Founder Monitor Firebase document-ID boundary docs'));
   [
     'Founder revenue movement IDs pass through `src/lib/firebase/firestoreDocumentId.ts`',
@@ -530,6 +615,12 @@ function verifyDocsAndPage() {
 }
 
 function main() {
+  const packageJson = JSON.parse(read('package.json'));
+  const growthEmulatorCommand = packageJson.scripts?.['test:growth-intelligence:emulator'] || '';
+  assert(
+    (growthEmulatorCommand.match(/env -u GOOGLE_APPLICATION_CREDENTIALS/g) || []).length >= 2,
+    'Growth intelligence emulator must isolate both CLI and child process from inherited Google credentials',
+  );
   verifyRoute(read('src/app/api/platform/founder-monitor/route.ts'));
   verifyDal(read('src/database/ops/founderMonitor.ts'));
   verifyRevenueReadModel(

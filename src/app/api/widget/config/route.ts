@@ -18,10 +18,12 @@ import {
 } from '@lib/answerlattice/widgetRuntimeStatus';
 import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
 import { getAnswerlatticeBundleRefPath } from '@lib/answerlattice/compiledContext';
+import { normalizeAnswerlatticeActiveTriggerCount } from '@lib/answerlattice/predictiveSupportContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
     ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
+    normalizeAnswerlatticeWidgetConfigVersion,
     normalizeWidgetConfig,
 } from '@lib/answerlattice/widgetConfig';
 import { createAnswerlatticeWidgetRuntimeAuthorization } from '@lib/answerlattice/widgetRuntimeTokenServer';
@@ -125,7 +127,8 @@ const hasActivePredictiveTriggers = async (
     if (!snap.exists) return false;
     const data = snap.data() || {};
     if (data.pId !== PRODUCT_IDS.ANSWERLATTICE || data.tId !== tId || data.sId !== sId) return false;
-    if (Number(data.activeTriggerCount || 0) > 0) return true;
+    const activeTriggerCount = normalizeAnswerlatticeActiveTriggerCount(data.activeTriggerCount);
+    if (activeTriggerCount !== null) return activeTriggerCount > 0;
     if (data.activeTriggerCount === undefined && data.triggers && typeof data.triggers === 'object') {
         return Object.values(data.triggers).some((trigger: any) => trigger?.status === 'active');
     }
@@ -289,14 +292,12 @@ export async function GET(request: NextRequest) {
             return buildErrorResponse(request, { error: 'Invalid API key' }, 401);
         }
 
-        const { storeData, storeId } = authResult;
-        const tId = Number(storeData.tId ?? storeData.tenantId);
-        const sId = Number(storeData.sId ?? storeData.storeId ?? storeData.id ?? storeId);
+        const { answerlatticeScope, storeData, storeId } = authResult;
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
         if (
-            !Number.isSafeInteger(tId)
-            || !Number.isSafeInteger(sId)
-            || tId <= 0
-            || sId <= 0
+            !tId
+            || !sId
             || String(sId) !== storeId
         ) {
             logRuntimeFailure('answerlattice_widget_config_invalid_workspace_context', undefined, {
@@ -366,7 +367,7 @@ export async function GET(request: NextRequest) {
         const body = {
             schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
             cacheTtlSeconds: ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
-            configVersion: Number(storeData.widgetConfigVersion || 0),
+            configVersion: normalizeAnswerlatticeWidgetConfigVersion(storeData.widgetConfigVersion),
             config: normalizedWidgetConfig,
             capabilities: {
                 predictiveSupport,

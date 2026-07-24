@@ -34,6 +34,14 @@ const getScope = async () => {
     return { session, tId: scope.tenantId, sId: scope.storeId };
 };
 
+const getExpectedScope = async (expectedScope: { tId: number; sId: number }) => {
+    const scope = await getScope();
+    if (scope.tId !== expectedScope.tId || scope.sId !== expectedScope.sId) {
+        throw new Error('answerlattice_changelog_expected_scope_changed');
+    }
+    return scope;
+};
+
 const getCollectionRef = (scope: { tId: number; sId: number }) => collection(
     answerlatticeFirebaseClient,
     `${COLLECTION}/${scope.tId}/${scope.sId}`,
@@ -248,8 +256,10 @@ export const deleteChangelogEntry = async (entryId: string) => apiCallComposer(
     'deleteChangelogEntry',
 );
 
-export const fetchLatestChangelogPage = async (): Promise<ChangelogPage | null> => {
-    const scope = await getScope();
+export const fetchLatestChangelogPage = async (
+    expectedScope: { tId: number; sId: number },
+): Promise<ChangelogPage | null> => {
+    const scope = await getExpectedScope(expectedScope);
     const snapshot = await getDocs(query(getCollectionRef(scope), orderBy('pageNumber', 'desc'), limit(1)));
     const page = snapshot.docs[0];
     if (!page) return null;
@@ -258,9 +268,12 @@ export const fetchLatestChangelogPage = async (): Promise<ChangelogPage | null> 
     return normalized;
 };
 
-export const loadOlderChangelogPage = async (currentPageNumber: number): Promise<ChangelogPage | null> => {
+export const loadOlderChangelogPage = async (
+    currentPageNumber: number,
+    expectedScope: { tId: number; sId: number },
+): Promise<ChangelogPage | null> => {
     if (!Number.isSafeInteger(currentPageNumber) || currentPageNumber <= 1) return null;
-    const scope = await getScope();
+    const scope = await getExpectedScope(expectedScope);
     const snapshot = await getDocs(query(
         getCollectionRef(scope),
         where('pageNumber', '<', currentPageNumber),

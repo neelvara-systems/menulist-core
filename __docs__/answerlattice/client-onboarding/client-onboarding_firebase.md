@@ -76,6 +76,8 @@ Answerlattice onboarding writes subscription records with both compatibility and
 - `pId: 'AL'`
 - `productId: 'AL'`
 
+All provisioning tenant/store/user ownership checks and every existing `subscriptions/{providerSubscriptionId}` mutation require both product aliases plus present, agreeing numeric `tId/tenantId` and `sId/storeId` scope. Conflicting or incomplete legacy rows remain unchanged for investigation; they are never reclaimed or cancelled by onboarding compensation.
+
 The `stores/{sId}.answerlatticeSubscription` summary stores the active provider subscription id. Billing screens use that summary to direct-read `subscriptions/{subscriptionId}` instead of scanning subscriptions by status/date. This keeps the first billing load to one store read plus one subscription read in the normal path.
 
 ## KB Import Source Cost

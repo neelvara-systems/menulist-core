@@ -8,6 +8,7 @@ export const ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS = 15 * 60;
 const MAX_WIDGET_RUNTIME_TOKEN_LENGTH = 2048;
 const CLOCK_SKEW_SECONDS = 30;
 const RUNTIME_TOKEN_AUDIENCE = 'answerlattice_widget_runtime';
+const WIDGET_RUNTIME_API_KEY_PATTERN = /^al_[A-Za-z0-9_-]{20,128}$/;
 
 const RuntimeTokenPayloadSchema = z.object({
     v: z.literal(1),
@@ -38,14 +39,18 @@ const getRuntimeSecret = (): string | null => {
 };
 
 const normalizeScope = (scope: WidgetRuntimeTokenScope): WidgetRuntimeTokenScope | null => {
-    const apiKey = String(scope.apiKey || '').trim();
-    const tId = Number(scope.tId);
-    const sId = Number(scope.sId);
-    if (!apiKey.startsWith('al_') || apiKey.length > 300) return null;
+    const apiKey = typeof scope.apiKey === 'string' ? scope.apiKey.trim() : '';
+    const tId = scope.tId;
+    const sId = scope.sId;
+    if (apiKey !== scope.apiKey || !WIDGET_RUNTIME_API_KEY_PATTERN.test(apiKey)) return null;
     if (!Number.isSafeInteger(tId) || tId <= 0) return null;
     if (!Number.isSafeInteger(sId) || sId <= 0) return null;
     return { apiKey, tId, sId };
 };
+
+const normalizeNowMs = (value: unknown): number | null => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null
+);
 
 const getScopeBinding = (scope: WidgetRuntimeTokenScope): string => (
     `${createHash('sha256').update(scope.apiKey).digest('hex')}:${scope.tId}:${scope.sId}`
@@ -84,11 +89,13 @@ export const createAnswerlatticeWidgetRuntimeAuthorization = (params: {
         throw new Error('ANSWERLATTICE_WIDGET_RUNTIME_SCOPE_INVALID');
     }
 
-    const nowSeconds = Math.floor((params.nowMs ?? Date.now()) / 1000);
-    const requestedTtl = Number(params.ttlSeconds ?? ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS);
-    const ttlSeconds = Number.isSafeInteger(requestedTtl)
-        ? Math.max(60, Math.min(ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS, requestedTtl))
-        : ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS;
+    const nowMs = normalizeNowMs(params.nowMs ?? Date.now());
+    const requestedTtl = params.ttlSeconds ?? ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS;
+    if (nowMs === null || !Number.isSafeInteger(requestedTtl) || requestedTtl <= 0) {
+        throw new Error('ANSWERLATTICE_WIDGET_RUNTIME_TIME_INVALID');
+    }
+    const nowSeconds = Math.floor(nowMs / 1000);
+    const ttlSeconds = Math.max(60, Math.min(ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS, requestedTtl));
     const payload: WidgetRuntimeTokenPayload = {
         v: 1,
         aud: RUNTIME_TOKEN_AUDIENCE,
@@ -131,7 +138,9 @@ export const verifyAnswerlatticeWidgetRuntimeAuthorization = (params: {
         );
         if (!parsed.success) return null;
 
-        const nowSeconds = Math.floor((params.nowMs ?? Date.now()) / 1000);
+        const nowMs = normalizeNowMs(params.nowMs ?? Date.now());
+        if (nowMs === null) return null;
+        const nowSeconds = Math.floor(nowMs / 1000);
         if (parsed.data.iat > nowSeconds + CLOCK_SKEW_SECONDS) return null;
         if (parsed.data.exp <= nowSeconds) return null;
         if (parsed.data.exp - parsed.data.iat > ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_TTL_SECONDS) return null;

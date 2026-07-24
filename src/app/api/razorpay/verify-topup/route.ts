@@ -6,8 +6,10 @@ import {
     getBillingFirestoreAdminForProduct,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { normalizeBillingTopupDocumentId, normalizeBillingTopupScopeDocumentId } from "@lib/billing/topupDocumentIdBoundary";
+import { resolveRazorpayRevenueOccurredAtMillis } from '@lib/billing/razorpayRevenueProjectionBoundary';
 import {
     getBoundedRazorpaySecurityContext,
     getBoundedRazorpayStringContext,
@@ -297,6 +299,23 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Payment order could not be matched.' }, { status: 409 });
         }
 
+        const recordFounderTopupRevenue = (occurredAt: Date | number | string | null) => (
+            recordFounderRevenueMovement({
+                amountPaise: storedSettlement.amount,
+                currency: storedSettlement.currency,
+                description: 'Razorpay credit top-up payment verified.',
+                eventName: 'order.paid',
+                id: buildFounderTopupMovementId(razorpay_payment_id),
+                kind: 'cash_collected',
+                occurredAt,
+                productId,
+                requireDurableWrite: true,
+                source: 'api:verify-topup',
+                storeId,
+                tenantId,
+            })
+        );
+
         if (existingTopup?.status === 'paid') {
             if (existingTopup.providerPaymentId && existingTopup.providerPaymentId !== razorpay_payment_id) {
                 logger.security('Topup Order Payment Mismatch', {
@@ -312,9 +331,27 @@ export const POST = withAuth(async (request, session) => {
             }
 
             const currentSub = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
-            if (isAnswerlatticeProduct && currentSub) {
+            const currentSubScope = getProductSubscriptionBillingScope(productId, currentSub);
+            const currentTopupState = currentSubScope
+                ? resolveCurrentTopupSubscriptionSettlement({
+                    expectedProductId: productId,
+                    expectedStoreId: currentSubScope.storeId,
+                    expectedTenantId: currentSubScope.tenantId,
+                    subscriptionSnapshot: currentSub,
+                })
+                : null;
+            if (
+                !currentSub
+                || !currentSubScope
+                || currentSubScope.tenantId !== tenantId
+                || !currentTopupState
+                || storedSettlement.billingStoreId !== currentTopupState.storeId
+            ) {
+                return NextResponse.json({ error: 'Top-up requires billing reconciliation.' }, { status: 409 });
+            }
+            if (isAnswerlatticeProduct) {
                 try {
-                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, currentSub, currentSub.topUpCredits ?? existingTopup.creditsAdded ?? 0);
+                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, currentSub, currentTopupState.topUpCredits);
                 } catch (summaryError) {
                     logger.error('Answerlattice top-up summary mirror failed for already verified order', new Error('razorpay_topup_summary_mirror_failed'), {
                         ...getRazorpayFailureLogData('razorpay_topup_summary_mirror_failed', summaryError),
@@ -325,9 +362,14 @@ export const POST = withAuth(async (request, session) => {
                     });
                 }
             }
+            await recordFounderTopupRevenue(
+                typeof existingTopup.paidAt?.toDate === 'function'
+                    ? existingTopup.paidAt.toDate()
+                    : Date.now(),
+            );
             return NextResponse.json({
                 success: true,
-                newCreditBalance: currentSub?.topUpCredits ?? existingTopup.creditsAdded ?? 0,
+                newCreditBalance: currentTopupState.topUpCredits,
                 alreadyVerified: true,
             });
         }
@@ -347,7 +389,8 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // Store may differ when an outlet inherits HQ billing.
-        if (Number(internalSub.tenantId) !== tenantId) {
+        const internalSubscriptionScope = getProductSubscriptionBillingScope(productId, internalSub);
+        if (!internalSubscriptionScope || internalSubscriptionScope.tenantId !== tenantId) {
             logger.security('Unauthorized Topup Verification Attempt', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
@@ -365,14 +408,11 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const subscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);
-        const subscriptionTenantId = Number(internalSub.tenantId ?? internalSub.tId);
-        const subscriptionStoreId = Number(internalSub.storeId ?? internalSub.sId);
+        const subscriptionTenantId = internalSubscriptionScope.tenantId;
+        const subscriptionStoreId = internalSubscriptionScope.storeId;
         if (
             !subscriptionId
-            || !Number.isSafeInteger(subscriptionTenantId)
-            || subscriptionTenantId !== tenantId
-            || !Number.isSafeInteger(subscriptionStoreId)
-            || subscriptionStoreId <= 0
+            || storedSettlement.billingStoreId !== subscriptionStoreId
         ) {
             return NextResponse.json({ success: false, error: "Active subscription not found." }, { status: 404 });
         }
@@ -422,6 +462,13 @@ export const POST = withAuth(async (request, session) => {
         // Settle the immutable order-creation snapshot, not mutable live pack constants.
         const creditsToAdd = storedSettlement.creditsToAdd;
 
+        // Revenue projection is deterministic and required before the credit
+        // transaction. A retry sees the same movement ID, so a projection
+        // success followed by a credit-write failure remains safe to replay.
+        await recordFounderTopupRevenue(
+            resolveRazorpayRevenueOccurredAtMillis((capturedPayment as any).created_at),
+        );
+
         // Step F: --- ATOMIC UPDATE ---
         // The payment is verified. We can now confidently update the user's credit balance.
         logger.info('Credits added successfully', {
@@ -444,17 +491,43 @@ export const POST = withAuth(async (request, session) => {
             const subscriptionData = subscriptionSnap.exists ? subscriptionSnap.data() : null;
 
             if (topupData?.status === 'paid') {
-                if (topupData.providerPaymentId && topupData.providerPaymentId !== razorpay_payment_id) {
+                const existingSettlement = resolveVerifiedTopupSettlement({
+                    expectedOrderId: razorpay_order_id,
+                    expectedPaymentId: razorpay_payment_id,
+                    expectedProductId: productId,
+                    expectedStoreId: storeId,
+                    expectedTenantId: tenantId,
+                    order,
+                    payment: capturedPayment,
+                    topupSnapshot: topupData,
+                });
+                const currentSubscription = resolveCurrentTopupSubscriptionSettlement({
+                    expectedProductId: productId,
+                    expectedStoreId: subscriptionStoreId,
+                    expectedTenantId: subscriptionTenantId,
+                    subscriptionSnapshot: subscriptionData,
+                });
+                if (!existingSettlement || !currentSubscription) {
                     return {
                         alreadyVerified: false,
-                        newBalance: subscriptionData?.topUpCredits ?? topupData.creditsAdded ?? 0,
-                        paymentMismatch: true,
+                        invalidSettlement: !existingSettlement,
+                        invalidSubscription: !currentSubscription,
+                        newBalance: 0,
+                        paymentMismatch: false,
+                    };
+                }
+                if (existingSettlement.billingStoreId !== currentSubscription.storeId) {
+                    return {
+                        alreadyVerified: false,
+                        invalidSettlement: true,
+                        newBalance: 0,
+                        paymentMismatch: false,
                     };
                 }
 
                 return {
                     alreadyVerified: true,
-                    newBalance: subscriptionData?.topUpCredits ?? topupData.creditsAdded ?? 0,
+                    newBalance: currentSubscription.topUpCredits,
                 };
             }
 
@@ -478,13 +551,15 @@ export const POST = withAuth(async (request, session) => {
             }
 
             const currentSubscription = resolveCurrentTopupSubscriptionSettlement({
-                allowMissingProductId: !isAnswerlatticeProduct,
                 expectedProductId: productId,
                 expectedStoreId: subscriptionStoreId,
                 expectedTenantId: subscriptionTenantId,
                 subscriptionSnapshot: subscriptionData,
             });
-            if (!currentSubscription) {
+            if (
+                !currentSubscription
+                || transactionSettlement.billingStoreId !== currentSubscription.storeId
+            ) {
                 return {
                     alreadyVerified: false,
                     invalidSettlement: false,
@@ -495,6 +570,15 @@ export const POST = withAuth(async (request, session) => {
             }
 
             const newBalance = currentSubscription.topUpCredits + transactionSettlement.creditsToAdd;
+            if (!Number.isSafeInteger(newBalance)) {
+                return {
+                    alreadyVerified: false,
+                    invalidSettlement: false,
+                    invalidSubscription: true,
+                    newBalance: 0,
+                    paymentMismatch: false,
+                };
+            }
             const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
             tx.set(subscriptionRef, {
@@ -602,20 +686,6 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const newBalance = transactionResult.newBalance;
-        await recordFounderRevenueMovement({
-            amountPaise: storedSettlement.amount,
-            currency: storedSettlement.currency,
-            description: 'Razorpay credit top-up payment verified.',
-            eventName: 'order.paid',
-            id: buildFounderTopupMovementId(razorpay_payment_id),
-            kind: 'cash_collected',
-            occurredAt: (capturedPayment as any).created_at ? Number((capturedPayment as any).created_at) * 1000 : Date.now(),
-            productId,
-            source: 'api:verify-topup',
-            storeId,
-            tenantId,
-        });
-
         if (!isAnswerlatticeProduct) {
             // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
             try {

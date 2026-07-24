@@ -31,7 +31,7 @@ function AnalyticsDashboard() {
     const t = useTranslations('Dashboard');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-        return getStoredOwnerProjectId(storeDetails?.storeId);
+        return getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId);
     });
     const [dateRange, setDateRange] = useState({
         startDate: dayjs().subtract(7, 'day').format('YYYY-MM-DD'),
@@ -39,8 +39,8 @@ function AnalyticsDashboard() {
     });
 
     useEffect(() => {
-        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId));
-    }, [storeDetails?.storeId]);
+        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId));
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     const { data, loading, error } = useAnalyticsData(dateRange, selectedProjectId || undefined);
 
@@ -74,7 +74,7 @@ function AnalyticsDashboard() {
                                     selectedProjectId={selectedProjectId}
                                     onProjectChange={(projectId) => {
                                         setSelectedProjectId(projectId);
-                                        setStoredOwnerProjectId(projectId, storeDetails?.storeId);
+                                        setStoredOwnerProjectId(projectId, storeDetails?.storeId, storeDetails?.tenantId);
                                     }}
                                 />
                             </Space>

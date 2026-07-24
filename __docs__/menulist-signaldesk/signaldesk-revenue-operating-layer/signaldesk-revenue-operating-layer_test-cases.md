@@ -1,7 +1,8 @@
 # SignalDesk Revenue Operating Layer - Test Cases
 
-**Status:** Local deterministic matrix passed
+**Status:** Focused deterministic matrix passed; complete aggregate retains a documented Firestore emulator lock limitation
 **Created:** July 10, 2026
+**Last verified:** July 21, 2026
 
 | ID | Scenario | Expected |
 | --- | --- | --- |
@@ -54,13 +55,23 @@
 | SD-REV-T047 | Derive seven-day deadline with more than 30 summaries | Exact earliest indexed summary remains the deadline origin. |
 | SD-REV-T048 | Non-founder with policy approval permission tries to approve an envelope | Rejected because commercial operating authority remains founder-only. |
 | SD-REV-T049 | Referenced pod/policy/offer/budget/sender/template changes while an envelope transaction is committing | Transaction rereads the current control and rejects the envelope. |
+| SD-REV-T050 | Replay an unchanged qualification, opportunity, offer, envelope, or activation recheck | Existing timestamp and approval truth is returned; audit/cost/summary effects do not repeat. |
+| SD-REV-T051 | Manually set an opportunity to won | Rejected; only verified activation may record a win. |
+| SD-REV-T052 | Duplicate offer content/approval term or envelope policy/template/stop reference | Rejected at API and server authority boundaries. |
+| SD-REV-T053 | Suppress a target after its opportunity opened, then requalify | Account pauses, opportunity moves to nurture, and open forecast is decremented once. |
+| SD-REV-T054 | Qualify after a verified two-surface activation without an offer | A strict zero-value activation-authoritative win is stored and visible. |
+| SD-REV-T055 | Request Revenue workspace in mobile-readonly mode | Rejected because mobile workspace is dashboard-only. |
+| SD-REV-T056 | Disable Revenue flag and access page/API/direct loader | Every boundary fails closed. |
+| SD-REV-T057 | Load Revenue as a reviewer without configure permission | Revenue data is visible according to role, but budget-policy configuration records are omitted. |
+| SD-REV-T058 | More than 30 newer global outcomes displace an older verified activation from the common workspace window | Dashboard opportunity remains activated from the strict durable target projection; targeted settlement still requires coupled outcome authority. |
 
 ## Commands
 
 ```bash
 npm run verify:signaldesk
+SIGNALDESK_E2E_FOCUS=revenue npm run test:signaldesk:e2e:local
 npm run test:signaldesk:e2e:local
 npm run test:signaldesk:rules
 npm run verify:menulist-activation-concierge
-npx tsc --noEmit --incremental false --pretty false
+npm run typecheck
 ```

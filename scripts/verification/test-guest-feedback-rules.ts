@@ -8,7 +8,7 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { addDoc, collection, doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-guest-feedback-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -74,39 +74,51 @@ async function run(): Promise<void> {
 
         await assertSucceeds(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
             modifiedBy: 'store-one',
-            modifiedOn: Timestamp.fromMillis(1_700_000_100_000),
+            modifiedOn: serverTimestamp(),
             needsAttention: false,
             ownerNote: 'Resolved with the guest.',
             status: 'resolved',
         }));
         await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
             modifiedBy: 'store-one',
-            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            modifiedOn: Timestamp.fromMillis(1_700_000_100_000),
+            needsAttention: true,
+            status: 'new',
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'store-one',
+            modifiedOn: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+            needsAttention: true,
+            status: 'new',
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
+            modifiedBy: 'store-one',
+            modifiedOn: serverTimestamp(),
             needsAttention: true,
             status: 'resolved',
         }));
         await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
             modifiedBy: 'store-one',
-            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            modifiedOn: serverTimestamp(),
             needsAttention: true,
             ownerNote: 'x'.repeat(301),
             status: 'new',
         }));
         await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-102'), {
             modifiedBy: 'store-one',
-            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            modifiedOn: serverTimestamp(),
             needsAttention: false,
             status: 'resolved',
         }));
         await assertFails(updateDoc(doc(tenantOnlyDb, 'guestFeedback', 'store-101'), {
             modifiedBy: 'tenant-only',
-            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            modifiedOn: serverTimestamp(),
             needsAttention: false,
             status: 'resolved',
         }));
         await assertFails(updateDoc(doc(storeOneDb, 'guestFeedback', 'store-101'), {
             modifiedBy: 'another-user',
-            modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+            modifiedOn: serverTimestamp(),
             needsAttention: true,
             status: 'new',
         }));

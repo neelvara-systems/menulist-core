@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import {
     buildAnswerlatticeSignalDocumentId,
+    buildAnswerlatticeSignalMemoryDedupKey,
     buildAnswerlatticeSignalPayloadFingerprint,
     hashAnswerlatticeSignalIdentity,
     normalizeExactAnswerlatticeSignalScopeId,
@@ -29,6 +30,16 @@ assert.notEqual(first, buildAnswerlatticeSignalDocumentId({
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: ' 1', sId: 101, deduplicationKey: 'x' }), null);
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: 1, sId: 101, deduplicationKey: '' }), null);
 assert.equal(hashAnswerlatticeSignalIdentity('same'), hashAnswerlatticeSignalIdentity('same'));
+assert.equal(
+    buildAnswerlatticeSignalMemoryDedupKey({ tId: 1, sId: 101, deduplicationKey: 'ticket:ticket-1' }),
+    '1:101:ticket:ticket-1',
+);
+assert.notEqual(
+    buildAnswerlatticeSignalMemoryDedupKey({ tId: 1, sId: 101, deduplicationKey: 'ticket:ticket-1' }),
+    buildAnswerlatticeSignalMemoryDedupKey({ tId: 2, sId: 101, deduplicationKey: 'ticket:ticket-1' }),
+    'process-local dedupe identity must not collide across tenants',
+);
+assert.equal(buildAnswerlatticeSignalMemoryDedupKey({ tId: '1', sId: 101, deduplicationKey: 'x' }), null);
 const payloadFingerprint = buildAnswerlatticeSignalPayloadFingerprint({
     type: 'ticket',
     entityId: 'entity-1',
@@ -54,9 +65,61 @@ for (const value of ['1', '01', '1e0', 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 
 }
 
 const emitter = fs.readFileSync(path.join(ROOT, 'src/lib/answerlattice/signalEmitter.ts'), 'utf8');
+const nightly = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/answerlatticeNightly.ts'), 'utf8');
+const supportBoardSync = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/supportBoardSync.ts'), 'utf8');
+const resolutionExtractor = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/resolutionExtractor.ts'), 'utf8');
+const draftGenerator = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/draftGenerator.ts'), 'utf8');
 const publicSignalRoute = fs.readFileSync(path.join(ROOT, 'src/app/api/answerlattice/public/v1/signals/route.ts'), 'utf8');
 const signalDal = fs.readFileSync(path.join(ROOT, 'src/database/answerlattice/signalEvents.ts'), 'utf8');
 assert.ok(emitter.includes('buildAnswerlatticeSignalDocumentId'));
+assert.ok(emitter.includes('buildAnswerlatticeSignalMemoryDedupKey'));
+const driftSignalQuery = nightly.slice(
+    nightly.indexOf('const signalsQuery = db'),
+    nightly.indexOf('const [answersSnap, entitiesSnap, signalsSnap]'),
+);
+assert.ok(driftSignalQuery.includes(".where('pId', '==', 'AL')"));
+assert.ok(driftSignalQuery.includes(".orderBy('timestamp', 'desc')"));
+const signalMutation = nightly.slice(
+    nightly.indexOf('async function runSignalMutation('),
+    nightly.indexOf('async function resolveUnresolvedSignals('),
+);
+assert.ok(signalMutation.includes(".where('pId', '==', 'AL')"));
+const unresolvedResolution = nightly.slice(
+    nightly.indexOf('async function resolveUnresolvedSignals('),
+    nightly.indexOf('async function aggregateCoverageKPI('),
+);
+assert.ok(unresolvedResolution.includes(".where('pId', '==', 'AL')"));
+const unresolvedEntityIndexQuery = unresolvedResolution.slice(
+    unresolvedResolution.indexOf('.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)'),
+    unresolvedResolution.indexOf("window: 'all'"),
+);
+assert.ok(
+    unresolvedEntityIndexQuery.includes(".where('pId', '==', 'AL')"),
+    'unresolved-signal entity matching must use only the Answerlattice product index',
+);
+const mutationImpact = nightly.slice(
+    nightly.indexOf('async function countMutationImpactSignals('),
+    nightly.indexOf('async function trackMutationImpact('),
+);
+assert.ok(mutationImpact.includes(".where('pId', '==', 'AL')"));
+const supportBoardSignals = supportBoardSync.slice(
+    supportBoardSync.indexOf('async function loadSupportBoardSourceDocs('),
+    supportBoardSync.indexOf('async function upsertSupportBoardCards('),
+);
+assert.ok(
+    (supportBoardSignals.match(/\.where\('pId', '==', PRODUCT_ID\)/g) || []).length >= 2,
+    'support-board history and signal windows must each be product-partitioned',
+);
+const resolutionSignals = resolutionExtractor.slice(
+    resolutionExtractor.indexOf('async function gatherTicketResolutionClusters('),
+    resolutionExtractor.indexOf('async function getExistingCanonicalAnswerIds('),
+);
+assert.ok(resolutionSignals.includes(".where('pId', '==', ANSWERLATTICE_PRODUCT_ID)"));
+const draftSignals = draftGenerator.slice(
+    draftGenerator.indexOf('async function getSignalExamples('),
+    draftGenerator.indexOf('async function getExistingAnswerSummaries('),
+);
+assert.ok(draftSignals.includes(".where('pId', '==', 'AL')"));
 assert.ok(emitter.includes('dedupKey: persistentDedupKey'));
 assert.ok(emitter.includes('answerlattice_signal_replay_conflict'));
 assert.ok(emitter.includes('AnswerlatticeSignalReplayConflictError'));
@@ -91,6 +154,10 @@ for (const indexFile of ['firestore-answerlattice.indexes.json', 'firestore.inde
     assert.ok(signalIndexes.some((entry) => (
         entry.fields.map((field: any) => field.fieldPath).join(',') === 'pId,tId,sId,entityId,timestamp'
     )), `${indexFile} must include the product-scoped entity-signal index`);
+    const entitySearchIndexes = indexes.filter((entry) => entry.collectionGroup === 'answerlattice_entitySearchIndex');
+    assert.ok(entitySearchIndexes.some((entry) => (
+        entry.fields.map((field: any) => field.fieldPath).join(',') === 'pId,tId,sId'
+    )), `${indexFile} must include the product-scoped entity-search index`);
     assert.ok(manifest.fieldOverrides.some((entry) => (
         entry.collectionGroup === 'answerlattice_signalEvents'
         && entry.fieldPath === 'expiresAt'

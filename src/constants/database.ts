@@ -63,7 +63,6 @@ export const DB_COLLECTIONS = {
     NOTES_METADATA: "notesMetadata",
 
     PROJECTS: "projects",
-    FILES: "files",
     MENU_INTELLIGENCE: "menuIntelligence", // Continuous Menu Intelligence state (per-project, nightly)
     ASSETS: "assets",
     AI_IMAGE_PROMPT_CACHE: "aiImagePromptCache",

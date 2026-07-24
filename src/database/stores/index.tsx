@@ -1,4 +1,5 @@
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
+import { FEATURE_FLAGS } from "@config/features";
 import { getAllowedBusinessAttributeKeysForCategory } from "@data/shared/businessAttributeInference";
 import { mergeMissingBusinessAttributeDefaults } from "@data/shared/businessAttributeDefaults";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
@@ -27,7 +28,13 @@ import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { isDataUrl } from "@lib/media/mediaStorage";
-import { normalizeTimeSlotPresets } from "@lib/menu/timeSlotPresetBoundary";
+import {
+    normalizeProjectPresetReferenceMutation,
+    normalizeTimeSlotPresetId,
+    normalizeTimeSlotPresetCascadePending,
+    normalizeTimeSlotPresets,
+    type ProjectPresetReferenceMutation,
+} from "@lib/menu/timeSlotPresetBoundary";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     buildOwnerGoogleMapsLinkIdentityBinding,
@@ -57,6 +64,7 @@ import {
     ExternalLocationIdentityProvider,
     StoreDataType,
     TimeSlotPreset,
+    TimeSlotPresetCascadePending,
 } from "@type/platform/store";
 import { deleteField, doc, FieldPath, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
@@ -880,12 +888,17 @@ export const generatePresetId = (tenantId: number, storeId: number) =>
 export type TimeSlotPresetUpdateResult = {
     success: true;
     timeSlotPresets: TimeSlotPreset[];
+    pendingCascade?: TimeSlotPresetCascadePending;
 };
 
 export const isTimeSlotPresetUpdateResult = (result: unknown): result is TimeSlotPresetUpdateResult => (
     Boolean(result && typeof result === 'object')
     && (result as TimeSlotPresetUpdateResult).success === true
     && Array.isArray((result as TimeSlotPresetUpdateResult).timeSlotPresets)
+    && (
+        (result as TimeSlotPresetUpdateResult).pendingCascade === undefined
+        || Boolean(normalizeTimeSlotPresetCascadePending((result as TimeSlotPresetUpdateResult).pendingCascade))
+    )
 );
 
 export function assertTimeSlotPresetUpdateSucceeded(result: unknown): asserts result is TimeSlotPresetUpdateResult {
@@ -893,7 +906,11 @@ export function assertTimeSlotPresetUpdateSucceeded(result: unknown): asserts re
     throw new Error('time_slot_preset_update_rejected');
 }
 
-export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: TimeSlotPreset[]) => {
+export const updateTimeSlotPresets = async (
+    storeId: number,
+    timeSlotPresets: TimeSlotPreset[],
+    cascadeMutation?: ProjectPresetReferenceMutation,
+) => {
     return await apiCallComposer(
         async () => {
             if (!Number.isSafeInteger(storeId) || storeId <= 0) {
@@ -901,13 +918,98 @@ export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: Ti
             }
             await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');
             const normalizedPresets = normalizeTimeSlotPresets(timeSlotPresets);
+            const normalizedMutation = cascadeMutation === undefined
+                ? null
+                : normalizeProjectPresetReferenceMutation(cascadeMutation);
+            if (cascadeMutation !== undefined && !normalizedMutation) {
+                throw new Error('time_slot_preset_cascade_mutation_invalid');
+            }
+            const pendingCascade: TimeSlotPresetCascadePending | undefined = normalizedMutation
+                ? {
+                    operationId: generateOwnCustomUid(storeId, storeId),
+                    createdAt: new Date().toISOString(),
+                    mutation: normalizedMutation,
+                }
+                : undefined;
             const docRef = getDocRef(`${storeId}`);
-            await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets: normalizedPresets }, { merge: true });
+            await runTransaction(firebaseClient, async (transaction) => {
+                const currentSnapshot = await transaction.get(docRef);
+                if (!currentSnapshot.exists()) throw new Error('time_slot_preset_store_missing');
+                if (currentSnapshot.data().timeSlotPresetCascadePending !== undefined) {
+                    throw new Error('time_slot_preset_cascade_pending');
+                }
+                transaction.set(docRef, {
+                    modifiedOn: serverTimestamp(),
+                    timeSlotPresets: normalizedPresets,
+                    ...(pendingCascade ? { timeSlotPresetCascadePending: pendingCascade } : {}),
+                }, { merge: true });
+            });
             await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");
-            return { success: true, timeSlotPresets: normalizedPresets } satisfies TimeSlotPresetUpdateResult;
+            return {
+                success: true,
+                timeSlotPresets: normalizedPresets,
+                ...(pendingCascade ? { pendingCascade } : {}),
+            } satisfies TimeSlotPresetUpdateResult;
         },
         { storeId, timeSlotPresets },
         "updateTimeSlotPresets"
+    );
+};
+
+export type TimeSlotPresetCascadeCompletionResult = {
+    success: true;
+    operationId: string;
+};
+
+export const isTimeSlotPresetCascadeCompletionResult = (
+    result: unknown,
+): result is TimeSlotPresetCascadeCompletionResult => (
+    Boolean(result && typeof result === 'object')
+    && (result as TimeSlotPresetCascadeCompletionResult).success === true
+    && Boolean(normalizeTimeSlotPresetId((result as TimeSlotPresetCascadeCompletionResult).operationId))
+);
+
+export function assertTimeSlotPresetCascadeCompleted(
+    result: unknown,
+): asserts result is TimeSlotPresetCascadeCompletionResult {
+    if (isTimeSlotPresetCascadeCompletionResult(result)) return;
+    throw new Error('time_slot_preset_cascade_completion_rejected');
+}
+
+export const completeTimeSlotPresetCascade = async (
+    storeId: number,
+    operationId: string,
+) => {
+    return await apiCallComposer(
+        async () => {
+            if (!Number.isSafeInteger(storeId) || storeId <= 0) {
+                throw new Error('time_slot_preset_store_scope_invalid');
+            }
+            const normalizedOperationId = normalizeTimeSlotPresetId(operationId);
+            if (!normalizedOperationId) throw new Error('time_slot_preset_cascade_operation_invalid');
+            await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');
+            const docRef = getDocRef(`${storeId}`);
+            await runTransaction(firebaseClient, async (transaction) => {
+                const currentSnapshot = await transaction.get(docRef);
+                if (!currentSnapshot.exists()) throw new Error('time_slot_preset_store_missing');
+                const rawPending = currentSnapshot.data().timeSlotPresetCascadePending;
+                if (rawPending === undefined) return;
+                const pending = normalizeTimeSlotPresetCascadePending(rawPending);
+                if (!pending || pending.operationId !== normalizedOperationId) {
+                    throw new Error('time_slot_preset_cascade_operation_conflict');
+                }
+                transaction.update(docRef, {
+                    modifiedOn: serverTimestamp(),
+                    timeSlotPresetCascadePending: deleteField(),
+                });
+            });
+            return {
+                success: true,
+                operationId: normalizedOperationId,
+            } satisfies TimeSlotPresetCascadeCompletionResult;
+        },
+        { storeId, operationId },
+        "completeTimeSlotPresetCascade",
     );
 };
 
@@ -992,6 +1094,9 @@ export const confirmExternalLocationIdentity = async (data: {
 }) => {
     return await apiCallComposer(
         async () => {
+            if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK) {
+                throw new Error('maps_place_check_not_enabled');
+            }
             const storeId = Number(data.storeId);
             const requestedBinding = normalizeExternalLocationIdentityBinding(data.binding);
             if (

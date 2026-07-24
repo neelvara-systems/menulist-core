@@ -20,7 +20,7 @@ if (process.env.FUNCTIONS_EMULATOR === 'true') {
     require('firebase-functions/logger').info('[Answerlattice Dev] Loaded .env.local for emulator');
 }
 
-import { onDocumentCreated, onDocumentUpdated, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentDeleted, onDocumentUpdated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
@@ -32,6 +32,7 @@ import {
     backfillChatAnalyticsDays,
     releaseChatAnalyticsBackfillLease,
 } from './answerlattice/chatAnalyticsAggregation';
+import { recoverChatAnalyticsAfterDeletedSession } from './answerlattice/chatAnalyticsDeletionRecovery';
 import {
     isAnswerlatticeChatAnalyticsStoreScope,
     parseAnswerlatticeChatAnalyticsBackfillInput,
@@ -104,6 +105,30 @@ export const answerlatticeSupportBoardSummaryOnWrite = onDocumentWritten(
     },
 );
 
+export const answerlatticeChatAnalyticsOnDelete = onDocumentDeleted(
+    {
+        region: 'us-central1',
+        document: `${DB_COLLECTIONS.CHAT_SESSIONS}/{sessionId}`,
+        retry: true,
+        timeoutSeconds: 120,
+        memory: '256MiB',
+        maxInstances: 3,
+    },
+    async (event) => {
+        const result = await recoverChatAnalyticsAfterDeletedSession(
+            event.params.sessionId,
+            event.data?.data(),
+        );
+        if (!result.aggregate) {
+            logger.warn('[Answerlattice Chat Analytics] Deleted session was outside the aggregate contract', {
+                failureCode: 'answerlattice_chat_analytics_delete_source_invalid',
+                eventIdPresent: Boolean(event.id),
+                sessionIdPresent: Boolean(event.params.sessionId),
+            });
+        }
+    },
+);
+
 export const backfillChatAnalytics = onCall(
     {
         region: 'us-central1',
@@ -112,7 +137,7 @@ export const backfillChatAnalytics = onCall(
         maxInstances: 1,
     },
     async (request) => {
-        assertAnswerlatticePlatformCallable(request, 'backfillChatAnalytics');
+        const caller = await assertAnswerlatticePlatformCallable(request, 'backfillChatAnalytics');
         let input: ReturnType<typeof parseAnswerlatticeChatAnalyticsBackfillInput>;
         try {
             input = parseAnswerlatticeChatAnalyticsBackfillInput(request.data);
@@ -127,7 +152,7 @@ export const backfillChatAnalytics = onCall(
             });
             throw new HttpsError('permission-denied', 'Chat analytics backfill is not available for this workspace.');
         }
-        const leaseId = await acquireChatAnalyticsBackfillLease(input.tId, input.sId);
+        const leaseId = await acquireChatAnalyticsBackfillLease(input.tId, input.sId, caller);
         if (!leaseId) {
             throw new HttpsError('resource-exhausted', 'A recent chat analytics backfill is already running.');
         }
@@ -439,7 +464,9 @@ export const embedArticleWorker = onTaskDispatched(ANSWERLATTICE_EMBED_TASK_OPTI
 });
 
 export const regenerateEmbedding = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
-    const caller = assertAnswerlatticePlatformCallable(request, 'regenerateEmbedding');
+    const caller = await assertAnswerlatticePlatformCallable(request, 'regenerateEmbedding', {
+        allowPlatformSupport: true,
+    });
     const { articleId } = request.data || {};
     if (!articleId) {
         throw new HttpsError('invalid-argument', 'The function must be called with articleId.');
@@ -453,7 +480,9 @@ export const regenerateEmbedding = onCall(ANSWERLATTICE_AI_OPTIONS, async (reque
 });
 
 export const publishApprovedJobFn = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
-    const caller = assertAnswerlatticePlatformCallable(request, 'publishApprovedJobFn');
+    const caller = await assertAnswerlatticePlatformCallable(request, 'publishApprovedJobFn', {
+        allowPlatformSupport: true,
+    });
     const { jobId, finalCategories }: { jobId: string; finalCategories: IngestionJobCategoriesMap } = request.data || {};
     if (!jobId || !finalCategories) {
         throw new HttpsError('invalid-argument', 'Missing required payload: jobId, finalCategories.');
@@ -470,7 +499,9 @@ export const dev_triggerStartGeneration = onCall(ANSWERLATTICE_AI_OPTIONS, async
     if (process.env.FUNCTIONS_EMULATOR !== 'true') {
         throw new HttpsError('failed-precondition', 'This callable is available only in the local emulator.');
     }
-    assertAnswerlatticePlatformCallable(request, 'dev_triggerStartGeneration');
+    await assertAnswerlatticePlatformCallable(request, 'dev_triggerStartGeneration', {
+        allowPlatformSupport: true,
+    });
     const safeJobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
     return startGenerationLogic(safeJobId);
 });
@@ -479,7 +510,9 @@ export const dev_triggerFinalizePublish = onCall(ANSWERLATTICE_AI_OPTIONS, async
     if (process.env.FUNCTIONS_EMULATOR !== 'true') {
         throw new HttpsError('failed-precondition', 'This callable is available only in the local emulator.');
     }
-    assertAnswerlatticePlatformCallable(request, 'dev_triggerFinalizePublish');
+    await assertAnswerlatticePlatformCallable(request, 'dev_triggerFinalizePublish', {
+        allowPlatformSupport: true,
+    });
     const safeJobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
     const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_GENERATION_JOBS).doc(safeJobId).get();
     if (!snapshot.exists) throw new HttpsError('not-found', 'Job not found.');

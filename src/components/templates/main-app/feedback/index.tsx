@@ -16,12 +16,14 @@ import {
     getFeedbackCount,
     getFeedbackList,
     updateFeedbackStatus,
+    type GuestFeedbackExpectedScope,
 } from '@database/guestFeedback';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
 import { Button, Card, Empty, Flex, Spin, Typography, theme, notification } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackFilters } from './FeedbackFilters';
 import { FeedbackQrDownload } from './FeedbackQrDownload';
@@ -36,12 +38,26 @@ interface FeedbackInboxProps {
     storeName?: string;
 }
 
-export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
+function resolveFeedbackInboxScope(
+    storeDetails: { storeId?: unknown; tenantId?: unknown } | null | undefined,
+): GuestFeedbackExpectedScope | null {
+    const storeId = Number(storeDetails?.storeId);
+    const tenantId = Number(storeDetails?.tenantId);
+    return Number.isSafeInteger(storeId)
+        && storeId > 0
+        && Number.isSafeInteger(tenantId)
+        && tenantId > 0
+        ? { storeId, tenantId }
+        : null;
+}
+
+const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
     projectId,
     storeName,
 }) => {
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
 
     const [feedbackItems, setFeedbackItems] = useState<GuestFeedback[]>([]);
     const [filter, setFilter] = useState<GuestFeedbackFilter>('all');
@@ -50,8 +66,34 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(false);
     const [lastDocId, setLastDocId] = useState<string | null>(null);
+    const currentScopeRef = useRef<GuestFeedbackExpectedScope | null>(resolveFeedbackInboxScope(storeDetails));
+    const latestRequestRef = useRef(0);
+    const loadMoreInFlightRef = useRef(false);
+    const mutationInFlightRef = useRef(false);
+    const isMountedRef = useRef(true);
+    const feedbackItemsRef = useRef(feedbackItems);
+    currentScopeRef.current = resolveFeedbackInboxScope(storeDetails);
+    feedbackItemsRef.current = feedbackItems;
+    const isExpectedScope = useCallback((expectedScope: GuestFeedbackExpectedScope) => (
+        isMountedRef.current
+        && currentScopeRef.current?.tenantId === expectedScope.tenantId
+        && currentScopeRef.current?.storeId === expectedScope.storeId
+    ), []);
 
     const fetchFeedback = useCallback(async (loadMore = false, cursorId?: string | null) => {
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope)) {
+            setFeedbackItems([]);
+            setNeedsAttentionCount(0);
+            setHasMore(false);
+            setLastDocId(null);
+            setIsLoading(false);
+            return;
+        }
+        if (loadMore && loadMoreInFlightRef.current) return;
+        const requestId = latestRequestRef.current + 1;
+        latestRequestRef.current = requestId;
+        if (loadMore) loadMoreInFlightRef.current = true;
         if (loadMore) {
             setIsLoadingMore(true);
         } else {
@@ -60,82 +102,122 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
         }
 
         try {
-            // Call DAL directly - session handled internally by DAL
-            const result = await getFeedbackList(filter, 50, cursorId || undefined);
+            const [result, count] = await Promise.all([
+                getFeedbackList(filter, 50, cursorId || undefined, expectedScope),
+                loadMore ? Promise.resolve<number | null>(null) : getFeedbackCount('needs_attention', expectedScope),
+            ]);
             assertFeedbackListLoadSucceeded(
                 result,
                 'feedback_inbox_list_load_rejected',
+                expectedScope,
             );
-
-            if (loadMore) {
-                setFeedbackItems(prev => [...prev, ...result.items]);
-            } else {
-                setFeedbackItems(result.items);
-                // Get needs attention count for badge
-                const count = await getFeedbackCount('needs_attention');
+            if (count !== null) {
                 assertFeedbackCountLoadSucceeded(
                     count,
                     'feedback_inbox_count_load_rejected',
                 );
-                setNeedsAttentionCount(count);
+            }
+            if (
+                latestRequestRef.current !== requestId
+                || !isExpectedScope(expectedScope)
+            ) return;
+
+            if (loadMore) {
+                setFeedbackItems(prev => {
+                    if (
+                        latestRequestRef.current !== requestId
+                        || !isExpectedScope(expectedScope)
+                    ) return prev;
+                    const existingIds = new Set(prev.map((item) => item.id));
+                    const next = [...prev, ...result.items.filter((item) => !existingIds.has(item.id))];
+                    feedbackItemsRef.current = next;
+                    return next;
+                });
+            } else {
+                feedbackItemsRef.current = result.items;
+                setFeedbackItems(result.items);
+                setNeedsAttentionCount(count ?? 0);
             }
             setHasMore(result.hasMore);
             setLastDocId(result.lastDocId);
         } catch (error) {
-            logFeedbackInboxFailure('feedback_inbox_load_failed', error, {
-                ...getBoundedFeedbackInboxStringContext('projectId', projectId),
-                ...getBoundedFeedbackInboxStringContext('filter', filter),
-                ...getBoundedFeedbackInboxStringContext('cursorId', cursorId),
-                loadMore,
-            });
-            notification.error({
-                message: 'Error',
-                description: 'Failed to load feedback',
-            });
+            if (
+                latestRequestRef.current === requestId
+                && isExpectedScope(expectedScope)
+            ) {
+                logFeedbackInboxFailure('feedback_inbox_load_failed', error, {
+                    ...getBoundedFeedbackInboxStringContext('projectId', projectId),
+                    ...getBoundedFeedbackInboxStringContext('filter', filter),
+                    ...getBoundedFeedbackInboxStringContext('cursorId', cursorId),
+                    loadMore,
+                });
+                notification.error({
+                    message: 'Error',
+                    description: 'Failed to load feedback',
+                });
+            }
         } finally {
-            if (loadMore) {
-                setIsLoadingMore(false);
-            } else {
-                dispatch(stopLoader('feedbackInbox'));
-                setIsLoading(false);
+            if (loadMore) loadMoreInFlightRef.current = false;
+            if (
+                latestRequestRef.current === requestId
+                && isExpectedScope(expectedScope)
+            ) {
+                if (loadMore) {
+                    setIsLoadingMore(false);
+                } else {
+                    dispatch(stopLoader('feedbackInbox'));
+                    setIsLoading(false);
+                }
             }
         }
-    }, [dispatch, filter, projectId]);
+    }, [dispatch, filter, isExpectedScope, projectId]);
 
     useEffect(() => {
         setLastDocId(null);
         fetchFeedback(false, null);
     }, [fetchFeedback]);
 
+    useEffect(() => () => {
+        isMountedRef.current = false;
+        latestRequestRef.current += 1;
+        dispatch(stopLoader('feedbackInbox'));
+    }, [dispatch]);
+
     const handleStatusUpdate = async (feedbackId: string, status: 'new' | 'resolved') => {
+        const expectedScope = currentScopeRef.current;
+        const sourceItem = feedbackItemsRef.current.find((item) => item.id === feedbackId);
+        if (
+            !expectedScope
+            || !sourceItem
+            || !isExpectedScope(expectedScope)
+            || mutationInFlightRef.current
+        ) return;
+        mutationInFlightRef.current = true;
         try {
-            // Call DAL directly - session handled internally by DAL
-            const updated = await updateFeedbackStatus(feedbackId, status);
+            const updated = await updateFeedbackStatus(feedbackId, status, undefined, expectedScope);
             assertFeedbackStatusUpdateSucceeded(
                 updated,
                 feedbackId,
                 status,
                 'feedback_inbox_status_update_rejected',
             );
+            if (!isExpectedScope(expectedScope)) return;
 
-            // Update local state
-            setFeedbackItems(prev =>
-                prev.flatMap(item => {
-                    if (item.id !== feedbackId) return [item];
-                    if (filter === 'needs_attention' && status === 'resolved') return [];
-                    if (filter === 'resolved' && status === 'new') return [];
-                    return [{ ...item, status, needsAttention: updated.needsAttention, modifiedOn: updated.modifiedOn }];
-                })
-            );
+            if (feedbackItemsRef.current.find((item) => item.id === feedbackId) !== sourceItem) {
+                await fetchFeedback(false, null);
+                return;
+            }
+            const nextItems = feedbackItemsRef.current.flatMap(item => {
+                if (item.id !== feedbackId) return [item];
+                if (filter === 'needs_attention' && status === 'resolved') return [];
+                if (filter === 'resolved' && status === 'new') return [];
+                return [{ ...item, status, needsAttention: updated.needsAttention, modifiedOn: updated.modifiedOn }];
+            });
+            feedbackItemsRef.current = nextItems;
+            setFeedbackItems(nextItems);
 
-            // Update needs attention count
-            const updatedItem = feedbackItems.find(f => f.id === feedbackId);
-            if (updatedItem && updatedItem.rating <= 3) {
-                if (status === 'resolved') {
-                    setNeedsAttentionCount(prev => Math.max(0, prev - 1));
-                } else {
-                    setNeedsAttentionCount(prev => prev + 1);
-                }
+            if (sourceItem.needsAttention !== updated.needsAttention) {
+                setNeedsAttentionCount(prev => updated.needsAttention ? prev + 1 : Math.max(0, prev - 1));
             }
 
             notification.success({
@@ -143,13 +225,17 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                 duration: 2,
             });
         } catch (error) {
-            logFeedbackInboxFailure('feedback_inbox_status_update_failed', error, {
-                ...getBoundedFeedbackInboxStringContext('feedbackId', feedbackId),
-                ...getBoundedFeedbackInboxStringContext('projectId', projectId),
-                ...getBoundedFeedbackInboxStringContext('status', status),
-                visibleFeedbackCount: feedbackItems.length,
-            });
-            throw error;
+            if (isExpectedScope(expectedScope)) {
+                logFeedbackInboxFailure('feedback_inbox_status_update_failed', error, {
+                    ...getBoundedFeedbackInboxStringContext('feedbackId', feedbackId),
+                    ...getBoundedFeedbackInboxStringContext('projectId', projectId),
+                    ...getBoundedFeedbackInboxStringContext('status', status),
+                    visibleFeedbackCount: feedbackItemsRef.current.length,
+                });
+                throw error;
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     };
 
@@ -264,6 +350,12 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
             </div>
         </div>
     );
+};
+
+export const FeedbackInbox: React.FC<FeedbackInboxProps> = (props) => {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+    return <FeedbackInboxContent key={scopeKey} {...props} />;
 };
 
 export default FeedbackInbox;

@@ -31,11 +31,8 @@ async function run(): Promise<void> {
     const acquired = concurrent.filter(Boolean);
     assert.equal(acquired.length, 1, 'concurrent scheduler instances must acquire one daily lease');
 
-    await completePlatformDailyTaskLeaseForTest(
-        acquired[0],
-        getPlatformDailyTaskDayKeyForTest(firstRunAt),
-        'completed',
-    );
+    assert.equal(getPlatformDailyTaskDayKeyForTest(firstRunAt), acquired[0].dayKey);
+    assert.equal(await completePlatformDailyTaskLeaseForTest(acquired[0], 'completed'), true);
     assert.equal(
         await acquirePlatformDailyTaskLeaseForTest(
             firestoreAdmin,
@@ -48,11 +45,7 @@ async function run(): Promise<void> {
     const nextDayAt = new Date('2026-07-18T00:30:00.000Z');
     const nextDayLease = await acquirePlatformDailyTaskLeaseForTest(firestoreAdmin, nextDayAt);
     assert.ok(nextDayLease, 'the next UTC day must be eligible');
-    await completePlatformDailyTaskLeaseForTest(
-        nextDayLease,
-        getPlatformDailyTaskDayKeyForTest(nextDayAt),
-        'failed',
-    );
+    assert.equal(await completePlatformDailyTaskLeaseForTest(nextDayLease, 'failed'), true);
 
     assert.equal(
         await acquirePlatformDailyTaskLeaseForTest(
@@ -66,11 +59,7 @@ async function run(): Promise<void> {
     const retryAt = new Date(nextDayAt.getTime() + 56 * MINUTE_MS);
     const retryLease = await acquirePlatformDailyTaskLeaseForTest(firestoreAdmin, retryAt);
     assert.ok(retryLease, 'a failed suite must become retryable after the delay');
-    await completePlatformDailyTaskLeaseForTest(
-        retryLease,
-        getPlatformDailyTaskDayKeyForTest(retryAt),
-        'completed',
-    );
+    assert.equal(await completePlatformDailyTaskLeaseForTest(retryLease, 'completed'), true);
 
     const state = (await firestoreAdmin.collection(STATE_COLLECTION).doc(STATE_DOCUMENT).get()).data() || {};
     assert.equal(state.status, 'completed');
@@ -94,11 +83,15 @@ async function run(): Promise<void> {
         new Date(expiryTestAt.getTime() + 11 * MINUTE_MS),
     );
     assert.ok(recoveredLease, 'an expired running lease must be recoverable');
-    await completePlatformDailyTaskLeaseForTest(
-        recoveredLease,
-        getPlatformDailyTaskDayKeyForTest(expiryTestAt),
-        'completed',
+    assert.equal(
+        await completePlatformDailyTaskLeaseForTest(expiringLease, 'completed'),
+        false,
+        'an expired lease owner must not finalize over its replacement',
     );
+    const replacementState = (await firestoreAdmin.collection(STATE_COLLECTION).doc(STATE_DOCUMENT).get()).data() || {};
+    assert.equal(replacementState.status, 'running');
+    assert.equal(replacementState.leaseOwner, recoveredLease.leaseOwner);
+    assert.equal(await completePlatformDailyTaskLeaseForTest(recoveredLease, 'completed'), true);
 
     process.stdout.write('Platform daily task lease emulator tests passed.\n');
 }

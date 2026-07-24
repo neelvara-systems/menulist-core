@@ -1,7 +1,8 @@
 # SignalDesk Trust Partner Rail - Compliance Policy
 
-**Status:** Runtime implemented for internal testing; disclosure and claim gates remain mandatory before real partner execution
+**Status:** Feature 17 locally source-complete; disclosure and claim review remain mandatory before real partner execution
 **Created:** June 24, 2026
+**Last Updated:** July 21, 2026
 
 ## Core Rule
 
@@ -35,18 +36,21 @@ Before approving a paid or incentivized partner post:
 9. Outcome tracking link or code is ready.
 10. Founder/admin approved the deal.
 
-## Required Disclosure State
+## Persisted Disclosure State
 
 Each deal and deliverable must store:
 
 | Field | Purpose |
 | --- | --- |
-| `materialConnectionType` | Paid, free service, discount, affiliate, referral, or unpaid. |
-| `disclosureRequired` | Boolean. |
-| `disclosureInstruction` | Plain instruction for the partner. |
-| `disclosureObserved` | Unknown, present, missing, or not applicable. |
-| `reviewedBy` | Reviewer ID. |
-| `reviewedAt` | Review timestamp. |
+| Deal `pricingModel` and `flatFeeUsd` | Records flat-fee/barter economics; per-view is blocked. |
+| Brief `disclosureRequired` | Always true for a valid stored brief. |
+| Brief `disclosureText` | Plain instruction for the partner. |
+| Brief `approvedClaims` / `bannedClaims` | Bounded non-conflicting claim rails. |
+| Deliverable `disclosurePresent` | Records whether disclosure was observed. |
+| Deliverable `reviewState` | Becomes `risk` when a live item lacks disclosure. |
+| `updatedBy` / timestamps | Records the internal actor and review time on mutable records. |
+
+The runtime does not claim to store contract documents, material-connection taxonomies, legal sign-off, or payment execution. Those remain in the approved external/manual process.
 
 ## Banned Claims
 

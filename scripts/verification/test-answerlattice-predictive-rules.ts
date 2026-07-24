@@ -13,6 +13,7 @@ import {
     setDoc,
     Timestamp,
     updateDoc,
+    writeBatch,
 } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-predictive-rules';
@@ -76,6 +77,34 @@ async function run(): Promise<void> {
             doc(ownerDb, 'answerlattice_predictiveTriggers', 'valid_active'),
             trigger(),
         ));
+        const triggerAuditBatch = writeBatch(ownerDb);
+        triggerAuditBatch.set(
+            doc(ownerDb, 'answerlattice_predictiveTriggers', 'valid_batched_with_audit'),
+            trigger({ name: 'Atomic trigger and audit' }),
+        );
+        triggerAuditBatch.set(
+            doc(ownerDb, 'answerlattice_auditLogs', 'predictive_trigger_atomic_audit'),
+            {
+                pId: 'AL',
+                tId: 1,
+                sId: 101,
+                action: 'predictive_trigger_created',
+                entityType: 'predictiveTrigger',
+                entityId: 'valid_batched_with_audit',
+                newState: { source: 'manual' },
+                performedBy: 'admin',
+                timestamp: NOW,
+                createdOn: NOW,
+                modifiedOn: NOW,
+                createdBy: 'Owner',
+                modifiedBy: 'Owner',
+                role: 'OWNER',
+                uId: 'owner-1',
+                traceId: 'trace_predictive_audit',
+                requestId: 'trace_predictive_audit',
+            },
+        );
+        await assertSucceeds(triggerAuditBatch.commit());
         await assertSucceeds(setDoc(
             doc(ownerDb, 'answerlattice_predictiveTriggers', 'valid_disabled'),
             trigger({ status: 'disabled', conditions: {} }),

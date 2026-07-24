@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
     AnswerlatticeWidgetEscalationError,
     executeAnswerlatticeWidgetEscalation,
@@ -108,7 +107,7 @@ export async function POST(request: NextRequest) {
         });
         if (!authResult) return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
 
-        const { storeData, storeId } = authResult;
+        const { answerlatticeScope, storeData, storeId } = authResult;
         const credential = authResult.credential || {};
         if (
             (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE)
@@ -118,9 +117,9 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
-        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
-        if (!tId || !sId) {
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
+        if (!tId || !sId || String(sId) !== storeId) {
             logRuntimeFailure('answerlattice_widget_escalation_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });

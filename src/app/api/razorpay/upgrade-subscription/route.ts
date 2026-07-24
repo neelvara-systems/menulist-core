@@ -16,6 +16,7 @@ import {
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from '@lib/billing/productBillingPlans';
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';
 import { getRazorpayManagedSubscriptionId } from '@lib/billing/subscriptionProviderSync';
+import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -124,9 +125,10 @@ export const POST = withAuth(async (request, session) => {
                 { status: 409 },
             );
         }
+        const replacementEvidence = resolveSubscriptionReplacementEvidence(newInternalSub);
         if (
-            newInternalSub.founderMonitorReplacementForSubscriptionId
-            && newInternalSub.founderMonitorReplacementForSubscriptionId !== oldSubscriptionId
+            replacementEvidence.outcome !== 'replacement'
+            || replacementEvidence.subscriptionId !== oldSubscriptionId
         ) {
             return NextResponse.json(
                 { error: 'The replacement subscription does not match the current subscription.' },
@@ -184,6 +186,13 @@ export const POST = withAuth(async (request, session) => {
                 'api:upgrade-subscription:idempotent',
             );
             return NextResponse.json({ success: true, message: "Subscription upgraded successfully." });
+        }
+
+        if (newInternalSub.status !== 'active') {
+            return NextResponse.json(
+                { error: 'The replacement subscription is not active.' },
+                { status: 409 },
+            );
         }
 
         await writeLogEntry({

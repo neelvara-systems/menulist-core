@@ -1,6 +1,6 @@
 # MenuList SignalDesk - Architecture Readiness Review
 
-**Status:** Pre-implementation decision record
+**Status:** Implemented architecture contract; Feature 1 revalidated July 21, 2026
 **Created:** June 23, 2026
 **Scope:** Firebase optimization, product separation, and code splitting before runtime implementation.
 
@@ -29,13 +29,13 @@ This is different from building it as a MenuList owner/customer feature. The sha
 | --- | --- |
 | Human name | MenuList SignalDesk |
 | Route slug | `signaldesk` |
-| Proposed product code | `SD` |
+| Product code | `SD` |
 | Public product | No |
 | MenuList owner/customer feature | No |
 | Runtime home | Current monorepo first, isolated by product folders |
 | Extraction path | Can move to separate private repo later because folders/config stay product-scoped |
 
-Implementation must add a `PRODUCT_IDS.SIGNALDESK = "SD"` entry before writing database-backed SignalDesk documents. Do not reuse `GR` because GrowthOS/Growth Kits is a different product boundary.
+The runtime uses `PRODUCT_IDS.SIGNALDESK = "SD"` for database-backed SignalDesk documents. `GR` remains reserved for the separate GrowthOS/Growth Kits product boundary.
 
 ## Code Splitting Contract
 
@@ -83,7 +83,7 @@ SignalDesk must not import MenuList DAL files that read/write MenuList business 
 
 ## Firebase Separation Contract
 
-Create a dedicated Firebase target:
+Use the dedicated Firebase targets:
 
 | Environment | Project |
 | --- | --- |
@@ -105,7 +105,10 @@ functions-signaldesk/src/index.ts
 functions-signaldesk/src/constants/database.ts
 functions-signaldesk/src/constants/features.ts
 functions-signaldesk/src/firebaseAdmin.ts
+functions-signaldesk/src/projectBoundary.ts
 ```
+
+Both app-server and Functions initialization fail closed. The Functions boundary admits only the dedicated QA/production projects and `demo-signaldesk*` emulator IDs, rejects conflicting environment declarations, and verifies an existing default Admin app before reuse.
 
 Environment variables must use full names:
 

@@ -5,7 +5,12 @@ import { getConversationsPaginated } from '@database/chatAnalytics';
 import { assertChatSessionBatchMetadataUpdateSucceeded, batchUpdateSessionMetadata } from '@database/chatSessions';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useDebounceValue } from '@hook/useDebounce';
+import {
+    getAnswerlatticeChatWorkspaceScopeKey,
+    isAnswerlatticeChatWorkspaceScopeAcknowledgement,
+} from '@lib/answerlattice/chatAnalyticsContracts';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { ChatSession, ConversationFilters } from '@type/chatSession';
 import { escapeCSVValue } from '@util/exportUtils';
 import { calculateQualityFlags } from '@util/qualityMetrics';
@@ -21,6 +26,13 @@ const { Text } = Typography;
 
 function ConversationsList() {
     const loggedInSession = useClientAuthSession();
+    const resolvedScope = resolveAnswerlatticeSessionScope(loggedInSession);
+    const workspaceScope = resolvedScope
+        ? { tId: resolvedScope.tenantId, sId: resolvedScope.storeId }
+        : null;
+    const scopeKey = getAnswerlatticeChatWorkspaceScopeKey(workspaceScope);
+    const scopeKeyRef = useRef(scopeKey);
+    scopeKeyRef.current = scopeKey;
     const [searchQuery, setSearchQuery] = useState('');
     // Single filter state object (managed by child component)
     const [filters, setFilters] = useState<ConversationFilters>({
@@ -48,25 +60,31 @@ function ConversationsList() {
 
     // Pagination state
     const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
+    const [allSessionsScopeKey, setAllSessionsScopeKey] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [lastCursor, setLastCursor] = useState<string | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const loadMoreOwnerRef = useRef(0);
+    const batchActionOwnerRef = useRef(0);
+    const batchActionInProgressRef = useRef(false);
 
     // Generate SWR cache key (only for initial load)
     // NOTE: cacheKey will be null if session hasn't loaded yet, preventing SWR from fetching
     // Use debouncedSearchQuery to prevent database hits on every keystroke (500ms delay)
-    const cacheKey = loggedInSession?.sId
-        ? `conversations-${loggedInSession.tId}-${loggedInSession.sId}-${filters.mode}-${filters.feedback}-${filters.dateRange?.[0]?.valueOf() || 'null'}-${filters.dateRange?.[1]?.valueOf() || 'null'}-${debouncedSearchQuery || 'empty'}`
+    const cacheKey = scopeKey
+        ? `${scopeKey}:${filters.mode}:${filters.feedback}:${filters.dateRange?.[0]?.valueOf() || 'null'}:${filters.dateRange?.[1]?.valueOf() || 'null'}:${debouncedSearchQuery || 'empty'}`
         : null;
 
     // Fetch initial conversations with SWR (20 at a time for cost efficiency)
     const { data, error, isLoading, mutate } = useSWR(
         cacheKey,
         async () => {
-            if (!loggedInSession) return { sessions: [], hasNextPage: false, nextPageCursor: null };
+            if (!loggedInSession || !workspaceScope) {
+                throw new Error('answerlattice_chat_workspace_scope_missing');
+            }
 
-            const dbFilters: any = {};
+            const dbFilters: NonNullable<Parameters<typeof getConversationsPaginated>[2]> = {};
 
             if (filters.mode !== 'all') {
                 dbFilters.mode = filters.mode;
@@ -89,8 +107,10 @@ function ConversationsList() {
                 20, // Start with 20 conversations (cost-efficient)
                 dbFilters
             );
-
-            return result || { sessions: [], hasNextPage: false, nextPageCursor: null };
+            if (!isAnswerlatticeChatWorkspaceScopeAcknowledgement(result, workspaceScope)) {
+                throw new Error('answerlattice_chat_workspace_acknowledgement_invalid');
+            }
+            return result;
         },
         {
             dedupingInterval: REFRESH_INTERVALS.SWR_DEDUPE,
@@ -101,21 +121,29 @@ function ConversationsList() {
         }
     );
 
-    // Handle errors
-    if (error) {
-        message.error('Unable to fetch chat data. Please check your connection and try again');
-    }
+    useEffect(() => {
+        if (error && scopeKey) {
+            message.error('Unable to fetch chat data. Please check your connection and try again');
+        }
+    }, [error, scopeKey]);
 
     // Update allSessions when initial data loads or filters change
     useEffect(() => {
-        if (data?.sessions && !isLoading) {
+        if (
+            data?.sessions
+            && !isLoading
+            && scopeKey
+            && workspaceScope
+            && isAnswerlatticeChatWorkspaceScopeAcknowledgement(data, workspaceScope)
+        ) {
             // Always update when loading completes to ensure fresh data
             setAllSessions(data.sessions);
+            setAllSessionsScopeKey(scopeKey);
             setHasMore(data.hasNextPage || false);
             setLastCursor(data.nextPageCursor || null);
 
         }
-    }, [data, isLoading]);
+    }, [data, isLoading, scopeKey, workspaceScope?.tId, workspaceScope?.sId]);
 
     // Reset pagination when filters change (but not on initial mount)
     const isInitialMount = useRef(true);
@@ -126,14 +154,21 @@ function ConversationsList() {
         }
 
         setAllSessions([]);
+        setAllSessionsScopeKey(null);
         setHasMore(true);
+        setIsLoadingMore(false);
         setLastCursor(null);
         setSelectedSession(null);
-    }, [filters.mode, filters.feedback, filters.dateRange]);
+        setSelectedIds([]);
+        setSelectMode(false);
+        loadMoreOwnerRef.current += 1;
+        batchActionOwnerRef.current += 1;
+        batchActionInProgressRef.current = false;
+    }, [scopeKey, filters.mode, filters.feedback, filters.dateRange, debouncedSearchQuery]);
 
     // Apply client-side filters (memoized to prevent infinite loops)
     const sessions = useMemo(() => {
-        let filtered = allSessions;
+        let filtered = allSessionsScopeKey === scopeKey ? allSessions : [];
 
         // Feedback filter
         if (filters.feedback === 'positive') {
@@ -208,7 +243,8 @@ function ConversationsList() {
         }
 
         return filtered;
-    }, [allSessions, filters.feedback, filters.status, filters.priority, filters.quality, filters.tags, filters.hasNotes, filters.isUnread]);
+    }, [allSessions, allSessionsScopeKey, scopeKey, filters.feedback, filters.status, filters.priority, filters.quality, filters.tags, filters.hasNotes, filters.isUnread]);
+    const visibleSelectedSession = allSessionsScopeKey === scopeKey ? selectedSession : null;
 
     const handleExport = () => {
         if (filteredSessions.length === 0) {
@@ -229,7 +265,7 @@ function ConversationsList() {
             'Messages',
             'Helpful',
             'Not Helpful',
-            'Satisfaction %',
+            'Positive Feedback Share',
             'Started',
             'Last Activity'
         ].map(escapeCSVValue).join(','));
@@ -241,7 +277,9 @@ function ConversationsList() {
             const positiveFeedback = messages.filter(msg => msg.feedback?.isGood === true).length;
             const negativeFeedback = messages.filter(msg => msg.feedback?.isGood === false).length;
             const totalFeedback = positiveFeedback + negativeFeedback;
-            const satisfaction = totalFeedback > 0 ? Math.round((positiveFeedback / totalFeedback) * 100) : 0;
+            const positiveFeedbackShare = totalFeedback > 0
+                ? Math.round((positiveFeedback / totalFeedback) * 100)
+                : null;
 
             const row = [
                 session.id || 'N/A',
@@ -252,7 +290,7 @@ function ConversationsList() {
                 messages.length,
                 positiveFeedback,
                 negativeFeedback,
-                totalFeedback > 0 ? `${satisfaction}%` : 'N/A',
+                positiveFeedbackShare === null ? 'N/A' : `${positiveFeedbackShare}%`,
                 session.createdOn?.toDate().toLocaleString() || 'N/A',
                 session.modifiedOn?.toDate().toLocaleString() || 'N/A'
             ].map(escapeCSVValue);
@@ -297,11 +335,16 @@ function ConversationsList() {
 
     // Load more conversations (infinite scroll)
     const loadMoreConversations = async () => {
-        if (!hasMore || isLoadingMore || !lastCursor || !loggedInSession) return;
+        if (!hasMore || isLoadingMore || !lastCursor || !loggedInSession || !workspaceScope || !scopeKey) return;
 
+        const actionOwner = ++loadMoreOwnerRef.current;
+        const expectedScope = workspaceScope;
+        const expectedScopeKey = scopeKey;
         setIsLoadingMore(true);
         try {
-            const dbFilters: any = { lastDocId: lastCursor };
+            const dbFilters: NonNullable<Parameters<typeof getConversationsPaginated>[2]> = {
+                lastDocId: lastCursor,
+            };
 
             if (filters.mode !== 'all') {
                 dbFilters.mode = filters.mode;
@@ -320,15 +363,27 @@ function ConversationsList() {
                 dbFilters
             );
 
-            if (result?.sessions) {
-                setAllSessions(prev => [...prev, ...result.sessions]);
+            if (
+                result?.sessions
+                && isAnswerlatticeChatWorkspaceScopeAcknowledgement(result, expectedScope)
+                && scopeKeyRef.current === expectedScopeKey
+                && loadMoreOwnerRef.current === actionOwner
+            ) {
+                setAllSessions(prev => Array.from(
+                    new Map([...prev, ...result.sessions].map((session) => [session.id, session])).values(),
+                ));
+                setAllSessionsScopeKey(expectedScopeKey);
                 setHasMore(result.hasNextPage || false);
                 setLastCursor(result.nextPageCursor || null);
             }
-        } catch (error) {
-            message.error('Failed to load more conversations');
+        } catch {
+            if (scopeKeyRef.current === expectedScopeKey && loadMoreOwnerRef.current === actionOwner) {
+                message.error('Failed to load more conversations');
+            }
         } finally {
-            setIsLoadingMore(false);
+            if (scopeKeyRef.current === expectedScopeKey && loadMoreOwnerRef.current === actionOwner) {
+                setIsLoadingMore(false);
+            }
         }
     };
 
@@ -347,29 +402,9 @@ function ConversationsList() {
     }, []);
 
     // Handle note update - update both allSessions and selectedSession
-    const handleNoteUpdate = useCallback((sessionId: string, noteJson: any) => {
-        // Create updated note object at index [0]
-        const updatedNote = {
-            id: 'note-0',
-            content: noteJson,
-            // Metadata will be set by backend, but we can optimistically update here
-            modifiedOn: new Date() as any // Temporary - will be updated by backend with Timestamp
-        };
-
-        // Update in allSessions array
-        setAllSessions(prev => prev.map(session =>
-            session.id === sessionId
-                ? { ...session, internalNotes: [updatedNote] }
-                : session
-        ));
-
-        // Update selectedSession if it's the one being updated
-        setSelectedSession(prev =>
-            prev && prev.id === sessionId
-                ? { ...prev, internalNotes: [updatedNote] }
-                : prev
-        );
-    }, []);
+    const handleNoteUpdate = useCallback(() => {
+        void mutate();
+    }, [mutate]);
 
     // Callback when session metadata is updated (status, priority, tags)
     const handleSessionUpdate = useCallback((sessionId: string, updates: Partial<ChatSession>) => {
@@ -403,7 +438,7 @@ function ConversationsList() {
     const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
 
     // Show loading state while session is initializing
-    if (!loggedInSession) {
+    if (!loggedInSession || !workspaceScope) {
         return (
             <Card>
                 <Flex vertical justify="center" align="center" style={{ height: 400 }}>
@@ -425,22 +460,49 @@ function ConversationsList() {
     };
 
     const handleBatchStatusUpdate = async (status: string) => {
-        if (selectedIds.length === 0) return;
+        if (
+            selectedIds.length === 0
+            || !workspaceScope
+            || !scopeKey
+            || batchActionInProgressRef.current
+        ) return;
+        batchActionInProgressRef.current = true;
+        const actionOwner = ++batchActionOwnerRef.current;
+        const expectedIds = [...selectedIds];
+        const expectedScope = workspaceScope;
+        const expectedScopeKey = scopeKey;
         try {
-            const batchUpdateResult = await batchUpdateSessionMetadata(selectedIds, { adminStatus: status });
+            const batchUpdateResult = await batchUpdateSessionMetadata(
+                expectedIds,
+                { adminStatus: status },
+                expectedScope,
+            );
             assertChatSessionBatchMetadataUpdateSucceeded(
                 batchUpdateResult,
-                selectedIds,
+                expectedIds,
                 'platform_chat_batch_status_update_rejected',
             );
+            if (
+                scopeKeyRef.current !== expectedScopeKey
+                || batchActionOwnerRef.current !== actionOwner
+            ) return;
             setAllSessions(prev => prev.map(s =>
-                selectedIds.includes(s.id!) ? { ...s, adminStatus: status as ChatSession['adminStatus'] } : s
+                expectedIds.includes(s.id!) ? { ...s, adminStatus: status as ChatSession['adminStatus'] } : s
             ));
-            message.success(`${selectedIds.length} conversation(s) updated to "${status}"`);
+            message.success(`${expectedIds.length} conversation(s) updated to "${status}"`);
             setSelectedIds([]);
             setSelectMode(false);
         } catch {
-            message.error('Failed to update conversations');
+            if (
+                scopeKeyRef.current === expectedScopeKey
+                && batchActionOwnerRef.current === actionOwner
+            ) {
+                message.error('Failed to update conversations');
+            }
+        } finally {
+            if (batchActionOwnerRef.current === actionOwner) {
+                batchActionInProgressRef.current = false;
+            }
         }
     };
 
@@ -584,7 +646,7 @@ function ConversationsList() {
                                             <div style={{ flex: 1 }}>
                                                 <ConversationCard
                                                     session={session}
-                                                    isActive={selectedSession?.id === session.id}
+                                                    isActive={visibleSelectedSession?.id === session.id}
                                                     onClick={selectMode ? undefined : handleSessionClick}
                                                 />
                                             </div>
@@ -621,7 +683,8 @@ function ConversationsList() {
                 {/* Right Panel - Conversation Detail (70%) */}
                 <Splitter.Panel min={400}>
                     <ConversationDetail
-                        session={selectedSession}
+                        session={visibleSelectedSession}
+                        scope={workspaceScope}
                         onNoteUpdate={handleNoteUpdate}
                         onSessionUpdate={handleSessionUpdate}
                     />

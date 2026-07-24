@@ -3,7 +3,7 @@
 **Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`; expansion remains governed by `__docs__/constitution/14-feature-lifecycle-doctrine.md`
 **Author:** Cascade (Lead Architect)
 **Date:** February 20, 2026
-**Last Updated:** July 16, 2026
+**Last Updated:** July 23, 2026
 **Audience:** Internal (mobile development)
 
 ---
@@ -81,6 +81,9 @@ Mobile does NOT get:
 - Uses `useSpecialMenus()` hook (same as desktop)
 - Reads from `projectsSummary` (SWR cached)
 - Same DAL function as desktop — no separate mobile DAL
+- The SWR key and the DAL read carry the same captured tenant/store scope. A session change cannot populate an earlier scope's cache key.
+- Shared mobile project list/detail state remains masked until the current session and store context agree and the latest exact-scope load completes. Tenant/store switches invalidate obsolete list and detail settlement.
+- Browser project selection is partitioned by tenant and store. Exact-scope reads do not fall back to the historical unscoped or store-only key.
 
 ### Interactions
 
@@ -98,6 +101,8 @@ Mobile does NOT get:
 
 - The screen uses `useSpecialMenus()` for create, update, activate, deactivate, and cancel actions. The hook requires explicit DAL acknowledgement guards before mutating SWR state or returning success, so `apiCallComposer()` fallback values cannot show false create/update/end/cancel success. Lifecycle actions must return the requested project id and expected resulting status (`active`, `expired`, or `cancelled`) before mobile shows success. The hook owns bounded `special_menu_*_failed` diagnostics and cache updates.
 - Mobile translation actions log `mobile_special_menu_name_translation_failed` and `mobile_special_menu_project_public_content_translation_failed` with bounded store, tenant, project, language, and draft-length metadata. Project public-content translation writes require `assertProjectUpdateSucceeded()` before draft baselines or success copy update.
+- Editing translated project name, description, or special-menu display name commits the project document and `platformSummary/projects_{storeId}` fields in one Firestore transaction. Mobile does not report translation success after only one side of public truth commits.
+- Create/edit/lifecycle sheets and cards capture the current tenant/store and source item before confirmation, provider work, or persistence. Keyed remounts plus synchronous attempt guards prevent obsolete requests, dialogs, one-time messages, or drafts from settling into another store.
 - Owner-facing failures use fixed copy. Raw hook errors, project IDs, localized text, provider messages, and exception text must not be shown or logged directly.
 - The alternate Mobile Project Selector edit sheet routes special-menu name/description/schedule changes through `updateSpecialMenuProject()`. It does not expose generic active/reset controls for special menus, and delete is shown only after the menu is expired or cancelled. DAL guards enforce the same boundary if an older UI calls a generic action.
 

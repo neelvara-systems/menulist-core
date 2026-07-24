@@ -1,51 +1,42 @@
-# SignalDesk Inbox - Firebase Plan
+# SignalDesk Inbox - Firebase and Cost
 
-**Status:** Initial Firebase design
-**Created:** June 23, 2026
+**Status:** Current deployed-contract documentation; local code changes still require normal app release
+**Last reviewed:** July 21, 2026
 
-## Collections
+SignalDesk uses its separate Firebase project. Browser clients are denied direct access by `firestore.rules`; authenticated server routes and the dedicated SignalDesk Functions project own writes.
 
-| Collection | Purpose | Read Pattern |
-| --- | --- | --- |
-| `signaldeskConversationSummaries` | Cheap inbox list and filters. | Default inbox read. |
-| `signaldeskConversations` | Conversation metadata and state. | Detail open only. |
-| `signaldeskMessages` | Normalized message bodies and operator notes. | Paginated detail read. |
-| `signaldeskMessageEvents` | Append-only send/reply/bounce/complaint events. | Audit/debug only. |
-| `signaldeskReplyClassifications` | Classifier output and operator overrides. | Detail and eval reads. |
-| `signaldeskInboxWorkItems` | Operator tasks created from replies. | Queue read by status. |
+## Collections Used
 
-## Required Fields
-
-| Object | Required fields |
+| Collection | Role |
 | --- | --- |
-| Conversation summary | `conversationId`, `targetId`, `channel`, `state`, `lastInboundAt`, `classification`, `operatorStatus`, `suppressionState`, `updatedAt` |
-| Message | `messageId`, `conversationId`, `direction`, `channel`, `bodyRefOrBody`, `normalizedAt`, `sourceEventId`, `createdAt` |
-| Classification | `classificationId`, `conversationId`, `messageId`, `label`, `confidence`, `reasonCodes`, `modelVersion`, `operatorOverride`, `createdAt` |
-| Work item | `workItemId`, `conversationId`, `type`, `status`, `ownerId`, `dueAt`, `createdAt` |
+| `signaldeskConversationSummaries` | Bounded Inbox list and current conversation state. |
+| `signaldeskMessages` | Normalized inbound/outbound message evidence. |
+| `signaldeskReplyClassifications` | Deterministic rules result and confidence. |
+| `signaldeskWebhookEvents` | Provider-scoped idempotency and normalized event evidence. |
+| `signaldeskIdempotencyKeys` | Actor-scoped manual reply replay claim. |
+| `signaldeskTargetSummaries` | Current target lifecycle, next action, suppression, and conversation pointer. |
+| `signaldeskTargets` | Private contact authority used to hash suppression identity. |
+| `signaldeskSuppressionLedger` | Immediate DNC/wrong-contact/complaint/privacy/legal evidence. |
+| `signaldeskIncidents` | Complaint/privacy/legal review item. |
+| `signaldeskKillSwitches` | Channel or global outbound pause. |
+| `signaldeskQueueSummaries` | Exact actionable Inbox count. |
+| `signaldeskAuditEvents` | Bounded operator/system action evidence. |
+| `signaldeskCostDailySummaries` | Estimated write effects. |
 
-## Indexes
+There are no `signaldeskConversations`, `signaldeskMessageEvents`, or `signaldeskInboxWorkItems` collections.
 
-| Query | Index |
-| --- | --- |
-| Inbox by state | `state`, `updatedAt desc` |
-| Inbox by operator status | `operatorStatus`, `updatedAt desc` |
-| Inbound needing review | `classification`, `operatorStatus`, `lastInboundAt desc` |
-| Conversation messages | `conversationId`, `createdAt asc` |
-| Work items by owner | `ownerId`, `status`, `dueAt asc` |
+## Read Cost
 
-## Cost Rules
+An Inbox workspace load performs three bounded conversation-summary queries: up to 30 safety rows, up to 30 interested/review rows, and up to 30 recent rows. It does not read `signaldeskMessages` or `signaldeskReplyClassifications`. The state-only actionable queries use normal single-field indexes; no new composite index is required.
 
-- Inbox list must not read `signaldeskMessages`.
-- Message bodies load only after opening a detail view.
-- Event payloads are normalized before storage.
-- Summaries update in the same write path as message append when practical.
-- Classifier eval jobs read sampled classifications, not all conversations.
+## Manual Write Cost
 
-## Retention
+Base capture writes seven documents/effects including the daily cost summary. A queue-boundary transition adds one write. A suppression classification adds one. Complaint/privacy/legal handling adds four circuit-breaker writes, plus two when a pending daily mission is refreshed. The estimate is derived from those actual branches.
 
-| Data | Default |
-| --- | --- |
-| Message events | Retain while target is active; archive or purge per policy. |
-| Full message bodies | Minimize retention; keep only what is required for audit and follow-up. |
-| Summaries | Retain for reporting while target/campaign is active. |
-| Complaint/DNC evidence | Retain as long as suppression proof is required. |
+## Provider Write Cost
+
+Signed webhook processing creates one normalized webhook event and conditionally adds message, classification, current summary, queue, target, suppression, incident, kill-switch, control-room, audit, and cost effects. Duplicate events do not repeat effects.
+
+## Lifecycle
+
+`functions-signaldesk/src/schedulers/sourceDataLifecycle.ts` includes conversation summaries, messages, and reply classifications in the target-dependent lifecycle reconciliation. Legal/safety evidence is marked for legal retention review rather than silently erased. This feature adds no new scheduler, collection, TTL, or index.

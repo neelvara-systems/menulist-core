@@ -153,6 +153,7 @@ export async function syncKnowledgeIntakeSummary(
     };
 
     const jobsSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .orderBy('modifiedOn', 'desc')

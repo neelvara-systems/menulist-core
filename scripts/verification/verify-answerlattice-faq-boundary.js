@@ -35,6 +35,9 @@ const {
   parseAnswerlatticeFaqSaveInput,
   projectAnswerlatticePublicFaq,
 } = require(path.join(ROOT, 'src/lib/answerlattice/faqContent.ts'));
+const {
+  projectFaqLinkedArticleReference,
+} = require(path.join(ROOT, 'src/lib/answerlattice/faqRetrieval.ts'));
 
 const scope = { tId: 1, sId: 101 };
 const persisted = {
@@ -86,6 +89,26 @@ assert(normalizeAnswerlatticeRetrievalFaq({ ...retrievalFaq, pId: 'ML' }, 'faq-1
 assert(normalizeAnswerlatticeRetrievalFaq({ ...retrievalFaq, tId: '1' }, 'faq-1', scope) === null, 'retrieval FAQ must reject coercible tenant scope');
 assert(normalizeAnswerlatticeRetrievalFaq({ ...retrievalFaq, tags: ['publishing', 'publishing'] }, 'faq-1', scope) === null, 'retrieval FAQ must reject normalized duplicate fields');
 
+const linkedArticle = {
+  pId: 'AL',
+  tId: 1,
+  sId: 101,
+  status: 'published',
+  active: true,
+  deleted: false,
+  title: 'Publishing',
+  categoryId: 'getting-started',
+  content: { type: 'doc' },
+  tags: ['publishing'],
+};
+assert(projectFaqLinkedArticleReference(linkedArticle, 'article-1', scope, true)?.content, 'active published scoped FAQ article must project');
+assert(projectFaqLinkedArticleReference({ ...linkedArticle, active: undefined }, 'article-1', scope, true) === null, 'FAQ article projection must fail closed when active truth is missing');
+assert(projectFaqLinkedArticleReference({ ...linkedArticle, active: false }, 'article-1', scope, true) === null, 'inactive FAQ article must not project');
+assert(projectFaqLinkedArticleReference({ ...linkedArticle, deleted: true }, 'article-1', scope, true) === null, 'deleted FAQ article must not project');
+assert(projectFaqLinkedArticleReference({ ...linkedArticle, sId: 102 }, 'article-1', scope, true) === null, 'cross-store FAQ article must not project');
+const compactLinkedArticle = projectFaqLinkedArticleReference(linkedArticle, 'article-1', scope, false);
+assert(compactLinkedArticle && !Object.prototype.hasOwnProperty.call(compactLinkedArticle, 'content'), 'compact FAQ article projection must omit editor content');
+
 const parsedSave = parseAnswerlatticeFaqSaveInput({
   question: 'How do I publish?',
   answer: 'Open the article and select Publish.',
@@ -127,13 +150,17 @@ assert(client.includes('normalizeAnswerlatticePublicFaqList(data)'), 'browser FA
 assert(client.includes('answerlattice_public_faq_client_payload_invalid'), 'invalid browser FAQ payloads must be observable');
 assert(view.includes('AnswerlatticePublicFaq'), 'Help Center FAQ UI must consume the browser-safe DTO');
 assert(route.includes('getCachedPublishedFaqs(scope, maxResults)'), 'public-content route must use the projected cache reader');
+assert(route.includes('parsed.data.expectedTenantId !== scope.tId'), 'public FAQ route must reject initiating/current tenant mismatch');
+assert(route.includes('parsed.data.expectedStoreId !== scope.sId'), 'public FAQ route must reject initiating/current workspace mismatch');
+assert(view.includes('fetchAnswerlatticePublicFaqs(requestScope)'), 'Help Center FAQ UI must retain initiating Answerlattice scope');
 assert(retrieval.includes('normalizeAnswerlatticeRetrievalFaq(doc.data(), doc.id, { tId, sId })'), 'FAQ retrieval must normalize persisted rows before caching');
 assert(retrieval.includes("const tId = typeof options.tId === 'number' ? normalizeAnswerlatticeScopeDocumentId(options.tId) : null;"), 'FAQ retrieval must require exact runtime tenant scope');
 assert(!retrieval.includes('const tId = Number(options.tId);'), 'FAQ retrieval must not coerce runtime tenant scope');
 assert(!retrieval.includes(".where('tId', '==', Number(tId))"), 'FAQ retrieval must not coerce tenant query scope');
 assert(retrieval.includes('const currentFaq = await loadPublishedFaqById('), 'related-surface FAQ summaries must be revalidated against current published truth');
 assert(retrieval.includes('if (!snap.exists) return [];'), 'missing linked articles must not produce phantom FAQ citations');
-assert(retrieval.includes("article.status !== 'published'"), 'FAQ citations must require a published linked article');
+assert(retrieval.includes("value.status !== 'published'"), 'FAQ citations must require a published linked article');
+assert(retrieval.includes('value.active !== true'), 'FAQ citations must require explicit active article truth');
 assert(faqDal.includes('source: existingSource || ANSWERLATTICE_FAQ_SOURCE.MANUAL'), 'FAQ provenance must be system-derived and immutable during authoring');
 assert(faqDal.includes("throw new Error('Publish the linked article before publishing this FAQ.')"), 'linked FAQ publication must require active published article truth');
 assert(!faqDal.includes('export const updateFaqFeedback'), 'FAQ feedback must not retain a direct browser Firestore counter writer');

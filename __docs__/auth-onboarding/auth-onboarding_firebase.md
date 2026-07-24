@@ -32,7 +32,7 @@ Accepted flow:
 - one subscription document write;
 - one session refresh read and one canonical store read during Firebase claim sync.
 
-Provider failure may add one compensation transaction and one cache invalidation attempt. Ambiguous provider creation may add at most three bounded 100-item provider pages. Ambiguous local persistence adds one exact subscription-document read and verifies provider/user/tenant/store/plan identity before cancellation/compensation.
+Provider failure may add one compensation transaction and one cache invalidation attempt. Ambiguous provider creation may add at most three bounded 100-item provider pages. Ambiguous local persistence adds one exact subscription-document read and verifies both ML product aliases, both user aliases, both numeric tenant/store aliases, provider identity, and plan identity before cancellation/compensation.
 
 ## Identity and compensation admission
 
@@ -69,3 +69,5 @@ The Google first-user Firestore write now uses the shared canonical value saniti
 ## Deploy boundary
 
 The current changes are Next.js route, UI, helper, verifier, and documentation changes. They do not trigger Firebase infrastructure auto-deploy. A Vercel deploy remains pending until explicitly requested.
+
+The access-status latest-request correction is browser-only. It adds no Firestore read/write/delete, rule, index, Firebase Auth provider call, Storage object, Cloud Function, scheduled task, queue, or cache entry. Ordinary polling cost is unchanged; stale responses are discarded locally instead of becoming current sign-out authority.

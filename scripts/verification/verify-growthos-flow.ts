@@ -290,6 +290,7 @@ const storeData = {
     storeName: "Green Bowl Cafe - Main Store",
     subdomain: "green-bowl-cafe",
     tenantName: "Green Bowl Cafe",
+    tenantId: 101,
     workingHours: {
         fri: "09:00-22:00",
         mon: "09:00-22:00",
@@ -473,9 +474,15 @@ function withGrowthOSFlags<T>(overrides: Record<string, unknown>, fn: () => T): 
     }
 }
 
-const makeSubscription = (planId: string, status = "active") => ({
+const makeSubscription = (planId: string, status = "active", tenantId = 101) => ({
+    pId: "ML",
     planId,
+    productId: "ML",
+    sId: 202,
     status,
+    storeId: 202,
+    tId: tenantId,
+    tenantId,
 } as any);
 
 const entitlement = evaluateGrowthOSEntitlement({
@@ -556,6 +563,20 @@ withGrowthOSFlags({
     assertCheck(pro.allowed === true, "GrowthOS paid gate allows active Pro plan");
     assertCheck(premium.allowed === true, "GrowthOS paid gate allows active Premium plan");
     assertCheck(expiredPro.allowed === false && expiredPro.reason === "not_paid", "GrowthOS paid gate denies inactive Pro subscription");
+    const foreignTenantPro = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("pro", "active", 999),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+        tenantId: storeData.tenantId,
+    });
+    const answerlatticePro = evaluateGrowthOSEntitlement({
+        activeSubscription: { ...makeSubscription("pro"), pId: "AL", productId: "AL" },
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+        tenantId: storeData.tenantId,
+    });
+    assertCheck(foreignTenantPro.allowed === false && foreignTenantPro.reason === "not_paid", "GrowthOS paid gate rejects another tenant's subscription");
+    assertCheck(answerlatticePro.allowed === false && answerlatticePro.reason === "not_paid", "GrowthOS paid gate rejects Answerlattice subscription identity");
 });
 withGrowthOSFlags({
     ENABLE_GROWTHOS_ADDON: true,

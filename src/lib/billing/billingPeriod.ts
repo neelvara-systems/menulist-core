@@ -63,8 +63,10 @@ export function getBillingPeriodKey(
 
 /** The provider's `current_start` is the exact beginning of the paid cycle. */
 export function getProviderCycleBillingPeriodKey(currentStartSeconds: unknown): number | null {
-    const seconds = Number(currentStartSeconds);
-    if (!Number.isSafeInteger(seconds) || seconds <= 0) return null;
+    if (typeof currentStartSeconds !== 'number' || !Number.isSafeInteger(currentStartSeconds) || currentStartSeconds <= 0) {
+        return null;
+    }
+    const seconds = currentStartSeconds;
     const start = new Date(seconds * 1_000);
     if (!Number.isFinite(start.getTime())) return null;
     return (start.getUTCFullYear() * 100) + (start.getUTCMonth() + 1);

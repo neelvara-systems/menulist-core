@@ -460,18 +460,26 @@ const onCloseStoreModal = (updatedStore: StoreDataType) => {
 // 3. On form submit, base64 is passed as imageToUpdate
 
 const updateLogoImage = async (data) => {
-  if (data.imageToUpdate?.includes("base64")) {
-    const logoUrl = await uploadBase64ToStorage({
-      fileId: data.storeId,
-      url: data.imageToUpdate,
-      path: `stores/logos/${data.storeId}`,
-      type: data.imageType,
+  if (isDataUrl(data.imageToUpdate)) {
+    const session = await getActiveSession();
+    return uploadPreparedMediaImage({
+      contentType: data.imageType,
+      dataUrl: data.imageToUpdate,
+      entityId: data.storeId,
+      prepared: data.preparedMedia,
+      profile: "businessLogo",
+      storeId: data.storeId || session.sId,
+      tenantId: data.tenantId || session.tId,
+      variant: "full",
     });
-    return logoUrl;
   }
-  return "";
+  return data.imageToUpdate || "";
 };
 ```
+
+The active logo writer is `src/database/stores/index.tsx`. There is no root
+Firestore `files` collection or separate `src/database/files` DAL; business
+logos use the shared immutable prepared-media profile and store/tenant scope.
 
 ---
 

@@ -26,7 +26,7 @@ import { formatCurrency } from '@util/formatters';
 import { calculateProration } from '@util/razorpay';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuShieldCheck, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -72,7 +72,7 @@ const getChangedPolicy = (basePolicy: OutletPolicy, nextPolicy: OutletPolicy): P
     }, {});
 };
 
-export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileLocationsScreenProps) {
+function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocationsScreenProps) {
     const t = useTranslations('MobileLocations');
     const { token } = theme.useToken();
     const {
@@ -102,6 +102,23 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     const [renameName, setRenameName] = useState('');
     const [renameSlug, setRenameSlug] = useState('');
     const [isRenaming, setIsRenaming] = useState(false);
+    const isMountedRef = useRef(true);
+    const locationActionInFlightRef = useRef(false);
+    const currentLocationScopeRef = useRef({
+        activeStoreContext,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    });
+    currentLocationScopeRef.current = {
+        activeStoreContext,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    };
+    const isExpectedLocationScope = (tenantId: unknown, storeId: unknown) => (
+        isMountedRef.current
+        && String(currentLocationScopeRef.current.tenantId ?? '') === String(tenantId ?? '')
+        && String(currentLocationScopeRef.current.storeId ?? '') === String(storeId ?? '')
+    );
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
@@ -134,6 +151,10 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
         setPolicy(nextPolicy);
         setDraftPolicy(nextPolicy);
     }, [policySourceStore?.outletPolicy]);
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const changedPolicy = useMemo(() => getChangedPolicy(policy, draftPolicy), [draftPolicy, policy]);
     const policyChangeCount = Object.keys(changedPolicy).length;
@@ -182,16 +203,27 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     const activeStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);
 
     const handleSwitchStore = async (storeId: number) => {
+        if (
+            locationActionInFlightRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+        ) {
+            return;
+        }
         const target = storesList.find((store: any) => Number(store.storeId) === Number(storeId));
         if ((target as any)?.active === false) {
             Toast.show({ content: t('inactiveStore'), duration: 1500 });
             return;
         }
+        if (Number(storeId) === activeStoreId) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        locationActionInFlightRef.current = true;
         try {
-            if (Number(storeId) === activeStoreId) return;
             const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
             if (Number(storeId) === masterStoreId) {
                 if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+                if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
                 setActiveStoreContext(null);
                 return;
             }
@@ -202,7 +234,9 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 body: JSON.stringify({ targetStoreId: storeId }),
             });
             await readAuthAccountResponse(res, 'switch_store');
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
             await refreshFirebaseAuthClaims(storeId);
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
             setActiveStoreContext(storeId);
             Toast.show({ content: t('switchedStore'), duration: 1500 });
         } catch (error) {
@@ -210,21 +244,38 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 returningToMaster: Number(storeId) === Number(masterStoreSummary?.storeId || storeDetails?.storeId),
                 ...getBoundedMultiOutletStringContext('targetStoreId', storeId),
             }));
-            Toast.show({ content: t('failedToSwitch'), duration: 2000 });
+            if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: t('failedToSwitch'), duration: 2000 });
+            }
+        } finally {
+            locationActionInFlightRef.current = false;
         }
     };
 
     const handleDeactivateOutlet = async (store: any) => {
         const outletStoreId = Number(store?.storeId);
-        if (!outletStoreId || store?.isMaster || store?.active === false) return;
+        if (
+            !outletStoreId
+            || store?.isMaster
+            || store?.active === false
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
 
         const confirmed = await Dialog.confirm({
             confirmText: t('deactivate'),
             content: t('deactivateOutletConfirm', { name: resolveStoreName(store) }),
             title: t('deactivateOutlet'),
         });
-        if (!confirmed) return;
+        if (
+            !confirmed
+            || locationActionInFlightRef.current
+            || !isExpectedLocationScope(expectedTenantId, expectedStoreId)
+        ) return;
 
+        locationActionInFlightRef.current = true;
         setDeactivatingStoreId(outletStoreId);
         try {
             const res = await fetch('/api/outlets/deactivate', {
@@ -238,7 +289,9 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 logMultiOutletFailure('mobile_location_deactivate_failed', deactivateError, buildMobileLocationLogContext('deactivate_outlet', {
                     ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
                 }));
-                Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
+                if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                    Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
+                }
                 return;
             }
             const data = await readMobileOutletActionResponse(res, buildMobileLocationLogContext('deactivate_outlet', {
@@ -253,7 +306,9 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 }));
                 throw invalidResponseError;
             }
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
             setTenantDetails((previous: any) => previous?.storesList
+                && String(previous.tenantId ?? '') === String(expectedTenantId)
                 ? {
                     ...previous,
                     storesList: previous.storesList.map((entry: any) => (
@@ -263,9 +318,10 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                     )),
                 }
                 : previous);
-            if (Number(activeStoreContext) === Number(outletStoreId)) {
+            if (Number(currentLocationScopeRef.current.activeStoreContext) === Number(outletStoreId)) {
                 const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
                 if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+                if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
                 setActiveStoreContext(null);
             }
             Toast.show({
@@ -280,9 +336,14 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             logMultiOutletFailure('mobile_location_deactivate_failed', error, buildMobileLocationLogContext('deactivate_outlet', {
                 ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
             }));
-            Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
+            if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
+            }
         } finally {
-            setDeactivatingStoreId(null);
+            locationActionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setDeactivatingStoreId(null);
+            }
         }
     };
 
@@ -301,15 +362,27 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     };
 
     const handleRenameOutlet = async () => {
-        if (!renameTarget?.storeId || !renameSlugChanged) return;
+        if (
+            !renameTarget?.storeId
+            || !renameSlugChanged
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || locationActionInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const submittedTarget = renameTarget;
+        const submittedName = renameName.trim();
+        const submittedSlug = proposedRenameSlug;
+        locationActionInFlightRef.current = true;
         setIsRenaming(true);
         try {
             const res = await fetch('/api/outlets/rename', {
                 ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                 body: JSON.stringify({
-                    newOutletName: renameName.trim() || undefined,
-                    newOutletSlug: proposedRenameSlug,
-                    outletStoreId: renameTarget.storeId,
+                    newOutletName: submittedName || undefined,
+                    newOutletSlug: submittedSlug,
+                    outletStoreId: submittedTarget.storeId,
                 }),
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
@@ -317,35 +390,41 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             if (!res.ok) {
                 const renameError = createMultiOutletStatusError('mobile_location_rename_rejected', res.status);
                 logMultiOutletFailure('mobile_location_rename_failed', renameError, buildMobileLocationLogContext('rename_outlet', {
-                    ...getBoundedMultiOutletStringContext('outletStoreId', renameTarget.storeId),
-                    ...getBoundedMultiOutletStringContext('proposedSlug', proposedRenameSlug),
+                    ...getBoundedMultiOutletStringContext('outletStoreId', submittedTarget.storeId),
+                    ...getBoundedMultiOutletStringContext('proposedSlug', submittedSlug),
                 }));
-                Toast.show({ content: 'Rename failed', duration: 2200 });
+                if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                    Toast.show({ content: 'Rename failed', duration: 2200 });
+                }
                 return;
             }
             const data = await readMobileOutletActionResponse(res, buildMobileLocationLogContext('rename_outlet', {
-                ...getBoundedMultiOutletStringContext('outletStoreId', renameTarget.storeId),
-                ...getBoundedMultiOutletStringContext('proposedSlug', proposedRenameSlug),
+                ...getBoundedMultiOutletStringContext('outletStoreId', submittedTarget.storeId),
+                ...getBoundedMultiOutletStringContext('proposedSlug', submittedSlug),
             }));
             if (!isOutletRenameResponse(data)) {
                 const invalidResponseError = createMultiOutletStatusError('mobile_location_rename_response_invalid', res.status);
                 logMultiOutletFailure('mobile_location_rename_response_invalid', invalidResponseError, buildMobileLocationLogContext('rename_outlet', {
                     responseOk: res.ok,
                     responseStatus: res.status,
-                    ...getBoundedMultiOutletStringContext('outletStoreId', renameTarget.storeId),
-                    ...getBoundedMultiOutletStringContext('proposedSlug', proposedRenameSlug),
+                    ...getBoundedMultiOutletStringContext('outletStoreId', submittedTarget.storeId),
+                    ...getBoundedMultiOutletStringContext('proposedSlug', submittedSlug),
                 }));
                 throw invalidResponseError;
             }
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
 
             const outletStoreId = data.outletStoreId;
             const outletSlug = data.outletSlug;
-            const nextName = renameName.trim() || renameTarget.name;
+            const nextName = submittedName || submittedTarget.name;
             setTenantDetails((previous: any) => previous?.storesList
+                && String(previous.tenantId ?? '') === String(expectedTenantId)
                 ? {
                     ...previous,
                     storesList: previous.storesList.map((store: any) => (
                         Number(store.storeId) === Number(outletStoreId)
+                            && store.name === submittedTarget.name
+                            && store.outletSlug === submittedTarget.outletSlug
                             ? {
                                 ...store,
                                 ...(nextName ? { name: nextName } : {}),
@@ -370,27 +449,41 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             setRenameSlug('');
         } catch (error) {
             logMultiOutletFailure('mobile_location_rename_failed', error, buildMobileLocationLogContext('rename_outlet', {
-                ...getBoundedMultiOutletStringContext('outletStoreId', renameTarget.storeId),
-                ...getBoundedMultiOutletStringContext('proposedSlug', proposedRenameSlug),
+                ...getBoundedMultiOutletStringContext('outletStoreId', submittedTarget.storeId),
+                ...getBoundedMultiOutletStringContext('proposedSlug', submittedSlug),
             }));
-            Toast.show({ content: 'Rename failed. Try again.', duration: 2200 });
+            if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: 'Rename failed. Try again.', duration: 2200 });
+            }
         } finally {
-            setIsRenaming(false);
+            locationActionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsRenaming(false);
+            }
         }
     };
 
     const handleCreateOutlet = async () => {
-        if (!outletName.trim()) return;
+        if (
+            !outletName.trim()
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || locationActionInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const submittedOutletName = outletName.trim();
+        locationActionInFlightRef.current = true;
         setIsCreating(true);
         try {
             const res = await fetch('/api/outlets/create', {
                 ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ outletName: outletName.trim() }),
+                body: JSON.stringify({ outletName: submittedOutletName }),
             });
             const data = await readMobileOutletActionResponse(res, buildMobileLocationLogContext('create_outlet', {
-                ...getBoundedMultiOutletStringContext('outletName', outletName),
+                ...getBoundedMultiOutletStringContext('outletName', submittedOutletName),
             }));
             if (!res.ok) {
                 const needsBillingAction = isOutletPaymentRequiredResponse(data);
@@ -401,12 +494,14 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 );
                 logMultiOutletFailure('mobile_location_create_failed', createError, buildMobileLocationLogContext('create_outlet', {
                     needsBillingAction,
-                    ...getBoundedMultiOutletStringContext('outletName', outletName),
+                    ...getBoundedMultiOutletStringContext('outletName', submittedOutletName),
                 }));
-                Toast.show({
-                    content: needsBillingAction ? 'Add one paid location from Billing, then come back.' : t('failedToCreate'),
-                    duration: needsBillingAction ? 3500 : 2000,
-                });
+                if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                    Toast.show({
+                        content: needsBillingAction ? 'Add one paid location from Billing, then come back.' : t('failedToCreate'),
+                        duration: needsBillingAction ? 3500 : 2000,
+                    });
+                }
                 return;
             }
             if (!isOutletCreateResponse(data)) {
@@ -414,46 +509,63 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 logMultiOutletFailure('mobile_location_create_response_invalid', invalidResponseError, buildMobileLocationLogContext('create_outlet', {
                     responseOk: res.ok,
                     responseStatus: res.status,
-                    ...getBoundedMultiOutletStringContext('outletName', outletName),
+                    ...getBoundedMultiOutletStringContext('outletName', submittedOutletName),
                 }));
                 throw invalidResponseError;
             }
-            if (tenantDetails && data.storeId) {
-                const normalizedCurrentStores = tenantDetails.storesList.map((store: any) => (
-                    data.masterPromoted && Number(store.storeId) === Number(storeDetails?.storeId)
-                        ? { ...store, isMaster: true }
-                        : store
-                ));
-                const updatedStoresList = [
-                    ...normalizedCurrentStores,
-                    {
-                        active: true,
-                        isMaster: false,
-                        name: outletName.trim(),
-                        outletSlug: data.outletSlug,
-                        storeId: data.storeId,
-                        tenantName: data.tenantName || tenantDetails.name,
-                    },
-                ];
-                setTenantDetails({ ...tenantDetails, storesList: updatedStoresList });
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
+            if (data.storeId) {
+                setTenantDetails((previous: any) => previous?.storesList
+                    && String(previous.tenantId ?? '') === String(expectedTenantId)
+                    ? {
+                        ...previous,
+                        storesList: [
+                            ...previous.storesList.map((store: any) => (
+                                data.masterPromoted && Number(store.storeId) === Number(expectedStoreId)
+                                    ? { ...store, isMaster: true }
+                                    : store
+                            )),
+                            ...(previous.storesList.some((store: any) => Number(store.storeId) === Number(data.storeId))
+                                ? []
+                                : [{
+                                    active: true,
+                                    isMaster: false,
+                                    name: submittedOutletName,
+                                    outletSlug: data.outletSlug,
+                                    storeId: data.storeId,
+                                    tenantName: data.tenantName || previous.name,
+                                }]),
+                        ],
+                    }
+                    : previous);
             }
-            if (data.masterPromoted && storeDetails) {
-                setStoreDetails({
-                    ...storeDetails,
-                    isMaster: true,
-                    outletPolicy: data.outletPolicy || storeDetails.outletPolicy || DEFAULT_OUTLET_POLICY,
-                });
+            if (data.masterPromoted) {
+                setStoreDetails((previous: any) => (
+                    String(previous?.tenantId ?? '') === String(expectedTenantId)
+                    && String(previous?.storeId ?? '') === String(expectedStoreId)
+                        ? {
+                            ...previous,
+                            isMaster: true,
+                            outletPolicy: data.outletPolicy || previous.outletPolicy || DEFAULT_OUTLET_POLICY,
+                        }
+                        : previous
+                ));
             }
             setOutletName('');
             setShowAddOutlet(false);
             Toast.show({ content: t('outletCreated'), duration: 1500 });
         } catch (error) {
             logMultiOutletFailure('mobile_location_create_failed', error, buildMobileLocationLogContext('create_outlet', {
-                ...getBoundedMultiOutletStringContext('outletName', outletName),
+                ...getBoundedMultiOutletStringContext('outletName', submittedOutletName),
             }));
-            Toast.show({ content: t('networkError'), duration: 2000 });
+            if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: t('networkError'), duration: 2000 });
+            }
         } finally {
-            setIsCreating(false);
+            locationActionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsCreating(false);
+            }
         }
     };
 
@@ -486,30 +598,46 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     };
 
     const handleSavePolicy = async () => {
-        if (!policyStoreId) return;
+        if (
+            !policyStoreId
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || locationActionInFlightRef.current
+        ) return;
         if (!hasPolicyChanges) {
             Toast.show({ content: t('noChangesToSave'), duration: 1200 });
             return;
         }
 
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedPolicyStoreId = policyStoreId;
+        const sourcePolicy = policySourceStore?.outletPolicy;
+        const submittedPolicy = { ...changedPolicy };
+        locationActionInFlightRef.current = true;
         setIsSavingPolicy(true);
         try {
-            const result = await updateOutletPolicy(policyStoreId, changedPolicy);
-            const nextPolicy = result?.outletPolicy || { ...policy, ...changedPolicy };
+            const result = await updateOutletPolicy(expectedPolicyStoreId, submittedPolicy);
+            const nextPolicy = result?.outletPolicy || { ...policy, ...submittedPolicy };
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
             setPolicy(nextPolicy);
             setStoreDetails((previous: any) => previous
+                && String(previous.tenantId ?? '') === String(expectedTenantId)
                 ? {
                     ...previous,
-                    ...(Number(previous.storeId) === Number(policyStoreId)
+                    ...(Number(previous.storeId) === Number(expectedPolicyStoreId)
+                        && previous.outletPolicy === sourcePolicy
                         ? { isMaster: true, outletPolicy: nextPolicy }
                         : {}),
                 }
                 : previous);
             setTenantDetails((previous: any) => previous?.storesList
+                && String(previous.tenantId ?? '') === String(expectedTenantId)
                 ? {
                     ...previous,
                     storesList: previous.storesList.map((store: any) => (
-                        Number(store.storeId) === Number(policyStoreId)
+                        Number(store.storeId) === Number(expectedPolicyStoreId)
+                            && store.storeDetails?.outletPolicy === sourcePolicy
                             ? {
                                 ...store,
                                 isMaster: true,
@@ -526,11 +654,16 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
         } catch (error) {
             logMultiOutletFailure('mobile_location_policy_update_failed', error, buildMobileLocationLogContext('update_policy', {
                 changedPolicyCount: Object.keys(changedPolicy).length,
-                ...getBoundedMultiOutletStringContext('policyStoreId', policyStoreId),
+                ...getBoundedMultiOutletStringContext('policyStoreId', expectedPolicyStoreId),
             }));
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            }
         } finally {
-            setIsSavingPolicy(false);
+            locationActionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsSavingPolicy(false);
+            }
         }
     };
 
@@ -926,4 +1059,11 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             </Popup>
         </Flex>
     );
+}
+
+export default function MobileLocationsScreen(props: MobileLocationsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileLocationsScreenContent key={scopeKey} {...props} />;
 }

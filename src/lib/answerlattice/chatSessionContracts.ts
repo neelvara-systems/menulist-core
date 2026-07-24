@@ -1,6 +1,9 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES } from '@lib/answerlattice/chatImagePolicy';
 import {
     normalizeAnswerlatticePublicCitations,
@@ -15,6 +18,40 @@ import { z } from 'zod';
 export const ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT = 50;
 export const ANSWERLATTICE_CHAT_SESSION_BATCH_UPDATE_LIMIT = 100;
 export const ANSWERLATTICE_CHAT_SESSION_NOTE_MAX_BYTES = 32 * 1024;
+
+export type AnswerlatticeChatSessionActorScope = {
+    tId: number;
+    sId: number;
+    uId: string;
+};
+
+export const getAnswerlatticeChatSessionActorScope = (
+    session: unknown,
+): AnswerlatticeChatSessionActorScope | null => {
+    const scope = resolveAnswerlatticeSessionScope(session);
+    const sessionRecord = session && typeof session === 'object' && !Array.isArray(session)
+        ? session as Record<string, unknown>
+        : {};
+    const userRecord = sessionRecord.user && typeof sessionRecord.user === 'object' && !Array.isArray(sessionRecord.user)
+        ? sessionRecord.user as Record<string, unknown>
+        : {};
+    const userId = String(userRecord.id || sessionRecord.uId || '').trim();
+    return scope && userId && userId.length <= 180
+        ? { tId: scope.tenantId, sId: scope.storeId, uId: userId }
+        : null;
+};
+
+export const getAnswerlatticeUserChatSessionsCacheKey = (
+    scope: { tenantId: number; storeId: number } | null | undefined,
+    userId: unknown,
+): readonly ['answerlattice-user-chat-sessions', number, number, string] | null => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(scope?.tenantId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(scope?.storeId);
+    const actorId = typeof userId === 'string' ? userId.trim() : '';
+    return tId && sId && actorId && actorId.length <= 180
+        ? ['answerlattice-user-chat-sessions', tId, sId, actorId]
+        : null;
+};
 
 const ChatMetadataMutationSchema = z.object({
     title: z.string().trim().min(1).max(160).optional(),

@@ -21,7 +21,7 @@ Answerlattice scheduled work runs through one centralized scheduler entry point 
 - Manual trigger logs and invalid-scope responses are bounded: no raw request IP, raw `tId/sId`, or local exception text is emitted from the entrypoint.
 - Master scheduler task outcomes are bounded: `platformSummary/answerlatticeSchedulerState` stores fixed task failure codes plus source error name/code/status metadata instead of raw exception text.
 - Governance batch diagnostics are bounded: run-log errors use fixed scheduler failure codes, scoped/global message labels, source error name/code/status metadata, and bounded detail counts instead of raw exception text or raw diagnostic objects in workflow event payloads.
-- AI provider health diagnostics are bounded: the daily Gemini smoke check writes fixed `ANSWERLATTICE_AI_PROVIDER_HEALTH_*` codes and source error name/code/status metadata instead of raw provider exception text.
+- AI provider health state is exact and bounded: the daily Gemini smoke check replaces its summary with one allowlisted success or failure shape, validates prior completion before a daily skip, prunes stale opposite-state/private fields, and keeps provider failures distinct from fixed-code persistence failures.
 - The master scheduler runs hourly at `:30 UTC`, checks each workspace's `timeZone` and `businessDayEndTime`, then processes only due workspaces.
 - Per-workspace state and locks live in `platformSummary/answerlatticeNightlyState_*` and `platformSummary/answerlatticeNightlyLock_*`.
 - The actual governance batch remains in `runAnswerlatticeNightly()` so drift, mutation, coverage, friction, graph, predictive, and compiled-context repair logic stay in one bounded batch.

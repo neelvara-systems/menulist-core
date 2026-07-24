@@ -3,11 +3,11 @@
  * ═══════════════════════════════════════════════════════════════
  * 
  * Shared TypeScript types for Menu Intelligence feature.
- * Used by both frontend (DAL, components) and can be synced with Cloud Functions.
+ * Reserved app-side DTO/helper types for a future certified consumer.
  * 
- * Note: Cloud Functions have their own copies in functions/src/intelligence/menuIntelligence.ts
- * using Firestore Timestamp instead of Date. These types should stay structurally in sync.
- * The DAL (src/lib/intelligence/dal.ts) converts Timestamps → Dates on read.
+ * Cloud Functions own the persisted Firestore contract in
+ * functions/src/intelligence/menuIntelligence.ts. The current app DAL performs
+ * no Firestore read and must not cast that private document into these types.
  */
 
 export interface ConfidenceData {
@@ -69,8 +69,8 @@ export interface AuditLogEntry {
     | 'STABILITY_MODE_OFF';
     itemId?: string;
     itemName?: string;
-    previousValue?: any;
-    newValue?: any;
+    previousValue?: unknown;
+    newValue?: unknown;
     timestamp: Date;
     reversible: boolean;
     reversed: boolean;
@@ -183,25 +183,11 @@ export function isItemEligibleNow(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CMI V1.1 CONSTRAINT CONSTANTS
-// "MenuList can annotate truth, but not withhold truth."
+// Reserved presentation thresholds. The app DAL is intentionally neutral and
+// performs no CMI read; these values do not advertise scheduler guarantees.
 // ═══════════════════════════════════════════════════════════════
 
 export const CMI_CONSTRAINTS = {
-    MAX_SHIFT_PER_DAY: 2,
-    MAX_ITEMS_CHANGED_RATIO: 0.3,
-    DAMPENING_OLD_WEIGHT: 0.7,
-    DAMPENING_NEW_WEIGHT: 0.3,
-    MIN_PRIORITY: 0.1,
-    MAX_PRIORITY: 1.0,
-    MIN_PRIORITY_CHANGE: 0.05,
-    NEW_ITEM_BOOST: 0.1,
-    NEW_ITEM_BOOST_DAYS: 7,
-    RECENCY_BOOST_MAX: 0.05,
-    RECENCY_MIN_CLICKS_7D: 10,
-    LOW_DATA_VIEWS_THRESHOLD: 100,
-    TIME_WEIGHT_OFF_PEAK: 0.7,
-    FATIGUE_WEIGHT: 0.6,
     HIGHLIGHT_THRESHOLD: 0.7,
     RECOMMENDATION_THRESHOLD: 0.6,
 } as const;

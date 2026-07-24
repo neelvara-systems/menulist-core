@@ -1,87 +1,71 @@
 # SignalDesk AI Intelligence - Specification
 
-**Status:** Implemented runtime specification
-**Created:** June 23, 2026
-**Last Updated:** July 11, 2026
+**Status:** Local source complete
+**Last Updated:** July 21, 2026
 
-## Executive Summary
+## Scope
 
-AI Intelligence gives the growth team leverage by turning source/evidence context into typed scoring outputs:
+AI Intelligence provides internal target scoring and bounded review assistance. It does not execute external action.
 
-- Is this target a MenuList fit?
-- What current-list problem is visible?
-- Which channel seems contactable?
-- What is risky or blocked?
-- What should a human review next?
+### Rules Score
 
-The corrected review says AI should reduce team workload across scoring, detection, reply classification, and drafting, but should not own compliance or sending authority (`../../growth-engine/growth-engine_private-internal-tool-review-2026-06-23.md:76`).
+`score-target` derives fit, current-list gap, contactability, risk, segment, reasons, confidence, and next action from the strict target projection and active evidence-use policy. Its deterministic document identity includes the relevant target/source facts and rules version. An unchanged request returns the same score without a provider call.
 
-## Goals
+### AI Assist
 
-| Goal | Success signal |
-| --- | --- |
-| Speed up review | Operator sees fit/gap/contactability scores and reasons. |
-| Keep output structured | AI returns typed JSON, not freeform authority. |
-| Prevent invented facts | AI cites evidence refs and rejected facts. |
-| Reduce unsafe outreach | Risk and blocked-action outputs are explicit. |
-| Control cost | AI only runs when evidence hash changes or cache expires. |
-| Multiply founder capacity | One bounded run may prepare and critique multiple tasks across five targets. |
-| Spend intelligence where useful | Cheap models handle routine work; approved stronger same-provider routes handle risky exceptions. |
+`run-ai-assist` accepts one active target, one executable task, an optional instruction of at most 500 characters, and an idempotency key. Supported user tasks are `score`, `evidence`, `draft`, `reply-classification`, `approval-packet`, `weekly-strategist`, and `vendor-audit`. Only active Gemini routes execute.
 
-## AI Scores
+### AI Volume Mode
 
-| Score | Meaning |
-| --- | --- |
-| Fit score | Does this target match MenuList's current-list market? |
-| Current-list gap score | Is there evidence of stale/missing/scattered menu, service list, rate card, or package list? |
-| Contactability score | Is there an approved contact/channel path? |
-| Channel fit score | Which eligible channel is most practical? |
-| Risk score | Source, compliance, claim, or reputation risk. |
-| Outcome likelihood | Whether this can realistically reach upload/preview/publish/activation. |
+`run-ai-volume-batch` accepts one to five unique eligible targets, one to three unique tasks from `score`, `evidence`, `draft`, and `reply-classification`, a founder cost ceiling from USD 0.01 to USD 5, an optional bounded instruction, and one idempotency key. Every child runs generation plus critic; bounded same-provider escalation is optional.
 
 ## Requirements
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| SDAI-R001 | AI input must exclude blocked source fields. | P0 |
-| SDAI-R002 | AI output must validate against schema. | P0 |
-| SDAI-R003 | AI must include evidence refs for material claims. | P0 |
-| SDAI-R004 | AI must include rejected facts and uncertainty. | P0 |
-| SDAI-R005 | AI cannot produce final send approval. | P0 |
-| SDAI-R006 | AI cannot infer consent or outreach eligibility. | P0 |
-| SDAI-R007 | AI runs must be cached by evidence hash. | P0 |
-| SDAI-R008 | AI workers need eval thresholds before automation. | P0 |
-| SDAI-R009 | AI Volume Mode must be founder-triggered, feature-flagged, desktop-only, and limited to five targets and three tasks per request. | P0 |
-| SDAI-R010 | Every volume child must run a generation pass and an independent critic pass. | P0 |
-| SDAI-R011 | Escalation may run only when the critic holds/revises, confidence is low, or rejected facts exist, and only through an active same-provider model route. | P0 |
-| SDAI-R012 | A founder-supplied maximum estimated cost must be validated before the first provider call and provider/budget controls must still pass for every child call. | P0 |
-| SDAI-R013 | The parent volume run must record targets, tasks, child run IDs, completed/failed counts, model-call count, estimated cost, status, audit, and timeline without raw provider errors. | P0 |
-| SDAI-R014 | Volume Mode may prepare recommendations but cannot create send approval, send, publish, spend outside its AI budget, change an opportunity, infer consent, or write MenuList truth. | P0 |
-| SDAI-R015 | Rules scores, single-pass provider assists, volume batches, and reviewable provider outputs must remain distinguishable in the AI workspace. | P0 |
-| SDAI-R016 | Every paid volume request must use a founder-scoped idempotency key so transport retries return the original parent batch without duplicate model calls. | P0 |
-| SDAI-R017 | The batch must use batch rate limiting, preflight its aggregate daily/monthly provider budget, and prevent overlapping paid volume runs with an expiring recovery lock. | P0 |
-| SDAI-R018 | A retry of an expired running parent must reconstruct bounded child evidence and transactionally finalize the parent as completed, partial, or blocked without repeating provider calls or releasing another batch's lock. | P0 |
-| SDAI-R019 | Desktop must persist the bounded retry payload locally and reuse its idempotency key until terminal state, while allowing the founder to clear a retry when no parent was created. | P0 |
+| ID | Requirement |
+| --- | --- |
+| SDAI-R001 | Source policy, retained target lineage, suppression, target state, evidence identity, model route, provider account, and provider budget must fail closed before paid work. |
+| SDAI-R002 | Paid work must reserve budget and claim actor-bound idempotency before provider execution. |
+| SDAI-R003 | Exact concurrent or transport retries must converge without duplicate provider calls or spend. Changed-input key reuse must conflict. |
+| SDAI-R004 | Provider text must parse as JSON and pass a strict bounded schema before persistence. |
+| SDAI-R005 | Prompt data must be minimized, bounded, treated as untrusted, and unable to override system instructions. |
+| SDAI-R006 | Generation and critic output must be capped at 4,096 tokens. |
+| SDAI-R007 | Rejected facts force low confidence. Missing or changed source authority prevents a usable result. |
+| SDAI-R008 | Provider/critic failure and ambiguous settlement must become a durable unresolved outcome; exact retry must not repeat paid work. |
+| SDAI-R009 | Source authority and claim ownership must be revalidated in the final transaction. |
+| SDAI-R010 | AI Volume Mode must be founder-admin, desktop-only, feature-flagged, batch-rate-limited, cost-bounded, and protected by one expiring global volume lock. |
+| SDAI-R011 | Volume recovery must reconstruct existing children and finalize interrupted parents without provider calls or releasing another parent's lock. |
+| SDAI-R012 | Founder shadow review may replace a prior review without double counting. An exact replay must be write-free. |
+| SDAI-R013 | Rules scores, provider assists, and volume parents must have separate bounded workspace lists. |
+| SDAI-R014 | AI detail must expire after 90 days through the existing SignalDesk maintenance lifecycle. |
+| SDAI-R015 | AI must never infer source rights, consent, or channel permission; approve/send messages; publish content; alter commercial authority; or write MenuList truth. |
+| SDAI-R016 | Mobile may view projected summaries only. Every AI mutation remains blocked on mobile. |
+
+## Eligibility
+
+A provider-backed target is ineligible when it is held or rejected, has `nextAction: hold`, or has any non-clear suppression state. The server remains authoritative; desktop filtering only prevents predictable failed attempts.
+
+## Output Contracts
+
+Provider generation stores only schema-valid fields:
+
+- `confidence`: `high | medium | low`;
+- `nextAction`: `review | hold | evidence | draft`;
+- up to eight reasons of 240 characters;
+- up to eight rejected facts of 240 characters;
+- optional suggested copy of 4,000 characters.
+
+The critic stores a bounded verdict, confidence, reasons, rejected facts, and optional full revised output. No raw provider response or secret is stored.
 
 ## Out Of Scope
 
-- message final approval;
-- legal eligibility decision;
-- source-rights decision;
-- WhatsApp opt-in decision;
-- campaign optimizer that moves spend or channel authority;
-- autonomous external next-best action;
-- background or scheduled volume agents;
-- OpenAI or Anthropic execution without an approved product-local adapter and credentials.
+- autonomous outreach, approval, send, publish, or budget movement beyond the AI reservation;
+- scheduled/background volume agents;
+- OpenAI or Anthropic execution without a separately approved adapter;
+- public SignalDesk AI surfaces;
+- mobile AI mutation;
+- a second AI cache or job collection;
+- automatic graduation from shadow review.
 
-## Acceptance Criteria
+## Acceptance
 
-- AI output cannot be stored if schema invalid.
-- AI output cannot mark a blocked source as outreach-eligible.
-- AI cannot draft unsupported claims.
-- AI cannot approve a send.
-- Operator can see why a score was produced.
-- Founder can run one bounded volume batch and see complete, partial, or blocked status.
-- Critic output, escalation state, call count, and estimated cost are attached to each reviewable provider run.
-- Partial failure records stable failure codes and never loses successful child results.
-- Mobile and non-founder attempts are blocked before provider work.
+The feature is codebase-complete when source verifiers, the AI Firestore emulator, typecheck, focused lint, accounting/lineage tests, retention tests, docs links, and index validation pass. Hosted completion additionally requires QA index deployment and controlled Gemini/provider evidence.

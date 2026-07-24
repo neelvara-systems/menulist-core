@@ -4,6 +4,8 @@ import {
     AnswerlatticeWorkflowIntegrationEventTypeSchema,
     AnswerlatticeWorkflowIntegrationTestResponseSchema,
     AnswerlatticeWorkflowIntegrationsResponseSchema,
+    normalizeAnswerlatticeSlackWebhookUrl,
+    projectAnswerlatticeWorkflowIntegrationStoredConfig,
 } from '../../src/lib/answerlattice/workflowIntegrationContracts';
 
 const nullHealth = {
@@ -75,5 +77,46 @@ assert.equal(AnswerlatticeWorkflowIntegrationTestResponseSchema.safeParse({
     message: 'Test notification queued.',
     webhookUrl: 'https://hooks.slack.com/services/secret',
 }).success, false);
+
+assert.equal(
+    normalizeAnswerlatticeSlackWebhookUrl('https://hooks.slack.com/services/T/B/secret'),
+    'https://hooks.slack.com/services/T/B/secret',
+);
+for (const invalidWebhook of [
+    'https://user:secret@hooks.slack.com/services/T/B/secret',
+    'https://hooks.slack.com:444/services/T/B/secret',
+    'https://hooks.slack.com/services/T/B/secret?copy=true',
+    'https://example.com/services/T/B/secret',
+]) {
+    assert.equal(normalizeAnswerlatticeSlackWebhookUrl(invalidWebhook), null);
+}
+
+const projectedStoredConfig = projectAnswerlatticeWorkflowIntegrationStoredConfig({
+    slack: {
+        enabled: true,
+        webhookUrl: 'https://user:secret@hooks.slack.com/services/T/B/secret',
+        channel: '  #support\u0000review  ',
+        eventFilters: ['coverage_drop', 'coverage_drop', 'unknown'],
+    },
+    email: {
+        enabled: true,
+        recipients: [' OWNER@example.com ', 'invalid', `${'x'.repeat(161)}@example.com`],
+        eventFilters: ['nightly_summary', 'unknown'],
+    },
+    privateProviderState: 'must-not-project',
+});
+assert.deepEqual(projectedStoredConfig, {
+    slack: {
+        enabled: false,
+        webhookConfigured: false,
+        channel: '#support review',
+        eventFilters: ['coverage_drop'],
+    },
+    email: {
+        enabled: true,
+        recipients: ['owner@example.com'],
+        eventFilters: ['nightly_summary'],
+    },
+});
 
 console.log('Answerlattice workflow integration contracts passed.');

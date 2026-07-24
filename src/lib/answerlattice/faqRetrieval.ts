@@ -1,7 +1,10 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq, type AnswerlatticeRelatedFaqRef, type AnswerlatticeSurfaceContentItem } from '@type/answerlattice';
-import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import type { AnswerlatticeContextPayload } from '@type/answerlattice';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import type { ValidatedContextPayload } from '@lib/validation/contextSchema';
+import type { CoreSearchReference } from '@lib/search/types';
 import { ANSWERLATTICE_FAQ_PUBLIC_LIMIT, normalizeAnswerlatticeRetrievalFaq } from './faqContent';
 import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from './sessionScope';
@@ -28,14 +31,14 @@ export type FaqRetrievalResult = {
     faq?: AnswerlatticeFaq;
     score?: number;
     confidence: 'high' | 'medium' | 'low' | 'none';
-    references: any[];
+    references: CoreSearchReference[];
     matchReason?: string;
 };
 
 type FaqRetrievalContext = {
     tId: number;
     sId: number;
-    context?: any;
+    context?: ValidatedContextPayload & Pick<AnswerlatticeContextPayload, 'surfaceEntityIds'>;
     relatedContent?: AnswerlatticeSurfaceContentItem;
     sourceVersion?: number;
     includeFullArticleReference?: boolean;
@@ -125,7 +128,9 @@ const countOverlap = (left: string[], right: string[]): number => {
     return left.filter(token => rightSet.has(token)).length;
 };
 
-const listContextTokens = (context?: any): string[] => normalizeSurfaceList([
+type FaqProductContext = FaqRetrievalContext['context'];
+
+const listContextTokens = (context?: FaqProductContext): string[] => normalizeSurfaceList([
     context?.contextKey,
     context?.page,
     context?.feature,
@@ -135,11 +140,8 @@ const listContextTokens = (context?: any): string[] => normalizeSurfaceList([
     ...(Array.isArray(context?.entityHints) ? context.entityHints : []),
 ], 80, 160);
 
-const listContextEntityIds = (context?: any): string[] => Array.from(new Set(
-    [
-        ...(Array.isArray(context?.surfaceEntityIds) ? context.surfaceEntityIds : []),
-        ...(Array.isArray(context?.entityIds) ? context.entityIds : []),
-    ]
+const listContextEntityIds = (context?: FaqProductContext): string[] => Array.from(new Set(
+    (Array.isArray(context?.surfaceEntityIds) ? context.surfaceEntityIds : [])
         .map(value => String(value || '').trim())
         .filter(Boolean)
 ));
@@ -175,6 +177,7 @@ const loadPublishedFaqs = async (tId: number, sId: number, sourceVersion?: numbe
 
     const snapshot = await answerlatticeFirestoreAdmin
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', ANSWERLATTICE_FAQ_STATUS.PUBLISHED)
@@ -207,7 +210,7 @@ const loadPublishedFaqById = async (
 const scoreFaqCandidate = (
     query: string,
     faq: FaqCandidate,
-    context?: any,
+    context?: FaqProductContext,
 ): { score: number; queryCoverage: number; reason: string } => {
     const normalizedQuery = normalizeText(query);
     const normalizedQuestion = normalizeText(faq.question);
@@ -279,7 +282,7 @@ const scoreFaqCandidate = (
 const chooseBestFaq = (
     query: string,
     candidates: FaqCandidate[],
-    context?: any,
+    context?: FaqProductContext,
 ): { faq: FaqCandidate; score: number; queryCoverage: number; reason: string } | null => {
     const meaningfulQueryTokenCount = tokenizeMeaningful(query).length;
     const scored = candidates
@@ -295,10 +298,55 @@ const chooseBestFaq = (
     return null;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+export const projectFaqLinkedArticleReference = (
+    value: unknown,
+    documentId: unknown,
+    scope: { tId: number; sId: number },
+    includeFullArticleReference: boolean,
+): CoreSearchReference | null => {
+    if (!isRecord(value)) return null;
+    const articleId = normalizeAnswerlatticeKbArticleId(documentId);
+    const title = cleanReferenceText(value.title, 240);
+    if (
+        !articleId
+        || articleId !== documentId
+        || !title
+        || value.pId !== 'AL'
+        || normalizeAnswerlatticeScopeDocumentId(value.tId) !== normalizeAnswerlatticeScopeDocumentId(scope.tId)
+        || normalizeAnswerlatticeScopeDocumentId(value.sId) !== normalizeAnswerlatticeScopeDocumentId(scope.sId)
+        || value.status !== 'published'
+        || value.active !== true
+        || value.deleted === true
+    ) return null;
+
+    const reference: CoreSearchReference = {
+        id: articleId,
+        title,
+        url: cleanReferenceText(value.url, 500),
+        categoryId: cleanReferenceText(value.categoryId, 180),
+        sectionId: cleanReferenceText(value.sectionId, 180),
+        categoryTitle: cleanReferenceText(value.categoryTitle, 180),
+        sectionTitle: cleanReferenceText(value.sectionTitle, 180),
+        similarityScore: 1,
+        sourceType: 'faq',
+    };
+    if (includeFullArticleReference) {
+        reference.content = value.content;
+        reference.tags = Array.isArray(value.tags)
+            ? value.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 20)
+            : [];
+    }
+    return reference;
+};
+
 const loadLinkedArticleReference = async (
     faq: AnswerlatticeFaq,
     includeFullArticleReference: boolean,
-): Promise<any[]> => {
+): Promise<CoreSearchReference[]> => {
     const articleId = normalizeAnswerlatticeKbArticleId(faq.articleId);
     if (!articleId) return [];
 
@@ -309,43 +357,13 @@ const loadLinkedArticleReference = async (
             .get();
         if (!snap.exists) return [];
 
-        const article = { ...snap.data(), id: snap.id } as KnowledgeBaseArticleType;
-        const articleRecord = article as any;
-        if (
-            articleRecord.pId !== 'AL'
-            || normalizeAnswerlatticeScopeDocumentId(articleRecord.tId) !== normalizeAnswerlatticeScopeDocumentId(faq.tId)
-            || normalizeAnswerlatticeScopeDocumentId(articleRecord.sId) !== normalizeAnswerlatticeScopeDocumentId(faq.sId)
-            || article.status !== 'published'
-            || article.active === false
-        ) {
-            return [];
-        }
-
-        if (!includeFullArticleReference) {
-            return [{
-                id: articleId,
-                title: cleanReferenceText(article.title, 240) || 'Related article',
-                sourceType: 'faq',
-                similarityScore: 1,
-            }];
-        }
-
-        const reference = {
-            id: articleId,
-            title: cleanReferenceText(article.title, 240) || 'Related article',
-            url: cleanReferenceText(article.url, 500),
-            categoryId: cleanReferenceText(article.categoryId, 180),
-            sectionId: cleanReferenceText(article.sectionId, 180),
-            categoryTitle: cleanReferenceText(article.categoryTitle, 180),
-            sectionTitle: cleanReferenceText(article.sectionTitle, 180),
-            content: article.content,
-            tags: Array.isArray(article.tags)
-                ? article.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 20)
-                : [],
-            similarityScore: 1,
-            sourceType: 'faq',
-        };
-        return [reference];
+        const reference = projectFaqLinkedArticleReference(
+            snap.data(),
+            snap.id,
+            { tId: faq.tId, sId: faq.sId },
+            includeFullArticleReference,
+        );
+        return reference ? [reference] : [];
     } catch {
         return [];
     }

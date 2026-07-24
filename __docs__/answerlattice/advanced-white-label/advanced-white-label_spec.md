@@ -24,10 +24,10 @@ The current profile editor alone does not solve that problem. It prepares bounde
 | Field group | Contract |
 |---|---|
 | Identity | `companyName`, 1-100 trimmed characters |
-| Assets | Optional `logoUrl` and `faviconUrl`, HTTPS only, no credentials, whitespace, or fragment, maximum 500 characters |
+| Assets | Optional `logoUrl` and `faviconUrl`, HTTPS host/path/query URLs only, no credentials, fragments, ports, or whitespace, maximum 500 characters |
 | Colors | Six-digit hexadecimal values only |
 | Visibility | Required boolean `poweredByVisible` |
-| Contact | Optional valid `supportEmail`, maximum 160 characters |
+| Contact | Optional dot-atom mailbox with a DNS-style domain, maximum 160 characters |
 | Legal | Optional HTTPS privacy and terms URLs under the same URL policy |
 
 ## Non-Goals

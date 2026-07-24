@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-ontology-rules';
@@ -20,6 +20,10 @@ async function run(): Promise<void> {
             await setDoc(doc(db, 'answerlattice_entities', 'entity-1'), {
                 pId: 'AL', tId: 1, sId: 101, type: 'feature', name: 'Billing', slug: 'billing',
                 description: 'Billing feature.', status: 'active', currentVersion: 1_000_000,
+            });
+            await setDoc(doc(db, 'answerlattice_entities', 'foreign-product-entity'), {
+                pId: 'ML', tId: 1, sId: 101, type: 'feature', name: 'Foreign product', slug: 'foreign-product',
+                description: 'Must never enter Answerlattice reads.', status: 'active', currentVersion: 1_000_000,
             });
             await setDoc(doc(db, 'answerlattice_entityRelations', 'relation-1'), {
                 pId: 'AL', tId: 1, sId: 101, fromEntityId: 'entity-1', toEntityId: 'entity-2', relationType: 'requires',
@@ -40,6 +44,21 @@ async function run(): Promise<void> {
         }).firestore();
         await assertSucceeds(getDoc(doc(owner, 'answerlattice_entities', 'entity-1')));
         await assertFails(getDoc(doc(other, 'answerlattice_entities', 'entity-1')));
+        const scopedEntityQuery = query(
+            collection(owner, 'answerlattice_entities'),
+            where('pId', '==', 'AL'),
+            where('tId', '==', 1),
+            where('sId', '==', 101),
+        );
+        const scopedEntities = await assertSucceeds(getDocs(scopedEntityQuery));
+        if (scopedEntities.size !== 1 || scopedEntities.docs[0]?.id !== 'entity-1') {
+            throw new Error('Product-scoped ontology query returned an unexpected result');
+        }
+        await assertFails(getDocs(query(
+            collection(owner, 'answerlattice_entities'),
+            where('tId', '==', 1),
+            where('sId', '==', 101),
+        )));
         await assertFails(setDoc(doc(owner, 'answerlattice_entities', 'entity-2'), { pId: 'AL', tId: 1, sId: 101 }));
         await assertFails(updateDoc(doc(owner, 'answerlattice_entities', 'entity-1'), { type: 'plan' }));
         await assertFails(setDoc(doc(owner, 'answerlattice_entityRelations', 'relation-2'), { pId: 'AL', tId: 1, sId: 101 }));

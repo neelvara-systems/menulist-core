@@ -1,5 +1,4 @@
 export const dynamic = 'force-dynamic';
-import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
@@ -11,14 +10,29 @@ import {
 } from "@lib/billing/productBillingServer";
 import { getProviderCycleBillingPeriodKey } from '@lib/billing/billingPeriod';
 import {
+    claimRazorpayWebhookEvent,
+    completeRazorpayWebhookEvent,
+} from '@lib/billing/razorpayWebhookLease';
+import {
     getBoundedRazorpayStringContext,
     getRazorpayFailureLogData,
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
-import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { isAnswerlatticeBillingProduct } from "@lib/billing/productBillingPlans";
+import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
+import {
+    requireRazorpayRevenueAmountPaise,
+    resolveRazorpayAuditAmountPaise,
+    resolveRazorpayRevenueOccurredAtMillis,
+    resolveRazorpaySubscriptionQuantity,
+    resolveRazorpaySubscriptionState,
+    resolveRazorpayWebhookProductDeclaration,
+    resolveRazorpayWebhookSubscriptionId,
+    resolveRazorpayWebhookSubscriptionProduct,
+} from '@lib/billing/razorpayRevenueProjectionBoundary';
 import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptionReplacementFinalization';
+import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
 import { settleProductTopupFromProvider } from "@lib/billing/topupSettlementServer";
-import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import {
     recordFounderRevenueMovement,
@@ -42,63 +56,58 @@ import { checkPublicRateLimit } from "src/middleware/publicApi";
 
 const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
+const RAZORPAY_WEBHOOK_RETRY_AFTER_SECONDS = 30;
 
 const sanitizeForAdminFirestore = (value: any): any => {
     return sanitizeForFirestore(value);
 };
 
 const normalizeNumericId = (value: unknown): number | null => {
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : null;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+        ? value
+        : null;
 };
 
-const getEventProductIdentity = (eventPayload: any): unknown => {
-    const payment = eventPayload?.payload?.payment?.entity || {};
-    const refund = eventPayload?.payload?.refund?.entity || {};
-    const subscription = eventPayload?.payload?.subscription?.entity || {};
-    const order = eventPayload?.payload?.order?.entity || {};
-    const orderNotes = !Array.isArray(order?.notes) ? (order?.notes || {}) : {};
-    const refundNotes = !Array.isArray(refund?.notes) ? (refund?.notes || {}) : {};
-    const subscriptionNotes = !Array.isArray(subscription?.notes) ? (subscription?.notes || {}) : {};
-    const paymentNotes = !Array.isArray(payment?.notes) ? (payment?.notes || {}) : {};
-
-    return (
-        eventPayload?.productId
-        || eventPayload?.pId
-        || orderNotes?.productId
-        || orderNotes?.pId
-        || refundNotes?.productId
-        || refundNotes?.pId
-        || subscriptionNotes?.productId
-        || subscriptionNotes?.pId
-        || paymentNotes?.productId
-        || paymentNotes?.pId
-    );
+type ResolvedWebhookEventProduct = {
+    productId: ProductId;
+    subscriptionId: string | null;
+    subscription: FirestoreSubscriptionDoc | null;
 };
 
-const getEventProductId = (eventPayload: any): ProductId => (
-    normalizeBillingProductId(getEventProductIdentity(eventPayload))
-);
-
-const resolveWebhookEventProductId = async (eventPayload: any): Promise<ProductId> => {
-    const declaredProductId = getEventProductIdentity(eventPayload);
-    if (declaredProductId !== undefined && declaredProductId !== null && String(declaredProductId).trim()) {
-        return normalizeBillingProductId(declaredProductId);
+const resolveWebhookEventProduct = async (eventPayload: any): Promise<ResolvedWebhookEventProduct | null> => {
+    const declaration = resolveRazorpayWebhookProductDeclaration(eventPayload);
+    if (declaration.outcome === 'invalid') return null;
+    const subscriptionDeclaration = resolveRazorpayWebhookSubscriptionId(eventPayload);
+    if (subscriptionDeclaration.outcome === 'invalid') return null;
+    if (subscriptionDeclaration.outcome === 'missing') {
+        return {
+            productId: declaration.outcome === 'declared' ? declaration.productId : DEFAULT_PRODUCT_ID,
+            subscriptionId: null,
+            subscription: null,
+        };
     }
+    const { subscriptionId } = subscriptionDeclaration;
 
-    const subscriptionId = String(
-        eventPayload?.payload?.subscription?.entity?.id
-        || eventPayload?.payload?.payment?.entity?.subscription_id
-        || '',
-    ).trim();
-    if (!subscriptionId) return DEFAULT_PRODUCT_ID;
-
-    const menuListSubscription = await getProductSubscriptionById(PRODUCT_IDS.MENULIST, subscriptionId)
-        .catch(() => null);
-    if (menuListSubscription) return PRODUCT_IDS.MENULIST;
-    const answerlatticeSubscription = await getProductSubscriptionById(PRODUCT_IDS.ANSWERLATTICE, subscriptionId)
-        .catch(() => null);
-    return answerlatticeSubscription ? PRODUCT_IDS.ANSWERLATTICE : DEFAULT_PRODUCT_ID;
+    const [menuListSubscription, answerlatticeSubscription] = await Promise.all([
+        getProductSubscriptionById(PRODUCT_IDS.MENULIST, subscriptionId),
+        getProductSubscriptionById(PRODUCT_IDS.ANSWERLATTICE, subscriptionId),
+    ]);
+    const productResolution = resolveRazorpayWebhookSubscriptionProduct({
+        declaration,
+        hasAnswerlatticeSubscription: Boolean(answerlatticeSubscription),
+        hasMenuListSubscription: Boolean(menuListSubscription),
+    });
+    if (productResolution.outcome === 'conflict') return null;
+    if (productResolution.outcome === 'unresolved') {
+        throw new Error('Razorpay webhook subscription product is unresolved.');
+    }
+    return {
+        productId: productResolution.productId,
+        subscriptionId,
+        subscription: productResolution.productId === PRODUCT_IDS.MENULIST
+            ? menuListSubscription
+            : answerlatticeSubscription,
+    };
 };
 
 const getWebhookNonBlockingContext = ({
@@ -137,71 +146,39 @@ const buildWebhookEventKey = (eventPayload: any, rawBody: string): string => {
     const subscription = eventPayload?.payload?.subscription?.entity;
     const order = eventPayload?.payload?.order?.entity;
     const stableFallback = createHash('sha256').update(rawBody).digest('hex').slice(0, 32);
-    const rawKey = eventPayload?.id
-        || `${eventPayload?.event || 'unknown'}:${payment?.id || subscription?.id || order?.id || stableFallback}:${eventPayload?.created_at || stableFallback}`;
+    const normalizeProviderId = (value: unknown): string | null => {
+        if (typeof value !== 'string') return null;
+        const normalized = value.trim();
+        return normalized && normalized.length <= 180 ? normalized : null;
+    };
+    const providerEventId = normalizeProviderId(eventPayload?.id);
+    const entityId = normalizeProviderId(payment?.id)
+        || normalizeProviderId(subscription?.id)
+        || normalizeProviderId(order?.id)
+        || stableFallback;
+    const createdAt = Number(eventPayload?.created_at);
+    const createdAtIdentity = Number.isSafeInteger(createdAt) && createdAt > 0
+        ? String(createdAt)
+        : stableFallback;
+    const rawKey = providerEventId
+        || `${eventPayload.event}:${entityId}:${createdAtIdentity}`;
 
-    return String(rawKey).replace(/[\/\\#?]/g, '_').slice(0, 180);
+    return rawKey.replace(/[\/\\#?]/g, '_').trim().slice(0, 180);
 };
 
-const claimWebhookEventForProcessing = async (
-    eventPayload: any,
-    rawBody: string,
-): Promise<{ eventKey: string; shouldProcess: boolean }> => {
-    const eventKey = buildWebhookEventKey(eventPayload, rawBody);
-    const eventRef = firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).doc(eventKey);
-    const processingExpiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 15 * 60 * 1000);
+const retryableWebhookResponse = () => NextResponse.json(
+    { status: 'processing' },
+    {
+        status: 503,
+        headers: { 'Retry-After': String(RAZORPAY_WEBHOOK_RETRY_AFTER_SECONDS) },
+    },
+);
 
-    const shouldProcess = await firestoreAdmin.runTransaction(async (tx) => {
-        const snap = await tx.get(eventRef);
-        if (snap.exists) {
-            const data = snap.data() || {};
-            const lockExpiry = data.processingExpiresAt?.toMillis?.() || 0;
-            const lockIsActive = data.status === 'processing' && lockExpiry > Date.now();
+const getWebhookAlertDocumentId = (kind: string, eventKey: string): string => (
+    `razorpay-${kind}-${createHash('sha256').update(eventKey).digest('hex').slice(0, 40)}`
+);
 
-            if (data.status === 'processed' || lockIsActive) {
-                return false;
-            }
-
-            tx.set(eventRef, {
-                status: 'processing',
-                eventType: eventPayload?.event || null,
-                retryCount: admin.firestore.FieldValue.increment(1),
-                processingExpiresAt,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
-            return true;
-        }
-
-        tx.create(eventRef, {
-            status: 'processing',
-            eventType: eventPayload?.event || null,
-            eventId: eventPayload?.id || null,
-            transactionType: null,
-            retryCount: 0,
-            processingExpiresAt,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        return true;
-    });
-
-    return { eventKey, shouldProcess };
-};
-
-const markWebhookEvent = async (
-    eventKey: string,
-    status: 'processed' | 'failed',
-    data: Record<string, any> = {},
-) => {
-    await firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).doc(eventKey).set({
-        status,
-        ...sanitizeForAdminFirestore(data),
-        processingExpiresAt: admin.firestore.FieldValue.delete(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-};
-
-const buildPaymentTransactionAudit = (eventPayload: any) => {
+const buildPaymentTransactionAudit = (eventPayload: any, productId: ProductId) => {
     const payment = eventPayload?.payload?.payment?.entity || {};
     const subscription = eventPayload?.payload?.subscription?.entity || {};
     const order = eventPayload?.payload?.order?.entity || {};
@@ -209,7 +186,13 @@ const buildPaymentTransactionAudit = (eventPayload: any) => {
     const subscriptionNotes = !Array.isArray(subscription?.notes) ? (subscription?.notes || {}) : {};
     const tenantId = normalizeNumericId(eventPayload?.tenantId ?? orderNotes?.tenantId ?? subscriptionNotes?.tenantId);
     const storeId = normalizeNumericId(eventPayload?.storeId ?? orderNotes?.storeId ?? subscriptionNotes?.storeId);
-    const productId = getEventProductId(eventPayload);
+
+    const createdAtMillis = resolveRazorpayRevenueOccurredAtMillis(
+        eventPayload?.created_at ?? payment?.created_at ?? subscription?.created_at ?? order?.created_at,
+    );
+    const amount = resolveRazorpayAuditAmountPaise(
+        payment?.amount ?? order?.amount_paid ?? order?.amount ?? subscription?.amount,
+    );
 
     return {
         auditVersion: 2,
@@ -221,13 +204,13 @@ const buildPaymentTransactionAudit = (eventPayload: any) => {
         storeId,
         tId: tenantId,
         sId: storeId,
-        created_at: Number(eventPayload?.created_at || payment?.created_at || subscription?.created_at || order?.created_at || Math.floor(Date.now() / 1000)),
+        created_at: createdAtMillis == null ? null : createdAtMillis / 1000,
         paymentId: payment?.id || null,
         subscriptionId: subscription?.id || payment?.subscription_id || null,
         orderId: order?.id || payment?.order_id || null,
         invoiceId: payment?.invoice_id || null,
         invoiceUrl: eventPayload?.invoiceUrl || null,
-        amount: Number(payment?.amount ?? order?.amount_paid ?? order?.amount ?? subscription?.amount ?? 0),
+        amount,
         currency: payment?.currency || order?.currency || subscription?.currency || 'INR',
         status: payment?.status || order?.status || subscription?.status || null,
         description: payment?.description || null,
@@ -325,8 +308,40 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
+    if (
+        !event
+        || typeof event !== 'object'
+        || Array.isArray(event)
+        || typeof event.event !== 'string'
+        || event.event !== event.event.trim()
+        || event.event.length === 0
+        || event.event.length > 120
+        || !event.payload
+        || typeof event.payload !== 'object'
+        || Array.isArray(event.payload)
+    ) {
+        logger.warn('Webhook payload shape validation failed', { provider: 'razorpay' });
+        return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+    }
 
-    const eventProductId = await resolveWebhookEventProductId(event);
+    let eventProductResolution: ResolvedWebhookEventProduct | null;
+    try {
+        eventProductResolution = await resolveWebhookEventProduct(event);
+    } catch (error) {
+        logger.error(
+            'Webhook product resolution failed',
+            new Error('razorpay_webhook_product_resolution_failed'),
+            getRazorpayFailureLogData('razorpay_webhook_product_resolution_failed', error, {
+                eventType: event.event,
+            }),
+        );
+        return retryableWebhookResponse();
+    }
+    if (!eventProductResolution) {
+        logger.warn('Webhook product identity conflict', { eventType: event.event });
+        return NextResponse.json({ error: 'Invalid product identity.' }, { status: 400 });
+    }
+    const eventProductId = eventProductResolution.productId;
 
     logger.info('Webhook event received', {
         eventType: event.event,
@@ -337,20 +352,59 @@ export async function POST(request: NextRequest) {
         ...getBoundedRazorpayStringContext('productId', eventProductId),
     });
 
-    const webhookClaim = await claimWebhookEventForProcessing(event, requestBody);
-    if (!webhookClaim.shouldProcess) {
+    let webhookClaim;
+    try {
+        webhookClaim = await claimRazorpayWebhookEvent({
+            eventId: event.id,
+            eventKey: buildWebhookEventKey(event, requestBody),
+            eventType: event.event,
+        });
+    } catch (error) {
+        logger.error(
+            'Webhook idempotency claim failed',
+            new Error('razorpay_webhook_claim_failed'),
+            getRazorpayFailureLogData('razorpay_webhook_claim_failed', error, {
+                eventType: event.event,
+                productId: eventProductId,
+            }),
+        );
+        return retryableWebhookResponse();
+    }
+    if (webhookClaim.outcome === 'processed') {
         logger.info('Duplicate Razorpay webhook skipped', {
             eventType: event.event,
             ...getBoundedRazorpayStringContext('eventKey', webhookClaim.eventKey),
         });
         return NextResponse.json({ status: 'duplicate' });
     }
+    if (webhookClaim.outcome === 'processing') {
+        logger.info('Concurrent Razorpay webhook remains in progress', {
+            eventType: event.event,
+            ...getBoundedRazorpayStringContext('eventKey', webhookClaim.eventKey),
+        });
+        return retryableWebhookResponse();
+    }
 
     try {
         let eventPayloadToUpload = event;
         eventPayloadToUpload.productId = eventProductId;
         eventPayloadToUpload.pId = eventProductId;
-        const getSubscription = (id: string) => getProductSubscriptionById(eventProductId, id);
+        const subscriptionReads = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();
+        if (eventProductResolution.subscription && eventProductResolution.subscriptionId) {
+            subscriptionReads.set(
+                eventProductResolution.subscriptionId,
+                Promise.resolve(eventProductResolution.subscription),
+            );
+        }
+        const getSubscription = (id: string) => {
+            const subscriptionId = String(id || '').trim();
+            if (!subscriptionId) return Promise.resolve(null);
+            const existingRead = subscriptionReads.get(subscriptionId);
+            if (existingRead) return existingRead;
+            const subscriptionRead = getProductSubscriptionById(eventProductId, subscriptionId);
+            subscriptionReads.set(subscriptionId, subscriptionRead);
+            return subscriptionRead;
+        };
         const syncSubscriptionForProduct = (subscription: FirestoreSubscriptionDoc, source: string) =>
             safeSyncProductSubscriptionEntitlementFromSubscription(eventProductId, subscription, source);
         const markResellerTransactionsForProduct = async (subscriptionId: string, source: string) => {
@@ -361,6 +415,13 @@ export async function POST(request: NextRequest) {
         const shouldSendMenuListBillingMessages = !isAnswerlatticeBillingProduct(eventProductId);
         const paymentEntity = event.payload?.payment?.entity;
         const refundEntity = event.payload?.refund?.entity;
+        const eventSubscriptionId = eventProductResolution.subscriptionId;
+        const eventSubscription = eventSubscriptionId
+            ? await getSubscription(eventSubscriptionId)
+            : null;
+        const eventSubscriptionScope = eventSubscription
+            ? getProductSubscriptionBillingScope(eventProductId, eventSubscription)
+            : null;
         if (event.payload?.order) {
             const orderEntity = event.payload?.order?.entity;
             //if its topup credit purchase transaction event
@@ -370,8 +431,12 @@ export async function POST(request: NextRequest) {
                     orderEntity?.notes?.billingStoreId || orderEntity?.notes?.storeId,
                 );
                 eventPayloadToUpload.tenantId = Number(orderEntity?.notes?.tenantId);
+                eventPayloadToUpload.transactionType = 'topup';
+            } else {
+                eventPayloadToUpload.storeId = null;
+                eventPayloadToUpload.tenantId = null;
+                eventPayloadToUpload.transactionType = 'payment';
             }
-            eventPayloadToUpload.transactionType = 'topup';
         } else if (event.payload?.subscription) {
             //if its subscription transaction event event
             const subscriptionEntity = event.payload?.subscription?.entity;
@@ -384,66 +449,70 @@ export async function POST(request: NextRequest) {
             eventPayloadToUpload.tenantId = Number(paymentNotes.tenantId);
             eventPayloadToUpload.transactionType = paymentEntity?.subscription_id ? 'subscription' : paymentEntity?.order_id ? 'topup' : 'payment';
         }
-        if (
-            paymentEntity?.subscription_id
-            && (
-                !Number.isSafeInteger(eventPayloadToUpload.tenantId)
-                || eventPayloadToUpload.tenantId <= 0
-                || !Number.isSafeInteger(eventPayloadToUpload.storeId)
-                || eventPayloadToUpload.storeId <= 0
-            )
-        ) {
-            const scopedSubscription = await getSubscription(paymentEntity.subscription_id);
-            if (scopedSubscription) {
-                eventPayloadToUpload.tenantId = Number(scopedSubscription.tenantId);
-                eventPayloadToUpload.storeId = Number(scopedSubscription.storeId);
-            }
+        if (eventSubscriptionId) {
+            eventPayloadToUpload.tenantId = eventSubscriptionScope?.tenantId ?? null;
+            eventPayloadToUpload.storeId = eventSubscriptionScope?.storeId ?? null;
         }
         //fetch invoice data from razorpay
         if ((event.event === 'order.paid' || event.event === 'subscription.charged') && paymentEntity?.invoice_id) {
             eventPayloadToUpload = await getInvoiceById(eventPayloadToUpload, paymentEntity?.invoice_id);
         }
         // await writeLogEntry({ logFileName: LOG_FILE, logType: `RAZORPAY_WEBHOOK_EVENT_${event.event}`, data: eventPayloadToUpload });
-        const auditSummary = buildPaymentTransactionAudit(eventPayloadToUpload);
-        await writeProductPaymentTransactionAudit(eventProductId, auditSummary, webhookClaim.eventKey);
-        const paymentAmountPaise = Number(paymentEntity?.amount || auditSummary.amount || 0);
-        const paymentOccurredAt = paymentEntity?.created_at ? Number(paymentEntity.created_at) * 1000 : Date.now();
-        if (event.event === 'order.paid' || event.event === 'subscription.charged') {
+        const auditSummary = buildPaymentTransactionAudit(eventPayloadToUpload, eventProductId);
+        const resolvePaymentRevenueAmountPaise = () => requireRazorpayRevenueAmountPaise(
+            paymentEntity?.amount ?? event.payload?.subscription?.entity?.amount,
+        );
+        const resolvePaymentOccurredAt = () => resolveRazorpayRevenueOccurredAtMillis(
+            paymentEntity?.created_at ?? event.created_at,
+        );
+        const orderEntity = event.payload?.order?.entity;
+        const isSettledTopupEvent = event.event === 'order.paid'
+            && Boolean(orderEntity?.notes)
+            && !Array.isArray(orderEntity.notes)
+            && Boolean(orderEntity.notes.packId);
+        if (!isSettledTopupEvent) {
+            await writeProductPaymentTransactionAudit(eventProductId, auditSummary, webhookClaim.eventKey);
+        }
+        if (event.event === 'subscription.charged') {
             await recordFounderRevenueMovement({
-                amountPaise: paymentAmountPaise,
+                amountPaise: resolvePaymentRevenueAmountPaise(),
                 currency: paymentEntity?.currency || auditSummary.currency || 'INR',
                 description: event.event === 'subscription.charged' ? 'Razorpay subscription payment collected.' : 'Razorpay order payment collected.',
                 eventName: event.event,
                 id: `cash:${paymentEntity?.id || webhookClaim.eventKey}`,
                 kind: 'cash_collected',
-                occurredAt: paymentOccurredAt,
+                occurredAt: resolvePaymentOccurredAt(),
                 paymentId: paymentEntity?.id || null,
                 productId: eventProductId,
+                requireDurableWrite: true,
                 source: `webhook:${event.event}`,
-                storeId: eventPayloadToUpload.storeId,
-                subscriptionId: paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id || null,
-                tenantId: eventPayloadToUpload.tenantId,
+                storeId: eventSubscriptionScope?.storeId ?? null,
+                subscriptionId: eventSubscriptionId,
+                tenantId: eventSubscriptionScope?.tenantId ?? null,
             });
         }
         if (event.event === 'payment.failed' || event.event === 'subscription.pending' || event.event === 'subscription.halted') {
             await recordFounderRevenueMovement({
-                amountPaise: paymentAmountPaise,
+                amountPaise: resolvePaymentRevenueAmountPaise(),
                 currency: paymentEntity?.currency || auditSummary.currency || 'INR',
                 description: getRazorpayPaymentFailureRemark(event.event),
                 eventName: event.event,
                 id: `failed_payment:${paymentEntity?.id || webhookClaim.eventKey}`,
                 kind: 'failed_payment',
-                occurredAt: paymentOccurredAt,
+                occurredAt: resolvePaymentOccurredAt(),
                 paymentId: paymentEntity?.id || null,
                 productId: eventProductId,
+                requireDurableWrite: true,
                 source: `webhook:${event.event}`,
-                storeId: eventPayloadToUpload.storeId,
-                subscriptionId: paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id || null,
-                tenantId: eventPayloadToUpload.tenantId,
+                storeId: eventSubscriptionScope?.storeId ?? null,
+                subscriptionId: eventSubscriptionId,
+                tenantId: eventSubscriptionScope?.tenantId ?? null,
             });
         }
         if (event.event === 'payment.refunded' || event.event === 'refund.processed') {
-            const refundAmountPaise = Number(refundEntity?.amount || paymentEntity?.amount_refunded || paymentEntity?.amount || auditSummary.amount || 0);
+            const refundAmountPaise = requireRazorpayRevenueAmountPaise(
+                refundEntity?.amount ?? paymentEntity?.amount_refunded ?? paymentEntity?.amount,
+            );
             const refundPaymentId = refundEntity?.payment_id || paymentEntity?.id || null;
             await recordFounderRevenueMovement({
                 amountPaise: refundAmountPaise,
@@ -452,31 +521,37 @@ export async function POST(request: NextRequest) {
                 eventName: event.event,
                 id: `refund:${refundEntity?.id || refundPaymentId || webhookClaim.eventKey}`,
                 kind: 'refund',
-                occurredAt: refundEntity?.created_at
-                    ? Number(refundEntity.created_at) * 1000
-                    : paymentOccurredAt,
+                occurredAt: resolveRazorpayRevenueOccurredAtMillis(
+                    refundEntity?.created_at ?? paymentEntity?.created_at ?? event.created_at,
+                ),
                 paymentId: refundPaymentId,
                 productId: eventProductId,
+                requireDurableWrite: true,
                 source: `webhook:${event.event}`,
-                storeId: eventPayloadToUpload.storeId,
-                subscriptionId: paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id || null,
-                tenantId: eventPayloadToUpload.tenantId,
+                storeId: eventSubscriptionScope?.storeId ?? null,
+                subscriptionId: eventSubscriptionId,
+                tenantId: eventSubscriptionScope?.tenantId ?? null,
             });
         }
         if (!eventPayloadToUpload.transactionType) {
-            await markWebhookEvent(webhookClaim.eventKey, 'processed', {
-                transactionType: null,
-                productId: eventProductId,
-                tenantId: eventPayloadToUpload.tenantId ?? null,
-                storeId: eventPayloadToUpload.storeId ?? null,
+            const completionOutcome = await completeRazorpayWebhookEvent({
+                attemptId: webhookClaim.attemptId,
+                data: sanitizeForAdminFirestore({
+                    transactionType: null,
+                    productId: eventProductId,
+                    tenantId: eventPayloadToUpload.tenantId ?? null,
+                    storeId: eventPayloadToUpload.storeId ?? null,
+                }),
+                eventKey: webhookClaim.eventKey,
+                status: 'processed',
             });
+            if (completionOutcome === 'ownership_lost') return retryableWebhookResponse();
             return NextResponse.json({ received: true });
         }
 
         switch (event.event) {
             case 'order.paid': {
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_ORDER.PAID', data: auditSummary });
-                const orderEntity = event.payload?.order?.entity;
                 const orderNotes = orderEntity?.notes && !Array.isArray(orderEntity.notes)
                     ? orderEntity.notes
                     : null;
@@ -489,6 +564,39 @@ export async function POST(request: NextRequest) {
                         order: orderEntity,
                         payment: paymentEntity,
                         productId: eventProductId,
+                    });
+                    const topupSubscriptionScope = getProductSubscriptionBillingScope(
+                        eventProductId,
+                        topupApplication.subscription,
+                    );
+                    if (!topupSubscriptionScope) {
+                        throw new Error('Paid top-up subscription scope is invalid after settlement.');
+                    }
+                    await writeProductPaymentTransactionAudit(eventProductId, {
+                        ...auditSummary,
+                        amount: topupApplication.settlement.amount,
+                        currency: topupApplication.settlement.currency,
+                        pId: eventProductId,
+                        productId: eventProductId,
+                        sId: topupSubscriptionScope.storeId,
+                        storeId: topupSubscriptionScope.storeId,
+                        tId: topupSubscriptionScope.tenantId,
+                        tenantId: topupSubscriptionScope.tenantId,
+                    }, webhookClaim.eventKey);
+                    await recordFounderRevenueMovement({
+                        amountPaise: topupApplication.settlement.amount,
+                        currency: topupApplication.settlement.currency,
+                        description: 'Razorpay top-up payment collected.',
+                        eventName: event.event,
+                        id: `cash:${paymentEntity.id || webhookClaim.eventKey}`,
+                        kind: 'cash_collected',
+                        occurredAt: resolvePaymentOccurredAt(),
+                        paymentId: paymentEntity.id || null,
+                        productId: eventProductId,
+                        requireDurableWrite: true,
+                        source: `webhook:${event.event}:topup`,
+                        storeId: topupSubscriptionScope.storeId,
+                        tenantId: topupSubscriptionScope.tenantId,
                     });
 
                     if (topupApplication.applied && shouldSendMenuListBillingMessages) {
@@ -574,11 +682,13 @@ export async function POST(request: NextRequest) {
                             ...getBoundedRazorpayStringContext('paymentId', paymentEntity?.id),
                             ...getBoundedRazorpayStringContext(
                                 'subscriptionId',
-                                paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id,
+                                eventSubscriptionId,
                             ),
                             ...getBoundedRazorpayStringContext('providerErrorDescription', paymentEntity?.error_description),
                             ...getBoundedRazorpayStringContext('providerErrorReason', paymentEntity?.error_reason),
                         }),
+                    }, {
+                        documentId: getWebhookAlertDocumentId('payment-failure', webhookClaim.eventKey),
                     });
                 } catch (alertError) {
                     logRazorpayNonBlockingFailure('razorpay_webhook_payment_failure_alert_failed', alertError, getWebhookNonBlockingContext({
@@ -603,7 +713,7 @@ export async function POST(request: NextRequest) {
                                 storeId: String(subForMsg.storeId),
                                 tenantId: String(subForMsg.tenantId),
                                 eventType: event.event === 'subscription.pending' ? 'GRACE_PERIOD_STARTED' : 'PAYMENT_FAILED',
-                                referenceId: `${event.event}-${paymentEntity?.id || event.payload?.subscription?.entity?.id || Date.now()}`,
+                                referenceId: `${event.event}-${paymentEntity?.id || event.payload?.subscription?.entity?.id || webhookClaim.eventKey}`,
                                 recipientEmail: subForMsg.email,
                                 storeName: subForMsg.name || '',
                                 metadata: {
@@ -701,6 +811,14 @@ export async function POST(request: NextRequest) {
                 const planDetails = getPlanDetailsFromConstants(subscriptionEntity.notes);
 
                 if (internalSub && planDetails) {
+                    const providerState = resolveRazorpaySubscriptionState(subscriptionEntity, internalSub.quantity);
+                    const billingInterval = subscriptionEntity.notes?.interval;
+                    if (
+                        !providerState
+                        || (billingInterval !== 'MONTH' && billingInterval !== 'YEAR')
+                    ) {
+                        throw new Error('Invalid provider subscription state.');
+                    }
                     const paymentMethod = {
                         type: paymentEntity?.method || "",
                         brand: paymentEntity?.card?.network || "",
@@ -709,21 +827,26 @@ export async function POST(request: NextRequest) {
                         upiTransactionId: paymentEntity?.acquirer_data?.upi_transaction_id || "",
                     };
 
-                    const currentBillingPeriod = getProviderCycleBillingPeriodKey(subscriptionEntity.current_start);
+                    const currentBillingPeriod = getProviderCycleBillingPeriodKey(providerState.currentStartSeconds);
                     if (currentBillingPeriod === null) {
                         throw new Error('Invalid provider billing cycle.');
                     }
-                    const paymentHistoryId = paymentEntity?.id || `${event.event}-${subscriptionEntity.id}-${subscriptionEntity.current_start || Date.now()}`;
+                    const paymentHistoryId = paymentEntity?.id || `${event.event}-${subscriptionEntity.id}-${providerState.currentStartSeconds}`;
                     const updatePayload: Partial<FirestoreSubscriptionDoc> = {
                         status: 'active',
-                        cycleStartDate: Timestamp.fromMillis(subscriptionEntity.current_start * 1000),
-                        cycleEndDate: Timestamp.fromMillis(subscriptionEntity.current_end * 1000),
-                        renewsOn: Timestamp.fromMillis(subscriptionEntity.charge_at * 1000),
-                        subscriptionStartDate: Timestamp.fromMillis(subscriptionEntity.start_at * 1000),
-                        subscriptionEndDate: getSubscriptionEndDate(subscriptionEntity),
+                        cycleStartDate: Timestamp.fromMillis(providerState.currentStartMillis),
+                        cycleEndDate: Timestamp.fromMillis(providerState.currentEndMillis),
+                        renewsOn: Timestamp.fromMillis(providerState.chargeAtMillis),
+                        subscriptionStartDate: Timestamp.fromMillis(providerState.startAtMillis),
+                        subscriptionEndDate: getSubscriptionEndDate({
+                            interval: billingInterval,
+                            startAtMillis: providerState.startAtMillis,
+                            totalCount: providerState.totalCount,
+                        }),
                         pastDueSinceAt: null,
-                        totalPaymentsNeededCount: subscriptionEntity.total_count,
-                        totalPaymentsMadeCount: subscriptionEntity.paid_count,
+                        totalPaymentsNeededCount: providerState.totalCount,
+                        totalPaymentsMadeCount: providerState.paidCount,
+                        quantity: providerState.quantity,
                         paymentMethod,
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                     };
@@ -743,16 +866,19 @@ export async function POST(request: NextRequest) {
                     if (!paymentApplication || (!paymentApplication.applied && !paymentApplication.duplicate)) {
                         break;
                     }
-                    const replacementSubscriptionId = String(
-                        paymentApplication.previousSubscription.founderMonitorReplacementForSubscriptionId
-                        || internalSub.founderMonitorReplacementForSubscriptionId
-                        || '',
-                    ).trim();
-                    const replacementMrrPaise = Number(
-                        paymentApplication.previousSubscription.founderMonitorReplacementMrrPaise
-                        || internalSub.founderMonitorReplacementMrrPaise
-                        || 0,
+                    const replacementEvidence = resolveSubscriptionReplacementEvidence(
+                        paymentApplication.previousSubscription,
+                        internalSub,
                     );
+                    if (replacementEvidence.outcome === 'invalid') {
+                        throw new Error('Subscription replacement evidence is invalid.');
+                    }
+                    const replacementSubscriptionId = replacementEvidence.outcome === 'replacement'
+                        ? replacementEvidence.subscriptionId
+                        : null;
+                    const replacementMrrPaise = replacementEvidence.outcome === 'replacement'
+                        ? replacementEvidence.previousMrrPaise
+                        : 0;
                     let appliedSubscription = paymentApplication.subscription;
                     if (
                         replacementSubscriptionId
@@ -783,37 +909,37 @@ export async function POST(request: NextRequest) {
                                 storeId: Number(internalSub.storeId),
                             },
                             evidence: {
-                                paidAt: new Date(Number(paymentEntity?.created_at || event.created_at || Math.floor(Date.now() / 1000)) * 1000),
+                                paidAt: new Date(resolvePaymentOccurredAt() ?? Date.now()),
                                 paymentEvidenceId: String(paymentEntity?.id || paymentHistoryId),
                                 source: `webhook:${event.event}`,
                                 subscriptionId: internalSub.id,
                             },
                         });
                     }
-                    if (paymentApplication.applied && paymentApplication.previousSubscription.status !== 'active') {
-                        const activatedSubscription = {
-                            ...appliedSubscription,
-                            id: internalSub.id,
-                            planId: planDetails.planId || appliedSubscription.planId,
-                            status: 'active',
-                        } as FirestoreSubscriptionDoc;
-                        if (replacementSubscriptionId && replacementMrrPaise > 0) {
-                            await recordFounderSubscriptionMrrChange({
-                                eventKey: `${replacementSubscriptionId}:${internalSub.id}`,
-                                previousMrrPaise: replacementMrrPaise,
-                                productId: eventProductId,
-                                source: `webhook:${event.event}:replacement`,
-                                subscription: activatedSubscription,
-                                occurredAt: subscriptionEntity.current_start ? subscriptionEntity.current_start * 1000 : Date.now(),
-                            });
-                        } else {
-                            await recordFounderSubscriptionNewMrr({
-                                productId: eventProductId,
-                                source: `webhook:${event.event}`,
-                                subscription: activatedSubscription,
-                                occurredAt: subscriptionEntity.current_start ? subscriptionEntity.current_start * 1000 : Date.now(),
-                            });
-                        }
+                    const activatedSubscription = {
+                        ...appliedSubscription,
+                        id: internalSub.id,
+                        planId: planDetails.planId || appliedSubscription.planId,
+                        status: 'active',
+                    } as FirestoreSubscriptionDoc;
+                    if (replacementSubscriptionId && replacementMrrPaise > 0) {
+                        await recordFounderSubscriptionMrrChange({
+                            eventKey: `${replacementSubscriptionId}:${internalSub.id}`,
+                            previousMrrPaise: replacementMrrPaise,
+                            productId: eventProductId,
+                            requireDurableWrite: true,
+                            source: `webhook:${event.event}:replacement`,
+                            subscription: activatedSubscription,
+                            occurredAt: providerState.currentStartMillis,
+                        });
+                    } else {
+                        await recordFounderSubscriptionNewMrr({
+                            productId: eventProductId,
+                            requireDurableWrite: true,
+                            source: `webhook:${event.event}`,
+                            subscription: activatedSubscription,
+                            occurredAt: providerState.currentStartMillis,
+                        });
                     }
 
                     if (shouldSendMenuListBillingMessages && paymentApplication.applied) {
@@ -831,9 +957,7 @@ export async function POST(request: NextRequest) {
                                     amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
                                     currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
                                     planName: internalSub.planName || 'Subscription',
-                                    nextBillingAt: subscriptionEntity.charge_at
-                                        ? new Date(subscriptionEntity.charge_at * 1000).toISOString()
-                                        : null,
+                                    nextBillingAt: new Date(providerState.chargeAtMillis).toISOString(),
                                 },
                             }).catch((notificationError) => {
                                 logRazorpayNonBlockingFailure('razorpay_webhook_subscription_success_lifecycle_message_failed', notificationError, getWebhookNonBlockingContext({
@@ -868,9 +992,7 @@ export async function POST(request: NextRequest) {
                                     planName: internalSub.planName || '',
                                     amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
                                     currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
-                                    nextBillingDate: subscriptionEntity.charge_at
-                                        ? new Date(subscriptionEntity.charge_at * 1000).toLocaleDateString()
-                                        : 'N/A',
+                                    nextBillingDate: new Date(providerState.chargeAtMillis).toLocaleDateString(),
                                     storeId: String(internalSub.storeId),
                                     tenantId: String(internalSub.tenantId),
                                 },
@@ -903,6 +1025,7 @@ export async function POST(request: NextRequest) {
                 const subscriptionEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_COMPLETED', data: auditSummary });
                 if (!subscriptionEntity?.id) break;
+                const endedAtMillis = resolveRazorpayRevenueOccurredAtMillis(subscriptionEntity.ended_at);
                 const internalSub = await getSubscription(subscriptionEntity.id);
                 if (internalSub) {
                     const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
@@ -918,7 +1041,7 @@ export async function POST(request: NextRequest) {
                         subscriptionId: internalSub.id,
                         update: {
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                            subscriptionEndDate: subscriptionEntity.ended_at ? Timestamp.fromMillis(subscriptionEntity.ended_at * 1000) : Timestamp.now(),
+                            subscriptionEndDate: endedAtMillis == null ? Timestamp.now() : Timestamp.fromMillis(endedAtMillis),
                         },
                     });
                     if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
@@ -926,14 +1049,13 @@ export async function POST(request: NextRequest) {
                         statusApplication.subscription,
                         'webhook:subscription.completed',
                     );
-                    if (statusApplication.applied) {
-                        await recordFounderSubscriptionChurn({
-                            productId: eventProductId,
-                            source: 'webhook:subscription.completed',
-                            subscription: statusApplication.subscription,
-                            occurredAt: subscriptionEntity.ended_at ? subscriptionEntity.ended_at * 1000 : Date.now(),
-                        });
-                    }
+                    await recordFounderSubscriptionChurn({
+                        productId: eventProductId,
+                        requireDurableWrite: true,
+                        source: 'webhook:subscription.completed',
+                        subscription: statusApplication.subscription,
+                        occurredAt: endedAtMillis,
+                    });
                 }
                 break;
             }
@@ -942,6 +1064,7 @@ export async function POST(request: NextRequest) {
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_CANCELLED', data: auditSummary });
                 const cancelledSubEntity = event.payload?.subscription?.entity;
                 if (cancelledSubEntity?.id) {
+                    const endedAtMillis = resolveRazorpayRevenueOccurredAtMillis(cancelledSubEntity.ended_at);
                     const cancelledInternalSub = await getSubscription(cancelledSubEntity.id);
                     if (cancelledInternalSub) {
                         const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
@@ -957,7 +1080,9 @@ export async function POST(request: NextRequest) {
                             subscriptionId: cancelledInternalSub.id,
                             update: {
                                 lastWebhook: { event: event.event, timestamp: Timestamp.now() },
-                                subscriptionEndDate: cancelledSubEntity.ended_at ? Timestamp.fromMillis(cancelledSubEntity.ended_at * 1000) : (cancelledInternalSub.cycleEndDate || Timestamp.now()),
+                                subscriptionEndDate: endedAtMillis == null
+                                    ? (cancelledInternalSub.cycleEndDate || Timestamp.now())
+                                    : Timestamp.fromMillis(endedAtMillis),
                             },
                         });
                         if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
@@ -965,14 +1090,13 @@ export async function POST(request: NextRequest) {
                             statusApplication.subscription,
                             'webhook:subscription.cancelled',
                         );
-                        if (statusApplication.applied) {
-                            await recordFounderSubscriptionChurn({
-                                productId: eventProductId,
-                                source: 'webhook:subscription.cancelled',
-                                subscription: statusApplication.subscription,
-                                occurredAt: cancelledSubEntity.ended_at ? cancelledSubEntity.ended_at * 1000 : Date.now(),
-                            });
-                        }
+                        await recordFounderSubscriptionChurn({
+                            productId: eventProductId,
+                            requireDurableWrite: true,
+                            source: 'webhook:subscription.cancelled',
+                            subscription: statusApplication.subscription,
+                            occurredAt: endedAtMillis,
+                        });
                         if (shouldSendMenuListBillingMessages && statusApplication.applied) {
                             try {
                                 const { sendLifecycleMessage } = await import('@lib/messaging');
@@ -1085,8 +1209,22 @@ export async function POST(request: NextRequest) {
                 if (!updatedSubEntity?.id) break;
                 const updatedInternalSub = await getSubscription(updatedSubEntity.id);
                 if (updatedInternalSub && updatedSubEntity.quantity !== undefined) {
-                    const quantity = Number(updatedSubEntity.quantity);
-                    if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 10_000) break;
+                    const quantity = resolveRazorpaySubscriptionQuantity(updatedSubEntity.quantity);
+                    if (quantity == null) throw new Error('Invalid provider subscription quantity.');
+                    if (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due') {
+                        await recordFounderSubscriptionMrrChange({
+                            eventKey: webhookClaim.eventKey,
+                            productId: eventProductId,
+                            previousSubscription: updatedInternalSub,
+                            requireDurableWrite: true,
+                            source: 'webhook:subscription.updated',
+                            subscription: {
+                                ...updatedInternalSub,
+                                quantity,
+                            },
+                            occurredAt: resolveRazorpayRevenueOccurredAtMillis(updatedSubEntity.updated_at),
+                        });
+                    }
                     const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
                         eventKey: webhookClaim.eventKey,
                         subscriptionId: updatedInternalSub.id,
@@ -1096,16 +1234,6 @@ export async function POST(request: NextRequest) {
                         },
                     });
                     if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) break;
-                    if (statusApplication.applied && (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due')) {
-                        await recordFounderSubscriptionMrrChange({
-                            eventKey: webhookClaim.eventKey,
-                            productId: eventProductId,
-                            previousSubscription: updatedInternalSub,
-                            source: 'webhook:subscription.updated',
-                            subscription: statusApplication.subscription,
-                            occurredAt: updatedSubEntity.updated_at ? updatedSubEntity.updated_at * 1000 : Date.now(),
-                        });
-                    }
                 }
                 break;
             }
@@ -1181,12 +1309,18 @@ export async function POST(request: NextRequest) {
         }
 
         // 3. Acknowledge receipt to Razorpay to prevent retries.
-        await markWebhookEvent(webhookClaim.eventKey, 'processed', {
-            transactionType: eventPayloadToUpload.transactionType || null,
-            productId: eventProductId,
-            tenantId: eventPayloadToUpload.tenantId ?? null,
-            storeId: eventPayloadToUpload.storeId ?? null,
+        const completionOutcome = await completeRazorpayWebhookEvent({
+            attemptId: webhookClaim.attemptId,
+            data: sanitizeForAdminFirestore({
+                transactionType: eventPayloadToUpload.transactionType || null,
+                productId: eventProductId,
+                tenantId: eventPayloadToUpload.tenantId ?? null,
+                storeId: eventPayloadToUpload.storeId ?? null,
+            }),
+            eventKey: webhookClaim.eventKey,
+            status: 'processed',
         });
+        if (completionOutcome === 'ownership_lost') return retryableWebhookResponse();
         return NextResponse.json({ status: 'ok' });
 
     } catch (error) {
@@ -1196,9 +1330,20 @@ export async function POST(request: NextRequest) {
         });
         logger.error('Webhook processing failed', new Error('razorpay_webhook_processing_failed'), failureData);
 
-        await markWebhookEvent(webhookClaim.eventKey, 'failed', {
-            eventType: event?.event || null,
-            ...failureData,
+        let failureCompletionOutcome: Awaited<ReturnType<typeof completeRazorpayWebhookEvent>> | null = null;
+        await completeRazorpayWebhookEvent({
+            attemptId: webhookClaim.attemptId,
+            data: sanitizeForAdminFirestore({
+                eventType: event?.event || null,
+                productId: eventProductId,
+                tenantId: event?.tenantId ?? null,
+                storeId: event?.storeId ?? null,
+                ...failureData,
+            }),
+            eventKey: webhookClaim.eventKey,
+            status: 'failed',
+        }).then((outcome) => {
+            failureCompletionOutcome = outcome;
         }).catch((markError) => {
             logRazorpayNonBlockingFailure('razorpay_webhook_failed_status_mark_failed', markError, {
                 ...getWebhookNonBlockingContext({
@@ -1210,6 +1355,13 @@ export async function POST(request: NextRequest) {
                 ...getBoundedRazorpayStringContext('eventKey', webhookClaim.eventKey),
             });
         });
+
+        if (failureCompletionOutcome === 'already_processed') {
+            return NextResponse.json({ status: 'duplicate' });
+        }
+        if (failureCompletionOutcome === 'ownership_lost') {
+            return retryableWebhookResponse();
+        }
 
         // 🚨 CRITICAL ALERT: Webhook processing failure = potential payment state inconsistency
         try {
@@ -1230,6 +1382,8 @@ export async function POST(request: NextRequest) {
                     ...getBoundedRazorpayStringContext('tenantId', event?.tenantId),
                     ...getRazorpayFailureLogData('razorpay_webhook_processing_failed', error),
                 },
+            }, {
+                documentId: getWebhookAlertDocumentId('processing-failure', webhookClaim.eventKey),
             });
         } catch (alertError) {
             logRazorpayNonBlockingFailure('razorpay_webhook_processing_alert_failed', alertError, getWebhookNonBlockingContext({

@@ -37,11 +37,35 @@ assertIncludes(hook, 'status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.DRAFT_READY', '
 
 assertIncludes(functionsIndex, 'answerlatticeSupportBoardSummaryOnWrite', 'live summary trigger export');
 assertIncludes(summary, 'loadAnswerlatticeSupportBoardCoreCounts', 'exact live board counts');
+assertIncludes(summary, ".where('pId', '==', PRODUCT_ID)", 'live count product partition');
 assertIncludes(summary, "scoped.where('priority', '==', HIGH_PRIORITY).count().get()", 'high-priority aggregate count');
 assertIncludes(summary, 'count_fields_unchanged', 'note-only summary skip');
 assertIncludes(summary, 'nightly_sync_writes_summary', 'nightly card create summary skip');
 assertIncludes(sync, 'sourceWindowsSaturated', 'nightly source saturation evidence');
 assertIncludes(sync, 'breakdownFresh', 'bounded breakdown freshness evidence');
+assertIncludes(
+    sync,
+    ".collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)\n            .where('pId', '==', PRODUCT_ID)",
+    'nightly search-history product partition',
+);
+assertIncludes(
+    sync,
+    ".collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)\n            .where('pId', '==', PRODUCT_ID)",
+    'nightly drift product partition',
+);
+assertIncludes(
+    sync,
+    ".collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)\n        .where('pId', '==', PRODUCT_ID)",
+    'nightly release product partition',
+);
+assertIncludes(
+    sync,
+    ".collection(DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS)\n        .where('pId', '==', PRODUCT_ID)",
+    'nightly board product partition',
+);
+assertIncludes(sync, 'existing.pId !== PRODUCT_ID || existing.tId !== tId || existing.sId !== sId', 'deterministic card scope conflict guard');
+assertIncludes(sync, 'support-board summary identity conflicts with an existing document scope', 'summary identity conflict guard');
+assertIncludes(dal, "where('pId', '==', 'AL')", 'client board product partition');
 assertIncludes(sync, 'loadAnswerlatticeSupportBoardCoreCounts', 'nightly exact core counts');
 assertIncludes(sync, 'sb_source_${tId}_${sId}_${digest}', 'shared deterministic source-card identity');
 assertIncludes(evidence, "answerSource === 'faq'", 'successful FAQ exclusion');
@@ -61,6 +85,26 @@ for (const [label, rules] of [
     assertIncludes(rules, 'before.statuses.size() < 50', `${label} immutable bounded status history`);
     assertIncludes(rules, "&& data.status != 'resolved'", `${label} resolved-create rejection`);
     assertIncludes(rules, "|| hasAnswerlatticePermission('canManageGovernance')", `${label} proposal-link permission`);
+}
+
+for (const indexFile of ['firestore-answerlattice.indexes.json', 'firestore.indexes.json']) {
+    const indexes = (JSON.parse(read(indexFile)) as { indexes: Array<{ collectionGroup: string; fields: Array<{ fieldPath: string }> }> }).indexes;
+    const boardIndexes = indexes.filter((entry) => entry.collectionGroup === 'answerlattice_supportBoardCards');
+    for (const required of [
+        'pId,tId,sId,modifiedOn',
+        'pId,tId,sId,priority',
+        'pId,tId,sId,status,modifiedOn',
+    ]) {
+        if (!boardIndexes.some((entry) => entry.fields.map((field) => field.fieldPath).join(',') === required)) {
+            throw new Error(`${indexFile}: missing product-scoped support-board index ${required}`);
+        }
+    }
+    const canonicalIndexes = indexes.filter((entry) => entry.collectionGroup === 'answerlattice_canonicalAnswers');
+    if (!canonicalIndexes.some((entry) => (
+        entry.fields.map((field) => field.fieldPath).join(',') === 'pId,tId,sId,governance.driftFlag'
+    ))) {
+        throw new Error(`${indexFile}: missing product-scoped drift index`);
+    }
 }
 
 console.log('Answerlattice Support Board contracts passed.');

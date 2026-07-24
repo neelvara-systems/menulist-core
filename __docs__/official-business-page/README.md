@@ -18,6 +18,7 @@ The canonical public identity endpoint of a business powered by MenuList. This i
 | Cost Control        | [Firebase](./official-business-page_firebase.md)                                              | Reads/writes/deletes, cost estimates                           |
 | Mobile              | [Mobile Support](./official-business-page_mobile-support.md)                                  | Mobile admission test, screen spec                             |
 | 3-Year Freeze       | [Infrastructure Freeze Plan](./obp-infrastructure-freeze-plan.md)                             | ChatGPT deep review + BUILD/DEFER/REJECT verdicts              |
+| Verification        | [July 22, 2026 Verification](./official-business-page_verification-2026-07-22.md)              | Truthful update-label implementation and source-gate evidence  |
 | Archive             | [ChatGPT Review](./_archive/chatgpt-review.md)                                                | Original conversation analysis                                 |
 | Archive             | [ChatGPT Deep Conversation](./_archive/obp-conversastion.md)                                  | 14K-line gap analysis (10 gaps + 10 layers)                    |
 | Archive             | [ChatGPT Owner Features Review](./_archive/chatgpt-review-session-march15-owner-features.md)  | Owner features + OBP strategy (corrected: ~20% accuracy)       |
@@ -38,6 +39,8 @@ Businesses share fragmented links (PDF, Zomato, Instagram, Google Drive) when cu
 ## Solution
 
 MenuList auto-generates an Official Business Page at the business's subdomain root (`joespizza.menulist.ai`). It shows business identity, live open/closed status, and a primary "View Menu" CTA that opens the existing digital menu. Store data changes refresh through the same public cache path used by the menu, with the current cache window documented as 60 seconds.
+
+Owner editing is partitioned by exact tenant/store scope. Desktop and MobileShell discard Official Page drafts when that scope changes; an admitted save cannot settle optimistic state, rollback, success copy, or cleanup state into another selected store. Media cleanup defers while a store save is in flight so a newly uploaded cover/gallery object cannot be deleted immediately before its URL is committed. If an upload finishes after its editor has become obsolete, the unreferenced object is removed instead of being attached to the next store or left as an abandoned draft.
 
 ---
 
@@ -152,6 +155,7 @@ When `false`: emergency rollback shows the digital menu at the subdomain root.
 | Mar 11, 2026 | Schema.org: Added `@id`, `mainEntityOfPage`, `identifier` (MenuList Entity ID), `foundingDate` for entity authority                                                                                                                                                                                                                                |
 | Mar 11, 2026 | New fields: `publicPresence.establishedYear`, `permanentlyClosed` on StoreDataType                                                                                                                                                                                                                                                                 |
 | Mar 11, 2026 | OBP page: "Official Page" footer, freshness signals, permanent closure state, "Serving since" display                                                                                                                                                                                                                                              |
+| Jul 22, 2026 | Corrected the public freshness label to `Updated today` or an exact localized update date; generic `modifiedOn` no longer overclaims owner verification. |
 | Mar 11, 2026 | New: `OBPMenuCTA.tsx` client component — tracks OBP→menu conversion via `OBP_MENU_CLICK` event                                                                                                                                                                                                                                                     |
 | Mar 11, 2026 | OfficialPageTab: Added accent color picker (ColorPicker) + established year input (InputNumber)                                                                                                                                                                                                                                                    |
 | Mar 17, 2026 | **Strategic Positioning Update**: Added Parts 10-11 to freeze plan — distribution loops, adoption threshold, evolution phases, risk analysis, GBP comparison, behavioral loop assessment. ChatGPT review archived (corrected: ~20% accuracy, all 4 "new" features already fully built).                                                            |

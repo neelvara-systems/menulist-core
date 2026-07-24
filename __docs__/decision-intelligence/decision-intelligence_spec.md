@@ -1,7 +1,7 @@
 # Decision Intelligence — Product Specification
 
 **Public name:** Featured Choices
-**Last verified:** July 16, 2026
+**Last verified:** July 21, 2026
 **Status:** Local source-complete for the audited feature; not current launch certification. Firebase QA deployment and release certification remain pending.
 
 This spec is not production approval. Current release clearance still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, scoped scheduler deploy evidence, browser/device/customer-menu QA, public-cache evidence, and production-host smoke.
@@ -25,8 +25,10 @@ The section appears only when the current data gates pass or an owner has select
 - `projects/{tId}/{sId}/{projectId}` is the menu and owner-control authority.
 - `analytics/{tId}_{sId}_{projectId}_intelligence_7d` is the only scheduler scoring input.
 - `project.publicDecisionBlocks` is a generated customer-safe projection. Owner writes must not overwrite it.
+- The public server route binds the embedded projection to the resolved tenant/store/project, runtime-validates the exact writer shape, and emits only the candidate, timestamp, and bounded stats fields consumed by the renderer.
 - Current active catalog items are authoritative. Deleted, inactive, or analytics-only item IDs cannot become candidates.
 - `extractionIdAliases` may carry prior analytics into the current item ID.
+- Current IDs are unique, catalog/alias cardinality is bounded to 2,000, and merged view/click counters must remain safe integers. Duplicate IDs, malformed containers, excessive aliases/items, or counter overflow fail the scoring run before any projection write.
 - `available: false` and category time slots are runtime filters because availability is temporary.
 - MenuList does not have POS sales, order completion, review, rating, or inventory data in this flow.
 
@@ -36,8 +38,8 @@ The section appears only when the current data gates pass or an owner has select
 2. Only stores whose store-local analytics settlement is due are processed.
 3. Active projects are resolved from `platformSummary/projects_{sId}`. A valid empty summary ends the lookup without a collection scan.
 4. The compact 7-day analytics snapshot and each active project are read once.
-5. Current active items are extracted and scored.
-6. Up to three candidates per enabled block are written to `project.publicDecisionBlocks` with a 48-hour TTL.
+5. Current active items are extracted and scored. Equal scores are ordered by binary item ID, so persisted candidate order is independent of catalog traversal order.
+6. Up to three candidates per enabled block are written to `project.publicDecisionBlocks` with a 48-hour TTL. If the current project has no scoreable active items, an existing generated projection is deleted and the public store cache is invalidated; absence already remains zero-write.
 7. The public menu/OBP cache is invalidated once for the affected store.
 8. Public rendering applies data gates, owner settings, availability, time-slot, duplicate-item, price-display, and stale-data checks.
 

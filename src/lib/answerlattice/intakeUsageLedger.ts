@@ -91,7 +91,10 @@ const toMillis = (value: any): number | null => {
 };
 
 const isActiveSubscription = (subscription: Record<string, any>) => {
-    if ((subscription.pId ?? subscription.productId) !== PRODUCT_IDS.ANSWERLATTICE) return false;
+    if (
+        subscription.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || subscription.productId !== PRODUCT_IDS.ANSWERLATTICE
+    ) return false;
     const status = String(subscription.status || '').toLowerCase();
     if (!['active', 'trialing'].includes(status)) return false;
     const endMs = toMillis(subscription.subscriptionEndDate || subscription.cycleEndDate || subscription.currentPeriodEnd);
@@ -129,8 +132,12 @@ async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
     }
 
     const fallback = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tenantId', '==', tenantScope.numericId)
         .where('storeId', '==', storeScope.numericId)
+        .where('tId', '==', tenantScope.numericId)
+        .where('sId', '==', storeScope.numericId)
         .limit(5)
         .get();
 

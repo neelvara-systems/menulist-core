@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import type { AnswerlatticeAccessContext } from '../../src/lib/answerlattice/accessControl';
 import { executeAnswerlatticeReleaseAction } from '../../src/lib/answerlattice/releaseServer';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { isAnswerlatticeContextBundleManifestForScope } from '../../src/lib/answerlattice/compiledContext';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const access: AnswerlatticeAccessContext = {
@@ -104,6 +105,11 @@ async function run(): Promise<void> {
     assert.equal(cacheVersion?.version, 1, 'release drift must invalidate cached canonical answers atomically');
     const bundleManifest = (await db.collection('platformSummary').doc('bundleManifest_1_101').get()).data();
     assert.equal(bundleManifest?.status, 'stale');
+    assert.equal(
+        isAnswerlatticeContextBundleManifestForScope(bundleManifest, 1, 101),
+        true,
+        'first release invalidation must create a complete valid compiled-context manifest',
+    );
     const activeReplay = await executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_replay',
@@ -145,6 +151,30 @@ async function run(): Promise<void> {
         releaseId: second.releaseId,
     }, access);
     assert.equal(retried.status, 'active');
+
+    const third = await executeAnswerlatticeReleaseAction(createAction('release_request_4', 4), access);
+    if (third.action !== 'create') throw new Error('Expected third release');
+    const sourceVersionsRef = db.collection('platformSummary').doc('sourceVersions_1_101');
+    const validSourceVersions = (await sourceVersionsRef.get()).data();
+    await sourceVersionsRef.set({ pId: 'ML', tId: 1, sId: 101, marker: 'foreign-source' });
+    await assert.rejects(executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_foreign_source',
+        releaseId: third.releaseId,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await sourceVersionsRef.get()).data()?.marker, 'foreign-source');
+    assert.equal(
+        (await db.collection('answerlattice_releases').doc(third.releaseId).get()).data()?.status,
+        'pending',
+        'ownership conflict must release the activation lease for a safe retry',
+    );
+    await sourceVersionsRef.set(validSourceVersions!);
+    const thirdRetry = await executeAnswerlatticeReleaseAction({
+        action: 'activate',
+        requestId: 'release_activate_foreign_source_retry',
+        releaseId: third.releaseId,
+    }, access);
+    assert.equal(thirdRetry.status, 'active');
 
     const audit = await db.collection('answerlattice_auditLogs')
         .where('pId', '==', 'AL')

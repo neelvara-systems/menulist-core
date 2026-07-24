@@ -33,6 +33,8 @@ Chat session acknowledgement hardening is cost-neutral. `saveChatSession()` stil
 
 Help Center cache and draft hardening is also Firebase-cost neutral. Category, article, changelog and ticket caches now carry exact workspace/audience keys, and category/changelog request coalescing is keyed by workspace. A mismatch becomes a normal cache miss; no new preflight Firestore read or write is introduced. Help Chat text drafts stay in browser local storage as a strict 24-hour, 2,000-character workspace/user envelope; screenshots are never persisted as drafts. This adds no Firestore, Storage, Function, index, rule, provider or scheduler operation.
 
+Public category/article/FAQ/changelog transport corroboration is operation-count neutral. Expected tenant/store query fields do not grant authority; the route derives session scope, rejects a mismatch before the existing cached reader, and returns an exact scope acknowledgement. Browser caches accept settlement only for that initiating scope. No Firestore read/write, cache TTL, collection, index, rule, Function, or provider call changes.
+
 Chat session delete acknowledgement hardening keeps one transaction read and one `chatSessions` delete. HelpChat requires `{ success, sessionId, deleted, storageFilesDeleted }` before showing delete success; `storageFilesDeleted` is now zero because tenant/store-scoped images can be shared across sessions and one deleted row cannot prove scope-wide non-reference. Failed or malformed delete results reload session state and restore the previous active-session/search snapshot. This removes immediate persisted-image Storage deletes without adding reads, writes, indexes, rules, Cloud Functions, routes, schema fields, or deployment requirements.
 
 HelpChat answer-feedback acknowledgement hardening is also cost-neutral. Feedback submission still attempts the existing `aiSearchHistory` feedback merge and `chatSessions` message feedback mirror, but `submitSearchFeedback()` now requires explicit acknowledgements from both writes before local feedback state, thank-you copy, or negative-feedback signal emission advances. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, routes, schema fields, or deployment requirement.
@@ -408,7 +410,7 @@ Chat images are capped at 5 MB by `storage-answerlattice.rules` and app-side val
 
 | Strategy | Savings | Implementation |
 |----------|---------|----------------|
-| **Response caching** | 60% fewer Gemini calls | `aiSearchHistory.findCachedSearchByCacheKey()` |
+| **Response caching** | Avoids provider work on a fresh scoped hit | Server-only `aiSearchHistory.findCachedSearchByCacheKeyServer()` with a SHA-256 cache-key digest and exact `pId + tId + sId` scope |
 | **Embedding caching** | 40-60% fewer embedding calls | `queryEmbeddings.getCachedEmbedding()` |
 | **Shared KB category cache** | Prevents duplicate same-mount category reads | `useKBCategoriesCache()` |
 | **Aggregated analytics** | 99.95% fewer reads | `chatAnalytics` daily docs vs raw sessions |

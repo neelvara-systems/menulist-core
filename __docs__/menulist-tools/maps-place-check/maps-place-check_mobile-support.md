@@ -27,4 +27,6 @@ The guarded callable can later power:
 - Business Health review card
 - platform/admin assisted setup
 
-Any future mobile UI must use the existing MobileShell targets and show only the review decision, not raw Maps/AI mechanics.
+Any future mobile UI must use the existing MobileShell targets and show only the
+review decision, not raw Maps/AI mechanics. It also remains blocked until the
+provider smoke and cross-store provider-ID collision-policy gates both pass.

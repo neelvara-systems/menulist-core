@@ -8,7 +8,7 @@
 
 ## Key and payload boundary
 
-The `canon:v4` key keeps numeric tenant/workspace scope visible for operations but hashes entity, plan, role, and state segments with SHA-256-derived base64url values. This prevents raw applicability values from appearing in Redis keys and avoids delimiter collisions.
+The `canon:v5` key keeps numeric tenant/workspace scope visible for operations but hashes normalized query, complete retrieval context, entity, plan, role, and state segments with SHA-256-derived base64url values. This prevents raw request/applicability values from appearing in Redis keys, avoids delimiter collisions, and prevents distinct questions or product surfaces from sharing an answer entry. `searchCore.ts` bypasses the fast path while Knowledge Graph exploitation is enabled because graph state does not yet provide an authoritative cache-version dimension.
 
 `normalizeCachedCanonicalAnswer` treats Redis as untrusted input. It revalidates:
 

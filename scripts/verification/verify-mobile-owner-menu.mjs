@@ -198,7 +198,7 @@ async function getMobileShellDebugState(client, sessionId) {
       hasMobileNavLabels: text.includes('Menu') && text.includes('Share') && text.includes('More'),
       hasSignIn: /sign in/i.test(text),
       hasErrorText: /application error|internal server error|something went wrong|this page could not be found/i.test(text),
-      selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || '',
+      selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id') || '',
       text: text.replace(/\\s+/g, ' ').trim().slice(0, 2200),
     };
   })()`);
@@ -464,8 +464,8 @@ async function main() {
         };
         const configuredProjectId = ${JSON.stringify(configuredProjectId)};
         if (configuredProjectId) {
-          localStorage.setItem('mobileSelectedProjectId:${storeId}', configuredProjectId);
-          localStorage.setItem('mobileSelectedProjectId', configuredProjectId);
+          localStorage.setItem('mobileSelectedProjectId:${tenantId}:${storeId}', configuredProjectId);
+          sessionStorage.setItem('menulist_dashboard_project_id', configuredProjectId);
         }
       `,
     }, sessionId);
@@ -502,8 +502,8 @@ async function main() {
       const itemCountMatch = text.match(/(\\d+)\\s+items\\b/i);
       const categoryCountMatch = text.match(/(\\d+)\\s+categor(?:y|ies)\\b/i);
       const missingImagesMatch = text.match(/(\\d+)\\s+(?:items\\s+)?missing images\\b/i);
-      const selectedProjectKey = 'mobileSelectedProjectId:${storeId}';
-      const selectedProject = localStorage.getItem(selectedProjectKey) || localStorage.getItem('mobileSelectedProjectId');
+      const selectedProjectKey = 'mobileSelectedProjectId:${tenantId}:${storeId}';
+      const selectedProject = localStorage.getItem(selectedProjectKey) || sessionStorage.getItem('menulist_dashboard_project_id');
       const expectedName = ${JSON.stringify(expectedProjectName)};
       return {
         url: location.href,

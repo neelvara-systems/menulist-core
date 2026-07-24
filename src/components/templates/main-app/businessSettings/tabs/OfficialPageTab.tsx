@@ -1,7 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { uploadOBPCover, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
+import { deleteOBPPhotos, uploadOBPCover, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { generateBusinessCoverCandidate } from '@lib/image/projectImageGeneration';
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
@@ -114,6 +114,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const [photoDrafts, setPhotoDrafts] = useState<Record<number, ObpMediaDraft>>({});
         const [isCoverAdjustOpen, setIsCoverAdjustOpen] = useState(false);
         const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
+        const componentActiveRef = useRef(true);
         const photoSlots = [...photos.filter(Boolean), ''];
         const officialPageUrl = generateOBPUrl(subdomain, customDomain);
         const localizedPresenceDrafts = Form.useWatch('__localizedPublicPresenceDrafts') || {};
@@ -148,6 +149,13 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const actionCol = compact ? { xs: 24 } : { xs: 24, md: 8 };
         const businessPreviewName = watchedTenantName || watchedStoreName || t('officialPage');
 
+        useEffect(() => {
+            componentActiveRef.current = true;
+            return () => {
+                componentActiveRef.current = false;
+            };
+        }, []);
+
         const queuePhotoDelete = (photoUrl?: string) => {
             if (!photoUrl || photoUrl.startsWith('data:')) return;
             onPhotoDeleteQueued?.(photoUrl);
@@ -178,6 +186,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             },
             successMessage = t('businessCoverUploaded'),
         ) => {
+            if (!componentActiveRef.current) return;
             if (!session?.tId || !session?.sId) {
                 message.error(t('sessionUnavailable'));
                 return;
@@ -194,6 +203,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setCoverUploading(true);
             try {
                 const url = await uploadOBPCover(prepared.blob, { tId: session.tId, sId: session.sId }, prepared);
+                if (!componentActiveRef.current) {
+                    await deleteOBPPhotos([url]);
+                    return;
+                }
                 // Treat the immediate upload as a cleanup candidate until the
                 // parent store save confirms it is still referenced.
                 queuePhotoDelete(url);
@@ -211,15 +224,17 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 });
                 message.success(successMessage);
             } catch {
-                setCoverDraft((previous) => previous ? {
-                    ...previous,
-                    prepared,
-                    previewDataUrl: prepared.dataUrl,
-                    uploadFailed: true,
-                } : previous);
-                message.error(t('businessCoverUploadFailed'));
+                if (componentActiveRef.current) {
+                    setCoverDraft((previous) => previous ? {
+                        ...previous,
+                        prepared,
+                        previewDataUrl: prepared.dataUrl,
+                        uploadFailed: true,
+                    } : previous);
+                    message.error(t('businessCoverUploadFailed'));
+                }
             } finally {
-                setCoverUploading(false);
+                if (componentActiveRef.current) setCoverUploading(false);
             }
         };
 
@@ -231,7 +246,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl,
                 });
             } catch {
-                message.error(t('businessCoverUploadFailed'));
+                if (componentActiveRef.current) message.error(t('businessCoverUploadFailed'));
             }
         };
 
@@ -254,7 +269,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 });
 
                 if (!candidate?.dataUrl) {
-                    message.error(t('businessCoverGenerateFailed'));
+                    if (componentActiveRef.current) message.error(t('businessCoverGenerateFailed'));
                     return;
                 }
 
@@ -266,9 +281,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl,
                 }, t('businessCoverGenerated'));
             } catch {
-                message.error(t('businessCoverGenerateFailed'));
+                if (componentActiveRef.current) message.error(t('businessCoverGenerateFailed'));
             } finally {
-                setCoverGenerating(false);
+                if (componentActiveRef.current) setCoverGenerating(false);
             }
         };
 
@@ -299,6 +314,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 sourceDataUrl?: string;
             },
         ) => {
+            if (!componentActiveRef.current) return;
             if (!session?.tId || !session?.sId) {
                 message.error(t('sessionUnavailable'));
                 return;
@@ -317,6 +333,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setPhotoUploading(index);
             try {
                 const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
+                if (!componentActiveRef.current) {
+                    await deleteOBPPhotos([url]);
+                    return;
+                }
                 queuePhotoDelete(url);
                 const updated = [...photos];
                 if (updated[index] && updated[index] !== url) {
@@ -337,18 +357,20 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 }));
                 message.success(t('photoUploaded'));
             } catch {
-                setPhotoDrafts((previous) => ({
-                    ...previous,
-                    [index]: {
-                        ...previous[index],
-                        prepared,
-                        previewDataUrl: prepared.dataUrl,
-                        uploadFailed: true,
-                    },
-                }));
-                message.error(t('photoUploadFailed'));
+                if (componentActiveRef.current) {
+                    setPhotoDrafts((previous) => ({
+                        ...previous,
+                        [index]: {
+                            ...previous[index],
+                            prepared,
+                            previewDataUrl: prepared.dataUrl,
+                            uploadFailed: true,
+                        },
+                    }));
+                    message.error(t('photoUploadFailed'));
+                }
             } finally {
-                setPhotoUploading(null);
+                if (componentActiveRef.current) setPhotoUploading(null);
             }
         };
 
@@ -360,7 +382,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl,
                 });
             } catch {
-                message.error(t('photoUploadFailed'));
+                if (componentActiveRef.current) message.error(t('photoUploadFailed'));
             }
         };
 

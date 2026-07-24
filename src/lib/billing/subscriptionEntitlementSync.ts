@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { DEFAULT_PRODUCT_ID } from '@constant/product';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
@@ -11,6 +12,7 @@ import {
     normalizeBillingSubscriptionDocumentId,
     normalizeBillingSubscriptionScopeDocumentId,
 } from './subscriptionDocumentIdBoundary';
+import { getMenuListSubscriptionEntitlementScope } from './menuListSubscriptionEntitlementBoundary';
 import {
     getActivePlanTypeForSubscription,
     getSubscriptionPlanEntitlementStatusPriority,
@@ -73,9 +75,13 @@ export async function syncStorePlanEntitlementFromSubscription(
     const subscriptionsRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const subscriptionRef = subscriptionsRef.doc(subscriptionId);
     const entitledSubscriptionsQuery = subscriptionsRef
+        .where('pId', '==', DEFAULT_PRODUCT_ID)
+        .where('productId', '==', DEFAULT_PRODUCT_ID)
         .where('status', 'in', [...PLAN_ENTITLED_SUBSCRIPTION_STATUSES])
         .where('storeId', '==', expectedStoreScope.numericId)
         .where('tenantId', '==', expectedTenantScope.numericId)
+        .where('tId', '==', expectedTenantScope.numericId)
+        .where('sId', '==', expectedStoreScope.numericId)
         .where('cycleEndDate', '>=', admin.firestore.Timestamp.now())
         .orderBy('cycleEndDate', 'desc')
         .limit(10);
@@ -90,13 +96,11 @@ export async function syncStorePlanEntitlementFromSubscription(
             ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
             id: subscriptionSnapshot.id,
         } as FirestoreSubscriptionDoc;
-        const currentTenantScope = normalizeBillingSubscriptionScopeDocumentId(current.tenantId ?? current.tId);
-        const currentStoreScope = normalizeBillingSubscriptionScopeDocumentId(current.storeId ?? current.sId);
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
-            !currentTenantScope
-            || !currentStoreScope
-            || currentTenantScope.numericId !== expectedTenantScope.numericId
-            || currentStoreScope.numericId !== expectedStoreScope.numericId
+            !currentScope
+            || currentScope.tenantId !== expectedTenantScope.numericId
+            || currentScope.storeId !== expectedStoreScope.numericId
         ) {
             return null;
         }
@@ -106,13 +110,12 @@ export async function syncStorePlanEntitlementFromSubscription(
                 ...(snapshot.data() as FirestoreSubscriptionDoc),
                 id: snapshot.id,
             } as FirestoreSubscriptionDoc))
-            .filter((candidate) => (
-                hasCurrentSubscriptionPlanEntitlement(candidate)
-                && normalizeBillingSubscriptionScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
-                    === expectedTenantScope.numericId
-                && normalizeBillingSubscriptionScopeDocumentId(candidate.storeId ?? candidate.sId)?.numericId
-                    === expectedStoreScope.numericId
-            ))
+            .filter((candidate) => {
+                const candidateScope = getMenuListSubscriptionEntitlementScope(candidate);
+                return candidateScope?.tenantId === expectedTenantScope.numericId
+                    && candidateScope.storeId === expectedStoreScope.numericId
+                    && hasCurrentSubscriptionPlanEntitlement(candidate);
+            })
             .sort((left, right) => (
                 getSubscriptionPlanEntitlementStatusPriority(right.status)
                     - getSubscriptionPlanEntitlementStatusPriority(left.status)
@@ -127,7 +130,7 @@ export async function syncStorePlanEntitlementFromSubscription(
         const activeSubscriptionIdValue = entitledSubscription?.id || admin.firestore.FieldValue.delete();
         const syncedAt = admin.firestore.FieldValue.serverTimestamp();
 
-        transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId), {
+        transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(expectedStoreScope.documentId), {
             activePlanType: entitlementValue,
             analyticsEntitlementUpdatedAt: syncedAt,
             billingSubscriptionId: activeSubscriptionIdValue,
@@ -135,7 +138,7 @@ export async function syncStorePlanEntitlementFromSubscription(
         transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary'), {
             lastUpdated: syncedAt,
             stores: {
-                [currentStoreScope.documentId]: {
+                [expectedStoreScope.documentId]: {
                     activePlanType: entitlementValue,
                     billingSubscriptionId: activeSubscriptionIdValue,
                 },
@@ -151,8 +154,8 @@ export async function syncStorePlanEntitlementFromSubscription(
         }, { merge: true });
 
         return {
-            storeId: currentStoreScope.documentId,
-            tenantId: currentTenantScope.numericId,
+            storeId: expectedStoreScope.documentId,
+            tenantId: expectedTenantScope.numericId,
         };
     });
     if (!syncResult) return;

@@ -27,12 +27,21 @@ const implementation = read('__docs__/answerlattice/hosted-help/hosted-help_impl
 const testCases = read('__docs__/answerlattice/hosted-help/hosted-help_test-cases.md');
 
 assertIncludes(settings, 'isAnswerlatticeHostedHelpCandidateHostname(domain)', 'Hosted Help routable-domain admission');
+assertIncludes(settings, 'isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)', 'Hosted Help exact store/product ownership');
+assertNotIncludes(settings, 'storeData.tenantId ?? storeData.tId', 'Hosted Help must not select one persisted tenant alias');
 assertIncludes(settings, 'isReservedCustomDomainClaimCandidate(domain)', 'Hosted Help product-root reservation');
-assertIncludes(settings, "String(registry?.pId || '') === PRODUCT_IDS.ANSWERLATTICE", 'Hosted Help registry product ownership');
+assertIncludes(settings, 'resolveAnswerlatticeHostedHelpRegistryScope(registry)', 'Hosted Help registry exact ownership');
 assertIncludes(settings, 'getHostedHelpDomainStatuses(db, config.domains, scope)', 'Hosted Help scoped settings status reads');
 assertIncludes(settings, '!snapshot.exists\n        || !registryScopeMatches', 'Hosted Help DNS refresh ownership preflight');
 assertIncludes(settings, 'throw new HostedHelpRegistryOwnershipError()', 'Hosted Help DNS refresh fail-closed ownership');
 assertIncludes(settings, 'const domainsToProvision = nextDomains.filter(domain => !registryByDomain.has(domain));', 'Hosted Help registry-proven provider provisioning');
+assertIncludes(settings, 'await db.runTransaction(async (transaction: FirebaseFirestore.Transaction)', 'Hosted Help atomic ownership revalidation');
+assert((settings.match(/runTransaction\(async \(transaction: FirebaseFirestore\.Transaction\)/g) || []).length >= 2, 'Hosted Help save and DNS refresh must independently revalidate ownership transactionally');
+assertIncludes(settings, 'isAnswerlatticeStoreInScope(currentStoreData, scope, currentStoreSnapshot.id)', 'Hosted Help transaction-current store scope');
+assertIncludes(settings, 'registryScopeMatches(currentRegistry, scope)', 'Hosted Help transaction-current registry scope');
+assertIncludes(settings, 'compensateHostedHelpProviderChanges', 'Hosted Help provider compensation');
+assertIncludes(settings, "removeResult.ok || removeResult.status === 404", 'Hosted Help exact provider removal result');
+assertNotIncludes(settings, 'const batch = db.batch();', 'Hosted Help must not commit registry truth from stale snapshots');
 assertIncludes(settings, 'if (!addResult.ok) {', 'Hosted Help rejects unproven provider conflicts');
 assertNotIncludes(settings, '!addResult.ok && addResult.status !== 409', 'Hosted Help must not accept unproven Vercel 409 conflicts');
 assertIncludes(settings, 'normalizeHostedHelpDomainVerification(existingRegistry.domainVerification)', 'Hosted Help legacy verification projection');
@@ -40,6 +49,8 @@ assertIncludes(settings, "logRuntimeFailure('answerlattice_hosted_help_domain_st
 assertNotIncludes(settings, 'Set VERCEL_TOKEN and VERCEL_PROJECT_ID', 'Hosted Help owner response must not expose server env instructions');
 
 assertIncludes(config, 'normalizeHostedHelpDomainVerification', 'Hosted Help bounded DNS verification projector');
+assertIncludes(config, 'StrictHostedHelpConfigSaveSchema', 'Hosted Help strict save DTO');
+assertIncludes(config, '.strict();', 'Hosted Help strict unknown-field rejection');
 assertIncludes(config, 'MAX_HOSTED_HELP_DNS_RECORDS = 20', 'Hosted Help DNS record count cap');
 assertNotIncludes(config, '...record', 'Hosted Help DNS projection must not spread provider records');
 
@@ -50,6 +61,11 @@ assertIncludes(request, 'normalized.length > 300', 'Hosted Help article slug len
 
 assertIncludes(server, "logRuntimeFailure('answerlattice_hosted_help_registry_product_invalid'", 'Hosted Help bounded registry product diagnostic');
 assertIncludes(server, "logRuntimeFailure('answerlattice_hosted_help_registry_scope_invalid'", 'Hosted Help bounded registry scope diagnostic');
+assertIncludes(server, 'normalizeConsistentAnswerlatticeScopeDocumentIds([record.tId, record.tenantId])', 'Hosted Help registry exact tenant aliases');
+assertIncludes(server, 'normalizeConsistentAnswerlatticeScopeDocumentIds([record.sId, record.storeId])', 'Hosted Help registry exact store aliases');
+assertIncludes(server, 'data.domain !== normalizedDomain', 'Hosted Help registry document-domain agreement');
+assertIncludes(server, 'data.enabled !== true', 'Hosted Help registry exact publication flag');
+assertIncludes(server, '!config.domains.includes(normalizedDomain)', 'Hosted Help public config-domain agreement');
 const productDiagnosticStart = server.indexOf("logRuntimeFailure('answerlattice_hosted_help_registry_product_invalid'");
 const productDiagnosticEnd = server.indexOf('return null;', productDiagnosticStart);
 const scopeDiagnosticStart = server.indexOf("logRuntimeFailure('answerlattice_hosted_help_registry_scope_invalid'");
@@ -66,7 +82,7 @@ assertNotIncludes(
   'domain: normalizedDomain',
   'Hosted Help scope diagnostic raw registry domain logging',
 );
-assertIncludes(server, '!config.domains.includes(domain)', 'Hosted Help registry/config domain agreement');
+assertIncludes(server, '!config.domains.includes(domain)', 'Hosted Help registry builder/config domain agreement');
 assertNotIncludes(server, 'getHostedHelpScopeCacheTag', 'Hosted Help no-op scope cache tag');
 
 assertIncludes(publicCache, '.filter(article => article.active !== false)', 'Hosted Help inactive section article filtering');

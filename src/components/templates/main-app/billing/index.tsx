@@ -22,7 +22,7 @@ import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, message } f
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuBuilding2, LuHelpCircle, LuMapPin, LuPlusCircle, LuStore, LuZap } from 'react-icons/lu';
 import ActiveSubscriptionCard from './ActiveSubscriptionCard';
 import BillingHistory from './BillingHistory';
@@ -74,6 +74,13 @@ function BillingPage() {
     );
     const loginStoreId = Number(session?.user?.storeId || 0);
     const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
+    const billingScopeKey = userId && session?.user?.tenantId && billingStoreId
+        ? `${userId}:${session.user.tenantId}:${billingStoreId}`
+        : null;
+    const billingScopeKeyRef = useRef<string | null>(billingScopeKey);
+    const billingHistoryRequestSequenceRef = useRef(0);
+    const subscriptionRequestSequenceRef = useRef(0);
+    billingScopeKeyRef.current = billingScopeKey;
     const effectiveHistoryStoreId = Number(activeSubscription?.storeId || billingStoreId || session?.user?.storeId || 0);
     const canSwitchBillingStore = Boolean(userPermissions?.canSwitchStores && accessibleBillingStores.length > 1);
     const selectedStore = useMemo(
@@ -112,9 +119,15 @@ function BillingPage() {
 
     const fetchBillingHistory = async () => {
         if (!userId || !effectiveHistoryStoreId) return;
+        const requestSequence = ++billingHistoryRequestSequenceRef.current;
+        const requestScopeKey = billingScopeKey;
 
         // 2. Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
         const rawHistory = await getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId);
+        if (
+            billingHistoryRequestSequenceRef.current !== requestSequence
+            || billingScopeKeyRef.current !== requestScopeKey
+        ) return;
         // 3. Transform lean webhook audit rows and legacy raw payload rows into a clean UI model.
         const formattedHistory = formatBillingHistoryEvents(rawHistory, {
             formatBillingCycle: (startSeconds, endSeconds) => {
@@ -129,6 +142,8 @@ function BillingPage() {
 
     const refetchActiveSubscription = async () => {
         if (!userId || !billingStoreId) return;
+        const requestSequence = ++subscriptionRequestSequenceRef.current;
+        const requestScopeKey = billingScopeKey;
         try {
             dispatch(startLoader("Fetching subscription data"));
             const subscription = await getActiveSubscriptionForStore(
@@ -136,9 +151,17 @@ function BillingPage() {
                 billingStoreId,
                 tenantStoresList,
             );
+            if (
+                subscriptionRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             setActiveSubscription(subscription);
             setBillingHistory([]);
         } catch (error) {
+            if (
+                subscriptionRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             logPaymentFailure('payment_desktop_billing_subscription_refetch_failed', error, buildBillingPaymentLogContext('subscription_refetch', {
                 ...getBoundedPaymentStringContext('billingStoreId', billingStoreId),
                 ...getBoundedPaymentStringContext('historyStoreId', effectiveHistoryStoreId),
@@ -146,7 +169,12 @@ function BillingPage() {
             message.error(t('failedToLoadSubscription'));
         } finally {
             dispatch(stopLoader("Fetching subscription data"));
-            setIsSubscriptionFetching(false)
+            if (
+                subscriptionRequestSequenceRef.current === requestSequence
+                && billingScopeKeyRef.current === requestScopeKey
+            ) {
+                setIsSubscriptionFetching(false)
+            }
         }
     };
 
@@ -154,6 +182,10 @@ function BillingPage() {
         try {
             if (targetStoreId === loginStoreId) {
                 if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                subscriptionRequestSequenceRef.current += 1;
+                billingHistoryRequestSequenceRef.current += 1;
+                setActiveSubscription(null);
+                setBillingHistory([]);
                 setActiveStoreContext(null);
                 return;
             }
@@ -166,6 +198,10 @@ function BillingPage() {
             });
             await readAuthAccountResponse(res, 'switch_store');
             await refreshFirebaseAuthClaims(targetStoreId);
+            subscriptionRequestSequenceRef.current += 1;
+            billingHistoryRequestSequenceRef.current += 1;
+            setActiveSubscription(null);
+            setBillingHistory([]);
             setActiveStoreContext(targetStoreId);
         } catch (error) {
             logPaymentFailure('payment_desktop_billing_store_switch_failed', error, buildBillingPaymentLogContext('store_switch', {

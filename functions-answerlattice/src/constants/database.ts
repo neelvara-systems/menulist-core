@@ -19,7 +19,9 @@ export const DB_COLLECTIONS = {
     CHAT_ANALYTICS: 'chatAnalytics',
     INSIGHTS: 'insights',
     AI: 'ai',
+    USERS: 'users',
     STORES: 'stores',
+    SUBSCRIPTIONS: 'subscriptions',
 
     // Knowledge Base collections (live in Answerlattice Firestore)
     // Required by Founder Onboarding Bootstrap (Step 12)
@@ -50,6 +52,7 @@ export const DB_COLLECTIONS = {
     ANSWERLATTICE_CACHE_VERSIONS: 'answerlattice_cacheVersions',
     ANSWERLATTICE_NOTIFICATION_LOGS: 'answerlattice_notificationLogs',
     ANSWERLATTICE_AI_OPERATIONS: 'answerlattice_aiOperations',
+    ANSWERLATTICE_AI_CAPACITY_RESERVATIONS: 'answerlattice_aiCapacityReservations',
     OWNER_NOTIFICATION_EVENTS: 'ownerNotificationEvents',
     OWNER_NOTIFICATION_DELIVERIES: 'ownerNotificationDeliveries',
     OWNER_NOTIFICATION_RATE_LIMITS: 'ownerNotificationRateLimits',

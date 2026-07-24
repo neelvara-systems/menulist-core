@@ -1219,6 +1219,85 @@ function verifyOBPResolvedSurfaceFallbackLoggingIsBounded() {
   assertIncludes(changelog, 'OBP Resolved Surface Fallback Diagnostics', 'Changelog OBP resolved surface diagnostics checkpoint');
 }
 
+function verifyOBPUpdateTimestampDoesNotClaimVerification() {
+  const component = read('src/app/client/obp/OBPResolvedSurface.tsx');
+  const spec = read('__docs__/official-business-page/official-business-page_spec.md');
+  const impl = read('__docs__/official-business-page/official-business-page_impl.md');
+  const helpdoc = read('__docs__/official-business-page/official-business-page_helpdoc.md');
+  const website = read('__docs__/official-business-page/official-business-page_website.md');
+  const contract = read('__docs__/canonical-truth-infrastructure/canonical-truth-infrastructure_business-truth-contract.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+
+  [
+    "return translate('menu.updatedToday');",
+    "return translate('menu.updatedOn', { date: dateLabel });",
+    "new Intl.DateTimeFormat(locale,",
+    "new Intl.DateTimeFormat('en-CA-u-ca-gregory-nu-latn',",
+    'dayFormatter.format(date) === dayFormatter.format(now)',
+    "dateStyle: 'medium'",
+    "new Error('future_modified_on')",
+    'publicCustomerT,',
+    'customerLocale,',
+    'store?.timeZone,',
+  ].forEach((token) => assertIncludes(component, token, 'OBP truthful update timestamp'));
+  [
+    "t('publicInfoVerifiedToday')",
+    "t('publicInfoVerifiedThisWeek')",
+    "t('publicInfoVerifiedThisMonth')",
+  ].forEach((token) => assertNotIncludes(component, token, 'OBP generic modification timestamp verification claim'));
+
+  assertIncludes(spec, 'This is page-update evidence, not owner verification of every fact.', 'OBP spec update semantics');
+  assertIncludes(impl, 'Truthful public update semantics (July 22, 2026)', 'OBP implementation update semantics');
+  assertIncludes(helpdoc, 'This does not claim that every field was separately verified on that date.', 'OBP help update semantics');
+  assertIncludes(website, 'page-update signal', 'OBP website update semantics');
+  assertIncludes(contract, 'A modification timestamp is not', 'Business Truth Contract modification boundary');
+  assertIncludes(contract, 'It must never translate generic `modifiedOn` into `verified`.', 'Business Truth Contract public wording boundary');
+  assertIncludes(audit, 'OBP Truthful Public Update Semantics - July 22, 2026', 'Production audit public update semantics checkpoint');
+  assertIncludes(changelog, 'OBP Truthful Update Semantics And Business Truth Contract', 'Changelog public update semantics checkpoint');
+}
+
+function verifyMapsPlaceConfirmationStaysFlagGated() {
+  const appFeatures = read('src/config/features.ts');
+  const functionsFeatures = read('functions/src/constants/features.ts');
+  const storesDal = read('src/database/stores/index.tsx');
+  const client = read('src/lib/public-truth-tools/mapsPlaceCheckClient.ts');
+  const spec = read('__docs__/menulist-tools/maps-place-check/maps-place-check_spec.md');
+  const impl = read('__docs__/menulist-tools/maps-place-check/maps-place-check_impl.md');
+  const firebaseDoc = read('__docs__/menulist-tools/maps-place-check/maps-place-check_firebase.md');
+  const testCases = read('__docs__/menulist-tools/maps-place-check/maps-place-check_test-cases.md');
+  const contract = read('__docs__/canonical-truth-infrastructure/canonical-truth-infrastructure_business-truth-contract.md');
+
+  assertIncludes(appFeatures, 'ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK: false', 'Maps Place Check app flag default');
+  assertIncludes(functionsFeatures, 'ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK: false', 'Maps Place Check Functions flag default');
+
+  const confirmDal = storesDal.slice(
+    storesDal.indexOf('export const confirmExternalLocationIdentity'),
+    storesDal.indexOf('export const clearExternalLocationIdentity'),
+  );
+  const clearDal = storesDal.slice(
+    storesDal.indexOf('export const clearExternalLocationIdentity'),
+    storesDal.indexOf('export function assertExternalLocationIdentityMutationSucceeded'),
+  );
+  assertIncludes(confirmDal, 'if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK)', 'Grounded Place-ID DAL confirmation flag gate');
+  assertIncludes(confirmDal, "throw new Error('maps_place_check_not_enabled')", 'Grounded Place-ID DAL confirmation rejection');
+  assertNotIncludes(clearDal, 'ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK', 'External identity removal must remain available while disabled');
+
+  const confirmClient = client.slice(
+    client.indexOf('export async function confirmMapsPlaceCheckIdentity'),
+    client.indexOf('export async function removeConfirmedMapsPlaceIdentity'),
+  );
+  const removeClient = client.slice(client.indexOf('export async function removeConfirmedMapsPlaceIdentity'));
+  assertIncludes(confirmClient, 'if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK)', 'Grounded Place-ID client confirmation flag gate');
+  assertNotIncludes(removeClient, 'ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK', 'Grounded Place-ID client removal must remain available while disabled');
+
+  assertIncludes(spec, 'server-authoritative, fail-closed policy', 'Maps Place Check spec collision activation gate');
+  assertIncludes(impl, 'Provider smoke is necessary but not sufficient', 'Maps Place Check implementation collision activation gate');
+  assertIncludes(firebaseDoc, '## Collision Activation Gate', 'Maps Place Check Firebase collision activation gate');
+  assertIncludes(testCases, 'Rejected before any Firestore read or write', 'Maps Place Check flag-disabled confirmation test case');
+  assertIncludes(contract, 'no grounded-candidate confirmation UI may be released', 'Business Truth Contract collision activation gate');
+}
+
 function verifyPublicMenuSearchFocusLoggingIsBounded() {
   const component = read('src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx');
   const readme = read('__docs__/client-menu/README.md');
@@ -3003,6 +3082,7 @@ function verifyProjectDefaultHandoffIsAtomic() {
 function verifyMenuChangeLogDiagnosticsAreBounded() {
   const menuChangeLogDal = read('src/database/menuChangeLog/index.ts');
   const menuChangeLogBoundary = read('src/database/menuChangeLog/menuChangeLogBoundary.ts');
+  const legacyMolLogger = read('src/lib/pricing/molLogger.ts');
   const diagnostics = read('src/database/menuChangeLog/menuChangeLogDiagnostics.ts');
   const firestoreRules = read('firestore.rules');
   const menuDriftMetrics = read('functions/src/analytics/menuDriftMetrics.ts');
@@ -3013,6 +3093,8 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   const projectDal = read('src/database/projects/index.ts');
   const dataEditorFirebase = read('__docs__/projects/data-editor/data-editor_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const canonicalTruthFirebase = read('__docs__/canonical-truth-infrastructure/canonical-truth-infrastructure_firebase.md');
+  const discoveryReadme = read('__docs__/discovery-infrastructure/README.md');
   const changelog = read('__docs__/changelog.md');
 
   assertIncludes(diagnostics, 'secureError', 'Menu change log diagnostics secure logging');
@@ -3047,16 +3129,23 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   assertIncludes(menuChangeLogDal, 'MENU_CHANGE_LOG_SCAN_PAGE_SIZE = 100', 'Menu change log bounded page size');
   assertIncludes(menuChangeLogDal, 'MAX_MENU_CHANGE_LOG_SCAN_DOCUMENTS = 5000', 'Menu change log bounded scan budget');
   assertIncludes(menuChangeLogDal, "orderBy(documentId(), 'desc')", 'Menu change log stable timestamp/document cursor');
+  assertIncludes(menuChangeLogDal, 'timestamp: serverTimestamp()', 'Menu change log server-authoritative event time');
+  assertIncludes(legacyMolLogger, 'createdOn: serverTimestamp()', 'Legacy MOL writer server-authoritative event time');
+  assertNotIncludes(legacyMolLogger, 'createdOn: Timestamp.now()', 'Legacy MOL writer must not use browser clock time');
+  assertIncludes(menuChangeLogDal, 'endTimestamp: Timestamp.now()', 'Menu change log open-ended readers exclude legacy future rows');
   assertNotIncludes(menuChangeLogDal, "where('projectId', '==', normalizedProjectId)", 'Nested menu change log queries must not require an unavailable dynamic-store composite index');
   assertIncludes(menuDriftMetrics, 'CHANGE_LOG_PAGE_SIZE = 500', 'Menu drift bounded change-log pages');
   assertIncludes(menuDriftMetrics, 'MAX_CHANGE_LOG_DOCUMENTS_PER_STORE = 50_000', 'Menu drift bounded per-store scan budget');
   assertIncludes(menuDriftMetrics, 'MAX_METRICS_DOCUMENTS_PER_PROJECT = 10_000', 'Menu drift bounded derived-metrics cleanup scan');
   assertIncludes(menuDriftMetrics, ".orderBy(FieldPath.documentId(), 'asc')", 'Menu drift stable document cursor');
+  assertIncludes(menuDriftMetrics, ".where('timestamp', '<=', windowEndTimestamp)", 'Menu drift excludes future-dated ledger rows');
   assertNotIncludes(menuDriftMetrics, ".where('projectId', '==', projectId)", 'Menu drift must not require a dynamic-store composite index');
   assertIncludes(menuDriftMetrics, '.doc(tId)\n                    .collection(sId)', 'Menu drift reads nested project collections');
   assertIncludes(menuDriftMetrics, 'readStoreDriftAccumulators(', 'Menu drift scans each store ledger once');
   assertIncludes(menuDriftMetrics, 'readMenuDriftContributions(data)', 'Menu drift consumes detailed and compact summary events');
   assertIncludes(menuDriftMetrics, 'batch.delete(metricDocument.ref)', 'Menu drift removes expired rolling-window metrics');
+  assertIncludes(menuDriftMetrics, 'batch.set(metricsRef.doc(itemId), metrics);', 'Menu drift exact-replaces each complete rolling-window metric');
+  assertNotIncludes(menuDriftMetrics, 'batch.set(metricsRef.doc(itemId), metrics, { merge: true })', 'Menu drift must not retain unknown or retired derived fields');
   assertIncludes(menuDriftMetrics, '_priceStaleStatus', 'Menu drift explicit unavailable staleness provenance');
   assertIncludes(menuDriftBoundary, 'MENU_DRIFT_SUMMARY_MAX_ITEMS = 1000', 'Menu drift compact contribution bound');
   assertIncludes(projectDal, 'itemDriftChangesOverflowCount', 'Menu drift summary overflow preservation');
@@ -3068,6 +3157,7 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   assertIncludes(extractionLearning, 'CHANGE_LOG_PAGE_SIZE = 500', 'Extraction learning bounded change-log pages');
   assertIncludes(extractionLearning, 'MAX_CHANGE_LOG_DOCUMENTS_PER_STORE = 50_000', 'Extraction learning bounded per-store scan budget');
   assertIncludes(extractionLearning, ".orderBy(FieldPath.documentId(), 'asc')", 'Extraction learning stable document cursor');
+  assertIncludes(extractionLearning, ".where('timestamp', '<=', windowEndTimestamp)", 'Extraction learning excludes future-dated ledger rows');
   assertNotIncludes(extractionLearning, ".where('changeType', '==', 'EXTRACTION_CORRECTION')", 'Extraction learning must not require a dynamic-store composite index');
   assertIncludes(projectDal, 'extractionCorrectionsByField', 'Summary-mode MOL field correction counters');
   assertIncludes(projectDal, 'extractionCorrectionsByConfidence', 'Summary-mode MOL confidence correction counters');
@@ -3087,9 +3177,22 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   assertIncludes(firestoreRules, 'isValidMenuChangeLogCreate(tId, sId, entryId, request.resource.data)', 'Menu change log payload/path validator');
   assertIncludes(firestoreRules, 'isValidMenuChangeLogDriftPayload(data)', 'Menu change log compact drift payload bound');
   assertIncludes(firestoreRules, 'isValidMenuSnapshotCreate(tId, sId, request.resource.data)', 'Menu snapshot path/payload validator');
+  assertIncludes(firestoreRules, 'data.timestamp == request.time', 'Menu change log server-authoritative canonical timestamp rule');
+  assertIncludes(firestoreRules, 'data.createdOn == request.time', 'Menu change log server-authoritative legacy timestamp rule');
+  assertIncludes(firestoreRules, 'isCurrentMenuChangeLogActor(data.actorUserId)', 'Legacy MOL actor must match authenticated identity');
+  assertIncludes(firestoreRules, 'isValidLegacyMenuChangeLogTypeEntity(data)', 'Legacy MOL type/entity agreement');
+  assertIncludes(firestoreRules, 'isValidLegacyMenuChangeLogEntityScope(tId, sId, data)', 'Legacy MOL project/store entity authority');
+  assertIncludes(firestoreRules, "data.changedBy in ['OWNER', 'STAFF']", 'Canonical browser events cannot claim system provenance');
+  assertNotIncludes(firestoreRules, "data.changedBy in ['OWNER', 'STAFF', 'SYSTEM']", 'Canonical browser event system-provenance bypass');
+  assertIncludes(firestoreRules, "data.retentionDays == 90", 'Menu snapshot exact governed retention rule');
+  assertIncludes(firestoreRules, "request.time + duration.value(90, 'd')", 'Menu snapshot expiry bounded to governed retention');
   assertIncludes(projectDal, 'tId: scope.tId', 'Menu snapshot payload tenant scope');
   assertIncludes(projectDal, 'sId: scope.sId', 'Menu snapshot payload store scope');
   assertIncludes(projectDal, 'const snapshotPayload = sanitizeForFirestore({', 'Menu snapshot undefined-value sanitizer');
+  assertIncludes(projectDal, 'createdAt: serverTimestamp()', 'Menu snapshot server-authoritative creation time');
+  assertNotIncludes(canonicalTruthFirebase, 'after native TTL is active', 'Menu snapshot dynamic path cannot claim native TTL');
+  assertIncludes(canonicalTruthFirebase, 'after bounded leased cleanup reaches steady state', 'Menu snapshot real retention mechanism');
+  assertIncludes(discoveryReadme, 'Best-effort short-term immutable publish evidence', 'Discovery docs must not claim guaranteed snapshot capture');
   assertIncludes(dataEditorFirebase, 'MOL no-session diagnostics update', 'Data Editor Firebase docs MOL no-session diagnostics note');
   assertIncludes(productionAudit, 'MOL no-session diagnostics checkpoint', 'Production audit MOL no-session diagnostics checkpoint');
   assertIncludes(changelog, 'MOL No-Session Diagnostics', 'Changelog MOL no-session diagnostics entry');
@@ -3116,6 +3219,8 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   const diagnostics = read('src/components/templates/main-app/projects/utils/projectPageDiagnostics.ts');
   const useSpecialMenus = read('src/hooks/useSpecialMenus.ts');
   const projectDal = read('src/database/projects/index.ts');
+  const mobileProjectsProvider = read('src/components/mobile/providers/MobileProjectsProvider.tsx');
+  const ownerProjectSelection = read('src/lib/projects/projectSelection.ts');
   const storeDal = read('src/database/stores/index.tsx');
   const businessAttributeDefaults = read('src/data/shared/businessAttributeDefaults.ts');
   const mobileSpecialMenuScreen = read('src/components/mobile/screens/MobileSpecialMenuScreen.tsx');
@@ -3190,7 +3295,10 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   assertIncludes(mobileSpecialMenuScreen, 'mobile_special_menu_project_public_content_translation_failed', 'Mobile special menu project translation diagnostics');
   assertIncludes(mobileSpecialMenuScreen, 'assertProjectUpdateSucceeded(', 'Mobile special menu project translation acknowledgement guard');
   assertIncludes(mobileSpecialMenuScreen, 'mobile_special_menu_public_content_translation_project_update_rejected', 'Mobile special menu project translation rejected acknowledgement code');
-  assertIncludes(mobileSpecialMenuScreen, 'mobile_special_menu_public_content_translation_metadata_update_rejected', 'Mobile special menu metadata translation rejected acknowledgement code');
+  assertIncludes(mobileSpecialMenuScreen, 'syncPublicSummary: true', 'Mobile special menu translation requests atomic project/summary persistence');
+  assertNotIncludes(mobileSpecialMenuScreen, 'mobile_special_menu_public_content_translation_metadata_update_rejected', 'Mobile special menu translation retired split metadata acknowledgement path');
+  assertIncludes(projectDal, 'if (options.syncPublicSummary) {', 'Project DAL optional atomic public-summary synchronization');
+  assertIncludes(projectDal, 'transaction.set(operationSummaryRef, {', 'Project DAL public-summary synchronization shares the project transaction');
   assertIncludes(mobileSpecialMenuScreen, 'logMobileOwnerFailure', 'Mobile special menu bounded failure logger');
   assertIncludes(mobileSpecialMenuScreen, "getBoundedMobileOwnerStringContext('selectedLanguage'", 'Mobile special menu bounded language context');
   assertIncludes(mobileSpecialMenuScreen, 'managedLanguageCount', 'Mobile special menu bounded language count context');
@@ -3236,6 +3344,20 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   assertIncludes(useSpecialMenus, 'assertSpecialMenuLifecycleSucceeded(result, projectId, "active", "special_menu_activate_rejected");', 'Special menu hook activate acknowledgement guard');
   assertIncludes(useSpecialMenus, 'assertSpecialMenuLifecycleSucceeded(result, projectId, "expired", "special_menu_deactivate_rejected");', 'Special menu hook deactivate acknowledgement guard');
   assertIncludes(useSpecialMenus, 'assertSpecialMenuLifecycleSucceeded(result, projectId, "cancelled", "special_menu_cancel_rejected");', 'Special menu hook cancel acknowledgement guard');
+  assertIncludes(useSpecialMenus, 'return getSpecialMenus(expectedScope);', 'Special menu SWR cache-key/read scope agreement');
+  assertIncludes(useSpecialMenus, 'dalCreate(data, expectedScope)', 'Special menu create expected-scope handoff');
+  assertIncludes(useSpecialMenus, 'dalUpdate(data, expectedScope)', 'Special menu update expected-scope handoff');
+  assertIncludes(projectDal, 'assertExpectedSpecialMenuScope(scope, expectedScope);', 'Special menu DAL caller/session scope agreement');
+  assertIncludes(mobileProjectsProvider, 'latestProjectsRequestRef.current', 'Mobile project latest-list settlement');
+  assertIncludes(mobileProjectsProvider, 'inFlightProjectLoadsRef.current[requestKey] !== request', 'Mobile project latest-detail settlement');
+  assertIncludes(mobileProjectsProvider, 'getProjectsListWithoutLoader(true, expectedScope)', 'Mobile project list expected-scope read');
+  assertIncludes(mobileProjectsProvider, 'getProjectDataWithoutLoader(nextProjectId, expectedScope)', 'Mobile project detail expected-scope read');
+  assertIncludes(mobileProjectsProvider, 'hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`', 'Mobile project exact-scope output mask');
+  assertIncludes(ownerProjectSelection, '`${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`', 'Owner selected-project tenant/store browser-cache key');
+  assertIncludes(mobileSpecialMenuScreen, 'return <MobileSpecialMenuScreenContent key={scopeKey} {...props} />;', 'Mobile special-menu exact-scope remount');
+  assertIncludes(mobileSpecialMenuScreen, 'getProjectDataWithoutLoader(projectId, expectedScope)', 'Mobile special-menu exact-scope project read');
+  assertIncludes(mobileSpecialMenuScreen, 'submitInFlightRef.current', 'Mobile special-menu synchronous submit admission');
+  assertIncludes(mobileSpecialMenuScreen, 'translationInFlightRef.current', 'Mobile special-menu synchronous translation admission');
   assertIncludes(projectDal, 'return { success: true, projectId, status: "active" };', 'Special menu activate DAL must return project/status acknowledgement.');
   assertIncludes(projectDal, 'return { success: true, projectId, status: "expired" };', 'Special menu deactivate DAL must return project/status acknowledgement.');
   assertIncludes(projectDal, 'return { success: true, projectId, status: "cancelled" };', 'Special menu cancel DAL must return project/status acknowledgement.');
@@ -3569,6 +3691,7 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
   const desktopCustomerApp = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
+  const desktopBusinessCopySetup = read('src/components/templates/main-app/businessSettings/tabs/BusinessCopySetupTab.tsx');
   const dashboardDateRange = read('src/components/templates/main-app/dashboard/googleAnalytics/DateRangeSelector.tsx');
   const dashboardGoogleListing = read('src/components/templates/main-app/dashboard/OwnerDashboard/GoogleListingCard.tsx');
   const projectsB2c = read('src/components/templates/main-app/projects/b2cView/index.tsx');
@@ -3600,17 +3723,42 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertIncludes(storeNestedUpdateProjection, ': Object.keys(updated));', 'Store partial-root difference preserves omitted fields');
   assertIncludes(storeNestedUpdateProjection, 'difference[key] = STORE_NESTED_DELETE;', 'Store nested deletion marker');
   assertIncludes(storeNestedUpdateProjection, 'assertSafeFieldPath(field);', 'Store pre-projected field-path admission');
-  assertOccurrenceAtLeast(desktopBusinessSettings, 'getStoreDeepDifference(nextStoreUpdate, storeDetails)', 2, 'Desktop business-copy changed-leaf writes');
+  assertOccurrenceAtLeast(desktopBusinessSettings, 'getStoreDeepDifference(nextStoreUpdate, expectedStoreDetails)', 2, 'Desktop business-copy captured-store changed-leaf writes');
+  assertIncludes(desktopBusinessSettings, "key={`business-copy:${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}", 'Desktop business-copy exact-scope remount');
+  assertIncludes(desktopBusinessSettings, 'const activeBusinessSettingsScopeRef = useRef(businessSettingsScopeKey);', 'Desktop business-copy parent scope ref');
+  assertOccurrenceAtLeast(desktopBusinessSettings, 'activeBusinessSettingsScopeRef.current !== expectedScopeKey', 2, 'Desktop business-copy pre-persistence scope guards');
+  assertOccurrenceAtLeast(desktopBusinessSettings, "String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')", 2, 'Desktop business-copy expected-tenant context guards');
+  assertOccurrenceAtLeast(desktopBusinessSettings, "String(previous?.storeId ?? '') === String(expectedStoreId ?? '')", 2, 'Desktop business-copy expected-store context guards');
+  assertIncludes(desktopBusinessCopySetup, 'const businessCopyActionInFlightRef = useRef(false);', 'Desktop business-copy duplicate action guard');
+  assertIncludes(desktopBusinessCopySetup, 'const activeBusinessCopyScopeRef = useRef(businessCopyScopeKey);', 'Desktop business-copy exact-scope settlement ref');
+  assertIncludes(desktopBusinessCopySetup, 'const componentActiveRef = useRef(true);', 'Desktop business-copy component-liveness settlement ref');
+  assertOccurrenceAtLeast(desktopBusinessCopySetup, 'activeBusinessCopyScopeRef.current !== requestScopeKey', 4, 'Desktop business-copy stale async settlement guards');
   assertIncludes(desktopBusinessSettings, 'nextStoreDetails.publicPresence', 'Desktop photo retention uses merged public-presence truth');
   assertIncludes(mobileBusinessCopySetup, 'getStoreDeepDifference(nextStoreUpdate, storeDetails)', 'Mobile business-copy changed-leaf writes');
+  assertIncludes(mobileBusinessCopySetup, 'function MobileBusinessCopySetupScreenContent(', 'Mobile business-copy keyed content boundary');
+  assertIncludes(mobileBusinessCopySetup, '<MobileBusinessCopySetupScreenContent key={scopeKey}', 'Mobile business-copy exact-scope remount');
+  assertIncludes(mobileBusinessCopySetup, 'const businessCopyActionInFlightRef = useRef(false);', 'Mobile business-copy duplicate action guard');
+  assertIncludes(mobileBusinessCopySetup, 'const activeBusinessCopyScopeRef = useRef(businessCopyScopeKey);', 'Mobile business-copy exact-scope settlement ref');
+  assertIncludes(mobileBusinessCopySetup, 'const componentActiveRef = useRef(true);', 'Mobile business-copy component-liveness settlement ref');
+  assertOccurrenceAtLeast(mobileBusinessCopySetup, "String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')", 2, 'Mobile business-copy expected-tenant context guards');
+  assertOccurrenceAtLeast(mobileBusinessCopySetup, "String(previous?.storeId ?? '') === String(expectedStoreId ?? '')", 2, 'Mobile business-copy expected-store context guards');
   assertIncludes(mobileOfficialPage, 'getStoreDeepDifference(payload, storeDetails)', 'Mobile official-page changed-leaf write');
+  assertIncludes(mobileOfficialPage, 'return <MobileOfficialPageScreenContent key={scopeKey} {...props} />;', 'Mobile official-page exact tenant/store keyed mount');
+  assertIncludes(mobileOfficialPage, 'presenceSaveInFlightRef.current', 'Mobile official-page immediate duplicate-save guard');
+  assertIncludes(mobileOfficialPage, 'previous?.storeId === expectedStoreId', 'Mobile official-page exact-store optimistic settlement guard');
+  assertIncludes(mobileOfficialPage, 'previous?.tenantId === expectedTenantId', 'Mobile official-page exact-tenant optimistic settlement guard');
+  assertIncludes(mobileOfficialPage, '&& previous?.publicPresence === payload.publicPresence', 'Mobile official-page attempt-owned optimistic rollback guard');
+  assertIncludes(mobileOfficialPage, '|| presenceSaveInFlightRef.current', 'Mobile official-page unmount cleanup/save ordering guard');
+  assertIncludes(mobileOfficialPage, 'await deleteOBPPhotos([url]);', 'Mobile official-page obsolete upload cleanup');
+  assertIncludes(desktopBusinessSettings, 'return <BusinessSettingsContent key={scopeKey} {...props} />;', 'Desktop business settings exact tenant/store keyed mount');
+  assertIncludes(read('src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx'), 'await deleteOBPPhotos([url]);', 'Desktop official-page obsolete upload cleanup');
   assertIncludes(extractionApply, 'const storeResult = await applyStoreBusinessAttributeDefaults({', 'Extraction review transaction-current business-attribute default write');
   assertNotIncludes(extractionApply, 'await updateDoc(storeRef, { businessAttributes: nextBusinessAttributes });', 'Extraction review stale business-attribute replacement');
   assertIncludes(projectsB2c, 'getStoreDeepDifference(storeUpdate, storeDetails || {})', 'Projects official-page changed-leaf write');
-  assertIncludes(mobileAdvancedSettings, 'getStoreDeepDifference(updates, storeDetails)', 'Mobile advanced settings changed-leaf write');
+  assertIncludes(mobileAdvancedSettings, 'getStoreDeepDifference(updates, sourceStoreDetails)', 'Mobile advanced settings captured-source changed-leaf write');
   assertIncludes(mobilePosSync, 'getStoreDeepDifference(nextPosSync, currentPosSync, {', 'Mobile POS sync complete-map changed-leaf write');
-  assertIncludes(mobileWorkingHours, 'getStoreDeepDifference(workingHours, storeDetails.workingHours || {}, {', 'Mobile working-hours complete-map changed-day write');
-  assertIncludes(mobileSeoAnalytics, 'analytics: getStoreDeepDifference(nextAnalytics, storeDetails.analytics || {}, {', 'Mobile analytics complete-map changed-leaf write');
+  assertIncludes(mobileWorkingHours, 'getStoreDeepDifference(workingHours, previousWorkingHours, {', 'Mobile working-hours captured complete-map changed-day write');
+  assertIncludes(mobileSeoAnalytics, 'analytics: getStoreDeepDifference(nextAnalytics, previousAnalytics || {}, {', 'Mobile analytics captured-source complete-map changed-leaf write');
   assertIncludes(storeNestedUpdateProjection, 'options.detectRemovedRootKeys === true', 'Store complete-map root deletion must be explicit');
   assertIncludes(mobileCustomerApp, 'businessCopyMeta: getStoreDeepDifference(', 'Mobile customer-app metadata changed-leaf write');
   assertIncludes(desktopCustomerApp, 'businessCopyMeta: getStoreDeepDifference(', 'Desktop customer-app metadata changed-leaf write');
@@ -3714,6 +3862,14 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     'mobile_basic_settings_tenant_update_rejected',
     'Mobile Basic Settings tenant rejected acknowledgement code',
   );
+  assertIncludes(mobileBasicSettings, 'return <MobileBasicSettingsScreenContent key={scopeKey} {...props} />;', 'Mobile Basic Settings exact tenant/store keyed mount');
+  assertIncludes(mobileBasicSettings, 'basicSettingsSaveInFlightRef.current', 'Mobile Basic Settings immediate duplicate-save guard');
+  assertIncludes(mobileBasicSettings, 'previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId', 'Mobile Basic Settings exact-scope optimistic settlement');
+  assertIncludes(mobileBasicSettings, 'Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)', 'Mobile Basic Settings attempt-owned optimistic rollback');
+  assertOccurrenceAtLeast(mobileBasicSettings, 'Object.entries(optimisticUpdates).every', 3, 'Mobile Basic Settings same-store attempt ownership checks');
+  assertIncludes(mobileBasicSettings, 'const currentStoreDetailsRef = useRef(storeDetails);', 'Mobile Basic Settings current-context settlement ref');
+  assertIncludes(mobileBasicSettings, 'mobile_basic_settings_tenant_sync_failed', 'Mobile Basic Settings post-store tenant-sync failure diagnostics');
+  assertIncludes(mobileBasicSettings, 'Business details saved, but the brand name still needs to be retried.', 'Mobile Basic Settings truthful partial-success copy');
   assertIncludes(
     desktopBusinessSettings,
     'assertStoreUpdateSucceeded(',
@@ -3839,6 +3995,14 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     'customAttributes: normalizedCustomAttributes',
     'Mobile Business Attributes exact custom-attribute patch',
   );
+  assertIncludes(mobileBusinessAttributes, 'return <MobileBusinessAttributesScreenContent key={scopeKey} {...props} />;', 'Mobile Business Attributes exact tenant/store keyed mount');
+  assertIncludes(mobileBusinessAttributes, 'attributesSaveInFlightRef.current', 'Mobile Business Attributes immediate duplicate-save guard');
+  assertIncludes(mobileBusinessAttributes, 'previous?.storeId === expectedStoreId', 'Mobile Business Attributes exact-store optimistic settlement');
+  assertIncludes(mobileBusinessAttributes, 'previous?.tenantId === expectedTenantId', 'Mobile Business Attributes exact-tenant optimistic settlement');
+  assertIncludes(mobileBusinessAttributes, '...(previous.publicPresence || {})', 'Mobile Business Attributes acknowledgement-time current public-presence merge');
+  assertNotIncludes(mobileBusinessAttributes, 'optimisticPublicPresence', 'Mobile Business Attributes stale optimistic public-presence replacement');
+  assertIncludes(mobileBusinessAttributes, 'previous?.businessAttributes === previousBusinessAttributes', 'Mobile Business Attributes same-store attribute settlement ownership');
+  assertIncludes(mobileBusinessAttributes, 'previous?.publicPresence?.customAttributes === previousCustomAttributes', 'Mobile Business Attributes same-store custom-attribute settlement ownership');
   assertNotIncludes(
     mobileBusinessAttributes,
     '...(storeDetails.publicPresence || {})',
@@ -3887,6 +4051,26 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   );
   assertIncludes(
     mobileLocaleSettings,
+    'return <MobileLocaleSettingsScreenContent key={scopeKey} {...props} />;',
+    'Mobile Locale Settings exact tenant/store keyed mount',
+  );
+  assertIncludes(
+    mobileLocaleSettings,
+    'localeSaveInFlightRef.current',
+    'Mobile Locale Settings immediate duplicate-save guard',
+  );
+  assertIncludes(
+    mobileLocaleSettings,
+    'previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId',
+    'Mobile Locale Settings exact-scope optimistic settlement guard',
+  );
+  assertIncludes(
+    mobileLocaleSettings,
+    'return stillOwnsOptimisticState ? { ...previous, ...previousLocale } : previous;',
+    'Mobile Locale Settings attempt-owned rollback guard',
+  );
+  assertIncludes(
+    mobileLocaleSettings,
     'assertStoreUpdateSucceeded(',
     'Mobile Locale Settings store update acknowledgement guard',
   );
@@ -3916,10 +4100,29 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
     'Mobile Advanced Settings store rejected acknowledgement code',
   );
   assertIncludes(
-    mobileSeoAnalytics,
-    'mobile_seo_analytics_field_store_update_rejected',
-    'Mobile SEO/Analytics field store rejected acknowledgement code',
+    mobileAdvancedSettings,
+    'return <MobileAdvancedSettingsScreenContent key={scopeKey} {...props} />;',
+    'Mobile Advanced Settings exact tenant/store/mode keyed mount',
   );
+  assertIncludes(mobileAdvancedSettings, 'saveInFlightRef.current', 'Mobile Advanced Settings immediate duplicate-save guard');
+  assertIncludes(mobileAdvancedSettings, 'currentStoreDetails?.storeId !== expectedStoreId', 'Mobile Advanced Settings exact-store acknowledgement settlement');
+  assertIncludes(mobileAdvancedSettings, 'currentStoreDetails?.tenantId !== expectedTenantId', 'Mobile Advanced Settings exact-tenant acknowledgement settlement');
+  assertIncludes(mobileAdvancedSettings, 'currentStoreDetails[key] === sourceStoreDetails[key]', 'Mobile Advanced Settings same-store changed-leaf settlement ownership');
+  assertNotIncludes(
+    mobileSeoAnalytics,
+    'const saveField = async',
+    'Mobile SEO/Analytics dead unsafe single-field writer',
+  );
+  assertIncludes(
+    mobileSeoAnalytics,
+    'return <MobileSeoAnalyticsScreenContent key={scopeKey} {...props} />;',
+    'Mobile SEO/Analytics exact tenant/store/mode keyed mount',
+  );
+  assertIncludes(mobileSeoAnalytics, 'saveInFlightRef.current', 'Mobile SEO/Analytics shared immediate duplicate-save guard');
+  assertIncludes(mobileSeoAnalytics, 'currentDetails?.storeId === expectedStoreId', 'Mobile SEO/Analytics exact-store acknowledgement settlement');
+  assertIncludes(mobileSeoAnalytics, 'currentDetails?.tenantId === expectedTenantId', 'Mobile SEO/Analytics exact-tenant acknowledgement settlement');
+  assertIncludes(mobileSeoAnalytics, 'currentDetails?.analytics === previousAnalytics', 'Mobile Analytics same-store changed-leaf settlement ownership');
+  assertIncludes(mobileSeoAnalytics, 'seoFields.every((field) => currentDetails[field] === sourceStoreDetails[field])', 'Mobile SEO same-store changed-leaf settlement ownership');
   assertIncludes(
     mobileSeoAnalytics,
     'mobile_analytics_settings_store_update_rejected',
@@ -3986,7 +4189,17 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertIncludes(mobileDomainSettings, "const copied = document.execCommand('copy');", 'Mobile domain settings textarea copy acknowledgement');
 		  assertIncludes(mobileDomainSettings, "getBoundedStoreStringContext('copyValue', domainUrl)", 'Mobile domain settings bounded domain copy context');
   assertIncludes(mobileDomainSettings, "getBoundedStoreStringContext('openUrl', domainUrl)", 'Mobile domain settings bounded domain open context');
-  assertIncludes(mobileDomainSettings, "getBoundedStoreStringContext('dnsRecordValue', record.value)", 'Mobile domain settings bounded DNS copy context');
+	  assertIncludes(mobileDomainSettings, "getBoundedStoreStringContext('dnsRecordValue', record.value)", 'Mobile domain settings bounded DNS copy context');
+  [
+    'createLatestRequestGuard',
+    'statusRequestGuardRef.current!.isCurrent(requestId)',
+    'subdomainCheckGuardRef.current!.isCurrent(requestId)',
+    'domainCheckGuardRef.current!.isCurrent(requestId)',
+    'domainScopeKeyRef.current !== requestScopeKey',
+    'return <MobileDomainSettingsScreenContent key={scopeKey} {...props} />;',
+    "String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')",
+    "String(previous?.storeId ?? '') !== String(expectedStoreId)",
+  ].forEach((token) => assertIncludes(mobileDomainSettings, token, 'Mobile domain settings tenant/store settlement guard'));
   assertIncludes(mobileDomainSettings, "window.open(domainUrl, '_blank', 'noopener,noreferrer')", 'Mobile domain settings safe external open');
   assertNotIncludes(mobileDomainSettings, 'await navigator.clipboard.writeText(domainUrl);\n            setDomainLinkCopied(true);', 'Mobile domain settings domain copy must not use unguarded Clipboard API success');
   assertNotIncludes(mobileDomainSettings, 'await navigator.clipboard.writeText(record.value);\n            setCopiedDnsValue', 'Mobile domain settings DNS copy must not use unguarded Clipboard API success');
@@ -4043,6 +4256,20 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertIncludes(desktopDomainSettings, 'await Promise.resolve(onStoreUpdate?.({ subdomain: nextSubdomain }));', 'Desktop domain settings waits for subdomain store persistence');
   assertIncludes(desktopBusinessSettings, 'desktop_domain_settings_subdomain_store_update_rejected', 'Desktop domain settings parent store acknowledgement code');
   assertIncludes(desktopBusinessSettings, 'assertStoreUpdateSucceeded(', 'Desktop domain settings parent store acknowledgement guard');
+  [
+    'createLatestRequestGuard',
+    'subdomainCheckGuardRef.current!.isCurrent(requestId)',
+    'domainStatusGuardRef.current!.isCurrent(requestId)',
+    'domainCheckGuardRef.current!.isCurrent(requestId)',
+    'domainScopeKeyRef.current !== requestScopeKey',
+    'componentActiveRef.current',
+  ].forEach((token) => assertIncludes(desktopDomainSettings, token, 'Desktop domain settings tenant/store settlement guard'));
+  [
+    '<DomainSettingsTab',
+    'key={`${String(storeDetails?.tenantId ?? \'\')}:${String(storeDetails?.storeId ?? \'\')}`}',
+    "String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')",
+    "String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')",
+  ].forEach((token) => assertIncludes(desktopBusinessSettings, token, 'Desktop domain settings parent tenant/store settlement guard'));
   assertNotIncludes(desktopBusinessSettings, 'updateStore(storeUpdate).then(() =>', 'Desktop domain settings parent must not update local state from unchecked store write');
   assertIncludes(desktopDomainSettings, "window.open(subdomainUrl, '_blank', 'noopener,noreferrer')", 'Desktop domain settings safe subdomain open');
   assertIncludes(desktopDomainSettings, "window.open(domainUrl, '_blank', 'noopener,noreferrer')", 'Desktop domain settings safe custom-domain open');
@@ -4354,13 +4581,13 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(mobileFeedbackDetail, 'generateWhatsAppLink', 'Mobile feedback detail manual WhatsApp handoff');
   assertNotIncludes(mobileFeedbackDetail, "updateFeedbackStatus(feedback.id, 'resolved', trimmedReply)", 'Mobile feedback detail false provider send/persist path');
   assert(
-    mobileFeedbackDetail.indexOf("const updated = await updateFeedbackStatus(feedback.id, 'resolved');") < mobileFeedbackDetail.indexOf("assertFeedbackStatusUpdateSucceeded(\n                updated,\n                feedback.id,\n                'resolved',\n                'mobile_feedback_status_update_rejected',\n            );")
-    && mobileFeedbackDetail.indexOf("assertFeedbackStatusUpdateSucceeded(\n                updated,\n                feedback.id,\n                'resolved',\n                'mobile_feedback_status_update_rejected',\n            );") < mobileFeedbackDetail.indexOf("onStatusUpdate(feedback.id, 'resolved');"),
+    mobileFeedbackDetail.indexOf('const updated = await updateFeedbackStatus(') < mobileFeedbackDetail.indexOf('assertFeedbackStatusUpdateSucceeded(')
+    && mobileFeedbackDetail.indexOf('assertFeedbackStatusUpdateSucceeded(') < mobileFeedbackDetail.indexOf("onStatusUpdate(sourceFeedback.id, 'resolved');"),
     'Mobile feedback resolve must wait for status acknowledgement before local success state advances',
   );
   assertIncludes(mobileFeedbackDetail, "getBoundedMobileOwnerStringContext('feedbackId', feedback.id)", 'Mobile feedback detail bounded feedback ID context');
   assertIncludes(mobileFeedbackDetail, "getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId)", 'Mobile feedback detail bounded store context');
-  assertIncludes(mobileFeedbackDetail, 'getFeedbackWriteLogContext(feedback.status, trimmedReply.length)', 'Mobile feedback detail bounded reply length context');
+  assertIncludes(mobileFeedbackDetail, 'getFeedbackWriteLogContext(sourceFeedback.status, trimmedReply.length)', 'Mobile feedback detail bounded reply length context');
   assertIncludes(mobileFeedbackDetail, 'hasReplyText: replyLength > 0', 'Mobile feedback detail reply text presence context');
   [
     'mobile_qr_sheet_generate_failed',
@@ -4479,7 +4706,6 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertNotIncludes(mobileOfficialPage, 'await navigator.clipboard.writeText(value);\n            Toast.show', 'Mobile Official Page copy must not use unguarded Clipboard API success');
   assertNotIncludes(mobileOfficialPage, "document.execCommand('copy');\n            Toast.show", 'Mobile Official Page textarea copy must not assume success');
   [
-    'mobile_seo_analytics_field_save_failed',
     'mobile_analytics_settings_save_failed',
     'mobile_seo_settings_save_failed',
     'mobile_seo_analytics_external_link_open_failed',
@@ -4487,7 +4713,7 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   ].forEach((failureCode) => {
     assertIncludes(mobileSeoAnalytics, failureCode, 'Mobile SEO/analytics settings diagnostics');
   });
-  assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('fieldName', field)", 'Mobile SEO/analytics field-name bounded context');
+  assertNotIncludes(mobileSeoAnalytics, 'mobile_seo_analytics_field_save_failed', 'Mobile SEO/analytics retired dead field-save diagnostics');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('googleAnalyticsId', analyticsDraft.googleAnalyticsId)", 'Mobile analytics GA bounded context');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('canonicalUrl', canonicalUrl)", 'Mobile SEO canonical URL bounded context');
   assertIncludes(mobileSeoAnalytics, 'enabledTrackingCount: countEnabledAnalyticsTracking(analyticsDraft)', 'Mobile analytics enabled tracking count context');
@@ -5257,6 +5483,8 @@ function verifyHelpChatDiagnosticsAreBounded() {
 function verifyBusinessSettingsDiagnosticsAreBounded() {
   const storesDal = read('src/database/stores/index.tsx');
   const projectsDal = read('src/database/projects/index.ts');
+  const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const timeSlotCascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const timeSlotPresets = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
   const tempStatusCard = read('src/components/templates/main-app/businessSettings/TempStatusCard.tsx');
   const mobileTempStatus = read('src/components/mobile/screens/MobileTempStatusScreen.tsx');
@@ -5297,16 +5525,35 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(storesDal, 'export function assertTimeSlotPresetUpdateSucceeded', 'Store time-slot preset write acknowledgement guard');
   assertIncludes(storesDal, "throw new Error('time_slot_preset_update_rejected');", 'Store time-slot preset rejected write code');
   assertIncludes(storesDal, 'await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");', 'Store time-slot preset writes must refresh public cache');
+  assertIncludes(storesDal, 'timeSlotPresetCascadePending: pendingCascade', 'Store time-slot preset edit/delete must atomically persist its project-cascade marker');
+  assertIncludes(storesDal, "throw new Error('time_slot_preset_cascade_pending');", 'Store time-slot preset writes must reject while an earlier cascade remains pending');
+  assertIncludes(storesDal, 'timeSlotPresetCascadePending: deleteField(),', 'Store time-slot preset cascade completion must clear its durable marker');
+  assertIncludes(storesDal, "throw new Error('time_slot_preset_cascade_operation_conflict');", 'Store time-slot preset cascade completion must be operation-owned');
   assertIncludes(projectsDal, 'export function assertProjectPresetCascadeSucceeded', 'Project preset cascade acknowledgement guard');
   assertIncludes(projectsDal, 'project_preset_cascade_update_rejected', 'Project preset cascade rejected write code');
+  assertIncludes(projectsDal, 'mutation.type === "remove"', 'Project preset delete retry must retain the complete exact-store cache recovery set');
+  assertIncludes(projectsDal, '|| projectReferencesTimeSlotPreset(project, presetId)', 'Project preset update may retain the referenced-project cache recovery set');
+  assertIncludes(projectsDal, 'await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);', 'Every admitted preset reconciliation candidate must revalidate cache even when its data was already projected');
+  assertIncludes(timeSlotCascadeReconciler, 'export async function reconcileTimeSlotPresetCascade(', 'Time-slot preset durable reconciliation entry point');
+  assertIncludes(timeSlotCascadeReconciler, 'assertProjectPresetCascadeSucceeded(', 'Time-slot preset durable reconciliation requires project acknowledgement');
+  assertIncludes(timeSlotCascadeReconciler, 'assertTimeSlotPresetCascadeCompleted(completionResult);', 'Time-slot preset durable reconciliation requires marker-clear acknowledgement');
   assertIncludes(timeSlotPresets, 'assertTimeSlotPresetUpdateSucceeded(writeResult);', 'Business settings time-slot writes must require explicit success acknowledgement');
-  assertIncludes(timeSlotPresets, 'assertProjectPresetCascadeSucceeded(', 'Business settings time-slot cascade writes must require explicit success acknowledgement');
+  assertIncludes(timeSlotPresets, 'await reconcileTimeSlotPresetCascade(expectedScope, writeResult.pendingCascade);', 'Business settings time-slot cascade writes must use durable reconciliation');
+  assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_recovery_failed', 'Business settings time-slot pending cascade recovery diagnostics');
+  assertIncludes(timeSlotPresets, 'recoveryAttemptedOperationRef.current = pendingCascade.operationId;', 'Business settings time-slot pending cascade recovery must be bounded per mount');
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_cascade_update_rejected', 'Business settings time-slot cascade update rejected code');
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_cascade_delete_rejected', 'Business settings time-slot cascade delete rejected code');
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_save_failed', 'Business settings time-slot save diagnostics');
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_delete_failed', 'Business settings time-slot delete diagnostics');
+  assertIncludes(businessSettings, 'function BusinessSettingsContent(', 'Desktop Business Settings keyed content boundary');
+  assertIncludes(businessSettings, '<BusinessSettingsContent key={scopeKey}', 'Desktop Business Settings exact tenant/store remount');
+  assertIncludes(businessSettings, 'const settingsSaveInFlightRef = useRef(false);', 'Desktop Business Settings duplicate save guard');
+  assertIncludes(businessSettings, 'activeBusinessSettingsScopeRef.current !== requestScopeKey', 'Desktop Business Settings save admission scope guard');
+  assertIncludes(businessSettings, 'activeBusinessSettingsScopeRef.current === requestScopeKey', 'Desktop Business Settings settlement scope guard');
   assertIncludes(mobileTimeSlots, 'assertTimeSlotPresetUpdateSucceeded(writeResult);', 'Mobile time-slot writes must require explicit success acknowledgement');
-  assertIncludes(mobileTimeSlots, 'assertProjectPresetCascadeSucceeded(', 'Mobile time-slot cascade writes must require explicit success acknowledgement');
+  assertIncludes(mobileTimeSlots, 'await reconcileTimeSlotPresetCascade(', 'Mobile time-slot cascade writes must use durable reconciliation');
+  assertIncludes(mobileTimeSlots, 'mobile_time_slot_preset_recovery_failed', 'Mobile time-slot pending cascade recovery diagnostics');
+  assertIncludes(mobileTimeSlots, 'recoveryAttemptedOperationRef.current = pendingCascade.operationId;', 'Mobile time-slot pending cascade recovery must be bounded per mount');
   assertIncludes(mobileTimeSlots, 'mobile_time_slot_preset_cascade_update_rejected', 'Mobile time-slot cascade update rejected code');
   assertIncludes(mobileTimeSlots, 'mobile_time_slot_preset_cascade_delete_rejected', 'Mobile time-slot cascade delete rejected code');
   assertIncludes(mobileTimeSlots, 'mobile_time_slot_preset_save_failed', 'Mobile time-slot save diagnostics');
@@ -5336,6 +5583,10 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertOccurrenceAtLeast(mobileTempStatus, "fetch('/api/store/temp-status'", 2, 'Mobile temporary status API calls');
   assertOccurrenceAtLeast(mobileTempStatus, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Mobile temporary status mutations spread shared browser request policy');
   assertNotIncludes(mobileTempStatus, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile temporary status inline request policy');
+  assertIncludes(mobileTempStatus, 'return <MobileTempStatusScreenContent key={scopeKey} {...props} />;', 'Mobile temporary status exact tenant/store keyed mount');
+  assertIncludes(mobileTempStatus, 'tempStatusActionInFlightRef.current', 'Mobile temporary status immediate duplicate-action guard');
+  assertIncludes(mobileTempStatus, 'isExpectedStoreScope(expectedTenantId, expectedStoreId)', 'Mobile temporary status exact-scope async settlement');
+  assertOccurrenceAtLeast(mobileTempStatus, 'prev === optimisticStoreDetails', 2, 'Mobile temporary status attempt-owned rollback');
   assertIncludes(mobileHours, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile Today temporary status shared authenticated browser request policy');
   assertOccurrenceAtLeast(mobileHours, "fetch('/api/store/temp-status'", 3, 'Mobile Today temporary status API calls');
   assertOccurrenceAtLeast(mobileHours, '...AUTH_BROWSER_REQUEST_POLICY', 3, 'Mobile Today temporary status mutations spread shared browser request policy');
@@ -5348,10 +5599,19 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileWorkingHours, 'mobile_working_hours_store_update_rejected', 'Mobile working hours rejected acknowledgement code');
   assertIncludes(mobileWorkingHours, 'changedDayCount: DAYS.filter', 'Mobile working hours bounded changed-day count context');
   assertIncludes(mobileWorkingHours, 'closedDayCount: DAYS.filter', 'Mobile working hours bounded closed-day count context');
-  assertIncludes(mobileWorkingHours, 'hasPreviousWorkingHours: Boolean(storeDetails.workingHours)', 'Mobile working hours previous state context');
+  assertIncludes(mobileWorkingHours, 'hasPreviousWorkingHours: Object.keys(previousWorkingHours).length > 0', 'Mobile working hours previous state context');
+  assertIncludes(mobileWorkingHours, '<MobileWorkingHoursEditScreenContent key={scopeKey}', 'Mobile working hours exact tenant/store remount');
+  assertIncludes(mobileWorkingHours, "String(previous?.tenantId ?? '') === String(expectedTenantId)", 'Mobile working hours optimistic/rollback tenant guard');
+  assertIncludes(mobileWorkingHours, "String(previous?.storeId ?? '') === String(expectedStoreId)", 'Mobile working hours optimistic/rollback store guard');
+  assertIncludes(mobileWorkingHours, 'previous?.hoursLastUpdatedAt === hoursLastUpdatedAt', 'Mobile working hours rollback ownership marker');
   assertIncludes(mobileHours, 'assertStoreUpdateSucceeded(', 'Mobile Today hours store update acknowledgement guard');
   assertIncludes(mobileHours, 'mobile_today_hours_store_update_rejected', 'Mobile Today hours rejected acknowledgement code');
   assertIncludes(mobileHours, 'mobile_today_hours_update_failed', 'Mobile Today hours update diagnostics');
+  assertIncludes(mobileHours, '<MobileHoursScreenContent key={scopeKey}', 'Mobile Today exact tenant/store remount');
+  assertIncludes(mobileHours, 'const hoursActionInFlightRef = useRef(false);', 'Mobile Today duplicate hours-write guard');
+  assertIncludes(mobileHours, "String(previous?.tenantId ?? '') === String(expectedTenantId)", 'Mobile Today optimistic/rollback tenant guard');
+  assertIncludes(mobileHours, "String(previous?.storeId ?? '') === String(expectedStoreId)", 'Mobile Today optimistic/rollback store guard');
+  assertIncludes(mobileHours, 'previous?.hoursLastUpdatedAt === hoursLastUpdatedAt', 'Mobile Today rollback ownership marker');
   assertIncludes(mobileAdvancedSettings, 'mobile_advanced_settings_save_failed', 'Mobile advanced settings save diagnostics');
   assertIncludes(mobileAdvancedSettings, 'mobile_advanced_settings_external_link_open_failed', 'Mobile advanced settings external-link diagnostics');
   assertIncludes(mobileAdvancedSettings, 'mobile_advanced_settings_external_link_open_blocked', 'Mobile advanced settings blocked-open diagnostic');
@@ -5924,6 +6184,8 @@ verifyOBPAnalyticsLoggingIsBounded();
 verifyOBPThemeStorageLoggingIsBounded();
 verifyOBPServerFallbackLoggingIsBounded();
 verifyOBPResolvedSurfaceFallbackLoggingIsBounded();
+verifyOBPUpdateTimestampDoesNotClaimVerification();
+verifyMapsPlaceConfirmationStaysFlagGated();
 verifyPublicMenuSearchFocusLoggingIsBounded();
 verifyPublicMenuGradientParserLoggingIsBounded();
 verifyPublicMenuBreadcrumbLanguageLoggingIsBounded();

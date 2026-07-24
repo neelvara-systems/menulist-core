@@ -153,7 +153,12 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
 const readLegacySubscription = async (db: any, tId: number, sId: number) => {
     const snapshot = await db
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('tenantId', '==', tId)
         .where('storeId', '==', sId)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
         .limit(5)
         .get();
 
@@ -225,7 +230,10 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             sourceVersionsRef.get(),
         ]);
 
-        const usedLegacySubscriptionFallback = !storeData.answerlatticeSubscription;
+        const usedLegacySubscriptionFallback = !isAnswerlatticeSubscriptionInScope(
+            storeData.answerlatticeSubscription,
+            { tId, sId },
+        );
         const legacySubscription = usedLegacySubscriptionFallback
             ? await readLegacySubscription(db, tId, sId)
             : null;

@@ -62,6 +62,11 @@ async function run(): Promise<void> {
         'changelog_feedback',
         'faq_feedback',
         'answerlattice_signalEvents',
+        'queryEmbeddings',
+        'aiSearchHistory',
+        'ownerNotificationEvents',
+        'ownerNotificationDeliveries',
+        'ownerNotificationRateLimits',
     ]) {
         await db.recursiveDelete(db.collection(collection));
     }
@@ -240,11 +245,57 @@ async function run(): Promise<void> {
     await db.collection('faq_feedback').doc('1').collection('101').doc('expired-feedback').set({
         pId: 'AL', tId: 1, sId: 101, list: [], expiresAt: expiredAt, retentionDays: 365,
     });
-    const cleanup = await cleanupAnswerlatticeOperationalRetention({ tenants: [scope], batchLimit: 10 });
+    const legacyCutoff = Timestamp.fromMillis(Date.now() - 120 * 24 * 60 * 60 * 1000);
+    await db.collection('queryEmbeddings').doc('al-expired').set({
+        pId: 'AL', tId: 1, sId: 101, createdAt: legacyCutoff,
+    });
+    await db.collection('queryEmbeddings').doc('ml-expired').set({
+        pId: 'ML', tId: 1, sId: 101, createdAt: legacyCutoff,
+    });
+    await db.collection('aiSearchHistory').doc('al-expired').set({
+        pId: 'AL', tId: 1, sId: 101, createdOn: legacyCutoff,
+    });
+    await db.collection('aiSearchHistory').doc('ml-expired').set({
+        pId: 'ML', tId: 1, sId: 101, createdOn: legacyCutoff,
+    });
+    for (const [collectionName, timestampField] of [
+        ['ownerNotificationEvents', 'createdAt'],
+        ['ownerNotificationDeliveries', 'createdAt'],
+        ['ownerNotificationRateLimits', 'updatedAt'],
+    ] as const) {
+        await db.collection(collectionName).doc('al-expired').set({
+            productId: 'AL', [timestampField]: legacyCutoff,
+        });
+        await db.collection(collectionName).doc('ml-expired').set({
+            productId: 'ML', [timestampField]: legacyCutoff,
+        });
+    }
+    const cleanup = await cleanupAnswerlatticeOperationalRetention({
+        tenants: [scope],
+        batchLimit: 10,
+        includeLegacyFirestoreCleanup: true,
+    });
     assert.equal(cleanup.contentFeedbackDeleted, 3);
+    assert.equal(cleanup.queryEmbeddingsDeleted, 1);
+    assert.equal(cleanup.aiSearchHistoryDeleted, 1);
+    assert.equal(cleanup.ownerNotificationEventsDeleted, 1);
+    assert.equal(cleanup.ownerNotificationDeliveriesDeleted, 1);
+    assert.equal(cleanup.ownerNotificationRateLimitsDeleted, 1);
     assert.equal((await db.collection('article_feedback').doc('1').collection('101').doc('expired-feedback').get()).exists, false);
     assert.equal((await db.collection('changelog_feedback').doc('1').collection('101').doc('expired-feedback').get()).exists, false);
     assert.equal((await db.collection('faq_feedback').doc('1').collection('101').doc('expired-feedback').get()).exists, false);
+    assert.equal((await db.collection('queryEmbeddings').doc('al-expired').get()).exists, false);
+    assert.equal((await db.collection('queryEmbeddings').doc('ml-expired').get()).exists, true);
+    assert.equal((await db.collection('aiSearchHistory').doc('al-expired').get()).exists, false);
+    assert.equal((await db.collection('aiSearchHistory').doc('ml-expired').get()).exists, true);
+    for (const collectionName of [
+        'ownerNotificationEvents',
+        'ownerNotificationDeliveries',
+        'ownerNotificationRateLimits',
+    ]) {
+        assert.equal((await db.collection(collectionName).doc('al-expired').get()).exists, false);
+        assert.equal((await db.collection(collectionName).doc('ml-expired').get()).exists, true);
+    }
 }
 
 run()

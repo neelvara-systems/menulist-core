@@ -1,7 +1,7 @@
 # Predictive Support And Known Issues Specification
 
 **Status:** Implemented
-**Last verified:** July 18, 2026
+**Last verified:** July 21, 2026
 
 ## Customer job
 
@@ -89,6 +89,8 @@ System-generated friction candidates always enter as `suggested`. Owner review r
 - Invalid key, scope, origin, context, trigger, or body: no suggestion.
 - Rate-limit provider unavailable: predictive help fails closed.
 - Summary overflow or malformed summary: do not serve the invalid replacement.
+- Invalid or saturated nightly friction/signal source: mark the tenant task failed and preserve the previous valid public summary/evidence.
+- Owner workspace transition: render no prior-workspace trigger rows; reject a mutation whose stored scope differs from the active workspace.
 - Cooldown provider unavailable: ordinary prompts fail closed to avoid repeated interruption.
 - Interaction signal disabled: return success with `recorded: false`.
 - Suggestion response malformed or oversized: loader discards it and clears stale state.
@@ -118,6 +120,8 @@ Do not use suggestion count, click rate, containment, or ticket reduction alone 
 - Runtime input and output are bounded and strictly normalized.
 - Workspace and origin are derived from authenticated widget truth.
 - Interaction evidence is bound to a current matching trigger.
+- Concurrent nightly retries produce at most one friction-generated suggestion per workspace/entity.
+- Summary replacement and compiled-context invalidation are atomic.
 - No engagement event changes trigger status automatically.
 - Stale page suggestions are cleared.
 - Known issues enforce window and public HTTPS URL handling.

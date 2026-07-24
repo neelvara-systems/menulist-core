@@ -15,6 +15,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from '@constant/product';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp, where, writeBatch } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { runAnswerlatticeGovernanceAction } from '@lib/answerlattice/governanceClient';
@@ -25,6 +26,8 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { createRuntimeId } from '@lib/runtime/randomId';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import getActiveSession from '@lib/auth/getActiveSession';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { AnswerlatticeMutationProposal } from "@type/answerlattice";
 
@@ -52,6 +55,14 @@ const getDraftRetryRequestId = (proposalId: string): string => {
 };
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
+const getActiveScope = async (expected?: { tId?: unknown; sId?: unknown }) => {
+    const session = await getActiveSession();
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) throw new Error('Answerlattice workspace scope is required');
+    if (expected?.tId !== undefined && expected.tId !== scope.tenantId) throw new Error('Answerlattice tenant scope mismatch');
+    if (expected?.sId !== undefined && expected.sId !== scope.storeId) throw new Error('Answerlattice workspace scope mismatch');
+    return { tId: scope.tenantId, sId: scope.storeId };
+};
 const getDocRef = (docId: string) => {
     const normalizedDocId = normalizeAnswerlatticeMutationProposalId(docId);
     if (!normalizedDocId) throw new Error('Invalid mutation proposal id');
@@ -127,10 +138,12 @@ const readDraftRegenerationResponse = async (
 export const getMutationProposals = async (tId: number, sId: number) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 orderBy('createdOn', 'desc'),
                 limit(200)
             );
@@ -152,10 +165,12 @@ export const getMutationProposals = async (tId: number, sId: number) => {
 export const getPendingMutationProposals = async (tId: number, sId: number) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('status', '==', 'pending_review'),
                 orderBy('createdOn', 'desc'),
                 limit(200)
@@ -178,11 +193,18 @@ export const getPendingMutationProposals = async (tId: number, sId: number) => {
 export const getMutationProposalById = async (proposalId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope();
             const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
             if (!normalizedProposalId) return null;
             const docSnap = await getDoc(getDocRef(normalizedProposalId));
             if (docSnap.exists()) {
-                return parseStoredProposal(docSnap.id, docSnap.data());
+                const proposal = parseStoredProposal(docSnap.id, docSnap.data());
+                return proposal
+                    && proposal.pId === PRODUCT_IDS.ANSWERLATTICE
+                    && proposal.tId === scope.tId
+                    && proposal.sId === scope.sId
+                    ? proposal
+                    : null;
             }
             return null;
         },

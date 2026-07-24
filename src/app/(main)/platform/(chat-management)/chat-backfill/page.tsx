@@ -1,4 +1,4 @@
-import AnalyticsBackfill from "@template/platform/admin/AnalyticsBackfill";
+import AnalyticsBackfill from "@template/answerlattice/platform/AnalyticsBackfill";
 import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
 import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeConfig";
 

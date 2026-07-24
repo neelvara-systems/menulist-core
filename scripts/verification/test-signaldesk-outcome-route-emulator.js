@@ -18,6 +18,7 @@ require("tsconfig-paths/register");
 
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
+const { FEATURE_FLAGS } = require("@config/features");
 const { SIGNALDESK_COLLECTIONS } = require("@constant/signaldesk/database");
 const { admin, signaldeskFirestoreAdmin: db } = require("@lib/firebase/signaldeskFirebaseAdmin");
 const {
@@ -41,7 +42,13 @@ const hashValue = (value) => crypto.createHash("sha256").update(String(value)).d
 const targetId = "target_outcome_route_emulator";
 const sourceRunId = "run_outcome_route_emulator";
 const conversationId = "conv_outcome_route_emulator";
+const approvalId = "approval_outcome_route_emulator";
+const draftId = "draft_outcome_route_emulator";
+const templateId = "template_outcome_route_emulator";
 const evidencePacketId = `evidence_${hashValue("outcome-route-evidence").slice(0, 32)}`;
+const dailyCostRef = db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES)
+  .doc(new Date().toISOString().slice(0, 10));
+const readWriteEstimate = async () => Number((await dailyCostRef.get()).data()?.firestoreWriteEstimate || 0);
 
 const access = {
   active: true,
@@ -75,12 +82,14 @@ const expectRejects = async (label, operation, expectedMessage) => {
 const cleanup = async () => {
   const collections = [
     SIGNALDESK_COLLECTIONS.ATTRIBUTION_TOUCHES,
+    SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
     SIGNALDESK_COLLECTIONS.AUDIT_EVENTS,
     SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES,
     SIGNALDESK_COLLECTIONS.CONTROL_ROOM_SUMMARIES,
     SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES,
     SIGNALDESK_COLLECTIONS.DEMAND_SIGNALS,
     SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES,
+    SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES,
     SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES,
     SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS,
     SIGNALDESK_COLLECTIONS.OUTCOME_EVENTS,
@@ -181,11 +190,11 @@ const main = async () => {
   await cleanup();
   const authority = await seedAuthority();
   const routeInput = {
-    actionId: "owner_route_action_v1",
     channel: "email",
     idempotencyKey: "route-token-operation-v1",
     targetId,
   };
+  const routeCostBefore = await readWriteEstimate();
   const routes = await Promise.all([
     createSignalDeskRouteTokenServer(access, routeInput),
     createSignalDeskRouteTokenServer(access, routeInput),
@@ -194,10 +203,20 @@ const main = async () => {
   assert.equal(routes.filter((route) => route.duplicate === true).length, 1, "Concurrent issuance did not return one replay");
   assert.equal(routes[0].routeTokenId, routes[1].routeTokenId);
   assert.equal(routes[0].token, routes[1].token, "Exact issuance retry did not reproduce opaque material");
+  assert.equal(await readWriteEstimate(), routeCostBefore + 4, "Route issuance cost estimate did not count route, claim, audit, and cost writes exactly once");
   await expectRejects(
     "Changed issuance intent reused a claim",
     () => createSignalDeskRouteTokenServer(access, { ...routeInput, channel: "share" }),
     "ROUTE_TOKEN_IDEMPOTENCY_CONFLICT",
+  );
+  await expectRejects(
+    "Invented source action was accepted",
+    () => createSignalDeskRouteTokenServer(access, {
+      ...routeInput,
+      actionId: "invented_owner_action",
+      idempotencyKey: "route-token-invented-action-v1",
+    }),
+    "ROUTE_TOKEN_SOURCE_ACTION_INVALID",
   );
 
   const route = routes[0];
@@ -205,7 +224,77 @@ const main = async () => {
   const routeAuthority = parseSignalDeskRouteTokenDocument(routeSnapshot.data(), routeSnapshot.id);
   assert.equal(routeAuthority.sourcePolicyId, authority.sourcePolicyId);
   assert.equal(routeAuthority.sourceRunId, sourceRunId);
+  assert.equal(routeAuthority.sourceActionId, conversationId, "Route without approved-action lineage did not use the exact interested conversation as its source");
   assert.equal(routeSnapshot.get("token"), undefined, "Raw token was persisted");
+
+  const approvedAt = Timestamp.now();
+  await Promise.all([
+    db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(approvalId).set({
+      approvalId,
+      approvalPacketId: null,
+      channel: "email",
+      draftId,
+      dueAt: null,
+      pId: "SD",
+      priority: "normal",
+      reviewReason: "Approved exported route source.",
+      status: "exported",
+      targetId,
+      targetName: "Outcome Route Fixture",
+      updatedAt: approvedAt,
+    }),
+    db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(draftId).set({
+      approvalId,
+      body: "Review the current MenuList route.",
+      channel: "email",
+      ctaFingerprintHash: null,
+      ctaId: null,
+      draftId,
+      evidencePacketId,
+      pId: "SD",
+      personalizationEvidenceIds: [evidencePacketId],
+      senderDomainFingerprintHash: null,
+      senderDomainId: null,
+      status: "exported",
+      subject: "Your current MenuList route",
+      targetId,
+      targetName: "Outcome Route Fixture",
+      templateFingerprintHash: null,
+      templateId,
+      unsupportedClaims: [],
+      updatedAt: approvedAt,
+    }),
+    db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).set({
+      latestApprovalId: approvalId,
+      latestDraftId: draftId,
+      updatedAt: approvedAt,
+    }, { merge: true }),
+  ]);
+  await expectRejects(
+    "Approved source accepted mismatched template lineage",
+    () => createSignalDeskRouteTokenServer(access, {
+      ...routeInput,
+      actionId: approvalId,
+      idempotencyKey: "route-token-approved-wrong-template-v1",
+      templateId: "template_mismatch",
+    }),
+    "ROUTE_TOKEN_SOURCE_ACTION_LINEAGE_INVALID",
+  );
+  const approvedRoute = await createSignalDeskRouteTokenServer(access, {
+    ...routeInput,
+    actionId: approvalId,
+    idempotencyKey: "route-token-approved-action-v1",
+    templateId,
+  });
+  const approvedRouteSnapshot = await db.collection(SIGNALDESK_COLLECTIONS.ROUTE_TOKENS)
+    .doc(approvedRoute.routeTokenId)
+    .get();
+  const approvedRouteAuthority = parseSignalDeskRouteTokenDocument(
+    approvedRouteSnapshot.data(),
+    approvedRouteSnapshot.id,
+  );
+  assert.equal(approvedRouteAuthority.sourceActionId, approvalId, "Approved route did not retain canonical approval lineage");
+  assert.equal(approvedRouteAuthority.templateId, templateId, "Approved route did not retain canonical draft template lineage");
 
   const payload = {
     evidenceRef: `menulist-event:${targetId}`,
@@ -219,12 +308,14 @@ const main = async () => {
   };
   const rawBody = JSON.stringify(payload);
   const headers = signedHeaders(rawBody);
+  const outcomeCostBefore = await readWriteEstimate();
   const bridgeResults = await Promise.all([
     processSignalDeskOutcomeBridge({ rawBody, requestHeaders: headers }),
     processSignalDeskOutcomeBridge({ rawBody, requestHeaders: headers }),
   ]);
   assert.equal(bridgeResults.filter((result) => result.status === "processed").length, 1);
   assert.equal(bridgeResults.filter((result) => result.status === "duplicate").length, 1);
+  assert.equal(await readWriteEstimate(), outcomeCostBefore + 9, "Signed outcome cost estimate did not count the route-linked atomic writes exactly once");
   const routeOutcomeEventId = bridgeResults[0].eventId;
   const routeOutcomeSnapshot = await db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_EVENTS).doc(routeOutcomeEventId).get();
   const routeOutcome = parseSignalDeskOutcomeEventDocument(routeOutcomeSnapshot.data(), routeOutcomeSnapshot.id);
@@ -305,10 +396,12 @@ const main = async () => {
       "OUTCOME_TARGET_SOURCE_LIFECYCLE_INACTIVE",
     );
   }
+  const revocationCostBefore = await readWriteEstimate();
   await revokeSignalDeskRouteTokenServer(access, {
     reason: "Outcome route isolated replay regression.",
     routeTokenId: route.routeTokenId,
   });
+  assert.equal(await readWriteEstimate(), revocationCostBefore + 3, "Route revocation cost estimate did not count route, audit, and cost writes");
   const retainedRouteAt = Timestamp.now();
   await routeSnapshot.ref.set({
     sourceDataLifecycleCompletedAt: retainedRouteAt,
@@ -363,12 +456,113 @@ const main = async () => {
     createdAt: currentEvidenceSnapshot.get("createdAt"),
     updatedAt: currentEvidenceSnapshot.get("updatedAt"),
   }, { merge: true });
+  const demandSignalsFlag = FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_DEMAND_SIGNALS;
+  FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_DEMAND_SIGNALS = false;
+  await expectRejects(
+    "Demand capture bypassed the master feature flag",
+    () => captureSignalDeskDemandSignalServer(access, {
+      idempotencyKey: "disabled-demand-signal-v1",
+      signalType: "share",
+      sourceSurface: "manual",
+    }),
+    "SignalDesk Demand Signals is disabled",
+  );
+  FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_DEMAND_SIGNALS = demandSignalsFlag;
+  await expectRejects(
+    "General demand accepted a free-text target name",
+    () => captureSignalDeskDemandSignalServer(access, {
+      idempotencyKey: "general-demand-with-name-v1",
+      signalType: "share",
+      sourceSurface: "manual",
+      targetName: "Unverified person or business",
+    }),
+    "DEMAND_SIGNAL_TARGET_NAME_REQUIRES_TARGET",
+  );
+  const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId);
+  await targetRef.set({ pId: "XX" }, { merge: true });
+  await expectRejects(
+    "Target-scoped demand accepted foreign product truth",
+    () => captureSignalDeskDemandSignalServer(access, {
+      idempotencyKey: "foreign-target-demand-v1",
+      signalType: "share",
+      sourceSurface: "manual",
+      targetId,
+    }),
+    "TARGET_PRODUCT_MISMATCH",
+  );
+  await targetRef.set({ pId: "SD" }, { merge: true });
+  const collisionKey = "demand-summary-collision-v1";
+  const collisionSummaryId = `${new Date().toISOString().slice(0, 10)}_qr_scan_other_${targetId}`;
+  const collisionSummaryRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(collisionSummaryId);
+  await collisionSummaryRef.set({
+    count: 1,
+    day: new Date().toISOString().slice(0, 10),
+    demandSignalId: collisionSummaryId,
+    pId: "XX",
+    signalType: "qr_scan",
+    sourceSurface: "other",
+    targetId,
+    targetName: "Outcome Route Fixture",
+    updatedAt: Timestamp.now(),
+  });
+  await expectRejects(
+    "Demand capture merged a foreign deterministic summary",
+    () => captureSignalDeskDemandSignalServer(access, {
+      idempotencyKey: collisionKey,
+      signalType: "qr_scan",
+      sourceSurface: "other",
+      targetId,
+    }),
+    "DEMAND_SIGNAL_SUMMARY_INVALID",
+  );
+  const rejectedDemandId = `demand_${hashValue(`${access.userId}|${collisionKey}`).slice(0, 32)}`;
+  assert.equal((await db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNALS).doc(rejectedDemandId).get()).exists, false, "Rejected demand wrote a partial event");
+  await collisionSummaryRef.delete();
+  await targetRef.set({ suppressionStatus: "suppressed", updatedAt: Timestamp.now() }, { merge: true });
+  const suppressedDemand = await captureSignalDeskDemandSignalServer(access, {
+    idempotencyKey: "suppressed-target-demand-v1",
+    signalType: "link_click",
+    sourceSurface: "manual",
+    targetId,
+  });
+  assert(suppressedDemand.demandSignalId, "Suppressed target demand was not retained for aggregate learning");
+  assert.equal((await targetRef.get()).get("suppressionStatus"), "suppressed", "Demand capture cleared target suppression");
+  await targetRef.set({ suppressionStatus: "clear", updatedAt: Timestamp.now() }, { merge: true });
+  const demandCostBefore = await readWriteEstimate();
   const demand = await captureSignalDeskDemandSignalServer(access, {
     idempotencyKey: "demand-source-for-outcome-v1",
     signalType: "share",
     sourceSurface: "menu",
     targetId,
   });
+  const demandReplay = await captureSignalDeskDemandSignalServer(access, {
+    idempotencyKey: "demand-source-for-outcome-v1",
+    signalType: "share",
+    sourceSurface: "menu",
+    targetId,
+  });
+  assert.equal(demandReplay.duplicate, true, "Exact demand retry did not prove its durable event and summary");
+  assert.equal(await readWriteEstimate(), demandCostBefore + 6, "Demand capture did not count event, summary, claim, audit, control, and cost writes exactly once");
+  const originalDemandEventRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNALS).doc(demand.demandSignalId);
+  const originalDemandSummaryRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(demand.summaryId);
+  const originalDemandSummary = (await originalDemandSummaryRef.get()).data();
+  const priorDayMillis = Date.now() - (24 * 60 * 60 * 1000);
+  const priorDay = new Date(priorDayMillis).toISOString().slice(0, 10);
+  const priorDemandSummaryId = `${priorDay}_share_menu_${targetId}`;
+  await originalDemandEventRef.set({ createdAt: Timestamp.fromMillis(priorDayMillis) }, { merge: true });
+  await db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(priorDemandSummaryId).set({
+    ...originalDemandSummary,
+    day: priorDay,
+    demandSignalId: priorDemandSummaryId,
+  });
+  await originalDemandSummaryRef.delete();
+  const crossDayDemandReplay = await captureSignalDeskDemandSignalServer(access, {
+    idempotencyKey: "demand-source-for-outcome-v1",
+    signalType: "share",
+    sourceSurface: "menu",
+    targetId,
+  });
+  assert.equal(crossDayDemandReplay.summaryId, priorDemandSummaryId, "Demand replay used the current day instead of its immutable event day");
   const demandOutcome = await recordSignalDeskOutcomeServer(access, {
     channel: "share",
     evidenceRef: `demand-signal:${demand.demandSignalId}`,
@@ -405,8 +599,11 @@ const main = async () => {
     source: "manual",
     targetId,
   };
+  const manualOutcomeCostBefore = await readWriteEstimate();
   const manualOutcome = await recordSignalDeskOutcomeServer(access, manualOutcomeInput);
   const manualOutcomeReplay = await recordSignalDeskOutcomeServer(access, manualOutcomeInput);
+  assert.equal(manualOutcome.activationWatchSyncStatus, "updated", "Manual outcome did not reconcile the existing activation watch");
+  assert.equal(await readWriteEstimate(), manualOutcomeCostBefore + 14, "Manual outcome did not count eight base writes plus six activation-watch reconciliation writes exactly once");
   assert.equal(manualOutcomeReplay.duplicate, true);
   assert.equal(manualOutcomeReplay.outcomeSummaryId, manualOutcome.outcomeSummaryId, "Exact replay changed its source-scoped summary identity");
   assert.notEqual(manualOutcome.outcomeSummaryId, demandOutcome.outcomeSummaryId, "Manual and demand outcomes shared one summary identity");

@@ -13,6 +13,8 @@ const sender = read('src/lib/notifications/index.ts');
 const claim = read('src/lib/notifications/deliveryClaim.ts');
 const projector = read('src/lib/notifications/ticketNotificationBoundary.ts');
 const templates = read('src/lib/notifications/templates.ts');
+const sharedIndexes = JSON.parse(read('firestore.indexes.json'));
+const answerlatticeIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
 
 const requireText = (source, token, label) => assert.ok(source.includes(token), `${label}: missing ${token}`);
 const forbidText = (source, token, label) => assert.ok(!source.includes(token), `${label}: forbidden ${token}`);
@@ -61,11 +63,26 @@ for (const token of [
   'claimNotificationDelivery({',
   'if (!claim.claimed) return false;',
   'finalizeNotificationDelivery({',
+  'productId: PRODUCT_IDS.ANSWERLATTICE',
+  'productId: productId || PRODUCT_IDS.MENULIST',
+  ".where('productId', '==', target.productId)",
   'connectionTimeout: 10_000',
   'greetingTimeout: 10_000',
   'socketTimeout: 15_000',
   '`<${getSafeLogId(eventType, referenceId)}@menulist.ai>`',
 ]) requireText(sender, token, 'notification sender');
+const hasIndex = (manifest, collectionGroup, fields) => manifest.indexes.some((index) => (
+  index.collectionGroup === collectionGroup
+  && fields.every((field, position) => index.fields[position]?.fieldPath === field)
+));
+assert.ok(
+  hasIndex(answerlatticeIndexes, 'answerlattice_notificationLogs', ['productId', 'recipientEmail', 'status', 'createdAt']),
+  'dedicated Answerlattice notification rate query requires the product-first composite index',
+);
+assert.ok(
+  hasIndex(sharedIndexes, 'notificationLogs', ['productId', 'recipientEmail', 'status', 'createdAt']),
+  'shared notification rate query requires the product-first composite index',
+);
 for (const token of ['runTransaction', "current.status === 'sent'", "current.status === 'sending'", 'current.claimId !== params.claimId']) {
   requireText(claim, token, 'delivery claim');
 }

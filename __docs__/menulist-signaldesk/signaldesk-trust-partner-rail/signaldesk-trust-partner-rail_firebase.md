@@ -1,7 +1,8 @@
 # SignalDesk Trust Partner Rail - Firebase Cost Plan
 
-**Status:** Runtime implemented for internal testing
+**Status:** Feature 17 locally source-complete
 **Created:** June 24, 2026
+**Last Updated:** July 21, 2026
 **Cost impact now:** Low bounded Firestore reads/writes through protected SignalDesk actions only; no raw social payloads, no paid campaign automation, and no provider send.
 
 ## Collections
@@ -20,14 +21,14 @@
 
 | Flow | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
-| Load partners workspace | 5-8 | 0 | Summary docs only; no raw comments by default. |
-| Upsert partner profile | 1-3 | 2-4 | Profile, audit, cost summary, optional timeline. |
-| Create niche test | 3-6 | 3-5 | Reads market pod/audience/budget; writes niche test, timeline, audit. |
-| Create brief | 4-8 | 3-5 | Reads partner/deal/CTA/policy; writes brief, approval packet, audit. |
-| Review deal | 4-8 | 3-6 | Reads budget and profile; writes deal, budget hold, audit, timeline. |
-| Record deliverable | 2-5 | 2-4 | Writes deliverable and audit; post URL only, not raw social payload. |
-| Record metrics | 3-7 | 4-7 | Transaction reads actor/key claim, partner and optional deliverable; writes one incremental compact metric, demand observation, claim, audit, timeline and cost summary. |
-| Renewal decision | 4-9 | 3-6 | Reads metrics/outcomes; writes decision, timeline, audit. |
+| Load partners workspace | Up to 10 bounded queries, in parallel | 0 | Budget policy query is omitted unless the caller has `signaldesk.configure`; no raw comments. |
+| Upsert partner profile | Claim, profile, pause | 5 | Profile, idempotency claim, timeline, audit, daily cost. Exact replay writes zero. |
+| Create niche test | Claim, niche, pause, optional pod, up to 5 partners | 5 | Niche, claim, timeline, audit, daily cost. Exact replay writes zero. |
+| Create brief | Partner, optional deal, existing brief, CTA authority, pause | 4 | Brief, timeline, audit, daily cost. Deterministic exact replay writes zero. |
+| Review deal | Partner, optional niche, budget, deal, pause | 4 or 5 | Deal, timeline, audit, daily cost, plus budget only when a reservation is first made. |
+| Record deliverable | Claim, deliverable, partner, optional deal, pause | 5 | Deliverable, claim, timeline, audit, daily cost. Exact replay writes zero. |
+| Record metrics | Claim, metric, partner, optional deliverable | 5 or 7 | Base metric, claim, timeline, audit, daily cost; plus demand and control summaries only when owner signals exist and Demand Signals is enabled. |
+| Renewal decision | Claim, decision, partner, optional niche, pause, last 10 metrics | 6 | Decision, profile state, claim, timeline, audit, daily cost. Exact replay writes zero. |
 
 ## Cost Controls
 
@@ -64,7 +65,11 @@
 | Raw social payloads | Not stored. |
 | Disclosure proof | Same as deal/brief record. |
 
-## Open Firebase Questions
+## Current Infrastructure Decision
+
+This hardening reuses existing collections, indexes, rules, and the actions route. It adds no Firestore rule, index, Storage, Function, scheduler, listener, or deployment requirement.
+
+## Owner-Run Questions Before A Real Paid Test
 
 | Question | Needed before |
 | --- | --- |

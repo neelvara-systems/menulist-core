@@ -5,10 +5,11 @@ import { checkCustomDomainAvailability } from '@database/stores';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Divider, Input, List, message, Space, Steps, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuRefreshCw, LuSearch, LuTrash2 } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
@@ -206,6 +207,16 @@ async function readDesktopDomainSettingsDomainResponseJson<T>(
 
 function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStoreUpdate }: DomainSettingsTabProps) {
     const t = useTranslations('BusinessSettings');
+    const domainScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+    const domainScopeKeyRef = useRef(domainScopeKey);
+    domainScopeKeyRef.current = domainScopeKey;
+    const componentActiveRef = useRef(true);
+    const subdomainCheckGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!subdomainCheckGuardRef.current) subdomainCheckGuardRef.current = createLatestRequestGuard();
+    const domainStatusGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!domainStatusGuardRef.current) domainStatusGuardRef.current = createLatestRequestGuard();
+    const domainCheckGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!domainCheckGuardRef.current) domainCheckGuardRef.current = createLatestRequestGuard();
     const [subdomainValue, setSubdomainValue] = useState(storeDetails?.subdomain || '');
     const [availability, setAvailability] = useState<{
         available?: boolean;
@@ -226,6 +237,16 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
     const [domainStatus, setDomainStatus] = useState<any>(null);
     const [copiedDnsValue, setCopiedDnsValue] = useState<string | null>(null);
     const [domainLinkCopied, setDomainLinkCopied] = useState(false);
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+            subdomainCheckGuardRef.current!.invalidate();
+            domainStatusGuardRef.current!.invalidate();
+            domainCheckGuardRef.current!.invalidate();
+        };
+    }, []);
 
     const subdomainUrl = storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null;
     const currentSubdomain = (storeDetails?.subdomain || '').trim().toLowerCase();
@@ -271,6 +292,8 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             return;
         }
 
+        const requestScopeKey = domainScopeKey;
+        const requestId = subdomainCheckGuardRef.current!.begin();
         setCheckingSubdomain(true);
         try {
             const response = await fetch(
@@ -290,6 +313,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     responseStatus: response.status,
                     maxBytes: DESKTOP_DOMAIN_SETTINGS_SUBDOMAIN_RESPONSE_JSON_MAX_BYTES,
                 });
+            }
+            if (
+                !subdomainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
             }
             if (!response.ok) {
                 if (response.status === 429 && data?.available === false) {
@@ -318,6 +348,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 setSubdomainValue(normalizedAvailability.normalized);
             }
         } catch (error) {
+            if (
+                !subdomainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logStoreDataFailure('desktop_domain_settings_subdomain_check_failed', error, buildDomainSettingsLogContext(
                 storeDetails,
                 'check_subdomain',
@@ -325,31 +362,46 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             ));
             setAvailability({ available: false, reason: 'Could not check availability' });
         } finally {
-            setCheckingSubdomain(false);
+            if (
+                subdomainCheckGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && domainScopeKeyRef.current === requestScopeKey
+            ) {
+                setCheckingSubdomain(false);
+            }
         }
-    }, [storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [domainScopeKey, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const saveSubdomain = useCallback(async () => {
         const nextSubdomain = availability?.normalized || subdomainValue.trim();
         if (!nextSubdomain) return;
+        const requestScopeKey = domainScopeKey;
         setSavingSubdomain(true);
         try {
             await Promise.resolve(onStoreUpdate?.({ subdomain: nextSubdomain }));
-            setAvailability((previous) => previous ? { ...previous, normalized: nextSubdomain, preview: nextSubdomain } : previous);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setAvailability((previous) => previous ? { ...previous, normalized: nextSubdomain, preview: nextSubdomain } : previous);
+            }
         } catch (error) {
             logStoreDataFailure('desktop_domain_settings_subdomain_save_failed', error, buildDomainSettingsLogContext(
                 storeDetails,
                 'save_subdomain',
                 nextSubdomain,
             ));
-            message.error('Could not save public link.');
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                message.error('Could not save public link.');
+            }
         } finally {
-            setSavingSubdomain(false);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setSavingSubdomain(false);
+            }
         }
-    }, [availability?.normalized, onStoreUpdate, storeDetails, subdomainValue]);
+    }, [availability?.normalized, domainScopeKey, onStoreUpdate, storeDetails, subdomainValue]);
 
     const refreshDomainStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
+        const requestScopeKey = domainScopeKey;
+        const requestId = domainStatusGuardRef.current!.begin();
         setStatusLoading(true);
         setDomainError(null);
         try {
@@ -359,6 +411,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 'status',
                 buildDomainSettingsLogContext(storeDetails, 'refresh_domain_status_response', storeDetails?.customDomain),
             );
+            if (
+                !domainStatusGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             if (!response.ok) {
                 throw createDomainSettingsError('desktop_domain_settings_status_load_rejected', response.status);
             }
@@ -388,6 +447,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
             }
         } catch (error) {
+            if (
+                !domainStatusGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logStoreDataFailure('desktop_domain_settings_status_load_failed', error, buildDomainSettingsLogContext(
                 storeDetails,
                 'refresh_domain_status',
@@ -395,16 +461,26 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             ));
             setDomainError(t('dnsVerificationDesc'));
         } finally {
-            setStatusLoading(false);
+            if (
+                domainStatusGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && domainScopeKeyRef.current === requestScopeKey
+            ) {
+                setStatusLoading(false);
+            }
         }
-    }, [onStoreStateUpdate, storeDetails, t]);
+    }, [domainScopeKey, onStoreStateUpdate, storeDetails, t]);
 
     useEffect(() => {
         void refreshDomainStatus();
+        return () => {
+            domainStatusGuardRef.current!.invalidate();
+        };
     }, [refreshDomainStatus]);
 
     const handleAddDomain = useCallback(async () => {
         if (!domainInput.trim()) return;
+        const requestScopeKey = domainScopeKey;
         setDomainLoading(true);
         setDomainError(null);
         try {
@@ -420,6 +496,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 'add',
                 buildDomainSettingsLogContext(storeDetails, 'add_domain_response', requestedDomain),
             );
+            if (!componentActiveRef.current || domainScopeKeyRef.current !== requestScopeKey) return;
             if (!response.ok) {
                 throw createDomainSettingsError('desktop_domain_settings_add_rejected', response.status);
             }
@@ -455,23 +532,43 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 createDomainSettingsError('desktop_domain_settings_add_rejected', getAxiosStatus(err)),
                 buildDomainSettingsLogContext(storeDetails, 'add_domain', domainAvailability?.normalized || domainInput),
             );
-            setDomainError(DOMAIN_SETTINGS_ADD_ERROR);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setDomainError(DOMAIN_SETTINGS_ADD_ERROR);
+            }
         } finally {
-            setDomainLoading(false);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setDomainLoading(false);
+            }
         }
-    }, [domainAvailability?.normalized, domainInput, onStoreStateUpdate, storeDetails]);
+    }, [domainAvailability?.normalized, domainInput, domainScopeKey, onStoreStateUpdate, storeDetails]);
 
     const handleCheckDomain = useCallback(async () => {
         if (!normalizedDomainInput) return;
+        const requestScopeKey = domainScopeKey;
+        const requestId = domainCheckGuardRef.current!.begin();
         setCheckingDomain(true);
         setDomainError(null);
         try {
             const result = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            if (
+                !domainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             setDomainAvailability(result);
             if (result?.normalized) {
                 setDomainInput(result.normalized);
             }
         } catch (error) {
+            if (
+                !domainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logStoreDataFailure('desktop_domain_settings_custom_domain_check_failed', error, buildDomainSettingsLogContext(
                 storeDetails,
                 'check_custom_domain',
@@ -479,11 +576,18 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             ));
             setDomainAvailability({ available: false, reason: 'Could not check domain right now.' });
         } finally {
-            setCheckingDomain(false);
+            if (
+                domainCheckGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && domainScopeKeyRef.current === requestScopeKey
+            ) {
+                setCheckingDomain(false);
+            }
         }
-    }, [normalizedDomainInput, storeDetails]);
+    }, [domainScopeKey, normalizedDomainInput, storeDetails]);
 
     const handleRemoveDomain = useCallback(async () => {
+        const requestScopeKey = domainScopeKey;
         setDomainLoading(true);
         setDomainError(null);
         try {
@@ -496,6 +600,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 'remove',
                 buildDomainSettingsLogContext(storeDetails, 'remove_domain_response', activeDomain),
             );
+            if (!componentActiveRef.current || domainScopeKeyRef.current !== requestScopeKey) return;
             if (!response.ok) {
                 throw createDomainSettingsError('desktop_domain_settings_remove_rejected', response.status);
             }
@@ -523,11 +628,15 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 'remove_domain',
                 activeDomain,
             ));
-            setDomainError('Failed to remove domain.');
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setDomainError('Failed to remove domain.');
+            }
         } finally {
-            setDomainLoading(false);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setDomainLoading(false);
+            }
         }
-    }, [activeDomain, onStoreStateUpdate, storeDetails]);
+    }, [activeDomain, domainScopeKey, onStoreStateUpdate, storeDetails]);
 
     const handleCopySubdomain = useCallback(async () => {
         if (!subdomainUrl) return;

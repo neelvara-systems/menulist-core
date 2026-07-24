@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -53,26 +54,33 @@ const canonicalIsoTimestampToMillis = (value: string): number | null => {
     return new Date(millis).toISOString() === normalized ? millis : null;
 };
 
+const normalizeTimestampMillis = (millis: unknown): number | null => {
+    if (typeof millis !== 'number' || !Number.isFinite(millis)) return null;
+    const date = new Date(millis);
+    return Number.isFinite(date.getTime()) ? millis : null;
+};
+
 const timestampLikeToMillis = (value: any): number | null => {
     if (!value) return null;
     if (typeof value.toMillis === 'function') {
-        const millis = value.toMillis();
-        return Number.isFinite(millis) ? millis : null;
+        return normalizeTimestampMillis(value.toMillis());
     }
     if (typeof value.toDate === 'function') {
-        const millis = value.toDate().getTime();
-        return Number.isFinite(millis) ? millis : null;
+        return normalizeTimestampMillis(value.toDate().getTime());
     }
-    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) return value.seconds * 1000;
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) return normalizeTimestampMillis(value.seconds * 1000);
+    if (value instanceof Date) return normalizeTimestampMillis(value.getTime());
+    if (typeof value === 'number') return normalizeTimestampMillis(value);
     if (typeof value === 'string') return canonicalIsoTimestampToMillis(value);
     return null;
 };
 
 const toIsoString = (value: any): string | null => {
     const millis = timestampLikeToMillis(value);
-    return millis === null ? null : new Date(millis).toISOString();
+    if (millis === null) return null;
+    const date = new Date(millis);
+    if (!Number.isFinite(date.getTime())) return null;
+    return date.toISOString();
 };
 
 const toMillis = (value: any): number => {
@@ -118,7 +126,8 @@ const isWidgetActivityRow = (
     tenantId: number,
     storeId: number,
 ) => (
-    normalizeAnswerlatticeScopeDocumentId(data.tId) === tenantId
+    data.pId === PRODUCT_IDS.ANSWERLATTICE
+    && normalizeAnswerlatticeScopeDocumentId(data.tId) === tenantId
     && normalizeAnswerlatticeScopeDocumentId(data.sId) === storeId
     && (data.mountContext === 'widget' || data.uId === 'widget')
 );
@@ -130,6 +139,7 @@ const fetchIndexedWidgetActivity = async (
 ) => {
     return db
         .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tenantId)
         .where('sId', '==', storeId)
         .where('mountContext', '==', 'widget')
@@ -145,6 +155,7 @@ const fetchFallbackWidgetActivity = async (
 ) => {
     const snapshot = await db
         .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tenantId)
         .where('sId', '==', storeId)
         .orderBy('createdOn', 'desc')

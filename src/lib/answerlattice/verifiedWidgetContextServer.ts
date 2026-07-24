@@ -38,25 +38,46 @@ type GeneratedVerifiedContextKey = {
 const base64UrlToBuffer = (value: string): Buffer | null => {
     if (!/^[A-Za-z0-9_-]+$/.test(value)) return null;
     try {
-        return Buffer.from(value, 'base64url');
+        const decoded = Buffer.from(value, 'base64url');
+        return decoded.toString('base64url') === value ? decoded : null;
     } catch {
         return null;
     }
 };
 
 const normalizeIdentityText = (value: unknown, maxLength: number) => {
-    const text = String(value || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+    if (typeof value !== 'string') return undefined;
+    const text = value.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
     return text ? text.slice(0, maxLength) : undefined;
 };
 
 const normalizeIdentityCode = (value: unknown, maxLength: number) => {
-    const text = String(value || '').trim().toLowerCase().replace(/[^a-z0-9_.:@-]/g, '');
+    if (typeof value !== 'string') return undefined;
+    const text = value.trim().toLowerCase().replace(/[^a-z0-9_.:@-]/g, '');
     return text ? text.slice(0, maxLength) : undefined;
+};
+
+const normalizeVerifiedVisitorSubject = (value: unknown): string | undefined => {
+    if (typeof value !== 'string' || value.length < 1 || value.length > 120) return undefined;
+    if (value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) return undefined;
+    return value;
 };
 
 const normalizeEmail = (value: unknown) => {
     const email = normalizeIdentityText(value, 180)?.toLowerCase();
     return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : undefined;
+};
+
+const isCanonicalIsoTimestamp = (value: unknown): value is string => {
+    if (typeof value !== 'string' || value.length < 20 || value.length > 40) return false;
+    const millis = Date.parse(value);
+    return Number.isFinite(millis) && new Date(millis).toISOString() === value;
+};
+
+const isCanonicalEd25519Spki = (value: unknown): value is string => {
+    if (typeof value !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(value)) return false;
+    const decoded = Buffer.from(value, 'base64');
+    return decoded.length === 44 && decoded.toString('base64') === value;
 };
 
 export const normalizeVerifiedContextKeyRecord = (value: unknown): AnswerlatticeVerifiedContextKeyRecord | null => {
@@ -66,10 +87,13 @@ export const normalizeVerifiedContextKeyRecord = (value: unknown): Answerlattice
         record.enabled !== true
         || record.algorithm !== 'Ed25519'
         || typeof record.keyId !== 'string'
-        || typeof record.publicKeySpki !== 'string'
-        || typeof record.createdAt !== 'string'
+        || !isCanonicalEd25519Spki(record.publicKeySpki)
+        || !isCanonicalIsoTimestamp(record.createdAt)
     ) return null;
-    if (!/^[A-Za-z0-9_-]{8,100}$/.test(record.keyId) || record.publicKeySpki.length > 512) return null;
+    if (
+        !/^[A-Za-z0-9_-]{8,100}$/.test(record.keyId)
+        || (record.rotatedAt !== undefined && !isCanonicalIsoTimestamp(record.rotatedAt))
+    ) return null;
     return {
         enabled: true,
         algorithm: 'Ed25519',
@@ -102,7 +126,14 @@ export const verifyAnswerlatticeVisitorToken = (
     nowMs = Date.now(),
 ): AnswerlatticeVerifiedVisitor | null => {
     const record = normalizeVerifiedContextKeyRecord(rawRecord);
-    if (!record || typeof token !== 'string' || token.length < 40 || token.length > 4096) return null;
+    if (
+        !record
+        || typeof token !== 'string'
+        || token.length < 40
+        || token.length > 4096
+        || !Number.isSafeInteger(nowMs)
+        || nowMs < 0
+    ) return null;
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const [headerPart, payloadPart, signaturePart] = parts;
@@ -114,8 +145,14 @@ export const verifyAnswerlatticeVisitorToken = (
     let header: Record<string, unknown>;
     let payload: Record<string, unknown>;
     try {
-        header = JSON.parse(headerBuffer.toString('utf8'));
-        payload = JSON.parse(payloadBuffer.toString('utf8'));
+        const parsedHeader = JSON.parse(headerBuffer.toString('utf8'));
+        const parsedPayload = JSON.parse(payloadBuffer.toString('utf8'));
+        if (
+            !parsedHeader || typeof parsedHeader !== 'object' || Array.isArray(parsedHeader)
+            || !parsedPayload || typeof parsedPayload !== 'object' || Array.isArray(parsedPayload)
+        ) return null;
+        header = parsedHeader;
+        payload = parsedPayload;
     } catch {
         return null;
     }
@@ -123,9 +160,14 @@ export const verifyAnswerlatticeVisitorToken = (
     if (payload.aud !== 'answerlattice-widget') return null;
 
     const nowSeconds = Math.floor(nowMs / 1000);
-    const issuedAt = Number(payload.iat);
-    const expiresAt = Number(payload.exp);
-    if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt)) return null;
+    const issuedAt = payload.iat;
+    const expiresAt = payload.exp;
+    if (
+        typeof issuedAt !== 'number'
+        || typeof expiresAt !== 'number'
+        || !Number.isSafeInteger(issuedAt)
+        || !Number.isSafeInteger(expiresAt)
+    ) return null;
     if (issuedAt > nowSeconds + 60 || expiresAt <= nowSeconds) return null;
     if (expiresAt - issuedAt <= 0 || expiresAt - issuedAt > ANSWERLATTICE_VERIFIED_CONTEXT_MAX_TOKEN_AGE_SECONDS) return null;
 
@@ -140,7 +182,7 @@ export const verifyAnswerlatticeVisitorToken = (
         return null;
     }
 
-    const id = normalizeIdentityCode(payload.sub, 120);
+    const id = normalizeVerifiedVisitorSubject(payload.sub);
     if (!id) return null;
     return {
         id,

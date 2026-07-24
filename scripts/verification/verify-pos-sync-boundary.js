@@ -493,6 +493,12 @@ function verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRule
     'preservesPosSyncWebhookSecret(resource.data, request.resource.data)',
     '!hasPosSyncWebhookSecret(request.resource.data)',
   ].forEach((token) => assertIncludes(firestoreRules, token, 'POS secret Firestore boundary'));
+  [
+    'match /stores/{storeId}/posDeliveryLogs/{deliveryId}',
+    'belongsToTenantById(',
+    'belongsToStoreById(storeId)',
+    'allow write: if false;',
+  ].forEach((token) => assertIncludes(firestoreRules, token, 'POS delivery history Firestore boundary'));
   assertIncludes(databaseConstants, 'POS_SYNC_SECRETS: "posSyncSecrets"', 'POS secret collection constant');
   assertIncludes(posSyncTypes, 'webhookSecret?: string;', 'POS legacy secret optional type');
   assertIncludes(posSyncTypes, 'secretVersion?: number;', 'POS secret version type');
@@ -612,7 +618,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'clients cannot add/change/delete legacy `posSync.webhookSecret`',
     'Typical post-migration path',
     'No Storage bucket, Firestore index, Cloud Function, scheduler, or delivery queue is added',
-    'The rules change is not safe to deploy ahead of the compatible secret API/UI',
+    'The legacy secret boundary is not safe to deploy ahead of a compatible secret API/UI',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'POS Firebase boundary docs'));
 
   [
@@ -648,10 +654,12 @@ function verifyPosSyncBoundary() {
   const serverWebhookTarget = read('src/lib/posSync/serverWebhookTarget.ts');
   const pinnedWebhookRequest = read('src/lib/posSync/pinnedWebhookRequest.ts');
   const deliveryState = read('src/lib/posSync/deliveryState.ts');
+  const deliveryHistory = read('src/lib/posSync/deliveryHistory.ts');
   const deliverRoute = read('src/app/api/pos-sync/deliver/route.ts');
   const testRoute = read('src/app/api/pos-sync/test/route.ts');
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
   const mobilePosSync = read('src/components/mobile/screens/MobilePosSyncScreen.tsx');
+  const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const testResponse = read('src/lib/posSync/testResponse.ts');
   const secretResponse = read('src/lib/posSync/secretResponse.ts');
   const secretStore = read('src/lib/posSync/serverSecretStore.ts');
@@ -686,6 +694,34 @@ function verifyPosSyncBoundary() {
   verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor);
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
   verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
+  [
+    'parsePosDeliveryHistoryEntry',
+    'storedDeliveryId !== documentId',
+    'DELIVERY_STATUSES.has',
+    'payload hashes, payload sizes',
+  ].forEach((token) => assertIncludes(deliveryHistory, token, 'POS delivery history public projection'));
+  [
+    'parsePosDeliveryHistoryEntry(document.id, document.data())',
+    'desktop_pos_sync_delivery_history_invalid_rows',
+    'createLatestRequestGuard',
+    'deliveryHistoryRequestGuardRef.current!.isCurrent(requestId)',
+    'posSyncScopeKeyRef.current !== requestScopeKey',
+    'deliveryEntriesScopeKey === posSyncScopeKey',
+    'dataSource={visibleDeliveryEntries}',
+    'componentActiveRef.current',
+  ].forEach((token) => assertIncludes(desktopPosSync, token, 'POS delivery history consumer'));
+  [
+    'connectionTestRequestGuardRef.current!.isCurrent(requestId)',
+    'return <MobilePosSyncScreenContent key={scopeKey} {...props} />;',
+    "String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')",
+    "String(previous?.storeId ?? '') !== String(expectedStoreId)",
+    'componentActiveRef.current',
+  ].forEach((token) => assertIncludes(mobilePosSync, token, 'Mobile POS tenant/store settlement guard'));
+  [
+    'key={`${String(storeDetails?.tenantId ?? \'\')}:${String(storeDetails?.storeId ?? \'\')}`}',
+    "String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')",
+    "String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')",
+  ].forEach((token) => assertIncludes(businessSettings, token, 'Desktop POS tenant/store settlement guard'));
   verifyPayloadBoundary(payloadFormatter, posSyncTypes, deliverRoute);
   verifyMobileShellBoundary(mobileShell, mobileMore, mobileShare);
   verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc, changelogDoc, lowercaseChangelogDoc);

@@ -1,74 +1,66 @@
 # SignalDesk AI Intelligence - Compliance Policy
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
-**Last Updated:** July 11, 2026
+**Status:** Implemented code contract; provider terms and live data-use certification pending
+**Last Updated:** July 21, 2026
 
-## Core Rule
+## Authority Rule
 
-AI is an assistant, not an authority.
+AI produces internal recommendations. Deterministic code and explicit human authority control source rights, retention, consent, suppression, channel eligibility, approval, send, publish, spend outside inference, and MenuList truth.
 
-## AI Must Not
+## Admission Controls
 
-- infer consent;
-- decide source-rights eligibility;
-- use blocked source fields;
-- invent target facts;
-- claim MenuList verified a business without proof;
-- claim Google, WhatsApp, Instagram, or Meta integration/partnership;
-- approve sends;
-- decide legal compliance;
-- bypass suppression;
-- recommend cold WhatsApp blasts;
-- recommend cold Instagram/Messenger DMs.
+Before provider work, SignalDesk requires:
 
-## Required Output Controls
+- authenticated SignalDesk access and action permission;
+- desktop context for volume and founder review;
+- active feature flag and no AI-worker kill switch;
+- active, unsuppressed target with retained source lineage;
+- active source policy permitting the task's evidence or draft use;
+- exact evidence identity when evidence exists;
+- active Gemini model route;
+- configured, approved provider account and available per-run/daily/monthly budget;
+- actor-bound idempotency and owned spend reservation.
 
-Every AI result must include:
+## Prompt Controls
 
-- schema validation status;
-- evidence refs;
-- rejected facts;
-- confidence;
-- blocked actions;
-- worker version;
-- prompt/rule version;
-- cost metadata.
+- Only the strict target projection and compact evidence summary are supplied.
+- Raw contacts, source payloads, secrets, and unrelated histories are excluded.
+- Target, evidence, operator instruction, prior output, and critic candidate are declared untrusted data.
+- Embedded instructions cannot override the system contract.
+- Generation and critic responses are JSON-only and capped at 4,096 output tokens.
+- Safety filters cover dangerous content, harassment, hate speech, and sexual content.
 
-## Prompt Data Minimization
+## Output Controls
 
-Use minimum necessary data:
+The provider response must parse and satisfy a strict Zod schema. Extra keys, oversized strings/arrays, invalid actions, malformed JSON, or missing required fields fail closed. Raw response text is not persisted. Runtime failure logs use bounded diagnostic context.
 
-- summarize evidence before prompt;
-- exclude raw contact values where not needed;
-- exclude blocked fields;
-- exclude raw source payloads;
-- exclude secrets;
-- exclude suppressed identities where not needed.
+Any rejected fact forces low confidence. Critic `hold`/`revise`, low confidence, or rejected facts may trigger only a configured same-provider escalation; otherwise escalation is recorded as blocked and remains review work.
+
+## Prohibited AI Authority
+
+AI cannot:
+
+- infer source ownership, consent, opt-in, or legal eligibility;
+- treat a public contact value as permission;
+- bypass suppression or retained-source expiry;
+- invent menus, prices, hours, owner names, reviews, traffic, partnerships, outcomes, or commercial terms;
+- approve or send outreach;
+- publish content or alter MenuList business truth;
+- activate a provider, route, budget, campaign, opportunity, or market pod;
+- silently recover an ambiguous paid call by executing it again.
 
 ## Human Review
 
-Human review is required when:
+Provider-backed runs remain reviewable by a desktop founder-admin. Non-accepted decisions require a bounded reason. Review metrics are cumulative evidence, not automatic authority. No model route graduates or gains external-action permissions from acceptance rate alone.
 
-- confidence is low;
-- source policy is unclear;
-- channel eligibility is unclear;
-- AI suggests a risky claim;
-- target has suppression ambiguity;
-- output schema fails;
-- evidence refs are missing.
-- a critic returns `revise` or `hold`;
-- stronger-model escalation is unavailable or still low confidence;
-- a workflow has not met its own measured graduation threshold.
+## Retention and Data Use
 
-## Volume Boundary
+Source-derived AI detail is scrubbed at 90 days by the consolidated SignalDesk maintenance scheduler. Provider terms, geographic processing, retention, training/data-use controls, credentials, and billing must be reviewed against the current Gemini service terms before live QA or production use. That external certification is not implied by source tests.
 
-Higher AI volume does not grant higher authority. Generation, critique, and escalation may execute automatically inside the founder's AI cost envelope. Source rights, consent, suppression, send, publish, spend outside AI inference, commercial terms, and MenuList truth remain deterministic blocks or founder decisions.
+## Incident Behavior
 
-## Open Questions
-
-| Question | Owner |
-| --- | --- |
-| Model provider and data-use terms | Founder + Codex before implementation |
-| Prompt retention policy | Founder + compliance review |
-| Eval pass thresholds | Measured per workflow in shadow review; no silent graduation |
+- Changed source authority after provider latency: settle as unresolved/review-required; do not expose output.
+- Provider or critic failure after reservation: mark the exact claim unresolved with stable evidence.
+- Lost final acknowledgement after commit: replay the completed claim and deterministic run.
+- Kill switch or budget failure: block before a provider call.
+- Invalid model output: fail closed and do not create a usable result.

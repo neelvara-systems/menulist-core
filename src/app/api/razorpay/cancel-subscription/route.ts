@@ -233,15 +233,14 @@ export const POST = withAuth(async (request, session) => {
                 transitionedSubscription,
                 'api:cancel-subscription',
             );
-            if (statusApplication.applied) {
-                await recordFounderSubscriptionChurn({
-                    cancellationReasonCode,
-                    productId,
-                    source: 'api:cancel-subscription',
-                    subscription: transitionedSubscription,
-                    occurredAt: Date.now(),
-                });
-            }
+            await recordFounderSubscriptionChurn({
+                cancellationReasonCode,
+                productId,
+                requireDurableWrite: true,
+                source: 'api:cancel-subscription',
+                subscription: transitionedSubscription,
+                occurredAt: Date.now(),
+            });
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_SUCCESS',

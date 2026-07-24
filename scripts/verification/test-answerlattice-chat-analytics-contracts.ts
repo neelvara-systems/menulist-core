@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {
+    getAnswerlatticeChatWorkspaceScopeKey,
     getAnswerlatticeAnalyticsQueryWindow,
+    isAnswerlatticeChatWorkspaceScopeAcknowledgement,
     normalizeAnswerlatticeAnalyticsDays,
     normalizeAnswerlatticeAnalyticsPageSize,
     parseAnswerlatticeAnalyticsDateRange,
@@ -12,6 +14,8 @@ import {
     parseAnswerlatticeFeedbackIntelligence,
     parseAnswerlatticeWeeklySummary,
 } from '../../src/lib/answerlattice/analyticsIntelligenceContracts';
+import { parseAnswerlatticeRoiMetricsApiResponse } from '../../src/lib/answerlattice/roiMetricsContracts';
+import { calculateROI } from '../../src/lib/analytics/roiCalculations';
 
 const validDay = {
     pId: 'AL',
@@ -32,6 +36,162 @@ const validDay = {
     sourceSessionCount: 4,
     sourceLimit: 2000,
 };
+
+assert.equal(
+    getAnswerlatticeChatWorkspaceScopeKey({ tenantId: 11, storeId: 101 }),
+    'answerlattice-chat:11:101',
+);
+
+const validRoiResponse = {
+    success: true,
+    data: {
+        tId: 11,
+        sId: 101,
+        metrics: {
+            estimatedTotalHoursSaved: 5.3,
+            estimatedMonthlyHoursSaved: 5.3,
+            estimatedTotalCostSaved: 133,
+            estimatedMonthlyCostSaved: 133,
+            conversationsObserved: 40,
+            qnaConversations: 30,
+            assistantConversations: 10,
+            positiveFeedbackSignals: 30,
+            negativeFeedbackSignals: 4,
+            platformCost: 99,
+            estimatedNetSavings: 34,
+            estimatedRoi: 34.3,
+            estimatedPaybackPeriod: 2.9,
+        },
+        params: {
+            avgSupportAgentHourlyCost: 25,
+            assumedMinutesSavedPerConversation: 8,
+            platformMonthlyCost: 99,
+        },
+        dateRange: {
+            start: '2026-06-11T00:00:00.000Z',
+            end: '2026-07-11T00:00:00.000Z',
+            days: 30,
+        },
+    },
+};
+assert.equal(
+    parseAnswerlatticeRoiMetricsApiResponse(validRoiResponse, { tId: 11, sId: 101 })?.data.metrics.estimatedRoi,
+    34.3,
+);
+assert.equal(
+    parseAnswerlatticeRoiMetricsApiResponse(validRoiResponse, { tId: 11, sId: 102 }),
+    null,
+    'ROI responses must acknowledge the exact requested workspace',
+);
+assert.equal(
+    parseAnswerlatticeRoiMetricsApiResponse({
+        ...validRoiResponse,
+        data: {
+            ...validRoiResponse.data,
+            analyticsData: { private: true },
+        },
+    }, { tId: 11, sId: 101 }),
+    null,
+    'undeclared raw analytics data must not enter browser state',
+);
+assert.equal(
+    parseAnswerlatticeRoiMetricsApiResponse({
+        ...validRoiResponse,
+        data: {
+            ...validRoiResponse.data,
+            metrics: {
+                ...validRoiResponse.data.metrics,
+                qnaConversations: 41,
+            },
+        },
+    }, { tId: 11, sId: 101 }),
+    null,
+    'conversation mode counts must reconcile with observed conversations',
+);
+assert.equal(
+    parseAnswerlatticeRoiMetricsApiResponse({
+        ...validRoiResponse,
+        data: {
+            ...validRoiResponse.data,
+            metrics: {
+                ...validRoiResponse.data.metrics,
+                estimatedRevenueProtected: 1000,
+            },
+        },
+    }, { tId: 11, sId: 101 }),
+    null,
+    'unsupported retention or revenue-attribution fields must not enter browser state',
+);
+
+const calculatedRoi = calculateROI({
+    analyticsData: {
+        totalConversations: 40,
+        qnaConversations: 30,
+        assistantConversations: 10,
+        positiveFeedback: 12,
+        negativeFeedback: 4,
+        dateRange: {
+            start: new Date('2026-06-11T00:00:00.000Z'),
+            end: new Date('2026-07-11T00:00:00.000Z'),
+        },
+    },
+    avgSupportAgentHourlyCost: 25,
+    assumedMinutesSavedPerConversation: 8,
+    platformMonthlyCost: 99,
+});
+assert.deepEqual(calculatedRoi, {
+    estimatedTotalHoursSaved: 5.3,
+    estimatedMonthlyHoursSaved: 5.3,
+    estimatedTotalCostSaved: 133,
+    estimatedMonthlyCostSaved: 133,
+    conversationsObserved: 40,
+    qnaConversations: 30,
+    assistantConversations: 10,
+    positiveFeedbackSignals: 12,
+    negativeFeedbackSignals: 4,
+    platformCost: 99,
+    estimatedNetSavings: 34,
+    estimatedRoi: 34.7,
+    estimatedPaybackPeriod: 2.9,
+});
+assert.equal(
+    calculateROI({
+        analyticsData: {
+            totalConversations: 0,
+            qnaConversations: 0,
+            assistantConversations: 0,
+            positiveFeedback: 0,
+            negativeFeedback: 0,
+            dateRange: {
+                start: new Date('2026-06-11T00:00:00.000Z'),
+                end: new Date('2026-07-11T00:00:00.000Z'),
+            },
+        },
+        assumedMinutesSavedPerConversation: 0,
+    }).estimatedPaybackPeriod,
+    null,
+    'a scenario without positive monthly savings must use a JSON-safe null payback period',
+);
+assert.equal(
+    getAnswerlatticeChatWorkspaceScopeKey({ tenantId: '011', storeId: 101 }),
+    null,
+    'noncanonical workspace IDs must not enter browser cache keys',
+);
+assert.equal(
+    isAnswerlatticeChatWorkspaceScopeAcknowledgement(
+        { tId: 11, sId: 101 },
+        { tId: 11, sId: 101 },
+    ),
+    true,
+);
+assert.equal(
+    isAnswerlatticeChatWorkspaceScopeAcknowledgement(
+        { tId: 11, sId: 102 },
+        { tId: 11, sId: 101 },
+    ),
+    false,
+    'a stale or wrong-workspace page must not settle browser state',
+);
 
 const parsed = parseAnswerlatticeChatAnalyticsDay({
     id: '11_101_2026-07-10',
@@ -165,6 +325,8 @@ const validWeekly = {
 };
 const parsedWeekly = parseAnswerlatticeWeeklySummary(validWeekly, scope);
 assert.equal(parsedWeekly?.narrative, 'A useful weekly summary.');
+assert.equal(parsedWeekly?.keyMetrics.volumeChangePercent, 2.5);
+assert.equal(parsedWeekly?.keyMetrics.positiveFeedbackSharePointChange, -1);
 assert.equal(parsedWeekly?.sourceCompleteness.comparisonComplete, true);
 assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, pId: 'ML' }, scope), null);
 assert.equal(parseAnswerlatticeWeeklySummary({ ...validWeekly, tId: '12' }, scope), null);
@@ -190,6 +352,17 @@ assert.equal(parseAnswerlatticeWeeklySummary({
         comparisonComplete: true,
     },
 }, scope), null);
+const currentWeekly = parseAnswerlatticeWeeklySummary({
+    ...validWeekly,
+    schemaVersion: 2,
+    keyMetrics: {
+        volumeChangePercent: null,
+        positiveFeedbackSharePointChange: null,
+        topCategory: 'Billing',
+    },
+}, scope);
+assert.equal(currentWeekly?.keyMetrics.volumeChangePercent, null);
+assert.equal(currentWeekly?.keyMetrics.positiveFeedbackSharePointChange, null);
 assert.equal(parseAnswerlatticeWeeklySummary({
     ...validWeekly,
     keyMetrics: { ...validWeekly.keyMetrics, volumeChange: Number.NaN },

@@ -12,6 +12,10 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import {
+    parsePosDeliveryHistoryEntry,
+    type PosDeliveryHistoryEntry,
+} from "@lib/posSync/deliveryHistory";
 import { logPosSyncSecretRotationAudit } from "@lib/posSync/secretAudit";
 import { formatWebhookSecretPreview } from "@lib/posSync/secretDisplay";
 import { requestPosSyncSecret } from "@lib/posSync/secretResponse";
@@ -24,6 +28,7 @@ import {
 } from "@lib/posSync/testResponse";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { createLatestRequestGuard } from "@lib/runtime/latestRequestGuard";
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from "../utils/businessSettingsDiagnostics";
 import { formatDateTime } from "@util/dateTime";
 import {
@@ -48,7 +53,7 @@ import {
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useSession } from "next-auth/react";
 import { useFormatter, useTranslations } from 'next-intl';
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     LuArrowRight,
     LuCheck,
@@ -76,17 +81,6 @@ interface PosSyncTabProps {
     storeDetails?: any;
     onStoreStateUpdate?: (updates: Record<string, any>) => void;
     onStoreUpdate?: (updates: Record<string, any>) => void | Promise<void>;
-}
-
-interface DeliveryLogEntry {
-    deliveryId: string;
-    menuVersion: number;
-    status: 'success' | 'failed' | 'timeout';
-    responseCode: number | null;
-    attempt: number;
-    sentAt: string | null;
-    duration: number;
-    error: string | null;
 }
 
 function createPosSyncStatusError(failureCode: string, status?: number): Error & { code: string; status?: number } {
@@ -213,6 +207,18 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const posSync = storeDetails?.posSync;
     const storeId = storeDetails?.storeId;
     const tenantId = storeDetails?.tenantId;
+    const posSyncScopeKey = `${String(tenantId ?? '')}:${String(storeId ?? '')}`;
+    const posSyncScopeKeyRef = useRef(posSyncScopeKey);
+    posSyncScopeKeyRef.current = posSyncScopeKey;
+    const componentActiveRef = useRef(true);
+    const deliveryHistoryRequestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!deliveryHistoryRequestGuardRef.current) {
+        deliveryHistoryRequestGuardRef.current = createLatestRequestGuard();
+    }
+    const connectionTestRequestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!connectionTestRequestGuardRef.current) {
+        connectionTestRequestGuardRef.current = createLatestRequestGuard();
+    }
 
     const [enabled, setEnabled] = useState(posSync?.enabled ?? false);
     const [webhookUrl, setWebhookUrl] = useState(posSync?.webhookUrl ?? '');
@@ -220,7 +226,8 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const [secretLoading, setSecretLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-    const [deliveryEntries, setDeliveryEntries] = useState<DeliveryLogEntry[]>([]);
+    const [deliveryEntries, setDeliveryEntries] = useState<PosDeliveryHistoryEntry[]>([]);
+    const [deliveryEntriesScopeKey, setDeliveryEntriesScopeKey] = useState('');
     const [loadingEntries, setLoadingEntries] = useState(false);
     const [secretVisible, setSecretVisible] = useState(false);
     const [regenerateSecretModalOpen, setRegenerateSecretModalOpen] = useState(false);
@@ -228,6 +235,17 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const [regeneratingSecret, setRegeneratingSecret] = useState(false);
     const [providerEmail, setProviderEmail] = useState('');
     const [sendingInstructions, setSendingInstructions] = useState(false);
+
+    const visibleDeliveryEntries = deliveryEntriesScopeKey === posSyncScopeKey
+        ? deliveryEntries
+        : [];
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
 
     const status = posSync?.status || 'disabled';
     const lastSentAt = posSync?.lastSentAt;
@@ -245,7 +263,9 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     ];
 
     const fetchDeliveryHistory = useCallback(async () => {
-        if (!storeId) return;
+        if (!storeId || !tenantId) return;
+        const requestScopeKey = `${String(tenantId)}:${String(storeId)}`;
+        const requestId = deliveryHistoryRequestGuardRef.current!.begin();
         setLoadingEntries(true);
         try {
             const logsRef = collection(
@@ -256,21 +276,35 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             );
             const q = query(logsRef, orderBy('sentAt', 'desc'), limit(20));
             const snapshot = await getDocs(q);
-            const entries = snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    deliveryId: data.deliveryId || doc.id,
-                    menuVersion: data.menuVersion || 0,
-                    status: data.status || 'failed',
-                    responseCode: data.responseCode ?? null,
-                    attempt: data.attempt || 1,
-                    sentAt: data.sentAt?.toDate?.()?.toISOString() || null,
-                    duration: data.duration || 0,
-                    error: null,
-                } as DeliveryLogEntry;
-            });
+            if (
+                !deliveryHistoryRequestGuardRef.current!.isCurrent(requestId)
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
+            const entries = snapshot.docs
+                .map(document => parsePosDeliveryHistoryEntry(document.id, document.data()))
+                .filter((entry): entry is PosDeliveryHistoryEntry => entry !== null);
+            const rejectedEntryCount = snapshot.size - entries.length;
+            if (rejectedEntryCount > 0) {
+                logBusinessSettingsFailure(
+                    'desktop_pos_sync_delivery_history_invalid_rows',
+                    new Error('Invalid POS delivery history rows were rejected'),
+                    buildPosSyncLogContext('load_delivery_history', storeId, tenantId, {
+                        rejectedEntryCount,
+                        requestedLimit: 20,
+                    }),
+                );
+            }
             setDeliveryEntries(entries);
+            setDeliveryEntriesScopeKey(requestScopeKey);
         } catch (error) {
+            if (
+                !deliveryHistoryRequestGuardRef.current!.isCurrent(requestId)
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logBusinessSettingsFailure(
                 'desktop_pos_sync_delivery_history_load_failed',
                 error,
@@ -281,15 +315,32 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 }),
             );
         } finally {
-            setLoadingEntries(false);
+            if (
+                deliveryHistoryRequestGuardRef.current!.isCurrent(requestId)
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setLoadingEntries(false);
+            }
         }
     }, [enabled, status, storeId, tenantId]);
 
     useEffect(() => {
         if (enabled && storeId) {
             fetchDeliveryHistory();
+        } else {
+            deliveryHistoryRequestGuardRef.current!.invalidate();
+            setDeliveryEntries([]);
+            setDeliveryEntriesScopeKey('');
+            setLoadingEntries(false);
         }
+        return () => {
+            deliveryHistoryRequestGuardRef.current!.invalidate();
+        };
     }, [enabled, storeId, fetchDeliveryHistory]);
+
+    useEffect(() => () => {
+        connectionTestRequestGuardRef.current!.invalidate();
+    }, [posSyncScopeKey]);
 
     useEffect(() => {
         let active = true;
@@ -325,6 +376,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     }, [onStoreStateUpdate, storeId, tenantId]);
 
     const handleToggle = useCallback(async (checked: boolean) => {
+        const requestScopeKey = `${String(tenantId ?? '')}:${String(storeId ?? '')}`;
         const previousEnabled = enabled;
         const previousWebhookSecret = webhookSecret;
         let ensuredSecret = webhookSecret;
@@ -341,22 +393,37 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             try {
                 const result = await requestPosSyncSecret({ action: 'ensure', storeId, tenantId });
                 ensuredSecret = result.secret;
-                setWebhookSecret(result.secret);
-                onStoreStateUpdate?.({
-                    'posSync.secretVersion': result.version,
-                    'posSync.webhookSecret': undefined,
-                });
+                if (
+                    componentActiveRef.current
+                    && posSyncScopeKeyRef.current === requestScopeKey
+                ) {
+                    setWebhookSecret(result.secret);
+                    onStoreStateUpdate?.({
+                        'posSync.secretVersion': result.version,
+                        'posSync.webhookSecret': undefined,
+                    });
+                }
             } catch (error) {
-                setEnabled(previousEnabled);
                 logBusinessSettingsFailure(
                     'desktop_pos_sync_secret_ensure_failed',
                     error,
                     buildPosSyncLogContext('ensure_secret', storeId, tenantId),
                 );
-                message.error('Could not prepare the verification secret. Try again.');
+                if (
+                    componentActiveRef.current
+                    && posSyncScopeKeyRef.current === requestScopeKey
+                ) {
+                    setEnabled(previousEnabled);
+                    message.error('Could not prepare the verification secret. Try again.');
+                }
                 return;
             } finally {
-                setSecretLoading(false);
+                if (
+                    componentActiveRef.current
+                    && posSyncScopeKeyRef.current === requestScopeKey
+                ) {
+                    setSecretLoading(false);
+                }
             }
             updates['posSync.menuVersion'] = 0;
             updates['posSync.lastStatus'] = 'never_sent';
@@ -371,8 +438,6 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             }
             await Promise.resolve(onStoreUpdate(updates));
         } catch (error) {
-            setEnabled(previousEnabled);
-            if (!ensuredSecret) setWebhookSecret(previousWebhookSecret);
             logBusinessSettingsFailure(
                 'desktop_pos_sync_toggle_save_failed',
                 error,
@@ -384,12 +449,20 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     previousWebhookSecretLength: previousWebhookSecret.length,
                 }),
             );
-            message.error('Failed to save external sync settings.');
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setEnabled(previousEnabled);
+                if (!ensuredSecret) setWebhookSecret(previousWebhookSecret);
+                message.error('Failed to save external sync settings.');
+            }
         }
     }, [enabled, webhookSecret, onStoreUpdate, storeId, tenantId]);
 
     const handleSaveUrl = useCallback(async () => {
         if (!webhookUrl.trim()) return;
+        const requestScopeKey = `${String(tenantId ?? '')}:${String(storeId ?? '')}`;
         const validation = validatePosSyncWebhookUrl(webhookUrl);
         if (!validation.valid || !validation.normalizedUrl) {
             message.error(validation.error || 'Please enter a valid URL');
@@ -405,8 +478,13 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 'posSync.lastError': '',
                 'posSync.consecutiveFailures': 0,
             }));
-            setWebhookUrl(validation.normalizedUrl);
-            message.success('Provider connection URL saved');
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setWebhookUrl(validation.normalizedUrl);
+                message.success('Provider connection URL saved');
+            }
         } catch (error) {
             logBusinessSettingsFailure(
                 'desktop_pos_sync_url_save_failed',
@@ -416,12 +494,19 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     previousWebhookUrlLength: webhookUrl.trim().length,
                 }),
             );
-            message.error('Failed to save external sync settings.');
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                message.error('Failed to save external sync settings.');
+            }
         }
     }, [enabled, webhookUrl, onStoreUpdate, storeId, tenantId]);
 
     const handleTest = useCallback(async () => {
         if (!storeId || !tenantId) return;
+        const requestScopeKey = `${String(tenantId)}:${String(storeId)}`;
+        const requestId = connectionTestRequestGuardRef.current!.begin();
         setIsTesting(true);
         setTestResult(null);
         try {
@@ -432,6 +517,12 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 body: JSON.stringify({ storeId, tenantId }),
             });
             const data = await readDesktopPosSyncTestResponse(res, storeId, tenantId);
+            if (
+                !connectionTestRequestGuardRef.current!.isCurrent(requestId)
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             if (res.ok && isSuccessfulPosSyncTestResponse(data)) {
                 setTestResult({
                     success: true,
@@ -458,6 +549,12 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 });
             }
         } catch (error) {
+            if (
+                !connectionTestRequestGuardRef.current!.isCurrent(requestId)
+                || posSyncScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logBusinessSettingsFailure(
                 'desktop_pos_sync_test_failed',
                 error,
@@ -465,7 +562,12 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             );
             setTestResult({ success: false, message: POS_SYNC_TEST_FAILED_MESSAGE });
         } finally {
-            setIsTesting(false);
+            if (
+                connectionTestRequestGuardRef.current!.isCurrent(requestId)
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setIsTesting(false);
+            }
         }
     }, [storeId, tenantId, fetchDeliveryHistory]);
 
@@ -493,6 +595,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             return;
         }
 
+        const requestScopeKey = `${String(tenantId ?? '')}:${String(storeId ?? '')}`;
         const secretRotationAudit = buildSecretRotationAudit();
 
         setSecretVisible(false);
@@ -500,17 +603,22 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
 
         try {
             const result = await requestPosSyncSecret({ action: 'rotate', storeId, tenantId });
-            setWebhookSecret(result.secret);
-            onStoreStateUpdate?.({
-                'posSync.consecutiveFailures': 0,
-                'posSync.lastError': '',
-                'posSync.secretRotatedAt': secretRotationAudit.rotatedAt,
-                'posSync.secretRotatedByEmail': secretRotationAudit.actorEmail,
-                'posSync.secretRotatedByUserId': secretRotationAudit.actorUserId,
-                'posSync.secretVersion': result.version,
-                'posSync.status': enabled ? 'healthy' : 'disabled',
-                'posSync.webhookSecret': undefined,
-            });
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setWebhookSecret(result.secret);
+                onStoreStateUpdate?.({
+                    'posSync.consecutiveFailures': 0,
+                    'posSync.lastError': '',
+                    'posSync.secretRotatedAt': secretRotationAudit.rotatedAt,
+                    'posSync.secretRotatedByEmail': secretRotationAudit.actorEmail,
+                    'posSync.secretRotatedByUserId': secretRotationAudit.actorUserId,
+                    'posSync.secretVersion': result.version,
+                    'posSync.status': enabled ? 'healthy' : 'disabled',
+                    'posSync.webhookSecret': undefined,
+                });
+            }
         } catch (error) {
             logBusinessSettingsFailure(
                 'desktop_pos_sync_secret_rotation_save_failed',
@@ -522,10 +630,20 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     hasActorUserId: Boolean(secretRotationAudit.actorUserId),
                 }),
             );
-            message.error('Could not save the new secret. Try again.');
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                message.error('Could not save the new secret. Try again.');
+            }
             return;
         } finally {
-            setRegeneratingSecret(false);
+            if (
+                componentActiveRef.current
+                && posSyncScopeKeyRef.current === requestScopeKey
+            ) {
+                setRegeneratingSecret(false);
+            }
         }
 
         logPosSyncSecretRotationAudit({
@@ -535,9 +653,14 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             storeId,
             tenantId,
         });
-        setRegenerateSecretModalOpen(false);
-        setRegenerateSecretConfirmationText('');
-        message.success('New secret generated. Use Copy to share it with your provider.');
+        if (
+            componentActiveRef.current
+            && posSyncScopeKeyRef.current === requestScopeKey
+        ) {
+            setRegenerateSecretModalOpen(false);
+            setRegenerateSecretConfirmationText('');
+            message.success('New secret generated. Use Copy to share it with your provider.');
+        }
     }, [buildSecretRotationAudit, enabled, onStoreStateUpdate, regenerateSecretConfirmationText, storeId, tenantId, webhookSecret]);
 
     const handleCopySecret = useCallback(async () => {
@@ -1011,7 +1134,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 </Button>
                             </Flex>
                             <Table
-                                dataSource={deliveryEntries}
+                                dataSource={visibleDeliveryEntries}
                                 columns={deliveryColumns}
                                 rowKey="deliveryId"
                                 size="small"

@@ -32,6 +32,7 @@ function verifyStaffRolesRouteParity() {
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const mobileUsersScreen = read('src/components/mobile/screens/MobileUsersScreen.tsx');
   const mobileRolesScreen = read('src/components/mobile/screens/MobileRolesScreen.tsx');
+  const platformGlobalDataProvider = read('src/providers/platformProviders/platformGlobalDataProvider.tsx');
   const staffClient = read('src/lib/staffManagement/client.ts');
   const staffServer = read('src/lib/staffManagement/server.ts');
   const staffConcurrencyBoundary = read('src/lib/staffManagement/concurrencyBoundary.ts');
@@ -100,22 +101,51 @@ function verifyStaffRolesRouteParity() {
     'const canManageUsers = userPermissions?.canManageUsers === true;',
     'const canAssignRoles = userPermissions?.canAssignRoles === true;',
     'if (!storeDetails?.tenantId || !storeDetails?.storeId || !canManageUsers)',
-    'fetchStaffUsers(storeDetails.tenantId, storeDetails.storeId)',
+    'fetchStaffUsers(expectedTenantId, expectedStoreId)',
     'const data = await createStaffUser',
     'const response = await updateStaffUser',
     'const response = await removeStaffFromStore',
     'const data = await requestStaffPasswordReset',
     'const data = await forceSignOutStaffUser',
-    'userHasCurrentStore(response.user, storeDetails?.storeId)',
+    'userHasCurrentStore(response.user, expectedStoreId)',
     'const selectedTargetCanBeManaged = selectedUser ? canManageTarget(selectedUser) : false;',
     "Owner accounts can only be changed by someone who can assign roles.",
     'disabled={!selectedTargetCanBeManaged}',
     'assignableRoles.map',
     'getMobileStaffTargetFailureCopy',
     "Only an Owner can change an Owner account",
+    'return <MobileUsersScreenContent key={scopeKey} {...props} />;',
+    'staffMutationInFlightRef.current',
+    'latestLoadRequestRef.current',
+    'isExpectedStaffScope(expectedTenantId, expectedStoreId)',
+    '!isMountedRef.current',
+    'item.id === user.id && item === user ? response.user : item',
+    'setSelectedUser((current) => current === user ?',
   ].forEach((token) => {
     assertIncludes(mobileUsersScreen, token, 'Mobile staff screen parity');
   });
+  assert(
+    !mobileUsersScreen.includes('setUsersList([...users, data.user])'),
+    'Mobile staff creation must not replace current scope truth from a captured list',
+  );
+  assert(
+    !mobileUsersScreen.includes('setUsersList(users.map('),
+    'Mobile staff mutations must not replace current scope truth from a captured list',
+  );
+  assert(
+    (mobileUsersScreen.match(/!isMountedRef\.current/g) || []).length >= 6,
+    'Every Mobile staff mutation must reject admission after its mounted scope is obsolete',
+  );
+  assertIncludes(
+    platformGlobalDataProvider,
+    'usersList: StaffUserSummary[] | null;',
+    'Global staff-list DTO contract',
+  );
+  assertIncludes(
+    platformGlobalDataProvider,
+    'setUsersList: Dispatch<SetStateAction<StaffUserSummary[] | null>>;',
+    'Global staff-list setter contract',
+  );
 
   [
     'saveRoleDefinition',
@@ -130,9 +160,20 @@ function verifyStaffRolesRouteParity() {
     'disabled={!canAssignRoles || selectedRole.id === DEFAULT_ROLE_IDS.OWNER}',
     'editingRole.id !== DEFAULT_ROLE_IDS.OWNER',
     '<Switch checked={isEnabled} onChange={() => togglePermission(permKey)} />',
+    'return <MobileRolesScreenContent key={scopeKey} {...props} />;',
+    'roleMutationInFlightRef.current',
+    'currentStoreDetails?.tenantId === expectedTenantId',
+    'currentStoreDetails?.storeId === expectedStoreId',
+    'currentStoreDetails?.roles === sourceStoreDetails.roles',
+    'currentStoreDetails?.roles === sourceRoles',
+    'if (!isMountedRef.current) return;',
   ].forEach((token) => {
     assertIncludes(mobileRolesScreen, token, 'Mobile roles screen parity');
   });
+  assert(
+    !mobileRolesScreen.includes('setStoreDetails({ ...storeDetails, roles: response.roles })'),
+    'Mobile roles must not replace generic captured store context after an awaited mutation',
+  );
 
   [
     'STAFF_CLIENT_RESPONSE_JSON_MAX_BYTES = 256 * 1024',

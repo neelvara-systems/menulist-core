@@ -1,4 +1,4 @@
-import { FieldValue, Firestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
+import { FieldValue, Firestore, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
 
@@ -35,6 +35,31 @@ export const getAnswerlatticeBundleLockDocId = (tId: number, sId: number) =>
     `bundleBuildLock_${Number(tId)}_${Number(sId)}`;
 
 export type AnswerlatticeCompiledSourceVersions = Partial<Record<AnswerlatticeContextSourceKey, number>>;
+
+const ANSWERLATTICE_BUNDLE_STATUS_SET = new Set([
+    'empty', 'building', 'ready', 'stale', 'failed', 'superseded',
+]);
+const EMPTY_BUNDLE_STATS = {
+    entities: 0,
+    entityRelations: 0,
+    canonicalAnswers: 0,
+    surfaces: 0,
+    routes: 0,
+    articles: 0,
+    faqs: 0,
+    releases: 0,
+    bytesTotal: 0,
+    publicBytesTotal: 0,
+    privateBytesTotal: 0,
+};
+const ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS = {
+    maxPublicBootstrapBytes: 50_000,
+    maxPublicRouteBytes: 50_000,
+    maxPublicObjectBytes: 512 * 1024,
+    maxPrivateObjectBytes: 2 * 1024 * 1024,
+    maxMcpResponseBytes: 24_000,
+    maxMcpToolCallsPerMinute: 60,
+};
 
 const normalizeStoredSourceVersion = (value: unknown): number | null => {
     if (value === undefined || value === null) return 0;
@@ -75,6 +100,19 @@ export const getNextAnswerlatticeBundleVersion = (manifest: unknown): number | n
     const current = resolveAnswerlatticeExistingBundleVersion(manifest);
     return current === null || current >= Number.MAX_SAFE_INTEGER ? null : current + 1;
 };
+
+export const shouldDeleteAnswerlatticeContextBundleVersion = (
+    candidateVersion: number,
+    activeVersion: number,
+    versionsToKeep: ReadonlySet<number>,
+): boolean => (
+    Number.isSafeInteger(candidateVersion)
+    && candidateVersion > 0
+    && Number.isSafeInteger(activeVersion)
+    && activeVersion > 0
+    && candidateVersion <= activeVersion
+    && !versionsToKeep.has(candidateVersion)
+);
 
 export type AnswerlatticeBundleBuildClaimDecision =
     | { status: 'active'; bundleVersion: number }
@@ -156,39 +194,124 @@ const sanitizeMetadata = (metadata?: SourceVersionBumpMetadata) => ({
     ...(metadata?.sourceType ? { lastSourceType: String(metadata.sourceType).slice(0, 80) } : {}),
 });
 
-export const appendCompiledContextSourceChange = (
-    batch: WriteBatch,
+export const isOwnedAnswerlatticeBundleManifest = (
+    value: unknown,
+    tId: number,
+    sId: number,
+): value is Record<string, any> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const manifest = value as Record<string, unknown>;
+    return manifest.schemaVersion === 1
+        && manifest.pId === 'AL'
+        && manifest.tId === tId
+        && manifest.sId === sId
+        && ANSWERLATTICE_BUNDLE_STATUS_SET.has(String(manifest.status))
+        && normalizeAnswerlatticeStoredBundleVersion(manifest.bundleVersion) !== null
+        && normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion) !== null
+        && normalizeAnswerlatticeStoredBundleVersion(manifest.lastReadyVersion) !== null
+        && areAnswerlatticeCompiledSourceVersionsValid(manifest.sourceVersions)
+        && Boolean(manifest.bundles)
+        && typeof manifest.bundles === 'object'
+        && !Array.isArray(manifest.bundles);
+};
+
+export const getMissingAnswerlatticeSourceVersionsBase = (tId: number, sId: number) => ({
+    schemaVersion: 1,
+    pId: 'AL',
+    tId,
+    sId,
+    ...normalizeCompiledSourceVersions({}),
+});
+
+export const getMissingAnswerlatticeBundleManifestBase = (tId: number, sId: number) => ({
+    schemaVersion: 1,
+    pId: 'AL',
+    tId,
+    sId,
+    publicBundleId: '',
+    bundleVersion: 0,
+    activeVersion: 0,
+    lastReadyVersion: 0,
+    sourceVersions: normalizeCompiledSourceVersions({}),
+    bundles: {},
+    stats: EMPTY_BUNDLE_STATS,
+    limits: ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
+    generatedAt: null,
+    lastBuildError: null,
+});
+
+export const appendCompiledContextSourceChanges = async (
+    transaction: Transaction,
     db: Firestore,
-    source: AnswerlatticeContextSourceKey,
+    sources: readonly AnswerlatticeContextSourceKey[],
     tId: number,
     sId: number,
     metadata?: SourceVersionBumpMetadata,
 ) => {
-    assertSource(source);
+    const uniqueSources = Array.from(new Set(sources));
+    if (uniqueSources.length === 0) {
+        throw new Error('Cannot update Answerlattice compiled context without at least one source.');
+    }
+    uniqueSources.forEach(assertSource);
     const { tenantId, storeId } = assertScope(tId, sId);
     const now = Timestamp.now();
     const metadataFields = sanitizeMetadata(metadata);
-    batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId)), {
+    const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId));
+    const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
+    const [sourceVersionsSnapshot, manifestSnapshot] = await Promise.all([
+        transaction.get(sourceVersionsRef),
+        transaction.get(manifestRef),
+    ]);
+    const sourceVersions = sourceVersionsSnapshot.data();
+    if (sourceVersionsSnapshot.exists && (
+        sourceVersions?.pId !== 'AL'
+        || sourceVersions?.tId !== tenantId
+        || sourceVersions?.sId !== storeId
+        || !areAnswerlatticeCompiledSourceVersionsValid(sourceVersions)
+    )) {
+        throw new Error('Answerlattice compiled source-version ownership conflict.');
+    }
+    if (
+        manifestSnapshot.exists
+        && !isOwnedAnswerlatticeBundleManifest(manifestSnapshot.data(), tenantId, storeId)
+    ) {
+        throw new Error('Answerlattice compiled bundle-manifest ownership conflict.');
+    }
+
+    transaction.set(sourceVersionsRef, {
+        ...(!sourceVersionsSnapshot.exists ? getMissingAnswerlatticeSourceVersionsBase(tenantId, storeId) : {}),
         schemaVersion: 1,
         pId: 'AL',
         tId: tenantId,
         sId: storeId,
-        [source]: FieldValue.increment(1),
+        ...Object.fromEntries(uniqueSources.map(source => [source, FieldValue.increment(1)])),
         updatedAt: now,
         ...metadataFields,
     }, { merge: true });
 
-    batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId)), {
+    transaction.set(manifestRef, {
+        ...(!manifestSnapshot.exists ? getMissingAnswerlatticeBundleManifestBase(tenantId, storeId) : {}),
         schemaVersion: 1,
         pId: 'AL',
         tId: tenantId,
         sId: storeId,
         status: 'stale',
-        staleReason: metadata?.reason || `${source}_changed`,
+        staleReason: metadata?.reason || `${uniqueSources.join('_')}_changed`,
         updatedAt: now,
         ...metadataFields,
     }, { merge: true });
 };
+
+export const appendCompiledContextSourceChange = async (
+    transaction: Transaction,
+    db: Firestore,
+    source: AnswerlatticeContextSourceKey,
+    tId: number,
+    sId: number,
+    metadata?: SourceVersionBumpMetadata,
+) => appendCompiledContextSourceChanges(transaction, db, [source], tId, sId, metadata);
 
 export const markCompiledContextSourceChanged = async (
     db: Firestore,
@@ -197,8 +320,7 @@ export const markCompiledContextSourceChanged = async (
     sId: number,
     metadata?: SourceVersionBumpMetadata,
 ) => {
-    const batch = db.batch();
-    appendCompiledContextSourceChange(batch, db, source, tId, sId, metadata);
-
-    await batch.commit();
+    await db.runTransaction(async transaction => {
+        await appendCompiledContextSourceChange(transaction, db, source, tId, sId, metadata);
+    });
 };

@@ -8,10 +8,7 @@
  * Per architecture: No API routes needed - server components read directly.
  */
 
-import { DB_COLLECTIONS } from '@constant/database';
 import { FEATURE_FLAGS } from '@config/features';
-import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
 import {
     CMI_CONSTRAINTS,
     ConfidenceData,
@@ -19,72 +16,6 @@ import {
     ItemPresentation,
     MenuIntelligenceState
 } from '@type/intelligence';
-import { doc, getDoc } from 'firebase/firestore';
-
-const COLLECTION = DB_COLLECTIONS.MENU_INTELLIGENCE;
-
-/**
- * Convert Firestore Timestamps to JS Dates in intelligence state
- */
-function convertTimestamps(data: any): MenuIntelligenceState {
-    const result = { ...data };
-
-    // Convert top-level timestamps
-    if (result.computedAt?.toDate) {
-        result.computedAt = result.computedAt.toDate();
-    }
-    if (result.validUntil?.toDate) {
-        result.validUntil = result.validUntil.toDate();
-    }
-
-    // Convert itemConfidence timestamps
-    if (result.itemConfidence) {
-        for (const itemId of Object.keys(result.itemConfidence)) {
-            if (result.itemConfidence[itemId].lastUpdated?.toDate) {
-                result.itemConfidence[itemId].lastUpdated =
-                    result.itemConfidence[itemId].lastUpdated.toDate();
-            }
-        }
-    }
-
-    // Convert suppressionWindows timestamps
-    if (result.suppressionWindows) {
-        for (const itemId of Object.keys(result.suppressionWindows)) {
-            if (result.suppressionWindows[itemId].suppressedAt?.toDate) {
-                result.suppressionWindows[itemId].suppressedAt =
-                    result.suppressionWindows[itemId].suppressedAt.toDate();
-            }
-            if (result.suppressionWindows[itemId].suppressUntil?.toDate) {
-                result.suppressionWindows[itemId].suppressUntil =
-                    result.suppressionWindows[itemId].suppressUntil.toDate();
-            }
-        }
-    }
-
-    // Convert projectCalibration timestamp
-    if (result.projectCalibration?.lockedAt?.toDate) {
-        result.projectCalibration.lockedAt = result.projectCalibration.lockedAt.toDate();
-    }
-
-    // Convert audit log timestamps
-    if (result.recentAuditLog) {
-        result.recentAuditLog = result.recentAuditLog.map((entry: any) => ({
-            ...entry,
-            timestamp: entry.timestamp?.toDate ? entry.timestamp.toDate() : entry.timestamp,
-            reversedAt: entry.reversedAt?.toDate ? entry.reversedAt.toDate() : entry.reversedAt
-        }));
-    }
-
-    return result as MenuIntelligenceState;
-}
-
-/**
- * Get document reference for menu intelligence
- */
-function getDocRef(tId: string | number, sId: string | number, projectId: string) {
-    const docId = `${tId}_${sId}_${projectId}`;
-    return doc(firebaseClient, COLLECTION, docId);
-}
 
 /**
  * Fetch Menu Intelligence state for a project
@@ -95,25 +26,15 @@ function getDocRef(tId: string | number, sId: string | number, projectId: string
  * @returns Intelligence state or null if not computed yet
  */
 export async function getMenuIntelligence(
-    tId: string | number,
-    sId: string | number,
-    projectId: string
+    _tId: string | number,
+    _sId: string | number,
+    _projectId: string
 ): Promise<MenuIntelligenceState | null> {
     if (!FEATURE_FLAGS.ENABLE_CONTINUOUS_MENU_INTELLIGENCE) return null;
-    return await apiCallComposer(
-        async () => {
-            const docRef = getDocRef(tId, sId, projectId);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                return null;
-            }
-
-            const data = docSnap.data();
-            return convertTimestamps(data);
-        },
-        'getMenuIntelligence'
-    );
+    // No app/owner/public consumer is certified for this private projection.
+    // Keep all helpers neutral until a protected, allowlisted DTO boundary is
+    // designed and reviewed; never revive a raw Firestore document cast here.
+    return null;
 }
 
 /**
@@ -222,7 +143,9 @@ export async function getItemsByPriority(
     }
 
     // Sort by priority descending
-    return result.sort((a, b) => b.priority - a.priority);
+    return result.sort((a, b) => (
+        b.priority - a.priority || (a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0)
+    ));
 }
 
 /**

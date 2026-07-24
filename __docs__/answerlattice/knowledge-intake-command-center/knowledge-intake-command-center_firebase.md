@@ -12,6 +12,8 @@
 
 Answerlattice intake is a licensed, bounded processing feature. Mutating and expensive API actions require an active Answerlattice beta/subscription on the workspace store document before URL fetch, source import, analysis, review updates, or publish.
 
+License and paid-intake fallback reads constrain exact dual `AL` product identity plus agreeing `tenantId/tId` and `storeId/sId` before their five-row limit, and every direct or fallback document is revalidated transactionally. The store summary is only a document-ID hint; exact store and subscription ownership remain authoritative.
+
 Non-negotiable rules:
 
 - no free real source scan

@@ -52,6 +52,22 @@ export type SignalDeskWebhookInboundState =
     | "legal_request"
     | "needs_review";
 
+export const isSignalDeskInboxReviewState = (state: string) => (
+    state === "needs_review"
+    || state === "interested"
+    || state === "complaint"
+    || state === "privacy_request"
+    || state === "legal_request"
+);
+
+export const isSignalDeskSafetyReplyState = (state: string) => (
+    state === "dnc"
+    || state === "wrong_contact"
+    || state === "complaint"
+    || state === "privacy_request"
+    || state === "legal_request"
+);
+
 export type SignalDeskWebhookChannelHealthAuthority = {
     channel: "email" | "whatsapp" | "instagram" | "messenger";
     configured: boolean;

@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Implementation
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-19
+> **Version:** 1.3.1
+> **Last Updated:** 2026-07-23
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS` (client + CF)
 
@@ -165,6 +165,8 @@ The processor reads/writes these docs by direct ID inside transactions. No colle
 | `modifiedOn` | Timestamp | Last config change |
 
 **Ownership and legacy behavior:** The settings producer writes `pId/tId/sId` on every save. The settings GET/test routes and Functions consumer compare embedded ownership with the session/event-derived document path before using adapter secrets. Documents with no ownership fields at all are the bounded legacy shape: the derived scope is claimed by writing the three fields inside a Firestore transaction. Partial, wrong-product, or conflicting scope is rejected; the owner API returns support-review status and Functions return an all-disabled config. The owner route re-reads ownership in the same transaction that merges only Slack/email fields, so it cannot overwrite a concurrently changed identity and never rewrites controlled Linear/GitHub or transaction-owned circuit-breaker maps from an earlier read. Circuit-breaker success/failure changes also re-read ownership inside a Firestore transaction.
+
+**Stored-value admission:** Ownership does not make stored fields trustworthy. GET and test routes use one exact projection for Slack URL, channel, filters and email recipients. Slack is configured/enabled only for an HTTPS `hooks.slack.com/services/...` URL without userinfo, nonstandard port, query or fragment; PUT revalidates a legacy stored URL before preserving it. Functions apply the same URL boundary and admit circuit-breaker failure counts only as nonnegative safe integers from 0 through 1000. Malformed legacy values disable the affected destination/state instead of being string-coerced or queued for a test.
 
 **Secret client boundary:** Both dedicated and shared Firestore rules deny client reads, creates, and updates for `integrationConfig_*`, including platform-admin browser clients. Configuration is reachable only through Admin SDK routes/Functions. The API returns `webhookConfigured`, never the raw webhook. Firestore provider encryption at rest is inherited infrastructure; application-level per-tenant encryption is not implemented or claimed.
 

@@ -6,8 +6,8 @@ import {
     calculateResolutionRate,
     compareMetrics,
     getComparisonDateRange,
+    type AnalyticsSummary,
 } from '../../src/lib/analytics/comparison';
-import type { AnalyticsSummary } from '../../src/lib/analytics/dal';
 
 const toDateKey = (value: Date) => value.toISOString().slice(0, 10);
 const custom = getComparisonDateRange(
@@ -38,7 +38,7 @@ assert.throws(
 
 const summary = (overrides: Partial<AnalyticsSummary>): AnalyticsSummary => ({
     totalChats: 0,
-    satisfactionRate: 0,
+    positiveFeedbackShare: null,
     avgMessagesPerChat: 0,
     totalMessages: 0,
     totalFeedback: 0,
@@ -58,9 +58,26 @@ assert.deepEqual(malformedMetric.volume, {
     previous: 0,
     change: 0,
     changePercent: 0,
+    displayChange: 0,
+    changeUnit: 'percent',
+    available: true,
     trend: 'stable',
     isPositive: true,
 });
+const feedbackShare = compareMetrics(
+    summary({ positiveFeedbackShare: 80, totalFeedback: 10 }),
+    summary({ positiveFeedbackShare: 50, totalFeedback: 10 }),
+);
+assert.equal(feedbackShare.positiveFeedbackShare.change, 30);
+assert.equal(feedbackShare.positiveFeedbackShare.displayChange, 30);
+assert.equal(feedbackShare.positiveFeedbackShare.changeUnit, 'percentage-points');
+assert.equal(feedbackShare.positiveFeedbackShare.available, true);
+const unavailableFeedbackShare = compareMetrics(
+    summary({ positiveFeedbackShare: 80, totalFeedback: 10 }),
+    summary({ positiveFeedbackShare: null, totalFeedback: 0 }),
+);
+assert.equal(unavailableFeedbackShare.positiveFeedbackShare.available, false);
+assert.equal(unavailableFeedbackShare.positiveFeedbackShare.displayChange, null);
 
 assert.equal(calculateFirstResponseTime([
     { role: 'assistant', timestamp: new Date('2026-07-01T09:00:00.000Z') },

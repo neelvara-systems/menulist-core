@@ -18,7 +18,7 @@ import {
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime, fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Card, Dialog, DotLoading, Flex, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import {
@@ -72,7 +72,7 @@ function getMobileTempStatusFailureCode(
         : 'mobile_temp_status_clear_failed';
 }
 
-export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScreenProps) {
+function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) {
     const t = useTranslations('MobileTempStatus');
     const formatter = useFormatter();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
@@ -86,12 +86,39 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
     const [selectedExpiryHours, setSelectedExpiryHours] = useState<number | null>(24);
     const [exactExpiryAt, setExactExpiryAt] = useState<string>(() => getDefaultTempStatusDateTime(24));
     const [isLoading, setIsLoading] = useState(false);
+    const isMountedRef = useRef(true);
+    const tempStatusActionInFlightRef = useRef(false);
+    const currentStoreScopeRef = useRef({
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    });
+    currentStoreScopeRef.current = {
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    };
+    const isExpectedStoreScope = useCallback((tenantId: unknown, storeId: unknown) => (
+        isMountedRef.current
+        && String(currentStoreScopeRef.current.tenantId ?? '') === String(tenantId ?? '')
+        && String(currentStoreScopeRef.current.storeId ?? '') === String(storeId ?? '')
+    ), []);
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const previewMessage = statusType === 'custom'
         ? (customMessage.trim() || 'Temporary notice')
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
 
     const handleSet = useCallback(async () => {
+        if (
+            !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || tempStatusActionInFlightRef.current
+        ) return;
+        const sourceStoreDetails = storeDetails;
+        const expectedTenantId = sourceStoreDetails.tenantId;
+        const expectedStoreId = sourceStoreDetails.storeId;
         const expiresAt = fromNativeDateTimeInputValue(exactExpiryAt);
         const exactExpiryDate = toDate(expiresAt);
         if (!exactExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
@@ -110,8 +137,13 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             confirmText: 'Show to customers',
             cancelText: 'Cancel',
         });
-        if (!confirmed) return;
+        if (
+            !confirmed
+            || tempStatusActionInFlightRef.current
+            || !isExpectedStoreScope(expectedTenantId, expectedStoreId)
+        ) return;
 
+        tempStatusActionInFlightRef.current = true;
         setIsLoading(true);
 
         const newStatus = {
@@ -121,7 +153,16 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             createdAt: new Date().toISOString(),
         };
         const prevStatus = storedStatus;
-        setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
+        let optimisticStoreDetails: typeof storeDetails | undefined;
+        setStoreDetails((prev: any) => {
+            if (
+                String(prev?.tenantId ?? '') !== String(expectedTenantId)
+                || String(prev?.storeId ?? '') !== String(expectedStoreId)
+                || prev?.tempStatus !== prevStatus
+            ) return prev;
+            optimisticStoreDetails = { ...prev, tempStatus: newStatus };
+            return optimisticStoreDetails;
+        });
 
         try {
             const res = await fetch('/api/store/temp-status', {
@@ -137,33 +178,52 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             });
 
             const result = await readTempStatusResponse(res, 'set', {
-                ...buildMobileTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
+                ...buildMobileTempStatusLogContext(sourceStoreDetails, 'set_temp_status', statusType),
                 ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
                 hasPreviousStatus: Boolean(prevStatus),
             });
-            Toast.show({
-                content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : t('statusSet'),
-                icon: result.effectsPending ? undefined : 'success',
-                duration: result.effectsPending ? 2200 : 1500,
-            });
+            if (isExpectedStoreScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({
+                    content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : t('statusSet'),
+                    icon: result.effectsPending ? undefined : 'success',
+                    duration: result.effectsPending ? 2200 : 1500,
+                });
+            }
         } catch (error) {
             logMobileOwnerFailure(
                 getMobileTempStatusFailureCode(error, 'set'),
                 error,
                 {
-                    ...buildMobileTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
+                    ...buildMobileTempStatusLogContext(sourceStoreDetails, 'set_temp_status', statusType),
                     ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
                     hasPreviousStatus: Boolean(prevStatus),
                 },
             );
-            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
-            Toast.show({ content: t('failedToSet'), duration: 2000 });
+            setStoreDetails((prev: any) => (
+                prev === optimisticStoreDetails
+                    ? { ...prev, tempStatus: prevStatus }
+                    : prev
+            ));
+            if (isExpectedStoreScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: t('failedToSet'), duration: 2000 });
+            }
         } finally {
-            setIsLoading(false);
+            tempStatusActionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
-    }, [exactExpiryAt, customMessage, formatter, setStoreDetails, statusType, storedStatus, storeDetails, t]);
+    }, [exactExpiryAt, customMessage, formatter, isExpectedStoreScope, setStoreDetails, statusType, storedStatus, storeDetails, t]);
 
     const handleClear = useCallback(async () => {
+        if (
+            !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || tempStatusActionInFlightRef.current
+        ) return;
+        const sourceStoreDetails = storeDetails;
+        const expectedTenantId = sourceStoreDetails.tenantId;
+        const expectedStoreId = sourceStoreDetails.storeId;
         const prevStatus = storedStatus;
         const confirmed = await Dialog.confirm({
             title: 'Clear customer status?',
@@ -173,13 +233,25 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             confirmText: 'Clear status',
             cancelText: 'Cancel',
         });
-        if (!confirmed) return;
+        if (
+            !confirmed
+            || tempStatusActionInFlightRef.current
+            || !isExpectedStoreScope(expectedTenantId, expectedStoreId)
+        ) return;
 
+        tempStatusActionInFlightRef.current = true;
         setIsLoading(true);
 
+        let optimisticStoreDetails: typeof storeDetails | undefined;
         setStoreDetails((prev: any) => {
+            if (
+                String(prev?.tenantId ?? '') !== String(expectedTenantId)
+                || String(prev?.storeId ?? '') !== String(expectedStoreId)
+                || prev?.tempStatus !== prevStatus
+            ) return prev;
             const { tempStatus, ...rest } = prev || {};
-            return rest;
+            optimisticStoreDetails = rest;
+            return optimisticStoreDetails;
         });
         try {
             const res = await fetch('/api/store/temp-status', {
@@ -190,29 +262,40 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             });
 
             const result = await readTempStatusResponse(res, 'clear', {
-                ...buildMobileTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
+                ...buildMobileTempStatusLogContext(sourceStoreDetails, 'clear_temp_status', prevStatus?.type),
                 hasPreviousStatus: Boolean(prevStatus),
             });
-            Toast.show({
-                content: result.effectsPending ? 'Cleared. Customer pages may take a moment to refresh.' : t('statusCleared'),
-                icon: result.effectsPending ? undefined : 'success',
-                duration: result.effectsPending ? 2200 : 1500,
-            });
+            if (isExpectedStoreScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({
+                    content: result.effectsPending ? 'Cleared. Customer pages may take a moment to refresh.' : t('statusCleared'),
+                    icon: result.effectsPending ? undefined : 'success',
+                    duration: result.effectsPending ? 2200 : 1500,
+                });
+            }
         } catch (error) {
             logMobileOwnerFailure(
                 getMobileTempStatusFailureCode(error, 'clear'),
                 error,
                 {
-                    ...buildMobileTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
+                    ...buildMobileTempStatusLogContext(sourceStoreDetails, 'clear_temp_status', prevStatus?.type),
                     hasPreviousStatus: Boolean(prevStatus),
                 },
             );
-            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
-            Toast.show({ content: t('failedToClear'), duration: 2000 });
+            setStoreDetails((prev: any) => (
+                prev === optimisticStoreDetails
+                    ? { ...prev, tempStatus: prevStatus }
+                    : prev
+            ));
+            if (isExpectedStoreScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: t('failedToClear'), duration: 2000 });
+            }
         } finally {
-            setIsLoading(false);
+            tempStatusActionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
-    }, [setStoreDetails, storedStatus, storeDetails, t]);
+    }, [isExpectedStoreScope, setStoreDetails, storedStatus, storeDetails, t]);
 
     if (!storeDetails) {
         return (
@@ -272,4 +355,11 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             </Flex>
         </Flex>
     );
+}
+
+export default function MobileTempStatusScreen(props: MobileTempStatusScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileTempStatusScreenContent key={scopeKey} {...props} />;
 }

@@ -312,7 +312,7 @@ function verifyConfirmPaymentRoute(route, boundary, subscriptionServer, boundary
     "currency !== 'INR'",
     'Number.isSafeInteger(amount)',
     'statuses.length >= MAX_MANUAL_PAYMENT_STATUS_HISTORY',
-    ') !== DEFAULT_PRODUCT_ID',
+    'data.pId !== DEFAULT_PRODUCT_ID || data.productId !== DEFAULT_PRODUCT_ID',
   ].forEach((token) => assertIncludes(boundary, token, 'Manual subscription confirmation boundary'));
 
   [
@@ -348,6 +348,11 @@ function verifyRenewRoute(route) {
     'Online subscriptions auto-renew via Razorpay',
     'RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE',
     ".where('billingMode', '==', 'manual')",
+    ".where('tId', '==', tenantId)",
+    ".where('sId', '==', storeId)",
+    'const currentScope = getMenuListSubscriptionEntitlementScope(currentSubscription);',
+    'currentScope.tenantId !== tenantId',
+    'currentScope.storeId !== storeId',
     'existingSubData.resellerId !== resellerId && !isPlatformUser',
     "logger.security('Reseller Renew - Unauthorized Access'",
     'const renewalStart = previousExpiry && previousExpiry > requestNow ? previousExpiry : requestNow;',
@@ -375,6 +380,11 @@ function verifyAddLocationRoute(route) {
   [
     'calculateOfflineLocationTopup({ locationCount, pricingTier, validUntil })',
     ".where('billingMode', '==', 'manual')",
+    ".where('tId', '==', tenantId)",
+    ".where('sId', '==', storeId)",
+    'const currentScope = getMenuListSubscriptionEntitlementScope(currentSubscription);',
+    'currentScope.tenantId !== tenantId',
+    'currentScope.storeId !== storeId',
     'existingSubData.resellerId !== resellerId && !isPlatformUser',
     "logger.security('Reseller Add Location Capacity - Unauthorized Access'",
     "existingSubData.status !== 'active'",
@@ -398,7 +408,9 @@ function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
     ".where('resellerId', '==', resellerId)",
     ".orderBy('createdOn', 'desc')",
     '.limit(resultLimit + 1)',
-    'const isPartial = snapshot.size > resultLimit;',
+    'const exactSubscriptionDocs = snapshot.docs.flatMap((doc) => {',
+    'getMenuListSubscriptionEntitlementScope(doc.data())',
+    'const isPartial = snapshot.size > resultLimit || exactSubscriptionDocs.length > resultLimit;',
     'const quantity = Math.max(1, Number(subscription.quantity || 1));',
     'subscriptionStatus === \'pending\'',
     'normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl)',

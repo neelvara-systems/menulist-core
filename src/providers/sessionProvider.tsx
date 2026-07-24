@@ -8,6 +8,7 @@ import RolesPermissionInitialData from '@data/rolesPermissionsInitialData';
 import { getStoreById, readStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { readTenantById } from '@database/tenants';
+import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { getBoundedFirebaseStringContext, getFirebaseAuthSessionLogContext, logFirebaseBootstrapFailure } from '@lib/firebase/firebaseDiagnostics';
 import {
@@ -27,6 +28,11 @@ import {
     getActiveTenantStoreSummaryId,
     isActiveStoreRecordInTenantScope,
 } from '@lib/multiOutlet/sessionStoreContextBoundary';
+import {
+    getSessionProviderScopeKey,
+    getSubscriptionLoadScopeKey,
+    hasSessionProviderScopeChanged,
+} from '@lib/multiOutlet/sessionProviderScopeBoundary';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import { getPermissionsForRole } from '@lib/permissions/hasPermission';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
@@ -38,7 +44,7 @@ import { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { SupportTicketType } from '@type/supportTicket';
 import { objectNullCheck, removeObjRef } from '@util/utils';
-import type { AIBalanceUpdate } from '@services/ai/balanceSync';
+import { normalizeAiBalanceUpdate } from '@services/ai/balanceSync';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import { SessionProvider as Provider } from 'next-auth/react';
@@ -118,8 +124,8 @@ export default function SessionProvider({ children, session }: Props) {
         !session?.user?.storeId && !(session?.user as any)?.productAccounts?.AL?.storeId
     )
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
-    const activeSubscriptionStoreIdRef = useRef<number | null>(null);
-    const activeSubscriptionRequestStoreIdRef = useRef<number | null>(null);
+    const activeSubscriptionScopeKeyRef = useRef<string | null>(null);
+    const activeSubscriptionRequestScopeKeyRef = useRef<string | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
@@ -146,13 +152,50 @@ export default function SessionProvider({ children, session }: Props) {
 
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string>();
+    const providerSessionScopeKeyRef = useRef<string | null | undefined>(undefined);
+
+    const resetScopedProviderState = useCallback(() => {
+        setTenantDetails(null);
+        setStoreDetails(null);
+        setLoginStoreDetails(null);
+        setUserPermissions(null);
+        setUsersList(null);
+        setFontsList(null);
+        setAssetsList({ images: [] });
+        setActiveStoreContextRaw(null);
+        writeActiveStoreContextId(null);
+        setCachedKBCategories({ cachedOn: null, kBCategories: null, scopeKey: null });
+        setCachedChangelog({ cachedOn: null, changelog: null, scopeKey: null });
+        setCachedTickets({ cachedOn: null, tickets: [], scopeKey: null });
+        setCachedArticles({ cachedOn: null, articles: [], scopeKey: null });
+        setPlatformStoreSummaryOptions([]);
+        setPlatformStoreSummaryLoadedAt(null);
+        setPlatformStoreSummaryLoading(false);
+        activeSubscriptionScopeKeyRef.current = null;
+        activeSubscriptionRequestScopeKeyRef.current = null;
+        setActiveSubscription(null);
+        setActiveSubscriptionLoading(false);
+        clearUserContext();
+    }, []);
 
     const fetchActiveSubscriptionForStore = useCallback(async (
         tenantId: number,
         storeId: number,
         storesList?: any[],
     ) => {
-        activeSubscriptionRequestStoreIdRef.current = storeId;
+        const requestScopeKey = getSubscriptionLoadScopeKey(tenantId, storeId);
+        if (!requestScopeKey) {
+            activeSubscriptionScopeKeyRef.current = null;
+            activeSubscriptionRequestScopeKeyRef.current = null;
+            setActiveSubscription(null);
+            setActiveSubscriptionLoading(false);
+            return null;
+        }
+
+        activeSubscriptionRequestScopeKeyRef.current = requestScopeKey;
+        if (activeSubscriptionScopeKeyRef.current !== requestScopeKey) {
+            setActiveSubscription(null);
+        }
         setActiveSubscriptionLoading(true);
 
         try {
@@ -162,15 +205,15 @@ export default function SessionProvider({ children, session }: Props) {
                 storesList,
             );
 
-            if (activeSubscriptionRequestStoreIdRef.current === storeId) {
-                activeSubscriptionStoreIdRef.current = storeId;
+            if (activeSubscriptionRequestScopeKeyRef.current === requestScopeKey) {
+                activeSubscriptionScopeKeyRef.current = requestScopeKey;
                 setActiveSubscription(subscriptionData);
             }
 
             return subscriptionData;
         } finally {
-            if (activeSubscriptionRequestStoreIdRef.current === storeId) {
-                activeSubscriptionRequestStoreIdRef.current = null;
+            if (activeSubscriptionRequestScopeKeyRef.current === requestScopeKey) {
+                activeSubscriptionRequestScopeKeyRef.current = null;
                 setActiveSubscriptionLoading(false);
             }
         }
@@ -229,10 +272,11 @@ export default function SessionProvider({ children, session }: Props) {
     // When any AI service gets a response with remainingBalance, it fires this event
     useEffect(() => {
         const handleBalanceUpdate = (e: Event) => {
-            const detail = (e as CustomEvent<AIBalanceUpdate>).detail;
+            const detail = normalizeAiBalanceUpdate((e as CustomEvent<unknown>).detail);
             if (!detail) return;
             setActiveSubscription((prev: FirestoreSubscriptionDoc | null) => {
-                if (!prev || Number(prev.storeId ?? prev.sId) !== detail.billingStoreId) return prev;
+                const scope = getMenuListSubscriptionEntitlementScope(prev);
+                if (!scope || scope.storeId !== detail.billingStoreId) return prev;
                 return { ...prev, monthlyCredits: detail.monthlyCredits, topUpCredits: detail.topUpCredits };
             });
         };
@@ -255,6 +299,15 @@ export default function SessionProvider({ children, session }: Props) {
             };
             (window as any).__MENULIST_SESSION_DEBUG__ = debugSession;
         }
+
+        const currentProviderScopeKey = getSessionProviderScopeKey(effectiveSession);
+        if (hasSessionProviderScopeChanged(providerSessionScopeKeyRef.current, currentProviderScopeKey)) {
+            providerSessionScopeKeyRef.current = currentProviderScopeKey;
+            prevSessionKeyRef.current = undefined;
+            resetScopedProviderState();
+            return;
+        }
+        providerSessionScopeKeyRef.current = currentProviderScopeKey;
 
         if (isAnswerlatticeRoute) {
             setActiveSubscriptionLoading(false);
@@ -372,26 +425,7 @@ export default function SessionProvider({ children, session }: Props) {
 
         } else if (!session) {
             // Remove in-memory authenticated state as soon as NextAuth ends.
-            setTenantDetails(null);
-            setStoreDetails(null);
-            setLoginStoreDetails(null);
-            setUserPermissions(null);
-            setUsersList(null);
-            setFontsList(null);
-            setAssetsList({ images: [] });
-            setActiveStoreContextRaw(null);
-            setCachedKBCategories({ cachedOn: null, kBCategories: null, scopeKey: null });
-            setCachedChangelog({ cachedOn: null, changelog: null, scopeKey: null });
-            setCachedTickets({ cachedOn: null, tickets: [], scopeKey: null });
-            setCachedArticles({ cachedOn: null, articles: [], scopeKey: null });
-            setPlatformStoreSummaryOptions([]);
-            setPlatformStoreSummaryLoadedAt(null);
-            setPlatformStoreSummaryLoading(false);
-            activeSubscriptionStoreIdRef.current = null;
-            activeSubscriptionRequestStoreIdRef.current = null;
-            setActiveSubscription(null);
-            setActiveSubscriptionLoading(false);
-            clearUserContext();
+            resetScopedProviderState();
         }
 
         return () => {
@@ -403,6 +437,7 @@ export default function SessionProvider({ children, session }: Props) {
         fetchActiveSubscriptionForStore,
         firebaseAuthReady,
         isAnswerlatticeRoute,
+        resetScopedProviderState,
         session,
     ]) // Re-run the effect when the session changes
 
@@ -411,6 +446,7 @@ export default function SessionProvider({ children, session }: Props) {
 
         const loginStoreId = Number(session.user?.storeId);
         const loginTenantId = Number(session.user?.tenantId);
+        const loginSubscriptionScopeKey = getSubscriptionLoadScopeKey(loginTenantId, loginStoreId);
         const requestedStoreContextId = Number(activeStoreContext || 0);
         const requestedStoreSummary: any = tenantDetails.storesList.find(
             (store: any) => getActiveTenantStoreSummaryId(store) === requestedStoreContextId,
@@ -448,8 +484,8 @@ export default function SessionProvider({ children, session }: Props) {
                 setStoreDetails(loginStoreDetails);
             }
             if (
-                activeSubscriptionStoreIdRef.current === loginStoreId
-                || activeSubscriptionRequestStoreIdRef.current === loginStoreId
+                activeSubscriptionScopeKeyRef.current === loginSubscriptionScopeKey
+                || activeSubscriptionRequestScopeKeyRef.current === loginSubscriptionScopeKey
             ) {
                 return;
             }
@@ -509,7 +545,6 @@ export default function SessionProvider({ children, session }: Props) {
                 tenantDetails.storesList,
             );
             if (!cancelled) {
-                activeSubscriptionStoreIdRef.current = targetStoreId;
                 setActiveSubscription(subscriptionData);
             }
         };
@@ -523,8 +558,8 @@ export default function SessionProvider({ children, session }: Props) {
                     hasTargetSummary: Boolean(targetSummary),
                     targetSummaryHasDetails: Boolean(targetSummary?.storeDetails),
                 });
-                activeSubscriptionStoreIdRef.current = null;
-                activeSubscriptionRequestStoreIdRef.current = null;
+                activeSubscriptionScopeKeyRef.current = null;
+                activeSubscriptionRequestScopeKeyRef.current = null;
                 setActiveSubscription(null);
                 setActiveStoreContext(null);
                 setStoreDetails(loginStoreDetails);
@@ -741,6 +776,9 @@ export default function SessionProvider({ children, session }: Props) {
             && expectedStoreIdForRender > 0
             && Number(storeDetails?.storeId) === expectedStoreIdForRender
         );
+    const renderedProviderScopeKey = getSessionProviderScopeKey(effectiveSession);
+    const providerStateMatchesCurrentSession = providerSessionScopeKeyRef.current === undefined
+        || providerSessionScopeKeyRef.current === renderedProviderScopeKey;
 
     return (
         <Provider
@@ -749,21 +787,23 @@ export default function SessionProvider({ children, session }: Props) {
             refetchOnWindowFocus={false}     // ✅ Disable refetch on window focus
         >
             <PlatformGlobalDataProvider contextData={{
-                tenantDetails,
+                tenantDetails: providerStateMatchesCurrentSession ? tenantDetails : null,
                 setTenantDetails,
-                storeDetails,
+                storeDetails: providerStateMatchesCurrentSession ? storeDetails : null,
                 setStoreDetails,
-                userPermissions,
+                userPermissions: providerStateMatchesCurrentSession ? userPermissions : null,
                 setUserPermissions,
-                usersList,
+                usersList: providerStateMatchesCurrentSession ? usersList : null,
                 setUsersList,
-                fontsList,
+                fontsList: providerStateMatchesCurrentSession ? fontsList : null,
                 setFontsList,
-                assetsList,
+                assetsList: providerStateMatchesCurrentSession ? assetsList : { images: [] },
                 setAssetsList,
-                activeSubscription,
+                activeSubscription: providerStateMatchesCurrentSession ? activeSubscription : null,
                 setActiveSubscription,
-                activeSubscriptionLoading,
+                activeSubscriptionLoading: providerStateMatchesCurrentSession
+                    ? activeSubscriptionLoading
+                    : Boolean(renderedProviderScopeKey),
                 setActiveSubscriptionLoading,
                 isMasterUser: loginStoreIsMaster,
                 activeStoreContext,
@@ -776,11 +816,11 @@ export default function SessionProvider({ children, session }: Props) {
                 setCachedTickets,
                 cachedArticles,
                 setCachedArticles,
-                platformStoreSummaryOptions,
+                platformStoreSummaryOptions: providerStateMatchesCurrentSession ? platformStoreSummaryOptions : [],
                 setPlatformStoreSummaryOptions,
-                platformStoreSummaryLoadedAt,
+                platformStoreSummaryLoadedAt: providerStateMatchesCurrentSession ? platformStoreSummaryLoadedAt : null,
                 setPlatformStoreSummaryLoadedAt,
-                platformStoreSummaryLoading,
+                platformStoreSummaryLoading: providerStateMatchesCurrentSession ? platformStoreSummaryLoading : false,
                 setPlatformStoreSummaryLoading
             }}>
                 {(effectiveSession && effectiveSession.user?.storeId && !firebaseAuthReady && !canRenderBeforeFirebaseAuth) ? (

@@ -4,6 +4,7 @@ import { AI_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { genAIClient } from '../genAiClient';
+import type { KeyManagerStats } from '../ai/keyManager';
 
 const logger = functions.logger;
 const HEALTH_DOC_ID = 'aiProvider_gemini';
@@ -11,6 +12,35 @@ const PROVIDER = 'gemini';
 const AI_PROVIDER_HEALTH_FAILED_CODE = 'AI_PROVIDER_HEALTH_CHECK_FAILED';
 const AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE_CODE = 'AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE';
 const AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED_CODE = 'AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED';
+
+type AiProviderHealthBaseState = {
+    checkedAt: Timestamp;
+    keyStats: KeyManagerStats | null;
+    latencyMs: number;
+    model: string;
+    productId: 'ML';
+    provider: typeof PROVIDER;
+    sdkSurface: 'firebase-functions';
+    source: 'menulistMaintenanceScheduler';
+    updatedAt: Timestamp;
+};
+
+export type AiProviderHealthState = AiProviderHealthBaseState & (
+    | {
+        error: null;
+        status: 'ok';
+        success: true;
+    }
+    | {
+        error: string;
+        failureCode: string;
+        sourceErrorCode: string | number | null;
+        sourceErrorName: string;
+        sourceErrorStatus: string | number | null;
+        status: 'failed';
+        success: false;
+    }
+);
 
 function responseText(response: any): string {
     if (!response) return '';
@@ -28,7 +58,10 @@ function boundedDiagnosticValue(value: unknown): string | number | null {
     return null;
 }
 
-function getAiProviderHealthErrorContext(error: unknown): Record<string, string | number | null> {
+function getAiProviderHealthErrorContext(error: unknown): Pick<
+    Extract<AiProviderHealthState, { status: 'failed' }>,
+    'sourceErrorCode' | 'sourceErrorName' | 'sourceErrorStatus'
+> {
     const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
     return {
         sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
@@ -45,14 +78,16 @@ function getAiProviderHealthFailureCode(error: unknown): string {
     return AI_PROVIDER_HEALTH_FAILED_CODE;
 }
 
-function keyStats() {
-    const maybeGateway = genAIClient as unknown as { getKeyStats?: () => unknown };
-    if (typeof maybeGateway.getKeyStats !== 'function') return null;
+function keyStats(): KeyManagerStats | null {
     try {
-        return maybeGateway.getKeyStats();
+        return genAIClient.getKeyStats();
     } catch {
         return null;
     }
+}
+
+export async function replaceAiProviderHealthState(details: AiProviderHealthState): Promise<void> {
+    await db.collection(DB_COLLECTIONS.HEALTH).doc(HEALTH_DOC_ID).set(details);
 }
 
 export async function runAiProviderHealthCheckLogic(): Promise<Record<string, unknown>> {
@@ -65,7 +100,7 @@ export async function runAiProviderHealthCheckLogic(): Promise<Record<string, un
         provider: PROVIDER,
         sdkSurface: 'firebase-functions',
         source: 'menulistMaintenanceScheduler',
-    };
+    } as const;
 
     try {
         const response = await genAIClient.models.generateContent({
@@ -84,7 +119,7 @@ export async function runAiProviderHealthCheckLogic(): Promise<Record<string, un
             });
         }
 
-        const details = {
+        const details: AiProviderHealthState = {
             ...base,
             error: null,
             keyStats: keyStats(),
@@ -94,7 +129,7 @@ export async function runAiProviderHealthCheckLogic(): Promise<Record<string, un
             updatedAt: Timestamp.now(),
         };
 
-        await db.collection(DB_COLLECTIONS.HEALTH).doc(HEALTH_DOC_ID).set(details, { merge: true });
+        await replaceAiProviderHealthState(details);
         return {
             latencyMs,
             model: AI_MODEL,
@@ -105,7 +140,7 @@ export async function runAiProviderHealthCheckLogic(): Promise<Record<string, un
         const latencyMs = Date.now() - startedAt;
         const failureCode = getAiProviderHealthFailureCode(error);
         const errorContext = getAiProviderHealthErrorContext(error);
-        await db.collection(DB_COLLECTIONS.HEALTH).doc(HEALTH_DOC_ID).set({
+        const failureState: AiProviderHealthState = {
             ...base,
             error: failureCode,
             failureCode,
@@ -115,7 +150,8 @@ export async function runAiProviderHealthCheckLogic(): Promise<Record<string, un
             ...errorContext,
             success: false,
             updatedAt: Timestamp.now(),
-        }, { merge: true }).catch((writeError) => {
+        };
+        await replaceAiProviderHealthState(failureState).catch((writeError) => {
             logger.error('[AI Provider Health] Failed to persist failure state', {
                 failureCode: AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED_CODE,
                 ...getAiProviderHealthErrorContext(writeError),

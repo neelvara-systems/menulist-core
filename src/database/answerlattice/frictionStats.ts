@@ -21,11 +21,16 @@ import {
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { AnswerlatticeFrictionInsight, AnswerlatticeFrictionSnapshot } from "@type/answerlattice";
 
+const hasExactFrictionScope = (tId: number, sId: number): boolean => (
+    Number.isSafeInteger(tId) && tId > 0 && Number.isSafeInteger(sId) && sId > 0
+);
+
 /**
  * Get the nightly friction snapshot for a tenant+store.
  * Reads from platformSummary/frictionSnapshot_{tId}_{sId} (1 read).
  */
 export const getFrictionSnapshot = async (tId: number, sId: number): Promise<AnswerlatticeFrictionSnapshot | null> => {
+    if (!hasExactFrictionScope(tId, sId)) return null;
     return await apiCallComposer(
         async () => {
             const docRef = doc(answerlatticeFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `frictionSnapshot_${tId}_${sId}`);
@@ -44,6 +49,7 @@ export const getFrictionSnapshot = async (tId: number, sId: number): Promise<Ans
  * Reads from platformSummary/friction_{tId}_{sId} (1 read).
  */
 export const getFrictionInsight = async (tId: number, sId: number): Promise<AnswerlatticeFrictionInsight | null> => {
+    if (!hasExactFrictionScope(tId, sId)) return null;
     return await apiCallComposer(
         async () => {
             const docRef = doc(answerlatticeFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `friction_${tId}_${sId}`);

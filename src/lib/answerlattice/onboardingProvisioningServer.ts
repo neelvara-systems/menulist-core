@@ -7,6 +7,7 @@ import {
 } from '@lib/answerlattice/onboardingProvisioning';
 import { requireAnswerlatticeOnboardingUserId } from '@lib/answerlattice/onboardingUserIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import {
     ANSWERLATTICE_TENANT_SUMMARY_SHARD_TYPE,
     getAnswerlatticeTenantSummaryShardId,
@@ -43,16 +44,28 @@ const requireScopeId = (value: unknown, field: 'storeId' | 'tenantId'): number =
     return scopeId;
 };
 
+const hasExactProvisioningScopeId = (
+    data: Record<string, unknown>,
+    fields: readonly [string, string],
+    expected: number,
+    label: 'storeId' | 'tenantId',
+): boolean => {
+    const values = fields.map(field => data[field]);
+    if (values.some(value => value === undefined)) return false;
+    return values.every(value => requireScopeId(value, label) === expected);
+};
+
 export const answerlatticeProvisioningOwnershipMatches = (
     data: Record<string, unknown>,
     scope: AnswerlatticeProvisioningScope,
 ): boolean => {
     try {
-        return (data.pId ?? data.productId) === PRODUCT_IDS.ANSWERLATTICE
+        return data.pId === PRODUCT_IDS.ANSWERLATTICE
+            && data.productId === PRODUCT_IDS.ANSWERLATTICE
             && String(data.onboardingAttemptId || '') === scope.attemptId
             && String(data.onboardingRequestFingerprint || '') === scope.requestFingerprint
-            && requireScopeId(data.tId ?? data.tenantId, 'tenantId') === scope.tenantId
-            && requireScopeId(data.sId ?? data.storeId, 'storeId') === scope.storeId;
+            && hasExactProvisioningScopeId(data, ['tId', 'tenantId'], scope.tenantId, 'tenantId')
+            && hasExactProvisioningScopeId(data, ['sId', 'storeId'], scope.storeId, 'storeId');
     } catch {
         return false;
     }
@@ -106,7 +119,10 @@ export async function persistAnswerlatticePendingSubscription(params: {
             if (
                 requireScopeId(subscriptionData.tId ?? subscriptionData.tenantId, 'tenantId') !== tenantId
                 || requireScopeId(subscriptionData.sId ?? subscriptionData.storeId, 'storeId') !== storeId
-                || (subscriptionData.pId ?? subscriptionData.productId) !== PRODUCT_IDS.ANSWERLATTICE
+                || !isAnswerlatticeSubscriptionInScope(subscriptionData, {
+                    tId: tenantId,
+                    sId: storeId,
+                })
             ) {
                 throw new Error('answerlattice_onboarding_subscription_scope_conflict');
             }
@@ -304,9 +320,10 @@ export async function compensateAnswerlatticeOnboardingProvisioning(params: {
         if (subscriptionRef && subscriptionSnap?.exists) {
             const subscriptionData = subscriptionSnap.data() || {};
             if (
-                requireScopeId(subscriptionData.tId ?? subscriptionData.tenantId, 'tenantId') === tenantId
-                && requireScopeId(subscriptionData.sId ?? subscriptionData.storeId, 'storeId') === storeId
-                && (subscriptionData.pId ?? subscriptionData.productId) === PRODUCT_IDS.ANSWERLATTICE
+                isAnswerlatticeSubscriptionInScope(subscriptionData, {
+                    tId: tenantId,
+                    sId: storeId,
+                })
             ) {
                 transaction.set(subscriptionRef, {
                     status: 'cancelled',

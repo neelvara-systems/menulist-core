@@ -3,7 +3,7 @@
 **Status:** ✅ IMPLEMENTED (v1.5 — authentication and response identity hardened Jul 13, 2026)
 **Date:** February 22, 2026  
 **Audience:** CEO, PM, Clients
-**Last Source Gate Update:** July 13, 2026
+**Last Source Gate Update:** July 22, 2026
 
 ---
 
@@ -11,7 +11,7 @@
 
 Current source/docs parity is guarded by `npm run verify:platform-pull-api-boundary`.
 
-The gate checks the Business Settings Integrations tab key controls, the authenticated transactional key-management route, strict key shape and duplicate rejection, fail-closed pre-auth/per-key limits, private success/error/secret response headers, stable ETag identity, target eligibility, target document-ID and MenuList numeric-ID admission, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, and this spec.
+The gate checks the Business Settings Integrations tab key controls, the authenticated transactional key-management route, strict key shape and duplicate rejection, fail-closed pre-auth/per-key limits, private success/error/secret response headers, stable ETag identity, target eligibility, target document-ID and MenuList numeric-ID admission, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, compatibility fixtures for linked outlet/item/variant/fact-value identity, the frozen [Business Truth Contract](../canonical-truth-infrastructure/canonical-truth-infrastructure_business-truth-contract.md), and this spec.
 
 ---
 
@@ -180,5 +180,5 @@ IDs are only retired when an item is permanently deleted.
 
 ---
 
-**Last Updated:** July 2, 2026
+**Last Updated:** July 22, 2026
 **ChatGPT Review:** Session Mar 14, 2026 — 45% accuracy (11/25 already done, 6 valid, 5 deferred, 1 rejected)

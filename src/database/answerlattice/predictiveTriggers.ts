@@ -12,8 +12,8 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
-import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
-import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
+import { collection, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where, writeBatch } from "@firebase/firestore";
+import { appendAnswerlatticeCompiledContextSourceChange } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
 import {
@@ -23,6 +23,8 @@ import {
 } from '@lib/answerlattice/predictiveSupportContracts';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
+import { revalidateAnswerlatticePublicClientCache } from '@lib/cache/answerlatticePublicClientCache';
+import { secureError } from '@lib/security/secureLogger';
 import {
     ANSWERLATTICE_PREDICTIVE_CONSTRAINTS,
     AnswerlatticePredictiveTrigger,
@@ -30,6 +32,7 @@ import {
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS;
 const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
+const AUDIT_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => {
@@ -38,6 +41,12 @@ const getDocRef = (docId: string) => {
     return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
 };
 const getSummaryDocRef = (tId: number, sId: number) => doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, `predictiveTriggers_${tId}_${sId}`);
+const getAuditDocRef = () => doc(collection(answerlatticeFirebaseClient, AUDIT_COLLECTION));
+
+export interface AnswerlatticePredictiveTriggerMutationOutcome<T> {
+    value: T;
+    summarySynchronized: boolean;
+}
 
 const normalizeScopeId = (value: unknown): number | null => (
     typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null
@@ -74,13 +83,14 @@ const isPotentiallyActiveTrigger = (trigger: AnswerlatticePredictiveTrigger, now
     return (startsAt === null || startsAt <= now) && (endsAt === null || endsAt > now);
 };
 
-const resolveTriggerScope = async (triggerId?: string) => {
+const resolveTriggerScope = async (triggerId: string | undefined, expectedScope: { tId: number; sId: number }) => {
+    const scope = assertScope(expectedScope.tId, expectedScope.sId);
     const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
     if (normalizedTriggerId) {
         const snap = await getDoc(getDocRef(normalizedTriggerId));
         if (snap.exists()) {
             const existing = normalizePredictiveTriggerRecord(snap.id, snap.data());
-            if (existing) return { tId: existing.tId, sId: existing.sId };
+            if (existing && existing.tId === scope.tId && existing.sId === scope.sId) return scope;
         }
     }
 
@@ -95,6 +105,7 @@ const rebuildPredictiveTriggerSummary = async (
     const { tId, sId } = assertScope(scope.tId, scope.sId);
     const snapshot = await getDocs(query(
         getCollectionRef(),
+        where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
         where('tId', '==', tId),
         where('sId', '==', sId),
         limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT + 1),
@@ -105,26 +116,74 @@ const rebuildPredictiveTriggerSummary = async (
     const triggers: Record<string, AnswerlatticePredictiveTrigger> = {};
     snapshot.docs.forEach((triggerDoc) => {
         const trigger = normalizePredictiveTriggerRecord(triggerDoc.id, triggerDoc.data(), { tId, sId });
-        if (trigger) triggers[triggerDoc.id] = projectPredictiveTriggerForSummary(trigger);
+        if (!trigger) throw new Error('Predictive trigger source is invalid; the runtime summary was not replaced.');
+        triggers[triggerDoc.id] = projectPredictiveTriggerForSummary(trigger);
     });
     const triggerValues = Object.values(triggers);
 
-    await setDoc(getSummaryDocRef(tId, sId), {
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId,
-        sId,
-        lastUpdated: Timestamp.now(),
-        version: Date.now(),
-        triggerCount: triggerValues.length,
-        activeTriggerCount: triggerValues.filter(trigger => isPotentiallyActiveTrigger(trigger)).length,
-        triggers,
+    await runTransaction(answerlatticeFirebaseClient, async transaction => {
+        await appendAnswerlatticeCompiledContextSourceChange(transaction, 'predictiveTriggers', tId, sId, {
+            reason,
+            sourceId,
+            sourceType: COLLECTION,
+        });
+        transaction.set(getSummaryDocRef(tId, sId), {
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId,
+            sId,
+            lastUpdated: Timestamp.now(),
+            version: Date.now(),
+            triggerCount: triggerValues.length,
+            activeTriggerCount: triggerValues.filter(trigger => isPotentiallyActiveTrigger(trigger)).length,
+            contextInvalidationVersion: 1,
+            triggers,
+        });
     });
-    await markAnswerlatticeCompiledContextSourceChanged('predictiveTriggers', tId, sId, {
+    await revalidateAnswerlatticePublicClientCache(
+        { tId, sId },
+        'predictive',
         reason,
-        sourceId,
-        sourceType: COLLECTION,
-    });
+        { throwOnFailure: true },
+    );
 };
+
+const rebuildPredictiveTriggerSummaryAfterCommit = async (
+    scope: { tId: number; sId: number },
+    reason: string,
+    sourceId: string,
+): Promise<boolean> => {
+    try {
+        await rebuildPredictiveTriggerSummary(scope, reason, sourceId);
+        return true;
+    } catch (error) {
+        secureError(
+            '[Predictive Trigger DAL] Post-commit summary rebuild failed',
+            new Error('answerlattice_predictive_trigger_summary_post_commit_failed'),
+            {
+                errorName: error instanceof Error ? error.name : typeof error,
+                operation: reason,
+                hasTenantScope: Number.isSafeInteger(scope.tId) && scope.tId > 0,
+                hasStoreScope: Number.isSafeInteger(scope.sId) && scope.sId > 0,
+            },
+        );
+        return false;
+    }
+};
+
+const composePredictiveTriggerAudit = async (params: {
+    scope: { tId: number; sId: number };
+    action: string;
+    entityId: string;
+    newState: Record<string, unknown>;
+}) => answerlatticeRequestBodyComposer({
+    ...params.scope,
+    action: params.action,
+    entityType: 'predictiveTrigger',
+    entityId: params.entityId,
+    newState: params.newState,
+    performedBy: 'admin',
+    timestamp: Timestamp.now(),
+}, { isNew: true });
 
 /**
  * Get all predictive triggers for a tenant+store.
@@ -135,6 +194,7 @@ export const getPredictiveTriggers = async (tId: number, sId: number) => {
             const scope = assertScope(tId, sId);
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
                 orderBy('createdOn', 'desc'),
@@ -164,6 +224,7 @@ export const getSuggestedTriggers = async (tId: number, sId: number) => {
             const scope = assertScope(tId, sId);
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
                 where('status', '==', 'suggested'),
@@ -185,15 +246,19 @@ export const getSuggestedTriggers = async (tId: number, sId: number) => {
 /**
  * Get a single trigger by ID.
  */
-export const getPredictiveTriggerById = async (triggerId: string) => {
+export const getPredictiveTriggerById = async (
+    triggerId: string,
+    expectedScope: { tId: number; sId: number },
+) => {
     return await apiCallComposer(
         async () => {
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
             if (!normalizedTriggerId) return null;
 
+            const scope = assertScope(expectedScope.tId, expectedScope.sId);
             const docSnap = await getDoc(getDocRef(normalizedTriggerId));
             if (docSnap.exists()) {
-                return normalizePredictiveTriggerRecord(docSnap.id, docSnap.data());
+                return normalizePredictiveTriggerRecord(docSnap.id, docSnap.data(), scope);
             }
             return null;
         },
@@ -205,10 +270,17 @@ export const getPredictiveTriggerById = async (triggerId: string) => {
  * Create a new predictive trigger.
  * Enforces max 200 triggers per tenant.
  */
-export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTrigger, 'id'>) => {
+export const addPredictiveTrigger = async (
+    data: Omit<AnswerlatticePredictiveTrigger, 'id'>,
+    expectedScope: { tId: number; sId: number },
+) => {
     return await apiCallComposer(
         async () => {
             const scope = assertScope(data.tId, data.sId);
+            const requestedScope = assertScope(expectedScope.tId, expectedScope.sId);
+            if (scope.tId !== requestedScope.tId || scope.sId !== requestedScope.sId) {
+                throw new Error('Predictive trigger scope does not match the active workspace');
+            }
             // Validate constraints
             if (!Number.isSafeInteger(data.priority) ||
                 data.priority < ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MIN_PRIORITY ||
@@ -223,6 +295,7 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
 
             const existingCount = await getCountFromServer(query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
             ));
@@ -255,11 +328,21 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
                 source: candidate.source,
                 ...(candidate.knownIssue ? { knownIssue: candidate.knownIssue } : {}),
             }, { isNew: true });
-            const docRef = await addDoc(getCollectionRef(), submitData);
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_create', docRef.id);
+            const docRef = doc(getCollectionRef());
+            const auditData = await composePredictiveTriggerAudit({
+                scope,
+                action: 'predictive_trigger_created',
+                entityId: docRef.id,
+                newState: { name: candidate.name, page: candidate.conditions.page, source: candidate.source },
+            });
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            batch.set(docRef, submitData);
+            batch.set(getAuditDocRef(), auditData);
+            await batch.commit();
+            const summarySynchronized = await rebuildPredictiveTriggerSummaryAfterCommit(scope, 'predictive_trigger_create', docRef.id);
             const created = normalizePredictiveTriggerRecord(docRef.id, submitData, scope);
             if (!created) throw new Error('Created predictive trigger is invalid');
-            return created;
+            return { value: created, summarySynchronized } satisfies AnswerlatticePredictiveTriggerMutationOutcome<AnswerlatticePredictiveTrigger>;
         },
         data,
         "addPredictiveTrigger"
@@ -269,7 +352,10 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
 /**
  * Update a predictive trigger (merge update).
  */
-export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredictiveTrigger> & { id: string }) => {
+export const updatePredictiveTrigger = async (
+    data: Partial<AnswerlatticePredictiveTrigger> & { id: string },
+    expectedScope: { tId: number; sId: number },
+) => {
     return await apiCallComposer(
         async () => {
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(data.id);
@@ -280,6 +366,10 @@ export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredict
                 ? normalizePredictiveTriggerRecord(currentSnap.id, currentSnap.data())
                 : null;
             if (!current) throw new Error('Predictive trigger ownership is invalid');
+            const requestedScope = assertScope(expectedScope.tId, expectedScope.sId);
+            if (current.tId !== requestedScope.tId || current.sId !== requestedScope.sId) {
+                throw new Error('Predictive trigger scope does not match the active workspace');
+            }
             if (
                 (data.pId !== undefined && data.pId !== PRODUCT_IDS.ANSWERLATTICE)
                 || (data.tId !== undefined && data.tId !== current.tId)
@@ -322,9 +412,18 @@ export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredict
             if (data.status !== undefined) patch.status = next.status;
             if (data.knownIssue !== undefined) patch.knownIssue = next.knownIssue ?? null;
             const composedData = await answerlatticeRequestBodyComposer({ ...patch, ...scope }, { isNew: false });
-            await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_update', normalizedTriggerId);
-            return composedData;
+            const auditData = await composePredictiveTriggerAudit({
+                scope,
+                action: 'predictive_trigger_updated',
+                entityId: normalizedTriggerId,
+                newState: { fields: Object.keys(data).filter(key => key !== 'id') },
+            });
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            batch.set(getDocRef(normalizedTriggerId), composedData, { merge: true });
+            batch.set(getAuditDocRef(), auditData);
+            await batch.commit();
+            const summarySynchronized = await rebuildPredictiveTriggerSummaryAfterCommit(scope, 'predictive_trigger_update', normalizedTriggerId);
+            return { value: composedData, summarySynchronized };
         },
         data,
         "updatePredictiveTrigger"
@@ -335,7 +434,7 @@ export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredict
  * Activate a suggested trigger (change status from 'suggested' to 'active').
  * Guard: Only suggested triggers can be activated via this function.
  */
-export const activateTrigger = async (triggerId: string) => {
+export const activateTrigger = async (triggerId: string, expectedScope: { tId: number; sId: number }) => {
     return await apiCallComposer(
         async () => {
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
@@ -347,7 +446,10 @@ export const activateTrigger = async (triggerId: string) => {
             const current = docSnap.data() as AnswerlatticePredictiveTrigger;
             const normalizedCurrent = normalizePredictiveTriggerRecord(docSnap.id, current);
             if (!normalizedCurrent) throw new Error('Predictive trigger ownership is invalid');
-            const scope = { tId: normalizedCurrent.tId, sId: normalizedCurrent.sId };
+            const scope = assertScope(expectedScope.tId, expectedScope.sId);
+            if (normalizedCurrent.tId !== scope.tId || normalizedCurrent.sId !== scope.sId) {
+                throw new Error('Predictive trigger scope does not match the active workspace');
+            }
             if (normalizedCurrent.status !== 'suggested' && normalizedCurrent.status !== 'disabled') {
                 throw new Error(`Cannot activate trigger in '${normalizedCurrent.status}' state — must be 'suggested' or 'disabled'`);
             }
@@ -356,9 +458,18 @@ export const activateTrigger = async (triggerId: string) => {
             }
 
             const composedData = await answerlatticeRequestBodyComposer({ ...scope, status: 'active' }, { isNew: false });
-            await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_activate', normalizedTriggerId);
-            return composedData;
+            const auditData = await composePredictiveTriggerAudit({
+                scope,
+                action: 'predictive_trigger_activated',
+                entityId: normalizedTriggerId,
+                newState: { status: 'active' },
+            });
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            batch.set(getDocRef(normalizedTriggerId), composedData, { merge: true });
+            batch.set(getAuditDocRef(), auditData);
+            await batch.commit();
+            const summarySynchronized = await rebuildPredictiveTriggerSummaryAfterCommit(scope, 'predictive_trigger_activate', normalizedTriggerId);
+            return { value: composedData, summarySynchronized };
         },
         { triggerId },
         "activateTrigger"
@@ -368,17 +479,26 @@ export const activateTrigger = async (triggerId: string) => {
 /**
  * Disable a trigger (set status = 'disabled').
  */
-export const disableTrigger = async (triggerId: string) => {
+export const disableTrigger = async (triggerId: string, expectedScope: { tId: number; sId: number }) => {
     return await apiCallComposer(
         async () => {
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
             if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
 
-            const scope = await resolveTriggerScope(normalizedTriggerId);
+            const scope = await resolveTriggerScope(normalizedTriggerId, expectedScope);
             const composedData = await answerlatticeRequestBodyComposer({ ...scope, status: 'disabled' }, { isNew: false });
-            await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_disable', normalizedTriggerId);
-            return composedData;
+            const auditData = await composePredictiveTriggerAudit({
+                scope,
+                action: 'predictive_trigger_disabled',
+                entityId: normalizedTriggerId,
+                newState: { status: 'disabled' },
+            });
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            batch.set(getDocRef(normalizedTriggerId), composedData, { merge: true });
+            batch.set(getAuditDocRef(), auditData);
+            await batch.commit();
+            const summarySynchronized = await rebuildPredictiveTriggerSummaryAfterCommit(scope, 'predictive_trigger_disable', normalizedTriggerId);
+            return { value: composedData, summarySynchronized };
         },
         { triggerId },
         "disableTrigger"
@@ -388,16 +508,25 @@ export const disableTrigger = async (triggerId: string) => {
 /**
  * Hard delete a trigger.
  */
-export const deletePredictiveTrigger = async (triggerId: string) => {
+export const deletePredictiveTrigger = async (triggerId: string, expectedScope: { tId: number; sId: number }) => {
     return await apiCallComposer(
         async () => {
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
             if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
 
-            const scope = await resolveTriggerScope(normalizedTriggerId);
-            await deleteDoc(getDocRef(normalizedTriggerId));
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_delete', normalizedTriggerId);
-            return { deleted: true };
+            const scope = await resolveTriggerScope(normalizedTriggerId, expectedScope);
+            const auditData = await composePredictiveTriggerAudit({
+                scope,
+                action: 'predictive_trigger_deleted',
+                entityId: normalizedTriggerId,
+                newState: { deleted: true },
+            });
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            batch.delete(getDocRef(normalizedTriggerId));
+            batch.set(getAuditDocRef(), auditData);
+            await batch.commit();
+            const summarySynchronized = await rebuildPredictiveTriggerSummaryAfterCommit(scope, 'predictive_trigger_delete', normalizedTriggerId);
+            return { value: { deleted: true }, summarySynchronized };
         },
         { triggerId },
         "deletePredictiveTrigger"

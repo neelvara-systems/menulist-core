@@ -1,52 +1,39 @@
-# SignalDesk Control Room - Compliance Policy
+# SignalDesk Control Room - Safety And Compliance
 
-**Status:** Initial policy
-**Created:** June 23, 2026
+**Status:** Current policy
+**Revalidated:** July 21, 2026
 
-## Principle
+## Safety Invariants
 
-The control room exists to stop unsafe growth behavior early. Safety controls must be stronger than growth throughput.
+- A pause is stronger than throughput, approval, budget, or provider readiness.
+- Activating and clearing a pause requires the exact permission and explicit UI
+  confirmation. Mobile may activate only the global outbound pause.
+- Pause documents retain a bounded operational reason and actor/timestamp state.
+  Audit history stores the stable event classification rather than free-form text.
+- Exact retries cannot duplicate pause, audit or cost effects.
+- Suppression, source rights, contact permission and approval remain independent
+  mandatory gates. Clearing a pause does not weaken them.
+- Complaint/privacy/legal intake may create incidents and pauses synchronously;
+  later ordinary replies cannot silently clear those safety states.
 
-## Incident Types
+## Incident Boundary
 
-| Incident | Trigger examples |
-| --- | --- |
-| `complaint_spike` | Complaint rate crosses threshold. |
-| `unsubscribe_spike` | Opt-out rate crosses threshold. |
-| `bounce_spike` | Bounce/invalid rate crosses threshold. |
-| `source_policy_failure` | Source run violates allowed field or expiry policy. |
-| `ai_quality_failure` | Eval failures or overrides spike. |
-| `cost_overrun` | Daily cost exceeds planned threshold. |
-| `privacy_review` | Payload or operator action needs privacy review. |
+`open` and `acknowledged` are unresolved. `resolved` is terminal for overview
+counting. Incident payloads are created and reconciled by their owning producer
+flows, such as webhook safety, source-data lifecycle and proof/content authority.
+Control Room currently has no generic acknowledge/resolve mutation, threshold
+override, or bulk-clear action.
 
-## Kill Switch Policy
+## Data Exposure
 
-- Admin role is required.
-- Reason is required.
-- Audit event is required.
-- Scope must be explicit.
-- Expiry or review date should be set when practical.
-- Clearing a switch requires resolution note.
+The overview exposes only incident ID, title, severity, status and update time;
+kill-switch DTOs expose current state/reason/actor timestamps. Raw provider
+payloads, message bodies, contact identity, secrets, legal request content and
+private incident metadata do not enter the browser DTO.
 
-## Dashboard Safety Rules
+## Cost And Freshness Truth
 
-- Do not display raw PII in summary cards.
-- Do not rank operators by send volume.
-- Do not hide suppression or complaint signals behind aggregate success metrics.
-- Show stale data as stale.
-- Show paused state clearly before operators approve actions.
-
-## Cost Governance
-
-Cost incidents should distinguish:
-
-- AI calls,
-- Firestore reads,
-- Firestore writes,
-- provider sends/events,
-- unexpected raw event reads,
-- dashboard query regressions.
-
-## Admin Accountability
-
-Every incident action, switch change, threshold override, and manual resolution must be recorded with actor, timestamp, scope, and reason.
+Cost cards are estimates from strict daily accounting, not invoices. The page
+shows summary timestamps. Health statuses are written by their owning producer;
+there is no universal automatic cost-incident or per-domain stale timer today.
+Documentation and UI must not imply those planned systems exist.

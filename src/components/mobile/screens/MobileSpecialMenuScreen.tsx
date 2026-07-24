@@ -7,12 +7,13 @@
  */
 
 import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
-import { assertProjectUpdateSucceeded, getProjectDataWithoutLoader, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { assertProjectUpdateSucceeded, getProjectDataWithoutLoader, updateProjectWithoutLoader, type ProjectExpectedScope } from '@database/projects';
 import type { SpecialMenuListItem } from '@hook/useSpecialMenus';
 import { useSpecialMenus } from '@hook/useSpecialMenus';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import {
@@ -26,7 +27,7 @@ import {
 } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
@@ -55,6 +56,19 @@ type SpecialMenuConflictCheckParams = {
     projectId?: string;
     startsAt: string;
 };
+
+function resolveStoreProjectScope(
+    storeDetails: { storeId?: unknown; tenantId?: unknown } | null | undefined,
+): ProjectExpectedScope | null {
+    const storeId = Number(storeDetails?.storeId);
+    const tenantId = Number(storeDetails?.tenantId);
+    return Number.isSafeInteger(storeId)
+        && storeId > 0
+        && Number.isSafeInteger(tenantId)
+        && tenantId > 0
+        ? { sId: storeId, tId: tenantId }
+        : null;
+}
 
 function formatDate(iso: string, formatter: IntlFormatter): string {
     if (!iso) return '';
@@ -182,6 +196,18 @@ function CreateSpecialMenuSheet({
     const [endsAt, setEndsAt] = useState(getDefaultScheduledEndsAtValue);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
+    const isMountedRef = useRef(true);
+    const submitInFlightRef = useRef(false);
+    const translationInFlightRef = useRef(false);
+    const currentScopeRef = useRef<ProjectExpectedScope | null>(resolveStoreProjectScope(storeDetails));
+    const displayNameDraftsRef = useRef(displayNameDrafts);
+    currentScopeRef.current = resolveStoreProjectScope(storeDetails);
+    displayNameDraftsRef.current = displayNameDrafts;
+    const isExpectedScope = (expectedScope: ProjectExpectedScope) => (
+        isMountedRef.current
+        && currentScopeRef.current?.tId === expectedScope.tId
+        && currentScopeRef.current?.sId === expectedScope.sId
+    );
     const isActiveToggleOn = startsAt
         ? getNativeDateTimeMs(startsAt) <= Date.now()
         : false;
@@ -217,6 +243,10 @@ function CreateSpecialMenuSheet({
         };
     }, [baseProjectId, open, resolveProjectDetails, storeDetails]);
 
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
+
     const handleClose = () => {
         if (isSubmitting) return;
         resetForm();
@@ -250,45 +280,67 @@ function CreateSpecialMenuSheet({
             return;
         }
 
-        const overlapResolution = await onResolveOverlap?.({
-            endsAt: endsAtIso,
-            startsAt: startsAtIso,
-        }) ?? null;
-        if (overlapResolution === false) {
-            return;
-        }
-
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope) || submitInFlightRef.current) return;
+        const submittedBaseProjectId = baseProjectId;
+        const submittedMode = mode;
+        submitInFlightRef.current = true;
         setIsSubmitting(true);
         try {
+            const overlapResolution = await onResolveOverlap?.({
+                endsAt: endsAtIso,
+                startsAt: startsAtIso,
+            }) ?? null;
+            if (!isExpectedScope(expectedScope) || overlapResolution === false) return;
             await onSubmit({
                 allowOverlap: overlapResolution === true,
-                baseProjectId,
+                baseProjectId: submittedBaseProjectId,
                 displayName: trimmedName,
                 localizedDisplayName,
                 endsAt: endsAtIso,
-                mode,
+                mode: submittedMode,
                 startsAt: startsAtIso,
             });
+            if (!isExpectedScope(expectedScope)) return;
             resetForm();
         } finally {
-            setIsSubmitting(false);
+            submitInFlightRef.current = false;
+            if (isExpectedScope(expectedScope)) {
+                setIsSubmitting(false);
+            }
         }
     };
 
     const handleTranslatePublicContent = async () => {
-        if (!canTranslatePublicContent) return;
+        const expectedScope = currentScopeRef.current;
+        if (
+            !canTranslatePublicContent
+            || !expectedScope
+            || !isExpectedScope(expectedScope)
+            || translationInFlightRef.current
+        ) return;
+        const sourceDisplayNameDrafts = displayNameDrafts;
+        const sourceManagedLanguages = managedLanguages;
+        const sourceSelectedLanguage = selectedLanguage;
+        const sourceBaseProjectId = baseProjectId || defaultBaseProjectId;
+        const sourceStoreDetails = storeDetails;
+        translationInFlightRef.current = true;
         try {
             setIsTranslatingPublicContent(true);
             const translated = await translateProjectPublicContent({
                 projectDetails: {
-                    languages: managedLanguages,
+                    languages: sourceManagedLanguages,
                     _specialMenu: {
-                        displayName: applyLocalizedProjectDraftMap(undefined, displayNameDrafts),
+                        displayName: applyLocalizedProjectDraftMap(undefined, sourceDisplayNameDrafts),
                     },
                 },
-                projectId: baseProjectId || defaultBaseProjectId,
-                storeDetails,
+                projectId: sourceBaseProjectId,
+                storeDetails: sourceStoreDetails,
             });
+            if (
+                !isExpectedScope(expectedScope)
+                || displayNameDraftsRef.current !== sourceDisplayNameDrafts
+            ) return;
 
             if (!translated?.specialMenuDisplayName) {
                 Toast.show({ content: 'No missing special menu name translations found.', duration: 1800 });
@@ -296,27 +348,32 @@ function CreateSpecialMenuSheet({
             }
 
             const nextDrafts = Object.fromEntries(
-                managedLanguages.map((languageCode) => [
+                sourceManagedLanguages.map((languageCode) => [
                     languageCode,
                     typeof translated.specialMenuDisplayName?.[languageCode] === 'string'
                         ? translated.specialMenuDisplayName[languageCode]
-                        : displayNameDrafts[languageCode] || '',
+                        : sourceDisplayNameDrafts[languageCode] || '',
                 ]),
             );
             setDisplayNameDrafts(nextDrafts);
             Toast.show({ content: 'Special menu name translations added.', duration: 1800 });
         } catch (error) {
             logMobileOwnerFailure('mobile_special_menu_name_translation_failed', error, {
-                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                ...getBoundedMobileOwnerStringContext('baseProjectId', baseProjectId),
+                ...getMobileOwnerStoreLogContext(sourceStoreDetails?.storeId, sourceStoreDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('baseProjectId', sourceBaseProjectId),
                 ...getBoundedMobileOwnerStringContext('defaultBaseProjectId', defaultBaseProjectId),
-                ...getBoundedMobileOwnerStringContext('selectedLanguage', selectedLanguage),
-                managedLanguageCount: managedLanguages.length,
-                displayNameLength: String(displayNameDrafts[selectedLanguage] || '').length,
+                ...getBoundedMobileOwnerStringContext('selectedLanguage', sourceSelectedLanguage),
+                managedLanguageCount: sourceManagedLanguages.length,
+                displayNameLength: String(sourceDisplayNameDrafts[sourceSelectedLanguage] || '').length,
             });
-            Toast.show({ content: 'Could not translate the special menu name.', duration: 1800 });
+            if (isExpectedScope(expectedScope)) {
+                Toast.show({ content: 'Could not translate the special menu name.', duration: 1800 });
+            }
         } finally {
-            setIsTranslatingPublicContent(false);
+            translationInFlightRef.current = false;
+            if (isExpectedScope(expectedScope)) {
+                setIsTranslatingPublicContent(false);
+            }
         }
     };
 
@@ -521,6 +578,26 @@ function EditSpecialMenuSheet({
     const [endsAt, setEndsAt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
+    const isMountedRef = useRef(true);
+    const submitInFlightRef = useRef(false);
+    const translationInFlightRef = useRef(false);
+    const currentScopeRef = useRef<ProjectExpectedScope | null>(resolveStoreProjectScope(storeDetails));
+    const currentItemRef = useRef(item);
+    const displayNameDraftsRef = useRef(displayNameDrafts);
+    const descriptionDraftsRef = useRef(descriptionDrafts);
+    currentScopeRef.current = resolveStoreProjectScope(storeDetails);
+    currentItemRef.current = item;
+    displayNameDraftsRef.current = displayNameDrafts;
+    descriptionDraftsRef.current = descriptionDrafts;
+    const isExpectedScope = (
+        expectedScope: ProjectExpectedScope,
+        expectedItem: SpecialMenuListItem,
+    ) => (
+        isMountedRef.current
+        && currentScopeRef.current?.tId === expectedScope.tId
+        && currentScopeRef.current?.sId === expectedScope.sId
+        && currentItemRef.current === expectedItem
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -565,6 +642,10 @@ function EditSpecialMenuSheet({
             cancelled = true;
         };
     }, [item, resolveProjectDetails]);
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const resetForm = () => {
         setDisplayNameDrafts(initialDisplayNameDrafts);
@@ -621,20 +702,28 @@ function EditSpecialMenuSheet({
             return;
         }
 
-        const overlapResolution = await onResolveOverlap?.({
-            endsAt: endsAtIso,
-            projectId: item.projectId,
-            startsAt: startsAtIso,
-        }) ?? null;
-        if (overlapResolution === false) {
-            return;
-        }
-
+        const expectedScope = currentScopeRef.current;
+        const submittedItem = item;
+        if (
+            !expectedScope
+            || !isExpectedScope(expectedScope, submittedItem)
+            || submitInFlightRef.current
+        ) return;
+        submitInFlightRef.current = true;
         setIsSubmitting(true);
         try {
+            const overlapResolution = await onResolveOverlap?.({
+                endsAt: endsAtIso,
+                projectId: submittedItem.projectId,
+                startsAt: startsAtIso,
+            }) ?? null;
+            if (
+                !isExpectedScope(expectedScope, submittedItem)
+                || overlapResolution === false
+            ) return;
             await onSubmit({
                 allowOverlap: overlapResolution === true,
-                projectId: item.projectId,
+                projectId: submittedItem.projectId,
                 description: trimmedDescription || undefined,
                 displayName: trimmedName,
                 localizedDescription,
@@ -642,15 +731,26 @@ function EditSpecialMenuSheet({
                 endsAt: endsAtIso,
                 startsAt: startsAtIso,
             });
+            if (!isExpectedScope(expectedScope, submittedItem)) return;
             resetForm();
         } finally {
-            setIsSubmitting(false);
+            submitInFlightRef.current = false;
+            if (isExpectedScope(expectedScope, submittedItem)) {
+                setIsSubmitting(false);
+            }
         }
     };
 
     const handleTranslatePublicContent = async () => {
-        if (!canTranslatePublicContent) return;
-        if (!item?.projectId) return;
+        const expectedScope = currentScopeRef.current;
+        const sourceItem = item;
+        if (
+            !canTranslatePublicContent
+            || !sourceItem?.projectId
+            || !expectedScope
+            || !isExpectedScope(expectedScope, sourceItem)
+            || translationInFlightRef.current
+        ) return;
 
         const hasUnsavedContentChanges =
             JSON.stringify(displayNameDrafts) !== JSON.stringify(initialDisplayNameDrafts)
@@ -661,63 +761,70 @@ function EditSpecialMenuSheet({
             return;
         }
 
+        const sourceDisplayNameDrafts = displayNameDrafts;
+        const sourceDescriptionDrafts = descriptionDrafts;
+        const sourceManagedLanguages = managedLanguages;
+        const sourceSelectedLanguage = selectedLanguage;
+        const sourceReferenceLanguage = referenceLanguage;
+        const sourceStoreDetails = storeDetails;
+        translationInFlightRef.current = true;
         try {
             setIsTranslatingPublicContent(true);
-            const projectDetails = await resolveProjectDetails(item.projectId);
+            const projectDetails = await resolveProjectDetails(sourceItem.projectId);
+            if (!isExpectedScope(expectedScope, sourceItem) || !projectDetails) return;
             const translated = await translateProjectPublicContent({
                 projectDetails,
-                projectId: item.projectId,
+                projectId: sourceItem.projectId,
             });
+            if (
+                !isExpectedScope(expectedScope, sourceItem)
+                || displayNameDraftsRef.current !== sourceDisplayNameDrafts
+                || descriptionDraftsRef.current !== sourceDescriptionDrafts
+            ) return;
 
             if (!translated) {
                 Toast.show({ content: 'No missing project public content translations found.', duration: 1800 });
                 return;
             }
 
-            const projectTranslationResult = await updateProjectWithoutLoader({
-                projectId: item.projectId,
-                ...(translated.name ? { name: translated.name } : {}),
-                ...(translated.description ? { description: translated.description } : {}),
-                ...(translated.specialNote ? {
-                    menuSettings: {
-                        ...(projectDetails?.menuSettings || {}),
-                        specialNote: translated.specialNote,
-                    },
-                } : {}),
-                ...(translated.specialMenuDisplayName ? {
-                    _specialMenu: {
-                        ...(projectDetails?._specialMenu || {}),
-                        displayName: translated.specialMenuDisplayName,
-                    },
-                } : {}),
-            } as any);
+            const projectTranslationResult = await updateProjectWithoutLoader(
+                {
+                    projectId: sourceItem.projectId,
+                    ...(translated.name ? { name: translated.name } : {}),
+                    ...(translated.description ? { description: translated.description } : {}),
+                    ...(translated.specialNote ? {
+                        menuSettings: {
+                            ...(projectDetails?.menuSettings || {}),
+                            specialNote: translated.specialNote,
+                        },
+                    } : {}),
+                    ...(translated.specialMenuDisplayName ? {
+                        _specialMenu: {
+                            ...(projectDetails?._specialMenu || {}),
+                            displayName: translated.specialMenuDisplayName,
+                        },
+                    } : {}),
+                } as any,
+                {
+                    expectedScope,
+                    syncPublicSummary: true,
+                },
+            );
             assertProjectUpdateSucceeded(
                 projectTranslationResult,
-                item.projectId,
+                sourceItem.projectId,
                 'mobile_special_menu_public_content_translation_project_update_rejected',
             );
 
-            const metadataUpdate: Record<string, any> = {};
-            if (translated.name) metadataUpdate.name = translated.name;
-            if (translated.description) metadataUpdate.description = translated.description;
-            if (translated.specialMenuDisplayName) metadataUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
-            if (Object.keys(metadataUpdate).length > 0) {
-                const metadataTranslationResult = await updateProjectMetadata(item.projectId, metadataUpdate);
-                assertProjectUpdateSucceeded(
-                    metadataTranslationResult,
-                    item.projectId,
-                    'mobile_special_menu_public_content_translation_metadata_update_rejected',
-                );
-            }
-
             const nextDisplayNameDrafts = buildLocalizedDrafts(
-                translated.specialMenuDisplayName || projectDetails?._specialMenu?.displayName || item.displayName,
-                managedLanguages,
+                translated.specialMenuDisplayName || projectDetails?._specialMenu?.displayName || sourceItem.displayName,
+                sourceManagedLanguages,
             );
             const nextDescriptionDrafts = buildLocalizedDrafts(
-                translated.description || projectDetails?.description || item.description,
-                managedLanguages,
+                translated.description || projectDetails?.description || sourceItem.description,
+                sourceManagedLanguages,
             );
+            if (!isExpectedScope(expectedScope, sourceItem)) return;
             setDisplayNameDrafts(nextDisplayNameDrafts);
             setDescriptionDrafts(nextDescriptionDrafts);
             setInitialDisplayNameDrafts(nextDisplayNameDrafts);
@@ -725,19 +832,24 @@ function EditSpecialMenuSheet({
             Toast.show({ content: 'Project public content translations added.', duration: 1800 });
         } catch (error) {
             logMobileOwnerFailure('mobile_special_menu_project_public_content_translation_failed', error, {
-                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                ...getBoundedMobileOwnerStringContext('projectId', item?.projectId),
-                ...getBoundedMobileOwnerStringContext('selectedLanguage', selectedLanguage),
-                ...getBoundedMobileOwnerStringContext('referenceLanguage', referenceLanguage),
-                managedLanguageCount: managedLanguages.length,
-                displayNameLength: String(displayNameDrafts[selectedLanguage] || '').length,
-                descriptionLength: String(descriptionDrafts[selectedLanguage] || '').length,
+                ...getMobileOwnerStoreLogContext(sourceStoreDetails?.storeId, sourceStoreDetails?.tenantId),
+                ...getBoundedMobileOwnerStringContext('projectId', sourceItem?.projectId),
+                ...getBoundedMobileOwnerStringContext('selectedLanguage', sourceSelectedLanguage),
+                ...getBoundedMobileOwnerStringContext('referenceLanguage', sourceReferenceLanguage),
+                managedLanguageCount: sourceManagedLanguages.length,
+                displayNameLength: String(sourceDisplayNameDrafts[sourceSelectedLanguage] || '').length,
+                descriptionLength: String(sourceDescriptionDrafts[sourceSelectedLanguage] || '').length,
                 hasInitialDisplayNameDrafts: Object.keys(initialDisplayNameDrafts).length > 0,
                 hasInitialDescriptionDrafts: Object.keys(initialDescriptionDrafts).length > 0,
             });
-            Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
+            if (isExpectedScope(expectedScope, sourceItem)) {
+                Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
+            }
         } finally {
-            setIsTranslatingPublicContent(false);
+            translationInFlightRef.current = false;
+            if (isExpectedScope(expectedScope, sourceItem)) {
+                setIsTranslatingPublicContent(false);
+            }
         }
     };
 
@@ -946,18 +1058,29 @@ function SpecialMenuItem({
     const formatter = useFormatter();
     const { token } = theme.useToken();
     const [isWorking, setIsWorking] = useState(false);
+    const isMountedRef = useRef(true);
+    const actionInFlightRef = useRef(false);
     const modeLabel = item.mode === 'replace' ? t('replaceOption') : t('overlayOption');
     const actionButtonStyle = {
         minWidth: 108,
         borderRadius: 999,
     };
 
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
+
     const handleEdit = async () => {
+        if (!isMountedRef.current || actionInFlightRef.current) return;
+        actionInFlightRef.current = true;
         setIsWorking(true);
         try {
             await onEdit(item);
         } finally {
-            setIsWorking(false);
+            actionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsWorking(false);
+            }
         }
     };
 
@@ -967,13 +1090,17 @@ function SpecialMenuItem({
             confirmText: t('endNow'),
             content: t('endConfirm', { name: item.displayName }),
         });
-        if (!confirmed) return;
+        if (!confirmed || !isMountedRef.current || actionInFlightRef.current) return;
 
+        actionInFlightRef.current = true;
         setIsWorking(true);
         try {
             await onDeactivate(item.projectId);
         } finally {
-            setIsWorking(false);
+            actionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsWorking(false);
+            }
         }
     };
 
@@ -983,13 +1110,17 @@ function SpecialMenuItem({
             confirmText: t('cancelAction'),
             content: t('cancelConfirm', { date: formatDate(item.startsAt, formatter), name: item.displayName }),
         });
-        if (!confirmed) return;
+        if (!confirmed || !isMountedRef.current || actionInFlightRef.current) return;
 
+        actionInFlightRef.current = true;
         setIsWorking(true);
         try {
             await onCancel(item.projectId);
         } finally {
-            setIsWorking(false);
+            actionInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsWorking(false);
+            }
         }
     };
 
@@ -1063,7 +1194,7 @@ function SpecialMenuItem({
     );
 }
 
-export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: MobileSpecialMenuScreenProps) {
+function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecialMenuScreenProps) {
     const t = useTranslations('MobileSpecialMenu');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const { token } = theme.useToken();
@@ -1090,6 +1221,18 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     const [showExpired, setShowExpired] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingMenu, setEditingMenu] = useState<SpecialMenuListItem | null>(null);
+    const isMountedRef = useRef(true);
+    const currentScopeRef = useRef<ProjectExpectedScope | null>(null);
+    currentScopeRef.current = resolveStoreProjectScope(storeDetails);
+    const isExpectedScope = useCallback((expectedScope: ProjectExpectedScope) => (
+        isMountedRef.current
+        && currentScopeRef.current?.tId === expectedScope.tId
+        && currentScopeRef.current?.sId === expectedScope.sId
+    ), []);
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const capabilities = useMemo(
         () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
@@ -1141,26 +1284,43 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         return false;
     }, [getConflictMessage]);
 
-    const handleOpenSpecialProject = async (projectId: string) => {
+    const handleOpenSpecialProject = async (
+        projectId: string,
+        expectedScope: ProjectExpectedScope,
+    ) => {
+        if (!isExpectedScope(expectedScope)) return;
         await selectProject(projectId);
-        onOpenMenuTab?.();
+        if (isExpectedScope(expectedScope)) {
+            onOpenMenuTab?.();
+        }
     };
 
     const resolveProjectDetails = useCallback(async (projectId: string) => {
         if (!projectId) return null;
+        const expectedScope = currentScopeRef.current;
+        const projectScope = normalizeMultiOutletProjectId(projectId);
+        if (
+            !expectedScope
+            || !projectScope
+            || projectScope.tId !== expectedScope.tId
+            || projectScope.sId !== expectedScope.sId
+        ) {
+            return null;
+        }
         if (projectsById[projectId]) {
             return projectsById[projectId];
         }
 
         const summaryProject = (projectsList || []).find((project: any) => project.projectId === projectId) || null;
-        const detailedProject = await getProjectDataWithoutLoader(projectId);
+        const detailedProject = await getProjectDataWithoutLoader(projectId, expectedScope);
+        if (!isExpectedScope(expectedScope)) return null;
         upsertCachedProject({
             ...(summaryProject || {}),
             ...(detailedProject || {}),
             projectId,
         });
         return detailedProject;
-    }, [projectsById, projectsList, upsertCachedProject]);
+    }, [isExpectedScope, projectsById, projectsList, upsertCachedProject]);
 
     const handleCreateSpecialMenu = async (payload: {
         allowOverlap?: boolean;
@@ -1171,7 +1331,10 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         mode: 'replace' | 'overlay';
         startsAt: string;
     }) => {
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope)) return;
         const result = await createSpecialMenu(payload);
+        if (!isExpectedScope(expectedScope)) return;
 
         if (!result.success || !result.projectId) {
             Toast.show({ content: t('failedToCreate'), duration: 2200 });
@@ -1180,7 +1343,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
 
         setIsCreateOpen(false);
         Toast.show({ content: t('specialMenuCreated'), icon: 'success', duration: 1600 });
-        await handleOpenSpecialProject(result.projectId);
+        await handleOpenSpecialProject(result.projectId, expectedScope);
     };
 
     const handleOpenEditSheet = (item: SpecialMenuListItem) => {
@@ -1197,7 +1360,10 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         endsAt: string;
         startsAt: string;
     }) => {
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope)) return;
         const result = await updateSpecialMenu(payload);
+        if (!isExpectedScope(expectedScope)) return;
 
         if (!result.success) {
             Toast.show({ content: tProjectSelector('saveFailed'), duration: 2200 });
@@ -1209,7 +1375,10 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     };
 
     const handleDeactivate = async (projectId: string) => {
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope)) return;
         const result = await deactivateMenu(projectId);
+        if (!isExpectedScope(expectedScope)) return;
         if (result.success) {
             Toast.show({ content: t('specialMenuEnded'), icon: 'success', duration: 1500 });
             return;
@@ -1218,7 +1387,10 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     };
 
     const handleCancel = async (projectId: string) => {
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope)) return;
         const result = await cancelMenu(projectId);
+        if (!isExpectedScope(expectedScope)) return;
         if (result.success) {
             Toast.show({ content: t('specialMenuCancelled'), icon: 'success', duration: 1500 });
             return;
@@ -1346,6 +1518,13 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
             />
         </Flex>
     );
+}
+
+export default function MobileSpecialMenuScreen(props: MobileSpecialMenuScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileSpecialMenuScreenContent key={scopeKey} {...props} />;
 }
 
 function MobileProjectReferenceCard({

@@ -1,40 +1,40 @@
-# SignalDesk AI Intelligence - Mobile Support Assessment
+# SignalDesk AI Intelligence - Mobile Support
 
-**Status:** Initial assessment
-**Created:** June 23, 2026
-**Last Updated:** July 11, 2026
-**Mobile relevance decision:** Read-only summaries only.
+**Status:** Read-only mobile contract
+**Last Updated:** July 21, 2026
 
-## Admission Test
+## Decision
 
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Partial | Founder may view AI error/queue summaries. |
-| Speed | Fail | AI review needs evidence context. |
-| Touch | Fail | Score/evidence review is dense. |
-| Value | Partial | Useful only for alert awareness. |
+SignalDesk AI review is dense, infrequent, cost-bearing internal work. Mobile may display the existing projected AI section inside the responsive SignalDesk shell, but it does not expose AI mutation authority.
 
 ## Mobile Allowed
 
-- AI worker health summary;
-- failed AI run count;
-- low-confidence review count;
-- AI spend summary;
-- AI worker kill switch.
+- view projected model routes and statuses;
+- view compact model-eval counters;
+- view compact volume-parent status and costs;
+- view projected provider-run and rules-score summaries;
+- see that controls are read-only.
 
 ## Mobile Blocked
 
-- run AI worker;
-- approve AI output;
-- edit prompt;
-- view full prompt payload;
-- view raw evidence;
-- close eval failures.
-- run AI Volume Mode;
-- retry a partial volume batch;
+- run rules scoring from target actions;
+- run standalone AI Assist;
+- start or retry AI Volume Mode;
+- clear or alter a paid volume retry workflow;
+- accept, edit, reject, or hold a shadow run;
+- edit prompts or model routes;
+- activate or pause the `ai-worker` kill switch;
+- view raw prompt/provider payloads.
 
-## Acceptance Criteria
+Mobile may activate only the separately governed global outbound emergency pause. It cannot mutate scoped AI-worker state.
 
-- Mobile cannot run AI.
-- Mobile cannot approve AI output.
-- Mobile can pause AI worker with audit.
+## Enforcement
+
+The client uses `mobileReadOnly` and disabled fieldsets. The protected action route independently classifies AI execution as `provider_run` and shadow review as `approve`, both blocked for mobile requests. Server permissions and founder checks remain authoritative if client controls are bypassed.
+
+## Acceptance
+
+- No mobile AI action reaches provider work.
+- No mobile shadow review changes model-eval or founder-attention totals.
+- No mobile scoped kill-switch change is accepted.
+- Read-only summaries contain projected fields only and no prompt, raw response, secret, or contact value.

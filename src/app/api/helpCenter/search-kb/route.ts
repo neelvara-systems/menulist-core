@@ -20,11 +20,6 @@ import {
     createAnswerlatticeSupportSearchAccounting,
 } from '@lib/answerlattice/supportSearchAccounting';
 import {
-    normalizeAnswerlatticePublicCitations,
-    normalizeAnswerlatticePublicFallbackReason,
-    normalizeAnswerlatticeScopeClarification,
-} from '@lib/answerlattice/publicAnswerContracts';
-import {
     getAnswerlatticeScopedSession,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
@@ -33,6 +28,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { coreSearch } from '@lib/search/searchCore';
+import { projectHelpCenterSearchResponse } from '@lib/search/helpCenterSearchResponse';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
 import { writeLogEntry } from 'logs/utils';
 import { NextRequest, NextResponse } from 'next/server';
@@ -103,6 +99,7 @@ const writeHelpCenterSearchLogSafely = async (entry: Parameters<typeof writeLogE
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    let supportSearchAccounting: ReturnType<typeof createAnswerlatticeSupportSearchAccounting> | null = null;
     try {
         // ✅ Session guaranteed by withAuth middleware
 
@@ -163,7 +160,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // ===== CORE SEARCH — Single source of truth =====
         const operationStart = Date.now();
-        const supportSearchAccounting = createAnswerlatticeSupportSearchAccounting({
+        supportSearchAccounting = createAnswerlatticeSupportSearchAccounting({
             actor: {
                 id: searchSession.uId,
                 name: searchSession.user?.name,
@@ -189,58 +186,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // ===== FORMAT RESPONSE for Help Center frontend =====
         // Help Center expects: craftedAnswer, references (full objects), suggestedQuestions, id
-        const response: Record<string, any> = {
-            craftedAnswer: result.craftedAnswer,
-            references: result.references,
-            citations: normalizeAnswerlatticePublicCitations(result.citations),
-            suggestedQuestions: result.suggestedQuestions || [],
-            id: result.searchHistoryId,
-            imageProcessed: result.imageProcessed,
-            answerSource: result.answerSource || (result.canonical ? 'canonical' : 'rag'),
-            fallbackReason: normalizeAnswerlatticePublicFallbackReason(result.fallbackReason),
-            clarification: normalizeAnswerlatticeScopeClarification(result.clarification),
-            confidence: result.confidence,
-        };
-
-        if (result.relatedContent) {
-            response.relatedContent = result.relatedContent;
-        }
-
-        // Add canonical-specific fields when applicable
-        if (result.canonical) {
-            response.canonical = true;
-            response.canonicalAnswerId = result.canonicalAnswerId;
-            response.answerType = result.answerType;
-            response.drifted = result.drifted;
-        }
-
-        // Add procedure for guided workflows
-        if (result.procedure) {
-            response.procedure = result.procedure;
-        }
-
-        // Add graph expansion data for Knowledge Graph Exploitation (Item #11)
-        if (result.graphExpansion) {
-            response.graphExpansion = {
-                originalEntities: result.graphExpansion.originalEntities,
-                expandedEntities: result.graphExpansion.expandedEntities,
-                interactionDetected: result.graphExpansion.interactionDetected || null,
-                relatedSuggestions: result.graphExpansion.relatedSuggestions || [],
-            };
-        }
-
-        // Add escalation data for AI Failure Escalation (Item #8)
-        if (result.escalation?.escalationSuggested) {
-            response.escalation = {
-                suggested: true,
-                type: result.escalation.escalationType,
-                triggers: result.escalation.triggerTypes,
-            };
-        }
-
-        return searchJsonResponse(response);
+        return searchJsonResponse(projectHelpCenterSearchResponse(result));
 
     } catch (err: any) {
+        await supportSearchAccounting?.abort('request_failed').catch((refundError) => {
+            logRuntimeFailure('answerlattice_help_center_search_reservation_refund_failed', refundError);
+        });
         await writeHelpCenterSearchLogSafely({
             logFileName: PERF_LOG,
             userId: session?.uId,

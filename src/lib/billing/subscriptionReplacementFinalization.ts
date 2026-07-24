@@ -7,18 +7,21 @@ import {
     safeSyncProductSubscriptionEntitlementFromSubscription,
     type ProductSubscriptionUpgradeApplicationResult,
 } from './productBillingServer';
+import { getProductSubscriptionBillingScope } from './productSubscriptionScopeBoundary';
 import { getRazorpayManagedSubscriptionId } from './subscriptionProviderSync';
+import { resolveSubscriptionReplacementEvidence } from './subscriptionReplacementEvidence';
 
 const PROVIDER_TERMINAL_STATUSES = new Set(['cancelled', 'completed', 'expired']);
 
 const hasExactScope = (
+    productId: ProductId,
     subscription: FirestoreSubscriptionDoc,
     tenantId: number,
     storeId: number,
-): boolean => (
-    Number(subscription.tenantId ?? subscription.tId) === tenantId
-    && Number(subscription.storeId ?? subscription.sId) === storeId
-);
+): boolean => {
+    const scope = getProductSubscriptionBillingScope(productId, subscription);
+    return scope?.tenantId === tenantId && scope.storeId === storeId;
+};
 
 /**
  * Completes an already-paid replacement subscription. Provider cancellation
@@ -51,13 +54,19 @@ export async function finalizeProductSubscriptionReplacement(params: {
         throw new Error('Replacement subscription records were not found.');
     }
     if (
-        !hasExactScope(oldSubscription, tenantId, storeId)
-        || !hasExactScope(newSubscription, tenantId, storeId)
+        !hasExactScope(productId, oldSubscription, tenantId, storeId)
+        || !hasExactScope(productId, newSubscription, tenantId, storeId)
     ) {
         throw new Error('Replacement subscriptions are outside the billing scope.');
     }
 
-    const replacementMarker = String(newSubscription.founderMonitorReplacementForSubscriptionId || '').trim();
+    const replacementEvidence = resolveSubscriptionReplacementEvidence(newSubscription);
+    if (replacementEvidence.outcome === 'invalid') {
+        throw new Error('Replacement subscription intent is invalid.');
+    }
+    const replacementMarker = replacementEvidence.outcome === 'replacement'
+        ? replacementEvidence.subscriptionId
+        : null;
     if (requireReplacementMarker && replacementMarker !== oldSubscriptionId) {
         throw new Error('Replacement subscription intent does not match the old subscription.');
     }

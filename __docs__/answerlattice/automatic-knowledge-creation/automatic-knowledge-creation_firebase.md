@@ -20,11 +20,12 @@ Persistent signals include:
 - `identityFingerprint` (`sigfp_*`);
 - deterministic `sig_*` document ID derived from tenant, store, and dedup key.
 
-Rules require a fingerprint when a dedup key is present and reject an orphan fingerprint. Application/Admin code verifies the stored fingerprint before treating a replay as successful.
+Rules require exact positive integer `tId` and `sId`, require a fingerprint when a dedup key is present, and reject an orphan fingerprint. Application/Admin code verifies the stored fingerprint before treating a replay as successful. Process-local duplicate suppression is also tenant/workspace scoped and never replaces the persistent identity check.
 
 ## Bounds and Cost Controls
 
 - Signal mutation reads `signalEventsPerWindow + 1` and fails closed above the configured bound.
+- Every Functions signal window constrains `pId: AL` before tenant/workspace, time/type/entity ordering, and its cap. Unresolved-signal entity-index reads are product-partitioned as well.
 - Draft generation scans 50 pending proposals and commits at most 10 successful drafts per tenant run.
 - Mutation impact reads at most 201 rows per 14-day side and fails closed above 200.
 - Queries and writes use existing Answerlattice collections; this feature adds no collection.

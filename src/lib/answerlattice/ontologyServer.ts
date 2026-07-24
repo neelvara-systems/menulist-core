@@ -18,9 +18,12 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { Transaction } from 'firebase-admin/firestore';
 import type { AnswerlatticeAccessContext } from './accessControl';
 import {
-    getAnswerlatticeBundleManifestDocId,
-    getAnswerlatticeSourceVersionsDocId,
-} from './compiledContext';
+    AnswerlatticeInvalidationOwnershipError,
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+    type AnswerlatticeInvalidationOwnership,
+} from './invalidationOwnership';
 import type {
     AnswerlatticeOntologyAction,
     AnswerlatticeOntologyActionResult,
@@ -112,6 +115,29 @@ const documentIsInScope = (data: Record<string, unknown>, scope: Scope) => (
     && data.sId === scope.sId
 );
 
+const slugIndexIsOwnedBy = (
+    value: unknown,
+    scope: Scope,
+    slug: string,
+    entityId: string,
+): boolean => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const data = value as Record<string, unknown>;
+    return documentIsInScope(data, scope)
+        && data.slug === slug
+        && data.entityId === entityId;
+};
+
+const searchIndexIsOwnedBy = (
+    value: unknown,
+    scope: Scope,
+    entityId: string,
+): boolean => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const data = value as Record<string, unknown>;
+    return documentIsInScope(data, scope) && data.entityId === entityId;
+};
+
 const getCounterRef = (scope: Scope) => getDb().collection(SUMMARY_COLLECTION)
     .doc(`ontologyCounters_${scope.tId}_${scope.sId}`);
 
@@ -152,6 +178,7 @@ const ensureOntologyCounter = async (scope: Scope): Promise<void> => {
         }
         if (normalized.relationCountAccurate) return;
         const relations = await db.collection(RELATION_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .count()
@@ -174,17 +201,20 @@ const ensureOntologyCounter = async (scope: Scope): Promise<void> => {
 
     const [entities, pendingCandidates, relations] = await Promise.all([
         db.collection(ENTITY_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .count()
             .get(),
         db.collection(CANDIDATE_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('status', '==', 'pending')
             .count()
             .get(),
         db.collection(RELATION_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .count()
@@ -226,12 +256,14 @@ const countRelationsForEntity = async (scope: Scope, entityId: string) => {
     const db = getDb();
     const [outgoing, incoming] = await Promise.all([
         db.collection(RELATION_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('fromEntityId', '==', entityId)
             .count()
             .get(),
         db.collection(RELATION_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('toEntityId', '==', entityId)
@@ -306,13 +338,14 @@ const getOperationId = (scope: Scope, requestId: string) => `ontology_${sha(`${s
 const addInvalidationWrites = (
     transaction: Transaction,
     scope: Scope,
+    ownership: AnswerlatticeInvalidationOwnership,
     source: 'entities' | 'entityRelations',
     reason: string,
     sourceId: string,
 ) => {
-    const db = getDb();
     const now = FieldValue.serverTimestamp();
-    transaction.set(db.collection(SUMMARY_COLLECTION).doc(getAnswerlatticeSourceVersionsDocId(scope.tId, scope.sId)), {
+    transaction.set(ownership.sourceVersionsRef, {
+        ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
@@ -323,7 +356,8 @@ const addInvalidationWrites = (
         lastSourceId: sourceId.slice(0, 160),
         lastSourceType: source === 'entities' ? ENTITY_COLLECTION : RELATION_COLLECTION,
     }, { merge: true });
-    transaction.set(db.collection(SUMMARY_COLLECTION).doc(getAnswerlatticeBundleManifestDocId(scope.tId, scope.sId)), {
+    transaction.set(ownership.manifestRef, {
+        ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
@@ -334,6 +368,24 @@ const addInvalidationWrites = (
         lastReason: reason.slice(0, 80),
         lastSourceId: sourceId.slice(0, 160),
     }, { merge: true });
+};
+
+const readInvalidationOwnership = async (
+    transaction: Transaction,
+    scope: Scope,
+): Promise<AnswerlatticeInvalidationOwnership> => {
+    try {
+        return await readAnswerlatticeInvalidationOwnership({ db: getDb(), scope, transaction });
+    } catch (error) {
+        if (error instanceof AnswerlatticeInvalidationOwnershipError) {
+            throw new AnswerlatticeOntologyError(
+                'ontology_invalidation_ownership_conflict',
+                409,
+                'Product structure cache authority needs repair before this action can continue.',
+            );
+        }
+        throw error;
+    }
 };
 
 const readOperationReplay = (
@@ -386,6 +438,7 @@ const writeOperation = (
 
 const findLegacySlugOwner = async (scope: Scope, slug: string) => {
     const snapshot = await getDb().collection(ENTITY_COLLECTION)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('slug', '==', slug)
@@ -400,6 +453,7 @@ const findLegacySlugOwner = async (scope: Scope, slug: string) => {
 const findSearchIndexRef = async (scope: Scope, entityId: string) => {
     const db = getDb();
     const snapshot = await db.collection(SEARCH_INDEX_COLLECTION)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('entityId', '==', entityId)
@@ -447,7 +501,7 @@ const createEntity = async (
         const replay = readOperationReplay(operationSnapshot, action, scope, fingerprint);
         if (replay) return replay;
         if (entitySnapshot.exists) throw new AnswerlatticeOntologyError('ontology_entity_conflict', 409, 'This entity request already exists without a valid operation record.');
-        if (slugSnapshot.exists && slugSnapshot.data()?.entityId !== entityId) {
+        if (slugSnapshot.exists) {
             throw new AnswerlatticeOntologyError('ontology_slug_conflict', 409, 'Another product entity already uses this identifier.');
         }
         const counter = normalizeCounter(counterSnapshot.data(), scope);
@@ -455,6 +509,7 @@ const createEntity = async (
         if (counter.entityCount >= ANSWERLATTICE_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT) {
             throw new AnswerlatticeOntologyError('ontology_entity_limit', 409, 'Merge existing entities before adding another product entity.');
         }
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const response: AnswerlatticeOntologyActionResult = {
             success: true,
             action: action.action,
@@ -467,7 +522,7 @@ const createEntity = async (
         transaction.create(indexRef, { ...searchIndex, createdOn: now, modifiedOn: now, createdBy: actor.label, modifiedBy: actor.label, uId: actor.id });
         transaction.set(slugRef, { pId: PRODUCT_IDS.ANSWERLATTICE, ...scope, slug: entity.slug, entityId, createdAt: now, updatedAt: now });
         transaction.update(counterRef, { entityCount: counter.entityCount + 1, updatedAt: now });
-        addInvalidationWrites(transaction, scope, 'entities', 'entity_create', entityId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entities', 'entity_create', entityId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entity', entityId);
         return response;
     });
@@ -504,7 +559,9 @@ const updateEntity = async (
     const newSlugRef = db.collection(SLUG_INDEX_COLLECTION).doc(getSlugIndexId(scope, next.slug));
     return db.runTransaction(async (transaction) => {
         const refs = [operationRef, entityRef, searchIndexRef, oldSlugRef, newSlugRef];
-        const [operationSnapshot, currentSnapshot, , oldSlugSnapshot, newSlugSnapshot] = await Promise.all(refs.map((ref) => transaction.get(ref)));
+        const [operationSnapshot, currentSnapshot, searchIndexSnapshot, oldSlugSnapshot, newSlugSnapshot] = await Promise.all(
+            refs.map((ref) => transaction.get(ref)),
+        );
         const replay = readOperationReplay(operationSnapshot, action, scope, fingerprint);
         if (replay) return replay;
         if (!currentSnapshot.exists || !documentIsInScope(currentSnapshot.data() || {}, scope)) {
@@ -517,18 +574,29 @@ const updateEntity = async (
         if ((currentSnapshot.updateTime?.toMillis() || null) !== expectedUpdateTime) {
             throw new AnswerlatticeOntologyError('ontology_entity_changed', 409, 'This entity changed while you were editing it. Refresh and try again.');
         }
-        if (newSlugSnapshot.exists && newSlugSnapshot.data()?.entityId !== action.entityId) {
+        if (searchIndexSnapshot.exists && !searchIndexIsOwnedBy(searchIndexSnapshot.data(), scope, action.entityId)) {
+            throw new AnswerlatticeOntologyError('ontology_search_index_conflict', 409, 'This product entity search index needs repair before the entity can be changed.');
+        }
+        if (newSlugSnapshot.exists && !slugIndexIsOwnedBy(newSlugSnapshot.data(), scope, next.slug, action.entityId)) {
             throw new AnswerlatticeOntologyError('ontology_slug_conflict', 409, 'Another product entity already uses this identifier.');
         }
+        if (
+            oldSlugRef.path !== newSlugRef.path
+            && oldSlugSnapshot.exists
+            && !slugIndexIsOwnedBy(oldSlugSnapshot.data(), scope, existing.slug, action.entityId)
+        ) {
+            throw new AnswerlatticeOntologyError('ontology_slug_conflict', 409, 'This product identifier needs repair before the entity can be renamed.');
+        }
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const response: AnswerlatticeOntologyActionResult = { success: true, action: action.action, replayed: false, entity: next, searchIndex };
         const now = FieldValue.serverTimestamp();
         transaction.update(entityRef, { ...action.changes, pId: PRODUCT_IDS.ANSWERLATTICE, modifiedOn: now, modifiedBy: actor.label });
         transaction.set(searchIndexRef, { ...searchIndex, modifiedOn: now, modifiedBy: actor.label }, { merge: true });
         transaction.set(newSlugRef, { pId: PRODUCT_IDS.ANSWERLATTICE, ...scope, slug: next.slug, entityId: action.entityId, updatedAt: now }, { merge: true });
-        if (oldSlugRef.path !== newSlugRef.path && oldSlugSnapshot.exists && oldSlugSnapshot.data()?.entityId === action.entityId) {
+        if (oldSlugRef.path !== newSlugRef.path && oldSlugSnapshot.exists) {
             transaction.delete(oldSlugRef);
         }
-        addInvalidationWrites(transaction, scope, 'entities', 'entity_update', action.entityId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entities', 'entity_update', action.entityId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entity', action.entityId);
         return response;
     });
@@ -580,11 +648,13 @@ const deprecateEntity = async (
                 .where('sId', '==', scope.sId)
                 .limit(ANSWERLATTICE_PRODUCT_SURFACE_LIMIT + 1)),
             transaction.get(db.collection(RELATION_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('fromEntityId', '==', action.entityId)
                 .limit(1)),
             transaction.get(db.collection(RELATION_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('toEntityId', '==', action.entityId)
@@ -625,10 +695,11 @@ const deprecateEntity = async (
             );
         }
         if (!outgoing.empty || !incoming.empty) throw new AnswerlatticeOntologyError('ontology_entity_related', 409, 'Remove this entity’s product relations before deprecating it.');
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const entity = { ...parsed.data, status: 'deprecated' as const, pId: PRODUCT_IDS.ANSWERLATTICE } as AnswerlatticeEntity;
         const response: AnswerlatticeOntologyActionResult = { success: true, action: action.action, replayed: false, entity };
         transaction.update(entityRef, { status: 'deprecated', modifiedOn: FieldValue.serverTimestamp(), modifiedBy: actor.label });
-        addInvalidationWrites(transaction, scope, 'entities', 'entity_deprecate', action.entityId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entities', 'entity_deprecate', action.entityId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entity', action.entityId);
         return response;
     });
@@ -687,6 +758,7 @@ const createRelation = async (
             || toCount >= ANSWERLATTICE_ONTOLOGY_CONSTRAINTS.MAX_RELATIONS_PER_ENTITY) {
             throw new AnswerlatticeOntologyError('ontology_relation_limit', 409, 'One of these entities already has the maximum supported relations.');
         }
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const response: AnswerlatticeOntologyActionResult = { success: true, action: action.action, replayed: false, relation };
         const now = FieldValue.serverTimestamp();
         transaction.create(relationRef, { ...relation, createdOn: now, modifiedOn: now, createdBy: actor.label, modifiedBy: actor.label, uId: actor.id });
@@ -699,7 +771,7 @@ const createRelation = async (
             },
             updatedAt: now,
         });
-        addInvalidationWrites(transaction, scope, 'entityRelations', 'entity_relation_create', relationId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entityRelations', 'entity_relation_create', relationId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entityRelation', relationId);
         return response;
     });
@@ -737,6 +809,7 @@ const deleteRelation = async (
         if (!counter) throw new AnswerlatticeOntologyError('ontology_counter_invalid', 409, 'Product structure counters need repair.');
         const fromCount = normalizeCount(counter.relationCounts[parsed.data.fromEntityId], 'entity relation');
         const toCount = normalizeCount(counter.relationCounts[parsed.data.toEntityId], 'entity relation');
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const response: AnswerlatticeOntologyActionResult = { success: true, action: action.action, replayed: false };
         transaction.delete(relationRef);
         transaction.update(counterRef, {
@@ -748,7 +821,7 @@ const deleteRelation = async (
             },
             updatedAt: FieldValue.serverTimestamp(),
         });
-        addInvalidationWrites(transaction, scope, 'entityRelations', 'entity_relation_delete', action.relationId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entityRelations', 'entity_relation_delete', action.relationId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entityRelation', action.relationId);
         return response;
     });
@@ -765,17 +838,25 @@ const rebuildSearchIndex = async (
     const operationRef = db.collection(AUDIT_COLLECTION).doc(getOperationId(scope, action.requestId));
     const fingerprint = sha(canonicalJson(action));
     return db.runTransaction(async (transaction) => {
-        const [operationSnapshot, entitySnapshot] = await Promise.all([transaction.get(operationRef), transaction.get(entityRef)]);
+        const [operationSnapshot, entitySnapshot, indexSnapshot] = await Promise.all([
+            transaction.get(operationRef),
+            transaction.get(entityRef),
+            transaction.get(indexRef),
+        ]);
         const replay = readOperationReplay(operationSnapshot, action, scope, fingerprint);
         if (replay) return replay;
         const parsed = AnswerlatticeStoredEntitySchema.safeParse({ ...entitySnapshot.data(), id: action.entityId });
         if (!entitySnapshot.exists || !parsed.success || !documentIsInScope(entitySnapshot.data() || {}, scope)) {
             throw new AnswerlatticeOntologyError('ontology_entity_not_found', 404, 'Product entity not found.');
         }
+        if (indexSnapshot.exists && !searchIndexIsOwnedBy(indexSnapshot.data(), scope, action.entityId)) {
+            throw new AnswerlatticeOntologyError('ontology_search_index_conflict', 409, 'This product entity search index needs repair before it can be rebuilt.');
+        }
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const searchIndex = buildSearchIndex(parsed.data as AnswerlatticeEntity, scope, indexRef.id, action.weight);
         const response: AnswerlatticeOntologyActionResult = { success: true, action: action.action, replayed: false, searchIndex };
         transaction.set(indexRef, { ...searchIndex, modifiedOn: FieldValue.serverTimestamp(), modifiedBy: actor.label }, { merge: true });
-        addInvalidationWrites(transaction, scope, 'entities', 'entity_search_index_rebuild', action.entityId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entities', 'entity_search_index_rebuild', action.entityId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entitySearchIndex', indexRef.id);
         return response;
     });
@@ -887,6 +968,7 @@ const promoteCandidate = async (
         if (!counter || counter.entityCount >= ANSWERLATTICE_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT) {
             throw new AnswerlatticeOntologyError('ontology_entity_limit', 409, 'Merge existing entities before promoting another candidate.');
         }
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope);
         const response: AnswerlatticeOntologyActionResult = {
             success: true, action: action.action, replayed: false, entity, searchIndex, candidateId: action.candidateId, candidateStatus: 'approved',
         };
@@ -900,7 +982,7 @@ const promoteCandidate = async (
             pendingCandidateCount: parsed.data.status === 'pending' ? Math.max(0, counter.pendingCandidateCount - 1) : counter.pendingCandidateCount,
             updatedAt: now,
         });
-        addInvalidationWrites(transaction, scope, 'entities', 'entity_candidate_promote', entityId);
+        addInvalidationWrites(transaction, scope, invalidationOwnership, 'entities', 'entity_candidate_promote', entityId);
         writeOperation(transaction, operationRef, action, scope, actor, fingerprint, response, 'entity', entityId);
         return response;
     });

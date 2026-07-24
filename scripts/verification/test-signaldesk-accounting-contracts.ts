@@ -38,13 +38,19 @@ for (const invalid of [
     { providerCostEstimate: -0.01 },
     { aiCostEstimate: Number.POSITIVE_INFINITY },
     { firestoreWriteEstimate: 1.5 },
-    { privateNotes: "must-not-be-authority" },
 ]) {
     assert.throws(
         () => parseSignalDeskDailyCostDocument({ ...canonicalDailyCost, ...invalid }, canonicalDailyCost.day),
         /SIGNALDESK_DAILY_COST_SHAPE_INVALID/,
     );
 }
+assert.throws(
+    () => parseSignalDeskDailyCostDocument({
+        ...canonicalDailyCost,
+        privateNotes: "must-not-be-authority",
+    }, canonicalDailyCost.day),
+    /SIGNALDESK_DAILY_COST_SHAPE_INVALID/,
+);
 assert.deepEqual(buildSignalDeskDailyCostMutation({
     current: canonicalDailyCost,
     day: canonicalDailyCost.day,

@@ -1,16 +1,22 @@
 import { fetchLatestChangelogPage } from '@database/changelog';
-import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
+import {
+    useAnswerlatticeCacheScope,
+    useAnswerlatticePublicContentRequestScope,
+} from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ChangelogPage } from '@type/changelog';
 import { Timestamp } from 'firebase/firestore';
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useRef } from 'react';
 
 const changelogFetchInFlight = new Map<string, Promise<ChangelogPage | null>>();
 
-const fetchLatestChangelogPageOnce = (scopeKey: string) => {
+const fetchLatestChangelogPageOnce = (
+    scopeKey: string,
+    requestScope: { tId: number; sId: number },
+) => {
     if (!changelogFetchInFlight.has(scopeKey)) {
-        const request = fetchLatestChangelogPage().finally(() => {
+        const request = fetchLatestChangelogPage(requestScope).finally(() => {
             changelogFetchInFlight.delete(scopeKey);
         });
         changelogFetchInFlight.set(scopeKey, request);
@@ -39,6 +45,9 @@ const fetchLatestChangelogPageOnce = (scopeKey: string) => {
 export const useChangelogCache = () => {
     const { cachedChangelog, setCachedChangelog } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const scopeKey = useAnswerlatticeCacheScope();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
+    const currentScopeKeyRef = useRef(scopeKey);
+    currentScopeKeyRef.current = scopeKey;
     const scopedChangelog = cachedChangelog.scopeKey === scopeKey ? cachedChangelog.changelog : null;
 
     /**
@@ -98,7 +107,7 @@ export const useChangelogCache = () => {
             onCacheMiss?: () => void; // Callback when fetching
         }
     ): Promise<ChangelogPage | null> => {
-        if (!scopeKey) return null;
+        if (!scopeKey || !requestScope) return null;
         // ============================================
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================
@@ -106,7 +115,8 @@ export const useChangelogCache = () => {
             options.onCacheMiss?.();
             
             try {
-                const changelog = await fetchLatestChangelogPage();
+                const changelog = await fetchLatestChangelogPage(requestScope);
+                if (currentScopeKeyRef.current !== scopeKey) return null;
                 
                 if (changelog) {
                     setCachedChangelog({
@@ -144,7 +154,8 @@ export const useChangelogCache = () => {
         options?.onCacheMiss?.();
 
         try {
-            const changelog = await fetchLatestChangelogPageOnce(scopeKey);
+            const changelog = await fetchLatestChangelogPageOnce(scopeKey, requestScope);
+            if (currentScopeKeyRef.current !== scopeKey) return null;
             
             if (changelog) {
                 setCachedChangelog({
@@ -165,7 +176,7 @@ export const useChangelogCache = () => {
             });
             return null;
         }
-    }, [scopeKey, scopedChangelog, setCachedChangelog]);
+    }, [requestScope, scopeKey, scopedChangelog, setCachedChangelog]);
 
     /**
      * Check if item is cached

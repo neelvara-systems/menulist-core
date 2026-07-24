@@ -1,80 +1,53 @@
-# SignalDesk Draft Control - Implementation Plan
+# SignalDesk Draft Control - Implementation
 
-**Status:** Initial technical blueprint
-**Created:** June 23, 2026
-**Runtime:** Not created.
+**Status:** Implemented and locally verified
+**Last Updated:** July 21, 2026
 
-## Future File Layout
+## Runtime Map
 
-```txt
-packages/signaldesk-core/src/templates/
-packages/signaldesk-core/src/drafts/
-packages/signaldesk-core/src/message-guardrails/
-packages/signaldesk-ai/src/workers/draft-message/
-apps/internal-web/src/app/signaldesk/templates/
-apps/internal-web/src/app/signaldesk/targets/[targetId]/drafts/
-```
+| Concern | Source |
+| --- | --- |
+| API admission | `src/app/api/signaldesk/actions/route.ts` |
+| Draft transaction and rendering | `src/lib/signaldesk/workflowServer.ts` |
+| Contact authority | `src/lib/signaldesk/outboundContactContracts.ts` |
+| Target/evidence authority | `src/lib/signaldesk/outcomeContracts.ts` |
+| Strict workspace projection | `src/lib/signaldesk/workspaceContracts.ts` |
+| Desktop/mobile workspace | `src/components/signaldesk/SignalDeskWorkspace.tsx` |
+| Retention | `functions-signaldesk/src/schedulers/sourceDataLifecycle.ts` |
+| Focused emulator | `scripts/verification/e2e-signaldesk-local.js` |
 
-## Template Contract
+## Flow
 
-```ts
-type SignalDeskTemplate = {
-  templateId: string;
-  channel: "email" | "export" | "whatsapp-assisted" | "instagram-reply";
-  status: "draft" | "approved" | "paused" | "archived";
-  version: number;
-  name: string;
-  body: string;
-  approvedVariables: string[];
-  requiredEvidenceTypes: string[];
-  bannedClaimPolicyId: string;
-  createdAt: string;
-  updatedAt: string;
-};
-```
+1. The protected action route validates `targetId` and optional `templateId`.
+2. The server resolves the latest projected evidence, authoritative preview CTA,
+   and one ready sender through bounded reads.
+3. A Firestore transaction re-reads strict target/source lifecycle, source
+   policy, target contact detail, evidence, template, CTA, sender, and optional
+   conversation truth.
+4. It revalidates policy lineage, exact contact authority, evidence identity,
+   suppression, prior contact, template variables/channel/claims, CTA, and sender.
+5. It renders the fixed template variables and computes contact, CTA, sender,
+   template, and complete draft identity fingerprints.
+6. It either returns the exact durable triad or atomically creates the draft,
+   approval, approval packet, target progression, audit, timeline, queue, and cost.
+7. Approval later re-reads the template and rejects a missing, inactive,
+   wrong-channel, changed, or legacy-unbound template.
 
-## Draft Contract
+## Deterministic Copy Guard
 
-```ts
-type SignalDeskDraft = {
-  draftId: string;
-  targetId: string;
-  templateId: string;
-  templateVersion: number;
-  evidencePacketId: string;
-  channel: "email" | "export" | "whatsapp-assisted" | "instagram-reply";
-  status: "draft" | "blocked" | "needs-review" | "ready-for-approval" | "approved" | "rejected";
-  body: string;
-  guardrailResult: {
-    passed: boolean;
-    blockedClaims: string[];
-    blockedVariables: string[];
-    blockedFacts: string[];
-  };
-  createdBy: "human" | "ai-worker";
-  createdAt: string;
-  updatedAt: string;
-};
-```
+The runtime does not claim broad natural-language moderation. It rejects the
+maintained prohibited categories that would otherwise bypass the declared
+SignalDesk copy boundary: guarantees, platform-partnership claims, unsupported
+automatic platform actions, customer-loss/revenue fear claims, scraping claims,
+unverified-business claims, and false publication claims.
 
-## Guardrail Checks
+The approved template remains the primary copy boundary. `unsupportedClaims`
+is retained in the draft/approval contracts for downstream fail-closed review
+and legacy/corruption detection.
 
-1. Template approved.
-2. Evidence packet active.
-3. Source facts allowed for outbound.
-4. Variables approved.
-5. Banned claims absent.
-6. Suppression not active.
-7. Channel policy exists.
+## Compatibility
 
-## Build Order
-
-1. Template registry.
-2. Draft generator with no-send output.
-3. Guardrail checker.
-4. Draft editor.
-5. Approval handoff.
-
-## No Runtime Change
-
-Planning doc only.
+Older stored drafts without a template fingerprint remain readable, but cannot
+be newly approved. They must be rejected and recreated from current authority.
+No migration, backfill, collection, dependency, provider, or public route is
+required.

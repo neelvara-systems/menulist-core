@@ -804,6 +804,12 @@ const assertKBQualityDiagnosticsRouting = () => {
     const chatMonitoringImpl = read('__docs__/answerlattice/chat-monitoring/chat-monitoring_impl.md');
     const productSeparationPlaybook = read('__docs__/answerlattice/doctrine/08-product-separation-playbook.md');
     const multiProductTenancy = read('__docs__/answerlattice/doctrine/07-multi-product-tenancy.md');
+    const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
+    const helpCenterSpec = read('__docs__/answerlattice/help-center/help-center_spec.md');
+    const aiSystemReadme = read('__docs__/ai-system-layer/README.md');
+    const aiSystemImpl = read('__docs__/ai-system-layer/ai-system-layer_impl.md');
+    const aiSystemSpec = read('__docs__/ai-system-layer/ai-system-layer_spec.md');
+    const aiUsageAudit = read('__docs__/ai-enhancement-packs/ai-usage-audit.md');
 
     assertIncludes(
         kbQuality,
@@ -884,6 +890,25 @@ const assertKBQualityDiagnosticsRouting = () => {
         multiProductTenancy,
         'Dormant MenuList chat-monitoring compatibility boundary',
         'Answerlattice multi-product doctrine must state that the old MenuList intelligence workers are dormant.',
+    );
+    [helpCenterImpl, helpCenterSpec].forEach((source) => {
+        assertIncludes(
+            source,
+            'Dormant compatibility',
+            'Answerlattice Help Center docs must not present legacy MenuList Gemini intelligence workers as active runtime.',
+        );
+    });
+    [aiSystemReadme, aiSystemImpl, aiSystemSpec].forEach((source) => {
+        assertIncludes(
+            source,
+            'Dormant compatibility source',
+            'AI system docs must identify legacy Feedback/KB/Weekly source as dormant compatibility code.',
+        );
+    });
+    assertIncludes(
+        aiUsageAudit,
+        'DORMANT — not exported or scheduled',
+        'AI usage inventory must not count legacy Feedback/KB/Weekly workers as active scheduled provider operations.',
     );
     [
         answerlatticeFunctionsIndex,
@@ -1404,7 +1429,7 @@ const permissionRequirements = read('src/lib/permissions/permissionRequirements.
 const layoutProvider = read('src/providers/layoutProvider.tsx');
 const mainLayout = read('src/app/(main)/layout.tsx');
 const analyticsContext = read('src/contexts/AnalyticsContext.tsx');
-const chatAnalyticsService = read('src/services/chatAnalytics/index.ts');
+const chatAnalyticsService = read('src/lib/answerlattice/chatAnalyticsBackfillClient.ts');
 const systemHealthDashboard = read('src/components/analytics/SystemHealthDashboard.tsx');
 const analyticsExportButton = read('src/components/analytics/ExportButton.tsx');
 const ownerBusinessAssistantAnswerHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts');
@@ -1468,7 +1493,7 @@ const usersDal = read('src/database/users/index.ts');
 const platformArticleModal = read('src/components/templates/platform/knowledgeBase/ArticleModal.tsx');
 const platformTenantDetailsModal = read('src/components/templates/platform/tenants/tenantDetailsModal.tsx');
 const platformTenantsDashboard = read('src/components/templates/platform/tenants/index.tsx');
-const platformAnalyticsBackfill = read('src/components/templates/platform/admin/AnalyticsBackfill.tsx');
+const platformAnalyticsBackfill = read('src/components/templates/answerlattice/platform/AnalyticsBackfill.tsx');
 const platformPricingPlans = read('src/components/templates/platform/pricingPlans/index.tsx');
 const platformStoresDashboard = read('src/components/templates/platform/stores/index.tsx');
 const platformFontPresets = read('src/components/templates/platform/fontPresets/index.tsx');
@@ -1505,6 +1530,7 @@ const authClient = read('src/lib/auth/client.ts');
 const authBrowserRequestPolicy = read('src/lib/auth/browserRequestPolicy.ts');
 const getActiveSessionHelper = read('src/lib/auth/getActiveSession.ts');
 const sessionExpiryMonitor = read('src/components/auth/SessionExpiryMonitor.tsx');
+const latestRequestGuard = read('src/lib/runtime/latestRequestGuard.ts');
 const profileActionsModal = read('src/components/organisms/headerComponent/profileActionsModal/index.tsx');
 const userProfileModal = read('src/components/organisms/headerComponent/profileActionsModal/userProfileModal/index.tsx');
 const addSupportTicket = read('src/components/organisms/addSupportTicket/index.tsx');
@@ -1876,6 +1902,23 @@ assertIncludes(
     'buildRateLimitProviderUnavailableResult',
     'Core rate limit utility must centralize strict provider-unavailable results.',
 );
+assertIncludes(
+    rateLimit,
+    'ATOMIC_SLIDING_WINDOW_SCRIPT',
+    'Core rate limit utility must keep sliding-window admission in one atomic server-side script.',
+);
+assertIncludes(
+    rateLimit,
+    'upstash.eval<',
+    'Core rate limit utility must execute atomic admission through the pinned provider client.',
+);
+assertIncludes(
+    rateLimit,
+    '`${now}:${createRandomIdSegment(24)}`',
+    'Core rate limit utility must use collision-resistant same-millisecond request members.',
+);
+assert(!rateLimit.includes('const pipeline = upstash.pipeline()'), 'Core rate limit admission must not restore the non-atomic count-before-add pipeline.');
+assert(!rateLimit.includes('member: now'), 'Core rate limit admission must not collapse same-millisecond requests onto one member.');
 assert(!rateLimit.includes('new Error(String(error))'), 'Core rate limit utility must not log raw provider exception text.');
 assert(!rateLimit.includes("error.message === 'Rate limit provider timeout'"), 'Core rate limit utility must not branch on raw timeout exception text.');
 assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(rateLimit), 'Core rate limit utility must not direct-console provider failures.');
@@ -2659,7 +2702,7 @@ assertNoRandomReactKeys(platformUsers, 'Platform users dashboard');
 assertIncludes(platformTenantsDashboard, 'platform_tenants_load_failed', 'Platform tenants dashboard must code tenant load failures.');
 assertIncludes(platformTenantsDashboard, 'platform_tenants_summary_load_failed', 'Platform tenants dashboard must code summary load failures.');
 assertNoRandomReactKeys(platformTenantsDashboard, 'Platform tenants dashboard');
-assertIncludes(platformAnalyticsBackfill, 'platform_analytics_backfill_failed', 'Platform analytics backfill must code report generation failures.');
+assertIncludes(platformAnalyticsBackfill, 'answerlattice_platform_analytics_backfill_failed', 'Platform analytics backfill must code report generation failures.');
 assert(!platformAnalyticsBackfill.includes('error.message ||'), 'Platform analytics backfill must not surface raw exception messages in failure toasts.');
 assertIncludes(platformPricingPlans, 'platform_pricing_plans_load_failed', 'Platform pricing plans must code load failures.');
 assertIncludes(platformPricingPlans, 'platform_pricing_plan_save_failed', 'Platform pricing plans must code save failures.');
@@ -3823,6 +3866,14 @@ assertIncludes(sessionExpiryMonitor, 'isManualRedirectResponse', 'Session expiry
 assertIncludes(sessionExpiryMonitor, 'auth_access_status_response_redirected', 'Session expiry monitor must code redirected access-status responses.');
 assertIncludes(sessionExpiryMonitor, 'auth_access_status_response_parse_failed', 'Session expiry monitor must code malformed access-status responses.');
 assertIncludes(sessionExpiryMonitor, 'auth_access_status_response_invalid', 'Session expiry monitor must code invalid access-status responses.');
+assertIncludes(sessionExpiryMonitor, 'const sessionAccessIdentity = [', 'Session expiry monitor must bind access decisions to exact browser session identity.');
+assertIncludes(sessionExpiryMonitor, 'const requestId = requestGuard.begin();', 'Session expiry monitor must claim each access-status request.');
+assertIncludes(sessionExpiryMonitor, 'if (!requestGuard.isCurrent(requestId)) return;', 'Session expiry monitor must refuse stale access-status responses.');
+assertIncludes(sessionExpiryMonitor, 'await endAccess(requestId,', 'Session expiry monitor must bind sign-out decisions to the current access-status request.');
+assertIncludes(sessionExpiryMonitor, 'accessStatusRequestGuardRef.current?.invalidate();', 'Session expiry monitor cleanup must invalidate in-flight access-status decisions.');
+assertIncludes(sessionExpiryMonitor, '}, [sessionAccessIdentity, status]);', 'Session expiry monitor must reset access-ended state after an exact session change.');
+assertIncludes(latestRequestGuard, 'requestId => requestId === latestRequestId', 'Shared latest-request guard must settle only the current request.');
+assert(!sessionExpiryMonitor.includes('const accessCheckInFlight = useRef(false)'), 'Session expiry monitor must not share one unscoped in-flight boolean across sessions.');
 assert(!sessionExpiryMonitor.includes('response.json().catch(() => ({})'), 'Session expiry monitor must not silently swallow access-status response parse failures.');
 assertIncludes(accessStatusRoute, "import { isValidFirestoreDocumentId } from \"@lib/firebase/firestoreDocumentId\";", 'Access-status route must use the shared Firestore document ID guard.');
 assertIncludes(accessStatusRoute, 'const CANONICAL_ISO_TIMESTAMP_PATTERN', 'Access-status route must define a canonical ISO timestamp guard.');
@@ -4034,6 +4085,9 @@ assert((claimAccount.match(/reserveClaimAccountOperation\(\{/g) || []).length >=
 assertIncludes(claimAccountConcurrency, 'const hasActiveClaimOperation = (', 'Claim account must reject an active competing reservation.');
 assertIncludes(claimAccountConcurrency, 'claimOperation: {', 'Claim account must persist the reservation before Auth work.');
 assertIncludes(claimAccountConcurrency, '.limit(MAX_CLAIMED_SUBSCRIPTIONS + 1)', 'Claim account subscription relinking must be bounded.');
+assertIncludes(claimAccountConcurrency, ".where('tId', '==', scope.tenantId)", 'Claim account subscription relinking must constrain the duplicate tenant alias.');
+assertIncludes(claimAccountConcurrency, ".where('sId', '==', scope.storeId)", 'Claim account subscription relinking must constrain the duplicate store alias.');
+assertIncludes(claimAccountConcurrency, 'getMenuListSubscriptionEntitlementScope(subscriptionDoc.data())', 'Claim account must reproject exact persisted subscription ownership before relinking.');
 assertIncludes(claimAccountConcurrency, 'transaction.update(subscriptionDoc.ref', 'Claim account must couple subscription relinking to token consumption.');
 assertIncludes(claimAccountConcurrency, 'transaction.get(tenantRef)', 'Claim account must re-read canonical tenant truth before ownership finalization.');
 assertIncludes(claimAccountConcurrency, 'transaction.get(storeRef)', 'Claim account must re-read canonical store truth before ownership finalization.');
@@ -4669,6 +4723,10 @@ assertIncludes(phoneOtpHelper, 'export const normalizePhoneOtpUserDocumentId = (
 assertIncludes(phoneOtpHelper, 'userId === raw && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)', 'Phone OTP user document ID normalizer must reject whitespace-mutated, empty, oversized, path-shaped, or reserved user IDs.');
 assertIncludes(phoneOtpHelper, 'const existingUserId = normalizePhoneOtpUserDocumentId(dbUser.id);', 'Phone OTP existing user profile update must normalize the user document ID.');
 assertIncludes(phoneOtpHelper, '.doc(existingUserId)', 'Phone OTP existing user profile update must use the normalized user document ID.');
+assertIncludes(phoneOtpHelper, 'const generatedEmailUser = await getAuthUserByEmail(generatedEmail);', 'Phone OTP legacy email binding must prove generated-email uniqueness before changing the phone profile.');
+assertIncludes(phoneOtpHelper, 'generatedEmailUser.id !== existingUserId', 'Phone OTP legacy email binding must reject a competing generated-email owner.');
+assertIncludes(phoneOtpHelper, 'const loginEmail = existingEmail || generatedEmail;', 'Phone OTP legacy phone-only users must receive the deterministic generated login email.');
+assertIncludes(phoneOtpHelper, 'email: loginEmail,', 'Phone OTP existing-user persistence and token handoff must share the resolved login email.');
 assertIncludes(phoneOtpHelper, 'const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);', 'Phone OTP login-token creation and consumption must normalize resolved user IDs.');
 assertIncludes(phoneOtpHelper, 'userId: dbUserId', 'Phone OTP login-token writes must store normalized user IDs.');
 assertIncludes(phoneOtpHelper, 'const tokenUserId = normalizePhoneOtpUserDocumentId(data.userId);', 'Phone OTP consumed login tokens must normalize stored token user IDs inside the consumption transaction.');
@@ -4703,6 +4761,8 @@ assert(read('__docs__/phone-otp-auth/phone-otp-auth_impl.md').includes('July 5 c
 assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('The July 5 challenge ID boundary'), 'Phone OTP Firebase docs must record challenge ID cost boundary.');
 assert(read('__docs__/phone-otp-auth/phone-otp-auth_impl.md').includes('Phone OTP User Document ID Boundary'), 'Phone OTP implementation docs must record user document ID boundary.');
 assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('Phone OTP User Document ID Boundary'), 'Phone OTP Firebase docs must record user document ID cost boundary.');
+assert(read('__docs__/phone-otp-auth/phone-otp-auth_impl.md').includes('July 21 legacy email-binding hardening'), 'Phone OTP implementation docs must record legacy email binding and identity-conflict behavior.');
+assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('July 21 legacy email binding'), 'Phone OTP Firebase docs must record the conditional generated-email uniqueness query.');
 assert(productionReadinessAudit.includes('Phone OTP challenge ID boundary checkpoint'), 'Production audit must record Phone OTP challenge ID boundary.');
 assert(productionReadinessAudit.includes('malformed or whitespace-mutated `challengeId` values'), 'Production audit must record strict Phone OTP challenge ID admission.');
 assert(productionReadinessAudit.includes('Phone OTP user document-ID boundary checkpoint'), 'Production audit must record Phone OTP user document ID boundary.');

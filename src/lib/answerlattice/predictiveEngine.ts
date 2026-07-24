@@ -32,6 +32,13 @@ import {
 } from '@lib/answerlattice/predictiveSupportContracts';
 import { parseAnswerlatticePredictiveTriggerIndex } from '@lib/answerlattice/runtimeSummaryContracts';
 import { parseAnswerlatticeRetrievalCanonicalAnswer } from '@lib/answerlattice/retrievalContracts';
+import {
+    buildAnswerlatticePredictiveCooldownKey,
+    claimAnswerlatticePredictiveCooldown,
+} from '@lib/answerlattice/predictiveCooldown';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getAnswerlatticePublicCacheTags } from '@lib/actions/revalidateAnswerlatticePublicCache';
+import { unstable_cache } from 'next/cache';
 import { PRODUCT_IDS } from '@constant/product';
 import type {
     AnswerlatticeCanonicalAnswer,
@@ -53,12 +60,8 @@ const getAnswerlatticeAdminDb = () => {
     }
     return answerlatticeFirestoreAdmin;
 };
-const TRIGGER_INDEX_CACHE_TTL_MS = 60_000;
-const EMPTY_TRIGGER_INDEX_CACHE_TTL_MS = 5 * 60_000;
-const triggerIndexCache = new Map<string, {
-    expiresAt: number;
-    value: AnswerlatticePredictiveTriggerIndex | null;
-}>();
+const TRIGGER_INDEX_CACHE_TTL_SECONDS = 60;
+const triggerIndexLoads = new Map<string, Promise<AnswerlatticePredictiveTriggerIndex | null>>();
 
 const isTriggerWithinActiveWindow = (trigger: AnswerlatticePredictiveTrigger, now = Date.now()) => {
     if (trigger.kind !== 'known_issue') return true;
@@ -72,9 +75,30 @@ const isTriggerWithinActiveWindow = (trigger: AnswerlatticePredictiveTrigger, no
  * 
  * Doc path: platformSummary/predictiveTriggers_{tId}_{sId}
  */
+const readTriggerIndex = async (
+    tId: number,
+    sId: number,
+): Promise<AnswerlatticePredictiveTriggerIndex | null> => {
+    const snap = await getAnswerlatticeAdminDb()
+        .collection(PLATFORM_SUMMARY_COLLECTION)
+        .doc(`predictiveTriggers_${tId}_${sId}`)
+        .get();
+    const value = snap.exists
+        ? parseAnswerlatticePredictiveTriggerIndex(snap.data(), { tId, sId })
+        : null;
+    if (snap.exists && !value) {
+        logRuntimeFailure('answerlattice_predictive_trigger_summary_invalid', undefined, {
+            hasTenantScope: true,
+            hasStoreScope: true,
+        });
+    }
+    return value;
+};
+
 export async function loadTriggerIndex(
     tId: number,
-    sId: number
+    sId: number,
+    options: { bypassCache?: boolean } = {},
 ): Promise<AnswerlatticePredictiveTriggerIndex | null> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) return null;
     if (
@@ -84,34 +108,44 @@ export async function loadTriggerIndex(
         || sId <= 0
     ) return null;
 
-    const cacheKey = `${tId}:${sId}`;
-    const cached = triggerIndexCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-        return cached.value;
+    const cacheKey = `${PRODUCT_IDS.ANSWERLATTICE}:${tId}:${sId}`;
+    if (!options.bypassCache) {
+        const currentLoad = triggerIndexLoads.get(cacheKey);
+        if (currentLoad) return currentLoad;
     }
-    if (cached) {
-        triggerIndexCache.delete(cacheKey);
+    const load = options.bypassCache
+        ? readTriggerIndex(tId, sId)
+        : unstable_cache(
+            () => readTriggerIndex(tId, sId),
+            ['answerlattice-predictive-trigger-index', cacheKey],
+            {
+                revalidate: TRIGGER_INDEX_CACHE_TTL_SECONDS,
+                tags: getAnswerlatticePublicCacheTags(tId, sId, 'predictive'),
+            },
+        )();
+    if (options.bypassCache) {
+        try {
+            return await load;
+        } catch (error) {
+            logRuntimeFailure('answerlattice_predictive_trigger_summary_load_failed', error, {
+                hasTenantScope: true,
+                hasStoreScope: true,
+            });
+            return null;
+        }
     }
 
+    triggerIndexLoads.set(cacheKey, load);
     try {
-        const snap = await getAnswerlatticeAdminDb()
-            .collection(PLATFORM_SUMMARY_COLLECTION)
-            .doc(`predictiveTriggers_${tId}_${sId}`)
-            .get();
-        const value = snap.exists
-            ? parseAnswerlatticePredictiveTriggerIndex(snap.data(), { tId, sId })
-            : null;
-        const hasActiveTriggers = Number(value?.activeTriggerCount || 0) > 0
-            || (value?.activeTriggerCount === undefined
-                && value?.triggers
-                && Object.values(value.triggers).some((trigger: any) => trigger?.status === 'active'));
-        triggerIndexCache.set(cacheKey, {
-            expiresAt: Date.now() + (hasActiveTriggers ? TRIGGER_INDEX_CACHE_TTL_MS : EMPTY_TRIGGER_INDEX_CACHE_TTL_MS),
-            value,
+        return await load;
+    } catch (error) {
+        logRuntimeFailure('answerlattice_predictive_trigger_summary_load_failed', error, {
+            hasTenantScope: true,
+            hasStoreScope: true,
         });
-        return value;
-    } catch {
         return null;
+    } finally {
+        if (triggerIndexLoads.get(cacheKey) === load) triggerIndexLoads.delete(cacheKey);
     }
 }
 
@@ -166,18 +200,23 @@ function filterByPage(
 // COOLDOWN (Upstash Redis)
 // ═══════════════════════════════════════════════════════════════
 
-const COOLDOWN_PREFIX = 'canon:ps:';
 const isRedisConfigured = () => Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 /**
- * Check if a trigger is on cooldown for a user.
- * Returns true if on cooldown (skip trigger), false if eligible.
- * Fail-closed: returns true (skip trigger) if Redis unavailable.
+ * Atomically claims the user/workspace/trigger cooldown.
+ * Returns false when the key already exists or Redis is unavailable.
  */
-async function checkCooldown(userId: string, triggerId: string, failClosed = true): Promise<boolean> {
-    if (!isRedisConfigured()) {
-        return failClosed;
-    }
+async function claimCooldown(
+    userId: string,
+    triggerId: string,
+    tId: number,
+    sId: number,
+    cooldownHours: number,
+): Promise<boolean> {
+    if (!isRedisConfigured()) return false;
+
+    const key = buildAnswerlatticePredictiveCooldownKey({ tId, sId, userId, triggerId });
+    if (!key) return false;
 
     try {
         const { Redis } = await import('@upstash/redis');
@@ -185,32 +224,17 @@ async function checkCooldown(userId: string, triggerId: string, failClosed = tru
             url: process.env.UPSTASH_REDIS_REST_URL || '',
             token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
         });
-        const key = `${COOLDOWN_PREFIX}${userId}:${triggerId}`;
-        const exists = await redis.exists(key);
-        return exists === 1;
-    } catch {
-        // Fail closed to avoid repeated proactive prompts when cooldown storage is unavailable.
-        return failClosed;
-    }
-}
-
-/**
- * Set cooldown for a user+trigger combination.
- * Uses Redis TTL for automatic expiry — no cleanup needed.
- */
-async function setCooldown(userId: string, triggerId: string, cooldownHours: number): Promise<void> {
-    if (!isRedisConfigured()) return;
-
-    try {
-        const { Redis } = await import('@upstash/redis');
-        const redis = new Redis({
-            url: process.env.UPSTASH_REDIS_REST_URL || '',
-            token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+        return await claimAnswerlatticePredictiveCooldown({
+            store: redis,
+            key,
+            cooldownHours,
         });
-        const key = `${COOLDOWN_PREFIX}${userId}:${triggerId}`;
-        await redis.set(key, '1', { ex: cooldownHours * 3600 });
-    } catch {
-        // Fire-and-forget — cooldown failure never blocks suggestion
+    } catch (error) {
+        logRuntimeFailure('answerlattice_predictive_cooldown_claim_failed', error, {
+            hasTenantScope: true,
+            hasStoreScope: true,
+        });
+        return false;
     }
 }
 
@@ -331,23 +355,25 @@ export async function evaluateTriggers(
 
         if (matchedTriggers.length === 0) return null;
 
-        // 4. Check cooldown and resolve content for first eligible trigger
+        // 4. Resolve content and atomically claim cooldown for the first eligible trigger.
         for (const trigger of matchedTriggers) {
-            const onCooldown = await checkCooldown(userId, trigger.id, trigger.kind !== 'known_issue');
-            if (onCooldown) continue;
-
-            // 5. Resolve content
             const suggestion = await resolveSuggestion(trigger, tId, sId);
             if (!suggestion) continue;
 
-            // 6. Set cooldown (fire-and-forget)
-            setCooldown(userId, trigger.id, trigger.cooldownHours);
+            if (
+                trigger.kind !== 'known_issue'
+                && !await claimCooldown(userId, trigger.id, tId, sId, trigger.cooldownHours)
+            ) continue;
 
             return suggestion;
         }
 
         return null; // All triggers on cooldown
-    } catch {
+    } catch (error) {
+        logRuntimeFailure('answerlattice_predictive_evaluation_failed', error, {
+            hasTenantScope: Number.isSafeInteger(tId) && tId > 0,
+            hasStoreScope: Number.isSafeInteger(sId) && sId > 0,
+        });
         // Graceful degradation — predictive help failure never blocks product
         return null;
     }

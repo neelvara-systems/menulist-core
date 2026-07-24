@@ -18,6 +18,11 @@ export type AnswerlatticeAnalyticsQueryWindow = {
     dayCount: number;
 };
 
+export type AnswerlatticeChatWorkspaceScope = {
+    tId: number;
+    sId: number;
+};
+
 export type AnswerlatticeChatAnalyticsDay = {
     id: string;
     pId: typeof PRODUCT_IDS.ANSWERLATTICE;
@@ -65,6 +70,24 @@ export const normalizeAnswerlatticeAnalyticsPageSize = (value: unknown, fallback
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
     return Math.min(Math.floor(parsed), ANSWERLATTICE_CHAT_ANALYTICS_PAGE_LIMIT);
+};
+
+export const getAnswerlatticeChatWorkspaceScopeKey = (
+    value: { tenantId?: unknown; storeId?: unknown; tId?: unknown; sId?: unknown } | null | undefined,
+): string | null => {
+    if (!value) return null;
+    const tId = normalizeAnswerlatticeScopeDocumentId(value.tId ?? value.tenantId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(value.sId ?? value.storeId);
+    return tId && sId ? `answerlattice-chat:${tId}:${sId}` : null;
+};
+
+export const isAnswerlatticeChatWorkspaceScopeAcknowledgement = (
+    value: unknown,
+    expected: AnswerlatticeChatWorkspaceScope,
+): boolean => {
+    if (!isRecord(value)) return false;
+    return normalizeAnswerlatticeScopeDocumentId(value.tId) === expected.tId
+        && normalizeAnswerlatticeScopeDocumentId(value.sId) === expected.sId;
 };
 
 export const parseAnswerlatticeAnalyticsDateRange = (

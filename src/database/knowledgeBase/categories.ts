@@ -135,7 +135,7 @@ const mutateCategories = async (
         : {};
     const next = mutate(current);
     assertKnowledgeBaseCategoriesMapBounds(next);
-    appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+    await appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
         ...invalidation,
         sourceType: 'kb_category',
     });
@@ -187,7 +187,7 @@ const mutateCategoriesWithArticleTitlePropagation = async (
                 throw new Error(`Knowledge base article ${article.id} is outside this navigation update.`);
             }
         });
-        appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+        await appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
             ...invalidation,
             sourceType: 'kb_category',
         });

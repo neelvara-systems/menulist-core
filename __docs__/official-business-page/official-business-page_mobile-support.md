@@ -109,6 +109,8 @@ Already mobile-first by design:
 - **Public OBP page:** No auth (public, like digital menu)
 - **Dashboard OBP settings:** Same NextAuth session, same RBAC — no separate mobile auth
 - **MobileShareScreen:** Already behind auth in MobileShell
+- **Owner editor scope:** Mobile Official Page drafts remount on exact tenant/store change. Save admission, optimistic projection, rollback, cleanup queues, loading, and success/error feedback remain owned by the initiating scope and one admitted action.
+- **Media lifecycle:** Navigation/store switching cannot delete staged media during an unresolved store save. Uploads that finish after the source screen becomes obsolete self-clean their returned unreferenced object.
 
 ---
 

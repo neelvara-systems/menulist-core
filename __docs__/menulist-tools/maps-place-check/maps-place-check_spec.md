@@ -66,6 +66,9 @@ Google Place ID.
 ## Acceptance
 
 - The callable rejects unauthenticated calls.
+- The same feature flag that guards the provider call also guards every new
+  grounded Place-ID confirmation. Removal remains available while disabled so
+  an existing binding is always reversible.
 - Store-scoped users can check only their own tenant/store.
 - Platform users can check a requested tenant/store.
 - SAFE_MODE blocks the provider call.
@@ -90,3 +93,7 @@ Google Place ID.
   the browser confirmation path cannot create a GBP connection record.
 - Removing one provider binding preserves every other provider binding.
 - Outlet bindings never propagate from a master store or merge two locations.
+- Provider activation and grounded-candidate UI release additionally require a
+  server-authoritative, fail-closed policy for the same provider location ID
+  appearing on more than one MenuList store. No registry is introduced while
+  the provider path remains disabled and there is no observed collision.

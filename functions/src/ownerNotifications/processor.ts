@@ -841,6 +841,7 @@ export async function retryFailedOwnerNotifications(): Promise<{ retried: number
   let succeeded = 0;
   const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
   const snapshot = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)
+    .where('productId', '==', 'ML')
     .where('status', '==', 'failed')
     .where('updatedAt', '>=', Timestamp.fromMillis(yesterdayMs))
     .orderBy('updatedAt', 'asc')
@@ -862,11 +863,13 @@ export async function retryFailedOwnerNotifications(): Promise<{ retried: number
 export async function getOwnerNotificationDigest(): Promise<{ sent: number; failed: number; total: number }> {
   const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
   const sentSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .where('productId', '==', 'ML')
     .where('status', '==', 'sent')
     .where('createdAt', '>=', Timestamp.fromMillis(yesterdayMs))
     .count()
     .get();
   const failedSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .where('productId', '==', 'ML')
     .where('status', '==', 'failed')
     .where('createdAt', '>=', Timestamp.fromMillis(yesterdayMs))
     .count()

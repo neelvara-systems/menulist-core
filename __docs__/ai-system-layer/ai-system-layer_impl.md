@@ -22,10 +22,10 @@ All AI calls now flow through the AI Gateway with key rotation and retry.
 | Feature           | Rate Limit | Retry         | Circuit Breaker | Cost Tracking    |
 | ----------------- | ---------- | ------------- | --------------- | ---------------- |
 | Menu Extraction   | ✅ Upstash | ✅ Gateway+CB | ✅ Full         | ✅ AI Operations |
-| Feedback Analysis | ❌ Nightly | ✅ Gateway    | ❌              | ❌               |
+| Feedback Analysis | Dormant compatibility source | ✅ Gateway if deliberately invoked | ❌ | ❌ |
 | Owner Dashboard   | ❌ Nightly | ✅ Gateway    | ❌              | ❌               |
-| Weekly Narrative  | ❌ Nightly | ✅ Gateway    | ❌              | ❌               |
-| KB Quality        | ❌ Nightly | ✅ Gateway    | ❌              | ❌               |
+| Weekly Narrative  | Dormant compatibility source | ✅ Gateway if deliberately invoked | ❌ | ❌ |
+| KB Quality        | Dormant compatibility source | ✅ Gateway if deliberately invoked | ❌ | ❌ |
 
 ### Solved: Capacity Exhaustion Handoff Diagnostics (✅ Complete)
 

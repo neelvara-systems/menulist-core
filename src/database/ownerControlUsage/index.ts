@@ -19,18 +19,31 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { replaceUndefined } from '@lib/apiHelper';
 import getActiveSession from '@lib/auth/getActiveSession';
+import {
+    normalizeOwnerControlDocumentIdPart,
+    parseOwnerControlUsageDocument,
+    type OwnerControlType,
+} from '@data/shared/ownerControlUsageContract';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { writeOwnerControlUsageEvent } from '@lib/ownerControlUsage/writeOwnerControlUsage';
 import { secureError } from '@lib/security/secureLogger';
-import { doc, getDoc, increment, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 
 // ================================================================
 // COST OPTIMIZATION: Debounce tracking to reduce writes
 // ================================================================
 const DEBOUNCE_MS = 5000; // 5 second debounce per control type
 const pendingWrites: Map<string, NodeJS.Timeout> = new Map();
-const pendingData: Map<string, { controlType: OwnerControlType; metadata?: any }> = new Map();
+
+export interface OwnerControlMetadata {
+    previousValue?: unknown;
+    newValue?: unknown;
+    projectId?: string;
+    itemId?: string;
+}
+
+const pendingData: Map<string, { controlType: OwnerControlType; metadata?: OwnerControlMetadata }> = new Map();
 
 const getOwnerControlErrorName = (error: unknown): string | undefined => {
     if (error === undefined) return undefined;
@@ -45,12 +58,7 @@ const getOwnerControlErrorCode = (error: unknown): string | undefined => {
     return String(code).slice(0, 64);
 };
 
-const getOwnerControlMetadataContext = (metadata?: {
-    previousValue?: any;
-    newValue?: any;
-    projectId?: string;
-    itemId?: string;
-}) => {
+const getOwnerControlMetadataContext = (metadata?: OwnerControlMetadata) => {
     const projectId = String(metadata?.projectId ?? '');
     const itemId = String(metadata?.itemId ?? '');
 
@@ -81,26 +89,15 @@ const logOwnerControlUsageFailure = (
 
 const COLLECTION = DB_COLLECTIONS.OWNER_CONTROL_USAGE;
 
-/**
- * Owner Control Types
- */
-export type OwnerControlType =
-    | 'ownerBoost'           // Item boost slider changed
-    | 'pinnedPopular'        // Pinned item for Popular block
-    | 'pinnedQuickPick'      // Pinned item for Quick Pick block
-    | 'pinnedBestValue'      // Pinned item for Best Value block
-    | 'enablePopular'        // Toggle Popular block on/off
-    | 'enableQuickPick'      // Toggle Quick Pick block on/off
-    | 'enableBestValue'      // Toggle Best Value block on/off
-    | 'screenOverride';      // Owner upload prioritization toggle
+export type { OwnerControlType } from '@data/shared/ownerControlUsageContract';
 
 /**
  * Usage event structure
  */
 export interface OwnerControlEvent {
     controlType: OwnerControlType;
-    previousValue?: any;
-    newValue?: any;
+    previousValue?: unknown;
+    newValue?: unknown;
     projectId?: string;
     itemId?: string;
     timestamp: Date;
@@ -114,14 +111,14 @@ export interface OwnerControlUsageStats {
     sId: string;
 
     // Total counts by control type
-    counts: Record<OwnerControlType, number>;
+    counts: Partial<Record<OwnerControlType, number>>;
 
     // Last usage timestamps by control type
-    lastUsed: Record<OwnerControlType, Date | null>;
+    lastUsed: Partial<Record<OwnerControlType, Date | null>>;
 
     // Monthly breakdown for trend analysis
     monthlyUsage: {
-        [yearMonth: string]: Record<OwnerControlType, number>;
+        [yearMonth: string]: Partial<Record<OwnerControlType, number>>;
     };
 
     // First tracked and last updated
@@ -134,7 +131,12 @@ export interface OwnerControlUsageStats {
  * Per tenant/store - not per project (tracks overall owner behavior)
  */
 function getDocRef(tId: string | number, sId: string | number) {
-    const docId = `${tId}_${sId}`;
+    const tenantDocumentId = normalizeOwnerControlDocumentIdPart(tId);
+    const storeDocumentId = normalizeOwnerControlDocumentIdPart(sId);
+    if (!tenantDocumentId || !storeDocumentId) {
+        throw new Error('owner_control_usage_invalid_store_scope');
+    }
+    const docId = `${tenantDocumentId}_${storeDocumentId}`;
     return doc(firebaseClient, COLLECTION, docId);
 }
 
@@ -149,12 +151,7 @@ function getDocRef(tId: string | number, sId: string | number) {
  */
 export async function trackOwnerControlUsage(
     controlType: OwnerControlType,
-    metadata?: {
-        previousValue?: any;
-        newValue?: any;
-        projectId?: string;
-        itemId?: string;
-    }
+    metadata?: OwnerControlMetadata,
 ): Promise<void> {
     // COST GATE: Check feature flag first (zero cost if disabled)
     if (!FEATURE_FLAGS.ENABLE_OWNER_ANALYTICS) {
@@ -182,7 +179,7 @@ export async function trackOwnerControlUsage(
         const timer = setTimeout(() => {
             const data = pendingData.get(debounceKey);
             if (data) {
-                executeTrackingWrite(session.tId!, session.sId!, data.controlType, data.metadata);
+                void executeTrackingWrite(session.tId!, session.sId!, data.controlType, data.metadata);
                 pendingData.delete(debounceKey);
             }
             pendingWrites.delete(debounceKey);
@@ -204,41 +201,10 @@ async function executeTrackingWrite(
     tId: string | number,
     sId: string | number,
     controlType: OwnerControlType,
-    metadata?: any
+    metadata?: OwnerControlMetadata,
 ): Promise<void> {
     try {
-        const tIdStr = String(tId);
-        const sIdStr = String(sId);
-        const docRef = getDocRef(tIdStr, sIdStr);
-        const now = new Date();
-        const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-        try {
-            await updateDoc(docRef, {
-                [`counts.${controlType}`]: increment(1),
-                [`lastUsed.${controlType}`]: Timestamp.fromDate(now),
-                [`monthlyUsage.${yearMonth}.${controlType}`]: increment(1),
-                lastUpdatedAt: Timestamp.fromDate(now),
-            });
-        } catch (error: any) {
-            if (error?.code !== 'not-found') {
-                throw error;
-            }
-
-            const initialData: any = {
-                tId,
-                sId,
-                counts: { [controlType]: 1 },
-                lastUsed: { [controlType]: Timestamp.fromDate(now) },
-                monthlyUsage: {
-                    [yearMonth]: { [controlType]: 1 },
-                },
-                firstTrackedAt: Timestamp.fromDate(now),
-                lastUpdatedAt: Timestamp.fromDate(now),
-            };
-
-            await setDoc(docRef, replaceUndefined(initialData));
-        }
+        await writeOwnerControlUsageEvent(firebaseClient, tId, sId, controlType);
 
     } catch (error) {
         // Fire-and-forget - log but don't throw
@@ -269,24 +235,39 @@ export async function getOwnerControlUsageStats(
             }
 
             const data = docSnap.data();
+            const parsed = parseOwnerControlUsageDocument(
+                data,
+                docSnap.id,
+                (value): value is Timestamp => value instanceof Timestamp,
+                (value) => value.toMillis(),
+            );
+            if (!parsed) {
+                logOwnerControlUsageFailure(
+                    'owner_control_usage_read_invalid_document',
+                    new Error('Invalid owner control usage document'),
+                    undefined,
+                    {
+                        documentIdLength: docSnap.id.length,
+                    },
+                );
+                return null;
+            }
 
             // Convert Timestamps to Dates
-            const lastUsed: Record<OwnerControlType, Date | null> = {} as any;
-            if (data.lastUsed) {
-                for (const key of Object.keys(data.lastUsed)) {
-                    lastUsed[key as OwnerControlType] = data.lastUsed[key]?.toDate?.() || null;
-                }
+            const lastUsed: Partial<Record<OwnerControlType, Date | null>> = {};
+            for (const key of Object.keys(parsed.lastUsed) as OwnerControlType[]) {
+                lastUsed[key] = parsed.lastUsed[key]?.toDate() ?? null;
             }
 
             return {
-                tId: data.tId,
-                sId: data.sId,
-                counts: data.counts || {},
+                tId: parsed.tId,
+                sId: parsed.sId,
+                counts: parsed.counts,
                 lastUsed,
-                monthlyUsage: data.monthlyUsage || {},
-                firstTrackedAt: data.firstTrackedAt?.toDate?.() || new Date(),
-                lastUpdatedAt: data.lastUpdatedAt?.toDate?.() || new Date(),
-            } as OwnerControlUsageStats;
+                monthlyUsage: parsed.monthlyUsage,
+                firstTrackedAt: parsed.firstTrackedAt.toDate(),
+                lastUpdatedAt: parsed.lastUpdatedAt.toDate(),
+            };
         },
         'getOwnerControlUsageStats'
     );
@@ -298,7 +279,7 @@ export async function getOwnerControlUsageStats(
  */
 export function calculateUsageRate(stats: OwnerControlUsageStats): {
     overallRate: number;
-    byControl: Record<OwnerControlType, number>;
+    byControl: Partial<Record<OwnerControlType, number>>;
     trend: 'increasing' | 'stable' | 'decreasing';
 } {
     const totalCounts = Object.values(stats.counts).reduce((a, b) => a + b, 0);
@@ -308,7 +289,7 @@ export function calculateUsageRate(stats: OwnerControlUsageStats): {
 
     const overallRate = totalCounts / daysSinceFirst;
 
-    const byControl: Record<OwnerControlType, number> = {} as any;
+    const byControl: Partial<Record<OwnerControlType, number>> = {};
     for (const [key, count] of Object.entries(stats.counts)) {
         byControl[key as OwnerControlType] = count / daysSinceFirst;
     }

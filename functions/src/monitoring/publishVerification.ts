@@ -12,7 +12,7 @@
  * @see __docs__/menu-health-monitor/menu-health-monitor_impl.md
  */
 
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -27,11 +27,17 @@ import { createAlert } from './alerts';
 const logger = functions.logger;
 const PUBLISH_VERIFICATION_FAILED_ALERT_MESSAGE = 'A published menu failed health verification. Review the store health record and bounded verification metadata.';
 const PUBLISH_VERIFICATION_MIN_BODY_BYTES = 500;
-const PUBLISH_VERIFICATION_SCOPE_INVALID = 'PUBLISH_VERIFICATION_SCOPE_INVALID';
+export const PUBLISH_VERIFICATION_SCOPE_INVALID = 'PUBLISH_VERIFICATION_SCOPE_INVALID';
 export const PUBLISH_VERIFICATION_PROJECT_NOT_FOUND = 'PUBLISH_VERIFICATION_PROJECT_NOT_FOUND';
 export const PUBLISH_VERIFICATION_PROJECT_LIMIT_EXCEEDED = 'PUBLISH_VERIFICATION_PROJECT_LIMIT_EXCEEDED';
 export const PUBLISH_VERIFICATION_PUBLIC_URL_UNAVAILABLE = 'PUBLISH_VERIFICATION_PUBLIC_URL_UNAVAILABLE';
 const MAX_FORCE_REPUBLISH_PROJECTS = 100;
+const FORCE_REPUBLISH_LEASE_MS = 90 * 1000;
+
+export interface ForceRepublishLease {
+  leaseOwner: string;
+  stateRef: FirebaseFirestore.DocumentReference;
+}
 
 type PublishVerificationScopeOptions = {
   publicMenuUrl?: string;
@@ -204,6 +210,77 @@ function isActiveCanonicalPublishScope(
   return storeCandidates.some((candidate) => (
     normalizeOwnerNotificationNumericScopeDocumentId(candidate)?.documentId === storeId
   ));
+}
+
+export async function acquireForceRepublishLease(
+  tenantId: string,
+  storeId: string,
+  userId: string,
+  leaseOwner: string,
+  now: Date,
+): Promise<ForceRepublishLease | null> {
+  const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(storeId);
+  const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(tenantId);
+  const userDocumentId = normalizeOwnerNotificationDocumentId(userId);
+  if (!storeScope || !tenantScope || !userDocumentId) {
+    throw new Error(PUBLISH_VERIFICATION_SCOPE_INVALID);
+  }
+
+  const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
+  const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
+  const userRef = db.collection(DB_COLLECTIONS.USERS).doc(userDocumentId);
+  const stateRef = db.collection(DB_COLLECTIONS.SYSTEM)
+    .doc(`forceRepublish_${tenantScope.documentId}_${storeScope.documentId}`);
+  const nowMs = now.getTime();
+
+  const acquired = await db.runTransaction(async (transaction) => {
+    const [tenantDoc, storeDoc, userDoc, stateSnapshot] = await Promise.all([
+      transaction.get(tenantRef),
+      transaction.get(storeRef),
+      transaction.get(userRef),
+      transaction.get(stateRef),
+    ]);
+    if (!isActiveCanonicalPublishScope(
+      tenantDoc.data() as Record<string, unknown> | undefined,
+      storeDoc.data() as Record<string, unknown> | undefined,
+      userDoc.data() as Record<string, unknown> | undefined,
+      tenantScope.documentId,
+      storeScope.documentId,
+      { requirePlatformAuthority: true },
+    )) {
+      throw new Error(PUBLISH_VERIFICATION_SCOPE_INVALID);
+    }
+
+    const state = stateSnapshot.data() || {};
+    const leaseExpiresAtMs = state.leaseExpiresAt?.toMillis?.() || 0;
+    if (state.status === 'running' && leaseExpiresAtMs > nowMs) return false;
+    transaction.set(stateRef, {
+      tenantId: tenantScope.documentId,
+      storeId: storeScope.documentId,
+      status: 'running',
+      leaseOwner,
+      leaseExpiresAt: Timestamp.fromMillis(nowMs + FORCE_REPUBLISH_LEASE_MS),
+      startedAt: Timestamp.fromDate(now),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return true;
+  });
+  return acquired ? { leaseOwner, stateRef } : null;
+}
+
+export async function completeForceRepublishLease(lease: ForceRepublishLease): Promise<boolean> {
+  return lease.stateRef.firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(lease.stateRef);
+    if (snapshot.data()?.leaseOwner !== lease.leaseOwner) return false;
+    transaction.set(lease.stateRef, {
+      status: 'completed',
+      leaseOwner: FieldValue.delete(),
+      leaseExpiresAt: FieldValue.delete(),
+      completedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return true;
+  });
 }
 
 function readStoredConsecutiveFailures(value: unknown): number {

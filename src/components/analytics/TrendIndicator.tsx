@@ -65,7 +65,9 @@ export function TrendIndicator({
 
   return (
     <Tooltip
-      title={`${label || 'Metric'}: ${comparison.current} (${comparison.change >= 0 ? '+' : ''}${comparison.change.toFixed(2)})`}
+      title={comparison.available && comparison.change !== null
+        ? `${label || 'Metric'}: ${comparison.current} (${comparison.change >= 0 ? '+' : ''}${comparison.change.toFixed(2)}${comparison.changeUnit === 'percentage-points' ? ' pp' : ''})`
+        : `${label || 'Metric'}: Not available`}
     >
       <motion.div
         style={{
@@ -164,7 +166,9 @@ interface TrendBadgeProps {
 
 export function TrendBadge({ comparison, hideText = false }: TrendBadgeProps) {
   const { color, icon } = formatComparison(comparison);
-  const percentText = Math.abs(comparison.changePercent).toFixed(1);
+  const changeText = comparison.displayChange === null
+    ? 'Not available'
+    : `${Math.abs(comparison.displayChange).toFixed(1)}${comparison.changeUnit === 'percentage-points' ? ' pp' : '%'}`;
 
   return (
     <span
@@ -181,7 +185,7 @@ export function TrendBadge({ comparison, hideText = false }: TrendBadgeProps) {
       }}
     >
       <span>{icon}</span>
-      {!hideText && <span>{percentText}%</span>}
+      {!hideText && <span>{changeText}</span>}
     </span>
   );
 }

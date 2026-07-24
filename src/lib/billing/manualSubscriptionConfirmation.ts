@@ -26,13 +26,6 @@ const isUnknownRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const normalizeOptionalProductId = (value: unknown): string | null | undefined => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (typeof value !== 'string') return null;
-    const normalized = value.trim();
-    return normalized === value && normalized ? normalized : null;
-};
-
 const normalizeOptionalPlanId = (value: unknown): string | null | undefined => {
     if (value === undefined || value === null || value === '') return undefined;
     if (typeof value !== 'string') return null;
@@ -85,14 +78,7 @@ export function admitManualSubscriptionConfirmation(params: {
         return { kind: 'forbidden' };
     }
 
-    const productId = normalizeOptionalProductId(data.productId);
-    const compactProductId = normalizeOptionalProductId(data.pId);
-    if (
-        productId === null
-        || compactProductId === null
-        || (productId && compactProductId && productId !== compactProductId)
-        || (productId ?? compactProductId ?? DEFAULT_PRODUCT_ID) !== DEFAULT_PRODUCT_ID
-    ) {
+    if (data.pId !== DEFAULT_PRODUCT_ID || data.productId !== DEFAULT_PRODUCT_ID) {
         return { kind: 'malformed' };
     }
 

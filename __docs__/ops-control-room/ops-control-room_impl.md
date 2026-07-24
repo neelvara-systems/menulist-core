@@ -62,7 +62,11 @@ SAFE_MODE wording follows the actual boundary: guarded app AI routes and shared 
 
 Desktop and mobile force-republish callable results require `success`, a bounded `projectCount` from 1 to 100, a representative project ID and verification state before acknowledgement. The Function rechecks current platform authority and canonical tenant/store/project scope, requests cache and Digital Screen effects, and reports unavailable verification rather than claiming stale output is fixed.
 
-Source gate: `npm run verify:ops-control-room-boundary` locks the platform-only SAFE_MODE and alert-mute routes, fresh browser admission, bounded snapshot failure behavior, force-republish acknowledgement, desktop/mobile parity and docs. It does not run Firestore reads/writes, callable invocations, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+Desktop/mobile snapshots are latest-request-owned and settle only for a mounted current-platform screen. SAFE_MODE, mute and force-republish actions admit synchronously once per surface; force republish captures the confirmed tenant/store. The callable also uses a 90-second exact-owner tenant/store `_system` lease. Lease acquisition transactionally proves the current active tenant, store, user and persisted platform role before its first write; the project transaction rechecks that authority before project writes. This rejects cross-tab/device concurrency while allowing intentional later recovery and stale-lease takeover.
+
+The shared platform store selector is also session-bound. Storeless platform sessions receive an exact user provider key, role/user transitions mask and reset cached options, and each mounted selector must pass `/api/platform/current-access` before exposing even an already loaded summary. A cached summary avoids another Firestore read but never the current persisted-role check. Pending access/summary work settles only for the latest mounted, enabled, same-platform-user request.
+
+Source gate: `npm run verify:ops-control-room-boundary` locks the platform-only SAFE_MODE and alert-mute routes, fresh/latest browser admission, bounded snapshot failure behavior, action ownership, force-republish acknowledgement/server lease, desktop/mobile parity and docs. It runs a local Firestore emulator for lease concurrency, partitioning, expiry and revoked-role no-write behavior. It does not invoke a deployed callable, provider, browser, Firebase deploy, or Vercel deploy.
 
 ## Scheduler Monitor
 
@@ -70,7 +74,9 @@ Source gate: `npm run verify:ops-control-room-boundary` locks the platform-only 
 
 Manual recovery invokes `triggerStoreNightlyScheduler({ tId, sId })`. `src/lib/ops/schedulerRecoveryResponse.ts` requires a valid Firestore run-log ID, exact `success|partial|failed` status agreement, exactly one store and bounded safe-integer counts. Raw callable output cannot generate success copy. A validated `partial` response is warning copy; a validated `failed` response is error copy. Error-detail run-log IDs are normalized before display/logging.
 
-Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only scheduler DAL, bounded desktop/mobile scheduler detail rendering, store-scoped `triggerStoreNightlyScheduler` manual recovery, MobileShell route mapping and docs.
+Scheduled and manual store-nightly execution share one tenant/store `_system/storeNightlyScheduler_{tId}_{sId}` lease. The transaction blocks another current owner, permits stale-lease recovery after ten minutes, and requires the exact owner token to finalize. This prevents concurrent hourly/manual runs or duplicate platform actions from repeating analytics, Business Health, Decision Blocks, Menu Intelligence, provider, cache, and project effects. Desktop and mobile also admit one recovery dialog/action synchronously, capture its store, suppress obsolete settlement, and use latest-request ownership for monitor filters/refresh.
+
+Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only scheduler DAL, bounded desktop/mobile scheduler detail rendering, store-scoped `triggerStoreNightlyScheduler` manual recovery, shared store scheduler lease, per-store acquisition timing, MobileShell route mapping and docs. Its Firestore emulator proves concurrent exclusion, exact scope separation, intentional later rerun, stale-lease recovery, and stale-owner finalization refusal.
 
 ## Extraction Monitor
 

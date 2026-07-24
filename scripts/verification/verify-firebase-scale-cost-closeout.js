@@ -27,6 +27,7 @@ function compositeKey(index) {
 }
 
 const scheduler = read('functions/src/decisionBlocksScoring.ts');
+const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
 const packageJson = readJson('package.json');
 const summaryPattern = read('__docs__/patterns/summary-document-pattern.md');
 const closeoutReadme = read('__docs__/firebase-scale-cost-closeout/README.md');
@@ -37,7 +38,7 @@ const closeoutFirebase = read('__docs__/firebase-scale-cost-closeout/firebase-sc
   'const PLATFORM_DAILY_TASK_LEASE_MS = 10 * 60 * 1000;',
   'const PLATFORM_DAILY_TASK_RETRY_MS = 55 * 60 * 1000;',
   'async function acquirePlatformDailyTaskLease(',
-  'return db.runTransaction(async (transaction) => {',
+  'const acquired = await db.runTransaction(async (transaction) => {',
   "if (state.lastCompletedDayKey === dayKey) return null;",
   "if (state.status === 'running' && leaseExpiresAtMs > nowMs) return null;",
   "state.status === 'failed'",
@@ -47,7 +48,19 @@ const closeoutFirebase = read('__docs__/firebase-scale-cost-closeout/firebase-sc
   "details: { reason: 'daily_cadence' }",
   'PLATFORM_DAILY_TASK_NAMES.has(task.name)',
   'await completePlatformDailyTaskLease(',
+  "if (snapshot.data()?.leaseOwner !== lease.leaseOwner)",
+  'leaseOwner: FieldValue.delete()',
 ].forEach((token) => assertCheck(scheduler.includes(token), `Platform daily cadence keeps ${token}`));
+
+[
+  'const SCHEDULER_LEASE_LOST_CODE',
+  'const lockSnapshot = await transaction.get(lockRef);',
+  'lockSnapshot.data()?.leaseOwner !== params.leaseId',
+  'Task outcome rejected after lease ownership changed',
+].forEach((token) => assertCheck(
+  maintenanceScheduler.includes(token),
+  `Maintenance task lease finalization keeps ${token}`,
+));
 
 [
   'authority_maturation',
@@ -72,7 +85,7 @@ assertCheck(
 
 assertCheck(
   packageJson.scripts['verify:firebase-scale-cost-closeout']
-    === 'node scripts/verification/verify-firebase-scale-cost-closeout.js && npm run test:platform-daily-task-lease',
+    === 'node scripts/verification/verify-firebase-scale-cost-closeout.js && npm run test:platform-daily-task-lease && npm run test:maintenance-task-lease',
   'Firebase scale closeout aggregate runs source and lease-emulator gates',
 );
 

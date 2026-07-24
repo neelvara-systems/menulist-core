@@ -339,8 +339,19 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
         if (!existingUserId) {
             throw new PhoneOtpError('user_not_found', 'User not found.');
         }
+        const existingEmail = typeof dbUser.email === 'string'
+            ? dbUser.email.toLowerCase().trim()
+            : '';
+        if (!existingEmail) {
+            const generatedEmailUser = await getAuthUserByEmail(generatedEmail);
+            if (generatedEmailUser?.id && generatedEmailUser.id !== existingUserId) {
+                throw new AuthUserIdentityConflictError();
+            }
+        }
+        const loginEmail = existingEmail || generatedEmail;
 
         await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(existingUserId).set({
+            email: loginEmail,
             phone: dbUser.phone || phone.e164,
             phoneNumber: dbUser.phoneNumber || phone.phoneNumber || phone.e164,
             phoneUsername: phone.phoneUsername,
@@ -354,6 +365,7 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
         return {
             ...dbUser,
             id: existingUserId,
+            email: loginEmail,
             phone: dbUser.phone || phone.e164,
             phoneNumber: dbUser.phoneNumber || phone.phoneNumber || phone.e164,
             phoneUsername: phone.phoneUsername,

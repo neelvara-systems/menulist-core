@@ -113,6 +113,17 @@ The route exposes its bounded `translationCoverage` summary with the normalized 
 
 Full Business Copy generation may still persist its valid canonical English result when the follow-on translation response is incomplete. Desktop and mobile then acknowledge that the copy was saved while some translations still need review; missing-translation repair remains available.
 
+Business Copy generation and missing-translation repair are bound to the exact
+tenant/store that initiated them. Desktop and mobile remount the action surface
+when scope changes, permit only one generation/repair action per mounted scope,
+and invalidate provider, localization, form, toast, loading, and local-context
+settlement after unmount or a tenant/store switch. Desktop parent callbacks
+also compare their captured scope with the current Business Settings scope
+before persistence. Both desktop and mobile functional context merges recheck
+tenant and store independently and merge only the generated localized leaves,
+so a delayed completion cannot replace another store or erase unrelated
+same-store public-presence changes.
+
 When an owner changes English source text, `clearStaleTranslations()` and `clearStaleCategoryTranslations()` blank old targets so renderers fall back safely and later translation can refill them.
 
 Single item/category translation is a draft operation. The API operation is billed when generated, but the localized editor change becomes durable only when the owner saves that item/category.

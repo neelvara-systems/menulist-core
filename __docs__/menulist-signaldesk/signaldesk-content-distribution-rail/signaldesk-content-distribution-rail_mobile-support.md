@@ -1,11 +1,12 @@
 # SignalDesk Content Distribution Rail - Mobile Support
 
-**Status:** Desktop-first internal tool
+**Status:** Desktop-only workflow; mobile mutation intentionally blocked
 **Date:** June 24, 2026
+**Last Updated:** July 22, 2026
 
 ## Decision
 
-No dedicated mobile workflow is required for the first runtime pass.
+No dedicated mobile Content Distribution workspace is admitted in the current runtime.
 
 Reason:
 
@@ -13,12 +14,12 @@ Reason:
 - Draft review needs context and proof checking.
 - Scheduling and performance entry are internal growth-operator tasks.
 
-## Mobile Allowance
+## Current Contract
 
-Future mobile support may expose:
+- The mobile workspace API supports the bounded SignalDesk dashboard only; it does not return Content Rail collections.
+- All content source, proof, asset, draft, schedule, and performance mutations are blocked from mobile clients.
+- The existing dashboard emergency-control contract may activate a global safety pause when authorized; it does not add a Content workspace or editing flow.
+- Desktop route and action permissions remain authoritative. No mobile auto-publish, review shortcut, or separate data loader exists.
+- Today may display the read-only journey on mobile, but setup-link copy and activation-proof preparation remain disabled with all other mobile SignalDesk mutations/navigation shortcuts.
 
-- Read-only draft/calendar state.
-- Emergency `content-distribution` pause.
-- Approve/reject buttons for already-reviewed drafts.
-
-Do not add mobile auto-publish or broad editing controls without a separate mobile admission review.
+Any future mobile content workflow needs a fresh admission review and must reuse the same server authority. It is not a pending promise in the current feature.

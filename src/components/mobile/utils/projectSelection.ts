@@ -15,12 +15,19 @@ type ProjectLike = {
     projectId?: string | null;
 } & SelectableProject;
 
-export function getStoredMobileProjectId(storeId?: string | number | null) {
-    return getStoredOwnerProjectId(storeId);
+export function getStoredMobileProjectId(
+    storeId?: string | number | null,
+    tenantId?: string | number | null,
+) {
+    return getStoredOwnerProjectId(storeId, tenantId);
 }
 
-export function setStoredMobileProjectId(projectId?: string | null, storeId?: string | number | null) {
-    setStoredOwnerProjectId(projectId, storeId);
+export function setStoredMobileProjectId(
+    projectId?: string | null,
+    storeId?: string | number | null,
+    tenantId?: string | number | null,
+) {
+    setStoredOwnerProjectId(projectId, storeId, tenantId);
 }
 
 export function resolveMobileSelectedProject<T extends ProjectLike>(

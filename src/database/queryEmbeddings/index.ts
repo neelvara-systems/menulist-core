@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY } from '@constant/answerlattice/ai';
@@ -17,9 +18,9 @@ export interface QueryEmbeddingCache {
     cacheKeyHash: string;
     queryLength: number;
     vector: number[]; // Array of embedding values
-    createdAt: Date;
+    createdAt: Timestamp;
     hitCount: number; // Track how often this embedding is reused
-    expiresAt?: any;
+    expiresAt: Timestamp;
     retentionDays?: number;
 }
 
@@ -66,14 +67,28 @@ const getVectorValues = (value: VectorInstance): number[] => {
     return values;
 };
 
-const toMillis = (value: any): number => {
+const toMillis = (value: unknown): number => {
     if (!value) return 0;
     if (value instanceof Date) return value.getTime();
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : 0;
+    if (typeof value === 'object') {
+        const timestampLike = value as {
+            seconds?: unknown;
+            toDate?: unknown;
+            toMillis?: unknown;
+        };
+        if (typeof timestampLike.toMillis === 'function') {
+            return (timestampLike.toMillis as () => number)();
+        }
+        if (typeof timestampLike.toDate === 'function') {
+            return (timestampLike.toDate as () => Date)().getTime();
+        }
+        if (typeof timestampLike.seconds === 'number') return timestampLike.seconds * 1000;
+    }
+    if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
 };
 
 export const getCachedEmbedding = async (
@@ -89,7 +104,8 @@ export const getCachedEmbedding = async (
         return null;
     }
 
-    const data = docSnap.data() as QueryEmbeddingCache;
+    const data = docSnap.data();
+    if (!data) return null;
     if (
         data.pId !== PRODUCT_IDS.ANSWERLATTICE
         || Number(data.tId) !== scope.tId
@@ -97,18 +113,26 @@ export const getCachedEmbedding = async (
         || data.cacheKeyHash !== cacheKeyHash
     ) return null;
 
-    // TTL check: skip stale entries (>30 days). They'll be regenerated on next use.
-    if (data.createdAt) {
-        const createdMs = toMillis(data.createdAt);
-        if (Date.now() - createdMs > CACHE_TTL_MS) {
-            await docRef.delete().catch((error) => {
+    // Firestore TTL deletion is asynchronous, so runtime admission enforces both
+    // the legacy createdAt window and the explicit expiry written on new rows.
+    const now = Date.now();
+    const createdMs = toMillis(data.createdAt);
+    const expiresMs = data.expiresAt === undefined ? 0 : toMillis(data.expiresAt);
+    const isStale = createdMs <= 0
+        || now - createdMs > CACHE_TTL_MS
+        || (data.expiresAt !== undefined && (expiresMs <= 0 || expiresMs <= now));
+    if (isStale) {
+        if (docSnap.updateTime) {
+            await docRef.delete({ lastUpdateTime: docSnap.updateTime }).catch((error) => {
                 logAnswerlatticeFailure('answerlattice_query_embedding_stale_delete_failed', error, {
                     ...getBoundedAnswerlatticeStringContext('cacheKey', cacheKey),
-                    cacheAgeDays: Math.max(0, Math.floor((Date.now() - createdMs) / DAY_MS)),
+                    cacheAgeDays: createdMs > 0
+                        ? Math.max(0, Math.floor((now - createdMs) / DAY_MS))
+                        : null,
                 });
             });
-            return null;
         }
+        return null;
     }
 
     if (
@@ -137,6 +161,7 @@ export const saveCachedEmbedding = async (
     const cacheKeyHash = createHash('sha256').update(cacheKey).digest('hex');
     const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey));
     const vectorValues = getVectorValues(vector);
+    const now = Timestamp.now();
 
     const cacheData: QueryEmbeddingCache = {
         pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -144,9 +169,9 @@ export const saveCachedEmbedding = async (
         cacheKeyHash,
         queryLength: query.length,
         vector: vectorValues,
-        createdAt: new Date(),
+        createdAt: now,
         hitCount: 0,
-        ...getAnswerlatticeRetentionFields('queryEmbeddings'),
+        ...getAnswerlatticeRetentionFields('queryEmbeddings', now),
     };
 
     await docRef.set(cacheData);

@@ -39,9 +39,14 @@ for (const invalid of [
     { ...validProfile, logoUrl: 'http://cdn.example.com/logo.png' },
     { ...validProfile, logoUrl: 'https://user:secret@cdn.example.com/logo.png' },
     { ...validProfile, logoUrl: 'https://cdn.example.com/logo image.png' },
+    { ...validProfile, logoUrl: 'https://?x' },
+    { ...validProfile, logoUrl: 'https://cdn.example.com:invalid/logo.png' },
+    { ...validProfile, logoUrl: 'https://[::1/logo.png' },
     { ...validProfile, privacyPolicyUrl: 'https://example.com/privacy#private' },
     { ...validProfile, primaryColor: 'blue' },
     { ...validProfile, supportEmail: 'not-an-email' },
+    { ...validProfile, supportEmail: 'a..b@example.com' },
+    { ...validProfile, supportEmail: 'a@b..example.com' },
     { ...validProfile, companyName: '' },
 ]) {
     assert.throws(() => parseAnswerlatticeAdvancedBranding(invalid));

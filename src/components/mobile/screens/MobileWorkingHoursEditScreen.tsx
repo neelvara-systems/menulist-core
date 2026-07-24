@@ -7,7 +7,7 @@ import { parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Button, Card, Dialog, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import {
@@ -57,13 +57,25 @@ const buildSchedule = (workingHours?: Record<string, string>): Record<string, Da
     return result;
 };
 
-export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHoursEditScreenProps) {
+function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditScreenProps) {
     const t = useTranslations('MobileWorkingHoursEdit');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [schedule, setSchedule] = useState<Record<string, DaySchedule>>(() => buildSchedule(storeDetails?.workingHours));
     const [originalSchedule, setOriginalSchedule] = useState<Record<string, DaySchedule>>(() => buildSchedule(storeDetails?.workingHours));
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeScopeRef = useRef(scopeKey);
+    const componentActiveRef = useRef(true);
+    const actionInFlightRef = useRef(false);
+    activeScopeRef.current = scopeKey;
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         const next = buildSchedule(storeDetails?.workingHours);
@@ -78,53 +90,87 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
     const isDirty = JSON.stringify(schedule) !== JSON.stringify(originalSchedule);
 
     const saveWorkingHours = useCallback(async () => {
-        if (!storeDetails?.storeId) return;
+        const expectedStoreId = Number(storeDetails?.storeId);
+        const expectedTenantId = Number(storeDetails?.tenantId);
+        const requestScopeKey = scopeKey;
+        if (
+            !componentActiveRef.current
+            || activeScopeRef.current !== requestScopeKey
+            || actionInFlightRef.current
+            || !Number.isSafeInteger(expectedStoreId)
+            || expectedStoreId <= 0
+            || !Number.isSafeInteger(expectedTenantId)
+            || expectedTenantId <= 0
+        ) return;
 
+        actionInFlightRef.current = true;
         setIsSaving(true);
-        const workingHours: Record<string, string> = { ...(storeDetails.workingHours || {}) };
+        const previousWorkingHours = { ...(storeDetails.workingHours || {}) };
+        const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;
+        const submittedSchedule = Object.fromEntries(
+            Object.entries(schedule).map(([key, value]) => [key, { ...value }]),
+        ) as Record<string, DaySchedule>;
+        const workingHours: Record<string, string> = { ...previousWorkingHours };
         DAYS.forEach(({ key }) => {
-            const serialized = serializeDay(schedule[key]);
+            const serialized = serializeDay(submittedSchedule[key]);
             if (serialized === serializeDay(originalSchedule[key])) return;
             if (serialized) workingHours[key] = serialized;
             else delete workingHours[key];
         });
         const hoursLastUpdatedAt = new Date().toISOString();
 
-        setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours }));
+        setStoreDetails((previous: any) => (
+            String(previous?.tenantId ?? '') === String(expectedTenantId)
+            && String(previous?.storeId ?? '') === String(expectedStoreId)
+                ? { ...previous, hoursLastUpdatedAt, workingHours }
+                : previous
+        ));
 
         try {
             const writeResult = await updateStore({
                 hoursLastUpdatedAt,
-                storeId: storeDetails.storeId,
-                tenantId: storeDetails.tenantId,
-                workingHours: getStoreDeepDifference(workingHours, storeDetails.workingHours || {}, {
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
+                workingHours: getStoreDeepDifference(workingHours, previousWorkingHours, {
                     detectRemovedRootKeys: true,
                 }),
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_working_hours_store_update_rejected',
             );
-            setOriginalSchedule(schedule);
+            if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
+            setOriginalSchedule(submittedSchedule);
             Toast.show({ content: t('hoursSaved'), duration: 1000 });
         } catch (error) {
             logMobileOwnerFailure('mobile_working_hours_save_failed', error, {
-                ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
-                changedDayCount: DAYS.filter(({ key }) => serializeDay(schedule[key]) !== (storeDetails.workingHours?.[key] || '')).length,
-                closedDayCount: DAYS.filter(({ key }) => schedule[key]?.isClosed).length,
-                hasPreviousWorkingHours: Boolean(storeDetails.workingHours),
+                ...getMobileOwnerStoreLogContext(expectedStoreId, expectedTenantId),
+                changedDayCount: DAYS.filter(({ key }) => serializeDay(submittedSchedule[key]) !== (previousWorkingHours[key] || '')).length,
+                closedDayCount: DAYS.filter(({ key }) => submittedSchedule[key]?.isClosed).length,
+                hasPreviousWorkingHours: Object.keys(previousWorkingHours).length > 0,
             });
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                hoursLastUpdatedAt: (storeDetails as any).hoursLastUpdatedAt,
-                workingHours: storeDetails.workingHours,
-            }));
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
+            setStoreDetails((previous: any) => (
+                String(previous?.tenantId ?? '') === String(expectedTenantId)
+                && String(previous?.storeId ?? '') === String(expectedStoreId)
+                && previous?.hoursLastUpdatedAt === hoursLastUpdatedAt
+                    ? {
+                        ...previous,
+                        hoursLastUpdatedAt: previousHoursLastUpdatedAt,
+                        workingHours: previousWorkingHours,
+                    }
+                    : previous
+            ));
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                Toast.show({ content: t('failedToSave'), duration: 2000 });
+            }
         } finally {
-            setIsSaving(false);
+            actionInFlightRef.current = false;
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                setIsSaving(false);
+            }
         }
-    }, [originalSchedule, schedule, setStoreDetails, storeDetails, t]);
+    }, [originalSchedule, schedule, scopeKey, setStoreDetails, storeDetails, t]);
 
     const handleSave = useCallback(() => {
         if (!storeDetails?.storeId) return;
@@ -293,4 +339,10 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
             </Flex>
         </Flex>
     );
+}
+
+export default function MobileWorkingHoursEditScreen(props: MobileWorkingHoursEditScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    return <MobileWorkingHoursEditScreenContent key={scopeKey} {...props} />;
 }

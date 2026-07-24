@@ -1,36 +1,20 @@
 # SignalDesk Demand Signals - Mobile Support
 
-**Status:** Initial mobile assessment
+**Status:** Enforced dashboard-only mobile contract
 **Created:** June 23, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Decision
 
-Mobile support is read-only summary viewing. Demand signal review, referral approval, source-hook configuration, and target creation stay desktop workflows.
+Mobile SignalDesk serves only the shared dashboard overview. That overview may include the compact aggregate Demand Signals count already present in the control-room summary. Attribution, demand lists, raw events, and capture controls are not served on mobile.
 
-## Allowed Mobile Views
+## Enforcement
 
-| View | Allowed actions |
-| --- | --- |
-| Demand summary | View signal counts by market pod and signal type. |
-| Referral alert | See new partner/referral count. |
-| Surface health | See whether hooks are healthy, stale, or rejecting payloads. |
+- Mobile workspace requests for Attribution return `403`.
+- `capture-demand-signal` is classified as a configure mutation and is rejected on mobile before workflow execution.
+- The desktop demand form is feature-flagged and requires `target.review`.
+- No dedicated mobile component, listener, query, or mutation exists.
 
-## Blocked Mobile Actions
+## Acceptance
 
-- Create target from signal.
-- Approve referral.
-- Edit hook policy.
-- Export signal data.
-- View raw signal event streams.
-- Link anonymous demand to a person.
-
-## UX Requirements
-
-- Compact counts only.
-- No customer-level identifiers.
-- Clear labels for `Warm signal`, `Referral`, `Claim/setup`, and `Needs desktop review`.
-- Any stale or rejected hook state should show as an alert, not a detailed debug feed.
-
-## Mobile Acceptance
-
-Mobile succeeds when an admin can see whether demand is rising or whether a hook needs desktop review, without exposing raw event data.
+Mobile passes when the existing overview remains readable and every demand-specific read or mutation is rejected without exposing raw signal or target data.

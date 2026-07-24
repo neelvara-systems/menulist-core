@@ -1,7 +1,8 @@
 # SignalDesk Content Distribution Rail - Test Cases
 
-**Status:** Initial coverage
+**Status:** Current focused coverage
 **Date:** June 24, 2026
+**Last Updated:** July 22, 2026
 
 ## Functional
 
@@ -9,6 +10,7 @@
 | --- | --- |
 | Save content source | Creates or updates `signaldeskContentSources` through protected action API. |
 | Concurrent exact content-source mutation | Returns one durable source and produces one claim/timeline/audit/cost effect set. |
+| Content-source cost delta | Exact replay-safe source mutation reports five writes: source, claim, timeline, audit, and daily cost. |
 | Reuse content-source key with changed input | Fails with `CONTENT_SOURCE_IDEMPOTENCY_CONFLICT`. |
 | Edit selected source | Hydrates the selected record, submits its explicit ID, and preserves creation/asset-recency fields. |
 | Change an existing source type or canonical URL | Fails with `CONTENT_SOURCE_PROVENANCE_IMMUTABLE`. |
@@ -20,24 +22,34 @@
 | Re-run default seed | Preserves existing source truth and creates no source while content distribution is paused. |
 | Create content asset | Writes canonical message, proof level, CTA, source, and status. |
 | Concurrent exact content-asset mutation | Returns one durable asset and produces one claim/timeline/audit/cost effect set. |
+| Source-backed asset cost delta | New asset reports six writes including source recency; standalone or existing asset reports five. |
 | Reuse content-asset key with changed input | Fails with `CONTENT_ASSET_IDEMPOTENCY_CONFLICT`. |
 | Missing or inactive selected source | Fails before asset or accounting writes. |
 | Selected source type contradicts asset input | Fails with `CONTENT_SOURCE_TYPE_MISMATCH`. |
 | Missing/inactive explicit CTA or held/unapproved market pod | Fails before asset or accounting writes. |
 | Concurrent exact proof-permission mutation | Returns one durable permission and produces one claim/audit/cost effect set. |
+| Proof-permission cost delta | Exact replay-safe permission mutation reports four writes: permission, claim, audit, and daily cost. |
 | Reuse proof-permission key with changed input | Fails with `PROOF_PERMISSION_IDEMPOTENCY_CONFLICT`. |
 | Missing target or cross-target permission ID | Fails before permission/accounting writes. |
+| Verified two-surface activation with active public permission | Selects the target, permission, and usable existing source; prefills review fields and performs no write. |
+| Missing activation time, evidence reference, approved integrity, or second distinct surface | Rejects proof preparation before permission/source prefill. |
+| Activation proof preparation without permission | Selects the target, shows the permission requirement, and leaves asset creation blocked. |
+| Activation proof preparation with unknown/bounded-out target | Shows an unavailable warning and does not select another target. |
+| Mobile activation proof preparation | Disabled; Content remains desktop-only. |
 | Generate drafts | Creates one draft per selected channel with pending approval. |
 | Concurrent exact draft generation | Returns the same channel drafts and produces one claim/queue/timeline/audit/cost effect set. |
+| Draft-generation cost delta | Reports five fixed writes plus one per draft, one per revised head, and optional CTA backfill. |
 | Reuse generation key with changed channels | Fails with `CONTENT_DRAFT_GENERATION_IDEMPOTENCY_CONFLICT`. |
 | Generate drafts from held asset | Fails with `Content asset is not ready`. |
 | Approve draft | Moves draft to approved status. |
 | Reject draft | Moves draft to rejected status. |
 | Concurrent exact review retry | Returns current durable draft truth and produces one review/claim/timeline/audit/cost effect set. |
+| Draft-review cost delta | Reports six writes including exact queue settlement. |
 | Reuse review key with changed decision | Fails with `CONTENT_REVIEW_IDEMPOTENCY_CONFLICT`. |
 | Schedule unapproved draft | Fails with `Content draft must be approved before scheduling`. |
 | Schedule approved draft | Creates or updates one calendar item and queues draft. |
 | Concurrent exact schedule retry | Returns one durable calendar item and produces one draft/calendar/claim/timeline/audit/cost effect set. |
+| Schedule cost delta | Reports six writes exactly once. |
 | Reuse schedule key with changed input | Fails with `CONTENT_SCHEDULE_IDEMPOTENCY_CONFLICT`. |
 | Record performance with publication evidence | Writes one compact record and atomically marks the approved draft/calendar published and asset distributed. |
 | Record non-zero metrics without publication evidence | Fails with `CONTENT_PERFORMANCE_PUBLICATION_EVIDENCE_REQUIRED`. |
@@ -57,6 +69,9 @@
 | Unauthenticated API call | Blocked by `withAuth()`. |
 | Invalid payload | Returns `Invalid input` and logs validation failure. |
 | Client Firestore write | Denied by rules. |
+| Feature flag disabled | Route and workspace section return not found, advanced link is absent, and all mutations fail closed. |
+| Draft-only workspace reader | Receives content lists but no target options used for proof grants. |
+| Mobile content action | Rejected; current mobile support is dashboard-only. |
 | Content pause active | Mutating content rail actions fail with `Content distribution is paused`. |
 | Pause becomes active before content-asset settlement | The transaction rejects the asset before source-recency/accounting effects. |
 | Source, proof permission/target, CTA, or market-pod authority changes before asset settlement | Transaction-current authority fails closed without a partial asset. |
@@ -71,8 +86,8 @@
 
 ```bash
 npm run verify:signaldesk
-npx tsc --noEmit --incremental false --pretty false
-firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"
+npm run typecheck
+SIGNALDESK_E2E_FOCUS=outcome-proof-content npm run test:signaldesk:e2e:local
 ```
 
 ## Authority Reduction And Natural Expiry - July 15, 2026

@@ -12,9 +12,8 @@ export type AnswerlatticeBillingRecordScope = {
 };
 
 const hasExactProductIdentity = (record: Record<string, unknown>): boolean => {
-    const productValues = [record.pId, record.productId].filter((value) => value !== undefined);
-    return productValues.length > 0
-        && productValues.every((value) => value === PRODUCT_IDS.ANSWERLATTICE);
+    return record.pId === PRODUCT_IDS.ANSWERLATTICE
+        && record.productId === PRODUCT_IDS.ANSWERLATTICE;
 };
 
 const getExactNumericScope = (

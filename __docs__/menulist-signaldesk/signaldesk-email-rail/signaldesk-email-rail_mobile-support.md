@@ -1,35 +1,27 @@
-# SignalDesk Email Rail - Mobile Support Assessment
+# SignalDesk Email Rail - Mobile Support
 
-**Status:** Initial assessment
-**Created:** June 23, 2026
-**Mobile relevance decision:** No send/export on mobile.
+**Status:** Observe-only
+**Last Updated:** July 21, 2026
 
-## Admission Test
-
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Partial | Sender health may need monitoring. |
-| Speed | Fail | Send/export requires careful review. |
-| Touch | Fail | Email review and compliance context are dense. |
-| Value | Partial | Emergency pause is useful. |
-
-## Mobile Allowed
-
-- sender health summary;
-- bounce/complaint count;
-- email channel pause;
-- global outbound pause.
+SignalDesk uses the same responsive workspace, but mobile mode is read-only for
+Email Rail. The compact viewport may show channel, sender, approval, handoff,
+step, and webhook summaries. It does not expose a separate mobile mutation path.
 
 ## Mobile Blocked
 
-- export email;
-- send email;
-- edit sender domain;
-- edit unsubscribe;
-- approve draft;
-- reveal contact.
+- export or assisted handoff;
+- owned sequence creation or send;
+- direct provider send;
+- recipient reveal;
+- approval/rejection;
+- sender-domain or connector changes;
+- email-specific pause/resume.
 
-## Acceptance Criteria
+The shared emergency global-pause control follows the separate Kill-Switch
+mobile contract. This document does not grant a mobile email-channel pause.
 
-- Mobile cannot send/export.
-- Mobile can pause email channel with audit.
+## Verification
+
+- `actionDisabled` includes `mobileReadOnly` for all workspace actions.
+- Email action buttons also require their desktop permission and runtime gate.
+- Server/API permission and authority checks remain mandatory regardless of UI.

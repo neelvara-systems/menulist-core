@@ -13,10 +13,9 @@ export default function WidgetEmbedClient() {
             if (event.source !== window.parent) return;
             if (event.data?.type !== 'answerlattice-widget-bootstrap') return;
 
-            const nextApiKey = typeof event.data.apiKey === 'string'
-                ? event.data.apiKey.trim()
-                : '';
-            if (!WIDGET_KEY_PATTERN.test(nextApiKey)) return;
+            const rawApiKey = typeof event.data.apiKey === 'string' ? event.data.apiKey : '';
+            const nextApiKey = rawApiKey.trim();
+            if (rawApiKey !== nextApiKey || !WIDGET_KEY_PATTERN.test(nextApiKey)) return;
             setApiKey((current) => current || nextApiKey);
         };
 

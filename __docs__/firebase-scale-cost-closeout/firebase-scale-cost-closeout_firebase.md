@@ -1,7 +1,7 @@
 # Firebase Scale And Cost Closeout - Firebase Notes
 
 **Status:** Source-gated; QA Functions/index releases pending
-**Last verified:** July 17, 2026
+**Last verified:** July 22, 2026
 
 ## Before And After
 
@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | Store-local scheduler | hourly wake; due stores only | unchanged |
 | Platform nightly suite | once in every invocation with a due store; at global scale up to 24 platform-wide passes per UTC day | At most one successful platform-wide suite per UTC day |
-| Concurrency | two hourly instances could both begin global work | one transactional lease owner |
+| Concurrency | two hourly instances could both begin global work | one transactional lease owner; only the current owner may finalize state |
 | Failure recovery | next populated hour retried implicitly | ten-minute lease expiry plus 55-minute retry delay |
 | No due stores | early exit skipped all global work | daily owner can run global work without a due store |
 
@@ -65,6 +65,14 @@ Do not run production until QA scheduler logs prove:
 - later same-day runs show `daily_cadence`;
 - a forced failed state respects retry delay; and
 - platform task results/failure alerts remain bounded.
+
+The July 22 ownership re-audit added explicit stale-owner emulator cases for
+both `_system/decisionBlocksPlatformDaily` and the per-task
+`_system/menulistMaintenanceTaskLock_*` documents. A replacement owner retains
+its lease and state when an expired predecessor finishes late. Both local
+emulators and the Functions build pass; the combined MenuList QA Functions
+release remains blocked before upload by unavailable Firebase CLI
+authentication.
 
 The current Functions and index worktree contains multiple already-reviewed
 feature changes, so a clean, isolated release state and authorized Firebase IAM

@@ -65,7 +65,10 @@ export async function loadAnswerlatticeSupportBoardCoreCounts(
     sId: number,
 ): Promise<SupportBoardCoreCounts> {
     const collection = db.collection(DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS);
-    const scoped = collection.where('tId', '==', tId).where('sId', '==', sId);
+    const scoped = collection
+        .where('pId', '==', PRODUCT_ID)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId);
     const [totalSnapshot, resolvedSnapshot, needsAnswerSnapshot, highPrioritySnapshot] = await Promise.all([
         scoped.count().get(),
         scoped.where('status', '==', RESOLVED_STATUS).count().get(),

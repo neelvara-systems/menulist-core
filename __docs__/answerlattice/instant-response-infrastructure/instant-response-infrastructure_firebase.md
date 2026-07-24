@@ -2,7 +2,7 @@
 
 ## Data
 
-- Redis stores optional `canon:v4` canonical results when Upstash is configured.
+- Redis stores optional `canon:v5` canonical results when Upstash is configured and graph-aware retrieval is not active.
 - Firestore `answerlattice_cacheVersions` stores compact canonical/KB source versions.
 - `ai_search_history` remains a bounded analytics and fallback cache record with an explicit expiry; it is not authoritative knowledge.
 

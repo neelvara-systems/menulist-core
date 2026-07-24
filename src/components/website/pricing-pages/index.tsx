@@ -5,6 +5,11 @@ import PlatformFeaturesList from '@data/PlatformFeaturesList';
 import { getB2CPlansList } from '@data/PlatformPlansList';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
+import {
+    parseStoredPurchaseIntent,
+    PURCHASE_INTENT_STORAGE_KEY,
+    serializePurchaseIntent,
+} from '@lib/billing/purchaseIntentBoundary';
 import { Switch } from '@shadcncomponents/switch';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -91,17 +96,31 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     };
 
     const readStoredPurchaseIntent = (flow: string): PurchaseIntent | null => {
-        const purchaseIntentString = localStorage.getItem('purchaseIntent');
-        if (!purchaseIntentString) return null;
-
         try {
-            return JSON.parse(purchaseIntentString) as PurchaseIntent;
-        } catch (error) {
-            logPaymentFailure('payment_pricing_purchase_intent_parse_failed', error, buildPricingPaymentLogContext(flow, {
+            localStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
+            const purchaseIntentString = sessionStorage.getItem(PURCHASE_INTENT_STORAGE_KEY);
+            if (!purchaseIntentString) return null;
+            const intent = parseStoredPurchaseIntent(purchaseIntentString);
+            if (intent) return intent;
+            logPaymentFailure('payment_pricing_purchase_intent_invalid', undefined, buildPricingPaymentLogContext(flow, {
                 ...getBoundedPaymentStringContext('purchaseIntent', purchaseIntentString),
             }));
-            localStorage.removeItem('purchaseIntent');
+            sessionStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
             return null;
+        } catch (error) {
+            logPaymentFailure('payment_pricing_purchase_intent_parse_failed', error, buildPricingPaymentLogContext(flow, {
+                purchaseIntentStorageAvailable: false,
+            }));
+            return null;
+        }
+    };
+
+    const clearStoredPurchaseIntent = () => {
+        try {
+            sessionStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
+            localStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
+        } catch (error) {
+            logPaymentFailure('payment_pricing_purchase_intent_clear_failed', error, buildPricingPaymentLogContext('clear_purchase_intent'));
         }
     };
 
@@ -118,7 +137,13 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
     useEffect(() => {
         if (!isScriptLoaded) return;
-        const intentExists = localStorage.getItem('purchaseIntent');
+        let intentExists = false;
+        try {
+            localStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
+            intentExists = Boolean(sessionStorage.getItem(PURCHASE_INTENT_STORAGE_KEY));
+        } catch (error) {
+            logPaymentFailure('payment_pricing_purchase_intent_read_failed', error, buildPricingPaymentLogContext('resume_purchase_intent'));
+        }
         if (status === 'authenticated' && session?.user) {
             if (onboardingInProgress.current) return;
             if (intentExists) {
@@ -142,7 +167,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     const descardPaymentFlow = () => {
         onboardingInProgress.current = false;
         setIsLoading(false);
-        localStorage.removeItem('purchaseIntent');
+        clearStoredPurchaseIntent();
     }
 
     const handleOnboardingModalSubmit = (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string }) => {
@@ -156,7 +181,20 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             ...pendingPlan,//plan, currency
         };
 
-        localStorage.setItem('purchaseIntent', JSON.stringify(purchaseIntent));
+        const serializedPurchaseIntent = serializePurchaseIntent(purchaseIntent);
+        if (!serializedPurchaseIntent) {
+            logPaymentFailure('payment_pricing_purchase_intent_invalid', undefined, buildPricingPaymentLogContext('onboarding_submit'));
+            showPaymentError();
+            return;
+        }
+        try {
+            localStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
+            sessionStorage.setItem(PURCHASE_INTENT_STORAGE_KEY, serializedPurchaseIntent);
+        } catch (error) {
+            logPaymentFailure('payment_pricing_purchase_intent_write_failed', error, buildPricingPaymentLogContext('onboarding_submit'));
+            showPaymentError();
+            return;
+        }
         if (session?.user) {
             startPaymentprocessing()
         } else {
@@ -512,7 +550,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 isOpen={isOnboardingModalOpen}
                 onClose={() => {
                     setIsOnboardingModalOpen(false)
-                    localStorage.removeItem('purchaseIntent');
+                    clearStoredPurchaseIntent();
                     setIsLoading(false);
                 }}
                 onSubmit={handleOnboardingModalSubmit}

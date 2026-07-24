@@ -88,6 +88,7 @@ const spec = read('__docs__/platform-pull-api/platform-pull-api_spec.md');
 const impl = read('__docs__/platform-pull-api/platform-pull-api_impl.md');
 const firebaseDoc = read('__docs__/platform-pull-api/platform-pull-api_firebase.md');
 const mobileDoc = read('__docs__/platform-pull-api/platform-pull-api_mobile-support.md');
+const businessTruthContract = read('__docs__/canonical-truth-infrastructure/canonical-truth-infrastructure_business-truth-contract.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -396,8 +397,14 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
   'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
   'key: `api-key-mgmt:${storeRateLimitHash}`',
   'const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;',
+  "storeId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH)",
+  "tenantId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH)",
   'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
   'RequestSchema.safeParse(body)',
+  'const requestedTenantId = normalizeSessionDocumentId(validation.data.tenantId);',
+  'const requestedStoreId = normalizeSessionDocumentId(validation.data.storeId);',
+  'if (requestedTenantId !== tenantId || requestedStoreId !== storeId)',
+  '{ error: "Store context changed" }',
   '}).strict();',
   'const transactionResult = await db.runTransaction(async (transaction) => {',
   'transaction.get(tenantRef)',
@@ -429,8 +436,8 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
   'status: providerUnavailable ? 503 : 429',
   "'Retry-After': String(Math.max(Math.ceil((result.resetAt - Date.now()) / 1000), 1))",
   'return getPublicApiKeyRateLimitResponse(rlResult);',
-  'NextResponse.json({ apiKey }, { headers: PUBLIC_API_KEY_RESPONSE_HEADERS })',
-  'NextResponse.json({ success: true }, { headers: PUBLIC_API_KEY_RESPONSE_HEADERS })',
+  '{ apiKey, storeId, tenantId }',
+  '{ success: true, storeId, tenantId }',
   '{ error: "Failed to manage API key" }',
 ].forEach((token) => requireToken(keyRoute, token, 'Public API key management route'));
 requireOrder(
@@ -465,7 +472,15 @@ forbidToken(keyRoute, "secureLog('[Public API] Key revoked'", 'Public API key ma
   'FEATURE_FLAGS.ENABLE_PUBLIC_API',
   "fetch('/api/store/public-api-key'",
   '...AUTH_BROWSER_REQUEST_POLICY',
-  "body: JSON.stringify({ action })",
+  'body: JSON.stringify({ action, ...expectedScope })',
+  'const publicApiActionInFlightRef = useRef(false);',
+  'const activeIntegrationScopeRef = useRef(integrationScopeKey);',
+  'const componentActiveRef = useRef(true);',
+  'payload.storeId === expectedScope.storeId',
+  'payload.tenantId === expectedScope.tenantId',
+  'activeIntegrationScopeRef.current !== requestScopeKey',
+  "String(previous?.storeId ?? '') === expectedScope.storeId",
+  "String(previous?.tenantId ?? '') === expectedScope.tenantId",
   'business_settings_public_api_key_generate_failed',
   'business_settings_public_api_key_revoke_failed',
   'business_settings_public_api_key_copy_failed',
@@ -486,6 +501,7 @@ forbidToken(integrationsTab, '.json().catch', 'Business Settings Platform Pull A
 forbidToken(integrationsTab, 'data.error ||', 'Business Settings Platform Pull API key UI raw API error copy');
 forbidToken(integrationsTab, 'console.error', 'Business Settings Platform Pull API key UI console diagnostics');
 forbidToken(integrationsTab, 'console.warn', 'Business Settings Platform Pull API key UI console diagnostics');
+requireToken(businessSettings, "key={`integrations:${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}", 'Business Settings Platform Pull API exact-scope remount');
 requireToken(businessSettings, 'setStoreDetails={setStoreDetails}', 'Business Settings Platform Pull API key UI state wiring');
 
 [
@@ -529,7 +545,7 @@ forbidToken(readme, 'default OFF', 'Platform Pull API README stale flag default'
   '`npm run verify:platform-pull-api-boundary`',
   'Business Settings Integrations tab',
   'raw key is shown only once',
-  'Session tenant/store IDs pass through the shared Firestore document-ID guard',
+  'Request tenant/store IDs pass the same document-ID normalization and must exactly match the authenticated session',
   'require normalized credential store IDs and exact positive numeric MenuList target IDs before response construction',
   'normalizePublicApiDocumentId(value)',
   'normalizeMenuListPublicApiNumericId(value)',
@@ -557,6 +573,24 @@ forbidToken(firebaseDoc, 'Feature flag OFF by default', 'Platform Pull API Fireb
   '`npm run verify:platform-pull-api-boundary`',
   'No dedicated mobile key-management UI is required',
 ].forEach((token) => requireToken(mobileDoc, token, 'Platform Pull API mobile doc'));
+
+[
+  '# MenuList Business Truth Contract',
+  'This contract consolidates the runtime that already exists.',
+  'It does not create',
+  'a second canonical collection',
+  '## Current Projections',
+  'Platform Pull Business API',
+  'Platform Pull Menu API',
+  '`schemaVersion: "1.0"`',
+  'A modification timestamp is not',
+  'Platform Pull v1 deliberately exposes the approved decision value',
+  '## External Location Collision Gate',
+  'no grounded-candidate confirmation UI may be released',
+  '## Version Policy',
+  'new API schema version and migration',
+  'Duplicate anonymous public JSON endpoint',
+].forEach((token) => requireToken(businessTruthContract, token, 'MenuList Business Truth Contract'));
 
 requireToken(inventory, 'platform-pull-api boundary source gate passed; live key fixture/manual still pending', 'feature sweep inventory');
 [

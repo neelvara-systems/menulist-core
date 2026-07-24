@@ -53,7 +53,7 @@ GET /api/answerlattice/widget-config
 
 Key summaries contain name, prefix/suffix, status, timestamps, and active marker. They never contain a recoverable raw key.
 
-The widget activity timestamp boundary accepts Firestore Timestamp-like values, valid dates/numbers, or canonical ISO `...Z` strings; malformed stored values become `null` or sort oldest. The widget management persisted scope checks fail closed before malformed or cross-workspace rows can enter the recent-activity response.
+The widget activity timestamp boundary accepts Firestore Timestamp-like values, valid dates/numbers, or canonical ISO `...Z` strings; malformed stored values become `null` or sort oldest. Both indexed and fallback activity queries constrain exact `pId: AL` before tenant/store/order/limit, and the fallback row guard independently rechecks product and workspace identity before serialization. The widget management persisted scope checks fail closed before malformed, cross-product, or cross-workspace rows can enter the recent-activity response.
 
 ## Configuration Save Flow
 
@@ -107,7 +107,9 @@ The management UI uses revoke. Copy after the initial browser session returns a 
 6. `answerlatticeWidgetApi` source only;
 7. `AL` product and `answerlattice_widget` purpose;
 8. `widget:config` scope;
-9. canonical numeric tenant/store identity and document-ID match;
+9. one fail-closed scope resolver requires every supplied product, tenant, store, and document-ID alias to agree;
+
+Persisted `widgetConfigVersion` and predictive `activeTriggerCount` are exact nonnegative safe integers. Coercible or malformed values cannot become a public version or enable the predictive capability; an absent legacy count alone may use the bounded trigger-map fallback.
 10. exact origin allowlist.
 
 The cache key is the key hash plus normalized request origin. The response is private and short-lived. It excludes the allowlist and credential state.
@@ -121,7 +123,11 @@ When an origin allowlist is configured, config admission mints a 15-minute HMAC 
 - store ID;
 - dedicated `ANSWERLATTICE_WIDGET_RUNTIME_SECRET`.
 
-Search, feedback, explicit support request, and guidance outcome verify the token only after the widget key resolves to the current workspace. They also recheck the signed origin against the current allowlist, so removing an origin invalidates its token on the next uncached store read.
+The validated scope is carried with the credential result. Config, search, feedback, explicit support request, guidance outcome, and predictive routes consume that exact scope instead of selecting an alias again. They verify the token only after the widget key resolves to the current workspace and recheck the signed origin against the current allowlist, so removing an origin invalidates its token on the next uncached store read.
+
+Runtime-token creation and verification independently require the canonical `al_*` key shape, exact positive safe-integer tenant/store IDs, and exact safe-integer clock/TTL inputs. Stringified IDs or times cannot be coerced into a valid scope binding even if a future untyped caller reaches the helper.
+
+The key-free iframe bootstrap accepts messages only from its actual parent and requires the same canonical key bytes as the host loader/server. It does not trim a whitespace-mutated key into authority.
 
 ## Feature 16 Answer And Support Request Runtime
 
@@ -197,7 +203,8 @@ The public config projects only the bounded launch fields in `AnswerlatticeWidge
 - Dedicated Firestore rules allow scoped reads of the store but deny client writes.
 - Widget runtime routes explicitly exclude `publicApi` credentials.
 - Public API and MCP routes reject widget-only credentials.
-- Keys are store-scoped and require `pId = AL`, valid tenant ID, canonical store/document identity, active store, and non-blocked entity state.
+- Keys are store-scoped and require all supplied `pId`/`productId`, `tId`/`tenantId`, `sId`/`storeId`/`id`, and document-path identities to agree, plus active/non-blocked entity state.
+- Managed `keysByHash` records require exact `active|revoked` status, `productId=AL`, widget purpose, and a nonempty duplicate-free allowlist of known widget scopes. Invalid managed metadata is dropped and cannot be recreated from the compatibility `apiKeyHash`; only a document without the managed `keyHashes` representation may use the explicit legacy top-level hash fallback.
 - Frame policy is host-aware: middleware omits `X-Frame-Options` only when the request is on an Answerlattice product host, or on an approved local-development host outside Vercel. A `/widget/*` path on another product host does not receive the embeddable frame policy.
 
 ## Cache And Revocation
@@ -208,6 +215,8 @@ The public config projects only the bounded launch fields in `AnswerlatticeWidge
 - runtime authorization: at most 15 minutes, with current key and current origin checks still required by runtime routes.
 
 Do not claim globally instantaneous revocation. Current local behavior bounds warm-process admission to seconds and rejects revoked keys after cache expiry.
+
+Browser config and predictive-session keys include the complete validated widget credential (plus widget host for config); truncated key prefixes are not tenant cache identity. A shared streaming reader cancels remote config above 64 KiB and predictive responses above 32 KiB before buffering the full body. Config additionally requires the exact schema version, nonnegative integer config version, integer TTL, boolean capabilities, capability/bundle agreement, exact bundle version, and exact runtime-authorization expiry before state or session storage changes.
 
 ## Verification
 
@@ -220,4 +229,4 @@ Do not claim globally instantaneous revocation. Current local behavior bounds wa
 - `npm run verify:dependency-freeze`
 - `git diff --check`
 
-No Firestore rules, indexes, Storage rules, or Answerlattice Cloud Functions were changed by the July 18 Feature 15 hardening, so Firebase deployment is not required for this feature audit.
+The restart-462 scope repair changes app/server routes only. Restart 463 also aligns the scheduled compiled-context builder, so an authorized Answerlattice QA deploy of `functions:answerlatticeNightly` is required. No Firestore rules, indexes, or Storage rules changed.

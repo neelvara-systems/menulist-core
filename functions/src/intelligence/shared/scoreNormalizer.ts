@@ -79,3 +79,11 @@ export function calculateEngagementRate(clicks: number, views: number): number {
 export function calculatePopularity(views: number, clicks: number, orders: number): number {
     return views + clicks * 2 + orders * 5;
 }
+
+export function compareDecisionScores(
+    a: { item: { itemId: string }; score: number },
+    b: { item: { itemId: string }; score: number },
+): number {
+    return b.score - a.score
+        || (a.item.itemId < b.item.itemId ? -1 : a.item.itemId > b.item.itemId ? 1 : 0);
+}

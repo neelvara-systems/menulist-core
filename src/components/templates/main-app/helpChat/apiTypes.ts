@@ -1,18 +1,16 @@
-import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
 import type { AnswerlatticePublicCitation, AnswerlatticeScopeClarification } from '@type/answerlattice';
 import type { AnswerlatticePublicFallbackReason } from '@lib/answerlattice/publicAnswerContracts';
+import type { AiSearchHistoryReference } from '@type/aiSearchHistory';
 
 /**
  * API Response from /api/helpCenter/search-kb
- * Backend returns full article objects with all necessary fields:
- * - id, title, categoryTitle, sectionTitle, content, etc.
- * 
- * No frontend enrichment needed - use as-is!
+ * References are bounded public article objects. Internal retrieval, graph,
+ * procedure, and escalation-debug state never crosses this response boundary.
  */
 export type SearchAPIResponseType = {
     id?: string; // Search history ID when analytics persistence succeeds
     craftedAnswer: string; // AI-generated answer
-    references: KnowledgeBaseArticleType[]; // Full article objects with similarityScore
+    references: AiSearchHistoryReference[];
     citations?: AnswerlatticePublicCitation[];
     relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem; // Product-surface contextual help links
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)

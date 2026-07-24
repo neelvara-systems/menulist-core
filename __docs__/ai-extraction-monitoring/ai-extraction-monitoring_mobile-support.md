@@ -2,7 +2,7 @@
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** Enabled bounded platform mobile support — not current device or release certification
-**Last Updated:** July 10, 2026
+**Last Updated:** July 23, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
 
@@ -34,6 +34,7 @@ The source includes `MobileExtractionMonitorScreen` inside `MobileShell`. It giv
 - Admission: `ENABLE_EXTRACTION_MONITORING_DASHBOARD` must be enabled, the signed role must be exact `PLATFORM`, and the snapshot must pass the fresh current persisted platform-access API before Firestore reads.
 - Read failure shows unavailable/previous-snapshot copy; zero metrics are never synthesized from a failed request.
 - Reads: `getExtractionDashboardSnapshot({ status, pageSize: 20 })` on initial load, status-filter change, or manual refresh.
+- Settlement: each load owns a monotonically increasing request ID. A filter change invalidates the prior request synchronously, and only the latest still-mounted request may replace metrics/jobs, show failure feedback, or clear loading. Losing platform admission or unmounting also invalidates outstanding work.
 - Visible data: health, cost today, quality, and recent-job summaries.
 - Mutations: none. Mobile has no Job Inspector, raw-data copy, or retry action.
 - Refresh: no automatic interval. The operator explicitly refreshes when current evidence is needed.

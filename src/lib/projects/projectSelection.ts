@@ -14,17 +14,34 @@ function getOwnerProjectStoreScope(storeId?: string | number | null) {
     return normalized && normalized !== '0' ? normalized : null;
 }
 
-function getOwnerProjectStorageKey(storeId?: string | number | null) {
-    const storeScope = getOwnerProjectStoreScope(storeId);
-    return storeScope ? `${OWNER_SELECTED_PROJECT_KEY}:${storeScope}` : OWNER_SELECTED_PROJECT_KEY;
+function getOwnerProjectTenantScope(tenantId?: string | number | null) {
+    if (tenantId === null || tenantId === undefined || tenantId === '') return null;
+    const normalized = String(tenantId);
+    return normalized && normalized !== '0' ? normalized : null;
 }
 
-export function getStoredOwnerProjectId(storeId?: string | number | null) {
+function getOwnerProjectStorageKey(
+    storeId?: string | number | null,
+    tenantId?: string | number | null,
+) {
+    const storeScope = getOwnerProjectStoreScope(storeId);
+    const tenantScope = getOwnerProjectTenantScope(tenantId);
+    return storeScope
+        ? tenantScope
+            ? `${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`
+            : `${OWNER_SELECTED_PROJECT_KEY}:${storeScope}`
+        : OWNER_SELECTED_PROJECT_KEY;
+}
+
+export function getStoredOwnerProjectId(
+    storeId?: string | number | null,
+    tenantId?: string | number | null,
+) {
     if (typeof window === 'undefined') return null;
     const hasStoreScope = Boolean(getOwnerProjectStoreScope(storeId));
 
     try {
-        const scopedProjectId = window.localStorage.getItem(getOwnerProjectStorageKey(storeId));
+        const scopedProjectId = window.localStorage.getItem(getOwnerProjectStorageKey(storeId, tenantId));
         if (scopedProjectId) return scopedProjectId;
     } catch {
         // Ignore storage access failures; session storage fallback is only safe without a store scope.
@@ -39,11 +56,15 @@ export function getStoredOwnerProjectId(storeId?: string | number | null) {
     }
 }
 
-export function setStoredOwnerProjectId(projectId?: string | null, storeId?: string | number | null) {
+export function setStoredOwnerProjectId(
+    projectId?: string | null,
+    storeId?: string | number | null,
+    tenantId?: string | number | null,
+) {
     if (typeof window === 'undefined') return;
 
     try {
-        const key = getOwnerProjectStorageKey(storeId);
+        const key = getOwnerProjectStorageKey(storeId, tenantId);
         if (projectId) {
             window.localStorage.setItem(key, projectId);
         } else {

@@ -19,6 +19,19 @@
 
 ## Active Items
 
+### Business Truth Contract And Maps Activation Gates — July 22, 2026
+
+Complete these in order. Do not expose grounded Place-ID confirmation UI merely
+because the provider callable begins responding.
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the July 22 OBP truthful-update and Maps confirmation-admission app changes in the next approved QA Vercel release, then smoke one recent and one older `modifiedOn` value in English, Hindi, and one RTL locale at phone/tablet/desktop widths | Source/type/localization gates cannot prove deployed SSR output, timezone/date formatting, RTL layout, CDN cache state, or device rendering. Codex did not run a Vercel build or deploy. | P0 (before QA sign-off) | ⬜ |
+| 2 | From an isolated reviewed Functions source with authorized Firebase CLI access, run `npm run verify:functions-deploy-preflight` and then `firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive` | The existing flag-off callable is still not current in QA. The shared worktree contains unrelated Functions changes and must not be deployed as a mixed bundle. | P0 (before provider smoke) | ⬜ |
+| 3 | After task 2, run a real owner/admin provider smoke against a small controlled business set; retain source attribution, result shape, provider cost/search count, no-write evidence, SAFE_MODE behavior, limiter behavior, and false-match notes | Local source checks cannot prove the pinned provider path, live grounding metadata, current provider terms, attribution rendering, target secrets, or billing. Keep the feature flag off after smoke. | P0 (before any activation decision) | ⬜ |
+| 4 | Before any grounded Place-ID confirmation UI is approved, design and verify a server-authoritative collision policy for the same provider location ID appearing on multiple MenuList stores; it must fail closed, be reviewable/reversible, preserve exact outlets, and include Firebase cost/rule/index/deploy evidence | The current embedded binding intentionally has no global uniqueness claim. Enabling confirmation UI without this gate could let two MenuList locations claim the same provider entity. | P0 (before confirmation UI) | ⬜ |
+| 5 | Only after tasks 2-4, decide whether a zero-write 5-10 business Agent Truth Audit is useful; do not create an owner score, automatic repair, saved provider-response history, or public MCP during the pilot | The strategy direction is useful research, but provider accuracy, repeatability, terms, attribution, cost, and false-positive behavior are not yet certified. | P1 (research gate) | ⬜ |
+
 ### Cross-System Features 42-50 — July 17, 2026
 
 | # | Task | Why | Priority | Status |
@@ -45,7 +58,7 @@ All feature 15-30 focused gates, exact TypeScript, focused lint, dependency free
 
 | # | Task | Why | Priority | Status |
 | --- | --- | --- | --- | --- |
-| 1 | With Firebase IAM that can deploy indexes to `menulist-qa`, rerun `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json --non-interactive` | The July 16 attempt read the index source, then the Firebase Rules test endpoint returned HTTP 403 `The caller does not have permission` before upload. The bounded hourly query still needs `subscriptions(status ASC, cycleEndDate ASC)`. | P0 (before cycle-end QA) | ⬜ |
+| 1 | Restore non-interactive Firebase CLI authentication/IAM, then run `firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerCustomerAnalyticsManually,functions:menulistMaintenanceScheduler --non-interactive` | The July 16 attempt read the index source, then the Firebase Rules test endpoint returned HTTP 403 `The caller does not have permission`; later audit retries stopped at missing CLI authentication before upload. The bounded hourly query needs `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)` together with the other exact-product billing indexes, rules and affected Functions. | P0 (before cycle-end QA) | ⬜ |
 | 2 | With Firebase IAM that can deploy Functions to `menulist-qa`, rerun `firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json --non-interactive` | The July 16 attempt passed configured Functions lint/build, then Cloud Resource Manager returned HTTP 403 `The caller does not have permission` before upload. The hourly expiry and item-29 alert retention share this target. | P0 (before cycle-end QA) | ⬜ |
 | 3 | Include item-30 app/website changes in the approved QA Vercel release; no Vercel build or deploy was run by Codex | Alias-safe links/language state, legal copy and root entitlement selection are Next.js/app changes. | P0 (before website/billing QA) | ⬜ |
 | 4 | On QA, smoke canonical `menulist.ai` and `menulist.digital/ml` at desktop and phone widths: every header/footer/CTA/legal/tool/resource route, all eight language choices including RTL Arabic, refresh/back/forward, keyboard Escape/focus, 320px overflow and noindex utility routes | Source gates cannot prove deployed middleware headers, CDN rewrites, browser history, focus rendering, RTL layout or device behavior. | P0 (before production certification) | ⬜ |

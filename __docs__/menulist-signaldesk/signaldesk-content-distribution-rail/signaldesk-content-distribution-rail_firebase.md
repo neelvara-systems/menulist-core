@@ -1,7 +1,8 @@
 # SignalDesk Content Distribution Rail - Firebase
 
-**Status:** Implemented for internal testing
+**Status:** Feature 16 locally source-complete; existing proof-lifecycle infrastructure release remains separately pending
 **Date:** June 24, 2026
+**Last Updated:** July 22, 2026
 
 ## Collections
 
@@ -12,6 +13,7 @@
 | `signaldeskContentDistributionDrafts` | Platform-ready drafts and approval status. | Read only for SignalDesk members/admins. |
 | `signaldeskContentCalendarItems` | Queued manual distribution schedule. | Read only for SignalDesk members/admins. |
 | `signaldeskContentPerformanceSummaries` | Compact performance records. | Read only for SignalDesk members/admins. |
+| `signaldeskProofPermissions` | Target-scoped proof grant, hold, revocation, expiry, and reconciliation authority. | Read only for SignalDesk members/admins; writes remain server-only and founder-gated. |
 
 All writes are server/admin writes through `src/app/api/signaldesk/actions/route.ts`.
 
@@ -25,24 +27,26 @@ All writes are server/admin writes through `src/app/api/signaldesk/actions/route
 
 ## Cost Posture
 
-- Workspace reads are capped by the shared `LIST_LIMIT`.
-- Content-source mutation requires one actor-bound key. One transaction reads the current content pause, explicit/v2/legacy source candidates, optional market pod and claim before writing source/claim/timeline/audit/cost truth. Exact retries converge; matching legacy IDs are reused, type/URL provenance is immutable, and active pod-bound sources require current founder-approved authority.
+- Activation proof preparation reuses the Content workspace response already required by `/signaldesk/content`. Query-string admission and field prefill add zero Firestore reads, writes, deletes, listeners, collections, indexes, or Functions calls. A write occurs only after the operator submits an existing protected Content Rail action.
+
+- The Content workspace issues eight independent bounded list queries in parallel: assets, calendar items, drafts, performance, sources, market pods, proof permissions, and CTAs. A ninth bounded target query runs only for users with `signaldesk.configure`; draft-only operators receive no target rows. The overview payload is the existing separate workspace summary read.
+- Content-source mutation requires one actor-bound key. One transaction reads the current content pause, explicit/v2/legacy source candidates, optional market pod and claim before writing source/claim/timeline/audit/cost truth. The exact reported effect is five writes. Exact retries converge; matching legacy IDs are reused, type/URL provenance is immutable, and active pod-bound sources require current founder-approved authority.
 - Source URLs use a credential-free HTTP(S) canonicalizer that preserves case-sensitive path/query identity. Workspace reads project source rows through product/ID/enum/length/URL guards and omit malformed legacy rows with one bounded aggregate diagnostic.
 - Default source seeding is a create-only transaction after default-control settlement. It reads the current source, content pause and default pod, creates held truth until founder approval is recorded, skips creation during pause, and never rewrites an existing source's lifecycle/provenance.
 - The browser separates source editing from asset provenance selection, retains one retry UUID for unchanged source input, and can explicitly clear a default pod with `null`. Selected-source asset fields are rederived and checked in the asset transaction.
-- Content-asset mutation requires one actor-bound operation key. One transaction reads the current content pause, optional selected source, prior asset, proof permission and proof target, explicit/default active CTA, effective active founder-approved market pod, and claim before writing asset/source-recency/claim/timeline/audit/cost truth. Exact retries converge and changed-input reuse conflicts.
-- Proof-permission mutation requires one actor-bound operation key. One transaction reads the current target, permission and claim before writing permission/claim/audit/cost; target ownership remains immutable and exact retries converge.
-- Draft generation requires one actor-bound operation key. One transaction reads the current content pause, asset, optional proof permission, explicit/default CTA, prior drafts and claim before writing drafts/claim/queue/timeline/audit/cost. Exact retries converge without incrementing review backlog twice.
-- Draft review requires one actor-bound operation key. One transaction reads the current content pause, draft and claim before writing review/claim/timeline/audit/cost truth; exact retries converge and changed-input reuse conflicts.
-- Scheduling requires one actor-bound operation key. One transaction reads the current content pause, draft approval, prior calendar item and claim before writing the draft/calendar/claim/audit/timeline/cost effect set. Exact retries return the durable calendar item and changed-input reuse conflicts.
+- Content-asset mutation requires one actor-bound operation key. One transaction reads the current content pause, optional selected source, prior asset, proof permission and proof target, explicit/default active CTA, effective active founder-approved market pod, and claim before writing asset/claim/timeline/audit/cost truth. A new source-backed asset additionally updates source recency, so the exact estimate is six writes; standalone or existing assets report five. Exact retries converge and changed-input reuse conflicts.
+- Proof-permission mutation requires one actor-bound operation key. One transaction reads the current target, permission, pause, and claim before writing permission/claim/audit/cost. The exact estimate is four writes; target ownership remains immutable and exact retries converge.
+- Draft generation requires one actor-bound operation key. One transaction reads the current content pause, asset, optional proof permission, explicit/default CTA, prior drafts and claim before writing five fixed effects (claim, queue, timeline, audit, cost), one draft per channel, one head update per later revision, and optional legacy CTA backfill. Exact retries converge without incrementing review backlog twice.
+- Draft review requires one actor-bound operation key. One transaction reads the current content pause, draft, queue, and claim before writing draft/queue/claim/timeline/audit/cost truth: six writes exactly once.
+- Scheduling requires one actor-bound operation key. One transaction reads the current content pause, draft approval, prior calendar item and claim before writing draft/calendar/claim/audit/timeline/cost: six writes exactly once.
 - Performance capture requires one actor-bound idempotency key. One transaction reads the current content-distribution pause, asset, approved draft, matching calendar item, and operation claim before writing the compact performance record and every derived effect.
 - Non-zero metrics require a credential-free publication URL and valid publication timestamp. The draft must belong to the selected asset/channel and its deterministic calendar item must match; publication evidence atomically marks the draft/calendar published and the asset distributed.
 - Exact retries return the durable performance record; changed metrics or publication evidence under the same key fail closed. A later record cannot contradict already settled publication evidence.
 - Owner-quality signals are incremental observations. Each independently claimed performance record increments the daily demand summary rather than overwriting earlier observations.
 
-## Deploy
+## Feature 16 Deploy Boundary
 
-No Firebase deploy was run in this pass. Validate with:
+The July 22 proof-preparation convenience changes client orchestration, tests, and documents only. It changes no SignalDesk Firestore rule, index, Storage rule, Cloud Function, or server mutation, so it requires no Firebase deployment. App release remains owner-controlled; validate local Firestore behavior with:
 
 ```bash
 firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"
@@ -70,4 +74,4 @@ Required composite indexes in `firestore-signaldesk.indexes.json` are:
 2. `pId ASC, proofExpiryLifecycleState ASC, proofExpiryLifecycleRetryAt ASC`;
 3. `pId ASC, proofExpiryLifecycleState ASC`.
 
-The rules/index/Functions source changed locally. No Firebase deploy was run; live scheduler/index effect remains pending an authorized SignalDesk Firebase deployment.
+The earlier proof-lifecycle implementation changed SignalDesk rules/index/Functions and remains pending its separately documented authorized SignalDesk Firebase deployment. That existing infrastructure blocker is not changed or falsely closed by the July 21 app-side Feature 16 audit.

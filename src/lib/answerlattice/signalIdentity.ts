@@ -11,6 +11,18 @@ const cleanDeduplicationKey = (value: unknown): string | null => {
     return normalized && normalized.length <= 260 ? normalized : null;
 };
 
+export const buildAnswerlatticeSignalMemoryDedupKey = (params: {
+    tId: unknown;
+    sId: unknown;
+    deduplicationKey: unknown;
+}): string | null => {
+    const tId = normalizeExactAnswerlatticeSignalScopeId(params.tId);
+    const sId = normalizeExactAnswerlatticeSignalScopeId(params.sId);
+    const deduplicationKey = cleanDeduplicationKey(params.deduplicationKey);
+    if (tId === null || sId === null || !deduplicationKey) return null;
+    return `${tId}:${sId}:${deduplicationKey}`;
+};
+
 export const hashAnswerlatticeSignalIdentity = (value: string): string => {
     let hashA = 0x811c9dc5;
     let hashB = 0x01000193;

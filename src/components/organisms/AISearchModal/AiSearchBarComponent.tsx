@@ -1,13 +1,15 @@
 'use client';
 
 import { fetchAnswerlatticePublicCategories } from '@lib/answerlattice/publicContentClient';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import {
     HELP_CENTER_SEARCH_REQUEST_POLICY,
     getHelpCenterSearchClientFailureMessage,
     readHelpCenterSearchResponse,
 } from '@lib/search/helpCenterSearchResponse';
 import { createRuntimeId } from '@lib/runtime/randomId';
-import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { AiSearchHistoryReference } from '@type/aiSearchHistory';
+import { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Alert, Button, Flex, theme, Typography } from 'antd';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
@@ -30,26 +32,20 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
     const [showAnimatedBorder, setShowAnimatedBorder] = useState(true);
 
     const [categoriesData, setCategoriesData] = useState<KnowledgeBaseCategoriesType | null>(initialCategories);
-
-    const fetchCategories = async () => {
-        // appDispatch(startLoader("Fetching knowledge base categories"));
-        try {
-            const categoriesResult = await fetchAnswerlatticePublicCategories();
-            if (categoriesResult) {
-                setCategoriesData(categoriesResult);
-            }
-        } catch (error) {
-            // message.error("Failed to fetch knowledge base categories.");
-        } finally {
-            // appDispatch(stopLoader("Fetching knowledge base categories"));
-        }
-    };
+    const requestScope = useAnswerlatticePublicContentRequestScope();
 
     useEffect(() => {
-        if (!initialCategories) {
-            fetchCategories();
-        }
-    }, []);
+        if (initialCategories || !requestScope) return;
+        let mounted = true;
+        fetchAnswerlatticePublicCategories(requestScope)
+            .then((categoriesResult) => {
+                if (mounted && categoriesResult) setCategoriesData(categoriesResult);
+            })
+            .catch(() => undefined);
+        return () => {
+            mounted = false;
+        };
+    }, [initialCategories, requestScope]);
 
     const handleClear = () => {
         setQuery('');
@@ -79,7 +75,7 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
                 craftedAnswer: data.craftedAnswer,
                 searchHistoryId: data.id,
                 citations: data.citations || [],
-                references: data.references.map((article: KnowledgeBaseArticleType): Partial<SearchDisplayResultReferenceType> => {
+                references: data.references.map((article: AiSearchHistoryReference): Partial<SearchDisplayResultReferenceType> => {
                     const category = categoriesData ? Object.values(categoriesData.categories).find(cat => cat.id === article.categoryId) : undefined;
                     const section = category ? category.sections.find(sec => sec.id === article.sectionId) : undefined;
 

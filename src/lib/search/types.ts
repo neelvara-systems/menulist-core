@@ -10,12 +10,16 @@
 
 import type { ValidatedContextPayload } from '@lib/validation/contextSchema';
 import type {
+    AnswerlatticeAnswerType,
     AnswerlatticeCanonicalAnswer,
     AnswerlatticeEntitySearchIndex,
     AnswerlatticePublicCitation,
+    AnswerlatticeProcedure,
     AnswerlatticeRelease,
     AnswerlatticeScopeClarification,
+    AnswerlatticeContextPayload,
 } from '@type/answerlattice';
+import type { AiSearchHistoryReference } from '@type/aiSearchHistory';
 
 // ===== MOUNT CONTEXT =====
 
@@ -80,7 +84,7 @@ export interface CoreSearchInput {
     };
 
     /** Validated product context (page, feature, workflow, etc.) */
-    productContext?: ValidatedContextPayload;
+    productContext?: ValidatedContextPayload & Pick<AnswerlatticeContextPayload, 'surfaceEntityIds'>;
 
     /** Optional requester metadata from public surfaces such as the widget. */
     requestMetadata?: {
@@ -99,12 +103,19 @@ export interface CoreSearchInput {
 
 // ===== CORE SEARCH OUTPUT =====
 
+export type CoreSearchReference = AiSearchHistoryReference & {
+    /** Public article content used by authenticated help-center rendering. */
+    content?: unknown;
+    tags?: string[];
+    sourceType?: 'faq';
+};
+
 export interface CoreSearchResult {
     /** AI-crafted answer text */
     craftedAnswer: string;
 
     /** KB article references (full objects with similarityScore) */
-    references: any[];
+    references: CoreSearchReference[];
 
     /** Reviewer-approved public citations attached to a canonical answer. */
     citations?: AnswerlatticePublicCitation[];
@@ -154,13 +165,13 @@ export interface CoreSearchResult {
     clarification?: AnswerlatticeScopeClarification;
 
     /** Answer type: explanation, procedure, etc. */
-    answerType?: string;
+    answerType?: AnswerlatticeAnswerType | 'faq';
 
     /** Whether canonical answer has drift flag */
     drifted?: boolean;
 
     /** Procedure steps (for guided workflow answers) */
-    procedure?: any;
+    procedure?: AnswerlatticeProcedure;
 
     /** Whether an image was successfully processed */
     imageProcessed: boolean;

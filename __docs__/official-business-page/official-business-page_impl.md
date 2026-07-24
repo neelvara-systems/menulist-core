@@ -131,6 +131,8 @@ July 5, 2026 server fallback hardening: `src/app/client/obp/OBPContent.tsx` stil
 
 OBP resolved surface fallback diagnostics: `OBPResolvedSurface` keeps public rendering usable when timezone/day-key resolution, Google Maps embed URL parsing, or modified-on freshness timestamp parsing fails. Those fallback paths now log `public_obp_today_day_key_timezone_failed`, `public_obp_google_maps_embed_url_parse_failed`, and `public_obp_freshness_timestamp_parse_failed` with time-zone, Google Maps URL, and modified-on value-type presence-length metadata only. It adds no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. Source gate: `npm run verify:public-business-truth`.
 
+**Truthful public update semantics (July 22, 2026):** `store.modifiedOn` is a generic store-record mutation timestamp, so the OBP must not translate it into "Info verified". The resolved surface reuses the maintained public-customer translations for `Updated today` or `Updated {date}`, formats older dates in the active public locale and store timezone, and omits malformed or materially future timestamps with the existing bounded diagnostic. A future public verification label requires a separate scoped confirmation field and owner workflow. This changes public copy only and adds no data operation, API, Function, rule, index, provider call, or cache path.
+
 OBP language switch attribution diagnostics: `OBPLanguageSwitcher` preserves `entry_source`, `utm_source`, `utm_medium`, `utm_campaign`, and `utm_content` on language links when URL parsing succeeds, and still falls back to the generated language URL when preservation fails. Failed attribution preservation logs `obp_language_switcher_attribution_preserve_failed` with base URL, language code, generated language URL presence-length metadata, attribution parameter count, and search-param presence only. It adds no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. Source gate: `npm run verify:public-business-truth`.
 
 OBP Menu CTA entry-source diagnostics: `OBPMenuCTA` uses the shared `withAnalyticsSource(url, 'obp')` helper for menu CTA links and keeps the manual `entry_source=obp` fallback if that helper unexpectedly fails. Failed outer CTA attribution fallback logs `obp_menu_cta_entry_source_fallback_failed` with menu URL presence-length metadata, URL shape booleans, and normalized source error metadata only. It adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. Source gate: `npm run verify:public-business-truth`.
@@ -410,7 +412,7 @@ Primary implementation files:
 - `src/components/mobile/screens/MobileOfficialPageScreen.tsx`
 - `src/components/mobile/screens/MobileBusinessAttributesScreen.tsx`
 
-Mobile business attribute failure boundary: `MobileBusinessAttributesScreen` uses the shared `updateStore()` path and must log `mobile_business_attributes_save_failed` with bounded store, tenant, business-type, enabled-count, custom-count, and previous-custom-presence metadata before restoring previous public attributes on failed saves. Mobile Menu extraction-derived default application uses the same acknowledgement rule before local public attribute state changes. It must not show raw server or exception text to owners.
+Mobile business attributes use an exact tenant/store keyed editor and one synchronous save guard. The shared `updateStore()` acknowledgement precedes global context settlement; the functional merge requires the initiating tenant/store and unchanged prior attribute leaves, then updates only `businessAttributes` plus `publicPresence.customAttributes` over current same-store siblings. A failure logs `mobile_business_attributes_save_failed`, leaves global context unchanged, and never shows raw server or exception text. Mobile Menu extraction-derived default application uses the same acknowledgement rule before local public attribute state changes.
 
 Desktop Projects extraction failure boundary: accepted menu-intake business-detail suggestions update store identity fields through the shared `updateStore()` path. That save must require `assertStoreUpdateSucceeded()` before local `storeDetails` changes. Rejected writes use `projects_page_upload_business_details_store_update_rejected` and route through `projects_page_upload_business_details_update_failed` with fixed owner copy.
 
@@ -788,6 +790,14 @@ See `official-business-page_firebase.md` for detailed cost tracking.
 | `src/app/api/outlets/create/route.ts`                 | Brand identity copy from master (7 fields)                                     |
 | `functions/src/decisionBlocksScoring.ts`              | Wired OBP analytics aggregation task                                           |
 | `functions/src/constants/features.ts`                 | Added `ENABLE_OBP_ANALYTICS: false`                                            |
+
+---
+
+### Exact-scope editor and media settlement
+
+Desktop Business Settings and the standalone Mobile Official Page editor remount their mutable drafts by exact tenant/store identity. Mobile save admission uses a synchronous one-action guard, captures the initiating identifiers and previous optimistic values, and applies or rolls back global store state only while the exact scope and attempt-owned object references still match. Component-liveness checks suppress obsolete baseline, toast, and loading settlement.
+
+Mobile unmount cleanup does not run while an admitted store save is unresolved. The save first acknowledges `updateStore()`, then filters cleanup candidates against the complete committed public-presence model. Failed saves retain staged media while the source editor remains mounted so the owner can retry; after that editor becomes obsolete, only media not referenced by the previous committed presence is eligible for cleanup. Desktop and mobile uploads that complete after their exact editor unmounts delete the newly returned URL instead of applying it to stale form state.
 
 ---
 

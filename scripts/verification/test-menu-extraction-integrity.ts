@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   findDuplicateMenuExtractionFileUids,
+  findInvalidMenuExtractionFileUidIndexes,
   findInvalidMenuExtractionSourceIndexes,
   resolveMenuExtractionBatchCompletion,
   selectNewMenuExtractionProjectFiles,
@@ -37,6 +38,19 @@ assert.deepEqual(
   ]),
   ['file-a'],
   'trim-equivalent file identities must be rejected as duplicates',
+);
+assert.deepEqual(
+  findInvalidMenuExtractionFileUidIndexes([
+    { uid: 'file-a' },
+    { uid: 'x'.repeat(120) },
+    { uid: '' },
+    { uid: ' file-b' },
+    { uid: 'file-c ' },
+    { uid: 'x'.repeat(121) },
+    { uid: 7 },
+  ]),
+  [2, 3, 4, 5, 6],
+  'file identities must be nonempty bounded strings without edge whitespace',
 );
 
 assert.equal(
@@ -143,6 +157,11 @@ assert.throws(
 assert.throws(
   () => selectNewMenuExtractionProjectFiles([], [sourceFile, { ...sourceFile }]),
   /MENU_EXTRACTION_DUPLICATE_INCOMING_FILE_UID/,
+);
+assert.throws(
+  () => selectNewMenuExtractionProjectFiles([], [{ ...sourceFile, uid: ' file-a ' }]),
+  /MENU_EXTRACTION_INVALID_INCOMING_FILE_UID/,
+  'project persistence must reject noncanonical incoming file identities',
 );
 
 const prototypeLikeCategory = transformIdsForFile({

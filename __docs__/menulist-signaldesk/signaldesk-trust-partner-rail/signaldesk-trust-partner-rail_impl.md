@@ -1,7 +1,8 @@
-# SignalDesk Trust Partner Rail - Implementation Plan
+# SignalDesk Trust Partner Rail - Implementation
 
-**Status:** Runtime implemented for internal testing; real partner outreach/payment/contract execution remains manual and owner-approved
+**Status:** Feature 17 locally source-complete; real partner outreach/payment/contract execution remains manual and founder-approved
 **Created:** June 24, 2026
+**Last Updated:** July 21, 2026
 
 ## Current Runtime Fit
 
@@ -25,7 +26,7 @@ Runtime flag:
 ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: true
 ```
 
-## Proposed Product Modules
+## Implemented Product Modules
 
 | Module | Purpose |
 | --- | --- |
@@ -36,7 +37,7 @@ ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: true
 | Deliverable tracker | Store scheduled content, post URL, review state, and reminder state. |
 | Outcome scorer | Recommend renew, hold, cut, or retest from outcomes and risk. |
 
-## Proposed Collections
+## Implemented Collections
 
 | Collection | Purpose |
 | --- | --- |
@@ -61,6 +62,8 @@ All actions must use the existing `/api/signaldesk/actions` guard pattern: `with
 | `record-trust-partner-deliverable` | `source.configure` | Capture due date, post URL, and review state. |
 | `record-trust-partner-metrics` | `source.configure` | Capture compact result metrics and outcome refs. |
 | `review-trust-partner-renewal` | `policy.approve` | Approve renew, hold, cut, or retest. |
+
+HTTP payloads for profile, niche, deliverable, and renewal operations accept an operation key. Current desktop callers always send and retain that key until success. Legacy internal callers without a key receive deterministic payload-based replay identity so existing flows remain compatible.
 
 ## UI Placement
 
@@ -94,6 +97,19 @@ Workspace sections:
 7. No public partner portal.
 8. No paid campaign automation.
 9. No provider-send enablement.
+10. Approved/active partner states and approved deals require founder-admin authority derived from the session, never a caller boolean alone.
+11. Observed metrics require a matching live deliverable and canonical post URL.
+12. The rail pause blocks candidate/approved/active progression, niche creation, deal approval, brief creation, deliverable advancement, and renew/retest; risk evidence, metrics, hold, reject, missed, paused, and cut remain recordable.
+
+## Read And Mutation Shape
+
+- The partner workspace performs ten bounded list reads in parallel.
+- Budget policies are returned only to callers with `signaldesk.configure`.
+- Client writes remain denied; all mutations use the protected actions route.
+- Profile, niche, deliverable, metrics, and renewal operations use Firestore transactions and the existing `signaldeskIdempotencyKeys` ledger.
+- Deal approval remains deterministic and transactionally reserves budget once.
+- Brief identity remains content-derived and replay-safe.
+- No realtime listener, provider call, Storage object, scheduler, or MenuList data write is introduced.
 
 ## Build Checklist
 
@@ -113,7 +129,8 @@ Workspace sections:
 | Check | Expected |
 | --- | --- |
 | `npm run verify:signaldesk` | Must pass after runtime changes. |
-| `npx tsc --noEmit --incremental false --pretty false` | Must pass after runtime changes. |
+| `npm run typecheck` | Must pass after runtime changes. |
+| `SIGNALDESK_E2E_FOCUS=provider-accounting npm run test:signaldesk:e2e:local` | Must prove retry, founder, evidence, recommendation, spend, and pause boundaries. |
 | Unauthenticated API smoke | Partner APIs return 401. |
 | Public isolation scan | No partner route appears in sitemap, robots, website, or owner/customer nav. |
 | Firebase emulator parse | Rules/indexes parse after collection updates. |

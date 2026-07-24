@@ -1,7 +1,7 @@
 # Guest Feedback System — Validation Matrix
 
 **Status:** Source validation maintained; external certification is separate
-**Last Source Audit:** July 16, 2026
+**Last Source Audit:** July 23, 2026
 **Audience:** QA, engineering, release reviewers
 
 ---
@@ -18,6 +18,8 @@ This matrix is source-verified evidence for the Guest Feedback feature, not stan
 | Public store/tenant eligibility | `getPublicStoreById()` plus project tenant match | Active; request/cross-request cached and invalidation-tagged |
 | Browser data minimization | `projectPublicClientStore()` | Canonical owner/internal store fields excluded |
 | Public request controls | submit route, rate-limit config, bounded body, schema, honeypot, Turnstile | Active |
+| Owner tenant/store settlement | keyed desktop/mobile inboxes + expected-scope DAL admission + latest request/source-row ownership | Source and runtime verifier pass |
+| Owner response admission | exact row/status identity, row scope, duplicate/cursor coherence and safe-integer count | Runtime verifier pass |
 | Duplicate retry protection | form `submissionId`; server deterministic create/fingerprint replay | Active |
 | Compact event retry protection | deterministic `feedback_submitted_{feedbackId}` event create | Active and non-blocking |
 | Store field-default enforcement | submit route `resolveFeedbackDefaults()` | Active server-side |

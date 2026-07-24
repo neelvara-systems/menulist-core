@@ -2901,7 +2901,9 @@ export const FEATURE_FLAGS = {
      *
      * true: Canonical answer hits use an optional bounded Upstash Redis fast path.
      *       Only deterministic canonical answers are cached (not RAG responses).
-     *       Cache keys include entity ID + answer version + plan + role.
+     *       Cache keys include hashed query, complete context identity, entity,
+     *       answer version, plan, role, and state. Graph-aware retrieval bypasses
+     *       this fast path until graph state has an authoritative cache version.
      *       TTL: 24 hours. Invalidation: automatic via version in key.
      * false: All queries go through full pipeline (existing behavior).
      *

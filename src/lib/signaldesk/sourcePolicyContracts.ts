@@ -163,6 +163,25 @@ export const SignalDeskSourcePolicyCreateSchema = z.object({
 });
 
 export type SignalDeskSourcePolicyCreateInput = z.infer<typeof SignalDeskSourcePolicyCreateSchema>;
+
+export const SignalDeskSourcePolicyRenewSchema = z.object({
+    expiresAt: offsetDateTime,
+    idempotencyKey: boundedString(8, 180),
+    lastReviewedAt: offsetDateTime,
+    sourcePolicyId: boundedString(3, 160),
+}).strict().superRefine((value, context) => {
+    const now = Date.now();
+    const expiry = Date.parse(value.expiresAt);
+    const reviewed = Date.parse(value.lastReviewedAt);
+    if (reviewed > now + CLOCK_SKEW_MS) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["lastReviewedAt"], message: "Review time cannot be in the future." });
+    }
+    if (expiry <= now || expiry <= reviewed) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["expiresAt"], message: "Renewed expiry must follow the current review." });
+    }
+});
+
+export type SignalDeskSourcePolicyRenewInput = z.infer<typeof SignalDeskSourcePolicyRenewSchema>;
 export type SignalDeskSourcePolicyContactChannel = (typeof SIGNALDESK_SOURCE_POLICY_CONTACT_CHANNELS)[number];
 
 const timestampToIso = (value: unknown): string | null => {

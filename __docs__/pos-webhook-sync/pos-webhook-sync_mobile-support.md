@@ -40,6 +40,8 @@ Enabling without a secret calls `action: ensure`. Rotation calls `action: rotate
 
 The save payload must not contain `webhookSecret`. It may contain `secretVersion`, which is non-secret concurrency state. Failed saves show fixed owner copy and bounded diagnostics.
 
+The mobile screen is keyed by exact tenant/store identity, so a store switch destroys prior URL, secret, modal, test, and loading state before the new store renders. Secret reads, settings saves, rotations, and connection tests capture their originating scope; delayed completions can finish the already-authorized old-store server operation but cannot patch the newly selected store, expose an old secret/result, or show a stale success/error. Functional `setStoreDetails` updates recheck both tenant and store before merging.
+
 ## Connection test
 
 The screen imports `POS_SYNC_TEST_REQUEST_POLICY` and the shared 16 KiB response guard. Reachable feedback requires both an OK HTTP response and `isSuccessfulPosSyncTestResponse()`.

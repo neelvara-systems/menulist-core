@@ -8,12 +8,13 @@ import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationO
 import type { AiOperationHistoryRow } from '@lib/ai/operationHistoryClientContract';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import type { BillingHistoryItem } from '@type/razorpay';
 import { Alert, Button, Card, Flex, Grid, Space, Spin, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowLeft, LuRefreshCw } from 'react-icons/lu';
 import BillingHistory from '@/components/templates/main-app/billing/BillingHistory';
 
@@ -75,6 +76,7 @@ const formatTokens = (value?: number | null) => {
 export default function AnswerlatticeTransactions() {
     const { data: session, status } = useSession();
     const scope = useMemo(() => resolveAnswerlatticeSessionScope(session), [session]);
+    const scopeKey = scope ? `${scope.tenantId}:${scope.storeId}` : null;
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const formatter = useFormatter();
@@ -86,16 +88,32 @@ export default function AnswerlatticeTransactions() {
     const [aiOperationsCursor, setAiOperationsCursor] = useState<{ id: string } | null>(null);
     const [hasMoreAiOperations, setHasMoreAiOperations] = useState(false);
     const [isLoadingMoreAiOperations, setIsLoadingMoreAiOperations] = useState(false);
+    const [dataScopeKey, setDataScopeKey] = useState<string | null>(null);
+    const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!requestGuardRef.current) {
+        requestGuardRef.current = createLatestRequestGuard();
+    }
+    const visibleBillingHistory = dataScopeKey === scopeKey ? billingHistory : [];
+    const visibleAiOperations = dataScopeKey === scopeKey ? aiOperations : [];
 
     const fetchBillingHistory = useCallback(async () => {
+        const requestGuard = requestGuardRef.current;
+        if (!requestGuard) return;
+        const requestId = requestGuard.begin();
         const tenantId = scope?.tenantId;
         const storeId = scope?.storeId;
 
         if (!tenantId || !storeId) {
+            setBillingHistory([]);
+            setAiOperations([]);
+            setAiOperationsCursor(null);
+            setHasMoreAiOperations(false);
+            setDataScopeKey(null);
             setIsLoading(false);
             return;
         }
 
+        setDataScopeKey(null);
         setIsLoading(true);
         try {
             const [billingResult, aiOperationsResult] = await Promise.allSettled([
@@ -105,6 +123,7 @@ export default function AnswerlatticeTransactions() {
                     pageSize: AI_OPERATIONS_PAGE_SIZE,
                 }),
             ]);
+            if (!requestGuard.isCurrent(requestId)) return;
 
             if (billingResult.status === 'fulfilled') {
                 setBillingHistory(formatBillingHistoryEvents(billingResult.value, {
@@ -132,23 +151,36 @@ export default function AnswerlatticeTransactions() {
                 logRuntimeFailure(ANSWERLATTICE_SUPPORT_CREDIT_USAGE_LOAD_FAILED, aiOperationsResult.reason, getTransactionsLoadContext({ tenantId, storeId }));
                 message.error('Could not load support credit usage.');
             }
+            setDataScopeKey(scopeKey);
         } finally {
-            setIsLoading(false);
+            if (requestGuard.isCurrent(requestId)) {
+                setIsLoading(false);
+            }
         }
-    }, [formatter, scope?.tenantId, scope?.storeId]);
+    }, [formatter, scope?.tenantId, scope?.storeId, scopeKey]);
 
     const loadMoreAiOperations = useCallback(async () => {
+        const requestGuard = requestGuardRef.current;
+        if (!requestGuard) return;
         const tenantId = scope?.tenantId;
         const storeId = scope?.storeId;
 
-        if (!tenantId || !storeId || !hasMoreAiOperations || isLoadingMoreAiOperations) return;
+        if (
+            !tenantId
+            || !storeId
+            || dataScopeKey !== scopeKey
+            || !hasMoreAiOperations
+            || isLoadingMoreAiOperations
+        ) return;
+        const requestId = requestGuard.begin();
         setIsLoadingMoreAiOperations(true);
         try {
             const response = await getPaginatedAnswerlatticeAiOperations({
-                pageNumber: Math.floor(aiOperations.length / AI_OPERATIONS_PAGE_SIZE) + 1,
+                pageNumber: Math.floor(visibleAiOperations.length / AI_OPERATIONS_PAGE_SIZE) + 1,
                 pageSize: AI_OPERATIONS_PAGE_SIZE,
                 lastVisibleDoc: aiOperationsCursor,
             });
+            if (!requestGuard.isCurrent(requestId)) return;
             setAiOperations(prev => [...prev, ...response.data]);
             setAiOperationsCursor(response.lastVisibleDoc);
             setHasMoreAiOperations(response.hasMore);
@@ -156,24 +188,26 @@ export default function AnswerlatticeTransactions() {
             logRuntimeFailure(ANSWERLATTICE_SUPPORT_CREDIT_USAGE_MORE_LOAD_FAILED, error, getAiOperationsLoadMoreContext(
                 { tenantId, storeId },
                 {
-                    aiOperationCount: aiOperations.length,
+                    aiOperationCount: visibleAiOperations.length,
                     hasCursor: Boolean(aiOperationsCursor?.id),
                     hasMoreAiOperations,
                 },
             ));
             message.error('Could not load more support credit usage.');
         } finally {
-            setIsLoadingMoreAiOperations(false);
+            if (requestGuard.isCurrent(requestId)) {
+                setIsLoadingMoreAiOperations(false);
+            }
         }
-    }, [aiOperations.length, aiOperationsCursor, hasMoreAiOperations, isLoadingMoreAiOperations, scope?.tenantId, scope?.storeId]);
+    }, [aiOperationsCursor, dataScopeKey, hasMoreAiOperations, isLoadingMoreAiOperations, scope?.tenantId, scope?.storeId, scopeKey, visibleAiOperations.length]);
 
     const aiOperationSummary = useMemo(() => (
-        aiOperations.reduce((summary, operation) => {
+        visibleAiOperations.reduce((summary, operation) => {
             summary.credits += Number(operation.unitsConsumed || 0);
             summary.tokens += Number(operation.totalTokenCount || 0);
             return summary;
         }, { credits: 0, tokens: 0 })
-    ), [aiOperations]);
+    ), [visibleAiOperations]);
 
     const aiOperationColumns = useMemo(() => [
         {
@@ -242,6 +276,9 @@ export default function AnswerlatticeTransactions() {
     useEffect(() => {
         if (status === 'loading') return;
         void fetchBillingHistory();
+        return () => {
+            requestGuardRef.current?.invalidate();
+        };
     }, [fetchBillingHistory, status]);
 
     return (
@@ -292,7 +329,7 @@ export default function AnswerlatticeTransactions() {
                         </Flex>
                         <Table
                             columns={aiOperationColumns}
-                            dataSource={aiOperations}
+                            dataSource={visibleAiOperations}
                             locale={{ emptyText: 'No support credit usage yet.' }}
                             pagination={false}
                             rowKey={(record) => record.id}
@@ -301,7 +338,7 @@ export default function AnswerlatticeTransactions() {
                             style={{ marginTop: 16 }}
                         />
                     </Card>
-                    <BillingHistory billingHistory={billingHistory} fetchBillingHistory={fetchBillingHistory} />
+                    <BillingHistory billingHistory={visibleBillingHistory} fetchBillingHistory={fetchBillingHistory} />
                 </Flex>
             )}
         </Flex>

@@ -37,7 +37,7 @@
 | **Collection** | `aiSearchHistory` |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.AI_SEARCH_HISTORY` |
 | **Doc ID** | Auto-generated |
-| **Scoping** | `tId + sId` fields |
+| **Scoping** | Exact `pId + tId + sId`; shared-project readers and cleanup fail closed on product mismatch |
 | **Avg Doc Size** | 2-10 KB |
 | **Growth Rate** | Per-unique-search (cache misses only save new docs) |
 
@@ -52,7 +52,7 @@
 | **Avg Doc Size** | 3-4 KB (768-dimension vector as number array) |
 | **Growth Rate** | Per unique scoped cache key |
 | **Uses Admin SDK** | Yes — `firestoreAdmin` (server-side only) |
-| **Retention** | 30-day `expiresAt`, Firestore TTL override, stale-read cleanup, scheduler cleanup by `createdAt` |
+| **Retention** | Runtime valid-creation/30-day-age/explicit-expiry admission, 30-day `expiresAt`, Firestore TTL override, snapshot-preconditioned stale/invalid cleanup, and optional legacy cleanup by exact `pId: AL + createdAt` |
 | **Cleanup Diagnostics** | `answerlattice_query_embedding_stale_delete_failed` with bounded cache-key presence/length and cache age only |
 
 ---
@@ -197,7 +197,9 @@ Recalculate from current Firebase and provider pricing before changing packaging
 | `chatSessions` | `tId ASC, sId ASC, modifiedOn DESC` | Paginated conversations |
 | `chatAnalytics` | `tId ASC, sId ASC, date ASC` | Aggregated stats |
 | `chatAnalytics` | `tId ASC, sId ASC, modifiedOn DESC` | Last update check |
-| `aiSearchHistory` | `cacheKey ASC, tId ASC, sId ASC, createdOn DESC` | Cache lookup |
+| `aiSearchHistory` | `pId ASC, cacheKey ASC, tId ASC, sId ASC, createdOn DESC` | Exact-product cache lookup |
+| `aiSearchHistory` | `pId ASC, createdOn ASC` | Exact-product bounded legacy retention cleanup |
+| `queryEmbeddings` | `pId ASC, createdAt ASC` | Exact-product bounded legacy retention cleanup |
 | `kb_articles` | `pId+tId+sId+status+active` + Vector(`embedding`, 768, COSINE) | Canonical vector search |
 | `kb_articles` | `pId+tId+sId+status+active+entityIds ARRAY` | Gated exact/entity article lookup |
 
@@ -207,7 +209,7 @@ Recalculate from current Firebase and provider pricing before changing packaging
 
 | Strategy | Cost behavior | Implementation |
 |----------|---------------|----------------|
-| **Response cache** | Avoids provider work on a fresh scoped hit | `findCachedSearchByCacheKey()` |
+| **Response cache** | Avoids provider work on a fresh scoped hit | Server-only `findCachedSearchByCacheKeyServer()` lookup using a SHA-256 cache-key digest plus exact `pId + tId + sId` scope |
 | **Embedding cache** | Avoids an embedding call on a fresh scoped hit | `getCachedEmbedding()` with exact stored `pId + tId + sId` validation |
 | **Aggregated analytics** | Avoids repeated full raw-session scans for historical views | Daily `chatAnalytics` documents |
 | **Hybrid dashboard** | Fresh + cheap | Today's live + historical aggregate |
@@ -256,4 +258,4 @@ Each doc ~3-4 KB (768-dim vector). New rows get 30-day retention fields, stale c
 | 10,000 | ~40 MB | ✅ Fine |
 | 100,000 | ~400 MB | ⚠️ Storage cost |
 
-**Mitigation:** Firestore TTL coverage plus stale-read cleanup and scheduler cleanup keep the collection bounded without blocking answer retrieval.
+**Mitigation:** Firestore TTL coverage plus stale-read cleanup and explicit exact-Answerlattice legacy cleanup keep the collection bounded without blocking answer retrieval or deleting another product's shared rows.

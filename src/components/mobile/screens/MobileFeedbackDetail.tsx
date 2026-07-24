@@ -1,6 +1,10 @@
 'use client'
 
-import { assertFeedbackStatusUpdateSucceeded, updateFeedbackStatus } from '@database/guestFeedback';
+import {
+    assertFeedbackStatusUpdateSucceeded,
+    updateFeedbackStatus,
+    type GuestFeedbackExpectedScope,
+} from '@database/guestFeedback';
 import { buildFeedbackReplyTemplates } from '@lib/feedback/feedbackReplyTemplates';
 import { copyRuntimeTextToClipboard } from '@lib/runtime/runtimeDiagnostics';
 import { generateWhatsAppLink, isValidWhatsAppNumber } from '@lib/utils/whatsappLink';
@@ -8,7 +12,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuMail, LuMessageCircle, LuPhone, LuStar } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Tag, Text, TextArea, Title, Toast } from '../antd';
 import type { MobileFeedbackItemType } from '../types';
@@ -19,12 +23,13 @@ import {
 } from '../utils/mobileOwnerDiagnostics';
 
 interface MobileFeedbackDetailProps {
+    expectedScope: GuestFeedbackExpectedScope | null;
     feedback: MobileFeedbackItemType;
     onBack: () => void;
     onStatusUpdate: (feedbackId: string, status: 'new' | 'resolved') => void;
 }
 
-export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate }: MobileFeedbackDetailProps) {
+export default function MobileFeedbackDetail({ expectedScope, feedback, onBack, onStatusUpdate }: MobileFeedbackDetailProps) {
     const t = useTranslations('MobileFeedbackDetail');
     const { token } = theme.useToken();
     const format = useFormatter();
@@ -32,12 +37,30 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
     const [replyText, setReplyText] = useState('');
     const [isCopying, setIsCopying] = useState(false);
     const [isResolving, setIsResolving] = useState(false);
+    const isMountedRef = useRef(true);
+    const resolveInFlightRef = useRef(false);
+    const copyInFlightRef = useRef(false);
+    const currentFeedbackRef = useRef(feedback);
+    currentFeedbackRef.current = feedback;
+    const isExpectedOperation = (
+        sourceScope: GuestFeedbackExpectedScope,
+        sourceFeedback: MobileFeedbackItemType,
+    ) => (
+        isMountedRef.current
+        && currentFeedbackRef.current === sourceFeedback
+        && Number(storeDetails?.tenantId) === sourceScope.tenantId
+        && Number(storeDetails?.storeId) === sourceScope.storeId
+    );
     const replyTemplates = useMemo(() => buildFeedbackReplyTemplates({
         customerName: feedback.customerName,
         rating: feedback.rating,
         storeName: storeDetails?.name,
     }), [feedback.customerName, feedback.rating, storeDetails?.name]);
     const canOpenWhatsApp = Boolean(feedback.phone && isValidWhatsAppNumber(feedback.phone));
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const getFeedbackWriteLogContext = (nextStatus: 'new' | 'resolved', replyLength?: number) => ({
         ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
@@ -57,38 +80,70 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
         : <Tag color={feedback.needsAttention ? 'warning' : 'primary'}>{feedback.needsAttention ? t('needsAttention') : t('statusNew')}</Tag>;
 
     const handleResolve = async () => {
-        if (isResolving) return;
+        const sourceScope = expectedScope;
+        const sourceFeedback = feedback;
+        if (
+            !sourceScope
+            || !isExpectedOperation(sourceScope, sourceFeedback)
+            || resolveInFlightRef.current
+        ) return;
+        resolveInFlightRef.current = true;
         setIsResolving(true);
         try {
-            const updated = await updateFeedbackStatus(feedback.id, 'resolved');
+            const updated = await updateFeedbackStatus(
+                sourceFeedback.id,
+                'resolved',
+                undefined,
+                sourceScope,
+            );
             assertFeedbackStatusUpdateSucceeded(
                 updated,
-                feedback.id,
+                sourceFeedback.id,
                 'resolved',
                 'mobile_feedback_status_update_rejected',
             );
-            onStatusUpdate(feedback.id, 'resolved');
+            if (!isExpectedOperation(sourceScope, sourceFeedback)) return;
+            onStatusUpdate(sourceFeedback.id, 'resolved');
             Toast.show({ content: t('markedResolved'), duration: 1000 });
         } catch (error) {
-            logMobileOwnerFailure('mobile_feedback_status_update_failed', error, getFeedbackWriteLogContext('resolved'));
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            if (isExpectedOperation(sourceScope, sourceFeedback)) {
+                logMobileOwnerFailure('mobile_feedback_status_update_failed', error, getFeedbackWriteLogContext('resolved'));
+                Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            }
         } finally {
-            setIsResolving(false);
+            resolveInFlightRef.current = false;
+            if (isExpectedOperation(sourceScope, sourceFeedback)) {
+                setIsResolving(false);
+            }
         }
     };
 
     const handleCopyReply = async () => {
         const trimmedReply = replyText.trim();
-        if (!trimmedReply) return;
+        const sourceScope = expectedScope;
+        const sourceFeedback = feedback;
+        if (
+            !trimmedReply
+            || !sourceScope
+            || !isExpectedOperation(sourceScope, sourceFeedback)
+            || copyInFlightRef.current
+        ) return;
+        copyInFlightRef.current = true;
         setIsCopying(true);
         try {
             await copyRuntimeTextToClipboard(trimmedReply);
+            if (!isExpectedOperation(sourceScope, sourceFeedback)) return;
             Toast.show({ content: t('replyCopied'), duration: 1500 });
         } catch (error) {
-            logMobileOwnerFailure('mobile_feedback_reply_copy_failed', error, getFeedbackWriteLogContext(feedback.status, trimmedReply.length));
-            Toast.show({ content: t('failedToCopy'), duration: 2000 });
+            if (isExpectedOperation(sourceScope, sourceFeedback)) {
+                logMobileOwnerFailure('mobile_feedback_reply_copy_failed', error, getFeedbackWriteLogContext(sourceFeedback.status, trimmedReply.length));
+                Toast.show({ content: t('failedToCopy'), duration: 2000 });
+            }
         } finally {
-            setIsCopying(false);
+            copyInFlightRef.current = false;
+            if (isExpectedOperation(sourceScope, sourceFeedback)) {
+                setIsCopying(false);
+            }
         }
     };
 

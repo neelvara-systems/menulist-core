@@ -9,7 +9,7 @@
 - Cancellation/refund/legal parity exposed that the store and platform plan mirrors were removed as soon as a provider subscription became `cancelled` or `paused`, even though owner access correctly continued through the paid `cycleEndDate`.
 - Root and Functions entitlement selection now retains current-cycle cancelled/paused plan mirrors, prefers active rows, and excludes past-due/expired/completed rows. A pure boundary test covers Timestamp-like future/ended cycles and malformed dates.
 - The existing leased maintenance scheduler owns `subscription_access_expiry` every 60 minutes. Each run processes at most five 100-row due pages, transactionally rechecks exact scope/status/date, transitions the row to `expired`, synchronizes the mirror, and leaves `billingEntitlementSyncPending` for bounded retry on partial failure.
-- `firestore.indexes.json` adds the exact `subscriptions(status ASC, cycleEndDate ASC)` query index. Billing/source/unit, pricing/rules, tenant-safety, TypeScript, Functions lint/build/preflight and dependency gates passed locally.
+- `firestore.indexes.json` now carries the exact product-prefixed `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)` query index. Billing/source/unit, pricing/rules, tenant-safety, TypeScript, Functions lint/build/preflight and dependency gates passed locally.
 - The scoped QA index attempt stopped before upload at the Firebase Rules test endpoint with HTTP 403. The scheduler Function attempt passed configured lint/build and stopped before upload at Cloud Resource Manager HTTP 403. No QA index or Function revision changed. Exact retry commands are maintained in `__docs__/owner-action-items.md`.
 
 ### Scale-Hardening Follow-Up
@@ -22,8 +22,8 @@
 - Reconciliation uses concurrency five, a six-minute runtime budget, a durable page cursor, and a 100-row sync-detail cap.
 - The existing scheduler owns one daily compact billing-health summary and prunes at most 200 terminal/stale-processing webhook claims after 90 days. Status-scoped checkout/webhook queries use the exact composite indexes in `firestore.indexes.json`, and terminal webhook rows delete `processingExpiresAt`, so completed checkpoints and terminal events cannot hide real stale work. No standalone scheduler or per-event health collection was added.
 - Root TypeScript, scoped root ESLint, Functions lint/build/preflight, billing source/unit gates, the new eight-way checkout concurrency emulator, explicit coordination-rules emulator, payment checkout, onboarding, multi-location, tenant-safety, pricing, Answerlattice runtime, and dependency-freeze gates passed. Documentation scan found 0 broken links; its 9 naming warnings are unrelated existing/founder-video convention files.
-- The earlier scoped QA deploy completed Functions predeploy lint/build, then failed during Firestore rules validation with Firebase Rules API HTTP 403 (`The caller does not have permission`). No rule, index, or Function revision was uploaded. Because the final source now includes two billing-health indexes, the current retry command is `firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:menulistMaintenanceScheduler --non-interactive`.
-- **Pending — owner:** restore `menulist-qa` Firebase Rules/Cloud Resource Manager deploy permission, rerun the exact scoped deploy, separately release the app through the approved Vercel path, then run the disposable test-mode concurrent/lost-response subscription and top-up mutation matrix in the External Certification Runbook.
+- The earlier scoped QA deploy completed Functions predeploy lint/build, then failed during Firestore rules validation with Firebase Rules API HTTP 403 (`The caller does not have permission`). Later rules-only audit retries stopped even earlier with `Failed to authenticate, have you run firebase login?`. No rule, index, or Function revision was uploaded. The current source includes the billing coordination rules, checkout/provider-plan health composites, CMI TTL policy, and the maintained MenuList scoring/scheduler changes, so the complete retry command is `firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerCustomerAnalyticsManually,functions:menulistMaintenanceScheduler --non-interactive`.
+- **Pending — owner:** restore non-interactive Firebase CLI authentication and the required `menulist-qa` Firebase Rules/Cloud Resource Manager permissions, rerun the exact scoped deploy, separately release the app through the approved Vercel path, then run the disposable test-mode concurrent/lost-response subscription, top-up, and provider-plan ambiguity matrix in the External Certification Runbook.
 
 ### Source-Gate Results
 
@@ -32,8 +32,10 @@
 | Root TypeScript | Passed: `npx tsc --noEmit` |
 | Billing entitlement source gate | Passed: `npm run verify:billing-entitlement-boundary` |
 | Billing settlement unit boundaries | Passed: `npm run test:billing-settlement-boundaries` |
-| Checkout coordination concurrency | Passed: eight simultaneous claims converge on one attempt; stale recovery, provider checkpoint, completed replay, changed-intent conflict, expiry, and ownership release passed in the Firestore emulator |
+| Checkout coordination concurrency | Passed: eight simultaneous claims converge on one attempt; pre-provider expiry alone can renew; provider-start state becomes recovery-only for subscriptions; top-up recovery retains one attempt; provider IDs are first-writer immutable; completed replay, changed-intent conflict, malformed-state refusal, expiry, and ownership release passed in the Firestore emulator |
 | Checkout coordination Firestore rules | Passed: authenticated and unauthenticated browser reads/writes were denied for `billingCheckoutLeases` and `billingProviderPlans` |
+| Provider-plan registry concurrency | Passed: eight simultaneous claims converge on one owner; provider-start expiry and unversioned rolling-release rows are recovery-only; only expired versioned pre-provider work can be replaced; stale owners cannot start; ready provider identity is immutable; malformed state fails closed |
+| Webhook lease/idempotency concurrency | Passed: eight simultaneous claims converge on one owner; active work remains retryable; processed replay is acknowledged; expired/failed work can be re-owned; stale terminal writes cannot downgrade a newer owner; exact terminal replacement prunes stale failure/lease fields; payment-audit replay preserves `createdOn` and rejects event identity collision |
 | Browser checkout response boundary | Passed: `npm run test:payment-checkout-boundary` |
 | Website onboarding subscription boundary | Passed: `npm run verify:onboarding-subscription-boundary` |
 | Reseller desktop/mobile/server boundary | Passed: `npm run verify:reseller-dashboard-boundary` |
@@ -48,7 +50,7 @@
 | MenuList Functions lint/build/preflight | Passed: Functions ESLint, TypeScript build, and `npm run verify:functions-deploy-preflight` |
 | Documentation integrity | Passed: 2,380 files and 4,303 internal links scanned; 0 broken links; 9 unrelated existing founder-video naming warnings |
 | Patch whitespace integrity | Passed: `git diff --check` |
-| QA rules/indexes/scheduler deploy | Pending — owner: the July 16 index attempt stopped at the Firebase Rules test endpoint HTTP 403; the scheduler Function passed predeploy lint/build and stopped at Cloud Resource Manager HTTP 403; no final billing rule, index, or Function upload occurred |
+| QA rules/indexes/scheduler deploy | Pending — owner: earlier attempts stopped at Firebase Rules/Cloud Resource Manager HTTP 403, and the latest audit retries stopped before upload because Firebase CLI authentication is unavailable; no final rule, index, or Function upload occurred |
 
 ### Recovery and Owner-Parity Evidence
 
@@ -65,9 +67,9 @@
 
 ### External Verification Still Required
 
-This session did not create real provider charges or mutate a production subscription. A disposable Razorpay test-mode account/store is still required to smoke: new subscription, post-persistence identical-request replay, replacement upgrade, cancel, UPI quantity replacement, inherited-outlet HQ history routing, lost-browser top-up webhook recovery, reseller online payment-link activation, and Answerlattice failure routing. Pause/resume are intentionally unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; the rejection path was source-verified, not provider-smoked. The final billing rules, status-scoped indexes, reconciliation cursor, and health snapshot are not deployed to QA because the earlier scoped attempt completed lint/build and then failed before upload with Cloud Resource Manager HTTP 403. After owner IAM repair, use the current complete target set:
+This session did not create real provider charges or mutate a production subscription. A disposable Razorpay test-mode account/store is still required to smoke: new subscription, post-persistence identical-request replay, replacement upgrade, cancel, UPI quantity replacement, inherited-outlet HQ history routing, lost-browser top-up webhook recovery, provider-plan lost-response recovery, reseller online payment-link activation, and Answerlattice failure routing. Pause/resume are intentionally unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; the rejection path was source-verified, not provider-smoked. The final billing rules, status-scoped indexes, reconciliation cursor, and health snapshot are not deployed to QA because earlier scoped attempts failed authorization and the latest audit retries lacked Firebase CLI authentication before upload. After authentication/IAM repair, use the current complete target set:
 
-`firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:menulistMaintenanceScheduler --non-interactive`
+`firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerCustomerAnalyticsManually,functions:menulistMaintenanceScheduler --non-interactive`
 
 ## Session: May 20, 2026
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
 import path from 'node:path';
 import {
     assertFails,
@@ -9,6 +10,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
     collection,
+    deleteDoc,
     doc,
     getDoc,
     getDocs,
@@ -84,24 +86,95 @@ async function run(): Promise<void> {
             await setDoc(doc(adminDb, 'topups', 'order_Answerlattice123'), answerlatticeBillingRecord({
                 status: 'paid',
             }));
+            await setDoc(doc(adminDb, 'answerlattice_aiCapacityReservations', 'idem_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'), {
+                pId: 'AL',
+                tId: 1,
+                sId: 101,
+                recoveryAt: new Date(),
+            });
             await setDoc(doc(adminDb, 'subscriptions', 'sub_Conflicting123'), answerlatticeBillingRecord({
                 productId: 'ML',
                 status: 'active',
             }));
+            await setDoc(doc(adminDb, 'payment_transactions', 'payment_conflicting_1'), answerlatticeBillingRecord({
+                event: 'subscription.charged',
+                productId: 'ML',
+            }));
+            await setDoc(doc(adminDb, 'subscriptions', 'sub_ConflictingScope123'), answerlatticeBillingRecord({
+                tId: 999,
+                status: 'active',
+            }));
+            await setDoc(doc(adminDb, 'payment_transactions', 'payment_conflicting_scope_1'), answerlatticeBillingRecord({
+                event: 'subscription.charged',
+                sId: 999,
+            }));
 
             if (IS_SHARED_RULES) {
                 await setDoc(doc(adminDb, 'subscriptions', 'sub_MenuList123'), {
+                    pId: 'ML',
+                    productId: 'ML',
+                    tId: 1,
                     tenantId: 1,
+                    sId: 101,
                     storeId: 101,
                     status: 'active',
                 });
                 await setDoc(doc(adminDb, 'payment_transactions', 'payment_menulist_1'), {
+                    pId: 'ML',
+                    productId: 'ML',
+                    tId: 1,
                     tenantId: 1,
+                    sId: 101,
                     storeId: 101,
                     event: 'subscription.charged',
                 });
                 await setDoc(doc(adminDb, 'topups', 'order_MenuList123'), {
+                    pId: 'ML',
+                    productId: 'ML',
+                    tId: 1,
                     tenantId: 1,
+                    sId: 101,
+                    storeId: 101,
+                    status: 'paid',
+                });
+                await setDoc(doc(adminDb, 'subscriptions', 'sub_CampaignCue123'), {
+                    pId: 'CC',
+                    productId: 'CC',
+                    tenantId: 1,
+                    storeId: 101,
+                    status: 'active',
+                });
+                await setDoc(doc(adminDb, 'topups', 'order_CampaignCue123'), {
+                    pId: 'CC',
+                    productId: 'CC',
+                    tenantId: 1,
+                    storeId: 101,
+                    status: 'paid',
+                });
+                await setDoc(doc(adminDb, 'subscriptions', 'sub_MenuListConflictingScope123'), {
+                    pId: 'ML',
+                    productId: 'ML',
+                    tId: 999,
+                    tenantId: 1,
+                    sId: 101,
+                    storeId: 101,
+                    status: 'active',
+                });
+                await setDoc(doc(adminDb, 'payment_transactions', 'payment_menulist_conflicting_scope_1'), {
+                    pId: 'ML',
+                    productId: 'ML',
+                    tId: 1,
+                    tenantId: 1,
+                    sId: 999,
+                    storeId: 101,
+                    event: 'subscription.charged',
+                });
+                await setDoc(doc(adminDb, 'topups', 'order_MenuListConflictingScope123'), {
+                    pId: 'ML',
+                    productId: 'ML',
+                    tId: 999,
+                    tenantId: 1,
+                    sId: 101,
                     storeId: 101,
                     status: 'paid',
                 });
@@ -119,6 +192,9 @@ async function run(): Promise<void> {
         }
 
         await assertFails(getDoc(doc(ownerDb, 'subscriptions', 'sub_Conflicting123')));
+        await assertFails(getDoc(doc(ownerDb, 'payment_transactions', 'payment_conflicting_1')));
+        await assertFails(getDoc(doc(ownerDb, 'subscriptions', 'sub_ConflictingScope123')));
+        await assertFails(getDoc(doc(ownerDb, 'payment_transactions', 'payment_conflicting_scope_1')));
         await assertFails(getDoc(doc(billingDb, 'topups', 'order_Answerlattice123')));
         await assertFails(getDoc(doc(ownerDb, 'topups', 'order_Answerlattice123')));
         await assertFails(setDoc(
@@ -126,6 +202,46 @@ async function run(): Promise<void> {
             { status: 'cancelled' },
             { merge: true },
         ));
+        for (const deniedRecoveryDb of [billingDb, ownerDb, managerDb, otherDb]) {
+            await assertFails(getDoc(doc(
+                deniedRecoveryDb,
+                'answerlattice_aiCapacityReservations',
+                'idem_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            )));
+            await assertFails(getDocs(collection(deniedRecoveryDb, 'answerlattice_aiCapacityReservations')));
+            await assertFails(setDoc(
+                doc(deniedRecoveryDb, 'answerlattice_aiCapacityReservations', 'forged_reservation'),
+                { pId: 'AL', tId: 1, sId: 101 },
+            ));
+        }
+
+        // Exact duplicate-alias predicates exclude conflicting rows while
+        // preserving the valid workspace result.
+        const exactAnswerlatticeSubscriptions = await assertSucceeds(getDocs(query(
+            collection(billingDb, 'subscriptions'),
+            where('pId', '==', 'AL'),
+            where('productId', '==', 'AL'),
+            where('tenantId', '==', 1),
+            where('tId', '==', 1),
+            where('storeId', '==', 101),
+            where('sId', '==', 101),
+        )));
+        assert.deepEqual(exactAnswerlatticeSubscriptions.docs.map((item) => item.id), ['sub_Answerlattice123']);
+        const exactAnswerlatticePayments = await assertSucceeds(getDocs(query(
+            collection(billingDb, 'payment_transactions'),
+            where('pId', '==', 'AL'),
+            where('productId', '==', 'AL'),
+            where('tenantId', '==', 1),
+            where('tId', '==', 1),
+            where('storeId', '==', 101),
+            where('sId', '==', 101),
+        )));
+        assert.deepEqual(exactAnswerlatticePayments.docs.map((item) => item.id), ['payment_answerlattice_1']);
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            const adminDb = context.firestore();
+            await deleteDoc(doc(adminDb, 'subscriptions', 'sub_ConflictingScope123'));
+            await deleteDoc(doc(adminDb, 'payment_transactions', 'payment_conflicting_scope_1'));
+        });
         await assertFails(setDoc(
             doc(ownerDb, 'payment_transactions', 'payment_answerlattice_1'),
             { status: 'forged' },
@@ -135,33 +251,122 @@ async function run(): Promise<void> {
         await assertSucceeds(getDocs(query(
             collection(billingDb, 'subscriptions'),
             where('pId', '==', 'AL'),
+            where('productId', '==', 'AL'),
             where('tenantId', '==', 1),
+            where('tId', '==', 1),
             where('storeId', '==', 101),
+            where('sId', '==', 101),
         )));
         await assertFails(getDocs(query(
             collection(managerDb, 'subscriptions'),
             where('pId', '==', 'AL'),
+            where('productId', '==', 'AL'),
             where('tenantId', '==', 1),
+            where('tId', '==', 1),
             where('storeId', '==', 101),
+            where('sId', '==', 101),
         )));
 
         await assertSucceeds(getDocs(query(
+            collection(billingDb, 'payment_transactions'),
+            where('pId', '==', 'AL'),
+            where('productId', '==', 'AL'),
+            where('tenantId', '==', 1),
+            where('tId', '==', 1),
+            where('storeId', '==', 101),
+            where('sId', '==', 101),
+        )));
+        await assertFails(getDocs(query(
+            collection(managerDb, 'payment_transactions'),
+            where('pId', '==', 'AL'),
+            where('productId', '==', 'AL'),
+            where('tenantId', '==', 1),
+            where('tId', '==', 1),
+            where('storeId', '==', 101),
+            where('sId', '==', 101),
+        )));
+
+        // A single-alias query can match a conflicting product record. Rules
+        // must reject it before any malformed row reaches the browser.
+        await assertFails(getDocs(query(
             collection(billingDb, 'payment_transactions'),
             where('pId', '==', 'AL'),
             where('tenantId', '==', 1),
             where('storeId', '==', 101),
         )));
         await assertFails(getDocs(query(
-            collection(managerDb, 'payment_transactions'),
+            collection(billingDb, 'subscriptions'),
             where('pId', '==', 'AL'),
             where('tenantId', '==', 1),
             where('storeId', '==', 101),
         )));
 
         if (IS_SHARED_RULES) {
+            await assertFails(getDoc(doc(managerDb, 'subscriptions', 'sub_MenuListConflictingScope123')));
+            await assertFails(getDoc(doc(managerDb, 'payment_transactions', 'payment_menulist_conflicting_scope_1')));
+            const exactMenuListSubscriptions = await assertSucceeds(getDocs(query(
+                collection(managerDb, 'subscriptions'),
+                where('pId', '==', 'ML'),
+                where('productId', '==', 'ML'),
+                where('tenantId', '==', 1),
+                where('tId', '==', 1),
+                where('storeId', '==', 101),
+                where('sId', '==', 101),
+            )));
+            assert.deepEqual(exactMenuListSubscriptions.docs.map((item) => item.id), ['sub_MenuList123']);
+            const exactMenuListPayments = await assertSucceeds(getDocs(query(
+                collection(managerDb, 'payment_transactions'),
+                where('pId', '==', 'ML'),
+                where('productId', '==', 'ML'),
+                where('tenantId', '==', 1),
+                where('tId', '==', 1),
+                where('storeId', '==', 101),
+                where('sId', '==', 101),
+            )));
+            assert.deepEqual(exactMenuListPayments.docs.map((item) => item.id), ['payment_menulist_1']);
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const adminDb = context.firestore();
+                await deleteDoc(doc(adminDb, 'subscriptions', 'sub_MenuListConflictingScope123'));
+                await deleteDoc(doc(adminDb, 'payment_transactions', 'payment_menulist_conflicting_scope_1'));
+            });
             await assertSucceeds(getDoc(doc(managerDb, 'subscriptions', 'sub_MenuList123')));
             await assertSucceeds(getDoc(doc(managerDb, 'payment_transactions', 'payment_menulist_1')));
             await assertSucceeds(getDoc(doc(managerDb, 'topups', 'order_MenuList123')));
+            await assertFails(getDoc(doc(managerDb, 'topups', 'order_MenuListConflictingScope123')));
+            await assertFails(getDoc(doc(managerDb, 'subscriptions', 'sub_CampaignCue123')));
+            await assertFails(getDoc(doc(managerDb, 'topups', 'order_CampaignCue123')));
+            await assertSucceeds(getDocs(query(
+                collection(managerDb, 'subscriptions'),
+                where('pId', '==', 'ML'),
+                where('productId', '==', 'ML'),
+                where('tenantId', '==', 1),
+                where('tId', '==', 1),
+                where('storeId', '==', 101),
+                where('sId', '==', 101),
+            )));
+            await assertFails(getDocs(query(
+                collection(managerDb, 'subscriptions'),
+                where('pId', '==', 'ML'),
+                where('tenantId', '==', 1),
+                where('tId', '==', 1),
+                where('storeId', '==', 101),
+                where('sId', '==', 101),
+            )));
+            await assertSucceeds(getDocs(query(
+                collection(managerDb, 'payment_transactions'),
+                where('pId', '==', 'ML'),
+                where('productId', '==', 'ML'),
+                where('tenantId', '==', 1),
+                where('tId', '==', 1),
+                where('storeId', '==', 101),
+                where('sId', '==', 101),
+            )));
+            await assertFails(getDocs(query(
+                collection(managerDb, 'payment_transactions'),
+                where('pId', '==', 'ML'),
+                where('tenantId', '==', 1),
+                where('storeId', '==', 101),
+            )));
         }
     } finally {
         await testEnv.cleanup();

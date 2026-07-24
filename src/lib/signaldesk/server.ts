@@ -5,7 +5,10 @@ import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebas
 import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
 import { getSignalDeskAccessLogContext, logSignalDeskFailure } from "@lib/signaldesk/apiGuards";
-import { parseSignalDeskDailyCostDocument } from "@lib/signaldesk/accountingContracts";
+import {
+    buildSignalDeskDailyCostMutation,
+    parseSignalDeskDailyCostDocument,
+} from "@lib/signaldesk/accountingContracts";
 import { createHash } from "crypto";
 import type {
     SignalDeskAccessContext,
@@ -474,7 +477,7 @@ const readActiveKillSwitches = async (db: FirebaseFirestore.Firestore, access: S
 const readOpenIncidents = async (db: FirebaseFirestore.Firestore, access: SignalDeskAccessContext) => {
     const snapshot = await db.collection(SIGNALDESK_COLLECTIONS.INCIDENTS)
         .where("pId", "==", SIGNALDESK_PRODUCT_CODE)
-        .where("status", "==", "open")
+        .where("status", "in", ["open", "acknowledged"])
         .orderBy(admin.firestore.FieldPath.documentId())
         .limit(SIGNALDESK_INCIDENT_STRICT_COUNT_MAX_DOCUMENTS + 1)
         .get();
@@ -626,6 +629,7 @@ export async function setSignalDeskKillSwitchServer(params: {
     }
 
     const timestamp = admin.firestore.Timestamp.now();
+    const day = timestamp.toDate().toISOString().slice(0, 10);
     const killSwitchId = `scope_${params.scope}`;
     const isActive = params.status === "active";
     const killSwitchRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc(killSwitchId);
@@ -639,6 +643,7 @@ export async function setSignalDeskKillSwitchServer(params: {
     }));
     const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`kill_switch_${operationHash}`);
     const auditRef = db.collection(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS).doc();
+    const costRef = db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES).doc(day);
 
     return db.runTransaction(async (transaction) => {
         const claimSnapshot = await transaction.get(claimRef);
@@ -657,7 +662,10 @@ export async function setSignalDeskKillSwitchServer(params: {
             return parseSignalDeskKillSwitchDocument(claim.resultSnapshot, killSwitchId);
         }
 
-        const currentSnapshot = await transaction.get(killSwitchRef);
+        const [currentSnapshot, costSnapshot] = await Promise.all([
+            transaction.get(killSwitchRef),
+            transaction.get(costRef),
+        ]);
         const current = currentSnapshot.exists
             ? parseSignalDeskKillSwitchDocument(currentSnapshot.data(), currentSnapshot.id)
             : null;
@@ -665,8 +673,8 @@ export async function setSignalDeskKillSwitchServer(params: {
         const killSwitchData = sanitizeForFirestore({
             activatedAt: isActive ? timestamp : currentData?.activatedAt || null,
             activatedBy: isActive ? params.access.userId : current?.activatedBy || null,
-            deactivatedAt: isActive ? currentData?.deactivatedAt || null : timestamp,
-            deactivatedBy: isActive ? current?.deactivatedBy || null : params.access.userId,
+            deactivatedAt: isActive ? null : timestamp,
+            deactivatedBy: isActive ? null : params.access.userId,
             killSwitchId,
             pId: SIGNALDESK_PRODUCT_CODE,
             reason,
@@ -686,7 +694,7 @@ export async function setSignalDeskKillSwitchServer(params: {
             entityId: killSwitchId,
             entityType: "killSwitch",
             pId: SIGNALDESK_PRODUCT_CODE,
-            reason,
+            reason: `event:${isActive ? "kill_switch_activate" : "kill_switch_deactivate"}`,
         }));
         transaction.create(claimRef, sanitizeForFirestore({
             actorId: params.access.userId,
@@ -700,6 +708,12 @@ export async function setSignalDeskKillSwitchServer(params: {
             status: "completed",
             updatedAt: timestamp,
         }));
+        transaction.set(costRef, sanitizeForFirestore(buildSignalDeskDailyCostMutation({
+            current: costSnapshot.exists ? costSnapshot.data() : null,
+            day,
+            delta: { firestoreWriteEstimate: 4 },
+            updatedAt: timestamp,
+        })));
         return projected;
     });
 }

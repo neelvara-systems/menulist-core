@@ -1,7 +1,12 @@
 import { getUnitCost } from "@constant/AI/unitCosts";
 import { PRODUCT_IDS } from "@constant/product";
+import {
+    getNonNegativeCreditInteger,
+    getPositiveCreditInteger,
+} from "@data/shared/aiCreditScalarContract";
 import { firestoreAdmin, admin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import type { FirestoreSubscriptionDoc } from "@type/razorpay";
 import {
     AiCapacityReservation,
     consumeAICapacity,
@@ -20,7 +25,7 @@ import {
 
 type FinalizeAiOperationAccountingParams = {
     capacityReservation?: AiCapacityReservation;
-    capacitySubscription?: any | null;
+    capacitySubscription?: FirestoreSubscriptionDoc | null;
     context?: Record<string, unknown>;
     input: AiOperationLogInput;
     idempotencyKey?: string;
@@ -73,8 +78,8 @@ export async function finalizeAiOperationAccounting({
     logLabel,
     session,
 }: FinalizeAiOperationAccountingParams): Promise<FinalizeAiOperationAccountingResult> {
-    const unitsConsumed = Number(input.unitsConsumed ?? getUnitCost(input.action));
-    if (!Number.isSafeInteger(unitsConsumed) || unitsConsumed < 0) {
+    const unitsConsumed = getNonNegativeCreditInteger(input.unitsConsumed ?? getUnitCost(input.action));
+    if (unitsConsumed === null) {
         throw new Error(`${logLabel} accounting units are invalid.`);
     }
     const operationInput: AiOperationLogInput = {
@@ -140,7 +145,7 @@ export async function finalizeAiOperationAccounting({
                 if (
                     !existing.exists
                     || data.accountingIdempotencyKey !== operationId
-                    || Number(data.accountingUnits) !== unitsConsumed
+                    || data.accountingUnits !== unitsConsumed
                     || data.accountingStatus !== 'consumed'
                     || data.action !== operationData.action
                     || String(data.tId) !== String(operationData.tId)
@@ -148,14 +153,14 @@ export async function finalizeAiOperationAccounting({
                 ) {
                     throw new Error(`${logLabel} billing subscription is required for idempotent accounting.`);
                 }
-                const billingStoreId = Number(data.accountingBillingStoreId ?? data.sId);
-                const monthlyCredits = Number(data.remainingMonthlyCredits);
-                const topUpCredits = Number(data.remainingTopUpCredits);
+                const billingStoreId = getPositiveCreditInteger(data.accountingBillingStoreId ?? data.sId);
+                const monthlyCredits = getNonNegativeCreditInteger(data.remainingMonthlyCredits);
+                const topUpCredits = getNonNegativeCreditInteger(data.remainingTopUpCredits);
                 if (
-                    !Number.isSafeInteger(billingStoreId)
-                    || billingStoreId <= 0
-                    || !Number.isFinite(monthlyCredits)
-                    || !Number.isFinite(topUpCredits)
+                    billingStoreId === null
+                    || monthlyCredits === null
+                    || topUpCredits === null
+                    || !Number.isSafeInteger(monthlyCredits + topUpCredits)
                 ) {
                     throw new Error(`${logLabel} accounting replay balance is invalid.`);
                 }
@@ -181,7 +186,7 @@ export async function finalizeAiOperationAccounting({
                         const data = existing.data() || {};
                         if (
                             data.accountingIdempotencyKey !== operationId
-                            || Number(data.accountingUnits) !== unitsConsumed
+                            || data.accountingUnits !== unitsConsumed
                             || data.accountingStatus !== 'not_required'
                         ) {
                             throw new Error('AI accounting idempotency conflict.');

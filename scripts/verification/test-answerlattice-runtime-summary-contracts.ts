@@ -34,8 +34,10 @@ const trigger = {
 const predictive = parseAnswerlatticePredictiveTriggerIndex({
     pId: 'AL',
     ...scope,
-    triggerCount: 99,
-    activeTriggerCount: 99,
+    lastUpdated: new Date('2026-07-23T00:00:00.000Z'),
+    version: 1,
+    triggerCount: 1,
+    activeTriggerCount: 1,
     triggers: {
         'trigger-1': trigger,
         foreign: { ...trigger, id: 'foreign', sId: 10 },
@@ -57,6 +59,13 @@ assert.equal('createdBy' in (predictive?.triggers['trigger-1'] as unknown as Rec
 assert.equal('traceId' in (predictive?.triggers['trigger-1'] as unknown as Record<string, unknown>), false);
 assert.equal(parseAnswerlatticePredictiveTriggerIndex({ pId: 'AL', ...scope, sId: 10, triggers: {} }, scope), null);
 assert.equal(parseAnswerlatticePredictiveTriggerIndex({ ...scope, triggers: {} }, scope), null);
+assert.equal(parseAnswerlatticePredictiveTriggerIndex({
+    pId: 'AL', ...scope, version: 1, triggerCount: 0, activeTriggerCount: 0, triggers: {},
+}, scope), null);
+assert.equal(parseAnswerlatticePredictiveTriggerIndex({
+    pId: 'AL', ...scope, lastUpdated: new Date(), version: 1,
+    triggerCount: 2, activeTriggerCount: 1, triggers: { 'trigger-1': trigger },
+}, scope), null);
 
 const graph = parseAnswerlatticeEntityGraphIndex({
     pId: 'AL',

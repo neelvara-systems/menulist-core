@@ -30,6 +30,7 @@ import {
 import { normalizeAnswerlatticeEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import {
     buildAnswerlatticeSignalDocumentId,
+    buildAnswerlatticeSignalMemoryDedupKey,
     buildAnswerlatticeSignalPayloadFingerprint,
     normalizeExactAnswerlatticeSignalScopeId,
 } from '@lib/answerlattice/signalIdentity';
@@ -55,7 +56,7 @@ export class AnswerlatticeSignalReplayConflictError extends Error {
 }
 
 // Deduplication: prevent same signal from being emitted twice in the same page session.
-// Key format: "{type}_{sessionId}_{messageId}" or "{type}_{ticketId}"
+// Key format: "{tId}:{sId}:{type-specific identity}"
 // Cleared on page reload (in-memory only — no persistence needed).
 const emittedSignals = new Map<string, string>();
 
@@ -355,7 +356,10 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
         : undefined;
 
     // Deduplication check
-    const dedupKey = getDeduplicationKey(params);
+    const sessionDedupKey = getDeduplicationKey(params);
+    const dedupKey = sessionDedupKey
+        ? buildAnswerlatticeSignalMemoryDedupKey({ tId, sId, deduplicationKey: sessionDedupKey })
+        : null;
     if (dedupKey) {
         const existingFingerprint = emittedSignals.get(dedupKey);
         if (existingFingerprint) {

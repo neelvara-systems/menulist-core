@@ -2,13 +2,13 @@
 
 **Status:** Runtime regression matrix; local emulator verified
 **Created:** June 23, 2026
-**Runtime reconciled:** July 15, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Functional Tests
 
 | ID | Test | Expected |
 | --- | --- | --- |
-| OUT-T001 | Create route token for approved action | Token is scoped, expiring, and linked to target/action. |
+| OUT-T001 | Create route token from current interested conversation | Token is scoped, expiring, and uses the exact conversation as source action. |
 | OUT-T002 | Record current-list outcome through token | Outcome event and attribution touch are created. |
 | OUT-T003 | Duplicate outcome event arrives | Summary count is not inflated. |
 | OUT-T004 | Expired or revoked token is used for a new event | Event is rejected without outcome writes. |
@@ -36,6 +36,8 @@
 | OUT-T034 | Outcome settlement crosses UTC midnight | Event timestamp and source-scoped summary day/ID derive from one transaction-attempt instant and stay coupled. |
 | OUT-T035 | Source-data lifecycle tombstones a revoked route after an outcome was accepted | Exact completed metadata parses strictly and the accepted signed retry returns `duplicate`; partial metadata or an active retained route is rejected. |
 | OUT-T036 | Retained conversation receives post-retention inbound or rights/complaint communication | Scheduler tombstone and later legal-review merge both parse; internal lifecycle/legal fields do not enter the client DTO. |
+| OUT-T037 | Route supplies the target's current exported/sent approval and matching draft | Canonical approval, CTA, and template lineage is persisted; invented actions or mismatched CTA/template values fail closed. |
+| OUT-T038 | Route, manual outcome, and route revocation settle | Daily cost increases by 4, 8 (plus optional 6/7 activation reconciliation), 9, and 3 writes respectively; exact replay adds zero. |
 
 ## Boundary Tests
 
@@ -51,21 +53,21 @@
 
 | ID | Test | Expected |
 | --- | --- | --- |
-| OUT-T020 | Dashboard load | Reads summaries only. |
-| OUT-T021 | Target outcome detail | Reads bounded target event stream. |
+| OUT-T020 | Attribution workspace load | Reads bounded strict summaries plus coupled latest-event point reads. |
+| OUT-T021 | Raw outcome detail | No general client event-stream reader is exposed. |
 
 ## Mobile Tests
 
 | ID | Test | Expected |
 | --- | --- | --- |
-| OUT-T030 | Mobile outcome summary | Read-only summary renders. |
+| OUT-T030 | Mobile Attribution workspace request | Rejected because mobile SignalDesk is dashboard-only. |
 | OUT-T031 | Mobile route token creation | Not available. |
 | OUT-T032 | Desktop manual outcome form lacks target/evidence | Submit remains disabled; both values are projected explicitly when enabled. |
 
 ## Focused Local Commands
 
 ```bash
-npx ts-node --compiler-options '{"module":"CommonJS","target":"ES2022"}' -r tsconfig-paths/register scripts/verification/test-signaldesk-outcome-contracts.ts
-GCLOUD_PROJECT=demo-signaldesk-outcome-route firebase emulators:exec --only firestore --project demo-signaldesk-outcome-route --config firebase-signaldesk-outcome-route.test.json "node scripts/verification/test-signaldesk-outcome-route-emulator.js"
-node scripts/verification/verify-signaldesk-runtime.js
+npm run test:signaldesk:outcome-contracts
+npm run test:signaldesk:outcome-bridge-boundary
+npm run verify:signaldesk
 ```

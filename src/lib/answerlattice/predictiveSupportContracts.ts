@@ -18,6 +18,12 @@ export const ANSWERLATTICE_PREDICTIVE_MAX_BODY_BYTES = 4 * 1024;
 export const ANSWERLATTICE_PREDICTIVE_RESPONSE_MAX_BYTES = 32 * 1024;
 export const ANSWERLATTICE_PREDICTIVE_CONDITION_PATTERN = /^[a-z0-9_-]+$/;
 
+export function normalizeAnswerlatticeActiveTriggerCount(value: unknown): number | null {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+        ? value
+        : null;
+}
+
 const ACTION_TYPES = new Set<string>(Object.values(ANSWERLATTICE_TRIGGER_ACTION_TYPES));
 const TRIGGER_STATUSES = new Set<string>(Object.values(ANSWERLATTICE_TRIGGER_STATUS));
 const TRIGGER_SOURCES = new Set<string>(Object.values(ANSWERLATTICE_TRIGGER_SOURCE));

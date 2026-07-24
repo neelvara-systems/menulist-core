@@ -2,7 +2,7 @@
 
 **Status:** Implemented source contract
 
-**Last verified:** July 16, 2026
+**Last verified:** July 23, 2026
 
 ## Current Source Boundary
 
@@ -33,6 +33,8 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 4. Mobile full-hours must rehydrate on store/hour changes, write a deep patch including removals, and show success only after DAL acknowledgement.
 5. Mobile Today must choose the weekday in the store timezone, validate the range, patch only that day, and roll back optimistic state on failure.
 6. Successful hours writes stamp `hoursLastUpdatedAt` and use the existing public cache and Digital Screen invalidation path.
+7. Every owner save captures the initiating tenant/store. Desktop/mobile drafts remount on a scope change, duplicate same-scope writes are rejected, and delayed success/failure/loading state cannot settle into another store.
+8. Optimistic mobile rollback must match both the initiating tenant/store and the exact `hoursLastUpdatedAt` written by that attempt so it cannot erase a newer valid update.
 
 ### Time-slot presets and categories
 
@@ -45,6 +47,8 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 7. Preset edit/delete updates referenced project category snapshots and revalidates affected public project caches.
 8. Desktop and mobile owner contexts update only after the store write and required category cascade acknowledge success.
 9. Decision Blocks and normal category rendering must share the same time-slot evaluator.
+10. Preset edit/delete must atomically pair the store preset truth with an operation-owned pending-cascade marker. A later mutation is rejected until that marker is reconciled and cleared.
+11. Project reconciliation must use the initiating tenant/store scope, remain idempotent after partial progress, and retain the marker on failure or store switch so the exact store can retry.
 
 ### Public and discovery output
 
@@ -59,7 +63,7 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 - Date-specific special-hours exceptions.
 - Google Business Profile hours synchronization.
 - A second hours document, scheduler, API route, or owner setting.
-- A preset reference index or durable cascade queue without measured scale evidence.
+- A preset reference index, separate cascade collection, scheduled worker, or unbounded queue without measured scale evidence. The store-local recovery marker is part of the required consistency contract.
 
 ## Acceptance Evidence
 

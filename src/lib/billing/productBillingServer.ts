@@ -12,7 +12,6 @@ import {
     normalizeAnswerlatticeSubscriptionId,
 } from '@lib/answerlattice/billingDocumentIdBoundary';
 import {
-    getAnswerlatticeBillingRecordScope,
     isAnswerlatticeSubscriptionInScope,
 } from '@lib/answerlattice/billingScopeBoundary';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
@@ -25,6 +24,7 @@ import {
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { FieldValue } from 'firebase-admin/firestore';
 import { calculateRemainingCredits, getGracePeriodInfo } from '@util/razorpay';
 import type { MinimalStoreDataType } from '@type/platform/store';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -33,6 +33,8 @@ import {
     normalizeBillingSubscriptionDocumentId,
     normalizeBillingSubscriptionScopeDocumentId,
 } from './subscriptionDocumentIdBoundary';
+import { getMenuListSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScopeBoundary';
+import { getProductSubscriptionBillingScope } from './productSubscriptionScopeBoundary';
 import { getFounderSubscriptionMrrPaise } from '@lib/ops/founderRevenueReadModel';
 import { isValidBillingPeriodKey } from './billingPeriod';
 import { resolveSubscriptionUpgradeCreditTransfer } from './subscriptionUpgradeSettlement';
@@ -53,6 +55,7 @@ export type ProductBillingScope = {
 };
 
 export { normalizeAnswerlatticeBillingScopeDocumentId } from '@lib/answerlattice/billingDocumentIdBoundary';
+export { getProductSubscriptionBillingScope } from './productSubscriptionScopeBoundary';
 
 const isTimestampLike = (value: any) => (
     value
@@ -64,8 +67,7 @@ const isTimestampLike = (value: any) => (
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
     if (value === null) return null;
-    if (value?.constructor?.name && String(value.constructor.name).includes('FieldValue')) return value;
-    if (typeof value === 'object' && '_methodName' in value) return value;
+    if (value instanceof FieldValue) return value;
     if (isTimestampLike(value)) return admin.firestore.Timestamp.fromDate(value.toDate());
     if (value instanceof Date) return value;
     if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
@@ -132,6 +134,7 @@ export const resolveBillingScopeFromSession = (
         };
     }
 
+    if (!getMenuListSessionProviderScopeKey(session)) return null;
     const tenantScope = normalizeBillingSubscriptionScopeDocumentId(session?.user?.tenantId);
     const storeScope = normalizeBillingSubscriptionScopeDocumentId(session?.user?.storeId);
     if (!tenantScope || !storeScope) return null;
@@ -151,15 +154,39 @@ const productDocPayload = (
     options: { isNew?: boolean } = {},
 ) => {
     const now = admin.firestore.Timestamp.now();
-    const tenantId = data.tId ?? data.tenantId;
-    const storeId = data.sId ?? data.storeId;
+    const suppliedProductAliases = [data.pId, data.productId]
+        .filter((value) => value !== undefined);
+    if (suppliedProductAliases.some((value) => value !== productId)) {
+        throw new Error('Subscription product identity is invalid.');
+    }
+    const hasSuppliedScope = ['tId', 'tenantId', 'sId', 'storeId']
+        .some((key) => Object.prototype.hasOwnProperty.call(data, key));
+    const scope = hasSuppliedScope || options.isNew
+        ? getProductSubscriptionBillingScope(productId, {
+            ...data,
+            pId: productId,
+            productId,
+        })
+        : null;
+    if ((hasSuppliedScope || options.isNew) && !scope) {
+        throw new Error('Subscription tenant/store identity is invalid.');
+    }
     const userId = data.uId ?? data.userId;
+    const {
+        pId: _pId,
+        productId: _productId,
+        sId: _sId,
+        storeId: _storeId,
+        tId: _tId,
+        tenantId: _tenantId,
+        ...subscriptionData
+    } = data;
     return sanitizeForAdminFirestore({
-        ...data,
-        pId: isAnswerlatticeBillingProduct(productId) ? productId : data.pId ?? productId,
-        productId: isAnswerlatticeBillingProduct(productId) ? productId : data.productId ?? productId,
-        ...(storeId !== undefined ? { sId: storeId } : {}),
-        ...(tenantId !== undefined ? { tId: tenantId } : {}),
+        ...subscriptionData,
+        pId: productId,
+        productId,
+        ...(scope ? { sId: scope.storeId, storeId: scope.storeId } : {}),
+        ...(scope ? { tId: scope.tenantId, tenantId: scope.tenantId } : {}),
         ...(userId !== undefined ? { uId: userId } : {}),
         modifiedOn: now,
         ...(options.isNew && !data.createdOn ? { createdOn: now } : {}),
@@ -193,9 +220,9 @@ const normalizeAnswerlatticeSubscription = (
     storeId,
     amount: Number.isFinite(Number(data.amount)) ? Number(data.amount) : 0,
     quantity: Number.isFinite(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
-    monthlyCreditsAllowance: Number.isFinite(Number(data.monthlyCreditsAllowance)) ? Number(data.monthlyCreditsAllowance) : 0,
-    monthlyCredits: Number.isFinite(Number(data.monthlyCredits)) ? Number(data.monthlyCredits) : 0,
-    topUpCredits: Number.isFinite(Number(data.topUpCredits)) ? Number(data.topUpCredits) : 0,
+    monthlyCreditsAllowance: data.monthlyCreditsAllowance ?? 0,
+    monthlyCredits: data.monthlyCredits ?? 0,
+    topUpCredits: data.topUpCredits ?? 0,
     currency: data.currency || 'INR',
     status: data.status || 'pending',
     planType: data.planType || 'MONTH',
@@ -246,7 +273,7 @@ export const createProductInitialSubscription = async (
     await getBillingFirestoreAdminForProduct(productId)
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
         .doc(subscriptionId)
-        .set(productDocPayload(productId, data, { isNew: true }));
+        .create(productDocPayload(productId, data, { isNew: true }));
 };
 
 export const updateProductSubscription = async (
@@ -266,10 +293,15 @@ export const updateProductSubscription = async (
     const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscriptionId);
     if (!normalizedSubscriptionId) throw new Error('Invalid Answerlattice subscription id.');
 
-    await getBillingFirestoreAdminForProduct(productId)
-        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(normalizedSubscriptionId)
-        .set(productDocPayload(productId, data), { merge: true });
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
+    await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists || !getProductSubscriptionBillingScope(productId, snapshot.data())) {
+            throw new Error('Subscription does not match the requested product and scope.');
+        }
+        transaction.set(subscriptionRef, productDocPayload(productId, data), { merge: true });
+    });
 };
 
 export const getProductSubscriptionById = async (
@@ -294,10 +326,7 @@ export const getProductSubscriptionById = async (
 
     if (!docSnap.exists) return null;
     const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
-    if (
-        isAnswerlatticeBillingProduct(productId)
-        && !getAnswerlatticeBillingRecordScope(subscription)
-    ) return null;
+    if (!getProductSubscriptionBillingScope(productId, subscription)) return null;
     return subscription;
 };
 
@@ -337,8 +366,12 @@ const fetchAnswerlatticeSubscriptionRaw = async (
     }
 
     const fallbackSnapshot = await collectionRef
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tenantId', '==', tenantScope.numericId)
         .where('storeId', '==', storeScope.numericId)
+        .where('tId', '==', tenantScope.numericId)
+        .where('sId', '==', storeScope.numericId)
         .limit(10)
         .get();
 
@@ -379,6 +412,9 @@ const expireIfGracePeriodEnded = async (
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
+        if (!getProductSubscriptionBillingScope(productId, current)) {
+            return { expired: false, subscription: null };
+        }
         if (current.status !== 'past_due') {
             return { expired: false, subscription: current };
         }
@@ -463,7 +499,7 @@ export const getActiveProductSubscriptionForStore = async (
 
 export const writeProductPaymentTransactionAudit = async (
     productId: ProductId,
-    data: any,
+    data: Record<string, unknown>,
     auditDocumentId: string,
 ): Promise<string> => {
     if (isProductBillingDisabled(productId)) {
@@ -479,22 +515,64 @@ export const writeProductPaymentTransactionAudit = async (
     ) {
         throw new Error('Invalid billing audit document id.');
     }
-    const tenantId = Number(data?.tenantId ?? data?.tId);
-    const storeId = Number(data?.storeId ?? data?.sId);
+    if (data.pId !== productId || data.productId !== productId) {
+        throw new Error('Billing audit product identity is invalid.');
+    }
+    const hasScope = [data.tenantId, data.tId, data.storeId, data.sId]
+        .some((value) => value != null);
+    const scope = hasScope ? getProductSubscriptionBillingScope(productId, data) : null;
+    if (hasScope && !scope) throw new Error('Billing audit scope identity is invalid.');
     const now = admin.firestore.FieldValue.serverTimestamp();
     const docRef = db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).doc(normalizedAuditDocumentId);
-    await docRef.set(sanitizeForAdminFirestore({
+    const payload = sanitizeForAdminFirestore({
         ...data,
         webhookEventKey: normalizedAuditDocumentId,
         pId: productId,
         productId,
-        tenantId: Number.isFinite(tenantId) ? tenantId : null,
-        storeId: Number.isFinite(storeId) ? storeId : null,
-        tId: data?.tId ?? (Number.isFinite(tenantId) ? tenantId : null),
-        sId: data?.sId ?? (Number.isFinite(storeId) ? storeId : null),
-        createdOn: now,
+        tenantId: scope?.tenantId ?? null,
+        storeId: scope?.storeId ?? null,
+        tId: scope?.tenantId ?? null,
+        sId: scope?.storeId ?? null,
         modifiedOn: now,
-    }), { merge: true });
+    });
+    await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(docRef);
+        const existing = snapshot.data();
+        if (snapshot.exists) {
+            const existingHasScope = [existing?.tenantId, existing?.tId, existing?.storeId, existing?.sId]
+                .some((value) => value != null);
+            const existingScope = existingHasScope
+                ? getProductSubscriptionBillingScope(productId, existing)
+                : null;
+            const immutableFields = [
+                'webhookEventKey',
+                'event',
+                'transactionType',
+                'paymentId',
+                'subscriptionId',
+                'orderId',
+                'amount',
+                'currency',
+                'created_at',
+            ] as const;
+            if (
+                existing?.pId !== productId
+                || existing?.productId !== productId
+                || existingHasScope !== hasScope
+                || (hasScope && (
+                    existingScope?.tenantId !== scope?.tenantId
+                    || existingScope?.storeId !== scope?.storeId
+                ))
+                || immutableFields.some((field) => (existing?.[field] ?? null) !== (payload[field] ?? null))
+            ) {
+                throw new Error('Billing audit document identity conflict.');
+            }
+        }
+        transaction.set(docRef, {
+            ...payload,
+            createdOn: isTimestampLike(existing?.createdOn) ? existing.createdOn : now,
+        }, { merge: true });
+    });
 
     return docRef.id;
 };
@@ -549,10 +627,7 @@ export async function applyProductSubscriptionPayment(
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
-        if (
-            isAnswerlatticeBillingProduct(productId)
-            && !getAnswerlatticeBillingRecordScope(current)
-        ) return null;
+        if (!getProductSubscriptionBillingScope(productId, current)) return null;
         const billingHistory = Array.isArray(current.billingHistory)
             ? current.billingHistory.filter((entry): entry is string => typeof entry === 'string')
             : [];
@@ -582,8 +657,11 @@ export async function applyProductSubscriptionPayment(
             ...safeUpdate
         } = params.update;
         const shouldResetCredits = billingHistory.length === 0
-            || Number(current.creditsLastResetMonth) !== params.billingPeriod;
-        const nextAllowance = Number(safeUpdate.monthlyCreditsAllowance ?? current.monthlyCreditsAllowance ?? 0);
+            || current.creditsLastResetMonth !== params.billingPeriod;
+        const nextAllowance = safeUpdate.monthlyCreditsAllowance ?? current.monthlyCreditsAllowance ?? 0;
+        if (!Number.isSafeInteger(nextAllowance) || nextAllowance < 0) {
+            throw new Error('Subscription monthly credit allowance is invalid.');
+        }
         const update = {
             ...safeUpdate,
             status: 'active' as const,
@@ -591,7 +669,7 @@ export async function applyProductSubscriptionPayment(
             billingHistory: [...billingHistory, paymentHistoryId],
             statuses: appendBoundedBillingStatusHistory(current.statuses, params.statusEntry),
             ...(shouldResetCredits ? {
-                monthlyCredits: Number.isFinite(nextAllowance) && nextAllowance > 0 ? nextAllowance : 0,
+                monthlyCredits: nextAllowance,
                 creditsLastResetMonth: params.billingPeriod,
             } : {}),
         };
@@ -657,10 +735,7 @@ export async function applyProductSubscriptionStatusTransition(
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
-        if (
-            isAnswerlatticeBillingProduct(productId)
-            && !getAnswerlatticeBillingRecordScope(current)
-        ) return null;
+        if (!getProductSubscriptionBillingScope(productId, current)) return null;
         if (current.status === params.nextStatus) {
             return {
                 applied: false,
@@ -796,40 +871,16 @@ export async function applyProductSubscriptionUpgradeCarryForward(
             ...(newSnapshot.data() as FirestoreSubscriptionDoc),
             id: newSnapshot.id,
         } as FirestoreSubscriptionDoc;
-        const oldTenantScope = normalizeProductBillingScopeDocumentId(
-            productId,
-            oldSubscription.tenantId ?? oldSubscription.tId,
+        const oldScope = getProductSubscriptionBillingScope(productId, oldSubscription);
+        const newScope = getProductSubscriptionBillingScope(productId, newSubscription);
+        const scopeMatches = Boolean(
+            oldScope
+            && newScope
+            && oldScope.tenantId === tenantScope.numericId
+            && newScope.tenantId === tenantScope.numericId
+            && oldScope.storeId === storeScope.numericId
+            && newScope.storeId === storeScope.numericId
         );
-        const oldStoreScope = normalizeProductBillingScopeDocumentId(
-            productId,
-            oldSubscription.storeId ?? oldSubscription.sId,
-        );
-        const newTenantScope = normalizeProductBillingScopeDocumentId(
-            productId,
-            newSubscription.tenantId ?? newSubscription.tId,
-        );
-        const newStoreScope = normalizeProductBillingScopeDocumentId(
-            productId,
-            newSubscription.storeId ?? newSubscription.sId,
-        );
-        const scopeMatches = isAnswerlatticeBillingProduct(productId)
-            ? isAnswerlatticeSubscriptionInScope(oldSubscription, {
-                tId: tenantScope.numericId,
-                sId: storeScope.numericId,
-            }) && isAnswerlatticeSubscriptionInScope(newSubscription, {
-                tId: tenantScope.numericId,
-                sId: storeScope.numericId,
-            })
-            : Boolean(
-                oldTenantScope
-                && oldStoreScope
-                && newTenantScope
-                && newStoreScope
-                && oldTenantScope.numericId === tenantScope.numericId
-                && newTenantScope.numericId === tenantScope.numericId
-                && oldStoreScope.numericId === storeScope.numericId
-                && newStoreScope.numericId === storeScope.numericId
-            );
         const carriedFromId = normalizeSubscriptionId(newSubscription.carryForwardFromSubscriptionId);
         const storedCarryForwardCredits = Number(newSubscription.carryForwardCredits);
         const duplicate = (
@@ -975,10 +1026,7 @@ export async function applyProductSubscriptionWebhookEvent(
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
-        if (
-            isAnswerlatticeBillingProduct(productId)
-            && !getAnswerlatticeBillingRecordScope(current)
-        ) return null;
+        if (!getProductSubscriptionBillingScope(productId, current)) return null;
         const eventHistory = Array.isArray(current.webhookEventHistory)
             ? current.webhookEventHistory.filter((entry): entry is string => typeof entry === 'string')
             : [];
@@ -1052,6 +1100,8 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
     const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const subscriptionRef = subscriptionsRef.doc(subscriptionId);
     const activeSubscriptionsQuery = subscriptionsRef
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('status', '==', 'active')
         .where('storeId', '==', storeScope.numericId)
         .where('tenantId', '==', tenantScope.numericId)

@@ -11,13 +11,29 @@ import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebas
 import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { isSignalDeskHumanRole, isSignalDeskPermission } from "@lib/signaldesk/accessContracts";
+import {
+    assertSignalDeskDemandSignalSummaryMatchesEvent,
+    parseSignalDeskDemandSignalClaimDocument,
+    parseSignalDeskDemandSignalEventDocument,
+    parseSignalDeskDemandSignalSummaryDocument,
+} from "@lib/signaldesk/demandSignalContracts";
+import {
+    SIGNALDESK_AUDIT_PAGE_SIZE,
+    type SignalDeskAuditCursor,
+} from "@lib/signaldesk/auditContracts";
 import { runSignalDeskAiAssist, runSignalDeskAiCritic } from "@lib/signaldesk/aiProvider";
 import {
     assertSignalDeskEmailSenderDomainAuthority,
+    assertSignalDeskProviderSendResult,
     getSignalDeskChannelReadiness,
     sendSignalDeskProviderMessage,
 } from "@lib/signaldesk/providerAdapters";
-import { loadSignalDeskOverviewServer, projectSignalDeskCostDocument } from "@lib/signaldesk/server";
+import {
+    loadSignalDeskOverviewServer,
+    projectSignalDeskCostDocument,
+    projectSignalDeskQueueDocument,
+} from "@lib/signaldesk/server";
 import {
     assertSignalDeskProviderBudgetState,
     budgetPolicyIdFor,
@@ -26,6 +42,7 @@ import {
     getSignalDeskSpendPeriod,
     parseSignalDeskBudgetPolicyDocument,
     parseSignalDeskProviderAccountDocument,
+    parseSignalDeskDailyCostDocument,
     providerAccountIdFor,
     settleSignalDeskSpendReservation,
     type SignalDeskBudgetPolicyAuthority,
@@ -60,12 +77,22 @@ import {
     type SignalDeskOutcomeTargetAuthority,
     type SignalDeskRouteTokenAuthority,
 } from "@lib/signaldesk/outcomeContracts";
+import {
+    assertSignalDeskOutboundContactBinding,
+    getSignalDeskOutboundRecipient,
+    parseSignalDeskOutboundContactAuthority,
+    signalDeskOutboundContactIdentityIdFor,
+    type SignalDeskOutboundContactAuthority,
+    type SupportedOutboundContactChannel,
+} from "@lib/signaldesk/outboundContactContracts";
 import { runSignalDeskSourceProvider } from "@lib/signaldesk/sourceProviders";
 import {
     parseSignalDeskSourcePolicyDocument,
     SignalDeskSourcePolicyCreateSchema,
+    SignalDeskSourcePolicyRenewSchema,
     sourcePolicyAllowsContactChannel,
     type SignalDeskSourcePolicyCreateInput,
+    type SignalDeskSourcePolicyRenewInput,
 } from "@lib/signaldesk/sourcePolicyContracts";
 import {
     parseSignalDeskContactIdentityDocument,
@@ -77,11 +104,18 @@ import {
     parseSignalDeskTargetDetailDocument,
     parseSignalDeskTargetScoreDocument,
     parseSignalDeskTargetSummaryDocument,
+    SIGNALDESK_TARGET_PAGE_SIZE,
     SignalDeskTargetImportSchema,
     type SignalDeskContactIdentityDocument,
+    type SignalDeskTargetCursor,
     type SignalDeskTargetImportInput,
     type SignalDeskTargetImportRow,
 } from "@lib/signaldesk/targetContracts";
+import {
+    classifySignalDeskWebhookInboundMessage,
+    isSignalDeskInboxReviewState,
+    isSignalDeskSafetyReplyState,
+} from "@lib/signaldesk/webhookContracts";
 import {
     isSignalDeskWorkspaceGenericCollection,
     projectSignalDeskWorkspaceDocument,
@@ -480,6 +514,7 @@ type TrustPartnerProfileInput = {
     commentQualityScore: number;
     displayName: string;
     geography?: string;
+    idempotencyKey?: string;
     partnerType: SignalDeskTrustPartnerType;
     sourceNotes: string;
     status?: SignalDeskTrustPartnerProfileSummary["status"];
@@ -489,6 +524,7 @@ type TrustPartnerProfileInput = {
 type TrustPartnerNicheTestInput = {
     angle: string;
     intendedAttempts: number;
+    idempotencyKey?: string;
     marketPodId?: string;
     nicheName: string;
     partnerIds: string[];
@@ -520,6 +556,7 @@ type TrustPartnerDeliverableInput = {
     dealId?: string;
     disclosurePresent: boolean;
     dueDate?: string;
+    idempotencyKey?: string;
     partnerId: string;
     postUrl?: string;
     reviewState: SignalDeskTrustPartnerDeliverableSummary["reviewState"];
@@ -540,6 +577,7 @@ type TrustPartnerMetricsInput = {
 
 type TrustPartnerRenewalInput = {
     evidenceSummary: string;
+    idempotencyKey?: string;
     nicheTestId?: string;
     ownerDecision?: NonNullable<SignalDeskTrustPartnerRenewalDecisionSummary["ownerDecision"]>;
     partnerId: string;
@@ -804,6 +842,7 @@ const isValidIsoDay = (value: unknown): value is string => {
 const env = (key: string) => process.env[key]?.trim() || "";
 const operatingLayerEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER === true;
 const revenueOperatingLayerEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER === true;
+const demandSignalsEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_DEMAND_SIGNALS === true;
 const MANUAL_CONTACT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const MANUAL_CONTACT_FUTURE_SKEW_MS = 5 * 60 * 1000;
 const CONTENT_PUBLICATION_FUTURE_SKEW_MS = 5 * 60 * 1000;
@@ -919,6 +958,7 @@ const readList = async <T>(db: any, collection: string, orderField = "updatedAt"
 
 const WORKSPACE_PROJECTION_SCAN_MAX_PAGES = 4;
 const WORKSPACE_PROJECTION_PAGE_SIZE = 100;
+const TARGET_PROJECTION_SCAN_MAX_PAGES = 10;
 
 const readProjectedWorkspaceRows = async <T>(
     db: FirebaseFirestore.Firestore,
@@ -1029,6 +1069,166 @@ const readWorkspaceList = async <T extends SignalDeskWorkspaceProjection>(
         );
     }
     return projected as T[];
+};
+
+const readApprovalQueueWorkspace = async (
+    db: FirebaseFirestore.Firestore,
+): Promise<SignalDeskApprovalItem[]> => {
+    const [pendingSnapshot, recent] = await Promise.all([
+        db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE)
+            .where("status", "==", "pending")
+            .limit(LIST_LIMIT)
+            .get(),
+        readWorkspaceList<SignalDeskApprovalItem>(
+            db,
+            SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+            "updatedAt",
+            LIST_LIMIT,
+        ),
+    ]);
+    const currentPeriod = getSignalDeskSpendPeriod();
+    const pending: SignalDeskApprovalItem[] = [];
+    let rejectedCount = 0;
+    pendingSnapshot.docs.forEach((document) => {
+        const projected = projectSignalDeskWorkspaceDocument(
+            SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+            document.data(),
+            document.id,
+            currentPeriod,
+        );
+        if (projected) pending.push(projected as SignalDeskApprovalItem);
+        else rejectedCount += 1;
+    });
+    if (rejectedCount > 0) {
+        logRuntimeFailure(
+            "signaldesk_approval_queue_projection_rejected",
+            new Error("SIGNALDESK_APPROVAL_QUEUE_DOCUMENT_SHAPE_INVALID"),
+            { rejectedCount, scannedCount: pendingSnapshot.size },
+        );
+    }
+    const priorityRank: Record<SignalDeskApprovalItem["priority"], number> = {
+        high: 0,
+        normal: 1,
+        low: 2,
+    };
+    pending.sort((left, right) => (
+        priorityRank[left.priority] - priorityRank[right.priority]
+        || (Date.parse(left.dueAt || "") || Number.MAX_SAFE_INTEGER) - (Date.parse(right.dueAt || "") || Number.MAX_SAFE_INTEGER)
+        || left.approvalId.localeCompare(right.approvalId)
+    ));
+    const seen = new Set(pending.map((approval) => approval.approvalId));
+    return [
+        ...pending,
+        ...recent.filter((approval) => !seen.has(approval.approvalId)),
+    ];
+};
+
+const readPrioritizedStatusWorkspace = async <T extends SignalDeskWorkspaceProjection>(
+    db: FirebaseFirestore.Firestore,
+    collection: SignalDeskWorkspaceGenericCollection,
+    prioritizedStatuses: readonly string[],
+    identityFor: (item: T) => string,
+): Promise<T[]> => {
+    if (!prioritizedStatuses.length || prioritizedStatuses.length > 10) {
+        throw new Error("SIGNALDESK_WORKSPACE_STATUS_READ_INVALID");
+    }
+    const prioritizedQuery = prioritizedStatuses.length === 1
+        ? db.collection(collection).where("status", "==", prioritizedStatuses[0])
+        : db.collection(collection).where("status", "in", [...prioritizedStatuses]);
+    const [prioritizedSnapshot, recent] = await Promise.all([
+        prioritizedQuery.limit(LIST_LIMIT).get(),
+        readWorkspaceList<T>(db, collection, "updatedAt", LIST_LIMIT),
+    ]);
+    const currentPeriod = getSignalDeskSpendPeriod();
+    const prioritized: T[] = [];
+    let rejectedCount = 0;
+    prioritizedSnapshot.docs.forEach((document) => {
+        const projected = projectSignalDeskWorkspaceDocument(
+            collection,
+            document.data(),
+            document.id,
+            currentPeriod,
+        );
+        if (projected) prioritized.push(projected as T);
+        else rejectedCount += 1;
+    });
+    if (rejectedCount > 0) {
+        logRuntimeFailure(
+            "signaldesk_prioritized_workspace_projection_rejected",
+            new Error("SIGNALDESK_WORKSPACE_DOCUMENT_SHAPE_INVALID"),
+            { collection, rejectedCount, scannedCount: prioritizedSnapshot.size },
+        );
+    }
+    prioritized.sort((left, right) => {
+        const leftRecord = left as AnyRecord;
+        const rightRecord = right as AnyRecord;
+        return prioritizedStatuses.indexOf(normalizeText(leftRecord.status))
+            - prioritizedStatuses.indexOf(normalizeText(rightRecord.status))
+            || (Date.parse(normalizeText(rightRecord.updatedAt)) || 0)
+            - (Date.parse(normalizeText(leftRecord.updatedAt)) || 0)
+            || identityFor(left).localeCompare(identityFor(right));
+    });
+    const seen = new Set(prioritized.map(identityFor));
+    return [
+        ...prioritized,
+        ...recent.filter((item) => !seen.has(identityFor(item))),
+    ];
+};
+
+const SIGNALDESK_AI_ASSIST_WORKER_TYPES = [
+    "ai_assist_score",
+    "ai_assist_evidence",
+    "ai_assist_draft",
+    "ai_assist_reply-classification",
+    "ai_assist_approval-packet",
+    "ai_assist_weekly-strategist",
+    "ai_assist_vendor-audit",
+] as const;
+
+const readAiWorkspaceRuns = async (db: FirebaseFirestore.Firestore): Promise<{
+    aiVolumeRuns: SignalDeskAiVolumeRunSummary[];
+    aiWorkerRuns: SignalDeskAiWorkerRunSummary[];
+    scores: SignalDeskAiScoreSummary[];
+}> => {
+    const collection = db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS);
+    const readKind = async <T extends SignalDeskWorkspaceProjection>(
+        workerTypes: readonly string[],
+    ): Promise<T[]> => {
+        let query: FirebaseFirestore.Query = collection
+            .where("pId", "==", SIGNALDESK_PRODUCT_CODE)
+            .orderBy("createdAt", "desc")
+            .limit(LIST_LIMIT);
+        query = workerTypes.length === 1
+            ? query.where("workerType", "==", workerTypes[0])
+            : query.where("workerType", "in", [...workerTypes]);
+        const snapshot = await query.get();
+        const rows: T[] = [];
+        let rejectedCount = 0;
+        for (const document of snapshot.docs) {
+            const projected = projectSignalDeskWorkspaceDocument(
+                SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS,
+                document.data(),
+                document.id,
+                getSignalDeskSpendPeriod(),
+            );
+            if (projected) rows.push(projected as T);
+            else rejectedCount += 1;
+        }
+        if (rejectedCount > 0) {
+            logRuntimeFailure(
+                "signaldesk_ai_workspace_projection_rejected",
+                new Error("SIGNALDESK_AI_WORKSPACE_DOCUMENT_SHAPE_INVALID"),
+                { rejectedCount, scannedCount: snapshot.size, workerTypes: workerTypes.join(",") },
+            );
+        }
+        return rows;
+    };
+    const [aiWorkerRuns, aiVolumeRuns, scores] = await Promise.all([
+        readKind<SignalDeskAiWorkerRunSummary>(SIGNALDESK_AI_ASSIST_WORKER_TYPES),
+        readKind<SignalDeskAiVolumeRunSummary>(["ai_volume_batch"]),
+        readKind<SignalDeskAiScoreSummary>(["target_score"]),
+    ]);
+    return { aiVolumeRuns, aiWorkerRuns, scores };
 };
 
 const CONTENT_SOURCE_TYPES = new Set<SignalDeskContentSourceType>([
@@ -2489,10 +2689,62 @@ const readExperimentCards = async (db: any, requireCurrentAuthority = false) => 
     return currentRows.filter((experiment): experiment is SignalDeskExperimentCardSummary => Boolean(experiment));
 };
 
-const readRecentByTarget = async <T>(db: any, collection: string, targetId: string, limit = 1): Promise<T[]> => {
-    const snap = await db.collection(collection).where("targetId", "==", targetId).orderBy("updatedAt", "desc").limit(limit).get();
-    return snap.docs.map((doc: any) => toPlain(doc.data())) as T[];
+const readRecentProjectedByTarget = async <T extends SignalDeskWorkspaceProjection>(
+    db: FirebaseFirestore.Firestore,
+    collection: SignalDeskWorkspaceGenericCollection,
+    targetId: string,
+    limit = 1,
+): Promise<T[]> => {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        throw new Error("SIGNALDESK_TARGET_PROJECTION_LIMIT_INVALID");
+    }
+    const rows: T[] = [];
+    let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    let rejectedCount = 0;
+    let scannedCount = 0;
+    for (let page = 0; page < WORKSPACE_PROJECTION_SCAN_MAX_PAGES && rows.length < limit; page += 1) {
+        let query: FirebaseFirestore.Query = db.collection(collection)
+            .where("targetId", "==", targetId)
+            .orderBy("updatedAt", "desc")
+            .limit(WORKSPACE_PROJECTION_PAGE_SIZE);
+        if (cursor) query = query.startAfter(cursor);
+        const snapshot = await query.get();
+        if (snapshot.empty) break;
+        for (const document of snapshot.docs) {
+            scannedCount += 1;
+            const projected = projectSignalDeskWorkspaceDocument(collection, document.data(), document.id);
+            if (projected) rows.push(projected as T);
+            else rejectedCount += 1;
+            if (rows.length === limit) break;
+        }
+        cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+        if (snapshot.size < WORKSPACE_PROJECTION_PAGE_SIZE) break;
+    }
+    if (rejectedCount) {
+        logRuntimeFailure(
+            "signaldesk_target_projection_rejected",
+            new Error("SIGNALDESK_TARGET_DOCUMENT_SHAPE_INVALID"),
+            { collection, limit, product: "signaldesk", rejectedCount, scannedCount },
+        );
+    }
+    return rows;
 };
+
+const requireProjectedWorkspaceDocument = <T extends SignalDeskWorkspaceProjection>(
+    collection: SignalDeskWorkspaceGenericCollection,
+    raw: unknown,
+    documentId: string,
+    errorCode: string,
+): T => {
+    const projected = projectSignalDeskWorkspaceDocument(collection, raw, documentId);
+    if (!projected) throw new Error(errorCode);
+    return projected as T;
+};
+
+const sameProjectedWorkspaceRecord = (
+    left: SignalDeskWorkspaceProjection,
+    right: SignalDeskWorkspaceProjection,
+) => JSON.stringify({ ...left, updatedAt: null }) === JSON.stringify({ ...right, updatedAt: null });
 
 const appendAudit = (
     db: any,
@@ -2897,7 +3149,9 @@ const resolveContentAuthorityPublicationReview = async (input: {
     timestamp: FirebaseFirestore.Timestamp;
     transaction: FirebaseFirestore.Transaction;
 }) => {
-    if (input.asset.publicationReviewRequired !== true) return {};
+    if (input.asset.publicationReviewRequired !== true) {
+        return { patch: {}, writeCount: 0 };
+    }
     const incidentId = normalizeText(input.asset.publicationReviewIncidentId);
     const authorityId = normalizeText(input.asset.publicationReviewAuthorityId);
     const authorityPath = normalizeText(input.asset.publicationReviewAuthorityPath);
@@ -2926,7 +3180,8 @@ const resolveContentAuthorityPublicationReview = async (input: {
         || !["open", "acknowledged", "resolved"].includes(normalizeText(incident.status))
     ) throw new Error("CONTENT_AUTHORITY_INCIDENT_SHAPE_INVALID");
     assertContentAuthorityControlRoomShape(controlSnap);
-    if (["open", "acknowledged"].includes(normalizeText(incident.status))) {
+    const resolvesOpenIncident = ["open", "acknowledged"].includes(normalizeText(incident.status));
+    if (resolvesOpenIncident) {
         if (!controlSnap.exists || numberOrZero(controlSnap.data()?.openIncidentCount) < 1) {
             throw new Error("CONTENT_AUTHORITY_CONTROL_ROOM_SHAPE_INVALID");
         }
@@ -2943,14 +3198,17 @@ const resolveContentAuthorityPublicationReview = async (input: {
         }), { merge: true });
     }
     return {
-        publicationReviewAuthorityId: null,
-        publicationReviewAuthorityPath: null,
-        publicationReviewIncidentId: null,
-        publicationReviewReason: null,
-        publicationReviewReconciliationKind: null,
-        publicationReviewReconciliationToken: null,
-        publicationReviewRequestedAt: null,
-        publicationReviewRequired: false,
+        patch: {
+            publicationReviewAuthorityId: null,
+            publicationReviewAuthorityPath: null,
+            publicationReviewIncidentId: null,
+            publicationReviewReason: null,
+            publicationReviewReconciliationKind: null,
+            publicationReviewReconciliationToken: null,
+            publicationReviewRequestedAt: null,
+            publicationReviewRequired: false,
+        },
+        writeCount: resolvesOpenIncident ? 2 : 0,
     };
 };
 
@@ -4033,6 +4291,10 @@ const requireRevenueOperatingLayer = () => {
     if (!revenueOperatingLayerEnabled()) throw new Error("SignalDesk Revenue Operating Layer is disabled");
 };
 
+const requireDemandSignals = () => {
+    if (!demandSignalsEnabled()) throw new Error("SignalDesk Demand Signals is disabled");
+};
+
 const requireNoActiveKillSwitch = async (db: any, scope: string, message: string) => {
     const killSwitchSnap = await db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc(`scope_${scope}`).get();
     if (killSwitchSnap.data()?.status === "active") throw new Error(message);
@@ -4786,41 +5048,106 @@ const readSourcePolicyList = async (db: any): Promise<SignalDeskSourcePolicy[]> 
     )).slice(0, LIST_LIMIT);
 };
 
-const readTargetSummaryList = async (db: any, limit = LIST_LIMIT): Promise<SignalDeskTargetSummary[]> => {
-    const documents = await readBoundedStrictDocuments(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES, limit);
+const readTargetSummaryList = async (
+    db: any,
+    limit = LIST_LIMIT,
+    targetCursor?: SignalDeskTargetCursor,
+): Promise<SignalDeskTargetSummary[]> => {
     const targets: SignalDeskTargetSummary[] = [];
-    for (const document of documents) {
-        try {
-            targets.push(parseSignalDeskTargetSummaryDocument(document.data(), document.id));
-        } catch (error) {
-            logRuntimeFailure("signaldesk_target_summary_projection_failed", error, {
-                product: "signaldesk",
-                ...getBoundedRuntimeStringContext("targetId", document.id),
-            });
+    let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    let rejectedCount = 0;
+    let scannedCount = 0;
+    for (
+        let page = 0;
+        page < TARGET_PROJECTION_SCAN_MAX_PAGES && targets.length < limit;
+        page += 1
+    ) {
+        let query: FirebaseFirestore.Query = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES)
+            .orderBy("updatedAt", "desc")
+            .orderBy(admin.firestore.FieldPath.documentId(), "desc")
+            .limit(limit);
+        if (cursor) {
+            query = query.startAfter(cursor);
+        } else if (targetCursor) {
+            query = query.startAfter(
+                admin.firestore.Timestamp.fromDate(new Date(targetCursor.updatedAt)),
+                targetCursor.targetId,
+            );
         }
+        const snapshot = await query.get();
+        if (snapshot.empty) break;
+        for (const document of snapshot.docs) {
+            scannedCount += 1;
+            try {
+                targets.push(parseSignalDeskTargetSummaryDocument(document.data(), document.id));
+            } catch {
+                rejectedCount += 1;
+            }
+            if (targets.length === limit) break;
+        }
+        cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+        if (snapshot.size < limit) break;
     }
-    return targets.sort((left, right) => (
-        Date.parse(right.updatedAt || "") - Date.parse(left.updatedAt || "")
-        || left.targetId.localeCompare(right.targetId)
-    )).slice(0, limit);
+    if (rejectedCount) {
+        logRuntimeFailure(
+            "signaldesk_target_summary_projection_rejected",
+            new Error("SIGNALDESK_TARGET_SUMMARY_SHAPE_INVALID"),
+            { limit, product: "signaldesk", rejectedCount, scannedCount },
+        );
+    }
+    return targets;
 };
 
 const readConversationSummaryList = async (db: any, limit = LIST_LIMIT): Promise<SignalDeskConversationSummary[]> => {
-    const snapshot = await db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
-        .orderBy("updatedAt", "desc")
-        .limit(limit)
-        .get();
-    return snapshot.docs.flatMap((document: FirebaseFirestore.QueryDocumentSnapshot) => {
+    const projectDocuments = (
+        documents: FirebaseFirestore.QueryDocumentSnapshot[],
+        context: "actionable" | "recent",
+    ) => documents.flatMap((document: FirebaseFirestore.QueryDocumentSnapshot) => {
         try {
             return [parseSignalDeskConversationSummaryDocument(document.data(), document.id)];
         } catch (error) {
             logRuntimeFailure("signaldesk_conversation_summary_projection_failed", error, {
+                context,
                 product: "signaldesk",
                 ...getBoundedRuntimeStringContext("conversationId", document.id),
             });
             return [];
         }
     });
+    const safetyStates = ["complaint", "privacy_request", "legal_request"] as const;
+    const reviewStates = ["interested", "needs_review"] as const;
+    const actionableStates = [...safetyStates, ...reviewStates] as const;
+    const [safetySnapshot, reviewSnapshot, recentSnapshot] = await Promise.all([
+        db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
+            .where("state", "in", [...safetyStates])
+            .limit(limit)
+            .get(),
+        db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
+            .where("state", "in", [...reviewStates])
+            .limit(limit)
+            .get(),
+        db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
+            .orderBy("updatedAt", "desc")
+            .limit(limit)
+            .get(),
+    ]);
+    const actionable = [
+        ...projectDocuments(safetySnapshot.docs, "actionable"),
+        ...projectDocuments(reviewSnapshot.docs, "actionable"),
+    ];
+    const priorityRank = new Map<string, number>(actionableStates.map((state, index) => [state, index]));
+    actionable.sort((left, right) => (
+        (priorityRank.get(left.state) ?? Number.MAX_SAFE_INTEGER)
+        - (priorityRank.get(right.state) ?? Number.MAX_SAFE_INTEGER)
+        || (Date.parse(right.updatedAt || "") || 0) - (Date.parse(left.updatedAt || "") || 0)
+        || left.conversationId.localeCompare(right.conversationId)
+    ));
+    const seen = new Set(actionable.map((conversation) => conversation.conversationId));
+    return [
+        ...actionable,
+        ...projectDocuments(recentSnapshot.docs, "recent")
+            .filter((conversation) => !seen.has(conversation.conversationId)),
+    ];
 };
 
 const projectStrictOutcomeSummaryDocuments = async (
@@ -6279,6 +6606,36 @@ const recommendationFromTrustOutcomes = (metrics: SignalDeskTrustPartnerMetricSu
     return "cut";
 };
 
+const TRUST_PARTNER_PROFILE_STATUSES = new Set<SignalDeskTrustPartnerProfileSummary["status"]>([
+    "candidate", "approved", "hold", "rejected", "active",
+]);
+const TRUST_PARTNER_FORWARD_PROFILE_STATUSES = new Set<SignalDeskTrustPartnerProfileSummary["status"]>([
+    "candidate", "approved", "active",
+]);
+const TRUST_PARTNER_ELIGIBLE_PROFILE_STATUSES = new Set<SignalDeskTrustPartnerProfileSummary["status"]>([
+    "candidate", "approved", "active",
+]);
+const TRUST_PARTNER_APPROVED_PROFILE_STATUSES = new Set<SignalDeskTrustPartnerProfileSummary["status"]>([
+    "approved", "active",
+]);
+const isTrustPartnerPaused = (snapshot: FirebaseFirestore.DocumentSnapshot | null | undefined) => (
+    snapshot?.exists === true && normalizeText(snapshot.data()?.status) === "active"
+);
+const assertTrustPartnerFounderApproval = (access: SignalDeskAccessContext) => {
+    if (access.role !== "founder-admin" || !access.permissions.includes("signaldesk.configure")) {
+        throw new Error("TRUST_PARTNER_FOUNDER_APPROVAL_REQUIRED");
+    }
+};
+const assertTrustPartnerDate = (value: string | undefined, errorCode: string) => {
+    if (!value) return;
+    const date = new Date(`${value}T00:00:00.000Z`);
+    if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+        || !Number.isFinite(date.getTime())
+        || date.toISOString().slice(0, 10) !== value
+    ) throw new Error(errorCode);
+};
+
 const computeLegacyTargetIdentity = (row: SignalDeskTargetImportRow, options: { includeContact: boolean }) => {
     const email = options.includeContact ? normalizeLower(row.email) : "";
     const phone = options.includeContact ? normalizeText(row.phone).replace(/[^\d+]/g, "") : "";
@@ -6734,6 +7091,18 @@ const deriveActivationOpportunities = (workspace: SignalDeskWorkspaceData): Sign
         const conversation = conversationsByTarget.get(target.targetId);
         const outcomes = outcomesByTarget.get(target.targetId) || [];
         const activation = outcomes.find(isVerifiedTwoSurfaceOutcome);
+        const projectedActivationSurfaces = target.latestVerifiedActivationSurfaces || [];
+        const hasDurableVerifiedActivation = Boolean(
+            target.latestVerifiedActivationAt
+            && target.latestVerifiedActivationEvidenceRef
+            && (
+                target.latestVerifiedActivationIntegrityStatus === "owner-reviewed-manual"
+                || target.latestVerifiedActivationIntegrityStatus === "menulist-signed"
+            )
+            && new Set(projectedActivationSurfaces).size >= 2
+        );
+        const activationRecorded = Boolean(activation || hasDurableVerifiedActivation);
+        const activationSurfaces = activation?.surfaces || projectedActivationSurfaces;
         const activationStart = outcomes.find((outcome) => outcome.outcomeType === "upload_started" || outcome.outcomeType === "preview_prepared");
         const ownerQualifiedAt = target.ownerQualifiedAt
             || activation?.ownerQualifiedAt
@@ -6741,14 +7110,14 @@ const deriveActivationOpportunities = (workspace: SignalDeskWorkspaceData): Sign
             || (conversation?.state === "interested" ? conversation.lastInboundAt : null);
         const ownerQualifiedMillis = toTimestampMillis(ownerQualifiedAt);
         const activationDeadlineAt = ownerQualifiedMillis ? new Date(ownerQualifiedMillis + (7 * 24 * 60 * 60 * 1000)).toISOString() : null;
-        const stalled = Boolean(activationDeadlineAt && !activation && new Date(activationDeadlineAt).getTime() < nowMillis);
+        const stalled = Boolean(activationDeadlineAt && !activationRecorded && new Date(activationDeadlineAt).getTime() < nowMillis);
         const preparedContact = conversation?.state === "exported" && !target.latestManualContactAt;
         let state: SignalDeskActivationOpportunitySummary["state"] = "candidate";
         if (target.suppressionStatus !== "clear") state = "suppressed";
         else if (policyState === "expired") state = "expired";
         else if (routeRow?.fitDecision === "fail") state = "rejected";
         else if (target.status === "rejected") state = "rejected";
-        else if (activation) state = "activated";
+        else if (activationRecorded) state = "activated";
         else if (activationStart) state = "activation_started";
         else if (conversation?.state === "interested") state = "engaged";
         else if (target.latestManualContactAt || target.status === "contacted" || conversation?.state === "contacted") state = "contacted";
@@ -6794,16 +7163,16 @@ const deriveActivationOpportunities = (workspace: SignalDeskWorkspaceData): Sign
                 evidence: target.sourceConfidence === "high" ? 90 : target.sourceConfidence === "medium" ? 70 : 35,
                 reachability: allowedRoute !== "none" ? 85 : target.contactability === "limited" ? 45 : 15,
                 activationFeasibility: activationStart ? 90 : ownerQualifiedAt ? 75 : target.primaryOpportunity === "unknown" ? 35 : 60,
-                surfaceLeverage: activation?.surfaces?.length
-                    ? Math.min(100, activation.surfaces.length * 35)
+                surfaceLeverage: activationSurfaces.length
+                    ? Math.min(100, activationSurfaces.length * 35)
                     : 50,
                 learningValue: state === "engaged" || state === "activation_started" ? 90 : 60,
             },
             ownerQualifiedAt: ownerQualifiedAt || null,
             activationStartedAt: activationStart?.updatedAt || null,
-            activatedAt: activation?.updatedAt || null,
+            activatedAt: activation?.updatedAt || target.latestVerifiedActivationAt || null,
             activationDeadlineAt,
-            surfaces: activation?.surfaces || [],
+            surfaces: activationSurfaces,
             nextAction: state === "suppressed"
                 ? "No contact. Review the suppression or complaint record."
                 : stalled
@@ -6821,24 +7190,21 @@ const deriveActivationOpportunities = (workspace: SignalDeskWorkspaceData): Sign
     }).sort((left, right) => right.priority - left.priority || left.displayName.localeCompare(right.displayName));
 };
 
-const classifyReply = (message: string): SignalDeskConversationSummary["state"] => {
-    const text = message.toLowerCase();
-    if (/\b(stop|unsubscribe|do not contact|don't contact|dnc)\b/.test(text)) return "dnc";
-    if (/\b(complaint|report you|spam complaint|harassment|unwanted message)\b/.test(text)) return "complaint";
-    if (/\b(delete my data|privacy request|data request|personal data|right to erasure)\b/.test(text)) return "privacy_request";
-    if (/\b(legal notice|lawyer|solicitor|cease and desist|legal action)\b/.test(text)) return "legal_request";
-    if (/\bwrong (person|contact|number|email)\b/.test(text)) return "wrong_contact";
-    if (/\b(yes|interested|pricing|price|demo|call|send|how much)\b/.test(text)) return "interested";
-    if (/\b(no|not interested|later)\b/.test(text)) return "not_interested";
-    return "needs_review";
-};
-
 const buildDraftBody = (
     template: SignalDeskTemplateSummary,
     target: SignalDeskTargetSummary,
     evidence: SignalDeskEvidencePacketSummary,
     cta: SignalDeskSelfServiceCtaSummary,
 ) => {
+    if (template.channel !== "email") throw new Error("DRAFT_TEMPLATE_CHANNEL_INVALID");
+    const supportedVariables = new Set(["businessName", "category", "city", "opportunity", "proofCta"]);
+    const approvedVariables = new Set(template.approvedVariables);
+    const templateText = `${template.subject || ""}\n${template.body}`;
+    const usedVariables = Array.from(templateText.matchAll(/{{\s*([A-Za-z][A-Za-z0-9]*)\s*}}/g), (match) => match[1]);
+    if (
+        template.approvedVariables.some((variable) => !supportedVariables.has(variable))
+        || usedVariables.some((variable) => !supportedVariables.has(variable) || !approvedVariables.has(variable))
+    ) throw new Error("DRAFT_TEMPLATE_VARIABLE_INVALID");
     const opportunity = target.primaryOpportunity === "missing-current-list"
         ? "your current list is hard to find from the public surface"
         : "there may be a cleaner way to keep your public list current";
@@ -6859,13 +7225,36 @@ const buildDraftBody = (
         target.sourcePolicyId ? `source-policy:${target.sourcePolicyId}` : "",
         `cta:${cta.ctaId}`,
     ].filter(Boolean);
+    const body = replaceValue(template.body);
+    const subject = replaceValue(template.subject || "Quick note for {{businessName}}");
+    if (/{{|}}/.test(`${subject}\n${body}`)) throw new Error("DRAFT_TEMPLATE_VARIABLE_INVALID");
+    const renderedText = `${subject}\n${body}`.toLowerCase();
+    const unsupportedClaims = [
+        ["Guaranteed commercial outcome", /\bguarantee(?:d|s)?\s+(?:sales|revenue|ranking|growth|results?)\b/],
+        ["Unsupported platform partnership", /\bofficial\s+(?:whatsapp|google|meta|instagram)\s+partner\b|\bplatform\s+partner(?:ship)?\b/],
+        ["Unsupported automatic platform action", /\bautomatic(?:ally)?\s+(?:google\s+update|public\s+publish(?:ing)?)\b|\bfully\s+automatic\s+public\s+publish(?:ing)?\b/],
+        ["Unsupported customer-loss claim", /\bcustomers?\s+(?:are\s+)?leaving\b|\b(?:you(?:'re| are)\s+)?losing\s+revenue\b/],
+        ["Unsupported data-source claim", /\bwe\s+scraped\s+your\s+business\b/],
+        ["Unsupported verification claim", /\bwe\s+verified\s+your\s+business\b/],
+        ["Unsupported publication claim", /\bwe\s+(?:have\s+|already\s+)?published\s+your\s+official\s+(?:page|menu)\b/],
+    ].filter(([, pattern]) => (pattern as RegExp).test(renderedText)).map(([label]) => label as string);
+    if (unsupportedClaims.length) throw new Error("DRAFT_UNSUPPORTED_CLAIMS");
     return {
-        body: replaceValue(template.body),
+        body,
         personalizationEvidenceIds,
-        subject: replaceValue(template.subject || "Quick note for {{businessName}}"),
-        unsupportedClaims: [],
+        subject,
+        unsupportedClaims,
     };
 };
+
+const signalDeskTemplateFingerprintHashFor = (template: SignalDeskTemplateSummary) => hashValue(JSON.stringify({
+    approvedVariables: [...template.approvedVariables].sort(),
+    body: template.body,
+    channel: template.channel,
+    status: template.status,
+    subject: template.subject || null,
+    templateId: template.templateId,
+}));
 
 const computeScore = (target: SignalDeskTargetSummary): SignalDeskAiScoreSummary => {
     const category = normalizeLower(target.category);
@@ -6907,7 +7296,10 @@ const computeScore = (target: SignalDeskTargetSummary): SignalDeskAiScoreSummary
 export async function loadSignalDeskWorkspaceServer(
     access: SignalDeskAccessContext,
     section: SignalDeskSection,
+    options: { auditCursor?: SignalDeskAuditCursor; targetCursor?: SignalDeskTargetCursor } = {},
 ): Promise<SignalDeskWorkspaceResponse> {
+    if (section === "mission") requireOperatingLayer();
+    if (section === "revenue") requireRevenueOperatingLayer();
     const overview = await loadSignalDeskOverviewServer(access);
     const workspace = emptyWorkspace(section);
     const db = getSignalDeskDb();
@@ -6934,66 +7326,128 @@ export async function loadSignalDeskWorkspaceServer(
 
     if (section === "dashboard") {
         await readCommon();
-        workspace.growthMissions = await readGrowthMissions(db);
-        workspace.experimentCards = await readExperimentCards(db);
+        workspace.growthMissions = FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER
+            ? await readGrowthMissions(db)
+            : [];
+        workspace.experimentCards = FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER
+            ? await readExperimentCards(db)
+            : [];
         workspace.policies = await readSourcePolicyList(db);
-        workspace.researchRuns = await readResearchRunList(db);
-        workspace.researchTableRows = await readResearchRowList(db);
+        workspace.researchRuns = FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER
+            && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE
+            ? await readResearchRunList(db)
+            : [];
+        workspace.researchTableRows = FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER
+            && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE
+            ? await readResearchRowList(db)
+            : [];
     } else if (section === "mission") {
         await readCommon();
-        workspace.contentAssets = await readContentAssets(db);
-        workspace.contentDistributionDrafts = await readContentDrafts(db);
-        workspace.experimentCards = await readExperimentCards(db);
-        workspace.growthMissions = await readGrowthMissions(db);
-        workspace.imports = await readSourceRunList(db);
-        workspace.marketPods = await readMarketPods(db);
-        workspace.offerCtas = await readOfferCtas(db);
-        workspace.policies = await readSourcePolicyList(db);
-        workspace.researchRuns = await readResearchRunList(db);
-        workspace.researchTableRows = await readResearchRowList(db);
-        workspace.replyPlaybooks = await readList<SignalDeskReplyPlaybookSummary>(db, SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS);
-        workspace.runTimelines = await readList<SignalDeskRunTimelineSummary>(db, SIGNALDESK_COLLECTIONS.RUN_TIMELINES);
-        workspace.selfServiceCtas = await readSelfServiceCtas(db);
-        workspace.senderDomains = await readSenderDomains(db);
-        workspace.sourceQualitySnapshots = await readList<SignalDeskSourceQualitySnapshotSummary>(db, SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS);
-        workspace.trustPartnerProfiles = await readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES);
+        const [
+            contentAssets,
+            contentDistributionDrafts,
+            experimentCards,
+            growthMissions,
+            imports,
+            marketPods,
+            offerCtas,
+            policies,
+            researchRuns,
+            researchTableRows,
+            replyPlaybooks,
+            runTimelines,
+            selfServiceCtas,
+            senderDomains,
+            sourceQualitySnapshots,
+            trustPartnerProfiles,
+        ] = await Promise.all([
+            FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readContentAssets(db) : Promise.resolve([]),
+            FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readContentDrafts(db) : Promise.resolve([]),
+            readExperimentCards(db),
+            readGrowthMissions(db),
+            readSourceRunList(db),
+            readMarketPods(db),
+            readOfferCtas(db),
+            readSourcePolicyList(db),
+            FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE ? readResearchRunList(db) : Promise.resolve([]),
+            FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE ? readResearchRowList(db) : Promise.resolve([]),
+            readList<SignalDeskReplyPlaybookSummary>(db, SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS),
+            readList<SignalDeskRunTimelineSummary>(db, SIGNALDESK_COLLECTIONS.RUN_TIMELINES),
+            readSelfServiceCtas(db),
+            readSenderDomains(db),
+            readList<SignalDeskSourceQualitySnapshotSummary>(db, SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS),
+            FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL
+                ? readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES)
+                : Promise.resolve([]),
+        ]);
+        workspace.contentAssets = contentAssets;
+        workspace.contentDistributionDrafts = contentDistributionDrafts;
+        workspace.experimentCards = experimentCards;
+        workspace.growthMissions = growthMissions;
+        workspace.imports = imports;
+        workspace.marketPods = marketPods;
+        workspace.offerCtas = offerCtas;
+        workspace.policies = policies;
+        workspace.researchRuns = researchRuns;
+        workspace.researchTableRows = researchTableRows;
+        workspace.replyPlaybooks = replyPlaybooks;
+        workspace.runTimelines = runTimelines;
+        workspace.selfServiceCtas = selfServiceCtas;
+        workspace.senderDomains = senderDomains;
+        workspace.sourceQualitySnapshots = sourceQualitySnapshots;
+        workspace.trustPartnerProfiles = trustPartnerProfiles;
     } else if (section === "revenue") {
         await readCommon();
+        const canConfigureRevenue = access.permissions.includes("signaldesk.configure");
         const [
             activationWatches,
+            budgetPolicies,
             commercialOffers,
             commercialOpportunities,
+            marketPods,
+            offerCtas,
             operatingEnvelopes,
+            policies,
             revenueAccounts,
             revenueControlSummaries,
+            senderDomains,
+            templates,
         ] = await Promise.all([
             readList<SignalDeskActivationWatchSummary>(db, SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES),
+            canConfigureRevenue
+                ? readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES)
+                : Promise.resolve([]),
             readList<SignalDeskCommercialOfferSummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS),
             readList<SignalDeskCommercialOpportunitySummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES),
+            readMarketPods(db),
+            readOfferCtas(db),
             readList<SignalDeskOperatingEnvelopeSummary>(db, SIGNALDESK_COLLECTIONS.OPERATING_ENVELOPES),
+            readSourcePolicyList(db),
             readList<SignalDeskRevenueAccountSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS),
             readList<SignalDeskRevenueControlSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES),
+            readSenderDomains(db),
+            readList<SignalDeskTemplateSummary>(db, SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES),
         ]);
         workspace.activationWatches = activationWatches.map((watch) => annotateActivationWatch(watch));
+        workspace.budgetPolicies = budgetPolicies;
         workspace.commercialOffers = commercialOffers;
         workspace.commercialOpportunities = commercialOpportunities;
+        workspace.marketPods = marketPods;
+        workspace.offerCtas = offerCtas;
         workspace.operatingEnvelopes = operatingEnvelopes.map((envelope) => annotateOperatingEnvelope(envelope));
+        workspace.policies = policies;
         workspace.revenueAccounts = revenueAccounts;
         workspace.revenueControlSummaries = revenueControlSummaries;
-        workspace.budgetPolicies = await readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES);
-        workspace.marketPods = await readMarketPods(db);
-        workspace.offerCtas = await readOfferCtas(db);
-        workspace.policies = await readSourcePolicyList(db);
-        workspace.senderDomains = await readSenderDomains(db);
-        workspace.templates = await readList<SignalDeskTemplateSummary>(db, SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES);
+        workspace.senderDomains = senderDomains;
+        workspace.templates = templates;
     } else if (section === "targets") {
-        workspace.targets = await readTargetSummaryList(db);
+        workspace.targets = await readTargetSummaryList(db, SIGNALDESK_TARGET_PAGE_SIZE, options.targetCursor);
         workspace.policies = await readSourcePolicyList(db);
     } else if (section === "imports") {
         workspace.imports = await readSourceRunList(db);
         workspace.policies = await readSourcePolicyList(db);
     } else if (section === "approvals") {
-        workspace.approvals = await readList<SignalDeskApprovalItem>(db, SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE);
+        workspace.approvals = await readApprovalQueueWorkspace(db);
         workspace.approvalPackets = await readList<SignalDeskApprovalPacketSummary>(db, SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS);
         workspace.drafts = await readList<SignalDeskDraftSummary>(db, SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES);
     } else if (section === "templates") {
@@ -7037,17 +7491,22 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.targets = await readTargetSummaryList(db);
         workspace.vendorRuns = await readList<SignalDeskVendorRunSummary>(db, SIGNALDESK_COLLECTIONS.VENDOR_RUNS);
     } else if (section === "ai") {
-        const aiRuns = await readList<SignalDeskAiWorkerRunSummary & SignalDeskAiVolumeRunSummary & Partial<SignalDeskAiScoreSummary>>(db, SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, "createdAt");
+        const aiRuns = await readAiWorkspaceRuns(db);
         workspace.modelEvals = (await readList<SignalDeskModelEvalSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_EVALS))
             .map(annotateModelEvalSummary);
         workspace.modelRoutes = await readList<SignalDeskModelRouteSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_ROUTES);
-        workspace.aiWorkerRuns = aiRuns.filter((run) => String(run.workerType || "").startsWith("ai_assist_"));
-        workspace.aiVolumeRuns = aiRuns.filter((run) => run.workerType === "ai_volume_batch");
-        workspace.scores = aiRuns.filter((run) => Boolean(run.scoreId)) as SignalDeskAiScoreSummary[];
+        workspace.aiWorkerRuns = aiRuns.aiWorkerRuns;
+        workspace.aiVolumeRuns = aiRuns.aiVolumeRuns;
+        workspace.scores = aiRuns.scores;
         workspace.targets = await readTargetSummaryList(db);
         workspace.evidencePackets = await readList<SignalDeskEvidencePacketSummary>(db, SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES);
     } else if (section === "channels") {
-        workspace.approvals = await readList<SignalDeskApprovalItem>(db, SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE);
+        workspace.approvals = await readPrioritizedStatusWorkspace<SignalDeskApprovalItem>(
+            db,
+            SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+            ["approved"],
+            (approval) => approval.approvalId,
+        );
         workspace.channelHealth = await readList<SignalDeskChannelHealthSummary>(db, SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES);
         workspace.channelWindows = await readList<SignalDeskChannelWindowStateSummary>(db, SIGNALDESK_COLLECTIONS.CHANNEL_WINDOW_STATES);
         workspace.connectorSettings = await readList<SignalDeskConnectorSettingSummary>(db, SIGNALDESK_COLLECTIONS.CONNECTOR_SETTINGS);
@@ -7055,29 +7514,67 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.drafts = await readList<SignalDeskDraftSummary>(db, SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES);
         workspace.providerEvents = await readList<SignalDeskProviderEventSummary>(db, SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS);
         workspace.senderDomains = await readSenderDomains(db);
-        workspace.sequencerHandoffs = await readList<SignalDeskSequencerHandoffSummary>(db, SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS);
-        workspace.sequencerSteps = await readList<SignalDeskSequencerStepSummary>(db, SIGNALDESK_COLLECTIONS.SEQUENCER_STEPS);
+        workspace.sequencerHandoffs = await readPrioritizedStatusWorkspace<SignalDeskSequencerHandoffSummary>(
+            db,
+            SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS,
+            ["queued", "ready"],
+            (handoff) => handoff.sequencerHandoffId,
+        );
+        workspace.sequencerSteps = await readPrioritizedStatusWorkspace<SignalDeskSequencerStepSummary>(
+            db,
+            SIGNALDESK_COLLECTIONS.SEQUENCER_STEPS,
+            ["ready", "queued"],
+            (step) => step.sequenceStepId,
+        );
         workspace.targets = await readTargetSummaryList(db);
     } else if (section === "content") {
-        workspace.contentAssets = await readContentAssets(db);
-        workspace.contentCalendarItems = await readContentCalendarItems(db);
-        workspace.contentDistributionDrafts = await readContentDrafts(db);
-        workspace.contentPerformanceSummaries = await readContentPerformanceSummaries(db);
-        workspace.contentSources = await readContentSources(db);
-        workspace.proofPermissions = await readProofPermissions(db);
-        workspace.marketPods = await readMarketPods(db);
-        workspace.selfServiceCtas = await readSelfServiceCtas(db);
+        [
+            workspace.contentAssets,
+            workspace.contentCalendarItems,
+            workspace.contentDistributionDrafts,
+            workspace.contentPerformanceSummaries,
+            workspace.contentSources,
+            workspace.marketPods,
+            workspace.proofPermissions,
+            workspace.selfServiceCtas,
+            workspace.targets,
+        ] = await Promise.all([
+            readContentAssets(db),
+            readContentCalendarItems(db),
+            readContentDrafts(db),
+            readContentPerformanceSummaries(db),
+            readContentSources(db),
+            readMarketPods(db),
+            readProofPermissions(db),
+            readSelfServiceCtas(db),
+            access.permissions.includes("signaldesk.configure") ? readTargetSummaryList(db) : Promise.resolve([]),
+        ]);
     } else if (section === "partners") {
-        workspace.budgetPolicies = await readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES);
-        workspace.marketPods = await readMarketPods(db);
-        workspace.selfServiceCtas = await readSelfServiceCtas(db);
-        workspace.trustPartnerBriefs = await readTrustPartnerBriefs(db);
-        workspace.trustPartnerDeals = await readList<SignalDeskTrustPartnerDealSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DEALS);
-        workspace.trustPartnerDeliverables = await readList<SignalDeskTrustPartnerDeliverableSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DELIVERABLES);
-        workspace.trustPartnerMetrics = await readList<SignalDeskTrustPartnerMetricSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_METRICS, "capturedAt");
-        workspace.trustPartnerNicheTests = await readList<SignalDeskTrustPartnerNicheTestSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_NICHE_TESTS);
-        workspace.trustPartnerProfiles = await readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES);
-        workspace.trustPartnerRenewalDecisions = await readList<SignalDeskTrustPartnerRenewalDecisionSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_RENEWAL_DECISIONS);
+        [
+            workspace.budgetPolicies,
+            workspace.marketPods,
+            workspace.selfServiceCtas,
+            workspace.trustPartnerBriefs,
+            workspace.trustPartnerDeals,
+            workspace.trustPartnerDeliverables,
+            workspace.trustPartnerMetrics,
+            workspace.trustPartnerNicheTests,
+            workspace.trustPartnerProfiles,
+            workspace.trustPartnerRenewalDecisions,
+        ] = await Promise.all([
+            access.permissions.includes("signaldesk.configure")
+                ? readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES)
+                : Promise.resolve([]),
+            readMarketPods(db),
+            readSelfServiceCtas(db),
+            readTrustPartnerBriefs(db),
+            readList<SignalDeskTrustPartnerDealSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DEALS),
+            readList<SignalDeskTrustPartnerDeliverableSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DELIVERABLES),
+            readList<SignalDeskTrustPartnerMetricSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_METRICS, "capturedAt"),
+            readList<SignalDeskTrustPartnerNicheTestSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_NICHE_TESTS),
+            readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES),
+            readList<SignalDeskTrustPartnerRenewalDecisionSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_RENEWAL_DECISIONS),
+        ]);
     } else if (section === "settings") {
         workspace.channelHealth = await readList<SignalDeskChannelHealthSummary>(db, SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES);
         workspace.connectorSettings = await readList<SignalDeskConnectorSettingSummary>(db, SIGNALDESK_COLLECTIONS.CONNECTOR_SETTINGS);
@@ -7087,40 +7584,63 @@ export async function loadSignalDeskWorkspaceServer(
             workspace.teamMembers = await readList<SignalDeskTeamMemberSummary>(db, SIGNALDESK_COLLECTIONS.TEAM_MEMBERS);
         }
     } else if (section === "control-room") {
-        await readCommon();
-        workspace.approvalPackets = await readList<SignalDeskApprovalPacketSummary>(db, SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS);
-        workspace.audienceSegments = await readList<SignalDeskAudienceSegmentSummary>(db, SIGNALDESK_COLLECTIONS.AUDIENCE_SEGMENTS);
-        workspace.budgetPolicies = await readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES);
-        workspace.enrichmentWaterfalls = await readList<SignalDeskEnrichmentWaterfallSummary>(db, SIGNALDESK_COLLECTIONS.ENRICHMENT_WATERFALLS);
-        workspace.imports = await readSourceRunList(db);
-        workspace.modelRoutes = await readList<SignalDeskModelRouteSummary>(db, SIGNALDESK_COLLECTIONS.MODEL_ROUTES);
-        workspace.providerAccounts = await readList<SignalDeskProviderAccountSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS);
-        workspace.providerEvaluations = await readList<SignalDeskProviderEvaluationSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_EVALUATIONS);
-        workspace.policies = await readSourcePolicyList(db);
-        workspace.proofPermissions = await readProofPermissions(db);
-        workspace.runTimelines = await readList<SignalDeskRunTimelineSummary>(db, SIGNALDESK_COLLECTIONS.RUN_TIMELINES);
-        const aiRuns = await readList<SignalDeskAiWorkerRunSummary & SignalDeskAiVolumeRunSummary & Partial<SignalDeskAiScoreSummary>>(db, SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS, "createdAt");
-        workspace.aiWorkerRuns = aiRuns.filter((run) => String(run.workerType || "").startsWith("ai_assist_"));
-        workspace.aiVolumeRuns = aiRuns.filter((run) => run.workerType === "ai_volume_batch");
-        workspace.scores = aiRuns.filter((run) => Boolean(run.scoreId)) as SignalDeskAiScoreSummary[];
-        workspace.selfServiceCtas = await readSelfServiceCtas(db);
-        workspace.senderDomains = await readSenderDomains(db);
-        workspace.sequencerHandoffs = await readList<SignalDeskSequencerHandoffSummary>(db, SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS);
-        workspace.sequencerSteps = await readList<SignalDeskSequencerStepSummary>(db, SIGNALDESK_COLLECTIONS.SEQUENCER_STEPS);
-        workspace.strategistMemos = await readList<SignalDeskStrategistMemoSummary>(db, SIGNALDESK_COLLECTIONS.STRATEGIST_MEMOS);
-        workspace.contentAssets = await readContentAssets(db);
-        workspace.contentCalendarItems = await readContentCalendarItems(db);
-        workspace.contentDistributionDrafts = await readContentDrafts(db);
-        workspace.experimentCards = await readExperimentCards(db);
-        workspace.growthMissions = await readGrowthMissions(db);
-        workspace.offerCtas = await readOfferCtas(db);
-        workspace.replyPlaybooks = await readList<SignalDeskReplyPlaybookSummary>(db, SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS);
-        workspace.researchRuns = await readResearchRunList(db);
-        workspace.researchTableRows = await readResearchRowList(db);
-        workspace.sourceQualitySnapshots = await readList<SignalDeskSourceQualitySnapshotSummary>(db, SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS);
-        workspace.trustPartnerProfiles = await readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES);
+        [
+            workspace.budgetPolicies,
+            workspace.providerAccounts,
+            workspace.runTimelines,
+            workspace.selfServiceCtas,
+        ] = await Promise.all([
+            readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES),
+            readList<SignalDeskProviderAccountSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS),
+            readList<SignalDeskRunTimelineSummary>(db, SIGNALDESK_COLLECTIONS.RUN_TIMELINES),
+            readSelfServiceCtas(db),
+        ]);
     } else if (section === "audit") {
-        workspace.auditEvents = await readList<SignalDeskAuditEvent>(db, SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, "createdAt", 50);
+        const auditEvents: SignalDeskAuditEvent[] = [];
+        let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+        let rejectedCount = 0;
+        let scannedCount = 0;
+        for (
+            let page = 0;
+            page < WORKSPACE_PROJECTION_SCAN_MAX_PAGES && auditEvents.length < SIGNALDESK_AUDIT_PAGE_SIZE;
+            page += 1
+        ) {
+            let query: FirebaseFirestore.Query = db.collection(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS)
+                .orderBy("createdAt", "desc")
+                .orderBy(admin.firestore.FieldPath.documentId(), "desc")
+                .limit(SIGNALDESK_AUDIT_PAGE_SIZE);
+            if (cursor) {
+                query = query.startAfter(cursor);
+            } else if (options.auditCursor) {
+                query = query.startAfter(
+                    admin.firestore.Timestamp.fromDate(new Date(options.auditCursor.createdAt)),
+                    options.auditCursor.auditEventId,
+                );
+            }
+            const snapshot = await query.get();
+            if (snapshot.empty) break;
+            for (const document of snapshot.docs) {
+                scannedCount += 1;
+                const event = projectSignalDeskWorkspaceDocument(
+                    SIGNALDESK_COLLECTIONS.AUDIT_EVENTS,
+                    document.data(),
+                    document.id,
+                );
+                if (event) auditEvents.push(event as SignalDeskAuditEvent);
+                else rejectedCount += 1;
+                if (auditEvents.length === SIGNALDESK_AUDIT_PAGE_SIZE) break;
+            }
+            cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+            if (snapshot.size < SIGNALDESK_AUDIT_PAGE_SIZE) break;
+        }
+        if (rejectedCount) {
+            logRuntimeFailure(
+                "signaldesk_audit_projection_rejected",
+                new Error("SIGNALDESK_AUDIT_DOCUMENT_SHAPE_INVALID"),
+                { product: "signaldesk", rejectedCount, scannedCount },
+            );
+        }
+        workspace.auditEvents = auditEvents;
     }
     workspace.policies = workspace.policies.map(annotateSourcePolicy);
     const policyById = new Map(workspace.policies.map((policy) => [policy.sourcePolicyId, policy]));
@@ -7158,7 +7678,8 @@ export async function loadSignalDeskWorkspaceServer(
     for (const targetSnap of referencedTargetSnaps) {
         if (!targetSnap.exists) continue;
         try {
-            const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+            const targetAuthority = parseSignalDeskOutcomeTargetAuthority(targetSnap.data(), targetSnap.id);
+            const target = targetAuthority.target;
             targetById.set(target.targetId, target);
         } catch (error) {
             logRuntimeFailure("signaldesk_referenced_target_projection_failed", error, {
@@ -7596,6 +8117,7 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
     const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("policy_manual_research_v1");
     const discoveryPolicyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("policy_public_business_research_v1");
     const templateRef = db.collection(SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES).doc("template_current_list_intro_v1");
+    const dailyCostRef = db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES).doc(todayKey());
     const policyDefaults = [
         {
             data: {
@@ -7885,7 +8407,7 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
     if (businessRefs.length !== 53 || new Set(businessRefs.map((ref) => ref.path)).size !== 53) {
         throw new Error("SIGNALDESK_SEED_DEFAULT_REGISTRY_INVALID");
     }
-    const foundationRefs = [ctaSeedRef, ...businessRefs];
+    const foundationRefs = [ctaSeedRef, dailyCostRef, ...businessRefs];
     await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
         const snapshots = await Promise.all(foundationRefs.map((ref) => transaction.get(ref)));
         const snapshotByPath = new Map(snapshots.map((snapshot) => [snapshot.ref.path, snapshot]));
@@ -8049,7 +8571,16 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         createOrValidate(waterfallRef, waterfallDefault, assertSeedWaterfall);
         createOrValidate(trustPartnerBudgetRef, trustPartnerBudgetDefault, assertSeedBudgetPolicy);
 
-        if (businessWriteCount === 0) return;
+        const dailyCostSnap = snapFor(dailyCostRef);
+        let dailyCostNeedsCanonicalRepair = !dailyCostSnap.exists;
+        if (dailyCostSnap.exists) {
+            try {
+                parseSignalDeskDailyCostDocument(dailyCostSnap.data(), dailyCostRef.id);
+            } catch {
+                dailyCostNeedsCanonicalRepair = true;
+            }
+        }
+        if (businessWriteCount === 0 && !dailyCostNeedsCanonicalRepair) return;
         appendAudit(
             db,
             transaction,
@@ -8073,7 +8604,24 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
                 { label: "Offer CTA and reply playbooks", status: "completed", at: toIso(timestamp) },
             ],
         });
-        updateDailyCost(db, transaction, businessWriteCount + 2, 0);
+        const dailyCostRaw = dailyCostSnap.data() as AnyRecord | undefined;
+        const repairableDailyCost = dailyCostRaw
+            ? Object.fromEntries([
+                "aiCostEstimate",
+                "day",
+                "firestoreReadEstimate",
+                "firestoreWriteEstimate",
+                "pId",
+                "providerCostEstimate",
+                "updatedAt",
+            ].filter((key) => Object.prototype.hasOwnProperty.call(dailyCostRaw, key)).map((key) => [key, dailyCostRaw[key]]))
+            : null;
+        transaction.set(dailyCostRef, sanitizeForFirestore(buildSignalDeskDailyCostMutation({
+            current: repairableDailyCost,
+            day: dailyCostRef.id,
+            delta: { firestoreWriteEstimate: businessWriteCount + 2 },
+            updatedAt: timestamp,
+        })));
     });
 
     const contentSourceRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_SOURCES).doc("content_source_menulist_owned_proof_v1");
@@ -8205,6 +8753,92 @@ export async function createSignalDeskSourcePolicyServer(access: SignalDeskAcces
         updateControlSummary(db, transaction, { sourceStatus: "healthy" });
         updateDailyCost(db, transaction, 4, 0);
         return parseSignalDeskSourcePolicyDocument(policy, policyRef.id);
+    });
+}
+
+export async function renewSignalDeskSourcePolicyServer(access: SignalDeskAccessContext, input: SignalDeskSourcePolicyRenewInput) {
+    const db = requireDb();
+    const parsed = SignalDeskSourcePolicyRenewSchema.safeParse(input);
+    if (!parsed.success) throw new Error("SOURCE_POLICY_RENEWAL_INPUT_INVALID");
+    const normalized = parsed.data;
+    const idempotencyKeyHash = hashValue(`${access.userId}|${normalized.idempotencyKey}`);
+    const requestFingerprintHash = hashValue(JSON.stringify({
+        expiresAt: normalized.expiresAt,
+        lastReviewedAt: normalized.lastReviewedAt,
+        sourcePolicyId: normalized.sourcePolicyId,
+    }));
+    const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(normalized.sourcePolicyId);
+    const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+        .doc(`source_policy_renew_${idempotencyKeyHash}`);
+
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const [claimSnap, policySnap] = await Promise.all([
+            transaction.get(claimRef),
+            transaction.get(policyRef),
+        ]);
+        if (!policySnap.exists) throw new Error("SOURCE_POLICY_NOT_FOUND");
+        const currentRaw = policySnap.data() || {};
+        const current = parseSignalDeskSourcePolicyDocument(currentRaw, policySnap.id);
+        if (claimSnap.exists) {
+            const claim = claimSnap.data() || {};
+            if (
+                claim.pId !== SIGNALDESK_PRODUCT_CODE
+                || claim.actorId !== access.userId
+                || claim.entityId !== policyRef.id
+                || claim.idempotencyKeyHash !== idempotencyKeyHash
+                || claim.requestFingerprintHash !== requestFingerprintHash
+            ) throw new Error("SOURCE_POLICY_RENEWAL_IDEMPOTENCY_CONFLICT");
+            return current;
+        }
+        if (current.status === "blocked") throw new Error("SOURCE_POLICY_RENEWAL_BLOCKED");
+        const reviewedAtMillis = Date.parse(normalized.lastReviewedAt);
+        const expiresAtMillis = Date.parse(normalized.expiresAt);
+        const currentReviewedAtMillis = Date.parse(current.lastReviewedAt);
+        const currentExpiresAtMillis = Date.parse(current.expiresAt);
+        const maximumExpiryMillis = reviewedAtMillis + (current.retentionDays * 24 * 60 * 60 * 1_000);
+        if (
+            reviewedAtMillis < currentReviewedAtMillis
+            || expiresAtMillis <= currentExpiresAtMillis
+            || expiresAtMillis > maximumExpiryMillis + (5 * 60 * 1_000)
+        ) throw new Error("SOURCE_POLICY_RENEWAL_WINDOW_INVALID");
+
+        const timestamp = now();
+        const reviewTimestamp = admin.firestore.Timestamp.fromMillis(reviewedAtMillis);
+        const expiryTimestamp = admin.firestore.Timestamp.fromMillis(expiresAtMillis);
+        const renewedPolicy = {
+            ...currentRaw,
+            approvedAt: reviewTimestamp,
+            expiresAt: expiryTimestamp,
+            lastReviewedAt: reviewTimestamp,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            sourcePolicyId: policyRef.id,
+            status: "active",
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.set(policyRef, sanitizeForFirestore({
+            approvedAt: reviewTimestamp,
+            expiresAt: expiryTimestamp,
+            lastReviewedAt: reviewTimestamp,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            sourcePolicyId: policyRef.id,
+            status: "active",
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        }), { merge: true });
+        transaction.create(claimRef, sanitizeForFirestore({
+            actorId: access.userId,
+            entityId: policyRef.id,
+            entityType: "sourcePolicy",
+            idempotencyKeyHash,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            requestFingerprintHash,
+            status: "completed",
+            updatedAt: timestamp,
+        }));
+        appendAudit(db, transaction, access, "source_policy_renew", "sourcePolicy", policyRef.id, "renewed");
+        updateDailyCost(db, transaction, 4, 0);
+        return parseSignalDeskSourcePolicyDocument(renewedPolicy, policyRef.id);
     });
 }
 
@@ -8519,70 +9153,89 @@ export async function upsertSignalDeskTeamMemberServer(access: SignalDeskAccessC
     if (!emailLower || !emailLower.includes("@")) {
         throw new Error("SignalDesk team member email is required");
     }
-    if (!input.active && (
-        (userId && userId === access.userId)
-        || emailLower === normalizeLower(access.email)
-        || teamMemberId === access.userId
-    )) {
-        throw new Error("SignalDesk team member cannot deactivate own access");
-    }
+    if (!isSignalDeskHumanRole(input.role)) throw new Error("SIGNALDESK_TEAM_MEMBER_ROLE_INVALID");
 
-    const explicitSnap = teamMemberId
-        ? await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(teamMemberId).get()
-        : null;
-    const userSnap = !explicitSnap?.exists && userId
-        ? await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(userId).get()
-        : null;
-    const emailSnap = !explicitSnap?.exists && !userSnap?.exists
-        ? await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS)
-            .where("emailLower", "==", emailLower)
-            .limit(1)
-            .get()
-        : null;
+    const collection = db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS);
+    const explicitRef = teamMemberId ? collection.doc(teamMemberId) : null;
+    const canonicalRef = collection.doc(userId || `member_${hashValue(emailLower).slice(0, 24)}`);
+    const userQuery = userId ? collection.where("userId", "==", userId).limit(2) : null;
+    const emailQuery = collection.where("emailLower", "==", emailLower).limit(2);
 
-    const existingSnap = explicitSnap?.exists
-        ? explicitSnap
-        : userSnap?.exists
-            ? userSnap
-            : emailSnap?.docs?.[0] || null;
-    const memberRef = existingSnap?.ref || db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS)
-        .doc(userId || `member_${hashValue(emailLower).slice(0, 24)}`);
-    const existing = existingSnap?.exists ? toPlain(existingSnap.data()) : {};
-    const timestamp = now();
-    const preservedPermissions = Array.isArray(existing.permissions)
-        ? existing.permissions.filter((permission: unknown): permission is SignalDeskPermission => typeof permission === "string")
-        : [];
-    const member = {
-        teamMemberId: memberRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        userId,
-        email: emailLower,
-        emailLower,
-        name: normalizeText(input.name) || null,
-        role: input.role,
-        permissions: preservedPermissions,
-        active: input.active,
-        status: input.active ? "active" : "inactive",
-        createdAt: existing.createdAt || timestamp,
-        createdBy: existing.createdBy || access.userId,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    };
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const directRefs = new Map<string, FirebaseFirestore.DocumentReference>();
+        if (explicitRef) directRefs.set(explicitRef.path, explicitRef);
+        directRefs.set(canonicalRef.path, canonicalRef);
+        const [directSnaps, userQuerySnap, emailQuerySnap] = await Promise.all([
+            Promise.all(Array.from(directRefs.values(), (ref) => transaction.get(ref))),
+            userQuery ? transaction.get(userQuery) : Promise.resolve(null),
+            transaction.get(emailQuery),
+        ]);
+        const existingByPath = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+        for (const snapshot of directSnaps) {
+            if (snapshot.exists) existingByPath.set(snapshot.ref.path, snapshot);
+        }
+        for (const snapshot of [...(userQuerySnap?.docs || []), ...emailQuerySnap.docs]) {
+            if (snapshot.exists) existingByPath.set(snapshot.ref.path, snapshot);
+        }
+        if (existingByPath.size > 1) throw new Error("SIGNALDESK_TEAM_MEMBER_IDENTITY_CONFLICT");
 
-    const batch = db.batch();
-    batch.set(memberRef, sanitizeForFirestore(member), { merge: true });
-    appendAudit(
-        db,
-        batch,
-        access,
-        input.active ? "team_member_upsert" : "team_member_deactivate",
-        "teamMember",
-        memberRef.id,
-        `${member.email} / ${member.role}`,
-    );
-    updateDailyCost(db, batch, 2, 0);
-    await batch.commit();
-    return toPlain(member) as SignalDeskTeamMemberSummary;
+        const existingSnap = existingByPath.values().next().value as FirebaseFirestore.DocumentSnapshot | undefined;
+        if (explicitRef && (!existingSnap || existingSnap.ref.path !== explicitRef.path)) {
+            throw new Error("SIGNALDESK_TEAM_MEMBER_NOT_FOUND");
+        }
+        const memberRef = existingSnap?.ref || canonicalRef;
+        const existing = existingSnap
+            ? requireProjectedWorkspaceDocument<SignalDeskTeamMemberSummary>(
+                SIGNALDESK_COLLECTIONS.TEAM_MEMBERS,
+                existingSnap.data(),
+                existingSnap.id,
+                "SIGNALDESK_TEAM_MEMBER_SHAPE_INVALID",
+            )
+            : null;
+        if (existing?.userId && userId && existing.userId !== userId) {
+            throw new Error("SIGNALDESK_TEAM_MEMBER_IDENTITY_CONFLICT");
+        }
+        const isCurrentActor = Boolean(existing && (
+            existing.teamMemberId === access.userId
+            || existing.userId === access.userId
+            || normalizeLower(existing.email) === normalizeLower(access.email)
+        ));
+        if (!input.active && isCurrentActor) {
+            throw new Error("SignalDesk team member cannot deactivate own access");
+        }
+
+        const timestamp = now();
+        const preservedPermissions = (existing?.permissions || []).filter(isSignalDeskPermission);
+        const member = {
+            teamMemberId: memberRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            userId,
+            email: emailLower,
+            emailLower,
+            name: normalizeText(input.name) || null,
+            role: input.role,
+            permissions: preservedPermissions,
+            active: input.active,
+            status: input.active ? "active" : "inactive",
+            createdAt: existing?.createdAt || timestamp,
+            createdBy: existing?.createdBy || access.userId,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+
+        transaction.set(memberRef, sanitizeForFirestore(member), { merge: true });
+        appendAudit(
+            db,
+            transaction,
+            access,
+            input.active ? "team_member_upsert" : "team_member_deactivate",
+            "teamMember",
+            memberRef.id,
+            `${member.email} / ${member.role}`,
+        );
+        updateDailyCost(db, transaction, 2, 0);
+        return toPlain(member) as SignalDeskTeamMemberSummary;
+    });
 }
 
 export async function upsertSignalDeskSelfServiceCtaServer(access: SignalDeskAccessContext, input: SelfServiceCtaInput) {
@@ -8894,7 +9547,6 @@ export async function upsertSignalDeskOfferCtaServer(access: SignalDeskAccessCon
 export async function upsertSignalDeskReplyPlaybookServer(access: SignalDeskAccessContext, input: ReplyPlaybookInput) {
     requireOperatingLayer();
     const db = requireDb();
-    const batch = db.batch();
     const timestamp = now();
     const playbookRef = db.collection(SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS).doc(input.playbookId || replyPlaybookIdFor(input));
     const playbook = {
@@ -8910,22 +9562,57 @@ export async function upsertSignalDeskReplyPlaybookServer(access: SignalDeskAcce
         updatedAt: timestamp,
         updatedBy: access.userId,
     };
-    batch.set(playbookRef, sanitizeForFirestore(playbook), { merge: true });
-    appendAudit(db, batch, access, "reply_playbook_upsert", "replyPlaybook", playbookRef.id, input.intent);
-    writeRunTimeline(db, batch, {
-        entityId: playbookRef.id,
-        entityType: "mission",
-        label: `Reply playbook: ${input.title}`,
-        status: input.status === "active" ? "ready" : input.status === "blocked" ? "blocked" : "held",
-        steps: [
-            { label: "Approved reply saved", status: "completed", at: toIso(timestamp) },
-            { label: input.suppressionRequired ? "Suppression route required" : "No suppression route required", status: input.suppressionRequired ? "ready" : "completed", at: toIso(timestamp) },
-            { label: input.escalationRequired ? "Founder review required" : "Founder review not required", status: input.escalationRequired ? "held" : "completed", at: toIso(timestamp) },
-        ],
+    const projectedPlaybook = requireProjectedWorkspaceDocument<SignalDeskReplyPlaybookSummary>(
+        SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS,
+        playbook,
+        playbookRef.id,
+        "REPLY_PLAYBOOK_SHAPE_INVALID",
+    );
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const currentSnap = await transaction.get(playbookRef);
+        if (currentSnap.exists) {
+            const current = requireProjectedWorkspaceDocument<SignalDeskReplyPlaybookSummary>(
+                SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS,
+                currentSnap.data(),
+                currentSnap.id,
+                "REPLY_PLAYBOOK_SHAPE_INVALID",
+            );
+            const currentComparable = {
+                approvedReply: current.approvedReply,
+                escalationRequired: current.escalationRequired,
+                intent: current.intent,
+                nextRoute: current.nextRoute,
+                status: current.status,
+                suppressionRequired: current.suppressionRequired,
+                title: current.title,
+            };
+            const requestedComparable = {
+                approvedReply: projectedPlaybook.approvedReply,
+                escalationRequired: projectedPlaybook.escalationRequired,
+                intent: projectedPlaybook.intent,
+                nextRoute: projectedPlaybook.nextRoute,
+                status: projectedPlaybook.status,
+                suppressionRequired: projectedPlaybook.suppressionRequired,
+                title: projectedPlaybook.title,
+            };
+            if (JSON.stringify(currentComparable) === JSON.stringify(requestedComparable)) return current;
+        }
+        transaction.set(playbookRef, sanitizeForFirestore(playbook), { merge: true });
+        appendAudit(db, transaction, access, "reply_playbook_upsert", "replyPlaybook", playbookRef.id, input.intent);
+        writeRunTimeline(db, transaction, {
+            entityId: playbookRef.id,
+            entityType: "mission",
+            label: `Reply playbook: ${input.title}`,
+            status: input.status === "active" ? "ready" : input.status === "blocked" ? "blocked" : "held",
+            steps: [
+                { label: "Approved reply saved", status: "completed", at: toIso(timestamp) },
+                { label: input.suppressionRequired ? "Suppression route required" : "No suppression route required", status: input.suppressionRequired ? "ready" : "completed", at: toIso(timestamp) },
+                { label: input.escalationRequired ? "Founder review required" : "Founder review not required", status: input.escalationRequired ? "held" : "completed", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, 4, 0);
+        return projectedPlaybook;
     });
-    updateDailyCost(db, batch, 4, 0);
-    await batch.commit();
-    return toPlain(playbook) as SignalDeskReplyPlaybookSummary;
 }
 
 export async function qualifySignalDeskRevenueAccountServer(
@@ -8942,10 +9629,11 @@ export async function qualifySignalDeskRevenueAccountServer(
         .where("targetId", "==", input.targetId)
         .where("outcomeType", "==", "two_surface_activation");
     const qualification = await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
-        const [currentTargetSnap, accountSnap, opportunitySnap] = await Promise.all([
+        const [currentTargetSnap, accountSnap, opportunitySnap, summarySnap] = await Promise.all([
             transaction.get(targetRef),
             transaction.get(accountRef),
             transaction.get(opportunityRef),
+            transaction.get(summaryRef),
         ]);
         if (!currentTargetSnap.exists) throw new Error("Target not found");
         const targetAuthority = parseSignalDeskOutcomeTargetAuthority(
@@ -8972,8 +9660,30 @@ export async function qualifySignalDeskRevenueAccountServer(
         const timestamp = now();
         const existingAccountRaw = accountSnap.exists ? accountSnap.data() as AnyRecord : null;
         const existingOpportunityRaw = opportunitySnap.exists ? opportunitySnap.data() as AnyRecord : null;
-        const existingAccount = existingAccountRaw ? toPlain(existingAccountRaw) as SignalDeskRevenueAccountSummary : null;
-        const existingOpportunity = existingOpportunityRaw ? toPlain(existingOpportunityRaw) as SignalDeskCommercialOpportunitySummary : null;
+        const existingAccount = existingAccountRaw
+            ? requireProjectedWorkspaceDocument<SignalDeskRevenueAccountSummary>(
+                SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS,
+                existingAccountRaw,
+                accountRef.id,
+                "REVENUE_ACCOUNT_SHAPE_INVALID",
+            )
+            : null;
+        const existingOpportunity = existingOpportunityRaw
+            ? requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+                existingOpportunityRaw,
+                opportunityRef.id,
+                "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+            )
+            : null;
+        if (summarySnap.exists) {
+            requireProjectedWorkspaceDocument<SignalDeskRevenueControlSummary>(
+                SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES,
+                summarySnap.data(),
+                summaryRef.id,
+                "REVENUE_CONTROL_SUMMARY_SHAPE_INVALID",
+            );
+        }
         const accountHasIndependentRetention = revenueAccountHasIndependentRetentionBasis(existingAccountRaw);
         if (existingAccountRaw && !accountHasIndependentRetention) {
             assertVerifiedFreshSourceObservation(
@@ -9029,8 +9739,12 @@ export async function qualifySignalDeskRevenueAccountServer(
             : activeSourceDataLifecycleForTargetAuthority(targetAuthority);
         const account = {
             ...accountSourceLifecycle,
-            activationState: existingAccount?.activationState || (hasRecordedOutcome ? "in-progress" : "not-started"),
-            automationState: existingAccount?.automationState || "manual",
+            activationState: activated
+                ? "activated"
+                : existingAccount?.activationState || (hasRecordedOutcome ? "in-progress" : "not-started"),
+            automationState: complianceState === "blocked" || complianceState === "suppressed"
+                ? "paused"
+                : existingAccount?.automationState || "manual",
             category: currentTarget.category || null,
             city: currentTarget.city || null,
             complianceState,
@@ -9052,12 +9766,17 @@ export async function qualifySignalDeskRevenueAccountServer(
             updatedAt: timestamp,
             updatedBy: access.userId,
         };
-
-        transaction.set(accountRef, sanitizeForFirestore(account), { merge: true });
+        const projectedAccount = requireProjectedWorkspaceDocument<SignalDeskRevenueAccountSummary>(
+            SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS,
+            account,
+            accountRef.id,
+            "REVENUE_ACCOUNT_SHAPE_INVALID",
+        );
         let opportunity: SignalDeskCommercialOpportunitySummary | null = existingOpportunity;
         const materializeOpportunity = eligible && (!existingOpportunity || resetOpportunityTombstone);
+        const demoteOpportunity = Boolean(existingOpportunity?.status === "open" && !eligible && !activated);
         if (materializeOpportunity) {
-            opportunity = {
+            const opportunityData = {
                 commercialOfferId: null,
                 currency: null,
                 expectedCloseAt: null,
@@ -9076,6 +9795,71 @@ export async function qualifySignalDeskRevenueAccountServer(
                 valueMinor: 0,
                 winLossReason: activated ? "Existing two-surface activation outcome." : null,
             };
+            opportunity = requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+                {
+                    ...opportunityData,
+                    pId: SIGNALDESK_PRODUCT_CODE,
+                    updatedAt: timestamp,
+                },
+                opportunityRef.id,
+                "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+            );
+        } else if (demoteOpportunity && existingOpportunity) {
+            opportunity = requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+                {
+                    ...existingOpportunity,
+                    nextAction: "Hold commercial work until source, contactability, and suppression evidence is eligible.",
+                    pId: SIGNALDESK_PRODUCT_CODE,
+                    probabilityPercent: 0,
+                    stage: "nurture",
+                    status: "nurture",
+                    updatedAt: timestamp,
+                },
+                opportunityRef.id,
+                "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+            );
+        }
+        const accountLineageCurrent = accountHasIndependentRetention || Boolean(
+            existingAccountRaw?.sourceDataLifecycleState === "active"
+            && normalizeText(existingAccountRaw?.sourcePolicyId) === targetAuthority.sourcePolicyId
+            && normalizeText(existingAccountRaw?.sourceRunId) === targetAuthority.sourceRunId,
+        );
+        const opportunityLineageCurrent = !existingOpportunityRaw
+            || terminalOpportunity
+            || accountHasIndependentRetention
+            || Boolean(
+                existingOpportunityRaw.sourceDataLifecycleState === "active"
+                && normalizeText(existingOpportunityRaw.sourcePolicyId) === targetAuthority.sourcePolicyId
+                && normalizeText(existingOpportunityRaw.sourceRunId) === targetAuthority.sourceRunId,
+            );
+        const accountChanged = !existingAccount
+            || !accountLineageCurrent
+            || !sameProjectedWorkspaceRecord(existingAccount, projectedAccount);
+        const opportunityChanged = Boolean(
+            (opportunity && !existingOpportunity)
+            || (!opportunity && existingOpportunity)
+            || (opportunity && existingOpportunity && (
+                !opportunityLineageCurrent
+                || !sameProjectedWorkspaceRecord(existingOpportunity, opportunity)
+            )),
+        );
+        if (!accountChanged && !opportunityChanged) {
+            return {
+                account: existingAccount,
+                hasRecordedOutcome,
+                hasTwoSurfaceActivation,
+                opportunity: existingOpportunity,
+                qualified: eligible,
+            };
+        }
+        let entityWriteCount = 0;
+        if (accountChanged) {
+            transaction.set(accountRef, sanitizeForFirestore(account), { merge: true });
+            entityWriteCount += 1;
+        }
+        if (opportunityChanged && opportunity) {
             transaction.set(opportunityRef, sanitizeForFirestore({
                 ...opportunity,
                 ...activeSourceDataLifecycleForTargetAuthority(targetAuthority),
@@ -9083,28 +9867,32 @@ export async function qualifySignalDeskRevenueAccountServer(
                 createdAt: existingOpportunityRaw?.createdAt || timestamp,
                 updatedAt: timestamp,
                 updatedBy: access.userId,
-            }));
-        } else if (existingOpportunity && !terminalOpportunity && existingOpportunityRaw?.sourceDataLifecycleState !== "completed") {
-            transaction.set(opportunityRef, sanitizeForFirestore({
-                ...activeSourceDataLifecycleForTargetAuthority(targetAuthority),
-                updatedAt: timestamp,
-                updatedBy: access.userId,
             }), { merge: true });
+            entityWriteCount += 1;
         }
-        transaction.set(summaryRef, sanitizeForFirestore({
-            activatedAccountCount: increment(0),
-            founderAttentionMinutes: increment(0),
-            lostOpportunityCount: increment(0),
-            openOpportunityCount: increment(materializeOpportunity && !activated ? 1 : 0),
-            pId: SIGNALDESK_PRODUCT_CODE,
-            pipelineValueMinor: increment(0),
-            revenueAccountCount: increment(existingAccount ? 0 : 1),
-            revenueControlSummaryId: summaryRef.id,
-            stalledActivationCount: increment(0),
-            updatedAt: timestamp,
-            weightedPipelineValueMinor: increment(0),
-            wonOpportunityCount: increment(materializeOpportunity && activated ? 1 : 0),
-        }), { merge: true });
+        const demotedOpen = demoteOpportunity && existingOpportunity?.status === "open";
+        const summaryChanged = !existingAccount || materializeOpportunity || demotedOpen;
+        if (summaryChanged) {
+            const oldPipelineValue = demotedOpen ? numberOrZero(existingOpportunity?.valueMinor) : 0;
+            const oldWeightedValue = demotedOpen
+                ? Math.round(numberOrZero(existingOpportunity?.valueMinor) * numberOrZero(existingOpportunity?.probabilityPercent) / 100)
+                : 0;
+            transaction.set(summaryRef, sanitizeForFirestore({
+                activatedAccountCount: increment(0),
+                founderAttentionMinutes: increment(0),
+                lostOpportunityCount: increment(0),
+                openOpportunityCount: increment((materializeOpportunity && !activated ? 1 : 0) - (demotedOpen ? 1 : 0)),
+                pId: SIGNALDESK_PRODUCT_CODE,
+                pipelineValueMinor: increment(-oldPipelineValue),
+                revenueAccountCount: increment(existingAccount ? 0 : 1),
+                revenueControlSummaryId: summaryRef.id,
+                stalledActivationCount: increment(0),
+                updatedAt: timestamp,
+                weightedPipelineValueMinor: increment(-oldWeightedValue),
+                wonOpportunityCount: increment(materializeOpportunity && activated ? 1 : 0),
+            }), { merge: true });
+            entityWriteCount += 1;
+        }
         appendAudit(db, transaction, access, "revenue_account_qualify", "revenueAccount", accountRef.id, activated ? "activated" : eligible ? "qualified" : complianceState);
         writeRunTimeline(db, transaction, {
             entityId: accountRef.id,
@@ -9117,12 +9905,12 @@ export async function qualifySignalDeskRevenueAccountServer(
                 { label: activated ? "Existing two-surface activation preserved" : eligible ? "Commercial qualification passed" : "Commercial qualification held", status: activated || eligible ? "completed" : "held", at: toIso(timestamp) },
             ],
         });
-        updateDailyCost(db, transaction, materializeOpportunity ? 6 : 5, 0);
+        updateDailyCost(db, transaction, entityWriteCount + 3, 0);
         return {
-            account: toPlain(account) as SignalDeskRevenueAccountSummary,
+            account: projectedAccount,
             hasRecordedOutcome,
             hasTwoSurfaceActivation,
-            opportunity: opportunity ? toPlain(opportunity) : null,
+            opportunity,
             qualified: eligible,
         };
     }).catch(async (error: unknown) => {
@@ -9172,12 +9960,23 @@ export async function upsertSignalDeskCommercialOpportunityServer(
     return db.runTransaction(async (transaction: any) => {
         const opportunitySnap = await transaction.get(opportunityRef);
         if (!opportunitySnap.exists) throw new Error("Commercial opportunity not found");
-        const existing = toPlain(opportunitySnap.data()) as SignalDeskCommercialOpportunitySummary;
         const existingRaw = opportunitySnap.data() as AnyRecord;
+        const existing = requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+            SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+            existingRaw,
+            opportunityRef.id,
+            "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+        );
         const accountRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS).doc(existing.revenueAccountId);
         const accountSnap = await transaction.get(accountRef);
         if (!accountSnap.exists) throw new Error("Revenue account not found");
         const accountRaw = accountSnap.data() as AnyRecord;
+        const account = requireProjectedWorkspaceDocument<SignalDeskRevenueAccountSummary>(
+            SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS,
+            accountRaw,
+            accountRef.id,
+            "REVENUE_ACCOUNT_SHAPE_INVALID",
+        );
         const targetId = normalizeText(existing.targetId);
         if (!targetId || normalizeText(accountRaw.primaryTargetId) !== targetId) {
             throw new Error("COMMERCIAL_OPPORTUNITY_ACCOUNT_LINEAGE_MISMATCH");
@@ -9186,6 +9985,9 @@ export async function upsertSignalDeskCommercialOpportunityServer(
         const targetSnap = await transaction.get(targetRef);
         if (!targetSnap.exists) throw new Error("Target not found");
         const terminalIndependentRecord = existing.status === "won" || existing.status === "lost";
+        if (input.status === "won" && existing.status !== "won") {
+            throw new Error("COMMERCIAL_OPPORTUNITY_WIN_REQUIRES_ACTIVATION");
+        }
         if (terminalIndependentRecord && (input.status !== existing.status || input.stage !== existing.stage)) {
             throw new Error("COMMERCIAL_OPPORTUNITY_TERMINAL_RECORD_PRESERVED");
         }
@@ -9199,6 +10001,26 @@ export async function upsertSignalDeskCommercialOpportunityServer(
                 || normalizeText(accountRaw.sourcePolicyId) !== targetAuthority.sourcePolicyId
                 || normalizeText(accountRaw.sourceRunId) !== targetAuthority.sourceRunId
             ) throw new Error("COMMERCIAL_OPPORTUNITY_SOURCE_LINEAGE_INACTIVE");
+            const sourcePolicySnap = await transaction.get(
+                db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(targetAuthority.sourcePolicyId),
+            );
+            const sourcePolicy = readSourcePolicySnapshot(sourcePolicySnap);
+            const policyError = sourcePolicyUsabilityError(sourcePolicy, {
+                entityId: targetId,
+                use: "evidence",
+            });
+            if (policyError) throw new Error(policyError);
+            if (
+                input.status === "open"
+                && (
+                    account.complianceState !== "eligible"
+                    || account.automationState === "paused"
+                    || targetSnap.data()?.suppressionStatus !== "clear"
+                    || targetSnap.data()?.contactability === "blocked"
+                )
+            ) {
+                throw new Error("COMMERCIAL_OPPORTUNITY_CONTACT_AUTHORITY_BLOCKED");
+            }
         }
         const commercialOfferId = input.commercialOfferId || existing.commercialOfferId || null;
         const offerRef = commercialOfferId
@@ -9208,14 +10030,28 @@ export async function upsertSignalDeskCommercialOpportunityServer(
             offerRef ? transaction.get(offerRef) : Promise.resolve(null),
             transaction.get(summaryRef),
         ]);
-        if (input.commercialOfferId && (!offerSnap?.exists || offerSnap.data()?.status !== "active")) {
+        if (!terminalIndependentRecord && commercialOfferId && (!offerSnap?.exists || offerSnap.data()?.status !== "active")) {
             throw new Error("Commercial offer is not active");
         }
         const valueMinor = Math.max(0, Math.round(input.valueMinor));
         if (valueMinor > 0 && !offerSnap?.exists) throw new Error("Commercial offer is required for valued opportunity");
-        const offer = offerSnap?.exists ? toPlain(offerSnap.data()) as SignalDeskCommercialOfferSummary : null;
+        const offer = offerSnap?.exists
+            ? requireProjectedWorkspaceDocument<SignalDeskCommercialOfferSummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS,
+                offerSnap.data(),
+                offerSnap.id,
+                "COMMERCIAL_OFFER_SHAPE_INVALID",
+            )
+            : null;
         const currency = offer?.currency || existing.currency || null;
-        const summary = summarySnap.exists ? toPlain(summarySnap.data()) as SignalDeskRevenueControlSummary : null;
+        const summary = summarySnap.exists
+            ? requireProjectedWorkspaceDocument<SignalDeskRevenueControlSummary>(
+                SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES,
+                summarySnap.data(),
+                summaryRef.id,
+                "REVENUE_CONTROL_SUMMARY_SHAPE_INVALID",
+            )
+            : null;
         if (existing.currency && currency && existing.currency !== currency) {
             throw new Error("Commercial opportunity currency does not match revenue pipeline");
         }
@@ -9231,7 +10067,9 @@ export async function upsertSignalDeskCommercialOpportunityServer(
         const newPipelineValue = newOpen ? valueMinor : 0;
         const oldWeightedValue = oldOpen ? Math.round(numberOrZero(existing.valueMinor) * numberOrZero(existing.probabilityPercent) / 100) : 0;
         const newWeightedValue = newOpen ? Math.round(valueMinor * probabilityPercent / 100) : 0;
-        const opportunity = {
+        const opportunity = requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+            SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+            {
             ...existing,
             commercialOfferId,
             currency,
@@ -9239,6 +10077,7 @@ export async function upsertSignalDeskCommercialOpportunityServer(
             founderAttentionMinutes,
             nextAction: input.nextAction,
             nextActionDueAt: input.nextActionDueAt === undefined ? existing.nextActionDueAt || null : new Date(input.nextActionDueAt),
+            pId: SIGNALDESK_PRODUCT_CODE,
             probabilityPercent,
             stage: input.stage,
             stalledReason: input.stalledReason === undefined ? existing.stalledReason || null : normalizeText(input.stalledReason) || null,
@@ -9247,7 +10086,10 @@ export async function upsertSignalDeskCommercialOpportunityServer(
             updatedBy: access.userId,
             valueMinor,
             winLossReason: normalizeText(input.winLossReason) || null,
-        };
+            },
+            opportunityRef.id,
+            "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+        );
         const accountLifecycle: SignalDeskRevenueAccountSummary["lifecycleStage"] = input.status === "won"
             ? "customer"
             : input.status === "lost"
@@ -9255,6 +10097,24 @@ export async function upsertSignalDeskCommercialOpportunityServer(
                 : input.status === "nurture"
                     ? "nurture"
                     : "opportunity";
+        const projectedAccount = requireProjectedWorkspaceDocument<SignalDeskRevenueAccountSummary>(
+            SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS,
+            {
+                ...account,
+                lifecycleStage: accountLifecycle,
+                nextAction: input.nextAction,
+                pId: SIGNALDESK_PRODUCT_CODE,
+                updatedAt: timestamp,
+            },
+            accountRef.id,
+            "REVENUE_ACCOUNT_SHAPE_INVALID",
+        );
+        const exactReplay = sameProjectedWorkspaceRecord(existing, opportunity)
+            && sameProjectedWorkspaceRecord(account, projectedAccount);
+        if (exactReplay) return existing;
+        if (terminalIndependentRecord) {
+            throw new Error("COMMERCIAL_OPPORTUNITY_TERMINAL_RECORD_PRESERVED");
+        }
         transaction.set(opportunityRef, sanitizeForFirestore(opportunity), { merge: true });
         transaction.set(accountRef, sanitizeForFirestore({
             lifecycleStage: accountLifecycle,
@@ -9297,6 +10157,12 @@ export async function upsertSignalDeskCommercialOfferServer(
 ) {
     requireRevenueOperatingLayer();
     if (!input.founderApprovalConditions.length) throw new Error("Commercial offer approval conditions are required");
+    if (
+        new Set(input.contents.map(normalizeText)).size !== input.contents.length
+        || new Set(input.founderApprovalConditions.map(normalizeText)).size !== input.founderApprovalConditions.length
+    ) {
+        throw new Error("COMMERCIAL_OFFER_DUPLICATE_TERM");
+    }
     const db = requireDb();
     const expectedOfferId = commercialOfferIdFor(input.name, input.version);
     if (input.commercialOfferId && input.commercialOfferId !== expectedOfferId) {
@@ -9325,7 +10191,12 @@ export async function upsertSignalDeskCommercialOfferServer(
             await readSignalDeskOfferAuthority(db, transaction, offerCtaRef, offerCtaSnap, true);
         }
         if (existingOfferSnap.exists) {
-            const existing = toPlain(existingOfferSnap.data()) as SignalDeskCommercialOfferSummary;
+            const existing = requireProjectedWorkspaceDocument<SignalDeskCommercialOfferSummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS,
+                existingOfferSnap.data(),
+                offerRef.id,
+                "COMMERCIAL_OFFER_SHAPE_INVALID",
+            );
             const existingTerms = {
                 allowedDiscountBps: existing.allowedDiscountBps,
                 billingCadence: existing.billingCadence,
@@ -9343,7 +10214,7 @@ export async function upsertSignalDeskCommercialOfferServer(
             }
         }
         const timestamp = now();
-        const offer = {
+        const offerData = {
             ...normalizedTerms,
             commercialOfferId: offerRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
@@ -9351,7 +10222,22 @@ export async function upsertSignalDeskCommercialOfferServer(
             updatedAt: timestamp,
             updatedBy: access.userId,
         };
-        transaction.set(offerRef, sanitizeForFirestore(offer), { merge: true });
+        const offer = requireProjectedWorkspaceDocument<SignalDeskCommercialOfferSummary>(
+            SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS,
+            offerData,
+            offerRef.id,
+            "COMMERCIAL_OFFER_SHAPE_INVALID",
+        );
+        if (existingOfferSnap.exists) {
+            const existing = requireProjectedWorkspaceDocument<SignalDeskCommercialOfferSummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS,
+                existingOfferSnap.data(),
+                offerRef.id,
+                "COMMERCIAL_OFFER_SHAPE_INVALID",
+            );
+            if (sameProjectedWorkspaceRecord(existing, offer)) return existing;
+        }
+        transaction.set(offerRef, sanitizeForFirestore(offerData), { merge: true });
         appendAudit(db, transaction, access, "commercial_offer_upsert", "commercialOffer", offerRef.id, `${offer.name}:v${offer.version}`);
         writeRunTimeline(db, transaction, {
             entityId: offerRef.id,
@@ -9365,7 +10251,7 @@ export async function upsertSignalDeskCommercialOfferServer(
             ],
         });
         updateDailyCost(db, transaction, 4, 0);
-        return toPlain(offer) as SignalDeskCommercialOfferSummary;
+        return offer;
     });
 }
 
@@ -9376,6 +10262,13 @@ export async function upsertSignalDeskOperatingEnvelopeServer(
     requireRevenueOperatingLayer();
     if (input.status === "approved" && (access.role !== "founder-admin" || !access.permissions.includes("policy.approve"))) {
         throw new Error("Founder approval is required for operating envelopes");
+    }
+    if (
+        new Set(input.sourcePolicyIds.map(normalizeText)).size !== input.sourcePolicyIds.length
+        || new Set(input.stopConditions.map(normalizeText)).size !== input.stopConditions.length
+        || new Set(input.templateIds.map(normalizeText)).size !== input.templateIds.length
+    ) {
+        throw new Error("OPERATING_ENVELOPE_DUPLICATE_REFERENCE");
     }
     const db = requireDb();
     const startsAt = new Date(input.startsAt);
@@ -9497,6 +10390,12 @@ export async function upsertSignalDeskOperatingEnvelopeServer(
         if (!currentOfferSnap.exists || currentOfferSnap.data()?.status !== "active") {
             throw new Error("Commercial offer is not active");
         }
+        requireProjectedWorkspaceDocument<SignalDeskCommercialOfferSummary>(
+            SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS,
+            currentOfferSnap.data(),
+            offerRef.id,
+            "COMMERCIAL_OFFER_SHAPE_INVALID",
+        );
         const currentMarketPod = currentMarketPodSnap.exists
             && currentMarketPodSnap.data()?.dependentHoldReconciliationPending !== true
             ? projectSignalDeskMarketPod({
@@ -9537,11 +10436,24 @@ export async function upsertSignalDeskOperatingEnvelopeServer(
             const currentSender = projectSenderDomainDocument(currentSenderSnap);
             if (!isSenderDomainReady(currentSender)) throw new Error("Sender domain is not ready");
         }
-        if (currentTemplateSnaps.some((currentTemplateSnap: any) => !currentTemplateSnap.exists || currentTemplateSnap.data()?.status !== "active")) {
-            throw new Error("Active template is required");
-        }
+        currentTemplateSnaps.forEach((currentTemplateSnap: any, index: number) => {
+            if (!currentTemplateSnap.exists || currentTemplateSnap.data()?.status !== "active") {
+                throw new Error("Active template is required");
+            }
+            requireProjectedWorkspaceDocument<SignalDeskTemplateSummary>(
+                SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES,
+                currentTemplateSnap.data(),
+                templateRefs[index].id,
+                "TEMPLATE_SHAPE_INVALID",
+            );
+        });
         const existingEnvelope = existingEnvelopeSnap.exists
-            ? toPlain(existingEnvelopeSnap.data()) as SignalDeskOperatingEnvelopeSummary
+            ? requireProjectedWorkspaceDocument<SignalDeskOperatingEnvelopeSummary>(
+                SIGNALDESK_COLLECTIONS.OPERATING_ENVELOPES,
+                existingEnvelopeSnap.data(),
+                envelopeRef.id,
+                "OPERATING_ENVELOPE_SHAPE_INVALID",
+            )
             : null;
         if (existingEnvelopeSnap.exists) {
             const existingTerms = {
@@ -9570,9 +10482,22 @@ export async function upsertSignalDeskOperatingEnvelopeServer(
         }
         const storedEnvelope = {
             ...envelope,
-            approvedAt: status === "approved" ? timestamp : existingEnvelope?.approvedAt || null,
-            approvedBy: status === "approved" ? access.userId : existingEnvelope?.approvedBy || null,
+            approvedAt: status === "approved"
+                ? existingEnvelope?.approvedAt || timestamp
+                : existingEnvelope?.approvedAt || null,
+            approvedBy: status === "approved"
+                ? existingEnvelope?.approvedBy || access.userId
+                : existingEnvelope?.approvedBy || null,
         };
+        const projectedEnvelope = requireProjectedWorkspaceDocument<SignalDeskOperatingEnvelopeSummary>(
+            SIGNALDESK_COLLECTIONS.OPERATING_ENVELOPES,
+            storedEnvelope,
+            envelopeRef.id,
+            "OPERATING_ENVELOPE_SHAPE_INVALID",
+        );
+        if (existingEnvelope && sameProjectedWorkspaceRecord(existingEnvelope, projectedEnvelope)) {
+            return existingEnvelope;
+        }
         transaction.set(envelopeRef, sanitizeForFirestore(storedEnvelope), { merge: true });
         appendAudit(db, transaction, access, "operating_envelope_upsert", "operatingEnvelope", envelopeRef.id, `${requestedApprovalMode}:${executionState}`);
         writeRunTimeline(db, transaction, {
@@ -9587,7 +10512,7 @@ export async function upsertSignalDeskOperatingEnvelopeServer(
             ],
         });
         updateDailyCost(db, transaction, 4, 0);
-        return toPlain(storedEnvelope) as SignalDeskOperatingEnvelopeSummary;
+        return projectedEnvelope;
     });
 }
 
@@ -9610,17 +10535,46 @@ export async function refreshSignalDeskActivationWatchServer(
         .where("targetId", "==", input.targetId)
         .where("outcomeType", "==", "two_surface_activation");
     return db.runTransaction(async (transaction: any) => {
-        const [accountSnap, targetSnap, existingSnap, opportunitySnap] = await Promise.all([
+        const [accountSnap, targetSnap, existingSnap, opportunitySnap, summarySnap] = await Promise.all([
             transaction.get(accountRef),
             transaction.get(targetRef),
             transaction.get(watchRef),
             transaction.get(opportunityRef),
+            transaction.get(summaryRef),
         ]);
         if (!accountSnap.exists) throw new Error("Revenue account not found");
         if (!targetSnap.exists) throw new Error("Target not found");
-        const account = toPlain(accountSnap.data()) as SignalDeskRevenueAccountSummary;
+        const account = requireProjectedWorkspaceDocument<SignalDeskRevenueAccountSummary>(
+            SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS,
+            accountSnap.data(),
+            accountRef.id,
+            "REVENUE_ACCOUNT_SHAPE_INVALID",
+        );
         const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
-        const existing = existingSnap.exists ? toPlain(existingSnap.data()) as SignalDeskActivationWatchSummary : null;
+        const existing = existingSnap.exists
+            ? requireProjectedWorkspaceDocument<SignalDeskActivationWatchSummary>(
+                SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES,
+                existingSnap.data(),
+                watchRef.id,
+                "ACTIVATION_WATCH_SHAPE_INVALID",
+            )
+            : null;
+        const existingOpportunity = opportunitySnap.exists
+            ? requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+                opportunitySnap.data(),
+                opportunityRef.id,
+                "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+            )
+            : null;
+        if (summarySnap.exists) {
+            requireProjectedWorkspaceDocument<SignalDeskRevenueControlSummary>(
+                SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES,
+                summarySnap.data(),
+                summaryRef.id,
+                "REVENUE_CONTROL_SUMMARY_SHAPE_INVALID",
+            );
+        }
         const [outcomes, activationOutcomes] = await Promise.all([
             readStrictOutcomeSummaryQueryInTransaction(
                 db,
@@ -9637,9 +10591,12 @@ export async function refreshSignalDeskActivationWatchServer(
         ]);
         const outcomeTypes = Array.from(new Set(outcomes
             .filter((outcome) => numberOrZero(outcome.count) > 0 && (outcome.outcomeType !== "two_surface_activation" || isVerifiedTwoSurfaceOutcome(outcome)))
-            .map((outcome) => outcome.outcomeType)));
+            .map((outcome) => outcome.outcomeType))).sort();
         const activationRecorded = activationOutcomes.some(isVerifiedTwoSurfaceOutcome);
-        if (activationRecorded && !outcomeTypes.includes("two_surface_activation")) outcomeTypes.push("two_surface_activation");
+        if (activationRecorded && !outcomeTypes.includes("two_surface_activation")) {
+            outcomeTypes.push("two_surface_activation");
+            outcomeTypes.sort();
+        }
         const outcomeTimes = outcomes.map((outcome) => toTimestampMillis(outcome.updatedAt) || new Date(`${outcome.day}T00:00:00.000Z`).getTime()).filter(Number.isFinite);
         const ownerQualifiedTimes = [
             toTimestampMillis(target.ownerQualifiedAt),
@@ -9663,7 +10620,7 @@ export async function refreshSignalDeskActivationWatchServer(
                     : status === "not-started"
                         ? "not-started"
                         : "in-progress";
-        const opportunity = opportunitySnap.exists ? toPlain(opportunitySnap.data()) as SignalDeskCommercialOpportunitySummary : null;
+        const opportunity = existingOpportunity;
         const closeOpportunity = status === "activated" && opportunity && opportunity.status !== "won";
         const timestamp = now();
         const nextAction = status === "activated"
@@ -9673,7 +10630,7 @@ export async function refreshSignalDeskActivationWatchServer(
                 : status === "not-started"
                     ? "Create or attach an approved MenuList route."
                     : "Wait for the next MenuList-owned activation outcome.";
-        const watch = {
+        const watchData = {
             activationWatchId: watchRef.id,
             deadlineAt: deadlineMillis ? new Date(deadlineMillis) : null,
             lastOutcomeAt: lastOutcomeMillis ? new Date(lastOutcomeMillis) : null,
@@ -9688,40 +10645,92 @@ export async function refreshSignalDeskActivationWatchServer(
             updatedAt: timestamp,
             updatedBy: access.userId,
         };
-        const oldOpen = closeOpportunity && opportunity?.status === "open" ? 1 : 0;
-        const oldPipelineValue = oldOpen ? numberOrZero(opportunity?.valueMinor) : 0;
-        const oldWeightedValue = oldOpen ? Math.round(numberOrZero(opportunity?.valueMinor) * numberOrZero(opportunity?.probabilityPercent) / 100) : 0;
-        transaction.set(watchRef, sanitizeForFirestore(watch), { merge: true });
-        transaction.set(accountRef, sanitizeForFirestore({
+        const watch = requireProjectedWorkspaceDocument<SignalDeskActivationWatchSummary>(
+            SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES,
+            watchData,
+            watchRef.id,
+            "ACTIVATION_WATCH_SHAPE_INVALID",
+        );
+        const accountData = {
+            ...account,
             activationState,
             lifecycleStage: status === "activated" ? "customer" : account.lifecycleStage,
             nextAction,
+            pId: SIGNALDESK_PRODUCT_CODE,
             updatedAt: timestamp,
             updatedBy: access.userId,
-        }), { merge: true });
-        if (closeOpportunity && opportunity) {
-            transaction.set(opportunityRef, sanitizeForFirestore({
+        };
+        const projectedAccount = requireProjectedWorkspaceDocument<SignalDeskRevenueAccountSummary>(
+            SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS,
+            accountData,
+            accountRef.id,
+            "REVENUE_ACCOUNT_SHAPE_INVALID",
+        );
+        const opportunityData = closeOpportunity && opportunity
+            ? {
+                ...opportunity,
                 nextAction,
+                pId: SIGNALDESK_PRODUCT_CODE,
                 probabilityPercent: 100,
                 stage: "won",
                 status: "won",
                 updatedAt: timestamp,
                 updatedBy: access.userId,
-                winLossReason: "Two-surface activation outcome recorded.",
-            }), { merge: true });
+                winLossReason: opportunity.commercialOfferId
+                    ? "Two-surface activation outcome recorded."
+                    : "Existing two-surface activation outcome.",
+            }
+            : null;
+        const projectedOpportunity = opportunityData
+            ? requireProjectedWorkspaceDocument<SignalDeskCommercialOpportunitySummary>(
+                SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES,
+                opportunityData,
+                opportunityRef.id,
+                "COMMERCIAL_OPPORTUNITY_SHAPE_INVALID",
+            )
+            : opportunity;
+        const watchChanged = !existing || !sameProjectedWorkspaceRecord(existing, watch);
+        const accountChanged = !sameProjectedWorkspaceRecord(account, projectedAccount);
+        const opportunityChanged = Boolean(
+            projectedOpportunity
+            && opportunity
+            && !sameProjectedWorkspaceRecord(opportunity, projectedOpportunity),
+        );
+        if (!watchChanged && !accountChanged && !opportunityChanged) return existing;
+        const oldOpen = closeOpportunity && opportunity?.status === "open" ? 1 : 0;
+        const oldPipelineValue = oldOpen ? numberOrZero(opportunity?.valueMinor) : 0;
+        const oldWeightedValue = oldOpen ? Math.round(numberOrZero(opportunity?.valueMinor) * numberOrZero(opportunity?.probabilityPercent) / 100) : 0;
+        let entityWriteCount = 0;
+        if (watchChanged) {
+            transaction.set(watchRef, sanitizeForFirestore(watchData), { merge: true });
+            entityWriteCount += 1;
         }
-        transaction.set(summaryRef, sanitizeForFirestore({
-            activatedAccountCount: increment((status === "activated" ? 1 : 0) - (existing?.status === "activated" ? 1 : 0)),
-            lostOpportunityCount: increment(closeOpportunity && opportunity?.status === "lost" ? -1 : 0),
-            openOpportunityCount: increment(-oldOpen),
-            pId: SIGNALDESK_PRODUCT_CODE,
-            pipelineValueMinor: increment(-oldPipelineValue),
-            revenueControlSummaryId: summaryRef.id,
-            stalledActivationCount: increment((status === "stalled" ? 1 : 0) - (existing?.status === "stalled" ? 1 : 0)),
-            updatedAt: timestamp,
-            weightedPipelineValueMinor: increment(-oldWeightedValue),
-            wonOpportunityCount: increment(closeOpportunity ? 1 : 0),
-        }), { merge: true });
+        if (accountChanged) {
+            transaction.set(accountRef, sanitizeForFirestore(accountData), { merge: true });
+            entityWriteCount += 1;
+        }
+        if (opportunityChanged && opportunityData) {
+            transaction.set(opportunityRef, sanitizeForFirestore(opportunityData), { merge: true });
+            entityWriteCount += 1;
+        }
+        const activatedDelta = (status === "activated" ? 1 : 0) - (existing?.status === "activated" ? 1 : 0);
+        const stalledDelta = (status === "stalled" ? 1 : 0) - (existing?.status === "stalled" ? 1 : 0);
+        const summaryChanged = activatedDelta !== 0 || stalledDelta !== 0 || Boolean(closeOpportunity);
+        if (summaryChanged) {
+            transaction.set(summaryRef, sanitizeForFirestore({
+                activatedAccountCount: increment(activatedDelta),
+                lostOpportunityCount: increment(closeOpportunity && opportunity?.status === "lost" ? -1 : 0),
+                openOpportunityCount: increment(-oldOpen),
+                pId: SIGNALDESK_PRODUCT_CODE,
+                pipelineValueMinor: increment(-oldPipelineValue),
+                revenueControlSummaryId: summaryRef.id,
+                stalledActivationCount: increment(stalledDelta),
+                updatedAt: timestamp,
+                weightedPipelineValueMinor: increment(-oldWeightedValue),
+                wonOpportunityCount: increment(closeOpportunity ? 1 : 0),
+            }), { merge: true });
+            entityWriteCount += 1;
+        }
         appendAudit(db, transaction, access, "activation_watch_refresh", "activationWatch", watchRef.id, status);
         writeRunTimeline(db, transaction, {
             entityId: watchRef.id,
@@ -9734,8 +10743,8 @@ export async function refreshSignalDeskActivationWatchServer(
                 { label: `Activation state: ${status}`, status: status === "activated" ? "completed" : status === "stalled" ? "held" : "ready", at: toIso(timestamp) },
             ],
         });
-        updateDailyCost(db, transaction, closeOpportunity ? 7 : 6, 0);
-        return toPlain(watch) as SignalDeskActivationWatchSummary;
+        updateDailyCost(db, transaction, entityWriteCount + 3, 0);
+        return watch;
     });
 }
 
@@ -9989,25 +10998,35 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
         revenueControlSummaries,
         costSnap,
     ] = await Promise.all([
-        readList<SignalDeskApprovalItem>(db, SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE),
+        readWorkspaceList<SignalDeskApprovalItem>(db, SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE),
         readConversationSummaryList(db),
         readSourceRunList(db),
         readSenderDomains(db),
-        readContentAssets(db),
-        readContentDrafts(db),
-        readContentSources(db, true),
-        readProofPermissions(db, true),
-        readSelfServiceCtas(db, true),
-        db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_content-distribution").get(),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readContentAssets(db) : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readContentDrafts(db) : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readContentSources(db, true) : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readProofPermissions(db, true) : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL ? readSelfServiceCtas(db, true) : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL
+            ? db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_content-distribution").get()
+            : Promise.resolve(null),
         readMarketPods(db, true),
         readExperimentCards(db, true),
         readOfferCtas(db, true),
-        readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL
+            ? readWorkspaceList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES)
+            : Promise.resolve([]),
         readOutcomeSummaryList(db, LIST_LIMIT, "growth-mission"),
-        readList<SignalDeskDemandSignalSummary>(db, SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES),
-        readList<SignalDeskCommercialOpportunitySummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES),
-        readList<SignalDeskActivationWatchSummary>(db, SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES),
-        readList<SignalDeskRevenueControlSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES),
+        readWorkspaceList<SignalDeskDemandSignalSummary>(db, SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER
+            ? readWorkspaceList<SignalDeskCommercialOpportunitySummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES)
+            : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER
+            ? readWorkspaceList<SignalDeskActivationWatchSummary>(db, SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES)
+            : Promise.resolve([]),
+        FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER
+            ? readWorkspaceList<SignalDeskRevenueControlSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES)
+            : Promise.resolve([]),
         db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES).doc(day).get(),
     ]);
 
@@ -10156,7 +11175,7 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
     const selfServiceCtaById = new Map(selfServiceCtas.map((cta) => [cta.ctaId, cta]));
     const marketPodById = new Map(marketPods.map((pod) => [pod.marketPodId, pod]));
     const hasCurrentContentAuthority = (draft: SignalDeskContentDistributionDraftSummary) => {
-        if (contentPauseSnap.data()?.status === "active" || draft.approvalStatus !== "approved") return false;
+        if (contentPauseSnap?.data()?.status === "active" || draft.approvalStatus !== "approved") return false;
         const asset = contentAssetById.get(draft.contentAssetId);
         if (!asset || (asset.status !== "ready" && asset.status !== "distributed")) return false;
         if (asset.sourceId) {
@@ -10394,17 +11413,26 @@ export async function reviewSignalDeskGrowthMissionServer(access: SignalDeskAcce
 export async function createSignalDeskSourceQualitySnapshotServer(access: SignalDeskAccessContext, input: SourceQualitySnapshotInput = {}) {
     requireOperatingLayer();
     const db = requireDb();
-    const batch = db.batch();
     const timestamp = now();
     const [sourceRuns, targets, outcomes] = await Promise.all([
         readSourceRunList(db),
         readTargetSummaryList(db, 100),
         readOutcomeSummaryList(db, LIST_LIMIT, "source-quality"),
     ]);
-    const sourceRun = input.sourceRunId
+    let sourceRun = input.sourceRunId
         ? sourceRuns.find((run) => run.sourceRunId === input.sourceRunId)
         : sourceRuns.find((run) => !input.sourcePolicyId || run.sourcePolicyId === input.sourcePolicyId) || sourceRuns[0];
-    const policy = await readSourcePolicy(db, input.sourcePolicyId || sourceRun?.sourcePolicyId || null);
+    if (input.sourceRunId && !sourceRun) {
+        const sourceRunSnap = await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_RUN_SUMMARIES).doc(input.sourceRunId).get();
+        if (!sourceRunSnap.exists) throw new Error("Source run not found");
+        sourceRun = parseSignalDeskSourceRunDocument(sourceRunSnap.data(), sourceRunSnap.id);
+    }
+    if (input.sourcePolicyId && sourceRun?.sourcePolicyId && sourceRun.sourcePolicyId !== input.sourcePolicyId) {
+        throw new Error("SOURCE_QUALITY_POLICY_RUN_MISMATCH");
+    }
+    const resolvedSourcePolicyId = input.sourcePolicyId || sourceRun?.sourcePolicyId || null;
+    const policy = await readSourcePolicy(db, resolvedSourcePolicyId);
+    if (input.sourcePolicyId && !policy) throw new Error("Source policy not found");
     const policyState = getSourcePolicyState(policy);
     const relatedTargets = targets.filter((target) => (
         (sourceRun?.sourceRunId && target.sourceRunId === sourceRun.sourceRunId) ||
@@ -10452,7 +11480,7 @@ export async function createSignalDeskSourceQualitySnapshotServer(access: Signal
     const snapshot = {
         sourceQualitySnapshotId: snapshotRef.id,
         pId: SIGNALDESK_PRODUCT_CODE,
-        sourcePolicyId: policy?.sourcePolicyId || input.sourcePolicyId || null,
+        sourcePolicyId: policy?.sourcePolicyId || resolvedSourcePolicyId,
         sourceRunId: sourceRun?.sourceRunId || input.sourceRunId || null,
         sourceName: sourceRun?.sourceName || policy?.name || "Unselected source",
         targetCount,
@@ -10466,22 +11494,44 @@ export async function createSignalDeskSourceQualitySnapshotServer(access: Signal
         updatedAt: timestamp,
         updatedBy: access.userId,
     };
-    batch.set(snapshotRef, sanitizeForFirestore(snapshot), { merge: true });
-    appendAudit(db, batch, access, "source_quality_snapshot_create", "sourceQualitySnapshot", snapshotRef.id, recommendation);
-    writeRunTimeline(db, batch, {
-        entityId: snapshotRef.id,
-        entityType: "source-quality",
-        label: `Source quality: ${snapshot.sourceName}`,
-        status: recommendation === "continue" ? "ready" : recommendation === "stop" || recommendation === "needs-policy" ? "blocked" : "held",
-        steps: [
-            { label: `Usable rate ${Math.round(usableTargetRate * 100)}%`, status: usableTargetRate >= 0.5 ? "completed" : "held", at: toIso(timestamp) },
-            { label: `Duplicate rate ${Math.round(duplicateRate * 100)}%`, status: duplicateRate <= 0.15 ? "completed" : "held", at: toIso(timestamp) },
-            { label: `Recommendation: ${recommendation}`, status: recommendation === "continue" ? "ready" : "held", at: toIso(timestamp) },
-        ],
+    const projectedSnapshot = requireProjectedWorkspaceDocument<SignalDeskSourceQualitySnapshotSummary>(
+        SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS,
+        snapshot,
+        snapshotRef.id,
+        "SOURCE_QUALITY_SNAPSHOT_SHAPE_INVALID",
+    );
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const currentSnap = await transaction.get(snapshotRef);
+        if (currentSnap.exists) {
+            const current = requireProjectedWorkspaceDocument<SignalDeskSourceQualitySnapshotSummary>(
+                SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS,
+                currentSnap.data(),
+                currentSnap.id,
+                "SOURCE_QUALITY_SNAPSHOT_SHAPE_INVALID",
+            );
+            const currentComparable = { ...current, updatedAt: null };
+            const requestedComparable = { ...projectedSnapshot, updatedAt: null };
+            if (JSON.stringify(currentComparable) === JSON.stringify(requestedComparable)) return current;
+        }
+        transaction.set(snapshotRef, sanitizeForFirestore({
+            ...snapshot,
+            ...(currentSnap.exists ? { createdAt: currentSnap.data()?.createdAt || timestamp } : {}),
+        }), { merge: true });
+        appendAudit(db, transaction, access, "source_quality_snapshot_create", "sourceQualitySnapshot", snapshotRef.id, recommendation);
+        writeRunTimeline(db, transaction, {
+            entityId: snapshotRef.id,
+            entityType: "source-quality",
+            label: `Source quality: ${snapshot.sourceName}`,
+            status: recommendation === "continue" ? "ready" : recommendation === "stop" || recommendation === "needs-policy" ? "blocked" : "held",
+            steps: [
+                { label: `Usable rate ${Math.round(usableTargetRate * 100)}%`, status: usableTargetRate >= 0.5 ? "completed" : "held", at: toIso(timestamp) },
+                { label: `Duplicate rate ${Math.round(duplicateRate * 100)}%`, status: duplicateRate <= 0.15 ? "completed" : "held", at: toIso(timestamp) },
+                { label: `Recommendation: ${recommendation}`, status: recommendation === "continue" ? "ready" : "held", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, 6, 0);
+        return projectedSnapshot;
     });
-    updateDailyCost(db, batch, 6, 0);
-    await batch.commit();
-    return toPlain(snapshot) as SignalDeskSourceQualitySnapshotSummary;
 }
 
 export async function upsertSignalDeskChannelWindowStateServer(access: SignalDeskAccessContext, input: ChannelWindowStateInput) {
@@ -10555,7 +11605,13 @@ export async function refreshSignalDeskProviderSourceRetentionServer(
     const retentionRef = db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION).doc(input.providerSourceRetentionId);
     const retentionSnap = await retentionRef.get();
     if (!retentionSnap.exists) throw new Error("Provider source retention record not found");
-    const existing = toPlain(retentionSnap.data()) as SignalDeskProviderSourceRetentionSummary;
+    const projected = projectSignalDeskWorkspaceDocument(
+        SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION,
+        retentionSnap.data(),
+        retentionSnap.id,
+    );
+    if (!projected) throw new Error("PROVIDER_SOURCE_RETENTION_SHAPE_INVALID");
+    const existing = projected as SignalDeskProviderSourceRetentionSummary;
     await assertSourcePolicyUsable(db, access, await readSourcePolicy(db, existing.sourcePolicyId), {
         entityId: input.providerSourceRetentionId,
         use: "retention-refresh",
@@ -10565,12 +11621,15 @@ export async function refreshSignalDeskProviderSourceRetentionServer(
     const refreshed = input.status === "refreshed";
     const updates = {
         status: input.status,
-        lastRefreshedAt: refreshed ? timestamp : existing.lastRefreshedAt || null,
-        refreshDueAt: refreshed && existing.provider === "google-places" ? timestampAfterDays(365) : existing.refreshDueAt || null,
-        retentionExpiresAt: refreshed ? timestampAfterDays(365) : existing.retentionExpiresAt || null,
         notes: input.notes || null,
         updatedAt: timestamp,
         updatedBy: access.userId,
+        ...(refreshed ? {
+            lastRefreshedAt: timestamp,
+            retentionExpiresAt: timestampAfterDays(365),
+            ...(existing.provider === "google-places" ? { refreshDueAt: timestampAfterDays(365) } : {}),
+        } : {}),
+        ...(input.status === "expired" ? { retentionExpiresAt: timestamp } : {}),
     };
     batch.set(retentionRef, sanitizeForFirestore(updates), { merge: true });
     writeRunTimeline(db, batch, {
@@ -10593,24 +11652,13 @@ export async function recommendSignalDeskMarketPodPlanServer(
     access: SignalDeskAccessContext,
     input: MarketPodRecommendationInput,
 ) {
+    requireOperatingLayer();
     const db = requireDb();
-    const [targetSnap, outcomeSnap, demandSnap] = await Promise.all([
-        db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).orderBy("updatedAt", "desc").limit(30).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES).orderBy("updatedAt", "desc").limit(30).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).orderBy("updatedAt", "desc").limit(30).get(),
+    const [targets, outcomes, demand] = await Promise.all([
+        readTargetSummaryList(db, LIST_LIMIT),
+        readOutcomeSummaryList(db, LIST_LIMIT, "market-pod-recommendation"),
+        readWorkspaceList<SignalDeskDemandSignalSummary>(db, SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES),
     ]);
-    const targets = targetSnap.docs
-        .filter((doc: any) => normalizeText(doc.data()?.pId) === SIGNALDESK_PRODUCT_CODE)
-        .map((doc: any) => toPlain(doc.data()) as SignalDeskTargetSummary);
-    const outcomes = await projectStrictOutcomeSummaryDocuments(
-        db,
-        outcomeSnap.docs,
-        (reference) => reference.get(),
-        "market-pod-recommendation",
-    );
-    const demand = demandSnap.docs
-        .filter((doc: any) => normalizeText(doc.data()?.pId) === SIGNALDESK_PRODUCT_CODE)
-        .map((doc: any) => toPlain(doc.data()) as SignalDeskDemandSignalSummary);
     const grouped = new Map<string, { category: string; city: string; count: number }>();
     targets.forEach((target) => {
         const city = target.city || "Unknown city";
@@ -10634,8 +11682,12 @@ export async function recommendSignalDeskMarketPodPlanServer(
             throw new Error("MARKET_POD_PRODUCT_MISMATCH");
         }
         const existingPod = existingPodSnap.exists
-            ? toPlain(existingPodSnap.data()) as SignalDeskMarketPodSummary
+            ? projectSignalDeskMarketPod({
+                ...toPlain(existingPodSnap.data()),
+                [`${SIGNALDESK_COLLECTIONS.MARKET_PODS}DocId`]: existingPodSnap.id,
+            })
             : null;
+        if (existingPodSnap.exists && !existingPod) throw new Error("MARKET_POD_SHAPE_INVALID");
         const recommendationUpdates = {
             confidence,
             marketPodId: podRef.id,
@@ -10667,6 +11719,26 @@ export async function recommendSignalDeskMarketPodPlanServer(
             successMetric: outcomeCount ? "two_surface_activation" : "preview_prepared",
         };
         const pod = { ...existingPod, ...createOnlyFields, ...recommendationUpdates };
+        const projectedPod = projectSignalDeskMarketPod({
+            ...toPlain(pod),
+            [`${SIGNALDESK_COLLECTIONS.MARKET_PODS}DocId`]: podRef.id,
+        });
+        if (!projectedPod) throw new Error("MARKET_POD_SHAPE_INVALID");
+        if (existingPod) {
+            const currentRecommendation = {
+                confidence: existingPod.confidence,
+                recommendation: existingPod.recommendation,
+                recommendationReason: existingPod.recommendationReason,
+                recommendedActions: existingPod.recommendedActions,
+            };
+            const requestedRecommendation = {
+                confidence: projectedPod.confidence,
+                recommendation: projectedPod.recommendation,
+                recommendationReason: projectedPod.recommendationReason,
+                recommendedActions: projectedPod.recommendedActions,
+            };
+            if (JSON.stringify(currentRecommendation) === JSON.stringify(requestedRecommendation)) return existingPod;
+        }
         transaction.set(podRef, sanitizeForFirestore({ ...createOnlyFields, ...recommendationUpdates }), { merge: true });
         writeRunTimeline(db, transaction, {
             entityId: podRef.id,
@@ -10681,11 +11753,6 @@ export async function recommendSignalDeskMarketPodPlanServer(
         });
         appendAudit(db, transaction, access, "market_pod_recommend", "marketPod", podRef.id, recommendationReason);
         updateDailyCost(db, transaction, 4, 0, 0);
-        const projectedPod = projectSignalDeskMarketPod({
-            ...toPlain(pod),
-            [`${SIGNALDESK_COLLECTIONS.MARKET_PODS}DocId`]: podRef.id,
-        });
-        if (!projectedPod) throw new Error("MARKET_POD_SHAPE_INVALID");
         return projectedPod;
     });
 }
@@ -10837,34 +11904,21 @@ export async function createSignalDeskWeeklyStrategistMemoServer(
 ) {
     const db = requireDb();
     const weekStart = firstDayOfWeekKey(input.weekStart);
-    const [targetSnap, outcomeSnap, demandSnap, costSnap, providerEvalSnap, podSnap] = await Promise.all([
-        db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).orderBy("updatedAt", "desc").limit(30).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES).orderBy("updatedAt", "desc").limit(30).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).orderBy("updatedAt", "desc").limit(30).get(),
+    const [targets, outcomes, demandSignals, costSnap, providerEvaluations, marketPods] = await Promise.all([
+        readTargetSummaryList(db, LIST_LIMIT),
+        readOutcomeSummaryList(db, LIST_LIMIT, "weekly-strategist-memo"),
+        readWorkspaceList<SignalDeskDemandSignalSummary>(db, SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES),
         db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES).doc(todayKey()).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_EVALUATIONS).orderBy("updatedAt", "desc").limit(10).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).orderBy("updatedAt", "desc").limit(1).get(),
+        readWorkspaceList<SignalDeskProviderEvaluationSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_EVALUATIONS, "updatedAt", 10),
+        readMarketPods(db, true),
     ]);
-    const targetCount = targetSnap.size;
-    const outcomes = await projectStrictOutcomeSummaryDocuments(
-        db,
-        outcomeSnap.docs,
-        (reference) => reference.get(),
-        "weekly-strategist-memo",
-    );
+    const targetCount = targets.length;
     const outcomeCount = outcomes.reduce((sum, outcome) => sum + numberOrZero(outcome.count), 0);
-    const demandCount = demandSnap.docs.reduce((sum: number, doc: any) => sum + numberOrZero(doc.data()?.count), 0);
+    const demandCount = demandSignals.reduce((sum, signal) => sum + numberOrZero(signal.count), 0);
     const cost = costSnap.exists ? projectSignalDeskCostDocument(costSnap.data(), costSnap.id) : null;
     if (costSnap.exists && !cost) throw new Error("SIGNALDESK_DAILY_COST_SHAPE_INVALID");
-    const providerEvaluations = providerEvalSnap.docs.map((doc: any) => toPlain(doc.data()) as SignalDeskProviderEvaluationSummary);
     const bestProvider = providerEvaluations.find((item) => item.recommendation === "approve") || providerEvaluations[0] || null;
-    const podDoc = podSnap.docs[0] || null;
-    const pod = podDoc && podDoc.data()?.dependentHoldReconciliationPending !== true
-        ? projectSignalDeskMarketPod({
-            ...toPlain(podDoc.data()),
-            [`${SIGNALDESK_COLLECTIONS.MARKET_PODS}DocId`]: podDoc.id,
-        })
-        : null;
+    const pod = marketPods[0] || null;
     const status: SignalDeskStrategistMemoSummary["status"] = targetCount && (demandCount || outcomeCount) ? "ready" : "held";
     const timestamp = now();
     const memoRef = db.collection(SIGNALDESK_COLLECTIONS.STRATEGIST_MEMOS).doc(`strategist_${weekStart}`);
@@ -11045,45 +12099,97 @@ export async function upsertSignalDeskTrustPartnerProfileServer(
 ) {
     requireTrustPartnerRail();
     const db = requireDb();
-    const batch = db.batch();
-    const timestamp = now();
     const partnerId = trustPartnerIdFor(input.displayName, input.channel);
     const trustScore = computeTrustScore(input);
     const status = input.status || (input.partnerType === "generic-creator" || trustScore < 45 ? "rejected" : trustScore >= 70 ? "candidate" : "hold");
-    const profileRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId);
-    const profile = {
-        partnerId,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        displayName: input.displayName,
-        partnerType: input.partnerType,
-        channel: input.channel,
-        geography: input.geography || null,
-        baselineReachScore: clampScore(input.baselineReachScore),
-        commentQualityScore: clampScore(input.commentQualityScore),
+    if (!TRUST_PARTNER_PROFILE_STATUSES.has(status)) throw new Error("TRUST_PARTNER_PROFILE_STATUS_INVALID");
+    if ((status === "approved" || status === "active")) assertTrustPartnerFounderApproval(access);
+    const requestFingerprintHash = hashValue(JSON.stringify({
         audienceFitScore: clampScore(input.audienceFitScore),
+        baselineReachScore: clampScore(input.baselineReachScore),
         believableUsageScore: clampScore(input.believableUsageScore),
-        trustFeelScore: clampScore(input.trustFeelScore),
-        trustScore,
-        sourceNotes: input.sourceNotes,
+        channel: input.channel,
+        commentQualityScore: clampScore(input.commentQualityScore),
+        displayName: normalizeText(input.displayName),
+        geography: normalizeText(input.geography) || null,
+        partnerType: input.partnerType,
+        sourceNotes: normalizeText(input.sourceNotes),
         status,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    };
-    batch.set(profileRef, sanitizeForFirestore(profile), { merge: true });
-    writeRunTimeline(db, batch, {
-        entityId: partnerId,
-        entityType: "trust-partner",
-        label: "Trust partner profile",
-        status: status === "rejected" ? "blocked" : status === "hold" ? "held" : "ready",
-        steps: [
-            { label: "20-second trust scores captured", status: "completed", at: toIso(timestamp) },
-            { label: `${trustScore} trust score`, status: trustScore >= 70 ? "completed" : "held", at: toIso(timestamp) },
-        ],
+        trustFeelScore: clampScore(input.trustFeelScore),
+    }));
+    const idempotencyKey = normalizeText(input.idempotencyKey) || `legacy_${requestFingerprintHash.slice(0, 32)}`;
+    const operationHash = hashValue(`${access.userId}|${idempotencyKey}`);
+    const profileRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId);
+    const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`trust_partner_profile_${operationHash}`);
+    const pauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const [claimSnap, profileSnap, pauseSnap] = await Promise.all([
+            transaction.get(claimRef), transaction.get(profileRef), transaction.get(pauseRef),
+        ]);
+        if (claimSnap.exists) {
+            if (
+                normalizeText(claimSnap.data()?.actorId) !== access.userId
+                || normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash
+            ) throw new Error("TRUST_PARTNER_PROFILE_IDEMPOTENCY_CONFLICT");
+            const replay = claimSnap.data()?.resultSnapshot;
+            if (!replay || normalizeText(replay.pId) !== SIGNALDESK_PRODUCT_CODE || normalizeText(replay.partnerId) !== partnerId) {
+                throw new Error("TRUST_PARTNER_PROFILE_REPLAY_MISSING");
+            }
+            return toPlain(replay) as SignalDeskTrustPartnerProfileSummary;
+        }
+        if (isTrustPartnerPaused(pauseSnap) && TRUST_PARTNER_FORWARD_PROFILE_STATUSES.has(status)) {
+            throw new Error("TRUST_PARTNER_RAIL_PAUSED");
+        }
+        if (profileSnap.exists) {
+            const existing = profileSnap.data() || {};
+            if (
+                normalizeText(existing.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(existing.partnerId) !== profileRef.id
+            ) throw new Error("TRUST_PARTNER_PROFILE_SHAPE_INVALID");
+        }
+        const timestamp = now();
+        const profile = {
+            partnerId,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            displayName: normalizeText(input.displayName),
+            partnerType: input.partnerType,
+            channel: input.channel,
+            geography: normalizeText(input.geography) || null,
+            baselineReachScore: clampScore(input.baselineReachScore),
+            commentQualityScore: clampScore(input.commentQualityScore),
+            audienceFitScore: clampScore(input.audienceFitScore),
+            believableUsageScore: clampScore(input.believableUsageScore),
+            trustFeelScore: clampScore(input.trustFeelScore),
+            trustScore,
+            sourceNotes: normalizeText(input.sourceNotes),
+            status,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.set(profileRef, sanitizeForFirestore(profile), { merge: true });
+        transaction.create(claimRef, sanitizeForFirestore({
+            actorId: access.userId,
+            entityId: partnerId,
+            operation: "trust_partner_profile_upsert",
+            pId: SIGNALDESK_PRODUCT_CODE,
+            requestFingerprintHash,
+            resultSnapshot: profile,
+            updatedAt: timestamp,
+        }));
+        writeRunTimeline(db, transaction, {
+            entityId: partnerId,
+            entityType: "trust-partner",
+            label: "Trust partner profile",
+            status: status === "rejected" ? "blocked" : status === "hold" ? "held" : "ready",
+            steps: [
+                { label: "20-second trust scores captured", status: "completed", at: toIso(timestamp) },
+                { label: `${trustScore} trust score`, status: trustScore >= 70 ? "completed" : "held", at: toIso(timestamp) },
+            ],
+        });
+        appendAudit(db, transaction, access, "trust_partner_profile_upsert", "trustPartnerProfile", partnerId, `${input.displayName}: ${trustScore}`);
+        updateDailyCost(db, transaction, 5, 0, 0);
+        return toPlain(profile) as SignalDeskTrustPartnerProfileSummary;
     });
-    appendAudit(db, batch, access, "trust_partner_profile_upsert", "trustPartnerProfile", partnerId, `${input.displayName}: ${trustScore}`);
-    updateDailyCost(db, batch, 3, 0, 0);
-    await batch.commit();
-    return toPlain(profile) as SignalDeskTrustPartnerProfileSummary;
 }
 
 export async function createSignalDeskTrustPartnerNicheTestServer(
@@ -11092,47 +12198,104 @@ export async function createSignalDeskTrustPartnerNicheTestServer(
 ) {
     requireTrustPartnerRail();
     const db = requireDb();
-    const batch = db.batch();
-    const timestamp = now();
-    const partnerSnaps = await Promise.all(input.partnerIds.map((partnerId) => (
-        db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId).get()
-    )));
-    const approvedPartners = partnerSnaps.filter((snap: any) => {
-        const status = snap.data()?.status;
-        return snap.exists && status !== "rejected";
-    });
-    const attemptCount = Math.max(input.intendedAttempts, approvedPartners.length);
-    const recommendation: SignalDeskTrustPartnerNicheTestSummary["recommendation"] = attemptCount < 3 ? "underpowered" : "hold";
+    const partnerIds = Array.from(new Set(input.partnerIds.map(normalizeText).filter(Boolean)));
+    if (partnerIds.length !== input.partnerIds.length || partnerIds.length > 5) throw new Error("TRUST_PARTNER_NICHE_PARTNERS_INVALID");
+    const nicheName = normalizeText(input.nicheName);
+    const marketPodId = normalizeText(input.marketPodId) || null;
     const nicheRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_NICHE_TESTS).doc(`niche_${hashValue(`${input.nicheName}|${input.marketPodId || "pod"}`).slice(0, 18)}`);
-    const nicheTest = {
-        nicheTestId: nicheRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        nicheName: input.nicheName,
-        marketPodId: input.marketPodId || null,
-        angle: input.angle,
-        intendedAttempts: input.intendedAttempts,
-        partnerIds: input.partnerIds,
-        partnerCount: approvedPartners.length,
-        status: "planned",
-        recommendation,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    };
-    batch.set(nicheRef, sanitizeForFirestore(nicheTest), { merge: true });
-    writeRunTimeline(db, batch, {
-        entityId: nicheRef.id,
-        entityType: "trust-partner",
-        label: "Trust partner niche test",
-        status: recommendation === "underpowered" ? "held" : "ready",
-        steps: [
-            { label: `${input.intendedAttempts} intended attempts`, status: input.intendedAttempts >= 3 ? "completed" : "held", at: toIso(timestamp) },
-            { label: `${approvedPartners.length} partner profiles attached`, status: approvedPartners.length ? "completed" : "held", at: toIso(timestamp) },
-        ],
+    const requestFingerprintHash = hashValue(JSON.stringify({
+        angle: normalizeText(input.angle), intendedAttempts: input.intendedAttempts, marketPodId,
+        nicheName, partnerIds: [...partnerIds].sort(),
+    }));
+    const idempotencyKey = normalizeText(input.idempotencyKey) || `legacy_${requestFingerprintHash.slice(0, 32)}`;
+    const operationHash = hashValue(`${access.userId}|${idempotencyKey}`);
+    const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`trust_partner_niche_${operationHash}`);
+    const pauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
+    const marketPodRef = marketPodId ? db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(marketPodId) : null;
+    const partnerRefs = partnerIds.map((partnerId) => db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId));
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const [claimSnap, nicheSnap, pauseSnap, marketPodSnap, partnerSnaps] = await Promise.all([
+            transaction.get(claimRef), transaction.get(nicheRef), transaction.get(pauseRef),
+            marketPodRef ? transaction.get(marketPodRef) : Promise.resolve(null),
+            Promise.all(partnerRefs.map((ref) => transaction.get(ref))),
+        ]);
+        if (claimSnap.exists) {
+            if (
+                normalizeText(claimSnap.data()?.actorId) !== access.userId
+                || normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash
+            ) throw new Error("TRUST_PARTNER_NICHE_IDEMPOTENCY_CONFLICT");
+            const replay = claimSnap.data()?.resultSnapshot;
+            if (!replay || normalizeText(replay.pId) !== SIGNALDESK_PRODUCT_CODE || normalizeText(replay.nicheTestId) !== nicheRef.id) {
+                throw new Error("TRUST_PARTNER_NICHE_REPLAY_MISSING");
+            }
+            return toPlain(replay) as SignalDeskTrustPartnerNicheTestSummary;
+        }
+        if (isTrustPartnerPaused(pauseSnap)) throw new Error("TRUST_PARTNER_RAIL_PAUSED");
+        if (marketPodRef) {
+            const marketPod = marketPodSnap?.exists ? projectSignalDeskMarketPod({
+                ...marketPodSnap.data(),
+                [`${SIGNALDESK_COLLECTIONS.MARKET_PODS}DocId`]: marketPodRef.id,
+            }) : null;
+            if (!marketPod || marketPod.status !== "active" || marketPod.reviewDecision !== "approved") {
+                throw new Error("TRUST_PARTNER_MARKET_POD_NOT_APPROVED");
+            }
+        }
+        partnerSnaps.forEach((snapshot, index) => {
+            const value = snapshot.exists ? snapshot.data() || {} : {};
+            if (
+                !snapshot.exists
+                || normalizeText(value.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(value.partnerId) !== partnerRefs[index].id
+                || !TRUST_PARTNER_ELIGIBLE_PROFILE_STATUSES.has(value.status)
+            ) throw new Error("TRUST_PARTNER_NOT_ELIGIBLE");
+        });
+        if (nicheSnap.exists) {
+            const existing = nicheSnap.data() || {};
+            if (
+                normalizeText(existing.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(existing.nicheTestId) !== nicheRef.id
+            ) throw new Error("TRUST_PARTNER_NICHE_SHAPE_INVALID");
+            const existingFingerprint = normalizeText(existing.requestFingerprintHash);
+            if (!existingFingerprint || existingFingerprint !== requestFingerprintHash) {
+                throw new Error("TRUST_PARTNER_NICHE_TERMS_CONFLICT");
+            }
+        }
+        const recommendation: SignalDeskTrustPartnerNicheTestSummary["recommendation"] = input.intendedAttempts < 3 ? "underpowered" : "hold";
+        const timestamp = now();
+        const nicheTest = {
+            nicheTestId: nicheRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            nicheName,
+            marketPodId,
+            angle: normalizeText(input.angle),
+            intendedAttempts: input.intendedAttempts,
+            partnerIds,
+            partnerCount: partnerIds.length,
+            requestFingerprintHash,
+            status: "planned",
+            recommendation,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.set(nicheRef, sanitizeForFirestore(nicheTest), { merge: true });
+        transaction.create(claimRef, sanitizeForFirestore({
+            actorId: access.userId, entityId: nicheRef.id, operation: "trust_partner_niche_test_create",
+            pId: SIGNALDESK_PRODUCT_CODE, requestFingerprintHash, resultSnapshot: nicheTest, updatedAt: timestamp,
+        }));
+        writeRunTimeline(db, transaction, {
+            entityId: nicheRef.id,
+            entityType: "trust-partner",
+            label: "Trust partner niche test",
+            status: recommendation === "underpowered" ? "held" : "ready",
+            steps: [
+                { label: `${input.intendedAttempts} intended attempts`, status: input.intendedAttempts >= 3 ? "completed" : "held", at: toIso(timestamp) },
+                { label: `${partnerIds.length} partner profiles attached`, status: partnerIds.length ? "completed" : "held", at: toIso(timestamp) },
+            ],
+        });
+        appendAudit(db, transaction, access, "trust_partner_niche_test_create", "trustPartnerNicheTest", nicheRef.id, nicheName);
+        updateDailyCost(db, transaction, 5, 0, 0);
+        return toPlain(nicheTest) as SignalDeskTrustPartnerNicheTestSummary;
     });
-    appendAudit(db, batch, access, "trust_partner_niche_test_create", "trustPartnerNicheTest", nicheRef.id, input.nicheName);
-    updateDailyCost(db, batch, 3 + input.partnerIds.length, 0, 0);
-    await batch.commit();
-    return toPlain(nicheTest) as SignalDeskTrustPartnerNicheTestSummary;
 }
 
 export async function reviewSignalDeskTrustPartnerDealServer(
@@ -11143,6 +12306,7 @@ export async function reviewSignalDeskTrustPartnerDealServer(
     const db = requireDb();
     if (input.pricingModel === "per-view") throw new Error("Trust partner per-view pricing is blocked");
     if (input.approvalStatus === "approved" && !input.founderApproved) throw new Error("Trust partner budget is not approved");
+    if (input.approvalStatus === "approved") assertTrustPartnerFounderApproval(access);
     if (!Number.isFinite(input.flatFeeUsd) || input.flatFeeUsd < 0) {
         throw new Error("TRUST_PARTNER_DEAL_COST_INVALID");
     }
@@ -11170,6 +12334,7 @@ export async function reviewSignalDeskTrustPartnerDealServer(
     const budgetRef = db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc(
         input.budgetPolicyId || budgetPolicyIdFor("trust-partner", null, "first_partner_test"),
     );
+    const pauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
     const dealTermsFingerprintHash = hashValue(JSON.stringify({
         budgetPolicyId: budgetRef.id,
         deliverableCount: input.deliverableCount,
@@ -11180,11 +12345,12 @@ export async function reviewSignalDeskTrustPartnerDealServer(
         pricingModel: input.pricingModel,
     }));
     return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
-        const [partnerSnap, nicheTestSnap, budgetSnap, existingDealSnap] = await Promise.all([
+        const [partnerSnap, nicheTestSnap, budgetSnap, existingDealSnap, pauseSnap] = await Promise.all([
             transaction.get(partnerRef),
             nicheTestRef ? transaction.get(nicheTestRef) : Promise.resolve(null),
             transaction.get(budgetRef),
             transaction.get(dealRef),
+            transaction.get(pauseRef),
         ]);
         if (!partnerSnap.exists) throw new Error("Trust partner not found");
         const partner = projectSignalDeskWorkspaceDocument(
@@ -11194,6 +12360,10 @@ export async function reviewSignalDeskTrustPartnerDealServer(
             currentPeriod,
         ) as SignalDeskTrustPartnerProfileSummary | null;
         if (!partner || partner.status === "rejected") throw new Error("TRUST_PARTNER_NOT_ELIGIBLE");
+        if (input.approvalStatus === "approved") {
+            if (isTrustPartnerPaused(pauseSnap)) throw new Error("TRUST_PARTNER_RAIL_PAUSED");
+            if (!TRUST_PARTNER_APPROVED_PROFILE_STATUSES.has(partner.status)) throw new Error("TRUST_PARTNER_NOT_APPROVED");
+        }
         if (nicheTestRef) {
             const rawNicheTest = nicheTestSnap?.exists ? nicheTestSnap.data() || {} : {};
             const nicheTest = nicheTestSnap?.exists
@@ -11323,7 +12493,7 @@ export async function reviewSignalDeskTrustPartnerDealServer(
             ],
         });
         appendAudit(db, transaction, access, "trust_partner_deal_review", "trustPartnerDeal", dealRef.id, input.approvalStatus);
-        updateDailyCost(db, transaction, input.approvalStatus === "approved" ? 5 : 3, 0, 0);
+        updateDailyCost(db, transaction, 4 + (reserveNow ? 1 : 0), 0, 0);
         return toPlain(deal) as SignalDeskTrustPartnerDealSummary;
     });
 }
@@ -11357,12 +12527,15 @@ export async function createSignalDeskTrustPartnerBriefServer(
     const partnerRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId);
     const dealRef = dealId ? db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DEALS).doc(dealId) : null;
     const briefRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_BRIEFS).doc(`trust_brief_${briefIdentityHash}`);
+    const pauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
     return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
-        const [partnerSnap, dealSnap, existingBriefSnap] = await Promise.all([
+        const [partnerSnap, dealSnap, existingBriefSnap, pauseSnap] = await Promise.all([
             transaction.get(partnerRef),
             dealRef ? transaction.get(dealRef) : Promise.resolve(null),
             transaction.get(briefRef),
+            transaction.get(pauseRef),
         ]);
+        if (isTrustPartnerPaused(pauseSnap)) throw new Error("TRUST_PARTNER_RAIL_PAUSED");
         if (!partnerSnap.exists) throw new Error("Trust partner not found");
         const partner = partnerSnap.data() as AnyRecord;
         if (normalizeText(partner.pId) !== SIGNALDESK_PRODUCT_CODE) throw new Error("TRUST_PARTNER_PRODUCT_MISMATCH");
@@ -11437,7 +12610,7 @@ export async function createSignalDeskTrustPartnerBriefServer(
             ],
         });
         appendAudit(db, transaction, access, "trust_partner_brief_create", "trustPartnerBrief", briefRef.id, partnerId);
-        updateDailyCost(db, transaction, 5 + (dealRef ? 1 : 0), 0, 0);
+        updateDailyCost(db, transaction, 4, 0, 0);
         return toPlain(brief) as SignalDeskTrustPartnerBriefSummary;
     });
 }
@@ -11448,44 +12621,93 @@ export async function recordSignalDeskTrustPartnerDeliverableServer(
 ) {
     requireTrustPartnerRail();
     const db = requireDb();
-    const partnerSnap = await db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(input.partnerId).get();
-    if (!partnerSnap.exists) throw new Error("Trust partner not found");
-    if (input.dealId) {
-        const dealSnap = await db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DEALS).doc(input.dealId).get();
-        if (!dealSnap.exists) throw new Error("Trust partner deal not found");
-    }
-    const batch = db.batch();
-    const timestamp = now();
-    const deliverableRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DELIVERABLES).doc();
+    assertTrustPartnerDate(input.dueDate, "TRUST_PARTNER_DELIVERABLE_DUE_DATE_INVALID");
+    const partnerId = normalizeText(input.partnerId);
+    const dealId = normalizeText(input.dealId) || null;
+    const postUrl = canonicalizeContentUrl(input.postUrl);
+    if (input.status === "live" && !postUrl) throw new Error("TRUST_PARTNER_LIVE_POST_URL_REQUIRED");
     const risk = input.status === "live" && !input.disclosurePresent;
-    const deliverable = {
-        deliverableId: deliverableRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        partnerId: input.partnerId,
-        dealId: input.dealId || null,
-        dueDate: input.dueDate || null,
-        postUrl: input.postUrl || null,
-        status: input.status,
-        reviewState: risk ? "risk" : input.reviewState,
-        disclosurePresent: input.disclosurePresent,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    };
-    batch.set(deliverableRef, sanitizeForFirestore(deliverable));
-    writeRunTimeline(db, batch, {
-        entityId: deliverableRef.id,
-        entityType: "trust-partner",
-        label: "Trust partner deliverable",
-        status: risk ? "blocked" : input.status === "live" ? "completed" : "held",
-        steps: [
-            { label: "Deliverable captured", status: "completed", at: toIso(timestamp) },
-            { label: "Disclosure checked", status: input.disclosurePresent ? "completed" : "blocked", at: toIso(timestamp) },
-        ],
+    const requestFingerprintHash = hashValue(JSON.stringify({
+        dealId, disclosurePresent: input.disclosurePresent, dueDate: input.dueDate || null,
+        partnerId, postUrl, reviewState: risk ? "risk" : input.reviewState, status: input.status,
+    }));
+    const idempotencyKey = normalizeText(input.idempotencyKey) || `legacy_${requestFingerprintHash.slice(0, 32)}`;
+    const operationHash = hashValue(`${access.userId}|${idempotencyKey}`);
+    const deliverableRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DELIVERABLES).doc(`partner_deliverable_${operationHash.slice(0, 32)}`);
+    const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`trust_partner_deliverable_${operationHash}`);
+    const partnerRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId);
+    const dealRef = dealId ? db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_DEALS).doc(dealId) : null;
+    const pauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const [claimSnap, deliverableSnap, partnerSnap, dealSnap, pauseSnap] = await Promise.all([
+            transaction.get(claimRef), transaction.get(deliverableRef), transaction.get(partnerRef),
+            dealRef ? transaction.get(dealRef) : Promise.resolve(null), transaction.get(pauseRef),
+        ]);
+        if (claimSnap.exists) {
+            if (
+                normalizeText(claimSnap.data()?.actorId) !== access.userId
+                || normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash
+            ) throw new Error("TRUST_PARTNER_DELIVERABLE_IDEMPOTENCY_CONFLICT");
+            const replay = claimSnap.data()?.resultSnapshot;
+            if (!replay || normalizeText(replay.pId) !== SIGNALDESK_PRODUCT_CODE || normalizeText(replay.deliverableId) !== deliverableRef.id) {
+                throw new Error("TRUST_PARTNER_DELIVERABLE_REPLAY_MISSING");
+            }
+            return toPlain(replay) as SignalDeskTrustPartnerDeliverableSummary;
+        }
+        if (deliverableSnap.exists) throw new Error("TRUST_PARTNER_DELIVERABLE_IDEMPOTENCY_CONFLICT");
+        if (isTrustPartnerPaused(pauseSnap) && ["scheduled", "submitted", "live"].includes(input.status)) {
+            throw new Error("TRUST_PARTNER_RAIL_PAUSED");
+        }
+        const partner = partnerSnap.exists ? partnerSnap.data() || {} : {};
+        if (
+            !partnerSnap.exists
+            || normalizeText(partner.pId) !== SIGNALDESK_PRODUCT_CODE
+            || normalizeText(partner.partnerId) !== partnerRef.id
+            || !TRUST_PARTNER_APPROVED_PROFILE_STATUSES.has(partner.status)
+        ) throw new Error("TRUST_PARTNER_NOT_APPROVED");
+        if (dealRef) {
+            const deal = dealSnap?.exists ? dealSnap.data() || {} : {};
+            if (
+                !dealSnap?.exists
+                || normalizeText(deal.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(deal.dealId) !== dealRef.id
+                || normalizeText(deal.partnerId) !== partnerId
+                || normalizeText(deal.approvalStatus) !== "approved"
+            ) throw new Error("TRUST_PARTNER_DEAL_NOT_APPROVED");
+        }
+        const timestamp = now();
+        const deliverable = {
+            deliverableId: deliverableRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            partnerId,
+            dealId,
+            dueDate: input.dueDate || null,
+            postUrl,
+            status: input.status,
+            reviewState: risk ? "risk" : input.reviewState,
+            disclosurePresent: input.disclosurePresent,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.create(deliverableRef, sanitizeForFirestore(deliverable));
+        transaction.create(claimRef, sanitizeForFirestore({
+            actorId: access.userId, entityId: deliverableRef.id, operation: "trust_partner_deliverable_record",
+            pId: SIGNALDESK_PRODUCT_CODE, requestFingerprintHash, resultSnapshot: deliverable, updatedAt: timestamp,
+        }));
+        writeRunTimeline(db, transaction, {
+            entityId: deliverableRef.id,
+            entityType: "trust-partner",
+            label: "Trust partner deliverable",
+            status: risk ? "blocked" : input.status === "live" ? "completed" : "held",
+            steps: [
+                { label: "Deliverable captured", status: "completed", at: toIso(timestamp) },
+                { label: "Disclosure checked", status: input.disclosurePresent ? "completed" : "blocked", at: toIso(timestamp) },
+            ],
+        });
+        appendAudit(db, transaction, access, "trust_partner_deliverable_record", "trustPartnerDeliverable", deliverableRef.id, input.status);
+        updateDailyCost(db, transaction, 5, 0, 0);
+        return toPlain(deliverable) as SignalDeskTrustPartnerDeliverableSummary;
     });
-    appendAudit(db, batch, access, "trust_partner_deliverable_record", "trustPartnerDeliverable", deliverableRef.id, input.status);
-    updateDailyCost(db, batch, 3, 0, 0);
-    await batch.commit();
-    return toPlain(deliverable) as SignalDeskTrustPartnerDeliverableSummary;
 }
 
 export async function recordSignalDeskTrustPartnerMetricsServer(
@@ -11508,13 +12730,43 @@ export async function recordSignalDeskTrustPartnerMetricsServer(
             deliverableRef ? transaction.get(deliverableRef) : Promise.resolve(null), transaction.get(metricRef),
         ]);
         if (claimSnap.exists) {
-            if (normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash) throw new Error("TRUST_PARTNER_METRICS_IDEMPOTENCY_CONFLICT");
+            if (
+                normalizeText(claimSnap.data()?.actorId) !== access.userId
+                || normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash
+            ) throw new Error("TRUST_PARTNER_METRICS_IDEMPOTENCY_CONFLICT");
             if (!metricSnap.exists) throw new Error("TRUST_PARTNER_METRICS_REPLAY_MISSING");
-            return toPlain(metricSnap.data()) as SignalDeskTrustPartnerMetricSummary;
+            const replay = metricSnap.data() || {};
+            if (
+                normalizeText(replay.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(replay.metricsId) !== metricRef.id
+                || normalizeText(replay.partnerId) !== input.partnerId
+            ) throw new Error("TRUST_PARTNER_METRICS_REPLAY_MISSING");
+            return toPlain(replay) as SignalDeskTrustPartnerMetricSummary;
         }
-        if (!partnerSnap.exists) throw new Error("Trust partner not found");
+        const partner = partnerSnap.exists ? partnerSnap.data() || {} : {};
+        if (
+            !partnerSnap.exists
+            || normalizeText(partner.pId) !== SIGNALDESK_PRODUCT_CODE
+            || normalizeText(partner.partnerId) !== partnerRef.id
+            || !TRUST_PARTNER_PROFILE_STATUSES.has(partner.status)
+        ) throw new Error("TRUST_PARTNER_PROFILE_SHAPE_INVALID");
         if (deliverableRef && !deliverableSnap?.exists) throw new Error("Trust partner deliverable not found");
-        if (deliverableSnap?.exists && normalizeText(deliverableSnap.data()?.partnerId) !== input.partnerId) throw new Error("TRUST_PARTNER_DELIVERABLE_MISMATCH");
+        const deliverable = deliverableSnap?.exists ? deliverableSnap.data() || {} : null;
+        if (deliverable && (
+            normalizeText(deliverable.pId) !== SIGNALDESK_PRODUCT_CODE
+            || normalizeText(deliverable.deliverableId) !== deliverableRef?.id
+            || normalizeText(deliverable.partnerId) !== input.partnerId
+        )) throw new Error("TRUST_PARTNER_DELIVERABLE_MISMATCH");
+        const hasObservedMetrics = input.views > 0
+            || input.comments > 0
+            || input.ownerLeads > 0
+            || input.currentListSubmissions > 0
+            || input.activations > 0;
+        if (hasObservedMetrics && (
+            !deliverable
+            || normalizeText(deliverable.status) !== "live"
+            || !canonicalizeContentUrl(deliverable.postUrl)
+        )) throw new Error("TRUST_PARTNER_METRICS_LIVE_DELIVERABLE_REQUIRED");
         const timestamp = now();
         const metric = {
         metricsId: metricRef.id,
@@ -11532,15 +12784,16 @@ export async function recordSignalDeskTrustPartnerMetricsServer(
         };
         transaction.create(metricRef, sanitizeForFirestore(metric));
         const ownerSignals = input.ownerLeads + input.currentListSubmissions + input.activations;
-        if (ownerSignals) {
+        const demandSignalsToRecord = demandSignalsEnabled() ? ownerSignals : 0;
+        if (demandSignalsToRecord) {
             transaction.set(db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(`trust_partner_${input.partnerId}_${todayKey()}`), sanitizeForFirestore({
             demandSignalId: `trust_partner_${input.partnerId}_${todayKey()}`,
             pId: SIGNALDESK_PRODUCT_CODE,
             signalType: "referral",
             sourceSurface: "manual",
             targetId: null,
-            targetName: partnerSnap.data()?.displayName || input.partnerId,
-            count: increment(ownerSignals),
+            targetName: null,
+            count: increment(demandSignalsToRecord),
             day: todayKey(),
             updatedAt: timestamp,
             }), { merge: true });
@@ -11557,8 +12810,10 @@ export async function recordSignalDeskTrustPartnerMetricsServer(
         ],
         });
         appendAudit(db, transaction, access, "trust_partner_metrics_record", "trustPartnerMetric", metricRef.id, input.partnerId);
-        updateControlSummary(db, transaction, { demandSignalCount: increment(ownerSignals) });
-        updateDailyCost(db, transaction, 4, 0, 0);
+        if (demandSignalsToRecord) {
+            updateControlSummary(db, transaction, { demandSignalCount: increment(demandSignalsToRecord) });
+        }
+        updateDailyCost(db, transaction, 5 + (demandSignalsToRecord ? 2 : 0), 0, 0);
         return toPlain(metric) as SignalDeskTrustPartnerMetricSummary;
     });
 }
@@ -11569,52 +12824,116 @@ export async function reviewSignalDeskTrustPartnerRenewalServer(
 ) {
     requireTrustPartnerRail();
     const db = requireDb();
-    const partnerSnap = await db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(input.partnerId).get();
-    if (!partnerSnap.exists) throw new Error("Trust partner not found");
-    const metricsSnap = await db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_METRICS)
+    if ((input.ownerDecision === "approved" || input.ownerDecision === "rejected")) {
+        assertTrustPartnerFounderApproval(access);
+    }
+    const partnerId = normalizeText(input.partnerId);
+    const nicheTestId = normalizeText(input.nicheTestId) || null;
+    const ownerDecision = input.ownerDecision || "pending";
+    const requestFingerprintHash = hashValue(JSON.stringify({
+        evidenceSummary: normalizeText(input.evidenceSummary), nicheTestId, ownerDecision,
+        partnerId, recommendation: input.recommendation,
+    }));
+    const idempotencyKey = normalizeText(input.idempotencyKey) || `legacy_${requestFingerprintHash.slice(0, 32)}`;
+    const operationHash = hashValue(`${access.userId}|${idempotencyKey}`);
+    const partnerRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(partnerId);
+    const decisionRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_RENEWAL_DECISIONS).doc(`partner_renewal_${operationHash.slice(0, 32)}`);
+    const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`trust_partner_renewal_${operationHash}`);
+    const nicheRef = nicheTestId ? db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_NICHE_TESTS).doc(nicheTestId) : null;
+    const pauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
+    const metricsQuery = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_METRICS)
         .where("partnerId", "==", input.partnerId)
         .orderBy("capturedAt", "desc")
-        .limit(10)
-        .get();
-    const metrics = metricsSnap.docs.map((doc: any) => toPlain(doc.data()) as SignalDeskTrustPartnerMetricSummary);
-    const outcomeBackedRecommendation = recommendationFromTrustOutcomes(metrics);
-    if (input.recommendation === "renew" && outcomeBackedRecommendation !== "renew") {
-        throw new Error("Trust partner renewal requires outcome evidence");
-    }
-    const batch = db.batch();
-    const timestamp = now();
-    const decisionRef = db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_RENEWAL_DECISIONS).doc();
-    const decision = {
-        decisionId: decisionRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        partnerId: input.partnerId,
-        nicheTestId: input.nicheTestId || null,
-        recommendation: input.recommendation,
-        ownerDecision: input.ownerDecision || "pending",
-        evidenceSummary: input.evidenceSummary,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    };
-    batch.set(decisionRef, sanitizeForFirestore(decision));
-    batch.set(db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES).doc(input.partnerId), sanitizeForFirestore({
-        status: input.recommendation === "renew" ? "active" : input.recommendation === "cut" ? "rejected" : "hold",
-        updatedAt: timestamp,
-    }), { merge: true });
-    writeRunTimeline(db, batch, {
-        entityId: decisionRef.id,
-        entityType: "trust-partner",
-        label: "Trust partner renewal",
-        status: input.recommendation === "renew" ? "ready" : input.recommendation === "cut" ? "blocked" : "held",
-        steps: [
-            { label: `${metrics.length} metric records checked`, status: metrics.length ? "completed" : "held", at: toIso(timestamp) },
-            { label: `${input.recommendation} recommendation`, status: input.recommendation === "renew" ? "completed" : "held", at: toIso(timestamp) },
-        ],
+        .limit(10);
+    return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+        const [claimSnap, decisionSnap, partnerSnap, nicheSnap, pauseSnap, metricsSnap] = await Promise.all([
+            transaction.get(claimRef), transaction.get(decisionRef), transaction.get(partnerRef),
+            nicheRef ? transaction.get(nicheRef) : Promise.resolve(null), transaction.get(pauseRef),
+            transaction.get(metricsQuery),
+        ]);
+        if (claimSnap.exists) {
+            if (
+                normalizeText(claimSnap.data()?.actorId) !== access.userId
+                || normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash
+            ) throw new Error("TRUST_PARTNER_RENEWAL_IDEMPOTENCY_CONFLICT");
+            const replay = claimSnap.data()?.resultSnapshot;
+            if (!replay || normalizeText(replay.pId) !== SIGNALDESK_PRODUCT_CODE || normalizeText(replay.decisionId) !== decisionRef.id) {
+                throw new Error("TRUST_PARTNER_RENEWAL_REPLAY_MISSING");
+            }
+            return toPlain(replay) as SignalDeskTrustPartnerRenewalDecisionSummary;
+        }
+        if (decisionSnap.exists) throw new Error("TRUST_PARTNER_RENEWAL_IDEMPOTENCY_CONFLICT");
+        const partner = partnerSnap.exists ? partnerSnap.data() || {} : {};
+        if (
+            !partnerSnap.exists
+            || normalizeText(partner.pId) !== SIGNALDESK_PRODUCT_CODE
+            || normalizeText(partner.partnerId) !== partnerRef.id
+            || !TRUST_PARTNER_PROFILE_STATUSES.has(partner.status)
+        ) throw new Error("TRUST_PARTNER_PROFILE_SHAPE_INVALID");
+        if (nicheRef) {
+            const niche = nicheSnap?.exists ? nicheSnap.data() || {} : {};
+            const nichePartnerIds = Array.isArray(niche.partnerIds) ? niche.partnerIds.map(normalizeText) : [];
+            if (
+                !nicheSnap?.exists
+                || normalizeText(niche.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(niche.nicheTestId) !== nicheRef.id
+                || !nichePartnerIds.includes(partnerId)
+            ) throw new Error("TRUST_PARTNER_NICHE_TEST_MISMATCH");
+        }
+        const metrics = metricsSnap.docs.map((doc: any) => {
+            const metric = doc.data() || {};
+            if (
+                normalizeText(metric.pId) !== SIGNALDESK_PRODUCT_CODE
+                || normalizeText(metric.metricsId) !== doc.id
+                || normalizeText(metric.partnerId) !== partnerId
+            ) throw new Error("TRUST_PARTNER_METRICS_SHAPE_INVALID");
+            return toPlain(metric) as SignalDeskTrustPartnerMetricSummary;
+        });
+        const outcomeBackedRecommendation = recommendationFromTrustOutcomes(metrics);
+        if (input.recommendation !== "hold" && input.recommendation !== outcomeBackedRecommendation) {
+            throw new Error("TRUST_PARTNER_RENEWAL_RECOMMENDATION_MISMATCH");
+        }
+        const recommendation = input.recommendation === "hold" ? "hold" : outcomeBackedRecommendation;
+        if (isTrustPartnerPaused(pauseSnap) && (recommendation === "renew" || recommendation === "retest")) {
+            throw new Error("TRUST_PARTNER_RAIL_PAUSED");
+        }
+        const timestamp = now();
+        const decision = {
+            decisionId: decisionRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            partnerId,
+            nicheTestId,
+            recommendation,
+            ownerDecision,
+            evidenceSummary: normalizeText(input.evidenceSummary),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.create(decisionRef, sanitizeForFirestore(decision));
+        transaction.set(partnerRef, sanitizeForFirestore({
+            status: recommendation === "renew" ? "active" : recommendation === "cut" ? "rejected" : "hold",
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        }), { merge: true });
+        transaction.create(claimRef, sanitizeForFirestore({
+            actorId: access.userId, entityId: decisionRef.id, operation: "trust_partner_renewal_review",
+            pId: SIGNALDESK_PRODUCT_CODE, requestFingerprintHash, resultSnapshot: decision, updatedAt: timestamp,
+        }));
+        writeRunTimeline(db, transaction, {
+            entityId: decisionRef.id,
+            entityType: "trust-partner",
+            label: "Trust partner renewal",
+            status: recommendation === "renew" ? "ready" : recommendation === "cut" ? "blocked" : "held",
+            steps: [
+                { label: `${metrics.length} metric records checked`, status: metrics.length ? "completed" : "held", at: toIso(timestamp) },
+                { label: `${recommendation} recommendation`, status: recommendation === "renew" ? "completed" : "held", at: toIso(timestamp) },
+            ],
+        });
+        appendAudit(db, transaction, access, "trust_partner_renewal_review", "trustPartnerRenewalDecision", decisionRef.id, recommendation);
+        updateDailyCost(db, transaction, 6, 0, 0);
+        return toPlain(decision) as SignalDeskTrustPartnerRenewalDecisionSummary;
     });
-    appendAudit(db, batch, access, "trust_partner_renewal_review", "trustPartnerRenewalDecision", decisionRef.id, input.recommendation);
-    updateDailyCost(db, batch, 3, 0, 0);
-    await batch.commit();
-    return toPlain(decision) as SignalDeskTrustPartnerRenewalDecisionSummary;
 }
 
 export async function upsertSignalDeskContentSourceServer(
@@ -11812,7 +13131,7 @@ export async function upsertSignalDeskContentSourceServer(
             ],
         });
         appendAudit(db, transaction, access, "content_source_upsert", "contentSource", contentSourceId, `${title}:reconcile=${reconciliationRequired}`);
-        updateDailyCost(db, transaction, 3, 0, 0);
+        updateDailyCost(db, transaction, 5, 0, 0);
         return { reconciliationRequired, reconciliationToken, source: projectedSource, sourceRef };
     });
     if (transactionResult.reconciliationRequired) {
@@ -12259,7 +13578,7 @@ export async function createSignalDeskContentAssetServer(
             ],
         });
         appendAudit(db, transaction, access, "content_asset_create", "contentAsset", assetRef.id, title);
-        updateDailyCost(db, transaction, input.sourceId ? 4 : 3, 0, 0);
+        updateDailyCost(db, transaction, 5 + (!existingAsset && sourceRef ? 1 : 0), 0, 0);
         return toPlain(asset) as SignalDeskContentAssetSummary;
     });
 }
@@ -12434,7 +13753,7 @@ export async function reviewSignalDeskContentAssetServer(
             if (hasPublishedTruth) effectiveStatus = "distributed";
         }
         const timestamp = now();
-        const publicationReviewPatch = input.status === "ready"
+        const publicationReview = input.status === "ready"
             ? await resolveContentAuthorityPublicationReview({
                 actorId: access.userId,
                 asset: assetSnap.data() as AnyRecord,
@@ -12444,12 +13763,12 @@ export async function reviewSignalDeskContentAssetServer(
                 timestamp,
                 transaction,
             })
-            : {};
+            : { patch: {}, writeCount: 0 };
         const reconciliationRequired = input.status !== "ready" && current.status !== input.status;
         const reconciliationToken = reconciliationRequired ? claimRef.id : "";
         const assetUpdate = {
             ...publicationStatePatch,
-            ...publicationReviewPatch,
+            ...publicationReview.patch,
             dependentHoldReconciliationKind: reconciliationRequired
                 ? CONTENT_AUTHORITY_RECONCILIATION_KIND
                 : null,
@@ -12489,7 +13808,7 @@ export async function reviewSignalDeskContentAssetServer(
             }],
         });
         appendAudit(db, transaction, access, "content_asset_review", "contentAsset", input.contentAssetId, `${current.status}->${effectiveStatus}:${normalizeText(input.reason)}`);
-        updateDailyCost(db, transaction, input.status === "ready" ? 6 : 3, 0, 0);
+        updateDailyCost(db, transaction, 5 + publicationReview.writeCount, 0, 0);
         return { asset: projectedAsset, reconciliationRequired, reconciliationToken };
     });
     if (transactionResult.reconciliationRequired) {
@@ -12833,7 +14152,14 @@ export async function generateSignalDeskContentDistributionDraftsServer(
         });
         appendAudit(db, transaction, access, "content_distribution_drafts_generate", "contentAsset", input.contentAssetId, uniqueChannels.join(", "));
         updateQueueSummary(db, transaction, { humanReview: increment(uniqueChannels.length) });
-        updateDailyCost(db, transaction, 3 + uniqueChannels.length + (backfillAssetCtaId ? 1 : 0), 0, 0);
+        const revisionHeadUpdateCount = revisions.filter((revision) => revision > 1).length;
+        updateDailyCost(
+            db,
+            transaction,
+            5 + uniqueChannels.length + revisionHeadUpdateCount + (backfillAssetCtaId ? 1 : 0),
+            0,
+            0,
+        );
         return drafts;
     });
 }
@@ -12911,7 +14237,7 @@ export async function reviewSignalDeskContentDistributionDraftServer(
             steps: [{ label: `Review ${input.approvalStatus}`, status: input.approvalStatus === "approved" ? "completed" : "held", at: toIso(timestamp) }],
         });
         appendAudit(db, transaction, access, "content_distribution_draft_review", "contentDistributionDraft", input.contentDraftId, input.approvalStatus);
-        updateDailyCost(db, transaction, currentDraft.approvalStatus === "pending" ? 4 : 3, 0, 0);
+        updateDailyCost(db, transaction, 6, 0, 0);
         const projectedDraft = projectSignalDeskContentDraft({
             ...toPlain(draft),
             [`${SIGNALDESK_COLLECTIONS.CONTENT_DISTRIBUTION_DRAFTS}DocId`]: draftRef.id,
@@ -13025,7 +14351,7 @@ export async function scheduleSignalDeskContentDistributionDraftServer(
             ],
         });
         appendAudit(db, transaction, access, "content_distribution_draft_schedule", "contentDistributionDraft", input.contentDraftId, toIso(scheduledFor) || "");
-        updateDailyCost(db, transaction, 4, 0, 0);
+        updateDailyCost(db, transaction, 6, 0, 0);
         const projectedCalendarItem = projectSignalDeskContentCalendarItem({
             ...toPlain(calendarItem),
             [`${SIGNALDESK_COLLECTIONS.CONTENT_CALENDAR_ITEMS}DocId`]: calendarItemId,
@@ -13260,7 +14586,8 @@ export async function recordSignalDeskContentPerformanceServer(
                 } : {}),
             }), { merge: true });
         }
-        if (ownerSignals) {
+        const demandSignalsToRecord = demandSignalsEnabled() ? ownerSignals : 0;
+        if (demandSignalsToRecord) {
             const demandId = `content_${input.contentAssetId}_${todayKey()}`;
             transaction.set(db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(demandId), sanitizeForFirestore({
                 demandSignalId: demandId,
@@ -13268,12 +14595,12 @@ export async function recordSignalDeskContentPerformanceServer(
                 signalType: "referral",
                 sourceSurface: "manual",
                 targetId: null,
-                targetName: asset.title,
-                count: increment(ownerSignals),
+                targetName: null,
+                count: increment(demandSignalsToRecord),
                 day: todayKey(),
                 updatedAt: timestamp,
             }), { merge: true });
-            updateControlSummary(db, transaction, { demandSignalCount: increment(ownerSignals) });
+            updateControlSummary(db, transaction, { demandSignalCount: increment(demandSignalsToRecord) });
         }
         transaction.create(claimRef, sanitizeForFirestore({ actorId: access.userId, entityId: performanceRef.id, operation: "content_performance_record", pId: SIGNALDESK_PRODUCT_CODE, requestFingerprintHash, updatedAt: timestamp }));
         writeRunTimeline(db, transaction, {
@@ -13289,7 +14616,7 @@ export async function recordSignalDeskContentPerformanceServer(
             ],
         });
         appendAudit(db, transaction, access, "content_performance_record", "contentPerformance", performanceRef.id, input.contentAssetId);
-        updateDailyCost(db, transaction, 4 + (ownerSignals ? 1 : 0) + (publicationStateTransition ? 3 : publicationMarkerBackfill ? 1 : 0), 0, 0);
+        updateDailyCost(db, transaction, 5 + (demandSignalsToRecord ? 2 : 0) + (publicationStateTransition ? 3 : publicationMarkerBackfill ? 1 : 0), 0, 0);
         const projectedPerformance = projectSignalDeskContentPerformance({
             ...toPlain(performance),
             [`${SIGNALDESK_COLLECTIONS.CONTENT_PERFORMANCE_SUMMARIES}DocId`]: performanceRef.id,
@@ -13326,8 +14653,9 @@ export async function runSignalDeskEnrichmentWaterfallServer(access: SignalDeskA
         if (pauseSnap.data()?.status === "active") throw new Error("SignalDesk source providers are paused");
         if (!targetSnap.exists) throw new Error("Target not found");
         if (!waterfallSnap.exists) throw new Error("Enrichment waterfall not found");
-        const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
-        const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
+        if (!targetDetailSnap.exists) throw new Error("Target detail not found");
+        const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+        const targetDetail = targetDetailSnap.data() as AnyRecord;
         const waterfall = toPlain(waterfallSnap.data()) as SignalDeskEnrichmentWaterfallSummary;
         if (waterfall.status !== "active") throw new Error("Enrichment waterfall is not active");
 
@@ -13460,20 +14788,35 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
     const db = requireDb();
     return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
         let approval: SignalDeskApprovalItem | null = null;
+        let approvalRaw: AnyRecord | null = null;
         if (input.approvalId) {
             const approvalSnap = await transaction.get(db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(input.approvalId));
             if (!approvalSnap.exists) throw new Error("Approval not found");
-            approval = toPlain(approvalSnap.data()) as SignalDeskApprovalItem;
+            approvalRaw = approvalSnap.data() as AnyRecord;
+            approval = requireProjectedWorkspaceDocument<SignalDeskApprovalItem>(
+                SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+                approvalSnap.data(),
+                approvalSnap.id,
+                "APPROVAL_SHAPE_INVALID",
+            );
         }
         const targetId = approval?.targetId || input.targetId;
         if (!targetId) throw new Error("Target not found");
         const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId);
         const targetSnap = await transaction.get(targetRef);
         if (!targetSnap.exists) throw new Error("Target not found");
-        const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+        const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
         if (!approval && target.latestApprovalId) {
             const approvalSnap = await transaction.get(db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(target.latestApprovalId));
-            approval = approvalSnap.exists ? toPlain(approvalSnap.data()) as SignalDeskApprovalItem : null;
+            approvalRaw = approvalSnap.exists ? approvalSnap.data() as AnyRecord : null;
+            approval = approvalSnap.exists
+                ? requireProjectedWorkspaceDocument<SignalDeskApprovalItem>(
+                    SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+                    approvalSnap.data(),
+                    approvalSnap.id,
+                    "APPROVAL_SHAPE_INVALID",
+                )
+                : null;
         }
         if (approval && approval.targetId !== target.targetId) throw new Error("Approval does not belong to target");
         const draftId = approval?.draftId || target.latestDraftId || null;
@@ -13483,21 +14826,35 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
             .orderBy("updatedAt", "desc")
             .limit(1);
         const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(target.sourcePolicyId);
+        const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(targetId);
         const conversationRef = target.latestConversationId
             ? db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(target.latestConversationId)
             : null;
-        const [draftSnap, evidenceSnap, policySnap, conversationSnap] = await Promise.all([
+        const [draftSnap, evidenceSnap, policySnap, conversationSnap, targetDetailSnap] = await Promise.all([
             draftRef ? transaction.get(draftRef) : Promise.resolve(null),
             transaction.get(evidenceQuery),
             transaction.get(policyRef),
             conversationRef ? transaction.get(conversationRef) : Promise.resolve(null),
+            transaction.get(targetDetailRef),
         ]);
-        const draft = draftSnap?.exists ? toPlain(draftSnap.data()) as SignalDeskDraftSummary : null;
+        const draft = draftSnap?.exists
+            ? requireProjectedWorkspaceDocument<SignalDeskDraftSummary>(
+                SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES,
+                draftSnap.data(),
+                draftSnap.id,
+                "DRAFT_SHAPE_INVALID",
+            )
+            : null;
         if (draft && (draft.targetId !== targetId || (approval && draft.approvalId !== approval.approvalId))) {
             throw new Error("Draft does not match approval target");
         }
         const evidence = evidenceSnap.docs[0]
-            ? toPlain(evidenceSnap.docs[0].data()) as SignalDeskEvidencePacketSummary
+            ? requireProjectedWorkspaceDocument<SignalDeskEvidencePacketSummary>(
+                SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES,
+                evidenceSnap.docs[0].data(),
+                evidenceSnap.docs[0].id,
+                "EVIDENCE_PACKET_SHAPE_INVALID",
+            )
             : null;
         let packetEvidence = evidence;
         if (draft?.evidencePacketId && evidence?.evidencePacketId !== draft.evidencePacketId) {
@@ -13505,8 +14862,13 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
                 db.collection(SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES).doc(draft.evidencePacketId),
             );
             if (!exactEvidenceSnap.exists) throw new Error("Draft evidence packet is missing");
-            if (exactEvidenceSnap.data()?.targetId !== targetId) throw new Error("Draft evidence does not belong to target");
-            packetEvidence = toPlain(exactEvidenceSnap.data()) as SignalDeskEvidencePacketSummary;
+            packetEvidence = requireProjectedWorkspaceDocument<SignalDeskEvidencePacketSummary>(
+                SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES,
+                exactEvidenceSnap.data(),
+                exactEvidenceSnap.id,
+                "EVIDENCE_PACKET_SHAPE_INVALID",
+            );
+            if (packetEvidence.targetId !== targetId) throw new Error("Draft evidence does not belong to target");
         }
         const ctaSnap = draft?.ctaId
             ? await transaction.get(db.collection(SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS).doc(draft.ctaId))
@@ -13533,7 +14895,21 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
         const sender = projectSenderDomainDocument(senderSnap);
         if (draft) assertDraftSenderAuthority(draft, sender);
         const sourcePolicy = readSourcePolicySnapshot(policySnap);
-        const priorGuard = targetPriorGuard(target, conversationSnap?.exists ? conversationSnap.data() as AnyRecord : null);
+        const contactAuthority = draft
+            ? sourcePolicy && targetDetailSnap.exists
+                ? await readSignalDeskOutboundContactAuthority(db, transaction, {
+                    bindings: [draftSnap?.data() || {}, ...(approvalRaw ? [approvalRaw] : [])],
+                    channel: "email",
+                    policy: sourcePolicy,
+                    rawTargetDetail: targetDetailSnap.data(),
+                    target,
+                })
+                : (() => { throw new Error("SIGNALDESK_CONTACT_AUTHORITY_NOT_FOUND"); })()
+            : null;
+        const conversation = conversationSnap?.exists
+            ? parseSignalDeskConversationSummaryDocument(conversationSnap.data(), conversationSnap.id)
+            : null;
+        const priorGuard = targetPriorGuard(target, conversation);
         const packetCore = await buildApprovalPacketSummary(db, {
             approval,
             cta,
@@ -13549,13 +14925,19 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
         );
         const existingPacketSnap = await transaction.get(packetRef);
         const existingPacket = existingPacketSnap.exists
-            ? toPlain(existingPacketSnap.data()) as SignalDeskApprovalPacketSummary
+            ? requireProjectedWorkspaceDocument<SignalDeskApprovalPacketSummary>(
+                SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS,
+                existingPacketSnap.data(),
+                existingPacketSnap.id,
+                "APPROVAL_PACKET_SHAPE_INVALID",
+            )
             : null;
         if (
             existingPacket
             && approvalPacketContentMatches(existingPacket, packetCore)
             && (!approval || approval.approvalPacketId === packetRef.id)
         ) {
+            if (contactAuthority) assertSignalDeskOutboundContactBinding(existingPacketSnap.data() || {}, contactAuthority);
             return existingPacket;
         }
         const timestamp = now();
@@ -13563,6 +14945,10 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
             approvalPacketId: packetRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
             ...packetCore,
+            ...(contactAuthority ? {
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
+            } : {}),
             updatedAt: timestamp,
             updatedBy: access.userId,
         };
@@ -13586,7 +14972,12 @@ export async function createSignalDeskApprovalPacketServer(access: SignalDeskAcc
         });
         appendAudit(db, transaction, access, "approval_packet_create", "approvalPacket", packetRef.id, packetCore.recommendedAction);
         updateDailyCost(db, transaction, 4, 0, 0);
-        return toPlain(packet) as SignalDeskApprovalPacketSummary;
+        return requireProjectedWorkspaceDocument<SignalDeskApprovalPacketSummary>(
+            SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS,
+            packet,
+            packetRef.id,
+            "APPROVAL_PACKET_SHAPE_INVALID",
+        );
     });
 }
 
@@ -13618,29 +15009,57 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
                 ) {
                     throw new Error("Sequencer handoff request conflicts with existing truth");
                 }
-                if (!approval.draftId) throw new Error("Draft is required before sequencer handoff");
-                const replayDraftSnap = await transaction.get(
-                    db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(approval.draftId),
-                );
-                if (!replayDraftSnap.exists) throw new Error("Draft is required before sequencer handoff");
-                const replayDraft = toPlain(replayDraftSnap.data()) as SignalDeskDraftSummary;
-                if (
-                    replayDraft.approvalId !== approval.approvalId
-                    || replayDraft.targetId !== approval.targetId
-                    || existingHandoff.targetId !== approval.targetId
-                    || existingHandoff.ctaId !== replayDraft.ctaId
-                    || existingHandoff.ctaFingerprintHash !== replayDraft.ctaFingerprintHash
-                    || existingHandoff.senderDomainId !== replayDraft.senderDomainId
-                    || existingHandoff.senderDomainFingerprintHash !== replayDraft.senderDomainFingerprintHash
-                ) throw new Error("Sequencer handoff truth is stale");
-                await assertSignalDeskCtaLineage(db, transaction, replayDraft);
-                const replaySenderSnap = replayDraft.senderDomainId
-                    ? await transaction.get(db.collection(SIGNALDESK_COLLECTIONS.SENDER_DOMAINS).doc(replayDraft.senderDomainId))
-                    : null;
-                const replaySender = projectSenderDomainDocument(replaySenderSnap);
-                assertDraftSenderAuthority(replayDraft, replaySender);
-                assertSenderDomainAuthorityBinding(existingHandoff, replaySender);
-                return existingHandoff;
+                // Re-evaluate a deterministic blocked handoff below. A provider account or
+                // email environment can become ready without changing the approved draft.
+                if (existingHandoff.status !== "blocked") {
+                    if (!approval.draftId) throw new Error("Draft is required before sequencer handoff");
+                    const replayDraftSnap = await transaction.get(
+                        db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(approval.draftId),
+                    );
+                    if (!replayDraftSnap.exists) throw new Error("Draft is required before sequencer handoff");
+                    const replayDraft = toPlain(replayDraftSnap.data()) as SignalDeskDraftSummary;
+                    if (
+                        approval.channel !== "email"
+                        || replayDraft.channel !== "email"
+                        || replayDraft.approvalId !== approval.approvalId
+                        || replayDraft.targetId !== approval.targetId
+                        || existingHandoff.targetId !== approval.targetId
+                        || existingHandoff.ctaId !== replayDraft.ctaId
+                        || existingHandoff.ctaFingerprintHash !== replayDraft.ctaFingerprintHash
+                        || existingHandoff.senderDomainId !== replayDraft.senderDomainId
+                        || existingHandoff.senderDomainFingerprintHash !== replayDraft.senderDomainFingerprintHash
+                    ) throw new Error("Sequencer handoff truth is stale");
+                    let currentCtaAuthority = true;
+                    try {
+                        await assertSignalDeskCtaLineage(db, transaction, replayDraft);
+                    } catch {
+                        currentCtaAuthority = false;
+                    }
+                    const replaySenderSnap = replayDraft.senderDomainId
+                        ? await transaction.get(db.collection(SIGNALDESK_COLLECTIONS.SENDER_DOMAINS).doc(replayDraft.senderDomainId))
+                        : null;
+                    const replaySender = projectSenderDomainDocument(replaySenderSnap);
+                    const currentSenderAuthority = isSenderDomainAuthorityBindingCurrent(replayDraft, replaySender)
+                        && isSenderDomainAuthorityBindingCurrent(existingHandoff, replaySender);
+                    const currentContactAuthority = await isSignalDeskOutboundReplayAuthorityCurrent(
+                        db,
+                        transaction,
+                        existingHandoff as AnyRecord,
+                        "email",
+                    );
+                    const projectedExistingHandoff = requireProjectedWorkspaceDocument<SignalDeskSequencerHandoffSummary>(
+                        SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS,
+                        existingHandoffSnap.data(),
+                        existingHandoffSnap.id,
+                        "SEQUENCER_HANDOFF_SHAPE_INVALID",
+                    );
+                    return {
+                        ...projectedExistingHandoff,
+                        currentAuthority: currentCtaAuthority && currentContactAuthority && currentSenderAuthority,
+                        historicalReplay: true,
+                        replay: true,
+                    };
+                }
             }
             if (approval.status !== "approved" || !approval.draftId) {
                 throw new Error("Approval must be approved before sequencer handoff");
@@ -13664,10 +15083,14 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
             ]);
             if (!targetSnap.exists) throw new Error("Target not found");
             if (!draftSnap.exists) throw new Error("Draft is required before sequencer handoff");
-            const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+            const targetAuthority = parseSignalDeskOutcomeTargetAuthority(targetSnap.data(), targetSnap.id);
+            const target = targetAuthority.target;
             if (!target.sourcePolicyId) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
             const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
             const draft = toPlain(draftSnap.data()) as SignalDeskDraftSummary;
+            if (approval.channel !== "email" || draft.channel !== "email") {
+                throw new Error("SEQUENCER_HANDOFF_EMAIL_APPROVAL_REQUIRED");
+            }
             if (approval.targetId !== target.targetId
                 || draft.targetId !== target.targetId
                 || draft.approvalId !== approval.approvalId
@@ -13697,14 +15120,22 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
             const policy = readSourcePolicySnapshot(policySnap);
             const policyError = sourcePolicyUsabilityError(policy, { entityId: input.approvalId, use: "sequence" });
             if (policyError) throw new Error(policyError);
+            if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+            assertOutcomeTargetPolicyLineage(targetAuthority, policy);
+            const contactAuthority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+                bindings: [approvalSnap.data() || {}, draftSnap.data() || {}],
+                channel: "email",
+                policy,
+                rawTargetDetail: targetDetail,
+                target,
+            });
             if (globalPauseSnap.data()?.status === "active" || emailPauseSnap.data()?.status === "active") {
                 throw new Error("Outbound export is paused");
             }
             if (campaignPauseSnap.data()?.status === "active") throw new Error("SignalDesk campaign rail is paused");
             const priorGuard = targetPriorGuard(target, conversationSnap.exists ? conversationSnap.data() as AnyRecord : null);
             if (!priorGuard.clear) throw new Error("Target has prior contact or outcome");
-            const recipient = getProviderRecipientForChannel(targetDetail, "email");
-            if (!recipient) throw new Error("Channel recipient is not configured");
+            const recipient = contactAuthority.recipient;
             if (target.contactability !== "ready") throw new Error("Target contact is not export-ready");
             const account = accountSnap.exists ? toPlain(accountSnap.data()) as SignalDeskProviderAccountSummary : null;
             const blockedReasons = [
@@ -13722,6 +15153,8 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
                 approvalId: approval.approvalId,
                 ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
                 ctaId: ctaAuthority.cta.ctaId,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 draftId: draft.draftId,
                 emailReady: owned ? isEmailChannelReady() : true,
                 provider: input.provider,
@@ -13730,6 +15163,19 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
                 senderDomainId: sender.senderDomainId,
                 targetId: target.targetId,
             }));
+            if (existingHandoff?.status === "blocked" && existingHandoff.requestFingerprintHash === requestFingerprintHash) {
+                return {
+                    ...requireProjectedWorkspaceDocument<SignalDeskSequencerHandoffSummary>(
+                        SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS,
+                        existingHandoffSnap.data(),
+                        existingHandoffSnap.id,
+                        "SEQUENCER_HANDOFF_SHAPE_INVALID",
+                    ),
+                    currentAuthority: true,
+                    historicalReplay: true,
+                    replay: true,
+                };
+            }
             const timestamp = now();
             const handoff = {
                 sequencerHandoffId: handoffRef.id,
@@ -13739,11 +15185,13 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
                 approvalId: approval.approvalId,
                 ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
                 ctaId: ctaAuthority.cta.ctaId,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 targetId: target.targetId,
                 targetName: target.displayName,
                 senderDomainFingerprintHash: senderDomainFingerprintHashFor(sender),
                 senderDomainId: sender.senderDomainId,
-                blockedReason: blockedReasons.join(" "),
+                blockedReason: blockedReasons.length ? blockedReasons.join(" ") : null,
                 currentStep: owned && ready ? 1 : null,
                 nextSendAt: owned && ready ? timestamp : null,
                 providerCampaignId: null,
@@ -13764,6 +15212,8 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
                     approvalId: approval.approvalId,
                     ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
                     ctaId: ctaAuthority.cta.ctaId,
+                    contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                    contactIdentityId: contactAuthority.contactIdentityId,
                     draftId: draft.draftId,
                     senderDomainId: sender.senderDomainId,
                     targetId: target.targetId,
@@ -13802,7 +15252,12 @@ export async function createSignalDeskSequencerHandoffServer(access: SignalDeskA
             });
             appendAudit(db, transaction, access, "sequencer_handoff_create", "sequencerHandoff", handoffRef.id, handoff.status);
             updateDailyCost(db, transaction, owned && ready ? 7 : 3, 0, 0);
-            return toPlain(handoff) as SignalDeskSequencerHandoffSummary;
+            return requireProjectedWorkspaceDocument<SignalDeskSequencerHandoffSummary>(
+                SIGNALDESK_COLLECTIONS.SEQUENCER_HANDOFFS,
+                handoff,
+                handoffRef.id,
+                "SEQUENCER_HANDOFF_SHAPE_INVALID",
+            );
         });
     } catch (error) {
         const code = error instanceof Error ? error.message : "";
@@ -13849,9 +15304,16 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
                     historicalExport,
                     projectSenderDomainDocument(historicalSenderSnap),
                 );
+                const currentContactAuthority = await isSignalDeskOutboundReplayAuthorityCurrent(
+                    db,
+                    transaction,
+                    historicalExport,
+                    "email",
+                );
                 return {
                     context: null,
                     currentCtaAuthority,
+                    currentContactAuthority,
                     currentSenderAuthority,
                     replay: {
                         exportId: historicalExport.exportId,
@@ -13895,8 +15357,9 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
         if (!targetSnap.exists) throw new Error("Target not found");
         if (!approvalSnap.exists) throw new Error("Approval not found");
         const step = toPlain(stepSnap.data()) as SignalDeskSequencerStepSummary & { body?: string | null };
-        const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
-        const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
+        if (!targetDetailSnap.exists) throw new Error("Target detail not found");
+        const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+        const targetDetail = targetDetailSnap.data() as AnyRecord;
         const approval = toPlain(approvalSnap.data()) as SignalDeskApprovalItem;
         if (!approval.draftId) throw new Error("Draft is required before send");
         const draftRef = db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(approval.draftId);
@@ -13939,13 +15402,25 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
             throw new Error("Outbound export is paused");
         }
         if (campaignPauseSnap.data()?.status === "active") throw new Error("SignalDesk campaign rail is paused");
-            const policy = readSourcePolicySnapshot(policySnap);
+        const policy = readSourcePolicySnapshot(policySnap);
         const policyError = sourcePolicyUsabilityError(policy, { entityId: input.sequencerHandoffId, use: "send" });
         if (policyError) throw new Error(policyError);
+        if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+        const contactAuthority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+            bindings: [
+                handoffSnap.data() || {},
+                stepSnap.data() || {},
+                approvalSnap.data() || {},
+                draftSnap.data() || {},
+            ],
+            channel: "email",
+            policy,
+            rawTargetDetail: targetDetail,
+            target,
+        });
         const priorGuard = targetPriorGuard(target, conversationSnap.exists ? conversationSnap.data() as AnyRecord : null);
         if (!priorGuard.clear) throw new Error("Target has prior contact or outcome");
-        const recipient = getProviderRecipientForChannel(targetDetail, "email");
-        if (!recipient) throw new Error("Channel recipient is not configured");
+        const recipient = contactAuthority.recipient;
         if (target.contactability !== "ready") throw new Error("Target contact is not export-ready");
         const account = accountSnap.exists ? toPlain(accountSnap.data()) as SignalDeskProviderAccountSummary : null;
         if (!account || !account.ownerApproved || account.status !== "approved" || account.credentialState === "missing") {
@@ -13965,6 +15440,8 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
             body,
             ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
             ctaId: ctaAuthority.cta.ctaId,
+            contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+            contactIdentityId: contactAuthority.contactIdentityId,
             draftId: draft.draftId,
             recipientHash: hashValue(recipient),
             senderDomainFingerprintHash: senderDomainFingerprintHashFor(sender),
@@ -13984,6 +15461,8 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
             pId: SIGNALDESK_PRODUCT_CODE,
             ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
             ctaId: ctaAuthority.cta.ctaId,
+            contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+            contactIdentityId: contactAuthority.contactIdentityId,
             requestFingerprintHash,
             sequenceStepId: step.sequenceStepId,
             status: "running",
@@ -13993,14 +15472,15 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
         updateDailyCost(db, transaction, 4, 0);
         return {
             currentCtaAuthority: true,
+            currentContactAuthority: true,
             currentSenderAuthority: true,
             replay: null,
-            context: { approval, body, draft, handoff, recipient, requestFingerprintHash, sender, stepRef, subject, target },
+            context: { approval, body, contactAuthority, draft, handoff, recipient, requestFingerprintHash, sender, stepRef, subject, target },
         };
     });
     if (start.replay) {
         return {
-            currentAuthority: start.currentCtaAuthority && start.currentSenderAuthority,
+            currentAuthority: start.currentCtaAuthority && start.currentContactAuthority && start.currentSenderAuthority,
             historicalReplay: true,
             providerMessageId: start.replay.providerMessageId || null,
             sequencerHandoffId: input.sequencerHandoffId,
@@ -14008,16 +15488,17 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
         };
     }
     if (!start.context) throw new Error("OWNED_SEQUENCE_SEND_REVIEW_REQUIRED");
-    const { approval, body, draft, handoff, recipient, requestFingerprintHash, sender, stepRef, subject, target } = start.context;
+    const { approval, body, contactAuthority, draft, handoff, recipient, requestFingerprintHash, sender, stepRef, subject, target } = start.context;
     let providerResult: Awaited<ReturnType<typeof sendSignalDeskProviderMessage>>;
     try {
-        providerResult = await sendSignalDeskProviderMessage({
+        providerResult = assertSignalDeskProviderSendResult(await sendSignalDeskProviderMessage({
             body,
             channel: "email",
             recipient,
             senderDomain: sender.domain,
             subject,
-        });
+        }));
+        if (providerResult.provider !== "smtp") throw new Error("PROVIDER_SEND_RESULT_PROVIDER_MISMATCH");
     } catch (error) {
         await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
             const claimSnap = await transaction.get(claimRef);
@@ -14049,6 +15530,7 @@ export async function sendSignalDeskOwnedSequenceStepServer(access: SignalDeskAc
                 approval,
                 batch: transaction,
                 channel: "email",
+                contactAuthority,
                 db,
                 draft,
                 exportRef,
@@ -14128,6 +15610,9 @@ export async function importSignalDeskTargetsServer(
     input: SignalDeskTargetImportInput,
     providerCompletion?: SourceProviderImportCompletion,
 ) {
+    if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_IMPORTS) {
+        throw new Error("SignalDesk target imports are disabled");
+    }
     const parsedInput = SignalDeskTargetImportSchema.safeParse(input);
     if (!parsedInput.success) throw new Error("TARGET_IMPORT_INPUT_INVALID");
     const normalizedInput = parsedInput.data;
@@ -14990,6 +16475,9 @@ export async function importSignalDeskTargetsServer(
 }
 
 export async function runSignalDeskSourceProviderServer(access: SignalDeskAccessContext, input: SourceProviderRunInput) {
+    if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_IMPORTS) {
+        throw new Error("SignalDesk target imports are disabled");
+    }
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_SOURCE_PROVIDERS) {
         throw new Error("SignalDesk source providers are disabled");
     }
@@ -15191,6 +16679,7 @@ export async function runSignalDeskSourceProviderServer(access: SignalDeskAccess
 }
 
 export async function createSignalDeskResearchAgentRunServer(access: SignalDeskAccessContext, input: ResearchAgentInput) {
+    requireOperatingLayer();
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE) {
         throw new Error("SignalDesk research agent table is disabled");
     }
@@ -15540,6 +17029,7 @@ const signalDeskEvidenceIdentityHashFor = (
     sourceDataObservedAt: targetAuthority.sourceDataObservedAt,
     sourcePolicyId: targetAuthority.sourcePolicyId,
     sourceRunId: targetAuthority.sourceRunId,
+    suppressionStatus: targetAuthority.target.suppressionStatus,
     targetId: targetAuthority.target.targetId,
     website: normalizeText(targetAuthority.target.website),
 })).slice(0, 32);
@@ -16796,6 +18286,17 @@ export async function reviewSignalDeskAiShadowRunServer(
         const previousDecision = run.reviewDecision || null;
         const previousAttentionMinutes = nonNegativeInteger(run.founderAttentionMinutes);
         const nextAttentionMinutes = nonNegativeInteger(input.founderAttentionMinutes);
+        const reason = normalizeText(input.reason || (input.decision === "accepted" ? "Accepted unchanged." : ""));
+        if (
+            previousDecision === input.decision
+            && normalizeText(run.reviewReason) === reason
+            && previousAttentionMinutes === nextAttentionMinutes
+        ) {
+            return {
+                run,
+                modelEval: existingEval,
+            };
+        }
         const countFor = (decision: SignalDeskAiShadowReviewDecision) => Math.max(
             0,
             nonNegativeInteger({
@@ -16815,7 +18316,6 @@ export async function reviewSignalDeskAiShadowRunServer(
             nonNegativeInteger(existingEval.founderAttentionMinutes) - previousAttentionMinutes + nextAttentionMinutes,
         );
         const timestamp = now();
-        const reason = normalizeText(input.reason || (input.decision === "accepted" ? "Accepted unchanged." : ""));
 
         transaction.set(runRef, sanitizeForFirestore({
             reviewDecision: input.decision,
@@ -16939,8 +18439,14 @@ export async function createSignalDeskEvidenceServer(access: SignalDeskAccessCon
                 },
             }));
             transaction.create(summaryRef, sanitizeForFirestore(summary));
+            const draftEligible = policyAllowedUse.personalization
+                && target.suppressionStatus === "clear"
+                && target.nextAction !== "hold"
+                && target.segment !== "reject"
+                && target.status !== "held"
+                && target.status !== "rejected";
             transaction.set(targetRef, sanitizeForFirestore({
-                nextAction: "draft",
+                nextAction: draftEligible ? "draft" : "hold",
                 updatedAt: timestamp,
             }), { merge: true });
             appendAudit(db, transaction, access, "evidence_packet_create", "target", targetId, `confidence:${summary.confidence}`);
@@ -16965,7 +18471,7 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
     const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId);
     const templateRef = db.collection(SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES).doc(templateId);
     const [selectedEvidence, selectedCta, selectedSender] = await Promise.all([
-        readRecentByTarget<SignalDeskEvidencePacketSummary>(db, SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES, input.targetId, 1).then((rows) => rows[0] || null),
+        readRecentProjectedByTarget<SignalDeskEvidencePacketSummary>(db, SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES, input.targetId, 1).then((rows) => rows[0] || null),
         readDefaultCta(db),
         readReadySenderDomain(db),
     ]);
@@ -16973,7 +18479,9 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
         return await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
             const targetSnap = await transaction.get(targetRef);
             if (!targetSnap.exists) throw new Error("Target not found");
-            const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+            const targetAuthority = parseSignalDeskOutcomeTargetAuthority(targetSnap.data(), targetSnap.id);
+            const target = targetAuthority.target;
+            const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(target.targetId);
             const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(target.sourcePolicyId);
             const evidenceRef = selectedEvidence
                 ? db.collection(SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES).doc(selectedEvidence.evidencePacketId)
@@ -16985,34 +18493,57 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
             const conversationRef = target.latestConversationId
                 ? db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(target.latestConversationId)
                 : null;
-            const [policySnap, currentTemplateSnap, evidenceSnap, ctaSnap, senderSnap, conversationSnap] = await Promise.all([
+            const [policySnap, currentTemplateSnap, evidenceSnap, ctaSnap, senderSnap, conversationSnap, targetDetailSnap] = await Promise.all([
                 transaction.get(policyRef),
                 transaction.get(templateRef),
                 evidenceRef ? transaction.get(evidenceRef) : Promise.resolve(null),
                 transaction.get(ctaRef),
                 senderRef ? transaction.get(senderRef) : Promise.resolve(null),
                 conversationRef ? transaction.get(conversationRef) : Promise.resolve(null),
+                transaction.get(targetDetailRef),
             ]);
             const policy = readSourcePolicySnapshot(policySnap);
             const policyError = sourcePolicyUsabilityError(policy, { entityId: input.targetId, use: "draft" });
             if (policyError) throw new Error(policyError);
             if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+            if (!targetDetailSnap.exists) throw new Error("Target detail not found");
+            const contactAuthority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+                channel: "email",
+                policy,
+                rawTargetDetail: targetDetailSnap.data(),
+                target,
+            });
             if (!currentTemplateSnap.exists) throw new Error("Active template is required");
-            const template = toPlain(currentTemplateSnap.data()) as SignalDeskTemplateSummary;
+            const template = projectSignalDeskWorkspaceDocument(
+                SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES,
+                currentTemplateSnap.data(),
+                currentTemplateSnap.id,
+            ) as SignalDeskTemplateSummary | null;
+            if (!template) throw new Error("TEMPLATE_SHAPE_INVALID");
             if (template.status !== "active") throw new Error("Template is inactive");
             if (!evidenceSnap?.exists) throw new Error("Evidence packet is required before draft");
-            const evidence = toPlain(evidenceSnap.data()) as SignalDeskEvidencePacketSummary;
+            const evidence = projectSignalDeskWorkspaceDocument(
+                SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES,
+                evidenceSnap.data(),
+                evidenceSnap.id,
+            ) as SignalDeskEvidencePacketSummary | null;
+            if (!evidence) throw new Error("EVIDENCE_PACKET_SHAPE_INVALID");
             if (evidence.targetId !== target.targetId) throw new Error("Evidence packet does not belong to target");
+            const evidenceAllowedUse = ["evidence"];
+            if (resolveAllowedUse(policy).personalization) evidenceAllowedUse.push("draft-personalization");
+            parseSignalDeskOutcomeEvidenceAuthority(evidenceSnap.data(), evidenceSnap.id, targetAuthority);
+            const expectedEvidenceId = `evidence_${signalDeskEvidenceIdentityHashFor(targetAuthority, evidenceAllowedUse)}`;
+            if (evidence.evidencePacketId !== expectedEvidenceId) throw new Error("DRAFT_EVIDENCE_LINEAGE_STALE");
             if (!Array.isArray(evidence.allowedUse) || !evidence.allowedUse.includes("draft-personalization")) {
                 throw new Error("Draft personalization is not approved for this target");
             }
             if (target.suppressionStatus !== "clear" || target.nextAction === "hold" || target.segment === "reject") {
                 throw new Error("Target is not draft-ready");
             }
-            const priorGuard = targetPriorGuard(
-                target,
-                conversationSnap?.exists ? conversationSnap.data() as AnyRecord : null,
-            );
+            const conversation = conversationSnap?.exists
+                ? parseSignalDeskConversationSummaryDocument(conversationSnap.data(), conversationSnap.id)
+                : null;
+            const priorGuard = targetPriorGuard(target, conversation);
             if (!priorGuard.clear) throw new Error("Target has prior contact or outcome");
             const ctaAuthority = await readSignalDeskCtaAuthority(db, transaction, {
                 ctaId: selectedCta.ctaId,
@@ -17025,10 +18556,13 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
             if (!isSenderDomainReady(sender)) throw new Error("Sender domain is not ready");
             const senderDomainFingerprintHash = senderDomainFingerprintHashFor(sender);
             const rendered = buildDraftBody(template, target, evidence, cta);
+            const templateFingerprintHash = signalDeskTemplateFingerprintHashFor(template);
             const draftIdentityHash = hashValue(JSON.stringify({
                 body: rendered.body,
                 ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
                 ctaId: cta.ctaId,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 evidencePacketId: evidence.evidencePacketId,
                 policyAllowedUse: resolveAllowedUse(policy),
                 policyExpiresAt: getSourcePolicyExpiryMillis(policy),
@@ -17036,6 +18570,7 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
                 senderDomainId: sender.senderDomainId,
                 subject: rendered.subject,
                 targetId: target.targetId,
+                templateFingerprintHash,
                 templateId,
             })).slice(0, 32);
             const draftRef = db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(`draft_${draftIdentityHash}`);
@@ -17046,17 +18581,41 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
                 transaction.get(approvalRef),
                 transaction.get(approvalPacketRef),
             ]);
+            if ([priorDraftSnap.exists, priorApprovalSnap.exists, priorPacketSnap.exists].some(Boolean)
+                && ![priorDraftSnap.exists, priorApprovalSnap.exists, priorPacketSnap.exists].every(Boolean)) {
+                throw new Error("DRAFT_REPLAY_INCOMPLETE");
+            }
             if (priorDraftSnap.exists && priorApprovalSnap.exists && priorPacketSnap.exists) {
-                const priorDraft = toPlain(priorDraftSnap.data()) as SignalDeskDraftSummary;
-                const priorPacket = toPlain(priorPacketSnap.data()) as SignalDeskApprovalPacketSummary;
+                const priorDraft = projectSignalDeskWorkspaceDocument(
+                    SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES,
+                    priorDraftSnap.data(),
+                    priorDraftSnap.id,
+                ) as SignalDeskDraftSummary | null;
+                const priorApproval = projectSignalDeskWorkspaceDocument(
+                    SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+                    priorApprovalSnap.data(),
+                    priorApprovalSnap.id,
+                ) as SignalDeskApprovalItem | null;
+                const priorPacket = projectSignalDeskWorkspaceDocument(
+                    SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS,
+                    priorPacketSnap.data(),
+                    priorPacketSnap.id,
+                ) as SignalDeskApprovalPacketSummary | null;
+                if (!priorDraft || !priorApproval || !priorPacket) throw new Error("DRAFT_REPLAY_SHAPE_INVALID");
                 if (
                     priorDraft.ctaId !== cta.ctaId
                     || priorDraft.ctaFingerprintHash !== ctaAuthority.ctaFingerprintHash
                     || priorPacket.ctaId !== cta.ctaId
                     || priorPacket.ctaFingerprintHash !== ctaAuthority.ctaFingerprintHash
                 ) throw new Error("CONTENT_CTA_STALE");
+                if (priorDraft.templateFingerprintHash !== templateFingerprintHash) {
+                    throw new Error("DRAFT_TEMPLATE_AUTHORITY_STALE");
+                }
+                [priorDraftSnap.data(), priorApprovalSnap.data(), priorPacketSnap.data()].forEach((binding) => {
+                    assertSignalDeskOutboundContactBinding(binding || {}, contactAuthority);
+                });
                 return {
-                    approval: toPlain(priorApprovalSnap.data()) as SignalDeskApprovalItem,
+                    approval: priorApproval,
                     approvalPacket: priorPacket,
                     draft: priorDraft,
                 };
@@ -17068,6 +18627,7 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
                 pId: SIGNALDESK_PRODUCT_CODE,
                 targetId: target.targetId,
                 targetName: target.displayName,
+                templateFingerprintHash,
                 templateId,
                 channel: "email",
                 status: "queued",
@@ -17077,6 +18637,8 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
                 approvalId: approvalRef.id,
                 ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
                 ctaId: cta.ctaId,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 senderDomainFingerprintHash,
                 senderDomainId: sender.senderDomainId,
                 personalizationEvidenceIds: rendered.personalizationEvidenceIds,
@@ -17096,6 +18658,8 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
                 reviewReason: "Draft created from evidence packet.",
                 channel: "email",
                 approvalPacketId: approvalPacketRef.id,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 dueAt: null,
                 createdAt: timestamp,
                 updatedAt: timestamp,
@@ -17114,6 +18678,8 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
                 approvalPacketId: approvalPacketRef.id,
                 pId: SIGNALDESK_PRODUCT_CODE,
                 ...approvalPacketCore,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 updatedAt: timestamp,
                 updatedBy: access.userId,
             };
@@ -17141,10 +18707,28 @@ export async function createSignalDeskDraftServer(access: SignalDeskAccessContex
             });
             updateQueueSummary(db, transaction, { approvalBacklog: increment(1), humanReview: increment(1) });
             updateDailyCost(db, transaction, 7, 0);
+            const publicApproval = requireProjectedWorkspaceDocument<SignalDeskApprovalItem>(
+                SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+                approval,
+                approvalRef.id,
+                "APPROVAL_SHAPE_INVALID",
+            );
+            const publicApprovalPacket = requireProjectedWorkspaceDocument<SignalDeskApprovalPacketSummary>(
+                SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS,
+                approvalPacket,
+                approvalPacketRef.id,
+                "APPROVAL_PACKET_SHAPE_INVALID",
+            );
+            const publicDraft = requireProjectedWorkspaceDocument<SignalDeskDraftSummary>(
+                SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES,
+                draft,
+                draftRef.id,
+                "DRAFT_SHAPE_INVALID",
+            );
             return {
-                approval: toPlain(approval) as SignalDeskApprovalItem,
-                approvalPacket: toPlain(approvalPacket) as SignalDeskApprovalPacketSummary,
-                draft: toPlain(draft) as SignalDeskDraftSummary,
+                approval: publicApproval,
+                approvalPacket: publicApprovalPacket,
+                draft: publicDraft,
             };
         });
     } catch (error) {
@@ -17173,6 +18757,12 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
     }
     const db = requireDb();
     const approvalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(input.approvalId);
+    const reviewRequestFingerprintHash = hashValue(JSON.stringify({
+        approvalId: input.approvalId,
+        reason: reviewNote || null,
+        rejectionReason: input.status === "rejected" ? input.rejectionReason : null,
+        status: input.status,
+    }));
     const rejectionProjection = input.status === "rejected"
         ? input.rejectionReason === "evidence-weak-or-stale"
             ? { nextAction: "evidence" as const, status: "review" as const }
@@ -17187,27 +18777,66 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
         transactionResult = await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
             const currentApprovalSnap = await transaction.get(approvalRef);
             if (!currentApprovalSnap.exists) throw new Error("Approval not found");
-            const currentApproval = toPlain(currentApprovalSnap.data()) as SignalDeskApprovalItem;
-            if (currentApproval.status !== "pending") throw new Error("Approval is not pending");
+            const currentApproval = requireProjectedWorkspaceDocument<SignalDeskApprovalItem>(
+                SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+                currentApprovalSnap.data(),
+                currentApprovalSnap.id,
+                "APPROVAL_SHAPE_INVALID",
+            );
+            const reviewReason = input.status === "rejected"
+                ? [input.rejectionReason, reviewNote].filter(Boolean).join(": ")
+                : reviewNote || currentApproval.reviewReason;
+            if (currentApproval.status !== "pending") {
+                const currentApprovalRaw = currentApprovalSnap.data() as AnyRecord;
+                const exactTerminalReplay = currentApproval.status === input.status
+                    && normalizeText(currentApprovalRaw.reviewedBy) === access.userId
+                    && normalizeText(currentApprovalRaw.reviewRequestFingerprintHash) === reviewRequestFingerprintHash
+                    && currentApproval.reviewReason === reviewReason
+                    && (
+                        input.status === "approved"
+                            ? !currentApproval.rejectionReason
+                            : currentApproval.rejectionReason === input.rejectionReason
+                    );
+                if (exactTerminalReplay) return { blockedReason: null };
+                throw new Error("Approval is not pending");
+            }
             const draftRef = currentApproval.draftId
                 ? db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(currentApproval.draftId)
                 : null;
             const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(currentApproval.targetId);
+            const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(currentApproval.targetId);
             const approvalPacketRef = currentApproval.approvalPacketId
                 ? db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS).doc(currentApproval.approvalPacketId)
                 : null;
-            const [currentDraftSnap, currentTargetSnap, currentApprovalPacketSnap] = await Promise.all([
-                draftRef ? transaction.get(draftRef) : Promise.resolve(null),
+            const preliminaryDraftSnap = draftRef ? await transaction.get(draftRef) : null;
+            const preliminaryDraft = preliminaryDraftSnap?.exists
+                ? requireProjectedWorkspaceDocument<SignalDeskDraftSummary>(
+                    SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES,
+                    preliminaryDraftSnap.data(),
+                    preliminaryDraftSnap.id,
+                    "DRAFT_SHAPE_INVALID",
+                )
+                : null;
+            const templateRef = preliminaryDraft
+                ? db.collection(SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES).doc(preliminaryDraft.templateId)
+                : null;
+            const [currentTargetSnap, currentApprovalPacketSnap, currentTargetDetailSnap, currentTemplateSnap] = await Promise.all([
                 transaction.get(targetRef),
                 approvalPacketRef ? transaction.get(approvalPacketRef) : Promise.resolve(null),
+                transaction.get(targetDetailRef),
+                templateRef ? transaction.get(templateRef) : Promise.resolve(null),
             ]);
             if (!currentTargetSnap.exists) throw new Error("Target not found");
-            const currentTarget = toPlain(currentTargetSnap.data()) as SignalDeskTargetSummary;
-            const currentDraft = currentDraftSnap?.exists
-                ? toPlain(currentDraftSnap.data()) as SignalDeskDraftSummary
-                : null;
+            if (!currentTargetDetailSnap.exists) throw new Error("Target detail not found");
+            const currentTarget = parseSignalDeskTargetSummaryDocument(currentTargetSnap.data(), currentTargetSnap.id);
+            const currentDraft = preliminaryDraft;
             const currentApprovalPacket = currentApprovalPacketSnap?.exists
-                ? toPlain(currentApprovalPacketSnap.data()) as SignalDeskApprovalPacketSummary
+                ? requireProjectedWorkspaceDocument<SignalDeskApprovalPacketSummary>(
+                    SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS,
+                    currentApprovalPacketSnap.data(),
+                    currentApprovalPacketSnap.id,
+                    "APPROVAL_PACKET_SHAPE_INVALID",
+                )
                 : null;
             if (input.status === "approved") {
                 if (!currentDraft) throw new Error("Draft is required before approval");
@@ -17218,6 +18847,20 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
                 ) {
                     throw new Error("Draft does not match pending approval");
                 }
+                const currentTemplate = currentTemplateSnap?.exists
+                    ? projectSignalDeskWorkspaceDocument(
+                        SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES,
+                        currentTemplateSnap.data(),
+                        currentTemplateSnap.id,
+                    ) as SignalDeskTemplateSummary | null
+                    : null;
+                if (
+                    !currentTemplate
+                    || currentTemplate.status !== "active"
+                    || currentTemplate.channel !== currentDraft.channel
+                    || !currentDraft.templateFingerprintHash
+                    || currentDraft.templateFingerprintHash !== signalDeskTemplateFingerprintHashFor(currentTemplate)
+                ) throw new Error("DRAFT_TEMPLATE_AUTHORITY_STALE");
                 if (
                     !currentApprovalPacket
                     || currentApprovalPacket.approvalId !== currentApproval.approvalId
@@ -17256,15 +18899,29 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
                     ctaRef ? transaction.get(ctaRef) : Promise.resolve(null),
                     senderRef ? transaction.get(senderRef) : Promise.resolve(null),
                 ]);
-        const policy = readSourcePolicySnapshot(policySnap);
+                const policy = readSourcePolicySnapshot(policySnap);
                 const policyError = sourcePolicyUsabilityError(policy, {
                     entityId: currentApproval.targetId,
                     use: "approval",
                 });
                 if (policyError) throw new Error(policyError);
+                if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+                await readSignalDeskOutboundContactAuthority(db, transaction, {
+                    bindings: [
+                        currentApprovalSnap.data() || {},
+                        preliminaryDraftSnap?.data() || {},
+                        currentApprovalPacketSnap?.data() || {},
+                    ],
+                    channel: "email",
+                    policy,
+                    rawTargetDetail: currentTargetDetailSnap.data(),
+                    target: currentTarget,
+                });
                 const priorGuard = targetPriorGuard(
                     currentTarget,
-                    conversationSnap?.exists ? conversationSnap.data() as AnyRecord : null,
+                    conversationSnap?.exists
+                        ? parseSignalDeskConversationSummaryDocument(conversationSnap.data(), conversationSnap.id)
+                        : null,
                 );
                 if (
                     !priorGuard.clear
@@ -17292,7 +18949,14 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
                     approval: currentApproval,
                     cta: currentCtaAuthority.cta,
                     draft: currentDraft,
-                    evidence: evidenceSnap?.exists ? toPlain(evidenceSnap.data()) as SignalDeskEvidencePacketSummary : null,
+                    evidence: evidenceSnap?.exists
+                        ? requireProjectedWorkspaceDocument<SignalDeskEvidencePacketSummary>(
+                            SIGNALDESK_COLLECTIONS.EVIDENCE_PACKET_SUMMARIES,
+                            evidenceSnap.data(),
+                            evidenceSnap.id,
+                            "EVIDENCE_PACKET_SHAPE_INVALID",
+                        )
+                        : null,
                     priorGuard,
                     sender: currentSender,
                     sourcePolicy: policy,
@@ -17312,15 +18976,13 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
             }
 
             const timestamp = now();
-            const reviewReason = input.status === "rejected"
-                ? [input.rejectionReason, reviewNote].filter(Boolean).join(": ")
-                : reviewNote || currentApproval.reviewReason;
             transaction.set(approvalRef, sanitizeForFirestore({
                 rejectionReason: input.status === "rejected" ? input.rejectionReason : null,
                 status: input.status,
                 reviewReason,
                 reviewedAt: timestamp,
                 reviewedBy: access.userId,
+                reviewRequestFingerprintHash,
                 updatedAt: timestamp,
             }), { merge: true });
             if (draftRef) {
@@ -17363,22 +19025,46 @@ export async function reviewSignalDeskApprovalServer(access: SignalDeskAccessCon
     };
 }
 
-const getAssistedRecipientForChannel = (targetDetail: AnyRecord, channel: Exclude<SignalDeskOutboundChannel, "manual">) => {
-    if (channel === "email") return normalizeLower(targetDetail.email);
-    if (channel === "whatsapp") return normalizeText(targetDetail.phone).replace(/[^\d+]/g, "");
-    if (channel === "instagram") return normalizeLower(targetDetail.instagram).replace(/^@/, "");
-    // Messenger has no safe public-handle assisted destination.
-    if (channel === "messenger") return "";
-    return "";
-};
-
-const getProviderRecipientForChannel = (targetDetail: AnyRecord, channel: Exclude<SignalDeskOutboundChannel, "manual">) => {
-    if (channel === "email") return normalizeLower(targetDetail.email);
-    if (channel === "whatsapp") return normalizeText(targetDetail.phone).replace(/[^\d+]/g, "");
-    const providerScopedId = channel === "instagram"
-        ? normalizeText(targetDetail.instagramRecipientId)
-        : normalizeText(targetDetail.messengerRecipientId || targetDetail.messengerPsid);
-    return /^[1-9]\d{4,39}$/.test(providerScopedId) ? providerScopedId : "";
+const readSignalDeskOutboundContactAuthority = async (
+    db: FirebaseFirestore.Firestore,
+    transaction: FirebaseFirestore.Transaction,
+    params: {
+        bindings?: AnyRecord[];
+        channel: SupportedOutboundContactChannel;
+        policy: SignalDeskSourcePolicy;
+        rawTargetDetail: unknown;
+        target: SignalDeskTargetSummary;
+    },
+): Promise<SignalDeskOutboundContactAuthority> => {
+    if (!params.target.sourceRunId) throw new Error("SIGNALDESK_CONTACT_AUTHORITY_SOURCE_RUN_REQUIRED");
+    const recipient = getSignalDeskOutboundRecipient(
+        params.rawTargetDetail,
+        params.target.targetId,
+        params.channel,
+    );
+    if (!recipient) throw new Error("SIGNALDESK_CONTACT_AUTHORITY_RECIPIENT_REQUIRED");
+    const contactIdentityId = signalDeskOutboundContactIdentityIdFor(params.channel, recipient);
+    const contactRef = db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES).doc(contactIdentityId);
+    const sourceRunRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_RUN_SUMMARIES).doc(params.target.sourceRunId);
+    const [contactSnap, sourceRunSnap] = await Promise.all([
+        transaction.get(contactRef),
+        transaction.get(sourceRunRef),
+    ]);
+    if (!contactSnap.exists || !sourceRunSnap.exists) throw new Error("SIGNALDESK_CONTACT_AUTHORITY_NOT_FOUND");
+    const authority = parseSignalDeskOutboundContactAuthority({
+        channel: params.channel,
+        contactDocumentId: contactSnap.id,
+        policy: params.policy,
+        rawContact: contactSnap.data(),
+        rawSourceRun: sourceRunSnap.data(),
+        rawTargetDetail: params.rawTargetDetail,
+        sourceRunDocumentId: sourceRunSnap.id,
+        target: params.target,
+    });
+    for (const binding of params.bindings || []) {
+        assertSignalDeskOutboundContactBinding(binding, authority);
+    }
+    return authority;
 };
 
 const maskedRecipientPreview = (recipient: string, channel: Exclude<SignalDeskOutboundChannel, "manual">) => {
@@ -17441,11 +19127,70 @@ const assertRecipientNotSuppressed = async (
     if (suppressionSnapshots.some((snapshot) => snapshot.exists)) throw new Error("Target is suppressed");
 };
 
+const isSignalDeskOutboundReplayAuthorityCurrent = async (
+    db: FirebaseFirestore.Firestore,
+    transaction: FirebaseFirestore.Transaction,
+    binding: AnyRecord,
+    channel: SupportedOutboundContactChannel,
+): Promise<boolean> => {
+    try {
+        const targetId = normalizeText(binding.targetId);
+        if (!targetId) return false;
+        const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId);
+        const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(targetId);
+        const globalPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_global-outbound");
+        const channelPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc(`scope_${channel}`);
+        const [targetSnap, targetDetailSnap, globalPauseSnap, channelPauseSnap] = await Promise.all([
+            transaction.get(targetRef),
+            transaction.get(targetDetailRef),
+            transaction.get(globalPauseRef),
+            transaction.get(channelPauseRef),
+        ]);
+        if (!targetSnap.exists || !targetDetailSnap.exists) return false;
+        if (globalPauseSnap.data()?.status === "active" || channelPauseSnap.data()?.status === "active") return false;
+        const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+        if (target.suppressionStatus !== "clear" || !target.sourcePolicyId) return false;
+        const policySnap = await transaction.get(
+            db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(target.sourcePolicyId),
+        );
+        const policy = readSourcePolicySnapshot(policySnap);
+        if (!policy || sourcePolicyUsabilityError(policy, {
+            entityId: normalizeText(binding.exportId) || targetId,
+            use: channel === "email" ? "export" : "handoff",
+        })) return false;
+        const authority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+            bindings: [binding],
+            channel,
+            policy,
+            rawTargetDetail: targetDetailSnap.data(),
+            target,
+        });
+        await assertRecipientNotSuppressed(transaction, db, channel, authority.recipient);
+        if (channel !== "email") {
+            const [targetWindowSnap, globalWindowSnap] = await Promise.all([
+                transaction.get(db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_WINDOW_STATES).doc(channelWindowIdFor(channel, targetId))),
+                transaction.get(db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_WINDOW_STATES).doc(channelWindowIdFor(channel))),
+            ]);
+            const targetWindow = targetWindowSnap.exists
+                ? toPlain(targetWindowSnap.data()) as SignalDeskChannelWindowStateSummary
+                : null;
+            const globalWindow = globalWindowSnap.exists
+                ? toPlain(globalWindowSnap.data()) as SignalDeskChannelWindowStateSummary
+                : null;
+            if (!isChannelWindowEligible(targetWindow) && !isChannelWindowEligible(globalWindow)) return false;
+        }
+        return true;
+    } catch {
+        return false;
+    }
+};
+
 const writeChannelDeliveryState = (params: {
     access: SignalDeskAccessContext;
     approval: SignalDeskApprovalItem;
     batch: any;
     channel: Exclude<SignalDeskOutboundChannel, "manual">;
+    contactAuthority: SignalDeskOutboundContactAuthority;
     db: any;
     draft: SignalDeskDraftSummary;
     providerMessageId?: string | null;
@@ -17469,6 +19214,8 @@ const writeChannelDeliveryState = (params: {
         channel: params.channel,
         ctaFingerprintHash: params.draft.ctaFingerprintHash || null,
         ctaId: params.draft.ctaId || null,
+        contactAuthorityFingerprintHash: params.contactAuthority.contactAuthorityFingerprintHash,
+        contactIdentityId: params.contactAuthority.contactIdentityId,
         subject: params.draft.subject,
         body: params.draft.body,
         provider: params.providerName,
@@ -17487,6 +19234,7 @@ const writeChannelDeliveryState = (params: {
         targetName: params.approval.targetName,
         channel: params.channel,
         state: params.status === "sent" ? "contacted" : "exported",
+        latestMessageExportId: exportRef.id,
         lastMessagePreview: params.draft.subject,
         ...(params.status === "sent" ? { lastOutboundAt: timestamp } : {}),
         updatedAt: timestamp,
@@ -17522,6 +19270,7 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS) {
         throw new Error("SignalDesk assisted channels are disabled");
     }
+    if (input.channel === "messenger") throw new Error("ASSISTED_CHANNEL_RECIPIENT_NOT_SAFE");
     const db = requireDb();
     const operationHash = hashValue(`${input.approvalId}|${input.channel}|assisted-handoff-v1`).slice(0, 32);
     const exportRef = db.collection(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS).doc(`handoff_${operationHash}`);
@@ -17530,17 +19279,34 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
             const priorExportSnap = await transaction.get(exportRef);
             if (priorExportSnap.exists) {
                 const priorExport = toPlain(priorExportSnap.data()) as AnyRecord;
-                await assertSignalDeskCtaLineage(db, transaction, priorExport);
+                let currentCtaAuthority = true;
+                try {
+                    await assertSignalDeskCtaLineage(db, transaction, priorExport);
+                } catch {
+                    currentCtaAuthority = false;
+                }
+                let currentSenderAuthority = true;
                 if (input.channel === "email") {
                     const priorSenderRef = normalizeText(priorExport.senderDomainId)
                         ? db.collection(SIGNALDESK_COLLECTIONS.SENDER_DOMAINS).doc(priorExport.senderDomainId)
                         : null;
                     const priorSenderSnap = priorSenderRef ? await transaction.get(priorSenderRef) : null;
-                    assertSenderDomainAuthorityBinding(priorExport, projectSenderDomainDocument(priorSenderSnap));
+                    currentSenderAuthority = isSenderDomainAuthorityBindingCurrent(
+                        priorExport,
+                        projectSenderDomainDocument(priorSenderSnap),
+                    );
                 }
+                const currentContactAuthority = await isSignalDeskOutboundReplayAuthorityCurrent(
+                    db,
+                    transaction,
+                    priorExport,
+                    input.channel as SupportedOutboundContactChannel,
+                );
                 return {
                     channel: input.channel,
+                    currentAuthority: currentCtaAuthority && currentContactAuthority && currentSenderAuthority,
                     exportId: exportRef.id,
+                    historicalReplay: true,
                     recipient: null,
                     recipientPreview: normalizeText(priorExport.recipientPreview) || null,
                     replay: true,
@@ -17568,8 +19334,9 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
             ]);
             if (!targetSnap.exists) throw new Error("Target not found");
             if (!draftSnap.exists) throw new Error("Draft is required before handoff");
-            const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
-            const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
+            if (!targetDetailSnap.exists) throw new Error("Target detail not found");
+            const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+            const targetDetail = targetDetailSnap.data() as AnyRecord;
             const draft = toPlain(draftSnap.data()) as SignalDeskDraftSummary;
             if (approval.targetId !== target.targetId
                 || draft.targetId !== target.targetId
@@ -17577,6 +19344,9 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
                 || target.latestApprovalId !== approval.approvalId
                 || target.latestDraftId !== draft.draftId) {
                 throw new Error("Assisted handoff truth is stale");
+            }
+            if (approval.channel !== input.channel || draft.channel !== input.channel) {
+                throw new Error("Assisted handoff requires an approval for the selected channel");
             }
             const conversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
                 .doc(target.latestConversationId || `conv_${target.targetId}`);
@@ -17601,6 +19371,14 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
                 use: input.channel === "email" ? "export" : "handoff",
             });
             if (policyError) throw new Error(policyError);
+            if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+            const contactAuthority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+                bindings: [approvalSnap.data() || {}, draftSnap.data() || {}],
+                channel: input.channel as SupportedOutboundContactChannel,
+                policy,
+                rawTargetDetail: targetDetail,
+                target,
+            });
             if (globalPauseSnap.data()?.status === "active" || channelPauseSnap.data()?.status === "active") {
                 throw new Error("Outbound export is paused");
             }
@@ -17611,8 +19389,7 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
             await assertSignalDeskCtaLineage(db, transaction, draft);
             const priorGuard = targetPriorGuard(target, conversationSnap.exists ? conversationSnap.data() as AnyRecord : null);
             if (!priorGuard.clear) throw new Error("Target has prior contact or outcome");
-            const recipient = getAssistedRecipientForChannel(targetDetail, input.channel);
-            if (!recipient) throw new Error("ASSISTED_CHANNEL_RECIPIENT_NOT_SAFE");
+            const recipient = contactAuthority.recipient;
             await assertRecipientNotSuppressed(transaction, db, input.channel, recipient);
             const recipientPreview = maskedRecipientPreview(recipient, input.channel);
             const sender = projectSenderDomainDocument(senderSnap);
@@ -17636,6 +19413,7 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
                 approval,
                 batch: transaction,
                 channel: input.channel,
+                contactAuthority,
                 db,
                 draft,
                 exportRef,
@@ -17671,6 +19449,7 @@ export async function prepareSignalDeskChannelHandoffServer(access: SignalDeskAc
 }
 
 export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAccessContext, input: ChannelActionInput) {
+    if (input.channel !== "email") throw new Error("DIRECT_PROVIDER_SEND_EMAIL_ONLY");
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND) {
         throw new Error("SignalDesk provider send is disabled");
     }
@@ -17701,9 +19480,16 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
                     historicalExport,
                     projectSenderDomainDocument(historicalSenderSnap),
                 );
+                const currentContactAuthority = await isSignalDeskOutboundReplayAuthorityCurrent(
+                    db,
+                    transaction,
+                    historicalExport,
+                    "email",
+                );
                 return {
                     context: null,
                     currentCtaAuthority,
+                    currentContactAuthority,
                     currentSenderAuthority,
                     replay: {
                         exportId: historicalExport.exportId,
@@ -17732,9 +19518,13 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
         ]);
         if (!targetSnap.exists) throw new Error("Target not found");
         if (!draftSnap.exists) throw new Error("Draft is required before send");
-        const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
-        const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
+        if (!targetDetailSnap.exists) throw new Error("Target detail not found");
+        const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+        const targetDetail = targetDetailSnap.data() as AnyRecord;
         const draft = toPlain(draftSnap.data()) as SignalDeskDraftSummary;
+        if (approval.channel !== "email" || draft.channel !== "email") {
+            throw new Error("PROVIDER_SEND_EMAIL_APPROVAL_REQUIRED");
+        }
         if (draft.targetId !== target.targetId
             || draft.approvalId !== approval.approvalId
             || target.latestApprovalId !== approval.approvalId
@@ -17761,6 +19551,14 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
         const policy = readSourcePolicySnapshot(policySnap);
         const policyError = sourcePolicyUsabilityError(policy, { entityId: input.approvalId, use: "send" });
         if (policyError) throw new Error(policyError);
+        if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+        const contactAuthority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+            bindings: [approvalSnap.data() || {}, draftSnap.data() || {}],
+            channel: "email",
+            policy,
+            rawTargetDetail: targetDetail,
+            target,
+        });
         if (globalPauseSnap.data()?.status === "active" || channelPauseSnap.data()?.status === "active") {
             throw new Error("Outbound export is paused");
         }
@@ -17768,8 +19566,7 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
         if (draft.status !== "approved" || !draft.evidencePacketId) throw new Error("Draft must be approved before send");
         const priorGuard = targetPriorGuard(target, conversationSnap.exists ? conversationSnap.data() as AnyRecord : null);
         if (!priorGuard.clear) throw new Error("Target has prior contact or outcome");
-        const recipient = getProviderRecipientForChannel(targetDetail, input.channel);
-        if (!recipient) throw new Error("PROVIDER_SCOPED_RECIPIENT_REQUIRED");
+        const recipient = contactAuthority.recipient;
         const suppressionAliases = input.channel === "instagram"
             ? [normalizeLower(targetDetail.instagram).replace(/^@/, "")]
             : [];
@@ -17801,6 +19598,8 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
             channel: input.channel,
             ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
             ctaId: ctaAuthority.cta.ctaId,
+            contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+            contactIdentityId: contactAuthority.contactIdentityId,
             draftId: draft.draftId,
             recipientHash: hashValue(recipient),
             senderDomainFingerprintHash: input.channel === "email" && sender ? senderDomainFingerprintHashFor(sender) : null,
@@ -17821,6 +19620,8 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
             pId: SIGNALDESK_PRODUCT_CODE,
             ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
             ctaId: ctaAuthority.cta.ctaId,
+            contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+            contactIdentityId: contactAuthority.contactIdentityId,
             requestFingerprintHash,
             status: "running",
             updatedAt: timestamp,
@@ -17829,9 +19630,10 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
         updateDailyCost(db, transaction, 4, 0);
         return {
             currentCtaAuthority: true,
+            currentContactAuthority: true,
             currentSenderAuthority: true,
             replay: null,
-            context: { approval, draft, recipient, requestFingerprintHash, sender, target },
+            context: { approval, contactAuthority, draft, recipient, requestFingerprintHash, sender, target },
         };
     });
     if (start.replay) {
@@ -17839,23 +19641,24 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
             channel: input.channel,
             exportId: start.replay.exportId,
             providerMessageId: start.replay.providerMessageId || null,
-            currentAuthority: start.currentCtaAuthority && start.currentSenderAuthority,
+            currentAuthority: start.currentCtaAuthority && start.currentContactAuthority && start.currentSenderAuthority,
             historicalReplay: true,
             replay: true,
             status: "sent",
         };
     }
     if (!start.context) throw new Error("PROVIDER_SEND_REVIEW_REQUIRED");
-    const { approval, draft, recipient, requestFingerprintHash, sender, target } = start.context;
+    const { approval, contactAuthority, draft, recipient, requestFingerprintHash, sender, target } = start.context;
     let providerResult: Awaited<ReturnType<typeof sendSignalDeskProviderMessage>>;
     try {
-        providerResult = await sendSignalDeskProviderMessage({
+        providerResult = assertSignalDeskProviderSendResult(await sendSignalDeskProviderMessage({
             body: draft.body,
             channel: input.channel,
             recipient,
             senderDomain: input.channel === "email" ? sender?.domain || null : null,
             subject: draft.subject,
-        });
+        }));
+        if (providerResult.provider !== "smtp") throw new Error("PROVIDER_SEND_RESULT_PROVIDER_MISMATCH");
     } catch (error) {
         await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
             const claimSnap = await transaction.get(claimRef);
@@ -17886,6 +19689,7 @@ export async function sendSignalDeskApprovedMessageServer(access: SignalDeskAcce
                 approval,
                 batch: transaction,
                 channel: input.channel,
+                contactAuthority,
                 db,
                 draft,
                 exportRef,
@@ -17942,13 +19746,34 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
             const priorExportSnap = await transaction.get(exportRef);
             if (priorExportSnap.exists) {
                 const priorExport = toPlain(priorExportSnap.data()) as AnyRecord;
-                await assertSignalDeskCtaLineage(db, transaction, priorExport);
+                let currentCtaAuthority = true;
+                try {
+                    await assertSignalDeskCtaLineage(db, transaction, priorExport);
+                } catch {
+                    currentCtaAuthority = false;
+                }
                 const priorSenderRef = normalizeText(priorExport.senderDomainId)
                     ? db.collection(SIGNALDESK_COLLECTIONS.SENDER_DOMAINS).doc(priorExport.senderDomainId)
                     : null;
                 const priorSenderSnap = priorSenderRef ? await transaction.get(priorSenderRef) : null;
-                assertSenderDomainAuthorityBinding(priorExport, projectSenderDomainDocument(priorSenderSnap));
-                return priorExport;
+                const currentSenderAuthority = isSenderDomainAuthorityBindingCurrent(
+                    priorExport,
+                    projectSenderDomainDocument(priorSenderSnap),
+                );
+                const currentContactAuthority = await isSignalDeskOutboundReplayAuthorityCurrent(
+                    db,
+                    transaction,
+                    priorExport,
+                    "email",
+                );
+                return {
+                    channel: "email",
+                    currentAuthority: currentCtaAuthority && currentContactAuthority && currentSenderAuthority,
+                    exportId: exportRef.id,
+                    historicalReplay: true,
+                    replay: true,
+                    status: normalizeText(priorExport.status) || "exported",
+                };
             }
             const approvalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(approvalId);
             const approvalSnap = await transaction.get(approvalRef);
@@ -17957,17 +19782,23 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
             if (approval.status !== "approved") throw new Error("Approval must be approved before export");
             if (!approval.draftId) throw new Error("Draft is required before export");
             const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(approval.targetId);
+            const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(approval.targetId);
             const draftRef = db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(approval.draftId);
-            const [targetSnap, draftSnap, globalPauseSnap, emailPauseSnap] = await Promise.all([
+            const [targetSnap, targetDetailSnap, draftSnap, globalPauseSnap, emailPauseSnap] = await Promise.all([
                 transaction.get(targetRef),
+                transaction.get(targetDetailRef),
                 transaction.get(draftRef),
                 transaction.get(db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_global-outbound")),
                 transaction.get(db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_email")),
             ]);
             if (!targetSnap.exists) throw new Error("Target not found");
+            if (!targetDetailSnap.exists) throw new Error("Target detail not found");
             if (!draftSnap.exists) throw new Error("Draft is required before export");
-            const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+            const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
             const draft = toPlain(draftSnap.data()) as SignalDeskDraftSummary;
+            if (approval.channel !== "email" || draft.channel !== "email") {
+                throw new Error("MESSAGE_EXPORT_EMAIL_APPROVAL_REQUIRED");
+            }
             if (draft.targetId !== target.targetId
                 || draft.approvalId !== approvalId
                 || target.latestApprovalId !== approvalId
@@ -17988,6 +19819,13 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
             const policyError = sourcePolicyUsabilityError(policy, { entityId: approvalId, use: "export" });
             if (policyError) throw new Error(policyError);
             if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+            const contactAuthority = await readSignalDeskOutboundContactAuthority(db, transaction, {
+                bindings: [approvalSnap.data() || {}, draftSnap.data() || {}],
+                channel: "email",
+                policy,
+                rawTargetDetail: targetDetailSnap.data(),
+                target,
+            });
             if (globalPauseSnap.data()?.status === "active" || emailPauseSnap.data()?.status === "active") {
                 throw new Error("Outbound export is paused");
             }
@@ -18013,6 +19851,8 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
                 channel: "email",
                 ctaFingerprintHash: ctaAuthority.ctaFingerprintHash,
                 ctaId: ctaAuthority.cta.ctaId,
+                contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+                contactIdentityId: contactAuthority.contactIdentityId,
                 subject: draft.subject,
                 body: draft.body,
                 senderDomainFingerprintHash: senderDomainFingerprintHashFor(sender),
@@ -18029,6 +19869,7 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
                 targetName: approval.targetName,
                 channel: "email",
                 state: "exported",
+                latestMessageExportId: exportRef.id,
                 lastMessagePreview: draft.subject,
                 updatedAt: timestamp,
             }), { merge: true });
@@ -18042,7 +19883,13 @@ export async function exportSignalDeskMessageServer(access: SignalDeskAccessCont
             }), { merge: true });
             appendAudit(db, transaction, access, "message_export", "messageExport", exportRef.id, approval.targetName);
             updateDailyCost(db, transaction, 7, 0);
-            return toPlain(exportData);
+            const {
+                contactAuthorityFingerprintHash: _contactAuthorityFingerprintHash,
+                contactIdentityId: _contactIdentityId,
+                pId: _pId,
+                ...publicExport
+            } = toPlain(exportData);
+            return publicExport;
         });
     } catch (error) {
         const code = error instanceof Error ? error.message : "";
@@ -18077,196 +19924,223 @@ export async function recordSignalDeskManualContactServer(access: SignalDeskAcce
         targetId: input.targetId,
     }));
     const timelineRef = db.collection(SIGNALDESK_COLLECTIONS.RUN_TIMELINES).doc(`manual_contact_${idempotencyHash.slice(0, 32)}`);
-    const existingTimelineSnap = await timelineRef.get();
-    if (existingTimelineSnap.exists) {
-        if (existingTimelineSnap.data()?.requestFingerprintHash !== requestFingerprintHash) {
-            throw new Error("Manual contact idempotency conflict");
-        }
-        return {
-            duplicate: true,
-            manualContactId: timelineRef.id,
-            result: input.result,
-            route: input.route,
-            targetId: input.targetId,
-        };
-    }
-    const [targetSnap, targetDetailSnap] = await Promise.all([
-        db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId).get(),
-        db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(input.targetId).get(),
-    ]);
-    if (!targetSnap.exists) throw new Error("Target not found");
-    const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
-    const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
-    if (target.sourcePolicyId !== input.sourcePolicyId) throw new Error("Manual contact source policy changed");
-    if (target.suppressionStatus !== "clear") throw new Error("Target is suppressed");
-    if (target.status === "rejected" || target.status === "converted") throw new Error("Target is not eligible for manual contact");
-
-    const policy = await assertSourcePolicyUsable(db, access, await readSourcePolicy(db, target.sourcePolicyId), {
-        entityId: input.targetId,
-        use: "contact",
-    });
-    await requireNoActiveKillSwitch(db, "global-outbound", "Outbound contact is paused");
-    if (input.route === "email-export") await requireNoActiveKillSwitch(db, "email", "Outbound contact is paused");
-    if (input.route === "partner-intro") await requireNoActiveKillSwitch(db, "trust-partner", "Outbound contact is paused");
-
-    const allowedRoutes = new Set<SignalDeskManualContactRoute>();
-    if (target.contactability === "ready") allowedRoutes.add("email-export");
-    if (policy.accessMethod === "permissioned-referral") allowedRoutes.add("partner-intro");
-    if (!allowedRoutes.has(input.route)) throw new Error("Manual contact route is not allowed");
-
-    if (input.route === "email-export") {
-        const conversationSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
-            .doc(target.latestConversationId || `conv_${input.targetId}`)
-            .get();
-        const conversation = conversationSnap.exists
-            ? toPlain(conversationSnap.data()) as SignalDeskConversationSummary
-            : null;
-        if (conversation?.state !== "exported") throw new Error("Prepared email export is required");
-        const exportSnap = await db.collection(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS)
-            .where("targetId", "==", input.targetId)
-            .limit(20)
-            .get();
-        const preparedExport = exportSnap.docs.some((doc: any) => {
-            const data = doc.data() as AnyRecord;
-            const preparedAt = toTimestampMillis(data.createdAt);
-            return data.status === "exported" && Boolean(
-                preparedAt
-                && preparedAt <= occurredAtMillis
-                && preparedAt >= currentMillis - MANUAL_CONTACT_MAX_AGE_MS
-            );
-        });
-        if (!preparedExport) throw new Error("Prepared email export is required");
-    }
-
-    const conversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(target.latestConversationId || `conv_${input.targetId}`);
-    const occurredAt = admin.firestore.Timestamp.fromDate(new Date(occurredAtMillis));
-    const timestamp = now();
-    const channel: SignalDeskConversationSummary["channel"] = input.route === "email-export" ? "email" : "manual";
-    const conversationState: SignalDeskConversationSummary["state"] = input.result === "wrong-contact"
-        ? "wrong_contact"
-        : input.result === "declined"
-            ? "not_interested"
-            : "contacted";
-    const nextAction: SignalDeskNextAction = input.result === "contacted" || input.result === "introduced"
-        ? "reply"
-        : input.result === "declined"
-            ? "reject"
-            : "hold";
-    const nextStatus: SignalDeskTargetSummary["status"] = input.result === "wrong-contact" || input.result === "declined"
-        ? "rejected"
-        : "contacted";
-    const eventSummary = `${input.route}:${input.result}`;
-
-    const batch = db.batch();
-    batch.create(timelineRef, sanitizeForFirestore({
-        runTimelineId: timelineRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        entityType: "target",
-        entityId: input.targetId,
-        idempotencyKeyHash: idempotencyHash,
-        requestFingerprintHash,
-        label: "Manual contact attempt",
-        result: input.result,
-        route: input.route,
-        status: input.result === "wrong-contact" || input.result === "declined" ? "held" : "completed",
-        steps: [
-            { label: `Policy-approved route: ${input.route}`, status: "completed", at: toIso(occurredAt) },
-            { label: `Founder-recorded result: ${input.result}`, status: input.result === "wrong-contact" ? "blocked" : "completed", at: toIso(occurredAt) },
-        ],
-        sourcePolicyId: input.sourcePolicyId,
-        updatedAt: timestamp,
-    }));
-    batch.set(conversationRef, sanitizeForFirestore({
-        conversationId: conversationRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        targetId: input.targetId,
-        targetName: target.displayName,
-        channel,
-        state: conversationState,
-        lastMessagePreview: `Manual contact: ${input.result} via ${input.route}`,
-        lastOutboundAt: occurredAt,
-        updatedAt: timestamp,
-    }), { merge: true });
-    batch.set(targetSnap.ref, sanitizeForFirestore({
-        ...(input.result === "wrong-contact" ? {
-            contactability: "blocked",
-            suppressionStatus: "wrong-contact",
-        } : {}),
-        latestConversationId: conversationRef.id,
-        latestManualContactAt: occurredAt,
-        latestManualContactResult: input.result,
-        latestManualContactRoute: input.route,
-        nextAction,
-        status: nextStatus,
-        updatedAt: timestamp,
-    }), { merge: true });
-    if (input.result === "wrong-contact") {
-        const suppressionIdentity = getSuppressionIdentityForReply(targetDetail, channel, input.targetId);
-        batch.set(db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(suppressionIdentity.suppressionId), sanitizeForFirestore({
-            suppressionId: suppressionIdentity.suppressionId,
-            pId: SIGNALDESK_PRODUCT_CODE,
-            targetId: input.targetId,
-            identityHash: suppressionIdentity.identityHash,
-            channel,
-            reason: "wrong-contact",
-            source: "manual-contact",
-            createdAt: timestamp,
-        }), { merge: true });
-    }
-    appendAudit(db, batch, access, "manual_contact_record", "target", input.targetId, [eventSummary, note].filter(Boolean).join(": "));
-    updateDailyCost(db, batch, input.result === "wrong-contact" ? 6 : 5, 0);
-
     try {
-        await batch.commit();
-    } catch (error) {
-        if (!isAlreadyExistsError(error)) throw error;
-        const concurrentTimelineSnap = await timelineRef.get();
-        if (!concurrentTimelineSnap.exists || concurrentTimelineSnap.data()?.requestFingerprintHash !== requestFingerprintHash) {
-            throw new Error("Manual contact idempotency conflict");
-        }
-        return {
-            duplicate: true,
-            manualContactId: timelineRef.id,
-            result: input.result,
-            route: input.route,
-            targetId: input.targetId,
-        };
-    }
+        return await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
+            const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId);
+            const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(input.targetId);
+            const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(input.sourcePolicyId);
+            const globalPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_global-outbound");
+            const routePauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc(
+                input.route === "partner-intro" ? "scope_trust-partner" : "scope_email",
+            );
+            const [timelineSnap, targetSnap, targetDetailSnap, policySnap, globalPauseSnap, routePauseSnap] = await Promise.all([
+                transaction.get(timelineRef),
+                transaction.get(targetRef),
+                transaction.get(targetDetailRef),
+                transaction.get(policyRef),
+                transaction.get(globalPauseRef),
+                transaction.get(routePauseRef),
+            ]);
+            if (timelineSnap.exists) {
+                if (
+                    timelineSnap.data()?.pId !== SIGNALDESK_PRODUCT_CODE
+                    || timelineSnap.data()?.runTimelineId !== timelineRef.id
+                    || timelineSnap.data()?.requestFingerprintHash !== requestFingerprintHash
+                ) throw new Error("Manual contact idempotency conflict");
+                return {
+                    duplicate: true,
+                    manualContactId: timelineRef.id,
+                    result: input.result,
+                    route: input.route,
+                    targetId: input.targetId,
+                };
+            }
+            if (!targetSnap.exists) throw new Error("Target not found");
+            const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+            const targetDetail = targetDetailSnap.exists
+                ? parseSignalDeskTargetDetailDocument(targetDetailSnap.data(), targetDetailSnap.id)
+                : {};
+            if (target.sourcePolicyId !== input.sourcePolicyId) throw new Error("Manual contact source policy changed");
+            if (target.suppressionStatus !== "clear") throw new Error("Target is suppressed");
+            if (target.status === "rejected" || target.status === "converted") throw new Error("Target is not eligible for manual contact");
+            const policy = readSourcePolicySnapshot(policySnap);
+            const policyError = sourcePolicyUsabilityError(policy, { entityId: input.targetId, use: "contact" });
+            if (policyError) throw new Error(policyError);
+            if (!policy) throw new Error(SOURCE_POLICY_REVIEW_REQUIRED);
+            if (globalPauseSnap.data()?.status === "active" || routePauseSnap.data()?.status === "active") {
+                throw new Error("Outbound contact is paused");
+            }
+            const allowedRoutes = new Set<SignalDeskManualContactRoute>();
+            if (target.contactability === "ready") allowedRoutes.add("email-export");
+            if (policy.accessMethod === "permissioned-referral") allowedRoutes.add("partner-intro");
+            if (!allowedRoutes.has(input.route)) throw new Error("Manual contact route is not allowed");
 
-    return {
-        duplicate: false,
-        manualContactId: timelineRef.id,
-        result: input.result,
-        route: input.route,
-        targetId: input.targetId,
-    };
+            if (input.route === "partner-intro") {
+                const sourceCandidateId = `candidate_${hashValue(`${target.sourceRunId}|${target.targetId}`).slice(0, 32)}`;
+                const sourceCandidateSnap = await transaction.get(
+                    db.collection(SIGNALDESK_COLLECTIONS.SOURCE_CANDIDATES).doc(sourceCandidateId),
+                );
+                if (!sourceCandidateSnap.exists) throw new Error("Partner introduction permission evidence is required");
+                const sourceCandidate = parseSignalDeskSourceCandidateDocument(
+                    sourceCandidateSnap.data(),
+                    sourceCandidateSnap.id,
+                );
+                if (
+                    sourceCandidate.blocked
+                    || sourceCandidate.targetId !== target.targetId
+                    || sourceCandidate.sourceRunId !== target.sourceRunId
+                    || sourceCandidate.sourcePolicyId !== target.sourcePolicyId
+                    || !normalizeText(sourceCandidate.permissionEvidenceRef)
+                    || sourceCandidate.permissionEvidenceRef !== targetDetail.permissionEvidenceRef
+                ) throw new Error("Partner introduction permission evidence is required");
+            }
+
+            const conversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
+                .doc(target.latestConversationId || `conv_${input.targetId}`);
+            const conversationSnap = await transaction.get(conversationRef);
+            if (input.route === "email-export") {
+                const conversation = conversationSnap.exists
+                    ? parseSignalDeskConversationSummaryDocument(conversationSnap.data(), conversationSnap.id)
+                    : null;
+                if (conversation?.state !== "exported") throw new Error("Prepared email export is required");
+                const conversationRaw = conversationSnap.data() as AnyRecord;
+                const legacyDirectExportId = target.latestApprovalId
+                    ? `export_${hashValue(`${target.latestApprovalId}|email-export-v1`).slice(0, 32)}`
+                    : "";
+                const preparedExportId = normalizeText(conversationRaw.latestMessageExportId) || legacyDirectExportId;
+                if (!preparedExportId) throw new Error("Prepared email export is required");
+                const preparedExportSnap = await transaction.get(
+                    db.collection(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS).doc(preparedExportId),
+                );
+                const preparedExport = preparedExportSnap.exists ? preparedExportSnap.data() as AnyRecord : null;
+                const preparedAt = toTimestampMillis(preparedExport?.createdAt);
+                if (
+                    !preparedExport
+                    || preparedExport.pId !== SIGNALDESK_PRODUCT_CODE
+                    || preparedExport.exportId !== preparedExportSnap.id
+                    || preparedExport.targetId !== target.targetId
+                    || preparedExport.approvalId !== target.latestApprovalId
+                    || preparedExport.draftId !== target.latestDraftId
+                    || preparedExport.channel !== "email"
+                    || preparedExport.status !== "exported"
+                    || !preparedAt
+                    || preparedAt > occurredAtMillis
+                    || preparedAt < currentMillis - MANUAL_CONTACT_MAX_AGE_MS
+                ) throw new Error("Prepared email export is required");
+            }
+
+            const occurredAt = admin.firestore.Timestamp.fromDate(new Date(occurredAtMillis));
+            const timestamp = now();
+            const channel: SignalDeskConversationSummary["channel"] = input.route === "email-export" ? "email" : "manual";
+            const conversationState: SignalDeskConversationSummary["state"] = input.result === "wrong-contact"
+                ? "wrong_contact"
+                : input.result === "declined" ? "not_interested" : "contacted";
+            const nextAction: SignalDeskNextAction = input.result === "contacted" || input.result === "introduced"
+                ? "reply"
+                : input.result === "declined" ? "reject" : "hold";
+            const nextStatus: SignalDeskTargetSummary["status"] = input.result === "wrong-contact" || input.result === "declined"
+                ? "rejected"
+                : "contacted";
+            transaction.create(timelineRef, sanitizeForFirestore({
+                runTimelineId: timelineRef.id,
+                pId: SIGNALDESK_PRODUCT_CODE,
+                entityType: "target",
+                entityId: input.targetId,
+                idempotencyKeyHash: idempotencyHash,
+                requestFingerprintHash,
+                label: "Manual contact attempt",
+                result: input.result,
+                route: input.route,
+                status: input.result === "wrong-contact" || input.result === "declined" ? "held" : "completed",
+                steps: [
+                    { label: `Policy-approved route: ${input.route}`, status: "completed", at: toIso(occurredAt) },
+                    { label: `Founder-recorded result: ${input.result}`, status: input.result === "wrong-contact" ? "blocked" : "completed", at: toIso(occurredAt) },
+                ],
+                sourcePolicyId: input.sourcePolicyId,
+                updatedAt: timestamp,
+            }));
+            transaction.set(conversationRef, sanitizeForFirestore({
+                conversationId: conversationRef.id,
+                pId: SIGNALDESK_PRODUCT_CODE,
+                targetId: input.targetId,
+                targetName: target.displayName,
+                channel,
+                state: conversationState,
+                lastMessagePreview: `Manual contact: ${input.result} via ${input.route}`,
+                lastOutboundAt: occurredAt,
+                updatedAt: timestamp,
+            }), { merge: true });
+            transaction.set(targetRef, sanitizeForFirestore({
+                ...(input.result === "wrong-contact" ? { contactability: "blocked", suppressionStatus: "wrong-contact" } : {}),
+                latestConversationId: conversationRef.id,
+                latestManualContactAt: occurredAt,
+                latestManualContactResult: input.result,
+                latestManualContactRoute: input.route,
+                nextAction,
+                status: nextStatus,
+                updatedAt: timestamp,
+            }), { merge: true });
+            if (input.result === "wrong-contact") {
+                const suppressionIdentity = getSuppressionIdentityForReply(targetDetail, channel, input.targetId);
+                transaction.set(db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(suppressionIdentity.suppressionId), sanitizeForFirestore({
+                    suppressionId: suppressionIdentity.suppressionId,
+                    pId: SIGNALDESK_PRODUCT_CODE,
+                    targetId: input.targetId,
+                    identityHash: suppressionIdentity.identityHash,
+                    channel,
+                    reason: "wrong-contact",
+                    source: "manual-contact",
+                    createdAt: timestamp,
+                }), { merge: true });
+            }
+            appendAudit(db, transaction, access, "manual_contact_record", "target", input.targetId, [`${input.route}:${input.result}`, note].filter(Boolean).join(": "));
+            updateDailyCost(db, transaction, input.result === "wrong-contact" ? 6 : 5, 0);
+            return {
+                duplicate: false,
+                manualContactId: timelineRef.id,
+                result: input.result,
+                route: input.route,
+                targetId: input.targetId,
+            };
+        });
+    } catch (error) {
+        const code = error instanceof Error ? error.message : "";
+        if ([SOURCE_POLICY_EXPIRED, SOURCE_POLICY_REVIEW_REQUIRED, SOURCE_POLICY_RETENTION_MISSING, SOURCE_POLICY_USE_NOT_ALLOWED].includes(code)) {
+            await appendSourcePolicyBlockedAudit(db, access, null, { entityId: input.targetId, use: "contact" }, code);
+        }
+        throw error;
+    }
 }
 
 export async function captureSignalDeskReplyServer(access: SignalDeskAccessContext, input: {
-    channel: SignalDeskConversationSummary["channel"];
+    conversationId: string;
     idempotencyKey: string;
     message: string;
-    targetId: string;
 }) {
+    const conversationId = normalizeText(input.conversationId);
     const idempotencyKey = normalizeText(input.idempotencyKey);
     const message = input.message.trim();
+    if (conversationId.length < 3 || conversationId.length > 200) throw new Error("Reply conversation is required");
     if (idempotencyKey.length < 8 || idempotencyKey.length > 180) throw new Error("Reply idempotency key is required");
     if (!message || message.length > 4000) throw new Error("Reply message is invalid");
     const db = requireDb();
-    const state = classifyReply(message);
+    const classifiedState = classifySignalDeskWebhookInboundMessage(message);
     const requestFingerprintHash = hashValue(JSON.stringify({
-        channel: input.channel,
+        conversationId,
         message,
-        targetId: input.targetId,
     }));
-    const requiresIncidentPause = state === "complaint" || state === "privacy_request" || state === "legal_request";
+    const requiresIncidentPause = classifiedState === "complaint" || classifiedState === "privacy_request" || classifiedState === "legal_request";
     const pendingMissionRef = requiresIncidentPause
         ? db.collection(SIGNALDESK_COLLECTIONS.GROWTH_MISSIONS).doc(growthMissionIdFor(todayKey()))
         : null;
     const operationHash = hashValue(`${access.userId}|${idempotencyKey}`).slice(0, 32);
     const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`reply_capture_${operationHash}`);
+    const conversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(conversationId);
     const transactionResult = await db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
-        const claimSnap = await transaction.get(claimRef);
+        const [claimSnap, conversationSnap] = await Promise.all([
+            transaction.get(claimRef),
+            transaction.get(conversationRef),
+        ]);
         if (claimSnap.exists) {
             const claim = toPlain(claimSnap.data()) as AnyRecord;
             if (claim.actorId !== access.userId || claim.requestFingerprintHash !== requestFingerprintHash) {
@@ -18279,28 +20153,41 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
                 state: claim.replyState as SignalDeskConversationSummary["state"],
             };
         }
-        const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId);
-        const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(input.targetId);
-        const [targetSnap, targetDetailSnap, pendingMissionSnap] = await Promise.all([
+        if (!conversationSnap.exists) throw new Error("Reply conversation not found");
+        const conversation = parseSignalDeskConversationSummaryDocument(conversationSnap.data(), conversationSnap.id);
+        if (conversation.state === "new") throw new Error("Reply conversation has no outbound lineage");
+        const targetId = conversation.targetId;
+        const channel = conversation.channel;
+        const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId);
+        const targetDetailRef = db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(targetId);
+        const currentSafetyState = isSignalDeskSafetyReplyState(conversation.state);
+        const state = currentSafetyState && !isSignalDeskSafetyReplyState(classifiedState)
+            ? conversation.state
+            : classifiedState;
+        const previousNeedsReview = isSignalDeskInboxReviewState(conversation.state);
+        const nextNeedsReview = isSignalDeskInboxReviewState(state);
+        const queueRef = previousNeedsReview === nextNeedsReview
+            ? null
+            : db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES);
+        const [targetSnap, targetDetailSnap, pendingMissionSnap, queueSnap] = await Promise.all([
             transaction.get(targetRef),
             transaction.get(targetDetailRef),
             pendingMissionRef ? transaction.get(pendingMissionRef) : Promise.resolve(null),
+            queueRef ? transaction.get(queueRef) : Promise.resolve(null),
         ]);
         if (!targetSnap.exists) throw new Error("Target not found");
         const persistedOwnerQualifiedAt = targetSnap.data()?.ownerQualifiedAt || null;
-        const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
-        const targetDetail = toPlain(targetDetailSnap.data() || {}) as AnyRecord;
-        const conversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
-            .doc(target.latestConversationId || `conv_${input.targetId}`);
-        await transaction.get(conversationRef);
+        const target = parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id);
+        const targetDetail = targetDetailSnap.exists
+            ? parseSignalDeskTargetDetailDocument(targetDetailSnap.data(), targetDetailSnap.id)
+            : {};
+        if (target.latestConversationId !== conversation.conversationId) {
+            throw new Error("Reply conversation is not current for target");
+        }
         const timestamp = now();
         const messageRef = db.collection(SIGNALDESK_COLLECTIONS.MESSAGES).doc(`reply_message_${operationHash}`);
         const classificationRef = db.collection(SIGNALDESK_COLLECTIONS.REPLY_CLASSIFICATIONS).doc(`reply_classification_${operationHash}`);
-        const requiresSuppression = state === "dnc"
-            || state === "wrong_contact"
-            || state === "complaint"
-            || state === "privacy_request"
-            || state === "legal_request";
+        const requiresSuppression = isSignalDeskSafetyReplyState(classifiedState);
         const missionPatch = pendingMissionRef && pendingMissionSnap
             ? criticalReplyGrowthMissionPatch({
                 conversationId: conversationRef.id,
@@ -18312,9 +20199,9 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
         transaction.set(conversationRef, sanitizeForFirestore({
             conversationId: conversationRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
-            targetId: input.targetId,
+            targetId,
             targetName: target.displayName,
-            channel: input.channel,
+            channel,
             state,
             lastMessagePreview: message.slice(0, 180),
             lastInboundAt: timestamp,
@@ -18324,46 +20211,46 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
             messageId: messageRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
             conversationId: conversationRef.id,
-            targetId: input.targetId,
+            targetId,
             direction: "inbound",
             body: message,
-            channel: input.channel,
+            channel,
             createdAt: timestamp,
         }));
         transaction.create(classificationRef, sanitizeForFirestore({
             classificationId: classificationRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
             conversationId: conversationRef.id,
-            targetId: input.targetId,
-            state,
-            confidence: state === "needs_review" ? "low" : "high",
+            targetId,
+            state: classifiedState,
+            confidence: classifiedState === "needs_review" ? "low" : "high",
             classifierVersion: "rules-v1",
             createdAt: timestamp,
         }));
         if (requiresSuppression) {
-            const suppressionIdentity = getSuppressionIdentityForReply(targetDetail, input.channel, input.targetId);
+            const suppressionIdentity = getSuppressionIdentityForReply(targetDetail, channel, targetId);
             transaction.set(db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER).doc(suppressionIdentity.suppressionId), sanitizeForFirestore({
                 suppressionId: suppressionIdentity.suppressionId,
                 pId: SIGNALDESK_PRODUCT_CODE,
-                targetId: input.targetId,
+                targetId,
                 identityHash: suppressionIdentity.identityHash,
-                channel: input.channel,
-                reason: state === "dnc" ? "dnc" : state === "wrong_contact" ? "wrong-contact" : state,
+                channel,
+                reason: classifiedState === "dnc" ? "dnc" : classifiedState === "wrong_contact" ? "wrong-contact" : classifiedState,
                 source: "inbound",
                 createdAt: timestamp,
             }), { merge: true });
         }
         if (requiresIncidentPause) {
             const incidentRef = db.collection(SIGNALDESK_COLLECTIONS.INCIDENTS).doc(`reply_incident_${operationHash}`);
-            const pauseScope = input.channel === "manual" ? "global-outbound" : input.channel;
+            const pauseScope = channel === "manual" ? "global-outbound" : channel;
             transaction.create(incidentRef, sanitizeForFirestore({
                 incidentId: incidentRef.id,
                 pId: SIGNALDESK_PRODUCT_CODE,
-                severity: state === "complaint" ? "high" : "critical",
+                severity: classifiedState === "complaint" ? "high" : "critical",
                 status: "open",
-                title: `${state.replace(/_/g, " ")} requires founder review`,
-                targetId: input.targetId,
-                channel: input.channel,
+                title: `${classifiedState.replace(/_/g, " ")} requires founder review`,
+                targetId,
+                channel,
                 createdAt: timestamp,
                 updatedAt: timestamp,
             }));
@@ -18372,12 +20259,12 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
                 pId: SIGNALDESK_PRODUCT_CODE,
                 scope: pauseScope,
                 status: "active",
-                reason: `${state} received; outbound paused pending founder review.`,
+                reason: `${classifiedState} received; outbound paused pending founder review.`,
                 activatedAt: timestamp,
                 activatedBy: access.userId,
                 updatedAt: timestamp,
             }), { merge: true });
-            appendAudit(db, transaction, access, "reply_incident_pause", "conversation", conversationRef.id, `${state}:${pauseScope}`);
+            appendAudit(db, transaction, access, "reply_incident_pause", "conversation", conversationRef.id, `${classifiedState}:${pauseScope}`);
             updateControlSummary(db, transaction, { incidentCount: increment(1), safetyStatus: "blocked" });
         }
         if (pendingMissionRef && missionPatch) {
@@ -18399,8 +20286,26 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
             updatedAt: timestamp,
         }), { merge: true });
         appendAudit(db, transaction, access, "reply_capture", "conversation", conversationRef.id, state);
-        updateQueueSummary(db, transaction, { inboxBacklog: state === "needs_review" || state === "interested" || requiresIncidentPause ? increment(1) : increment(0) });
-        updateDailyCost(db, transaction, requiresIncidentPause ? missionPatch ? 13 : 11 : 7, 0);
+        if (queueRef && queueSnap) {
+            const queueData = queueSnap.data();
+            const queueAuthority = queueSnap.exists
+                ? projectSignalDeskQueueDocument(queueData, queueRef.id)
+                : null;
+            if (queueSnap.exists && !queueAuthority) throw new Error("SIGNALDESK_QUEUE_SUMMARY_SHAPE_INVALID");
+            transaction.set(queueRef, sanitizeForFirestore({
+                ...(queueAuthority || { approvalBacklog: 0, humanReview: 0, overdue: 0 }),
+                inboxBacklog: Math.max(0, (queueAuthority?.inboxBacklog || 0) + (nextNeedsReview ? 1 : -1)),
+                pId: SIGNALDESK_PRODUCT_CODE,
+                queueSummaryId: queueRef.id,
+                updatedAt: timestamp,
+            }));
+        }
+        const estimatedWrites = 7
+            + (queueRef ? 1 : 0)
+            + (requiresSuppression ? 1 : 0)
+            + (requiresIncidentPause ? 4 : 0)
+            + (missionPatch ? 2 : 0);
+        updateDailyCost(db, transaction, estimatedWrites, 0);
         const revenueSyncStatus: "not-applicable" | "pending" = state === "interested"
             && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER
             ? "pending"
@@ -18418,16 +20323,16 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
             status: "completed",
             updatedAt: timestamp,
         }));
-        return { conversationId: conversationRef.id, duplicate: false, revenueSyncStatus, state };
+        return { channel, conversationId: conversationRef.id, duplicate: false, revenueSyncStatus, state, targetId };
     });
 
     if (transactionResult.duplicate) return transactionResult;
     let revenueSyncStatus = transactionResult.revenueSyncStatus;
-    if (state === "interested" && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
+    if (transactionResult.state === "interested" && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
         try {
             await qualifySignalDeskRevenueAccountServer(access, {
                 locationType: "single-location",
-                targetId: input.targetId,
+                targetId: transactionResult.targetId,
             });
             revenueSyncStatus = "updated";
             try {
@@ -18442,14 +20347,19 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
         } catch (error) {
             revenueSyncStatus = "pending";
             logRuntimeFailure(SIGNALDESK_INTERESTED_REPLY_REVENUE_SYNC_FAILED, error, {
-                channel: input.channel,
+                channel: transactionResult.channel,
                 product: "signaldesk",
                 targetIdPresent: true,
             });
         }
     }
 
-    return { ...transactionResult, revenueSyncStatus };
+    return {
+        conversationId: transactionResult.conversationId,
+        duplicate: false,
+        revenueSyncStatus,
+        state: transactionResult.state,
+    };
 }
 
 export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessContext, input: RouteTokenInput) {
@@ -18544,14 +20454,30 @@ export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessC
             );
             const target = targetAuthority.target;
             if (target.suppressionStatus !== "clear") throw new Error("Target is suppressed");
+            const requestedActionId = normalizeText(input.actionId);
+            const requestedCtaId = normalizeText(input.ctaId);
+            const requestedTemplateId = normalizeText(input.templateId);
+            const requestedApprovalAction = Boolean(
+                requestedActionId
+                && target.latestApprovalId
+                && requestedActionId === target.latestApprovalId
+            );
             const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(targetAuthority.sourcePolicyId);
             const conversationRef = target.latestConversationId
                 ? db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(target.latestConversationId)
                 : null;
-            const [policySnap, conversationSnap, evidenceSnap] = await Promise.all([
+            const approvalRef = requestedApprovalAction
+                ? db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(requestedActionId)
+                : null;
+            const draftRef = requestedApprovalAction && target.latestDraftId
+                ? db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(target.latestDraftId)
+                : null;
+            const [policySnap, conversationSnap, evidenceSnap, approvalSnap, draftSnap] = await Promise.all([
                 transaction.get(policyRef),
                 conversationRef ? transaction.get(conversationRef) : Promise.resolve(null),
                 transaction.get(latestOutcomeEvidenceQuery(db, target.targetId)),
+                approvalRef ? transaction.get(approvalRef) : Promise.resolve(null),
+                draftRef ? transaction.get(draftRef) : Promise.resolve(null),
             ]);
             const policy = readSourcePolicySnapshot(policySnap);
             const policyError = sourcePolicyUsabilityError(policy, { entityId: input.targetId, use: "evidence" });
@@ -18580,10 +20506,52 @@ export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessC
                 || conversation.lastInboundAt
                 || conversation.lastInboundOccurredAt;
             if (!ownerQualifiedAt) throw new Error("OWNER_QUALIFIED_INTENT_REQUIRED");
-            const sourceActionId = normalizeText(input.actionId)
-                || normalizeText(input.ctaId)
-                || normalizeText(input.templateId)
-                || conversation.conversationId;
+            let sourceActionId = conversation.conversationId;
+            let ctaId: string | null = null;
+            let templateId: string | null = null;
+            if (requestedActionId) {
+                if (requestedActionId === conversation.conversationId) {
+                    if (requestedCtaId || requestedTemplateId) {
+                        throw new Error("ROUTE_TOKEN_SOURCE_ACTION_LINEAGE_INVALID");
+                    }
+                } else if (requestedApprovalAction && approvalSnap?.exists && draftSnap?.exists) {
+                    const approval = requireProjectedWorkspaceDocument<SignalDeskApprovalItem>(
+                        SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE,
+                        approvalSnap.data(),
+                        approvalSnap.id,
+                        "ROUTE_TOKEN_SOURCE_APPROVAL_INVALID",
+                    );
+                    const draft = requireProjectedWorkspaceDocument<SignalDeskDraftSummary>(
+                        SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES,
+                        draftSnap.data(),
+                        draftSnap.id,
+                        "ROUTE_TOKEN_SOURCE_DRAFT_INVALID",
+                    );
+                    if (
+                        !["exported", "sent"].includes(approval.status)
+                        || !["exported", "sent"].includes(draft.status)
+                        || approval.targetId !== target.targetId
+                        || approval.channel !== input.channel
+                        || approval.draftId !== draft.draftId
+                        || draft.approvalId !== approval.approvalId
+                        || draft.targetId !== target.targetId
+                        || draft.channel !== input.channel
+                        || target.latestApprovalId !== approval.approvalId
+                        || target.latestDraftId !== draft.draftId
+                        || (requestedCtaId && requestedCtaId !== normalizeText(draft.ctaId))
+                        || (requestedTemplateId && requestedTemplateId !== draft.templateId)
+                    ) {
+                        throw new Error("ROUTE_TOKEN_SOURCE_ACTION_LINEAGE_INVALID");
+                    }
+                    sourceActionId = approval.approvalId;
+                    ctaId = normalizeText(draft.ctaId) || null;
+                    templateId = draft.templateId;
+                } else {
+                    throw new Error("ROUTE_TOKEN_SOURCE_ACTION_INVALID");
+                }
+            } else if (requestedCtaId || requestedTemplateId) {
+                throw new Error("ROUTE_TOKEN_SOURCE_ACTION_REQUIRED");
+            }
             const expiresAtMillis = Math.min(
                 issuedAtMillis + (14 * 24 * 60 * 60 * 1000),
                 Date.parse(targetAuthority.sourceDataExpiresAt),
@@ -18594,14 +20562,14 @@ export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessC
             const tokenFingerprintHash = createSignalDeskRouteTokenRequestFingerprint({
                 actorId: access.userId,
                 channel: input.channel,
-                ctaId: normalizeText(input.ctaId) || null,
+                ctaId,
                 expiresAt: new Date(expiresAtMillis).toISOString(),
                 ownerQualifiedAt,
                 sourceActionId,
                 sourcePolicyId: targetAuthority.sourcePolicyId,
                 sourceRunId: targetAuthority.sourceRunId,
                 targetId: target.targetId,
-                templateId: normalizeText(input.templateId) || null,
+                templateId,
             });
             const material = deriveSignalDeskRouteTokenMaterial({
                 bridgeSecret,
@@ -18618,8 +20586,8 @@ export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessC
                 sourcePolicyId: targetAuthority.sourcePolicyId,
                 sourceRunId: targetAuthority.sourceRunId,
                 channel: input.channel,
-                templateId: normalizeText(input.templateId) || null,
-                ctaId: normalizeText(input.ctaId) || null,
+                templateId,
+                ctaId,
                 sourceActionId,
                 status: "active",
                 ownerQualifiedAt: admin.firestore.Timestamp.fromMillis(Date.parse(ownerQualifiedAt)),
@@ -18652,7 +20620,7 @@ export async function createSignalDeskRouteTokenServer(access: SignalDeskAccessC
             );
             transaction.create(claimRef, sanitizeForFirestore(claimRecord));
             appendAudit(db, transaction, access, "route_token_create", "routeToken", material.routeTokenId, `${input.targetId}:${input.channel}`);
-            updateDailyCost(db, transaction, 3, 0);
+            updateDailyCost(db, transaction, 4, 0);
             return {
                 channel: input.channel,
                 duplicate: false,
@@ -18697,7 +20665,7 @@ export async function revokeSignalDeskRouteTokenServer(
             updatedAt: timestamp,
         }), { merge: true });
         appendAudit(db, transaction, access, "route_token_revoke", "routeToken", input.routeTokenId, input.reason);
-        updateDailyCost(db, transaction, 2, 0);
+        updateDailyCost(db, transaction, 3, 0);
         return {
             duplicate: false,
             routeTokenId: input.routeTokenId,
@@ -18999,7 +20967,7 @@ export async function recordSignalDeskOutcomeServer(access: SignalDeskAccessCont
         updateDailyCost(
             db,
             transaction,
-            7 + (routeTokenRef ? 1 : 0),
+            8 + (routeTokenRef ? 1 : 0),
             0,
         );
         return { duplicate: false, outcomeEventId: outcomeRef.id, outcomeSummaryId: summaryId };
@@ -19042,21 +21010,24 @@ export async function captureSignalDeskDemandSignalServer(access: SignalDeskAcce
     targetId?: string;
     targetName?: string;
 }) {
+    requireDemandSignals();
     const db = requireDb();
+    if (!normalizeText(input.targetId) && normalizeText(input.targetName)) {
+        throw new Error("DEMAND_SIGNAL_TARGET_NAME_REQUIRES_TARGET");
+    }
     const idempotencyKey = normalizeText(input.idempotencyKey);
     if (idempotencyKey.length < 8 || idempotencyKey.length > 180) throw new Error("DEMAND_SIGNAL_IDEMPOTENCY_KEY_REQUIRED");
     const requestFingerprintHash = hashValue(JSON.stringify({
         signalType: input.signalType,
         sourceSurface: input.sourceSurface,
         targetId: input.targetId || null,
-        targetName: input.targetId ? null : normalizeText(input.targetName),
+        targetName: null,
     }));
     const operationHash = hashValue(`${access.userId}|${idempotencyKey}`);
-    const day = todayKey();
+    const operationAtMillis = Date.now();
+    const day = new Date(operationAtMillis).toISOString().slice(0, 10);
     const signalRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNALS).doc(`demand_${operationHash.slice(0, 32)}`);
     const claimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`demand_signal_${operationHash}`);
-    const summaryId = `${day}_${input.signalType}_${input.sourceSurface}_${input.targetId || "general"}`;
-    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(summaryId);
     return db.runTransaction(async (transaction: FirebaseFirestore.Transaction) => {
         const [claimSnap, targetSnap] = await Promise.all([
             transaction.get(claimRef),
@@ -19065,37 +21036,74 @@ export async function captureSignalDeskDemandSignalServer(access: SignalDeskAcce
                 : Promise.resolve(null),
         ]);
         if (claimSnap.exists) {
-            if (normalizeText(claimSnap.data()?.requestFingerprintHash) !== requestFingerprintHash) {
+            const claim = parseSignalDeskDemandSignalClaimDocument(claimSnap.data());
+            if (
+                claim.actorId !== access.userId
+                || claim.entityId !== signalRef.id
+                || claim.requestFingerprintHash !== requestFingerprintHash
+            ) {
                 throw new Error("DEMAND_SIGNAL_IDEMPOTENCY_CONFLICT");
             }
-            return { demandSignalId: signalRef.id, duplicate: true, summaryId };
+            const signalSnap = await transaction.get(signalRef);
+            if (!signalSnap.exists) throw new Error("DEMAND_SIGNAL_REPLAY_MISSING");
+            const event = parseSignalDeskDemandSignalEventDocument(signalSnap.data(), signalSnap.id);
+            const eventDay = new Date((event.createdAt as { toMillis: () => number }).toMillis()).toISOString().slice(0, 10);
+            const replaySummaryId = `${eventDay}_${event.signalType}_${event.sourceSurface}_${event.targetId || "general"}`;
+            const replaySummarySnap = await transaction.get(
+                db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(replaySummaryId),
+            );
+            if (!replaySummarySnap.exists) throw new Error("DEMAND_SIGNAL_REPLAY_MISSING");
+            const summary = parseSignalDeskDemandSignalSummaryDocument(replaySummarySnap.data(), replaySummarySnap.id);
+            assertSignalDeskDemandSignalSummaryMatchesEvent(summary, event);
+            return { demandSignalId: signalRef.id, duplicate: true, summaryId: replaySummaryId };
         }
         if (input.targetId && !targetSnap?.exists) throw new Error("Target not found");
-        const targetName = targetSnap?.exists
-            ? normalizeText(targetSnap.data()?.displayName)
-            : normalizeText(input.targetName) || null;
-        const timestamp = now();
-        transaction.create(signalRef, sanitizeForFirestore({
+        const target = targetSnap?.exists
+            ? parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id)
+            : null;
+        const targetName = target?.displayName || null;
+        const summaryId = `${day}_${input.signalType}_${input.sourceSurface}_${target?.targetId || "general"}`;
+        const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(summaryId);
+        const summarySnap = await transaction.get(summaryRef);
+        const timestamp = admin.firestore.Timestamp.fromMillis(operationAtMillis);
+        const eventRecord = {
             demandSignalId: signalRef.id,
             pId: SIGNALDESK_PRODUCT_CODE,
-            targetId: input.targetId || null,
+            targetId: target?.targetId || null,
             targetName,
             signalType: input.signalType,
             sourceSurface: input.sourceSurface,
             createdAt: timestamp,
             createdBy: access.userId,
-        }));
-        transaction.set(summaryRef, sanitizeForFirestore({
+        };
+        const existingSummary = summarySnap.exists
+            ? parseSignalDeskDemandSignalSummaryDocument(summarySnap.data(), summarySnap.id)
+            : null;
+        if (existingSummary && (
+            existingSummary.day !== day
+            || existingSummary.signalType !== input.signalType
+            || existingSummary.sourceSurface !== input.sourceSurface
+            || existingSummary.targetId !== (target?.targetId || null)
+            || existingSummary.targetName !== targetName
+        )) {
+            throw new Error("DEMAND_SIGNAL_SUMMARY_LINEAGE_INVALID");
+        }
+        const summaryRecord = {
             demandSignalId: summaryId,
             pId: SIGNALDESK_PRODUCT_CODE,
-            targetId: input.targetId || null,
+            targetId: target?.targetId || null,
             targetName,
             signalType: input.signalType,
             sourceSurface: input.sourceSurface,
-            count: increment(1),
+            count: (existingSummary?.count || 0) + 1,
             day,
             updatedAt: timestamp,
-        }), { merge: true });
+        };
+        const event = parseSignalDeskDemandSignalEventDocument(eventRecord, signalRef.id);
+        const summary = parseSignalDeskDemandSignalSummaryDocument(summaryRecord, summaryRef.id);
+        assertSignalDeskDemandSignalSummaryMatchesEvent(summary, event);
+        transaction.create(signalRef, sanitizeForFirestore(eventRecord));
+        transaction.set(summaryRef, sanitizeForFirestore(summaryRecord));
         transaction.create(claimRef, sanitizeForFirestore({
             actorId: access.userId,
             entityId: signalRef.id,
@@ -19106,7 +21114,7 @@ export async function captureSignalDeskDemandSignalServer(access: SignalDeskAcce
         }));
         appendAudit(db, transaction, access, "demand_signal_capture", "demandSignal", signalRef.id, input.signalType);
         updateControlSummary(db, transaction, { demandSignalCount: increment(1) });
-        updateDailyCost(db, transaction, 4, 0);
+        updateDailyCost(db, transaction, 6, 0);
         return { demandSignalId: signalRef.id, duplicate: false, summaryId };
     });
 }

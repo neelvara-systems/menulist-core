@@ -91,6 +91,7 @@ async function gatherSignalExamples(tId: number, sId: number, entityId: string):
     try {
         snapshot = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('entityId', '==', entityId)
@@ -122,6 +123,7 @@ async function getExistingAnswerSummaries(tId: number, sId: number, entityId: st
     try {
         snapshot = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('scope.entityIds', 'array-contains', entityId)

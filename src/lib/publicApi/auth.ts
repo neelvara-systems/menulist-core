@@ -12,11 +12,14 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { getAnswerlatticeWidgetKeyRecordByHash } from "@lib/answerlattice/widgetKeyManager";
+import {
+    isAnswerlatticeActiveStoreInScope,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from "@lib/answerlattice/sessionScope";
 import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
-import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     isMenuListPublicApiProductEntity,
     isMenuListPublicApiStoreIdentityConsistent,
@@ -59,23 +62,34 @@ export function normalizeMenuListPublicApiNumericId(value: unknown): number | nu
         : null;
 }
 
-const isAnswerlatticeWidgetStoreInScope = (
-    storeData: Record<string, any>,
-    storeDocumentId: string,
-): boolean => {
-    const storeId = normalizeMenuListPublicApiNumericId(storeDocumentId);
-    const storedStoreId = normalizeMenuListPublicApiNumericId(
-        storeData.sId ?? storeData.storeId ?? storeData.id ?? storeDocumentId,
-    );
-    const tenantId = normalizeMenuListPublicApiNumericId(storeData.tId ?? storeData.tenantId);
-    return storeData.pId === 'AL'
-        && storeId !== null
-        && storedStoreId === storeId
-        && tenantId !== null
-        && storeData.active !== false
-        && storeData.deleted !== true
-        && !isPlatformEntityBlocked(storeData);
+export type AnswerlatticeWidgetStoreScope = {
+    tenantId: number;
+    storeId: number;
 };
+
+export function resolveAnswerlatticeWidgetStoreScope(
+    storeData: unknown,
+    storeDocumentId: unknown,
+): AnswerlatticeWidgetStoreScope | null {
+    if (!storeData || typeof storeData !== 'object' || Array.isArray(storeData)) return null;
+    const store = storeData as Record<string, unknown>;
+    const documentStoreId = normalizeMenuListPublicApiNumericId(storeDocumentId);
+    const tenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        store.tId,
+        store.tenantId,
+    ]);
+    const storeId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        store.sId,
+        store.storeId,
+        store.id,
+        storeDocumentId,
+    ]);
+    if (!documentStoreId || !tenantId || !storeId || storeId !== documentStoreId) return null;
+
+    return isAnswerlatticeActiveStoreInScope(store, { tenantId, storeId }, storeDocumentId)
+        ? { tenantId, storeId }
+        : null;
+}
 
 export function normalizePublicApiKey(apiKey: string | null): string | null {
     const normalizedApiKey = apiKey?.trim();
@@ -216,6 +230,7 @@ export type PublicApiCredentialSource = 'publicApi' | 'answerlatticeWidgetApi';
 export type PublicApiCredentialScope = StorePublicApiCredentialScope;
 
 export type PublicApiKeyValidationResult = {
+    answerlatticeScope?: AnswerlatticeWidgetStoreScope;
     credential?: Record<string, any>;
     credentialSource: PublicApiCredentialSource;
     storeData: any;
@@ -357,14 +372,16 @@ export async function validatePublicApiKey(
             }
             const storeData = doc.data();
             const widgetCredential = getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash);
+            const answerlatticeScope = resolveAnswerlatticeWidgetStoreScope(storeData, storeDocumentId);
             if (
                 !widgetCredential
-                || !isAnswerlatticeWidgetStoreInScope(storeData, storeDocumentId)
+                || !answerlatticeScope
             ) {
                 rememberValidationCache(cacheKey, cacheTtl, null);
                 return null;
             }
             const result: PublicApiKeyValidationResult = {
+                answerlatticeScope,
                 credential: widgetCredential,
                 credentialSource: 'answerlatticeWidgetApi',
                 storeData,
@@ -438,17 +455,21 @@ export async function validatePublicApiKey(
     const widgetCredential = credentialSource === 'answerlatticeWidgetApi'
         ? getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash)
         : undefined;
+    const answerlatticeScope = credentialSource === 'answerlatticeWidgetApi'
+        ? resolveAnswerlatticeWidgetStoreScope(storeData, storeDocumentId)
+        : undefined;
     if (
         credentialSource === 'answerlatticeWidgetApi'
         && (
             !widgetCredential
-            || !isAnswerlatticeWidgetStoreInScope(storeData, storeDocumentId)
+            || !answerlatticeScope
         )
     ) {
         rememberValidationCache(cacheKey, cacheTtl, null);
         return null;
     }
     const result: PublicApiKeyValidationResult = {
+        ...(answerlatticeScope ? { answerlatticeScope } : {}),
         credential: credentialSource === 'publicApi'
             ? storeData.publicApi
             : widgetCredential,

@@ -6,7 +6,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
-    normalizeAnswerlatticeScopeDocumentId,
+    isAnswerlatticeStoreInScope,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import {
@@ -25,6 +25,7 @@ import { withAuth } from '../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const WIDGET_SECURITY_MAX_BODY_BYTES = 8 * 1024;
+const WIDGET_SECURITY_ROTATION_MIN_INTERVAL_MS = 30_000;
 const PRIVATE_NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' };
 const EvidenceHostsSchema = z.object({
     evidenceAllowedHosts: z.array(z.string().trim().min(1).max(300)).max(10),
@@ -35,16 +36,34 @@ const featureAvailable = () => (
     || FEATURE_FLAGS.ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS
 );
 
+const isRateLimitUnavailable = (
+    result: { allowed: boolean; reason?: 'limit_exceeded' | 'provider_unavailable' },
+) => !result.allowed && result.reason === 'provider_unavailable';
+
+class WidgetSecurityOwnershipError extends Error {
+    constructor() {
+        super('answerlattice_widget_security_store_ownership_changed');
+        this.name = 'WidgetSecurityOwnershipError';
+    }
+}
+
+class WidgetSecurityRotationConflictError extends Error {
+    constructor() {
+        super('answerlattice_widget_security_rotation_conflict');
+        this.name = 'WidgetSecurityRotationConflictError';
+    }
+}
+
 const getStore = async (access: NonNullable<Awaited<ReturnType<typeof requireAnswerlatticePermission>>['access']>) => {
     const ref = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(access.scope.storeId));
     const snapshot = await ref.get();
     if (!snapshot.exists) return null;
     const data = snapshot.data() || {};
-    if (normalizeAnswerlatticeScopeDocumentId(data.tId ?? data.tenantId) !== access.scope.tenantId) return null;
+    if (!isAnswerlatticeStoreInScope(data, access.scope, snapshot.id)) return null;
     return { ref, data };
 };
 
-const buildResponse = (data: Record<string, any>) => {
+const buildResponse = (data: Record<string, unknown>) => {
     const record = normalizeVerifiedContextKeyRecord(data.answerlatticeVerifiedContext);
     return {
         verifiedContext: record ? {
@@ -100,7 +119,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             key: buildAnswerlatticeRateLimitKey('answerlattice-widget-signing-key', userId, sessionScope.tenantId, sessionScope.storeId),
             limit: 3,
             window: 3600,
+            failClosedOnProviderError: true,
         });
+        if (isRateLimitUnavailable(rateLimit)) {
+            return NextResponse.json({ error: 'Signing key management is temporarily unavailable.' }, { status: 503, headers: PRIVATE_NO_STORE_HEADERS });
+        }
         if (!rateLimit.allowed) return NextResponse.json({ error: 'Signing keys can only be changed a few times per hour.' }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
         if (permission.response) return permission.response;
@@ -109,17 +132,43 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const store = await getStore(access);
         if (!store) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404, headers: PRIVATE_NO_STORE_HEADERS });
         const generated = generateAnswerlatticeVerifiedContextKey();
-        await store.ref.set({
-            answerlatticeVerifiedContext: generated.record,
-            answerlatticeVerifiedContextUpdatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
+        const rotationRequestedAtMs = Date.now();
+        const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+            const currentSnapshot = await transaction.get(store.ref);
+            const currentData = currentSnapshot.data() || {};
+            if (!currentSnapshot.exists || !isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)) {
+                throw new WidgetSecurityOwnershipError();
+            }
+            const currentRecord = normalizeVerifiedContextKeyRecord(currentData.answerlatticeVerifiedContext);
+            const currentRotationMs = currentRecord
+                ? Date.parse(currentRecord.rotatedAt || currentRecord.createdAt)
+                : 0;
+            if (
+                Number.isFinite(currentRotationMs)
+                && currentRotationMs > 0
+                && rotationRequestedAtMs - currentRotationMs < WIDGET_SECURITY_ROTATION_MIN_INTERVAL_MS
+            ) {
+                throw new WidgetSecurityRotationConflictError();
+            }
+            transaction.set(store.ref, {
+                answerlatticeVerifiedContext: generated.record,
+                answerlatticeVerifiedContextUpdatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return { ...currentData, answerlatticeVerifiedContext: generated.record };
+        });
 
         return NextResponse.json({
-            ...buildResponse({ ...store.data, answerlatticeVerifiedContext: generated.record }),
+            ...buildResponse(updatedStoreData),
             privateKeyPkcs8: generated.privateKeyPkcs8,
             privateKeyShownOnce: true,
         }, { headers: PRIVATE_NO_STORE_HEADERS });
     } catch (error) {
+        if (error instanceof WidgetSecurityOwnershipError) {
+            return NextResponse.json({ error: 'Workspace access changed. Refresh and try again.' }, { status: 409, headers: PRIVATE_NO_STORE_HEADERS });
+        }
+        if (error instanceof WidgetSecurityRotationConflictError) {
+            return NextResponse.json({ error: 'A signing key was just created. Refresh before rotating again.' }, { status: 409, headers: PRIVATE_NO_STORE_HEADERS });
+        }
         logRuntimeFailure('answerlattice_widget_signing_key_rotation_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', sessionScope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', sessionScope.storeId),
@@ -141,7 +190,11 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             key: buildAnswerlatticeRateLimitKey('answerlattice-widget-evidence-hosts', userId, sessionScope.tenantId, sessionScope.storeId),
             limit: 20,
             window: 60,
+            failClosedOnProviderError: true,
         });
+        if (isRateLimitUnavailable(rateLimit)) {
+            return NextResponse.json({ error: 'Evidence host management is temporarily unavailable.' }, { status: 503, headers: PRIVATE_NO_STORE_HEADERS });
+        }
         if (!rateLimit.allowed) return NextResponse.json({ error: 'Too many changes. Please wait before trying again.' }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
         if (permission.response) return permission.response;
@@ -152,19 +205,33 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const parsed = EvidenceHostsSchema.safeParse(bodyResult.data);
         if (!parsed.success) return NextResponse.json({ error: 'Invalid evidence host settings.' }, { status: 400, headers: PRIVATE_NO_STORE_HEADERS });
         const normalized = normalizeAnswerlatticeEvidenceHosts(parsed.data.evidenceAllowedHosts);
-        if (normalized.length !== parsed.data.evidenceAllowedHosts.length) {
+        if (
+            normalized.length !== parsed.data.evidenceAllowedHosts.length
+            || normalized.some((host, index) => host !== parsed.data.evidenceAllowedHosts[index])
+        ) {
             return NextResponse.json({ error: 'Use exact HTTPS hostnames without paths, ports, or credentials.' }, { status: 400, headers: PRIVATE_NO_STORE_HEADERS });
         }
         const store = await getStore(access);
         if (!store) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404, headers: PRIVATE_NO_STORE_HEADERS });
-        await store.ref.set({
-            answerlatticeEvidenceAllowedHosts: normalized,
-            answerlatticeEvidenceAllowedHostsUpdatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
-        return NextResponse.json(buildResponse({ ...store.data, answerlatticeEvidenceAllowedHosts: normalized }), {
+        const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+            const currentSnapshot = await transaction.get(store.ref);
+            const currentData = currentSnapshot.data() || {};
+            if (!currentSnapshot.exists || !isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)) {
+                throw new WidgetSecurityOwnershipError();
+            }
+            transaction.set(store.ref, {
+                answerlatticeEvidenceAllowedHosts: normalized,
+                answerlatticeEvidenceAllowedHostsUpdatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return { ...currentData, answerlatticeEvidenceAllowedHosts: normalized };
+        });
+        return NextResponse.json(buildResponse(updatedStoreData), {
             headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
+        if (error instanceof WidgetSecurityOwnershipError) {
+            return NextResponse.json({ error: 'Workspace access changed. Refresh and try again.' }, { status: 409, headers: PRIVATE_NO_STORE_HEADERS });
+        }
         logRuntimeFailure('answerlattice_widget_evidence_hosts_save_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', sessionScope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', sessionScope.storeId),
@@ -186,7 +253,11 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
             key: buildAnswerlatticeRateLimitKey('answerlattice-widget-signing-key', userId, sessionScope.tenantId, sessionScope.storeId),
             limit: 3,
             window: 3600,
+            failClosedOnProviderError: true,
         });
+        if (isRateLimitUnavailable(rateLimit)) {
+            return NextResponse.json({ error: 'Signing key management is temporarily unavailable.' }, { status: 503, headers: PRIVATE_NO_STORE_HEADERS });
+        }
         if (!rateLimit.allowed) return NextResponse.json({ error: 'Signing keys can only be changed a few times per hour.' }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
         if (permission.response) return permission.response;
@@ -194,14 +265,25 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
         if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
         const store = await getStore(access);
         if (!store) return NextResponse.json({ error: 'Workspace not found.' }, { status: 404, headers: PRIVATE_NO_STORE_HEADERS });
-        await store.ref.set({
-            answerlatticeVerifiedContext: FieldValue.delete(),
-            answerlatticeVerifiedContextUpdatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
-        return NextResponse.json(buildResponse({ ...store.data, answerlatticeVerifiedContext: null }), {
+        const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
+            const currentSnapshot = await transaction.get(store.ref);
+            const currentData = currentSnapshot.data() || {};
+            if (!currentSnapshot.exists || !isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)) {
+                throw new WidgetSecurityOwnershipError();
+            }
+            transaction.set(store.ref, {
+                answerlatticeVerifiedContext: FieldValue.delete(),
+                answerlatticeVerifiedContextUpdatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return { ...currentData, answerlatticeVerifiedContext: null };
+        });
+        return NextResponse.json(buildResponse(updatedStoreData), {
             headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
+        if (error instanceof WidgetSecurityOwnershipError) {
+            return NextResponse.json({ error: 'Workspace access changed. Refresh and try again.' }, { status: 409, headers: PRIVATE_NO_STORE_HEADERS });
+        }
         logRuntimeFailure('answerlattice_widget_signing_key_disable_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', sessionScope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', sessionScope.storeId),

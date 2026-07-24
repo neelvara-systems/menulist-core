@@ -12,10 +12,15 @@ import {
     getActiveProductSubscriptionForStore,
 } from '@lib/billing/productBillingServer';
 import { getBillingPeriodKey } from '@lib/billing/billingPeriod';
+import {
+    getCreditBillingPeriodKey,
+    getNonNegativeCreditInteger,
+    getPositiveCreditInteger,
+} from '@data/shared/aiCreditScalarContract';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { createHash } from 'crypto';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export type AnswerlatticeAiScope = {
     tId: number;
@@ -47,16 +52,31 @@ export type AnswerlatticeCapacityCheckResult = {
     unitsRequired: number;
 };
 
+export type AnswerlatticeAiCapacityReservation = {
+    action: string;
+    accountingIdempotencyHash: string;
+    operationId: string;
+    remainingBalance: AnswerlatticeRemainingBalance;
+    scope: AnswerlatticeAiScope;
+    subscriptionId: string;
+    unitsReserved: number;
+};
+
 export class AnswerlatticeAiCapacityExceededError extends Error {
     readonly remaining: number;
     readonly required: number;
 
     constructor(remaining: number, required: number) {
+        const normalizedRemaining = getNonNegativeCreditInteger(remaining);
+        const normalizedRequired = getPositiveCreditInteger(required);
+        if (normalizedRemaining === null || normalizedRequired === null) {
+            throw new Error('Answerlattice AI capacity evidence is invalid.');
+        }
         super('Not enough Answerlattice support credits for this operation.');
         this.name = 'AnswerlatticeAiCapacityExceededError';
         Object.setPrototypeOf(this, new.target.prototype);
-        this.remaining = Math.max(0, Number(remaining) || 0);
-        this.required = Math.max(0, Number(required) || 0);
+        this.remaining = normalizedRemaining;
+        this.required = normalizedRequired;
     }
 }
 
@@ -68,8 +88,8 @@ export const isAnswerlatticeAiCapacityExceededError = (
         error
         && typeof error === 'object'
         && (error as { name?: unknown }).name === 'AnswerlatticeAiCapacityExceededError'
-        && Number.isFinite(Number((error as { remaining?: unknown }).remaining))
-        && Number.isFinite(Number((error as { required?: unknown }).required)),
+        && getNonNegativeCreditInteger((error as { remaining?: unknown }).remaining) !== null
+        && getPositiveCreditInteger((error as { required?: unknown }).required) !== null,
     )
 );
 
@@ -90,6 +110,7 @@ type FinalizeAnswerlatticeAiAccountingResult = {
 };
 
 const db = answerlatticeFirestoreAdmin as FirebaseFirestore.Firestore;
+const ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS = 10 * 60 * 1000;
 
 const getAnswerlatticeAccountingContextShape = (context?: Record<string, unknown>) => ({
     contextPresent: Boolean(context),
@@ -115,14 +136,30 @@ const getAnswerlatticeAiAccountingLogContext = (
 });
 
 const isActiveAnswerlatticeAiSubscription = (subscription: FirestoreSubscriptionDoc): boolean => (
-    ['active', 'trialing'].includes(String(subscription.status || '').trim().toLowerCase())
+    subscription.status === 'active'
 );
+
+const getExactSubscriptionCredits = (subscription: FirestoreSubscriptionDoc) => {
+    const monthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
+    const topUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
+    const monthlyCreditsAllowance = getNonNegativeCreditInteger(subscription.monthlyCreditsAllowance ?? 0);
+    if (monthlyCredits === null || topUpCredits === null || monthlyCreditsAllowance === null) {
+        throw new Error('Answerlattice subscription credit balance is invalid.');
+    }
+    const totalCredits = monthlyCredits + topUpCredits;
+    if (!Number.isSafeInteger(totalCredits)) {
+        throw new Error('Answerlattice subscription credit balance is invalid.');
+    }
+    return { monthlyCredits, monthlyCreditsAllowance, topUpCredits, totalCredits };
+};
 
 async function refreshMonthlyCreditsIfNeeded(
     subscription: FirestoreSubscriptionDoc,
+    scope: AnswerlatticeAiScope,
 ): Promise<FirestoreSubscriptionDoc> {
     const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription?.id);
-    if (!normalizedSubscriptionId || Number(subscription.monthlyCreditsAllowance || 0) <= 0) {
+    const initialCredits = getExactSubscriptionCredits(subscription);
+    if (!normalizedSubscriptionId || initialCredits.monthlyCreditsAllowance <= 0) {
         return subscription;
     }
 
@@ -141,8 +178,12 @@ async function refreshMonthlyCreditsIfNeeded(
             ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
             id: subscriptionSnap.id,
         };
+        if (!isActiveAnswerlatticeAiSubscription(current) || !isAnswerlatticeSubscriptionInScope(current, scope)) {
+            return current;
+        }
         const currentBillingPeriod = getBillingPeriodKey(current.cycleStartDate);
-        const allowance = Number(current.monthlyCreditsAllowance || 0);
+        const currentCredits = getExactSubscriptionCredits(current);
+        const allowance = currentCredits.monthlyCreditsAllowance;
         if (currentBillingPeriod === null || current.creditsLastResetMonth === currentBillingPeriod || allowance <= 0) {
             return current;
         }
@@ -177,10 +218,14 @@ export async function checkAnswerlatticeAICapacity(
         };
     }
 
-    const normalizedQuantity = Number(quantity);
-    const unitsRequired = getUnitCost(actionType) * (
-        Number.isSafeInteger(normalizedQuantity) && normalizedQuantity > 0 ? normalizedQuantity : 1
-    );
+    const normalizedQuantity = getPositiveCreditInteger(quantity);
+    if (normalizedQuantity === null) {
+        throw new Error('Answerlattice AI capacity quantity is invalid.');
+    }
+    const unitsRequired = getUnitCost(actionType) * normalizedQuantity;
+    if (!Number.isSafeInteger(unitsRequired) || unitsRequired <= 0) {
+        throw new Error('Answerlattice AI capacity units are invalid.');
+    }
     let subscription = preloadedSubscription === undefined
         ? await getActiveProductSubscriptionForStore(PRODUCT_IDS.ANSWERLATTICE, scope.tId, scope.sId)
         : preloadedSubscription;
@@ -205,8 +250,17 @@ export async function checkAnswerlatticeAICapacity(
         };
     }
 
-    subscription = await refreshMonthlyCreditsIfNeeded(subscription);
-    const remaining = Number(subscription.monthlyCredits || 0) + Number(subscription.topUpCredits || 0);
+    subscription = await refreshMonthlyCreditsIfNeeded(subscription, scope);
+    if (!isActiveAnswerlatticeAiSubscription(subscription) || !isAnswerlatticeSubscriptionInScope(subscription, scope)) {
+        return {
+            allowed: false,
+            reason: 'no_subscription',
+            remaining: 0,
+            subscription: null,
+            unitsRequired,
+        };
+    }
+    const remaining = getExactSubscriptionCredits(subscription).totalCredits;
 
     return {
         allowed: remaining >= unitsRequired,
@@ -222,7 +276,10 @@ export async function consumeAnswerlatticeAICapacity(
     subscription: FirestoreSubscriptionDoc,
     unitsToConsume: number,
 ): Promise<AnswerlatticeRemainingBalance | null> {
-    if (!Number.isFinite(unitsToConsume) || unitsToConsume <= 0) return null;
+    const normalizedUnitsToConsume = getPositiveCreditInteger(unitsToConsume);
+    if (normalizedUnitsToConsume === null) {
+        throw new Error('Answerlattice AI capacity units are invalid.');
+    }
 
     const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription?.id);
     if (!normalizedSubscriptionId) {
@@ -249,33 +306,26 @@ export async function consumeAnswerlatticeAICapacity(
             throw new Error('Answerlattice subscription scope does not match this workspace.');
         }
 
-        let monthlyCredits = Number(current.monthlyCredits || 0);
-        let topUpCredits = Number(current.topUpCredits || 0);
-        const monthlyCreditsAllowance = Number(current.monthlyCreditsAllowance || 0);
+        const currentCredits = getExactSubscriptionCredits(current);
+        let monthlyCredits = currentCredits.monthlyCredits;
+        const topUpCredits = currentCredits.topUpCredits;
+        const monthlyCreditsAllowance = currentCredits.monthlyCreditsAllowance;
         const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
-
-        if (
-            !Number.isFinite(monthlyCredits)
-            || !Number.isFinite(topUpCredits)
-            || monthlyCredits < 0
-            || topUpCredits < 0
-            || !Number.isFinite(monthlyCreditsAllowance)
-            || monthlyCreditsAllowance < 0
-        ) {
-            throw new Error('Answerlattice subscription credit balance is invalid.');
-        }
 
         if (billingPeriod !== null && monthlyCreditsAllowance > 0 && current.creditsLastResetMonth !== billingPeriod) {
             monthlyCredits = monthlyCreditsAllowance;
         }
 
         const remaining = monthlyCredits + topUpCredits;
-        if (remaining < unitsToConsume) {
-            throw new AnswerlatticeAiCapacityExceededError(remaining, unitsToConsume);
+        if (!Number.isSafeInteger(remaining)) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
+        if (remaining < normalizedUnitsToConsume) {
+            throw new AnswerlatticeAiCapacityExceededError(remaining, normalizedUnitsToConsume);
         }
 
-        const monthlyDebit = Math.min(monthlyCredits, unitsToConsume);
-        const topUpDebit = unitsToConsume - monthlyDebit;
+        const monthlyDebit = Math.min(monthlyCredits, normalizedUnitsToConsume);
+        const topUpDebit = normalizedUnitsToConsume - monthlyDebit;
         const nextMonthlyCredits = monthlyCredits - monthlyDebit;
         const nextTopUpCredits = topUpCredits - topUpDebit;
         const timestamp = FieldValue.serverTimestamp();
@@ -311,8 +361,8 @@ export async function consumeAnswerlatticeAICapacity(
 }
 
 const normalizeAccountingIdempotencyKey = (value: unknown): string | null => {
-    const normalized = String(value || '').trim();
-    return normalized.length >= 8 && normalized.length <= 500 ? normalized : null;
+    if (typeof value !== 'string' || value !== value.trim()) return null;
+    return value.length >= 8 && value.length <= 500 ? value : null;
 };
 
 const buildAccountingContextSummary = (context?: Record<string, unknown>) => Object.fromEntries(
@@ -322,32 +372,504 @@ const buildAccountingContextSummary = (context?: Record<string, unknown>) => Obj
             String(key).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80),
             typeof value === 'string'
                 ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 180)
-                : typeof value === 'number' || typeof value === 'boolean' || value === null
+                : (typeof value === 'number' && Number.isFinite(value)) || typeof value === 'boolean' || value === null
                     ? value
                     : null,
         ])
         .filter(([key]) => Boolean(key)),
 );
 
-const getStoredIdempotentBalance = (value: unknown): AnswerlatticeRemainingBalance | null => {
+const getStoredIdempotentBalance = (
+    value: unknown,
+    expectedUnitsConsumed: number,
+): AnswerlatticeRemainingBalance | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const data = value as Record<string, unknown>;
-    const monthlyCredits = Number(data.monthlyCreditsAfter);
-    const topUpCredits = Number(data.topUpCreditsAfter);
-    if (!Number.isFinite(monthlyCredits) || monthlyCredits < 0 || !Number.isFinite(topUpCredits) || topUpCredits < 0) {
+    const monthlyCreditsBefore = getNonNegativeCreditInteger(data.monthlyCreditsBefore);
+    const topUpCreditsBefore = getNonNegativeCreditInteger(data.topUpCreditsBefore);
+    const totalCreditsBefore = getNonNegativeCreditInteger(data.totalCreditsBefore);
+    const monthlyCreditsDebited = getNonNegativeCreditInteger(data.monthlyCreditsDebited);
+    const topUpCreditsDebited = getNonNegativeCreditInteger(data.topUpCreditsDebited);
+    const unitsConsumed = getPositiveCreditInteger(data.unitsConsumed);
+    const monthlyCredits = getNonNegativeCreditInteger(data.monthlyCreditsAfter);
+    const topUpCredits = getNonNegativeCreditInteger(data.topUpCreditsAfter);
+    const totalCreditsAfter = getNonNegativeCreditInteger(data.totalCreditsAfter);
+    if (
+        monthlyCreditsBefore === null
+        || topUpCreditsBefore === null
+        || totalCreditsBefore === null
+        || monthlyCreditsDebited === null
+        || topUpCreditsDebited === null
+        || unitsConsumed === null
+        || monthlyCredits === null
+        || topUpCredits === null
+        || totalCreditsAfter === null
+    ) {
         return null;
     }
+    const beforeSum = monthlyCreditsBefore + topUpCreditsBefore;
+    const debitSum = monthlyCreditsDebited + topUpCreditsDebited;
+    const afterSum = monthlyCredits + topUpCredits;
+    if (
+        !Number.isSafeInteger(beforeSum)
+        || !Number.isSafeInteger(debitSum)
+        || !Number.isSafeInteger(afterSum)
+        || unitsConsumed !== expectedUnitsConsumed
+        || totalCreditsBefore !== beforeSum
+        || debitSum !== unitsConsumed
+        || monthlyCredits !== monthlyCreditsBefore - monthlyCreditsDebited
+        || topUpCredits !== topUpCreditsBefore - topUpCreditsDebited
+        || totalCreditsAfter !== afterSum
+        || totalCreditsBefore - unitsConsumed !== totalCreditsAfter
+    ) return null;
     return {
-        monthlyCreditsBefore: Number(data.monthlyCreditsBefore || 0),
-        topUpCreditsBefore: Number(data.topUpCreditsBefore || 0),
-        totalCreditsBefore: Number(data.totalCreditsBefore || 0),
-        monthlyCreditsDebited: Number(data.monthlyCreditsDebited || 0),
-        topUpCreditsDebited: Number(data.topUpCreditsDebited || 0),
+        monthlyCreditsBefore,
+        topUpCreditsBefore,
+        totalCreditsBefore,
+        monthlyCreditsDebited,
+        topUpCreditsDebited,
         monthlyCredits,
         topUpCredits,
-        totalCreditsAfter: Number(data.totalCreditsAfter ?? (monthlyCredits + topUpCredits)),
+        totalCreditsAfter,
     };
 };
+
+const getAnswerlatticeActorLabel = (actor?: AnswerlatticeAiActor | null): string => {
+    for (const value of [actor?.email, actor?.name, actor?.id]) {
+        if (typeof value === 'string' && value.length > 0 && value.length <= 180) return value;
+        if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
+    }
+    return 'answerlattice';
+};
+
+const getAnswerlatticeAccountingIdentity = (
+    scope: AnswerlatticeAiScope,
+    idempotencyKey: unknown,
+) => {
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
+    const normalizedIdempotencyKey = normalizeAccountingIdempotencyKey(idempotencyKey);
+    if (!tenantScope || !storeScope || !normalizedIdempotencyKey) {
+        throw new Error('Answerlattice AI accounting identity is invalid.');
+    }
+    const accountingIdempotencyHash = createHash('sha256')
+        .update(`${PRODUCT_IDS.ANSWERLATTICE}:${tenantScope.numericId}:${storeScope.numericId}:${normalizedIdempotencyKey}`)
+        .digest('hex');
+    const operationId = `idem_${accountingIdempotencyHash.slice(0, 48)}`;
+    return {
+        accountingIdempotencyHash,
+        operationId,
+        operationRef: db
+            .collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+            .doc(tenantScope.documentId)
+            .collection(storeScope.documentId)
+            .doc(operationId),
+        recoveryRef: db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_CAPACITY_RESERVATIONS).doc(operationId),
+        scope: { tId: tenantScope.numericId, sId: storeScope.numericId },
+        storeDocumentId: storeScope.documentId,
+        tenantDocumentId: tenantScope.documentId,
+    };
+};
+
+const assertAnswerlatticeReservationRecord = (params: {
+    action: string;
+    accountingIdempotencyHash: string;
+    data: Record<string, unknown>;
+    scope: AnswerlatticeAiScope;
+    subscriptionId: string;
+    unitsReserved: number;
+}): AnswerlatticeRemainingBalance => {
+    if (
+        params.data.accountingIdempotencyHash !== params.accountingIdempotencyHash
+        || params.data.action !== params.action
+        || params.data.accountingSubscriptionId !== params.subscriptionId
+        || getPositiveCreditInteger(params.data.unitsConsumed) !== params.unitsReserved
+        || normalizeAnswerlatticeBillingScopeDocumentId(params.data.tId)?.numericId !== params.scope.tId
+        || normalizeAnswerlatticeBillingScopeDocumentId(params.data.sId)?.numericId !== params.scope.sId
+    ) {
+        throw new Error('Answerlattice AI capacity reservation identity is invalid.');
+    }
+    const balance = getStoredIdempotentBalance(params.data.creditConsumption, params.unitsReserved);
+    if (!balance) throw new Error('Answerlattice AI capacity reservation evidence is invalid.');
+    return balance;
+};
+
+export async function reserveAnswerlatticeAiOperationCapacity(params: {
+    action: string;
+    idempotencyKey: string;
+    scope: AnswerlatticeAiScope;
+    subscription: FirestoreSubscriptionDoc;
+    unitsToReserve: number;
+}): Promise<AnswerlatticeAiCapacityReservation> {
+    const unitsToReserve = getPositiveCreditInteger(params.unitsToReserve);
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(params.subscription.id);
+    if (
+        unitsToReserve === null
+        || typeof params.action !== 'string'
+        || params.action.length === 0
+        || params.action.length > 160
+        || !subscriptionId
+        || !isAnswerlatticeSubscriptionInScope(params.subscription, params.scope)
+    ) {
+        throw new Error('Answerlattice AI capacity reservation input is invalid.');
+    }
+    const identity = getAnswerlatticeAccountingIdentity(params.scope, params.idempotencyKey);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(identity.storeDocumentId);
+
+    return db.runTransaction(async (transaction) => {
+        const [operationSnapshot, subscriptionSnapshot] = await Promise.all([
+            transaction.get(identity.operationRef),
+            transaction.get(subscriptionRef),
+        ]);
+        const existing = operationSnapshot.data() || {};
+        if (!subscriptionSnapshot.exists) {
+            throw new Error('An active Answerlattice subscription is required for this operation.');
+        }
+        const current = {
+            ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
+            id: subscriptionSnapshot.id,
+        };
+        if (!isAnswerlatticeSubscriptionInScope(current, identity.scope) || !isActiveAnswerlatticeAiSubscription(current)) {
+            throw new Error('An active Answerlattice subscription is required for this operation.');
+        }
+        if (operationSnapshot.exists && existing.accountingStatus !== 'refunded') {
+            const remainingBalance = assertAnswerlatticeReservationRecord({
+                action: params.action,
+                accountingIdempotencyHash: identity.accountingIdempotencyHash,
+                data: existing,
+                scope: identity.scope,
+                subscriptionId,
+                unitsReserved: unitsToReserve,
+            });
+            if (existing.accountingStatus === 'succeeded') {
+                throw new Error('Answerlattice AI capacity reservation is already settled.');
+            }
+            if (existing.accountingStatus !== 'reserved') {
+                throw new Error('Answerlattice AI capacity reservation state is invalid.');
+            }
+            transaction.set(identity.operationRef, {
+                reservationRecoveryAt: Timestamp.fromMillis(Date.now() + ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS),
+                modifiedOn: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            transaction.set(identity.recoveryRef, {
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: identity.scope.tId,
+                sId: identity.scope.sId,
+                action: params.action,
+                operationId: identity.operationId,
+                accountingIdempotencyHash: identity.accountingIdempotencyHash,
+                subscriptionId,
+                unitsReserved: unitsToReserve,
+                recoveryAt: Timestamp.fromMillis(Date.now() + ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS),
+                modifiedOn: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return {
+                action: params.action,
+                accountingIdempotencyHash: identity.accountingIdempotencyHash,
+                operationId: identity.operationId,
+                remainingBalance,
+                scope: identity.scope,
+                subscriptionId,
+                unitsReserved: unitsToReserve,
+            };
+        }
+        const credits = getExactSubscriptionCredits(current);
+        const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
+        if (billingPeriod === null) {
+            throw new Error('Answerlattice subscription billing period is invalid.');
+        }
+        const storedBillingPeriod = current.creditsLastResetMonth == null
+            ? null
+            : getCreditBillingPeriodKey(current.creditsLastResetMonth);
+        let monthlyCredits = credits.monthlyCredits;
+        if (credits.monthlyCreditsAllowance > 0 && storedBillingPeriod !== billingPeriod) {
+            monthlyCredits = credits.monthlyCreditsAllowance;
+        }
+        const totalCreditsBefore = monthlyCredits + credits.topUpCredits;
+        if (!Number.isSafeInteger(totalCreditsBefore)) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
+        if (totalCreditsBefore < unitsToReserve) {
+            throw new AnswerlatticeAiCapacityExceededError(totalCreditsBefore, unitsToReserve);
+        }
+        const monthlyCreditsDebited = Math.min(monthlyCredits, unitsToReserve);
+        const topUpCreditsDebited = unitsToReserve - monthlyCreditsDebited;
+        const nextMonthlyCredits = monthlyCredits - monthlyCreditsDebited;
+        const nextTopUpCredits = credits.topUpCredits - topUpCreditsDebited;
+        const timestamp = FieldValue.serverTimestamp();
+        const creditConsumption = {
+            monthlyCreditsBefore: monthlyCredits,
+            topUpCreditsBefore: credits.topUpCredits,
+            totalCreditsBefore,
+            monthlyCreditsDebited,
+            topUpCreditsDebited,
+            unitsConsumed: unitsToReserve,
+            monthlyCreditsAfter: nextMonthlyCredits,
+            topUpCreditsAfter: nextTopUpCredits,
+            totalCreditsAfter: nextMonthlyCredits + nextTopUpCredits,
+        };
+        const priorAttempt = operationSnapshot.exists
+            ? getNonNegativeCreditInteger(existing.accountingReservationAttempt)
+            : 0;
+        if (priorAttempt === null || priorAttempt >= Number.MAX_SAFE_INTEGER) {
+            throw new Error('Answerlattice AI capacity reservation attempt is invalid.');
+        }
+
+        transaction.set(subscriptionRef, {
+            monthlyCredits: nextMonthlyCredits,
+            topUpCredits: nextTopUpCredits,
+            creditsLastResetMonth: billingPeriod,
+            modifiedOn: timestamp,
+        }, { merge: true });
+        transaction.set(storeRef, {
+            answerlatticeSubscription: {
+                monthlyCredits: nextMonthlyCredits,
+                topUpCredits: nextTopUpCredits,
+                creditsLastResetMonth: billingPeriod,
+                updatedAt: timestamp,
+            },
+        }, { merge: true });
+        transaction.set(identity.operationRef, {
+            id: identity.operationId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: identity.scope.tId,
+            sId: identity.scope.sId,
+            action: params.action,
+            billingMode: 'billable',
+            aiLogMode: 'accounting_only',
+            unitsConsumed: unitsToReserve,
+            accountingIdempotencyHash: identity.accountingIdempotencyHash,
+            accountingStatus: 'reserved',
+            accountingSubscriptionId: subscriptionId,
+            accountingReservationAttempt: priorAttempt + 1,
+            accountingReservationBillingPeriod: billingPeriod,
+            accountingMonthlyCreditCeiling: Math.max(monthlyCredits, credits.monthlyCreditsAllowance),
+            creditConsumption,
+            reservationRecoveryAt: Timestamp.fromMillis(Date.now() + ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS),
+            createdOn: FieldValue.delete(),
+            modifiedOn: timestamp,
+            refundedOn: FieldValue.delete(),
+            refundReason: FieldValue.delete(),
+        }, { merge: true });
+        transaction.set(identity.recoveryRef, {
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: identity.scope.tId,
+            sId: identity.scope.sId,
+            action: params.action,
+            operationId: identity.operationId,
+            accountingIdempotencyHash: identity.accountingIdempotencyHash,
+            subscriptionId,
+            unitsReserved: unitsToReserve,
+            recoveryAt: Timestamp.fromMillis(Date.now() + ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS),
+            createdOn: timestamp,
+            modifiedOn: timestamp,
+        });
+
+        return {
+            action: params.action,
+            accountingIdempotencyHash: identity.accountingIdempotencyHash,
+            operationId: identity.operationId,
+            remainingBalance: {
+                monthlyCreditsBefore: monthlyCredits,
+                topUpCreditsBefore: credits.topUpCredits,
+                totalCreditsBefore,
+                monthlyCreditsDebited,
+                topUpCreditsDebited,
+                monthlyCredits: nextMonthlyCredits,
+                topUpCredits: nextTopUpCredits,
+                totalCreditsAfter: nextMonthlyCredits + nextTopUpCredits,
+            },
+            scope: identity.scope,
+            subscriptionId,
+            unitsReserved: unitsToReserve,
+        };
+    });
+}
+
+export async function settleAnswerlatticeAiOperationReservation(params: {
+    actor?: AnswerlatticeAiActor | null;
+    context?: Record<string, unknown>;
+    input: AiOperationLogInput;
+    reservation: AnswerlatticeAiCapacityReservation;
+}): Promise<FinalizeAnswerlatticeAiAccountingResult> {
+    const operation = buildAiOperationLog(params.input);
+    if (operation.unitsConsumed !== params.reservation.unitsReserved || operation.action !== params.reservation.action) {
+        throw new Error('Answerlattice AI capacity settlement identity is invalid.');
+    }
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(params.reservation.scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(params.reservation.scope.sId);
+    if (
+        !tenantScope
+        || !storeScope
+        || !/^idem_[a-f0-9]{48}$/.test(params.reservation.operationId)
+        || !/^[a-f0-9]{64}$/.test(params.reservation.accountingIdempotencyHash)
+        || params.reservation.operationId !== `idem_${params.reservation.accountingIdempotencyHash.slice(0, 48)}`
+    ) {
+        throw new Error('Answerlattice AI capacity settlement reservation is invalid.');
+    }
+
+    return db.runTransaction(async (transaction) => {
+        const operationSnapshot = await transaction.get(
+            db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+                .doc(tenantScope.documentId)
+                .collection(storeScope.documentId)
+                .doc(params.reservation.operationId),
+        );
+        if (!operationSnapshot.exists) throw new Error('Answerlattice AI capacity reservation is not available.');
+        const existing = operationSnapshot.data() || {};
+        const remainingBalance = assertAnswerlatticeReservationRecord({
+            action: operation.action,
+            accountingIdempotencyHash: params.reservation.accountingIdempotencyHash,
+            data: existing,
+            scope: params.reservation.scope,
+            subscriptionId: params.reservation.subscriptionId,
+            unitsReserved: params.reservation.unitsReserved,
+        });
+        if (existing.accountingStatus === 'succeeded') {
+            return {
+                remainingBalance,
+                transactionId: params.reservation.operationId,
+                unitsConsumed: params.reservation.unitsReserved,
+            };
+        }
+        if (existing.accountingStatus !== 'reserved') {
+            throw new Error('Answerlattice AI capacity reservation cannot be settled.');
+        }
+        const timestamp = FieldValue.serverTimestamp();
+        transaction.set(operationSnapshot.ref, {
+            uId: operation.uId ?? (params.actor?.id !== undefined && params.actor?.id !== null
+                ? getAnswerlatticeActorLabel({ id: params.actor.id })
+                : null),
+            action: operation.action,
+            source: operation.source ?? null,
+            model: operation.model ?? null,
+            billingMode: operation.billingMode,
+            aiLogMode: 'accounting_only',
+            processingTime: operation.processingTime ?? 0,
+            promptTokenCount: operation.promptTokenCount ?? 0,
+            candidatesTokenCount: operation.candidatesTokenCount ?? 0,
+            totalTokenCount: operation.totalTokenCount ?? 0,
+            totalCredits: operation.totalCredits ?? 0,
+            totalCharge: operation.totalCharge ?? 0,
+            realCostPaise: operation.realCostPaise ?? 0,
+            ourChargePaise: operation.ourChargePaise ?? 0,
+            marginPaise: operation.marginPaise ?? 0,
+            clientResponse: operation.clientResponse ?? null,
+            context: buildAccountingContextSummary(params.context),
+            accountingStatus: 'succeeded',
+            createdBy: getAnswerlatticeActorLabel(params.actor),
+            modifiedBy: getAnswerlatticeActorLabel(params.actor),
+            createdOn: existing.createdOn ?? timestamp,
+            reservationRecoveryAt: FieldValue.delete(),
+            modifiedOn: timestamp,
+        }, { merge: true });
+        transaction.delete(db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_CAPACITY_RESERVATIONS)
+            .doc(params.reservation.operationId));
+        return {
+            remainingBalance,
+            transactionId: params.reservation.operationId,
+            unitsConsumed: params.reservation.unitsReserved,
+        };
+    });
+}
+
+export async function refundAnswerlatticeAiOperationReservation(params: {
+    reason: string;
+    reservation: AnswerlatticeAiCapacityReservation;
+}): Promise<void> {
+    if (typeof params.reason !== 'string' || !/^[a-z0-9_-]{3,80}$/.test(params.reason)) {
+        throw new Error('Answerlattice AI capacity refund reason is invalid.');
+    }
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(params.reservation.scope.tId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(params.reservation.scope.sId);
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(params.reservation.subscriptionId);
+    if (
+        !tenantScope
+        || !storeScope
+        || !subscriptionId
+        || !/^idem_[a-f0-9]{48}$/.test(params.reservation.operationId)
+        || !/^[a-f0-9]{64}$/.test(params.reservation.accountingIdempotencyHash)
+        || params.reservation.operationId !== `idem_${params.reservation.accountingIdempotencyHash.slice(0, 48)}`
+    ) {
+        throw new Error('Answerlattice AI capacity refund identity is invalid.');
+    }
+    const operationRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+        .doc(tenantScope.documentId)
+        .collection(storeScope.documentId)
+        .doc(params.reservation.operationId);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
+    const recoveryRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_CAPACITY_RESERVATIONS)
+        .doc(params.reservation.operationId);
+
+    await db.runTransaction(async (transaction) => {
+        const [operationSnapshot, subscriptionSnapshot] = await Promise.all([
+            transaction.get(operationRef),
+            transaction.get(subscriptionRef),
+        ]);
+        if (!operationSnapshot.exists) throw new Error('Answerlattice AI capacity reservation is not available.');
+        const operation = operationSnapshot.data() || {};
+        if (operation.accountingStatus === 'succeeded' || operation.accountingStatus === 'refunded') return;
+        if (operation.accountingStatus !== 'reserved' || !subscriptionSnapshot.exists) {
+            throw new Error('Answerlattice AI capacity reservation cannot be refunded.');
+        }
+        const balance = assertAnswerlatticeReservationRecord({
+            action: params.reservation.action,
+            accountingIdempotencyHash: params.reservation.accountingIdempotencyHash,
+            data: operation,
+            scope: params.reservation.scope,
+            subscriptionId,
+            unitsReserved: params.reservation.unitsReserved,
+        });
+        const current = {
+            ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
+            id: subscriptionSnapshot.id,
+        };
+        if (!isAnswerlatticeSubscriptionInScope(current, params.reservation.scope)) {
+            throw new Error('Answerlattice subscription scope does not match this workspace.');
+        }
+        const currentCredits = getExactSubscriptionCredits(current);
+        const reservationBillingPeriod = getCreditBillingPeriodKey(operation.accountingReservationBillingPeriod);
+        const currentBillingPeriod = getBillingPeriodKey(current.cycleStartDate);
+        const monthlyCreditCeiling = getNonNegativeCreditInteger(operation.accountingMonthlyCreditCeiling);
+        if (reservationBillingPeriod === null || currentBillingPeriod === null || monthlyCreditCeiling === null) {
+            throw new Error('Answerlattice AI capacity refund period evidence is invalid.');
+        }
+        const monthlyCreditsDebited = balance.monthlyCreditsDebited ?? 0;
+        const topUpCreditsDebited = balance.topUpCreditsDebited ?? 0;
+        const nextMonthlyCredits = reservationBillingPeriod === currentBillingPeriod
+            ? Math.min(monthlyCreditCeiling, currentCredits.monthlyCredits + monthlyCreditsDebited)
+            : currentCredits.monthlyCredits;
+        const nextTopUpCredits = currentCredits.topUpCredits + topUpCreditsDebited;
+        if (!Number.isSafeInteger(nextMonthlyCredits) || !Number.isSafeInteger(nextTopUpCredits)) {
+            throw new Error('Answerlattice AI capacity refund balance is invalid.');
+        }
+        const timestamp = FieldValue.serverTimestamp();
+        transaction.set(subscriptionRef, {
+            monthlyCredits: nextMonthlyCredits,
+            topUpCredits: nextTopUpCredits,
+            creditsLastResetMonth: currentBillingPeriod,
+            modifiedOn: timestamp,
+        }, { merge: true });
+        transaction.set(storeRef, {
+            answerlatticeSubscription: {
+                monthlyCredits: nextMonthlyCredits,
+                topUpCredits: nextTopUpCredits,
+                creditsLastResetMonth: currentBillingPeriod,
+                updatedAt: timestamp,
+            },
+        }, { merge: true });
+        transaction.set(operationRef, {
+            accountingStatus: 'refunded',
+            refundReason: params.reason,
+            refundedOn: timestamp,
+            reservationRecoveryAt: FieldValue.delete(),
+            modifiedOn: timestamp,
+        }, { merge: true });
+        transaction.delete(recoveryRef);
+    });
+}
 
 async function finalizeIdempotentAnswerlatticeAiOperation({
     actor,
@@ -394,20 +916,21 @@ async function finalizeIdempotentAnswerlatticeAiOperation({
             if (
                 existing.accountingIdempotencyHash !== idempotencyHash
                 || existing.accountingStatus !== 'succeeded'
-                || String(existing.action || '') !== String(operationInput.action || '')
+                || existing.action !== operation.action
                 || normalizeAnswerlatticeBillingScopeDocumentId(existing.tId)?.numericId !== tenantScope.numericId
                 || normalizeAnswerlatticeBillingScopeDocumentId(existing.sId)?.numericId !== storeScope.numericId
             ) {
                 throw new Error('Answerlattice AI accounting idempotency record is invalid.');
             }
-            const storedBalance = getStoredIdempotentBalance(existing.creditConsumption);
-            if (!storedBalance) {
+            const storedUnitsConsumed = getPositiveCreditInteger(existing.unitsConsumed);
+            const storedBalance = getStoredIdempotentBalance(existing.creditConsumption, unitsConsumed);
+            if (!storedBalance || storedUnitsConsumed !== unitsConsumed) {
                 throw new Error('Answerlattice AI accounting balance evidence is invalid.');
             }
             return {
                 remainingBalance: storedBalance,
                 transactionId: operationSnapshot.id,
-                unitsConsumed: Number(existing.unitsConsumed || unitsConsumed),
+                unitsConsumed,
             };
         }
 
@@ -426,25 +949,19 @@ async function finalizeIdempotentAnswerlatticeAiOperation({
             throw new Error('An active Answerlattice subscription is required for this operation.');
         }
 
-        let monthlyCredits = Number(current.monthlyCredits || 0);
-        let topUpCredits = Number(current.topUpCredits || 0);
-        const monthlyCreditsAllowance = Number(current.monthlyCreditsAllowance || 0);
+        const currentCredits = getExactSubscriptionCredits(current);
+        let monthlyCredits = currentCredits.monthlyCredits;
+        const topUpCredits = currentCredits.topUpCredits;
+        const monthlyCreditsAllowance = currentCredits.monthlyCreditsAllowance;
         const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
-        if (
-            !Number.isFinite(monthlyCredits)
-            || !Number.isFinite(topUpCredits)
-            || monthlyCredits < 0
-            || topUpCredits < 0
-            || !Number.isFinite(monthlyCreditsAllowance)
-            || monthlyCreditsAllowance < 0
-        ) {
-            throw new Error('Answerlattice subscription credit balance is invalid.');
-        }
         if (billingPeriod !== null && monthlyCreditsAllowance > 0 && current.creditsLastResetMonth !== billingPeriod) {
             monthlyCredits = monthlyCreditsAllowance;
         }
 
         const totalCreditsBefore = monthlyCredits + topUpCredits;
+        if (!Number.isSafeInteger(totalCreditsBefore)) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
         if (totalCreditsBefore < unitsConsumed) {
             throw new AnswerlatticeAiCapacityExceededError(totalCreditsBefore, unitsConsumed);
         }
@@ -484,30 +1001,30 @@ async function finalizeIdempotentAnswerlatticeAiOperation({
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: tenantScope.numericId,
             sId: storeScope.numericId,
-            uId: String(operationInput.uId ?? actor?.id ?? '').slice(0, 180) || null,
-            action: operationInput.action,
-            source: String(operationInput.source || '').slice(0, 120) || null,
-            model: String(operationInput.model || '').slice(0, 120) || null,
-            billingMode: operation.billingMode || 'billable',
+            uId: operation.uId ?? (actor?.id !== undefined && actor?.id !== null ? getAnswerlatticeActorLabel({ id: actor.id }) : null),
+            action: operation.action,
+            source: operation.source ?? null,
+            model: operation.model ?? null,
+            billingMode: operation.billingMode,
             aiLogMode: 'accounting_only',
-            processingTime: Number(operation.processingTime || 0),
-            promptTokenCount: Number(operation.promptTokenCount || 0),
-            candidatesTokenCount: Number(operation.candidatesTokenCount || 0),
-            totalTokenCount: Number(operation.totalTokenCount || 0),
-            totalCredits: Number(operation.totalCredits || 0),
-            totalCharge: Number(operation.totalCharge || 0),
-            realCostPaise: Number(operation.realCostPaise || 0),
-            ourChargePaise: Number(operation.ourChargePaise || 0),
-            marginPaise: Number(operation.marginPaise || 0),
+            processingTime: operation.processingTime ?? 0,
+            promptTokenCount: operation.promptTokenCount ?? 0,
+            candidatesTokenCount: operation.candidatesTokenCount ?? 0,
+            totalTokenCount: operation.totalTokenCount ?? 0,
+            totalCredits: operation.totalCredits ?? 0,
+            totalCharge: operation.totalCharge ?? 0,
+            realCostPaise: operation.realCostPaise ?? 0,
+            ourChargePaise: operation.ourChargePaise ?? 0,
+            marginPaise: operation.marginPaise ?? 0,
             unitsConsumed,
             clientResponse: operation.clientResponse ?? null,
             context: buildAccountingContextSummary(context),
             accountingIdempotencyHash: idempotencyHash,
             accountingStatus: 'succeeded',
             creditConsumption,
-            billingPeriod: billingPeriod || null,
-            createdBy: String(actor?.email || actor?.name || actor?.id || 'answerlattice').slice(0, 180),
-            modifiedBy: String(actor?.email || actor?.name || actor?.id || 'answerlattice').slice(0, 180),
+            billingPeriod: billingPeriod ?? null,
+            createdBy: getAnswerlatticeActorLabel(actor),
+            modifiedBy: getAnswerlatticeActorLabel(actor),
             createdOn: timestamp,
             modifiedOn: timestamp,
         });
@@ -565,8 +1082,8 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
         throw new Error('Answerlattice workspace is not available.');
     }
     const normalizedScope = { tId: tenantScope.numericId, sId: storeScope.numericId };
-    const unitsConsumed = Number(input.unitsConsumed ?? getUnitCost(input.action));
-    if (!Number.isFinite(unitsConsumed) || unitsConsumed < 0) {
+    const unitsConsumed = getNonNegativeCreditInteger(input.unitsConsumed ?? getUnitCost(input.action));
+    if (unitsConsumed === null) {
         throw new Error('Answerlattice AI accounting units are invalid.');
     }
     const operationInput: AiOperationLogInput = {

@@ -67,6 +67,35 @@ async function run(): Promise<void> {
     }
 
     await seedProvisioningScope();
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, productId: PRODUCT_IDS.MENULIST }, scope),
+        false,
+        'conflicting product aliases must not own an Answerlattice provisioning scope',
+    );
+    const missingProductAlias = { ...scopedDocument } as Record<string, unknown>;
+    delete missingProductAlias.productId;
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches(missingProductAlias, scope),
+        false,
+        'incomplete product identity must not own an Answerlattice provisioning scope',
+    );
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, tenantId: scope.tenantId + 1 }, scope),
+        false,
+        'conflicting tenant aliases must not own an Answerlattice provisioning scope',
+    );
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, storeId: scope.storeId + 1 }, scope),
+        false,
+        'conflicting store aliases must not own an Answerlattice provisioning scope',
+    );
+    const missingScopeAlias = { ...scopedDocument } as Record<string, unknown>;
+    delete missingScopeAlias.tenantId;
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches(missingScopeAlias, scope),
+        false,
+        'incomplete tenant identity must not own an Answerlattice provisioning scope',
+    );
     const recoveryAvailableAtMillis = 1_700_000_900_000;
     await markAnswerlatticeOnboardingProviderRecoveryPending({
         db,
@@ -167,6 +196,40 @@ async function run(): Promise<void> {
     assert.equal(subscriptionFinal.data()?.sId, scope.storeId);
     assert.equal(storeFinal.data()?.answerlatticeSubscription?.id, subscriptionId);
     assert.deepEqual(storeFinal.data()?.answerlatticeWidgetApi?.keyHashes, ['hash_contract']);
+
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+        productId: PRODUCT_IDS.MENULIST,
+    }, { merge: true });
+    await assert.rejects(
+        persistAnswerlatticePendingSubscription({
+            db,
+            scope,
+            storeSubscriptionSummary: storeFinal.data()?.answerlatticeSubscription || {},
+            subscriptionId,
+            subscriptionPayload: subscriptionFinal.data() as any,
+            widgetApiState: storeFinal.data()?.answerlatticeWidgetApi || {},
+        }),
+        /subscription_scope_conflict/,
+        'a conflicting existing subscription must not be reclaimed by Answerlattice onboarding',
+    );
+    const conflictingSubscription = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
+    assert.equal(conflictingSubscription.data()?.pId, PRODUCT_IDS.ANSWERLATTICE);
+    assert.equal(conflictingSubscription.data()?.productId, PRODUCT_IDS.MENULIST);
+    assert.equal(conflictingSubscription.data()?.status, 'pending');
+
+    await compensateAnswerlatticeOnboardingProvisioning({
+        cancellationPending: false,
+        db,
+        providerSubscriptionId: subscriptionId,
+        reason: 'conflicting_subscription_must_not_be_cancelled',
+        scope,
+    });
+    const conflictingAfterCompensation = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
+    assert.equal(
+        conflictingAfterCompensation.data()?.status,
+        'pending',
+        'compensation must not mutate a conflicting product subscription',
+    );
 
     const failedScope: AnswerlatticeProvisioningScope = {
         attemptId: 'alo_before_provider',

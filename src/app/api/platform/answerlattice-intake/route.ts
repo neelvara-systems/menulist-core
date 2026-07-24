@@ -653,12 +653,14 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
         if (selectedScope) {
             const [jobsSnap, ledgerSnap] = await Promise.all([
                 db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS)
+                    .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                     .where('tId', '==', selectedScope.tId)
                     .where('sId', '==', selectedScope.sId)
                     .orderBy('modifiedOn', 'desc')
                     .limit(limit)
                     .get(),
                 db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER)
+                    .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                     .where('tId', '==', selectedScope.tId)
                     .where('sId', '==', selectedScope.sId)
                     .orderBy('createdOn', 'desc')

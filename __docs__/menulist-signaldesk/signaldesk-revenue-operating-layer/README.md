@@ -2,6 +2,7 @@
 
 **Status:** Runtime implemented and locally verified
 **Created:** July 10, 2026
+**Last verified:** July 21, 2026
 **Audience:** SignalDesk founder/admin, growth operators, implementers
 **Runtime:** Private `/signaldesk/revenue` workspace only
 
@@ -18,6 +19,7 @@ It adds:
 - interested replies that deterministically create or reuse the eligible revenue lifecycle without granting outreach rights;
 - activation watches automatically refreshed from SignalDesk outcome summaries, with read-time seven-day stall detection and a manual recovery recheck;
 - compact revenue-control summaries and a daily founder brief covering pipeline, stalls, attention, and estimated spend.
+- strict product-local projection before every commercial write, current source/contact authority revalidation, and exact-retry no-op behavior after a successful write.
 
 ## Boundary
 
@@ -53,3 +55,5 @@ existing target + evidence + reply/outcome state
   -> activated outcome closes the linked opportunity and removes it from open forecast
   -> compact revenue summary
 ```
+
+The feature flag is enforced by the page, workspace API, and direct workspace loader. Provider sending remains disabled. The mobile workspace is dashboard-only; Revenue is intentionally desktop-only rather than a separate mobile commercial console.

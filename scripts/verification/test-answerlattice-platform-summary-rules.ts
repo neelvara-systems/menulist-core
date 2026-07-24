@@ -7,7 +7,11 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, increment, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
+import {
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+} from '@lib/answerlattice/invalidationControlPlane';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-platform-summary-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -60,6 +64,39 @@ async function run(): Promise<void> {
 
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'coverage_1_101')));
         await assertFails(getDoc(doc(otherDb, 'platformSummary', 'coverage_1_101')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'bundleManifest_1_101')));
+        await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_2_202')));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'platformSummary', 'sourceVersions_1_101'), {
+                pId: 'ML',
+                tId: 1,
+                sId: 101,
+                privateMarker: 'must-not-be-readable',
+            });
+        });
+        await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101')));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await deleteDoc(doc(context.firestore(), 'platformSummary', 'sourceVersions_1_101'));
+            await setDoc(doc(context.firestore(), 'platformSummary', 'sourceVersions_1_101'), scoped({
+                canonical: 1,
+                schemaVersion: 1,
+                updatedAt: NOW,
+            }));
+        });
+        await assertSucceeds(runTransaction(ownerDb, async transaction => {
+            const sourceRef = doc(ownerDb, 'platformSummary', 'sourceVersions_1_101');
+            await transaction.get(sourceRef);
+            transaction.set(sourceRef, {
+                ...getAnswerlatticeMissingSourceVersionsBase({ tId: 1, sId: 101 }),
+                canonical: increment(1),
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+        }));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101')));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await deleteDoc(doc(context.firestore(), 'platformSummary', 'sourceVersions_1_101'));
+        });
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'knowledgeIntakeSummary_1_101')));
         await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'answerTests_1_101')));
         await assertSucceeds(getDoc(doc(platformDb, 'platformSummary', 'answerTests_1_101')));
@@ -118,6 +155,21 @@ async function run(): Promise<void> {
             branding: { ...validBranding, logoUrl: 'https://cdn.example.com/logo image.png' },
         })));
         await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, logoUrl: 'https://?x' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, logoUrl: 'https://cdn.example.com:invalid/logo.png' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, logoUrl: 'https://[::1/logo.png' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, supportEmail: 'a..b@example.com' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
+            branding: { ...validBranding, supportEmail: 'a@b..example.com' },
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), scoped({
             branding: { ...validBranding, primaryColor: 'red' },
         })));
         await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'branding_1_101'), {
@@ -136,17 +188,84 @@ async function run(): Promise<void> {
             triggers: {},
             version: 1,
         })));
-        await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101'), scoped({
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101'), scoped({
             canonical: 1,
             schemaVersion: 1,
             updatedAt: NOW,
         })));
-        await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'bundleManifest_1_101'), scoped({
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary', 'bundleManifest_1_101'), scoped({
             schemaVersion: 1,
             staleReason: 'canonical_changed',
             status: 'stale',
             updatedAt: NOW,
         })));
+        await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101'), {
+            ...getAnswerlatticeMissingSourceVersionsBase({ tId: 1, sId: 101 }),
+            canonical: 1,
+            updatedAt: NOW,
+        }));
+        await assertSucceeds(setDoc(doc(ownerDb, 'platformSummary', 'bundleManifest_1_101'), {
+            ...getAnswerlatticeMissingBundleManifestBase({ tId: 1, sId: 101 }),
+            staleReason: 'canonical_changed',
+            status: 'stale',
+            updatedAt: NOW,
+        }));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'bundleManifest_1_101')));
+        await assertFails(getDoc(doc(otherDb, 'platformSummary', 'sourceVersions_1_101')));
+        await assertFails(getDoc(doc(otherDb, 'platformSummary', 'bundleManifest_1_101')));
+        await assertFails(setDoc(
+            doc(ownerDb, 'platformSummary', 'bundleManifest_1_101'),
+            { activeVersion: 99, status: 'stale' },
+            { merge: true },
+        ));
+        await assertSucceeds(setDoc(
+            doc(ownerDb, 'platformSummary', 'sourceVersions_1_101'),
+            { canonical: 2, updatedAt: NOW },
+            { merge: true },
+        ));
+
+        const cacheVersionRef = doc(ownerDb, 'answerlattice_cacheVersions', 'canonical_1_101');
+        await assertFails(setDoc(cacheVersionRef, scoped({
+            source: 'kb',
+            version: 1,
+            modifiedOn: NOW,
+        })));
+        await assertFails(setDoc(cacheVersionRef, scoped({
+            source: 'canonical',
+            version: 2,
+            modifiedOn: NOW,
+        })));
+        await assertSucceeds(setDoc(cacheVersionRef, scoped({
+            source: 'canonical',
+            version: 1,
+            modifiedOn: NOW,
+        })));
+        await assertFails(setDoc(cacheVersionRef, { version: 3, modifiedOn: NOW }, { merge: true }));
+        await assertFails(setDoc(cacheVersionRef, { source: 'kb', version: 2, modifiedOn: NOW }, { merge: true }));
+        await assertSucceeds(setDoc(cacheVersionRef, { version: 2, modifiedOn: NOW }, { merge: true }));
+        await assertSucceeds(runTransaction(ownerDb, async transaction => {
+            const sourceRef = doc(ownerDb, 'platformSummary', 'sourceVersions_1_101');
+            const manifestRef = doc(ownerDb, 'platformSummary', 'bundleManifest_1_101');
+            await Promise.all([
+                transaction.get(cacheVersionRef),
+                transaction.get(sourceRef),
+                transaction.get(manifestRef),
+            ]);
+            transaction.set(cacheVersionRef, {
+                version: increment(1),
+                modifiedOn: serverTimestamp(),
+            }, { merge: true });
+            transaction.set(sourceRef, {
+                canonical: increment(1),
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+            transaction.set(manifestRef, {
+                status: 'stale',
+                staleReason: 'transactional_canonical_change',
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+        }));
 
         await assertFails(setDoc(doc(otherDb, 'platformSummary', 'branding_1_101'), scoped({
             branding: { ...validBranding, companyName: 'Cross tenant' },

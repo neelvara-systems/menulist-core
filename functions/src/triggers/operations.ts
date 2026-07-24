@@ -17,7 +17,10 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import {
     forceRepublishActiveProjects,
+    acquireForceRepublishLease,
+    completeForceRepublishLease,
     isPublishVerificationScopeAuthorized,
+    PUBLISH_VERIFICATION_SCOPE_INVALID,
     PUBLISH_VERIFICATION_PROJECT_LIMIT_EXCEEDED,
     PUBLISH_VERIFICATION_PROJECT_NOT_FOUND,
     PUBLISH_VERIFICATION_PUBLIC_URL_UNAVAILABLE,
@@ -85,6 +88,7 @@ const OPERATIONS_FORCE_REPUBLISH_PROJECT_LIMIT_EXCEEDED = 'OPERATIONS_FORCE_REPU
 const OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE = 'OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE';
 const OPERATIONS_FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED = 'OPERATIONS_FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED';
 const OPERATIONS_FORCE_REPUBLISH_FAILED = 'OPERATIONS_FORCE_REPUBLISH_FAILED';
+const OPERATIONS_FORCE_REPUBLISH_LEASE_FINALIZE_FAILED = 'OPERATIONS_FORCE_REPUBLISH_LEASE_FINALIZE_FAILED';
 const OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED = 'OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED';
 const OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED';
 const OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED';
@@ -443,6 +447,25 @@ export const forceRepublish = onCall(
         if (!userId) throw new HttpsError('permission-denied', 'You do not have access to this store.');
         const storeId = storeScope.documentId;
         const tenantId = tenantScope.documentId;
+        const leaseOwner = `force_republish_${request.auth?.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        let republishLease;
+        try {
+            republishLease = await acquireForceRepublishLease(
+                tenantId,
+                storeId,
+                userId,
+                leaseOwner,
+                new Date(),
+            );
+        } catch (leaseError) {
+            if (leaseError instanceof Error && leaseError.message === PUBLISH_VERIFICATION_SCOPE_INVALID) {
+                throw new HttpsError('permission-denied', 'You do not have access to this store.');
+            }
+            throw leaseError;
+        }
+        if (!republishLease) {
+            throw new HttpsError('already-exists', 'Force republish is already running for this store.');
+        }
 
         logger.warn('[forceRepublish] Admin force republish', getOperationsCallLogContext({
             requesterUid: request.auth?.uid,
@@ -550,6 +573,29 @@ export const forceRepublish = onCall(
                 ...getOperationsErrorContext(error),
             });
             throw new HttpsError('internal', FORCE_REPUBLISH_FAILED_MESSAGE);
+        } finally {
+            try {
+                const finalized = await completeForceRepublishLease(republishLease);
+                if (!finalized) {
+                    logger.warn('[forceRepublish] Lease ownership changed before finalization', {
+                        ...getOperationsCallLogContext({
+                            requesterUid: request.auth?.uid,
+                            storeId,
+                            tenantId,
+                        }),
+                    });
+                }
+            } catch (leaseError) {
+                logger.error('[forceRepublish] Lease finalization failed', {
+                    failureCode: OPERATIONS_FORCE_REPUBLISH_LEASE_FINALIZE_FAILED,
+                    ...getOperationsCallLogContext({
+                        requesterUid: request.auth?.uid,
+                        storeId,
+                        tenantId,
+                    }),
+                    ...getOperationsErrorContext(leaseError),
+                });
+            }
         }
     },
 );

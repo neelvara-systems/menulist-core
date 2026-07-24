@@ -1,60 +1,62 @@
 # SignalDesk Draft Control - Specification
 
-**Status:** Initial planning spec
-**Created:** June 23, 2026
+**Status:** Implemented and locally verified
+**Last Updated:** July 21, 2026
 
-## Executive Summary
+## Contract
 
-Draft Control turns approved evidence into safe message drafts.
+Draft Control prepares a bounded email message for human review from current,
+permissioned SignalDesk truth. It is not a freeform writer and grants no send
+authority.
 
-It gives the growth team speed without letting AI invent claims, ignore policy, or send messages.
+## Admission
 
-## Goals
+A new draft requires all of the following at transaction time:
 
-| Goal | Success signal |
-| --- | --- |
-| Keep messages controlled | Drafts use approved templates and variables. |
-| Use evidence safely | Drafts can only cite outbound-safe facts. |
-| Avoid spam tone | Copy stays specific, plain, and non-accusatory. |
-| Preserve human control | Every draft goes to approval queue before action. |
-| Support channel differences | Email/export first; WhatsApp/Instagram later with stricter rules. |
+1. Active target source lifecycle and matching current source policy.
+2. Policy permission for evidence, personalization, contact, and email.
+3. Current evidence identity for the target truth, including suppression state.
+4. Evidence use containing `draft-personalization`.
+5. Clear suppression, eligible segment/action, and no prior contact or outcome.
+6. Exact current contact identity permitted by policy.
+7. Active email template with only supported, declared variables.
+8. No deterministic prohibited-claim match in rendered subject/body.
+9. Current authoritative preview CTA and ready sender domain.
 
-## Template Types
+## Output
 
-| Type | First build |
-| --- | --- |
-| Founder/manual email | Yes |
-| Partner intro | Yes |
-| Follow-up email | Yes |
-| Export-only script | Yes |
-| WhatsApp assisted | Later |
-| Instagram reply | Later |
-| Meta paid follow-up | Later |
+One successful new action atomically creates:
 
-## Requirements
+- `signaldeskDraftSummaries/{draftId}`;
+- `signaldeskApprovalQueue/{approvalId}`;
+- `signaldeskApprovalPackets/{approvalPacketId}`;
+- target progression to `approve`;
+- audit, timeline, queue-summary, and daily-cost evidence.
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| SDD-R001 | Templates must define approved variables. | P0 |
-| SDD-R002 | Drafts must link evidence packet and template version. | P0 |
-| SDD-R003 | Drafts must pass banned-claim scan. | P0 |
-| SDD-R004 | Drafts must pass source-field eligibility check. | P0 |
-| SDD-R005 | AI drafts must be editable before approval. | P0 |
-| SDD-R006 | Drafts cannot be sent without approval module. | P0 |
+The draft binds evidence ID, CTA ID/fingerprint, contact identity/fingerprint,
+sender ID/fingerprint, template ID/fingerprint, exact subject/body, and approved
+personalization evidence references. Private contact bindings are stored
+server-side but excluded from projected client DTOs.
 
-## Banned Claim Categories
+## Template Rules
 
-- platform partnership claims;
-- ranking/sales/revenue guarantees;
-- "we saw customers" claims without proof;
-- "official" claims about target before owner approval;
-- scraping disclosure or source misuse;
-- invented pricing/discount/menu facts;
-- fear-based claims.
+- Current channel must be `email`.
+- Supported variables are `businessName`, `category`, `city`, `opportunity`, and `proofCta`.
+- Every used variable must be supported and declared in `approvedVariables`.
+- Unresolved braces or undeclared variables fail before writes.
+- Active template authority is fingerprinted; deactivation or content/variable drift blocks later approval.
 
-## Acceptance Criteria
+## Idempotency
 
-- Draft cannot be generated without evidence packet.
-- Draft cannot include rejected facts.
-- Draft cannot include unapproved variable.
-- Draft cannot bypass human approval.
+Identity is content-addressed from rendered content plus current evidence,
+policy, contact, CTA, sender, target, and template authority. Exact and concurrent
+requests return one durable triad. A partial triad fails closed as
+`DRAFT_REPLAY_INCOMPLETE`; it is never silently repaired.
+
+## Non-Goals
+
+- AI-generated or freeform drafts.
+- Template editing/version history UI.
+- WhatsApp, Instagram, Messenger, or cold-DM drafts.
+- Automatic approval, export, contact, or provider send.
+- A new draft-detail or guardrail-event collection.

@@ -25,13 +25,16 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const WEEKLY_NARRATIVE_LOCAL_ENDPOINT = '/api/analytics/weekly-narrative/generate-local';
 const WEEKLY_NARRATIVE_DAYS = 7;
-const WEEKLY_NARRATIVE_TEXT_MAX_LENGTH = 220;
+const WEEKLY_NARRATIVE_TEXT_MAX_LENGTH = 500;
+const WEEKLY_TOP_CATEGORY_MAX_LENGTH = 120;
+const WEEKLY_INSIGHT_SCHEMA_VERSION = 2;
 
 type WeeklyNarrativeAggregate = {
     totalChats: number;
     totalFeedback: number;
     totalMessages: number;
     totalPositiveFeedback: number;
+    knowledgeGapCount: number;
     topQuestion: string;
     topGap: string | null;
 };
@@ -79,7 +82,9 @@ const aggregateWeeklyNarrativeDays = (
         totalFeedback,
         totalMessages,
         totalPositiveFeedback,
-        topQuestion: getTopLabel(questions) || 'No recurring question',
+        knowledgeGapCount: Math.min(gaps.size, 20),
+        topQuestion: (getTopLabel(questions) || 'No recurring question')
+            .slice(0, WEEKLY_TOP_CATEGORY_MAX_LENGTH),
         topGap: getTopLabel(gaps),
     };
 };
@@ -222,46 +227,53 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: any
         const previousSourceComplete = previousDays.every(day => day.sourceComplete);
         const comparablePreviousDays = previousSourceComplete ? previousDays : [];
         const previous = aggregateWeeklyNarrativeDays(comparablePreviousDays);
-        const volumeChange = previous.totalChats > 0
+        const volumeChangePercent = previous.totalChats > 0
             ? ((current.totalChats - previous.totalChats) / previous.totalChats) * 100
-            : 0;
-        const currentFeedbackRate = current.totalFeedback > 0
+            : null;
+        const currentPositiveFeedbackShare = current.totalFeedback > 0
             ? (current.totalPositiveFeedback / current.totalFeedback) * 100
-            : 0;
-        const previousFeedbackRate = previous.totalFeedback > 0
+            : null;
+        const previousPositiveFeedbackShare = previous.totalFeedback > 0
             ? (previous.totalPositiveFeedback / previous.totalFeedback) * 100
-            : 0;
-        const satisfactionChange = previous.totalFeedback > 0
-            ? currentFeedbackRate - previousFeedbackRate
-            : 0;
+            : null;
+        const positiveFeedbackSharePointChange = (
+            currentPositiveFeedbackShare !== null
+            && previousPositiveFeedbackShare !== null
+        )
+            ? currentPositiveFeedbackShare - previousPositiveFeedbackShare
+            : null;
         const conversationLabel = current.totalChats === 1 ? 'conversation' : 'conversations';
         const currentWeekComplete = currentDays.length === WEEKLY_NARRATIVE_DAYS;
         const comparisonComplete = currentWeekComplete
             && previousSourceComplete
             && previousDays.length === WEEKLY_NARRATIVE_DAYS;
         const recommendations = current.topGap
-            ? [`Review the approved answer for: ${current.topGap}`]
-            : ['No repeated answer-gap review is required from the recorded period.'];
+            ? [`Review the answer for: ${current.topGap}`]
+            : ['No answer-gap review is required from this period.'];
+        const recordedFeedbackClause = currentPositiveFeedbackShare === null
+            ? 'No feedback outcomes were recorded'
+            : `Recorded positive feedback was ${currentPositiveFeedbackShare.toFixed(1)}%`;
         const payload = {
             pId: PRODUCT_IDS.ANSWERLATTICE,
+            schemaVersion: WEEKLY_INSIGHT_SCHEMA_VERSION,
             weekStart,
             weekEnd,
             narrative: current.totalChats > 0
-                ? `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. Recorded positive feedback was ${currentFeedbackRate.toFixed(1)}%, and the most frequent question was "${current.topQuestion}".`
+                ? `Answerlattice reviewed ${current.totalChats} ${conversationLabel} for the week ending ${weekEnd}. ${recordedFeedbackClause}, and the most frequent question was "${current.topQuestion}".`
                 : `No conversations were recorded for the week ending ${weekEnd}.`,
             highlights: current.totalChats > 0
                 ? [
                     `${current.totalChats} ${conversationLabel} reviewed`,
-                    `${currentFeedbackRate.toFixed(1)}% positive feedback across recorded outcomes`,
-                    current.topGap
-                        ? `A repeated answer gap was recorded for: ${current.topGap}`
-                        : 'No repeated answer gap was recorded.',
+                    currentPositiveFeedbackShare === null
+                        ? 'No feedback outcomes were recorded'
+                        : `${currentPositiveFeedbackShare.toFixed(1)}% positive feedback across recorded outcomes`,
+                    `${current.knowledgeGapCount} recurring answer gaps identified`,
                 ]
                 : ['No conversation activity was recorded in this period.'],
             recommendations,
             keyMetrics: {
-                volumeChange,
-                satisfactionChange,
+                volumeChangePercent,
+                positiveFeedbackSharePointChange,
                 topCategory: current.topQuestion,
             },
             sourceCompleteness: {
@@ -269,7 +281,6 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: any
                 previousDays: comparablePreviousDays.length,
                 currentWeekComplete,
                 comparisonComplete,
-                previousSourceComplete,
             },
             generationMode: 'deterministic',
             promptVersion: 'deterministic-v1',
@@ -291,7 +302,7 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: any
                 sId,
                 sourceHash,
                 generatedAt: FieldValue.serverTimestamp(),
-            }, { merge: true });
+            });
         }
 
         return NextResponse.json(

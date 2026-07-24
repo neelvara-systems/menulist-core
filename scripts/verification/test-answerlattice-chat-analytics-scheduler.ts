@@ -4,13 +4,21 @@ import assert from 'node:assert/strict';
 import {
     acquireChatAnalyticsBackfillLease,
     backfillChatAnalyticsDays,
+    rebuildChatAnalyticsForDeletedSession,
     releaseChatAnalyticsBackfillLease,
     syncChatAnalyticsNightly,
 } from '../../functions-answerlattice/src/answerlattice/chatAnalyticsAggregation';
 import { syncAnswerlatticeChatIntelligence } from '../../functions-answerlattice/src/answerlattice/chatIntelligence';
+import { recoverChatAnalyticsAfterDeletedSession } from '../../functions-answerlattice/src/answerlattice/chatAnalyticsDeletionRecovery';
 import { admin, firestoreAdmin } from '../../functions-answerlattice/src/firebaseAdmin';
 
 const Timestamp = admin.firestore.Timestamp;
+const platformOperator = {
+    accessRevision: 2,
+    email: 'platform@example.com',
+    platformRole: 'PLATFORM',
+    userId: 'platform-user',
+} as const;
 
 const yesterday = new Date();
 yesterday.setUTCDate(yesterday.getUTCDate() - 1);
@@ -36,6 +44,18 @@ async function run(): Promise<void> {
     await firestoreAdmin.recursiveDelete(firestoreAdmin.collection('chatAnalytics'));
     await firestoreAdmin.recursiveDelete(firestoreAdmin.collection('insights'));
     await firestoreAdmin.recursiveDelete(firestoreAdmin.collection('platformSummary'));
+    await firestoreAdmin.recursiveDelete(firestoreAdmin.collection('users'));
+    await firestoreAdmin.collection('users').doc(platformOperator.userId).set({
+        accessRevision: platformOperator.accessRevision,
+        active: true,
+        email: platformOperator.email,
+        id: platformOperator.userId,
+        isVerified: true,
+        pId: 'AL',
+        platformRole: platformOperator.platformRole,
+        productId: 'AL',
+        uId: platformOperator.userId,
+    });
 
     await assert.rejects(
         Reflect.apply(syncChatAnalyticsNightly, null, ['1', 101]),
@@ -89,15 +109,50 @@ async function run(): Promise<void> {
     assert.equal(summary?.knowledgeGaps?.[0]?.count, 1);
     assert.equal(summary?.sourceComplete, true);
 
+    const deletedSessionSnapshot = await firestoreAdmin.collection('chatSessions').doc('session-1').get();
+    await deletedSessionSnapshot.ref.delete();
+    const deleteRebuild = await rebuildChatAnalyticsForDeletedSession(
+        deletedSessionSnapshot.id,
+        deletedSessionSnapshot.data(),
+    );
+    assert.equal(deleteRebuild?.date, dateKey);
+    assert.equal(deleteRebuild?.written, true);
+    assert.equal(deleteRebuild?.totalChats, 0);
+    assert.equal((await summaryRef.get()).get('totalChats'), 0);
+    assert.equal((await summaryRef.get()).get('negativeFeedback'), 0);
+    const deleteReplay = await rebuildChatAnalyticsForDeletedSession(
+        deletedSessionSnapshot.id,
+        deletedSessionSnapshot.data(),
+    );
+    assert.equal(deleteReplay?.written, false, 'delete-event replay must be source-hash idempotent');
+    assert.equal(
+        await rebuildChatAnalyticsForDeletedSession('session-1', {
+            ...deletedSessionSnapshot.data(),
+            pId: 'ML',
+        }),
+        null,
+        'cross-product deleted rows must not rebuild Answerlattice analytics',
+    );
+
+    await deletedSessionSnapshot.ref.set(deletedSessionSnapshot.data() || {});
+    const restoredSummary = await syncChatAnalyticsNightly(1, 101);
+    assert.equal(restoredSummary.summariesWritten, 1);
+    assert.equal((await summaryRef.get()).get('totalChats'), 1);
+
     const second = await syncChatAnalyticsNightly(1, 101);
     assert.equal(second.summariesWritten, 0, 'unchanged summaries must not be rewritten');
     assert.ok(second.summariesSkipped >= 1);
 
     const leaseNow = Timestamp.now();
-    const leaseId = await acquireChatAnalyticsBackfillLease(1, 101, leaseNow);
+    const leaseId = await acquireChatAnalyticsBackfillLease(1, 101, platformOperator, leaseNow);
     assert.ok(leaseId, 'first manual backfill must acquire the scoped lease');
     assert.equal(
-        await acquireChatAnalyticsBackfillLease(1, 101, Timestamp.fromMillis(leaseNow.toMillis() + 1)),
+        await acquireChatAnalyticsBackfillLease(
+            1,
+            101,
+            platformOperator,
+            Timestamp.fromMillis(leaseNow.toMillis() + 1),
+        ),
         null,
         'concurrent manual backfill must be rejected',
     );
@@ -105,11 +160,35 @@ async function run(): Promise<void> {
     assert.equal((await firestoreAdmin.collection('platformSummary').doc('chatAnalyticsState_1_101').get()).get('manualBackfillLeaseId'), leaseId);
     await releaseChatAnalyticsBackfillLease(1, 101, leaseId as string);
     assert.equal(
-        await acquireChatAnalyticsBackfillLease(1, 101, Timestamp.fromMillis(leaseNow.toMillis() + 30_000)),
+        await acquireChatAnalyticsBackfillLease(
+            1,
+            101,
+            platformOperator,
+            Timestamp.fromMillis(leaseNow.toMillis() + 30_000),
+        ),
         null,
         'immediate repeat must respect the persisted cooldown',
     );
-    const nextLeaseId = await acquireChatAnalyticsBackfillLease(1, 101, Timestamp.fromMillis(leaseNow.toMillis() + 61_000));
+    await firestoreAdmin.collection('users').doc(platformOperator.userId).update({ accessRevision: 3 });
+    await assert.rejects(
+        acquireChatAnalyticsBackfillLease(
+            1,
+            101,
+            platformOperator,
+            Timestamp.fromMillis(leaseNow.toMillis() + 61_000),
+        ),
+        /operator_revoked/,
+        'a stale platform token must not acquire a lease after durable authority changes',
+    );
+    await firestoreAdmin.collection('users').doc(platformOperator.userId).update({
+        accessRevision: platformOperator.accessRevision,
+    });
+    const nextLeaseId = await acquireChatAnalyticsBackfillLease(
+        1,
+        101,
+        platformOperator,
+        Timestamp.fromMillis(leaseNow.toMillis() + 61_000),
+    );
     assert.ok(nextLeaseId, 'backfill may run again after the cooldown');
     await releaseChatAnalyticsBackfillLease(1, 101, nextLeaseId as string);
 
@@ -138,17 +217,21 @@ async function run(): Promise<void> {
     assert.equal(feedback?.pId, 'AL');
     assert.equal(feedback?.tId, 1);
     assert.equal(feedback?.sId, 101);
+    assert.equal(feedback?.schemaVersion, 2);
     assert.equal(feedback?.generationMode, 'deterministic');
-    assert.equal(feedback?.totalFeedbackAnalyzed, 1);
+    assert.equal(feedback?.totalFeedbackAnalyzed, undefined);
     assert.equal(feedback?.themes?.[0]?.theme, 'Why did billing fail?');
     assert.equal(weekly?.pId, 'AL');
     assert.equal(weekly?.tId, 1);
     assert.equal(weekly?.sId, 101);
+    assert.equal(weekly?.schemaVersion, 2);
     assert.equal(weekly?.generationMode, 'deterministic');
     assert.equal(weekly?.sourceCompleteness?.currentDays, 1);
     assert.equal(weekly?.sourceCompleteness?.previousDays, 0);
     assert.equal(weekly?.sourceCompleteness?.currentWeekComplete, false);
     assert.equal(weekly?.sourceCompleteness?.comparisonComplete, false);
+    assert.equal(weekly?.keyMetrics?.volumeChangePercent, null);
+    assert.equal(weekly?.keyMetrics?.positiveFeedbackSharePointChange, null);
     assert.match(weekly?.narrative || '', /1 conversation for/);
     assert.match(weekly?.narrative || '', /Recorded positive feedback was/);
 
@@ -191,7 +274,62 @@ async function run(): Promise<void> {
     assert.equal(refreshedIntelligence.weeklyWritten, true, 'changed volume must refresh weekly insight');
     const refreshedFeedback = (await feedbackRef.get()).data();
     assert.equal(refreshedFeedback?.themes?.length, 2);
-    assert.equal(refreshedFeedback?.totalFeedbackAnalyzed, 2);
+    assert.equal(refreshedFeedback?.totalFeedbackAnalyzed, undefined);
+
+    const deletedSecondSnapshot = await firestoreAdmin.collection('chatSessions').doc('session-2').get();
+    await deletedSecondSnapshot.ref.delete();
+    const cascadedDelete = await recoverChatAnalyticsAfterDeletedSession(
+        deletedSecondSnapshot.id,
+        deletedSecondSnapshot.data(),
+        intelligenceNow,
+    );
+    assert.equal(cascadedDelete.aggregate?.totalChats, 1);
+    assert.equal(cascadedDelete.intelligence?.feedbackWritten, true);
+    assert.equal(cascadedDelete.intelligence?.weeklyWritten, true);
+    const feedbackAfterDelete = (await feedbackRef.get()).data();
+    assert.equal(feedbackAfterDelete?.themes?.length, 1);
+    assert.equal(feedbackAfterDelete?.totalFeedbackAnalyzed, undefined);
+    const deleteCascadeReplay = await recoverChatAnalyticsAfterDeletedSession(
+        deletedSecondSnapshot.id,
+        deletedSecondSnapshot.data(),
+        intelligenceNow,
+    );
+    assert.equal(deleteCascadeReplay.aggregate?.written, false);
+    assert.equal(deleteCascadeReplay.intelligence?.feedbackWritten, false);
+    assert.equal(deleteCascadeReplay.intelligence?.weeklyWritten, false);
+
+    const partialDate = new Date(intelligenceNow);
+    partialDate.setUTCDate(partialDate.getUTCDate() - 2);
+    const partialDateKey = partialDate.toISOString().slice(0, 10);
+    await firestoreAdmin.collection('chatAnalytics').doc(`1_101_${partialDateKey}`).set({
+        pId: 'AL',
+        tId: 1,
+        sId: 101,
+        date: partialDateKey,
+        totalChats: 2_000,
+        totalMessages: 4_000,
+        positiveFeedback: 0,
+        negativeFeedback: 0,
+        totalFeedback: 0,
+        totalRegenerations: 0,
+        qnaChats: 2_000,
+        assistantChats: 0,
+        topQuestions: [],
+        knowledgeGaps: [],
+        sourceComplete: false,
+        sourceSessionCount: 2_000,
+        sourceLimit: 2_000,
+        createdOn: Timestamp.now(),
+        modifiedOn: Timestamp.now(),
+    });
+    const invalidatedDelete = await recoverChatAnalyticsAfterDeletedSession(
+        deletedSecondSnapshot.id,
+        deletedSecondSnapshot.data(),
+        intelligenceNow,
+    );
+    assert.equal(invalidatedDelete.intelligenceInvalidated, true);
+    assert.equal((await feedbackRef.get()).exists, false);
+    assert.equal((await weeklyRef.get()).exists, false);
 }
 
 run()

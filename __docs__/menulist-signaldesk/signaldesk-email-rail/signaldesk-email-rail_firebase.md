@@ -1,40 +1,46 @@
-# SignalDesk Email Rail - Firebase Cost Plan
+# SignalDesk Email Rail - Firebase
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
-**Cost impact now:** None.
+**Status:** Implemented; no Feature 11 Firebase deployment required
+**Last Updated:** July 21, 2026
 
-## Collections
+## Existing Collections
 
-| Collection | Purpose | Normal reads |
-| --- | --- | --- |
-| `signaldeskSenderDomains` | Sender/domain readiness | Policy/control room |
-| `signaldeskEmailActions` | Export/send actions | Target/campaign detail |
-| `signaldeskEmailEvents` | Delivery/bounce/complaint/click events | Detail/debug only |
-| `signaldeskEmailDailySummaries` | Email channel health/cost | Dashboard |
-| `signaldeskUnsubscribeEvents` | Email unsubscribe proof | Suppression lookup/detail |
+| Collection | Purpose |
+| --- | --- |
+| `signaldeskSenderDomains` | Compact sender readiness and reputation authority. |
+| `signaldeskApprovalQueue` / `signaldeskDraftSummaries` | Human-approved email unit and current state. |
+| `signaldeskMessageExports` | Deterministic export, handoff, and sent delivery evidence. |
+| `signaldeskSequencerHandoffs` / `signaldeskSequencerSteps` | One-step owned queue and optional external handoff state. |
+| `signaldeskConversations` / `signaldeskMessages` | Private inbound/outbound detail. |
+| `signaldeskConversationSummaries` | Bounded owner inbox projection. |
+| `signaldeskContactIdentities` / `signaldeskSuppressionLedger` | Permissioned recipient authority and hashed suppression. |
+| `signaldeskWebhookEvents` | Compact normalized provider event evidence. |
+| `signaldeskProviderAccounts` / `signaldeskBudgetPolicies` | Send authority, cap, and spend reservation. |
+| `signaldeskAuditEvents` / `signaldeskRunTimelines` / `signaldeskCostDailySummaries` | Audit, operator timeline, and cost estimates. |
 
-## Read / Write Model
+There are no `signaldeskEmailActions`, `signaldeskEmailEvents`,
+`signaldeskEmailDailySummaries`, or `signaldeskUnsubscribeEvents` collections.
+Provider payloads are not moved to Storage by this feature.
 
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Export email | 6-12 | 3-7 | Draft, approval, suppression, target; action, audit, attribution. |
-| Provider send | 8-15 | 4-10 | Adds sender/domain/cap checks. |
-| Bounce/complaint webhook | 2-6 | 3-8 | Normalize event, suppression if needed, summary. |
-| Dashboard | 2-5 | 0 | Summary docs only. |
+## Bounded Operations
 
-## Indexes
+| Flow | Current behavior |
+| --- | --- |
+| Channels read | Parallel bounded recent and actionable status queries; no listener. |
+| Manual export | Transaction-current authority reads and a bounded export/conversation/approval/draft/target/audit/cost write set. |
+| Owned queue | Current authority reads; one deterministic handoff, optional one step, timeline, audit, and cost effects. |
+| Live send | Transactional provider/budget reservation, one external call, then atomic delivery settlement. |
+| Webhook | One bounded body, signature check, deterministic event, and only the required conversation/suppression/incident/control effects. |
 
-- `signaldeskEmailActions`: `targetId + createdAt`
-- `signaldeskEmailActions`: `status + createdAt`
-- `signaldeskEmailEvents`: `emailActionId + createdAt`
-- `signaldeskEmailDailySummaries`: `date + senderDomainId`
-- `signaldeskUnsubscribeEvents`: `identityHash + createdAt`
+## Isolation And Retention
 
-## Cost Controls
+- SignalDesk uses its dedicated Firebase project and Admin boundary.
+- Firestore rules permit platform-authorized reads and deny all client writes to Email Rail collections.
+- Source-derived message exports, handoffs, and steps participate in the consolidated SignalDesk source-data lifecycle scrubber.
+- Actionable status queries use automatic single-field indexes; Feature 11 adds no index.
 
-- No dashboard raw email events.
-- Store provider payloads in Storage if needed.
-- Webhook events compact only.
-- Daily summaries updated incrementally.
-- Send caps prevent cost spikes.
+## Deployment
+
+Feature 11 changes the Next.js runtime, docs, and local verifier only. It changes
+no SignalDesk Function, Firestore rule/index, or Storage rule, so no Firebase
+deployment is required. App/Vercel release remains owner-controlled.

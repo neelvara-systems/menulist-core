@@ -1,52 +1,45 @@
-# SignalDesk Email Rail - Compliance Policy
+# SignalDesk Email Rail - Compliance
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
+**Status:** Implemented control contract; external certification pending
+**Last Updated:** July 21, 2026
 
 ## Core Rule
 
-Email is allowed only as controlled, accountable outreach.
+Email is an owner-approved, low-volume contact path. Source permission and
+recipient identity are required facts, not inferred convenience fields.
 
-## Required Before Provider Send
+## Before Export Or Send
 
-- sender identity approved;
-- sender domain authenticated;
-- unsubscribe mechanism;
-- physical address policy;
-- suppression ledger;
-- bounce handling;
-- complaint handling;
-- daily cap;
-- human approval;
-- audit event.
+- current source policy permits the requested use and has a valid retention period;
+- current contact identity is permissioned and carries matching permission evidence;
+- target, approval, draft, evidence, CTA, sender, and recipient fingerprints still agree;
+- suppression is clear and no prior contact/reply/outcome blocks the action;
+- global and email pauses are clear; campaign pause also governs sequencing;
+- sender state is active, authenticated, unsubscribe-ready, low-risk, and low-volume/ready;
+- live SMTP additionally has a matching From domain, valid optional Reply-To, physical address, unsubscribe URL, provider approval, and budget capacity.
 
-The project research records the FTC/Gmail basis for unsubscribe, sender identity, and opt-out discipline in `../menulist-signaldesk_compliance.md` and the end-to-end growth memo.
+The SMTP adapter appends the maintained physical address and unsubscribe URL.
+This is a technical control, not a substitute for jurisdiction-specific legal
+review or provider certification.
 
-## Export Mode
+## Inbound Safety
 
-Export mode is allowed before provider send only if:
+Signed email webhook events normalize replies and delivery status. Unsubscribe,
+DNC, wrong-contact, complaint, privacy/legal request, and hard-bounce signals can
+write suppression immediately. Complaint/privacy/legal events create an incident
+and activate the email pause pending founder review.
 
-- contact is not suppressed;
-- draft is approved;
-- operator is authorized;
-- export is audited;
-- exported file includes compliance/footer requirements where applicable.
+## Prohibited
 
-## Blocked
+- cross-channel draft reuse;
+- contact without current permission evidence;
+- sending after suppression, complaint, or unsubscribe;
+- deceptive sender identity or subject;
+- retrying an unresolved provider outcome;
+- raising volume before sender health and provider certification are reviewed.
 
-- exports of suppressed contacts;
-- provider send before sender readiness;
-- commercial email without unsubscribe;
-- misleading sender identity;
-- deceptive subject;
-- cold blast volume;
-- send after complaint/unsubscribe.
+## External Pending
 
-## Open Questions
-
-| Question | Owner |
-| --- | --- |
-| Physical address policy | Founder |
-| Sender domain | Founder |
-| Email provider | Founder + Codex before implementation |
-| Daily cap | Founder |
+SMTP credentials, DNS/authentication evidence, physical-address approval,
+unsubscribe destination, webhook secret/provider mapping, mailbox reputation,
+and a controlled recipient smoke test remain owner/provider certification work.

@@ -31,6 +31,8 @@ public output and therefore does not trigger a public cache refill.
 ## Cost Guardrails
 
 - Feature flag defaults off.
+- The app flag blocks both provider checks and new grounded Place-ID
+  confirmations. Removal remains available while disabled.
 - Feature must stay off until provider smoke confirms Maps grounding on the pinned Functions `@google/genai` path or a scoped SDK migration is approved.
 - Callable requires authentication.
 - SAFE_MODE blocks provider use.
@@ -64,6 +66,14 @@ MenuList derives that future freshness decision from `confirmedAt`; it does not
 add a scheduled refresh while the provider path remains disabled.
 
 Owner-confirmed canonical fields require a separate write path and public cache invalidation.
+
+## Collision Activation Gate
+
+The current embedded binding does not add a cross-store provider-ID uniqueness
+document or index. That keeps the flag-off prototype at its existing one-store
+transaction cost, but it also means grounded-candidate confirmation UI cannot be
+released until a server-authoritative, fail-closed and reversible collision
+policy is approved and costed. Provider smoke alone does not satisfy this gate.
 
 ## Disallowed Storage
 

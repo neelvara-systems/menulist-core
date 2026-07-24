@@ -33,7 +33,7 @@ The shared app and Functions shard calculators use FNV-1a over the canonical `tI
 | `platformSummary/answerlatticeSchedulerTaskLock_governance_nightly` | Global task lease |
 | `platformSummary/answerlatticeNightlyState_{tId}_{sId}` | Workspace scheduler state |
 | `platformSummary/answerlatticeNightlyLock_{tId}_{sId}_{YYYY-MM-DD}` | Workspace/date lease |
-| `platformSummary/answerlatticeAiProviderHealth` | Daily Gemini smoke-check status with fixed failure codes and bounded source metadata |
+| `platformSummary/answerlatticeAiProviderHealth` | Exact-replacement daily Gemini smoke-check state with coherent success/failure fields, fixed failure codes and bounded source metadata |
 | `answerlattice_schedulerRunLogs/{runLogId}` | Governance batch result, including at most eight compact logical source-window tuples per instrumented tenant task |
 
 ## Cost Rules
@@ -47,7 +47,7 @@ The shared app and Functions shard calculators use FNV-1a over the canonical `tI
 - Keep scheduler source-window telemetry inside the existing run-log write, capped to eight unique windows per task and 80 returned windows in the platform monitor. Do not present logical source-operation results as billed Firebase reads or currency.
 - Do not share scheduler snapshots until at least 14 complete daily observations show material repeated work and the source, filters, ordering, limits, freshness, completeness, and failure-isolation contracts are identical.
 - Keep workflow integration adapter-check failures visible as fixed scheduler diagnostics; do not collapse config-read failures into a normal no-adapter skip.
-- Keep provider health diagnostics bounded; failed health checks should store fixed failure codes and source error name/code/status metadata, never raw provider messages.
+- Replace provider-health state rather than merging it; daily skip requires coherent successful completion truth, and failed health checks store fixed failure codes plus bounded source error name/code/status metadata, never raw provider messages.
 - Use Firestore TTL for retention when available instead of nightly empty cleanup scans.
 - Use compact summaries before collection scans.
 - Use source-version checks before compiled context rebuilds.

@@ -62,7 +62,7 @@ Customers tap "View Menu" to see your full digital menu with items, prices, and 
 
 ### 5. Trust Built In
 
-Your Google rating, business photos, open status, verified page signal, service options, payment methods, and customer actions appear in one place. Customers trust your page before they call, message, or visit. No fake reviews — just real signals.
+Your Google rating, business photos, open status, page-update signal, service options, payment methods, and customer actions appear in one place. Customers can check the current MenuList page before they call, message, or visit. No fake reviews — just real signals.
 
 **Visual:** OBP page showing "Official Page", "4.5 ★ on Google (320)", service options, and business photos
 

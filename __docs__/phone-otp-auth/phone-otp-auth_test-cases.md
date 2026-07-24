@@ -23,8 +23,11 @@
 - NextAuth consumes a login token only after reading the exact stored user and matching the stored email inside the transaction.
 - A second token consumption fails.
 - Expired login-token status persists after the typed expiry error.
+- A uniquely resolved legacy phone-only user with no email receives the deterministic generated login email, finalizes the token, and consumes it against the same user document.
+- If another user document already owns that generated email, verification fails closed, releases the challenge lease, and does not mutate the phone-only profile.
+- The maintained emulator command ignores ambient Application Default Credential file paths and uses only the configured demo Firestore emulator.
 
-Automated coverage: `npm run test:phone-otp-transaction:emulator` exercises the durable-attempt, expiry, concurrent verification, exact-user consumption, replay, and token-expiry boundaries against the Firestore emulator.
+Automated coverage: `npm run test:phone-otp-transaction:emulator` exercises the durable-attempt, expiry, concurrent verification, legacy email binding/conflict, exact-user consumption, replay, and token-expiry boundaries against the Firestore emulator.
 
 ## Dashboard Login
 

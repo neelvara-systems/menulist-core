@@ -2,6 +2,10 @@ import { createHash, randomUUID } from 'crypto';
 import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+    isCurrentAnswerlatticePlatformCallableUser,
+    type AnswerlatticePlatformCallableIdentity,
+} from '../callableAuthBoundary';
 import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 
 const PRODUCT_ID = 'AL';
@@ -152,14 +156,25 @@ const getDayDocId = (tId: number, sId: number, dateKey: string) => `${tId}_${sId
 export const acquireChatAnalyticsBackfillLease = async (
     tId: number,
     sId: number,
+    operator: AnswerlatticePlatformCallableIdentity,
     now = Timestamp.now(),
 ): Promise<string | null> => {
     if (!isPositiveScopeId(tId) || !isPositiveScopeId(sId)) {
         throw new Error('answerlattice_chat_backfill_scope_invalid');
     }
     const stateRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getStateDocId(tId, sId));
+    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(operator.userId);
     return db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(stateRef);
+        const [userSnapshot, snapshot] = await Promise.all([
+            transaction.get(userRef),
+            transaction.get(stateRef),
+        ]);
+        if (
+            !userSnapshot.exists
+            || !isCurrentAnswerlatticePlatformCallableUser(userSnapshot.data(), operator)
+        ) {
+            throw new Error('answerlattice_chat_backfill_operator_revoked');
+        }
         const state = snapshot.data();
         if (snapshot.exists && (
             !state
@@ -326,6 +341,45 @@ const aggregateDay = async (
         modifiedOn: FieldValue.serverTimestamp(),
     });
     return { written: true, partial: !sourceComplete, totalChats: sessions.length };
+};
+
+/**
+ * Rebuild the exact UTC day affected by a hard-deleted chat session.
+ *
+ * Deleted documents cannot appear in the modifiedOn cursor query. The Firestore
+ * delete trigger passes the trusted pre-delete snapshot here so the canonical
+ * daily replacement is recalculated from surviving sessions. Source hashing
+ * makes duplicate Eventarc delivery idempotent.
+ */
+export const rebuildChatAnalyticsForDeletedSession = async (
+    sessionId: string,
+    deletedValue: unknown,
+): Promise<{
+    date: string;
+    partial: boolean;
+    skippedCurrentDay: boolean;
+    totalChats: number;
+    written: boolean;
+} | null> => {
+    if (!isRecord(deletedValue)) return null;
+    const tId = isPositiveScopeId(deletedValue.tId) ? deletedValue.tId : null;
+    const sId = isPositiveScopeId(deletedValue.sId) ? deletedValue.sId : null;
+    if (!tId || !sId) return null;
+    const parsed = parseSession(sessionId, deletedValue, tId, sId);
+    if (!parsed) return null;
+
+    const date = utcDateKey(parsed.createdOn.toDate());
+    if (date >= utcDateKey(new Date())) {
+        return {
+            date,
+            partial: false,
+            skippedCurrentDay: true,
+            totalChats: 0,
+            written: false,
+        };
+    }
+    const result = await aggregateDay(tId, sId, date);
+    return { date, skippedCurrentDay: false, ...result };
 };
 
 export type ChatAnalyticsBackfillResult = Readonly<{

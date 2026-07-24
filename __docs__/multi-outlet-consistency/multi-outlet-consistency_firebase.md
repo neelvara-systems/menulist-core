@@ -2,7 +2,7 @@
 
 **Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
 **Status:** Firebase cost evidence; not current launch certification
-**Last Updated:** July 17, 2026
+**Last Updated:** July 21, 2026
 
 **Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
 
@@ -19,6 +19,14 @@
 - **Cloud Functions:** `processMenuImagesJob` enforces linked-outlet extraction policy before AI processing
 - **External APIs:** Razorpay Subscriptions API (quantity updates)
 - **Estimated Monthly Cost:** **Medium** — Real-time listeners + outlet creation transactions
+
+### July 21, 2026 master operational signal contract
+
+`masterOperationalState/{masterProjectId}` is a two-field tenant-readable signal, not owner-editable business data. Client creation/update is admitted only for platform admins or owner/manager sessions whose active store matches the final store segment of the master project ID. The write must contain only a positive integer `operationalVersion` and `lastUpdatedAt`; creation resolves to version 1, update is exactly current +1, and the timestamp equals Firestore `request.time`. All clients are denied delete. Same-tenant outlets retain direct-document read access for the existing listener, while other tenants and anonymous callers are denied.
+
+The writer keeps one atomic `increment(1)` transform and now uses `serverTimestamp()`, so successful-path Firestore cost is unchanged. Link, switch, and listener consumers project the exact persisted shape before using the version. Invalid rows do not trigger a banner or silently become trusted state. Same-project state refreshes synchronize the acknowledged baseline without reconnecting the listener; delayed master fetches are request-generation and project-identity guarded, so an outlet switch cannot publish or acknowledge a prior outlet's result. These client guards add no Firestore operation. The focused emulator command is `npm run test:master-operational-state:rules`.
+
+The required `firebase deploy --project menulist-qa --config firebase.json --only firestore:rules --non-interactive` attempt stopped before upload because the Firebase CLI is not authenticated. Per the [official Firebase CLI reference](https://firebase.google.com/docs/cli), a workstation uses `firebase login`, while headless/CI execution should use Application Default Credentials. The final create/update validator split is compiled and behaviorally verified by the local emulator but was not retried remotely under the unchanged credential blocker. No credential flow was initiated by this audit; QA retains its previously deployed rule until an authorized deploy succeeds.
 
 ### July 11, 2026 tenant-scoped outlet slug claim cost
 
@@ -244,7 +252,7 @@ Outlet create/deactivate route diagnostics use `src/lib/multiOutlet/diagnostics.
 | ------------------------------------------------------ | ----------------------------------------- | ---------------------------- |
 | `getActiveSubscriptionForStore` (with outlet fallback) | `src/database/subscriptions/index.ts`     | Read (query + fallback)      |
 | `getMasterStoreIdFromList`                             | `src/database/subscriptions/index.ts:102` | In-memory (no Firebase)      |
-| `updateSubscription`                                   | `src/database/subscriptions/index.ts:168` | Write (setDoc merge)         |
+| `updateSubscription`                                   | `src/database/subscriptions/server.ts`    | Server-only exact-ML write (set merge) |
 | `propagateNewProjectToOutlets`                         | `src/database/multiOutlet/propagation.ts` | Read tenant + Write projects |
 | `calculateProration`                                   | `src/utils/razorpay.ts:52`                | In-memory (no Firebase)      |
 

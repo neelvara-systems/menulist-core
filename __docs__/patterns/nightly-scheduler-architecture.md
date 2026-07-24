@@ -75,7 +75,9 @@ MenuList has two scheduled entry points by design:
 | `menu_old_cleanup` | Daily 3 AM UTC | Delete old terminal menu extraction jobs |
 | `messaging_session_cleanup` | Daily 4 AM UTC | Expire messaging onboarding sessions, reminders, and storage cleanup |
 
-Each task has an independent Firestore lease under `_system`, so overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts.
+Each task has an independent Firestore lease under `_system`, so overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts while the lease is current. Outcome persistence verifies the current lease-owner token and releases that lease in the same transaction; an execution that finishes after its lease expired cannot overwrite replacement-owner state or clear the replacement lease.
+
+Each due store also has one ten-minute `_system/storeNightlyScheduler_{tId}_{sId}` execution lease shared by the hourly scheduler and `triggerStoreNightlyScheduler`. It is acquired before store project/analytics/provider work and finalized only by its exact owner. This prevents scheduled/manual overlap and cross-tab duplicate recovery from repeating coupled store effects; an expired owner cannot finalize over a replacement.
 
 ### Future Scheduler Rule
 
@@ -219,6 +221,7 @@ When creating an outlet store:
 | Task                    | Feature Flag                    | Cost/Store         | Description                                |
 | ----------------------- | ------------------------------- | ------------------ | ------------------------------------------ |
 | Project index read      | Always                          | 1 read             | Reads `platformSummary/projects_{sId}` to avoid querying every project |
+| Store execution lease   | Each scheduled/manual store attempt | 2 transaction reads + 2 writes for an admitted run; 1 read and 0 writes when another current owner is rejected | One acquisition and one owner-fenced completion under `_system`; no new collection or index |
 | Decision Blocks scoring | Always                          | Active projects only | Precompute DI block candidates per project |
 | Menu Intelligence       | Always                          | Active projects only | Compute intelligence state per project     |
 | OBP Analytics           | `ENABLE_OBP_ANALYTICS`          | Store/date scoped  | Settled before menu analytics in same lock |
@@ -232,12 +235,14 @@ The scheduler still wakes hourly so each store can settle after its own local
 business day. Platform-wide scans do not follow that hourly cadence. A
 transactional `_system/decisionBlocksPlatformDaily` lease admits at most one
 successful suite per UTC day, permits one concurrent owner, and retries a failed
-suite only after the bounded retry delay. The daily suite can run even when no
+suite only after the bounded retry delay. Completion transactionally verifies
+the current lease-owner token, so an expired owner cannot publish stale
+completion/failure state over a replacement run. The daily suite can run even when no
 store is due in that hour; store-local settlement remains independent.
 
 | Task | Feature Flag | Cost shape | Description |
 | --- | --- | --- | --- |
-| Authority Maturation | Always | one bounded daily collection pass | Phase 1/2/3 progression analysis |
+| Authority Maturation | Always | document-ID pages of at most 500 rows under the daily lease | Strictly projects owner-control aggregates, isolates malformed rows, computes Phase 1/2/3 progression, and exact-replaces the daily insight summary |
 | Menu Drift Metrics | Always | bounded daily store/project/change-log pages | 30-day rolling drift counters |
 | Guest Feedback Retention | `ENABLE_GUEST_FEEDBACK_RETENTION` | bounded expired-row query/deletes | 90-day privacy retention |
 | Lifecycle Messaging | Always | bounded subscription/message queries | renewal reminders, suspension warnings, retry, digest |

@@ -1,6 +1,6 @@
 import { revalidateTag } from "next/cache";
 
-export type AnswerlatticePublicCacheSegment = 'all' | 'kb' | 'faqs' | 'changelog' | 'context';
+export type AnswerlatticePublicCacheSegment = 'all' | 'kb' | 'faqs' | 'changelog' | 'context' | 'predictive';
 
 const normalizeScopeId = (value: string | number) => String(value).trim();
 
@@ -25,6 +25,7 @@ export const getAnswerlatticePublicCacheTags = (
         addSegment('faqs');
         addSegment('changelog');
         addSegment('context');
+        addSegment('predictive');
     } else {
         addSegment(segment);
     }

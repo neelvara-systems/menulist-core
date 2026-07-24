@@ -46,7 +46,9 @@ The writer:
 7. generates bounded deterministic text;
 8. hashes the source payload;
 9. reads the existing feedback insight and, on weekly runs, the existing weekly insight;
-10. writes only changed insight documents.
+10. writes only changed schema-v2 insight documents by exact replacement.
+
+Both scheduled and manual writers use the same literal contract: `volumeChangePercent`, nullable `positiveFeedbackSharePointChange`, deterministic tie-breaking, a 120-character top category, at most 20 counted recurring gaps, and identical narrative/recommendation wording. Missing conversation or recorded-feedback denominators produce `null`, never false zero movement.
 
 ## Manual Compatibility Path
 
@@ -61,6 +63,7 @@ The writer:
 - incomplete current source rejection;
 - one existing weekly insight read;
 - at most one hash-skipped write;
+- exact schema-v2 replacement with no legacy merge fields;
 - private no-store response;
 - no provider call or AI accounting.
 
@@ -69,6 +72,8 @@ The writer:
 The primary UI performs one direct Firestore document read and admits it through `parseAnswerlatticeWeeklySummary`. It does not trust arbitrary stored shape, product identity, dates, generation mode, source counts, or timestamp.
 
 The legacy platform component is read-only. It cannot manually generate a digest. Both surfaces withhold incomplete comparisons on screen and in exported text.
+
+The shared parser remains backward compatible with legacy deterministic rows containing `volumeChange` / `satisfactionChange`, but returns only the literal current DTO. New writes never restore those fields.
 
 ## Failure and Recovery
 
@@ -80,4 +85,3 @@ The legacy platform component is read-only. It cannot manually generate a digest
 - No daily data: return `no_data` without a write.
 - Incomplete current daily source: return conflict without a write.
 - Unchanged source hash: return success with `written: false`.
-

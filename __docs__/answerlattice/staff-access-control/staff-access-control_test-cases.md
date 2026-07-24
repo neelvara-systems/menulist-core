@@ -64,12 +64,14 @@
 - A completed owner-passcode create replay never returns a newly generated but invalid replacement passcode.
 - The role editor enables team access when role assignment is selected and clears role assignment when team access is removed.
 - Access, staff success, staff failure, role, and one-time login-detail responses use the shared private no-store and `nosniff` policy.
+- A newer workspace/session access request invalidates every older response, and effect cleanup prevents an in-flight response from settling after a route/session transition.
 
 ## Commands
 
 ```bash
 npm run test:answerlattice-staff-access-contracts
 npm run test:answerlattice-staff-client-contracts
+npm run test:latest-request-guard
 env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-staff-concurrency:emulator
 node scripts/verification/verify-answerlattice-runtime-truth.js
 ```

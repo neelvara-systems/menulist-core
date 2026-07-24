@@ -1,6 +1,7 @@
 /** Answerlattice product-ontology DAL. Reads are scoped client queries; writes are server-owned. */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import {
     normalizeStoredAnswerlatticeEntity,
@@ -46,6 +47,7 @@ export const getEntities = async (tId: number, sId: number) => apiCallComposer(
         const scope = await getActiveScope({ tId, sId });
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, ENTITY_COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             limit(500),
@@ -65,6 +67,7 @@ export const getEntitiesByType = async (tId: number, sId: number, type: string) 
         if (!allowedTypes.has(type as AnswerlatticeEntityType)) return [];
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, ENTITY_COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             where('type', '==', type),
@@ -159,6 +162,7 @@ export const getEntityRelations = async (tId: number, sId: number) => apiCallCom
         const scope = await getActiveScope({ tId, sId });
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, RELATION_COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             limit(500),
@@ -178,6 +182,7 @@ export const getRelationsForEntity = async (tId: number, sId: number, entityId: 
         if (!normalized) return [];
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, RELATION_COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             where('fromEntityId', '==', normalized),
@@ -225,6 +230,7 @@ export const getEntitySearchIndex = async (tId: number, sId: number) => apiCallC
         const scope = await getActiveScope({ tId, sId });
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, SEARCH_INDEX_COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             limit(500),

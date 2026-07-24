@@ -58,7 +58,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage } from 'react-icons/lu';
-import { Project } from '../../types';
+import { PrecomputedDecisionBlocks, Project } from '../../types';
 import {
     DEFAULTS,
     getMoodWithBrandColor,
@@ -106,7 +106,7 @@ interface MenuPageNewProps {
     setActiveLanguage: (language: string) => void;
     from: string;
     businessType?: string;
-    precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
+    precomputedBlocks?: PrecomputedDecisionBlocks | null;
     restoreStoredLanguage?: boolean;
     previewMode?: boolean;
 }

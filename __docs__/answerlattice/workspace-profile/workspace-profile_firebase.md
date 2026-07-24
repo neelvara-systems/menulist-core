@@ -35,6 +35,8 @@ The store retains flat compatibility fields and:
 
 New onboarding initializes revision `0`. Existing workspaces without the field normalize to revision `0` and move to revision `1` on their first changed save. A missing compiled source-version or manifest document is initialized as a complete scope-valid control-plane record by that changed save; malformed existing control-plane ownership or shape is rejected.
 
+Compiled-context builders treat the owned store document as untrusted persisted input. Only the exact projected product name, safe URL, valid support email, admitted billing model, valid timezone, and valid support-day time may enter immutable bundle objects. Undeclared fields and malformed nested/scalar values are omitted or replaced by the maintained non-sensitive defaults before public Storage upload.
+
 ## Security
 
 The route is server-admin only after authenticated permission and exact stored product/scope checks. No direct client Firestore write is added. No security-rule, index, Storage-rule, or Cloud Function change is required, so no Firebase deploy is part of this feature closeout.

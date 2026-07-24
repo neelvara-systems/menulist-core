@@ -87,7 +87,7 @@ No mobile reads:
 - Stale-data warning when summaries are old.
 - Clear active/inactive state for every pause.
 
-The primary mobile-observe map is limited to Today, Conversations, Activations, and system health/Controls. Opportunities may be inspected through the read-only case drawer. Advanced configuration routes remain server-blocked on mobile even when opened directly.
+The primary mobile-observe map is limited to Today, Conversations, Activations, and system health/Controls. Today may inspect the activation queue, seven-day outcomes, and read-only target journey. Direct scoring/evidence/draft actions, setup-link copy, proof preparation, and every Content mutation remain disabled. Advanced configuration routes remain server-blocked on mobile even when opened directly.
 
 ## Acceptance Criteria
 

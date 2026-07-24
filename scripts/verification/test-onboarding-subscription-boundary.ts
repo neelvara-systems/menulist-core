@@ -119,11 +119,16 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
 const persistedSubscription = {
     id: 'sub_Recovered123',
     paymentProvider: 'razorpay',
+    pId: 'ML',
     planId: 'starter',
+    productId: 'ML',
     providerSubscriptionId: 'sub_Recovered123',
+    sId: 22,
     status: 'active',
     storeId: 22,
+    tId: 11,
     tenantId: 11,
+    uId: 'owner-1',
     userId: 'owner-1',
 };
 assert.equal(isMatchingPersistedOnboardingSubscription({
@@ -136,10 +141,19 @@ assert.equal(isMatchingPersistedOnboardingSubscription({
 }), true, 'an exact persisted record remains authoritative even if a webhook already changed status');
 for (const subscription of [
     { ...persistedSubscription, providerSubscriptionId: 'sub_Other123' },
+    { ...persistedSubscription, pId: 'AL' },
+    { ...persistedSubscription, productId: 'AL' },
     { ...persistedSubscription, tenantId: 12 },
+    { ...persistedSubscription, tId: 12 },
     { ...persistedSubscription, storeId: 23 },
+    { ...persistedSubscription, sId: 23 },
     { ...persistedSubscription, userId: 'owner-2' },
+    { ...persistedSubscription, uId: 'owner-2' },
     { ...persistedSubscription, planId: 'growth' },
+    Object.fromEntries(Object.entries(persistedSubscription).filter(([key]) => key !== 'productId')),
+    Object.fromEntries(Object.entries(persistedSubscription).filter(([key]) => key !== 'tId')),
+    Object.fromEntries(Object.entries(persistedSubscription).filter(([key]) => key !== 'sId')),
+    Object.fromEntries(Object.entries(persistedSubscription).filter(([key]) => key !== 'uId')),
 ]) {
     assert.equal(isMatchingPersistedOnboardingSubscription({
         planId: 'starter',

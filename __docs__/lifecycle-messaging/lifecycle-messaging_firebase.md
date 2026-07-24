@@ -150,3 +150,7 @@ July 13 publish-verification completion update: awaiting the two existing lifecy
 ---
 
 _Last updated: Feb 20, 2026_
+
+## Subscription scan identity boundary (July 22, 2026)
+
+The existing product/status/time ordered scans remain bounded and indexed. Each returned row is exact-projected before store reads, message-log checks or SMTP work. Restart 430 adds no query/index/rule or message write; it prevents ambiguous subscription scope from triggering downstream reads and sends. The affected Functions target still requires QA deployment.

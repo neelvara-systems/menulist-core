@@ -339,6 +339,7 @@ export const listAnswerlatticeSupportBoardCards = async (
             const normalizedSId = normalizeScopeId(sId, 'workspace scope');
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', 'AL'),
                 where('tId', '==', normalizedTId),
                 where('sId', '==', normalizedSId),
                 orderBy('modifiedOn', 'desc'),

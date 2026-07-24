@@ -26,7 +26,7 @@ import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useMemo, useRef, useState } from 'react';
 import { LuBuilding2, LuCheck, LuChevronRight, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -74,6 +74,13 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     );
     const loginStoreId = Number(session?.user?.storeId || 0);
     const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
+    const billingScopeKey = session?.user?.id && session?.user?.tenantId && billingStoreId
+        ? `${session.user.id}:${session.user.tenantId}:${billingStoreId}`
+        : null;
+    const billingScopeKeyRef = useRef<string | null>(billingScopeKey);
+    const billingHistoryRequestSequenceRef = useRef(0);
+    const subscriptionRequestSequenceRef = useRef(0);
+    billingScopeKeyRef.current = billingScopeKey;
     const canSwitchBillingStore = Boolean(userPermissions?.canSwitchStores && accessibleBillingStores.length > 1);
     const selectedStore = useMemo(
         () => tenantStoresList.find((store: any) => Number(store.storeId) === billingStoreId),
@@ -126,6 +133,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     }, [sub?.planId, sub?.planType, sub?.userType]);
 
     const refetchSubscription = async () => {
+        const requestSequence = ++subscriptionRequestSequenceRef.current;
+        const requestScopeKey = billingScopeKey;
         try {
             if (!billingStoreId) return;
             const subscription = await getActiveSubscriptionForStore(
@@ -133,8 +142,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 billingStoreId,
                 tenantStoresList,
             );
+            if (
+                subscriptionRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             setActiveSubscription(subscription);
         } catch (err) {
+            if (
+                subscriptionRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             logPaymentFailure('payment_mobile_billing_subscription_refetch_failed', err, buildMobileBillingPaymentLogContext('subscription_refetch'));
         }
     };
@@ -187,6 +204,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const getPastDueGracePeriodDisplay = () => getGracePeriodDisplayInfo(sub?.pastDueSinceAt);
 
     const handleUpgrade = async (plan: Plan) => {
+        const mutationScopeKey = billingScopeKey;
         if (!canManageSelectedSubscription) {
             Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to change a subscription.`, duration: 2600 });
             return;
@@ -203,6 +221,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             } else {
                 await onClickPaymentCard(plan, currency, () => undefined);
             }
+            if (billingScopeKeyRef.current !== mutationScopeKey) return;
             Toast.show({ content: t('planUpdated'), duration: 2000 });
             await refetchSubscription();
         } catch (err) {
@@ -217,6 +236,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleAddPaidLocation = async () => {
+        const mutationScopeKey = billingScopeKey;
         if (!canManageSelectedSubscription) {
             Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to change paid locations.`, duration: 2600 });
             return;
@@ -233,6 +253,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         setIsLoading(true);
         try {
             await onUpgradePlan(sub, currentSubscriptionPlan, currency, nextPaidLocationCount);
+            if (billingScopeKeyRef.current !== mutationScopeKey) return;
             Toast.show({ content: `Paid locations updated to ${nextPaidLocationCount}.`, duration: 2000 });
             await refetchSubscription();
         } catch (err) {
@@ -248,6 +269,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleBuyCredits = async (packId: string) => {
+        const mutationScopeKey = billingScopeKey;
         if (!canBuyEnhancementPacks) {
             Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to buy an enhancement pack.`, duration: 2600 });
             return;
@@ -258,6 +280,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             const pack = aiEnhancementPacksList.find((p: AIEnhancementPack) => p.packId === packId);
             if (!pack) return;
             const paymentResult: any = await handleTopupPurchase(pack, currency);
+            if (billingScopeKeyRef.current !== mutationScopeKey) return;
             Toast.show({ content: t('enhancementsReady'), duration: 2000 });
             setActiveSubscription((previous: any) => previous
                 ? {
@@ -279,14 +302,17 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handlePause = () => {
+        const mutationScopeKey = billingScopeKey;
         Dialog.confirm({
             title: t('pauseSubscription'),
             content: t('pauseSubscriptionDesc'),
             confirmText: t('pause'),
             cancelText: t('cancel'),
             onConfirm: async () => {
+                if (billingScopeKeyRef.current !== mutationScopeKey) return;
                 try {
                     await onPauseSubscription();
+                    if (billingScopeKeyRef.current !== mutationScopeKey) return;
                     Toast.show({ content: t('subscriptionPaused'), duration: 2000 });
                     await refetchSubscription();
                 } catch (err: any) {
@@ -298,8 +324,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleResume = async () => {
+        const mutationScopeKey = billingScopeKey;
         try {
             await onResumeSubscription();
+            if (billingScopeKeyRef.current !== mutationScopeKey) return;
             Toast.show({ content: t('subscriptionResumed'), duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
@@ -322,6 +350,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             return;
         }
 
+        const mutationScopeKey = billingScopeKey;
         setShowCancellationReasons(false);
         Dialog.confirm({
             title: t('cancelSubscription'),
@@ -329,6 +358,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             confirmText: t('cancelSubscriptionBtn'),
             cancelText: t('keepSubscription'),
             onConfirm: async () => {
+                if (billingScopeKeyRef.current !== mutationScopeKey) return;
                 try {
                     await onCancelSubscription({
                         reason: cancellationReason,
@@ -337,6 +367,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             : undefined,
                         consent: true,
                     });
+                    if (billingScopeKeyRef.current !== mutationScopeKey) return;
                     Toast.show({ content: t('subscriptionCancelled'), duration: 2000 });
                     setCancellationReason(null);
                     setCancellationReasonDetail('');
@@ -350,13 +381,23 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const fetchHistory = async () => {
+        const requestSequence = ++billingHistoryRequestSequenceRef.current;
+        const requestScopeKey = billingScopeKey;
         try {
             const historyStoreId = Number(sub?.storeId || billingStoreId || session?.user?.storeId);
             const raw = await getBillingHistoryForStore(session?.user?.tenantId, historyStoreId);
+            if (
+                billingHistoryRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             const formatted = formatBillingHistoryEvents(raw);
             setBillingHistory(formatted);
             setShowHistory(true);
         } catch (err) {
+            if (
+                billingHistoryRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             logPaymentFailure('payment_mobile_billing_history_load_failed', err, buildMobileBillingPaymentLogContext('history_load'));
             Toast.show({ content: t('failedToLoadHistory'), duration: 2000 });
         }
@@ -366,6 +407,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         try {
             if (targetStoreId === loginStoreId) {
                 if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
+                subscriptionRequestSequenceRef.current += 1;
+                billingHistoryRequestSequenceRef.current += 1;
+                setActiveSubscription(null);
+                setBillingHistory([]);
+                setShowHistory(false);
                 setActiveStoreContext(null);
                 setShowStorePicker(false);
                 Toast.show({ content: 'Switched store', duration: 1500 });
@@ -380,6 +426,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             });
             await readAuthAccountResponse(res, 'switch_store');
             await refreshFirebaseAuthClaims(targetStoreId);
+            subscriptionRequestSequenceRef.current += 1;
+            billingHistoryRequestSequenceRef.current += 1;
+            setActiveSubscription(null);
+            setBillingHistory([]);
+            setShowHistory(false);
             setActiveStoreContext(targetStoreId);
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });

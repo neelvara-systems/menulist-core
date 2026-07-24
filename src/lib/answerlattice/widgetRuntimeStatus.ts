@@ -68,7 +68,12 @@ export function getWidgetRuntimeStatusFromStoreData(storeData: Record<string, an
         lastFeature: typeof value.lastFeature === 'string' ? value.lastFeature : null,
         lastPage: typeof value.lastPage === 'string' ? value.lastPage : null,
         userAgentFamily: typeof value.userAgentFamily === 'string' ? value.userAgentFamily : null,
-        seenCount: Number.isFinite(Number(value.seenCount)) ? Number(value.seenCount) : 0,
+        seenCount: typeof value.seenCount === 'number'
+            && Number.isSafeInteger(value.seenCount)
+            && value.seenCount >= 0
+            && value.seenCount <= 1_000_000_000
+            ? value.seenCount
+            : 0,
     };
 }
 

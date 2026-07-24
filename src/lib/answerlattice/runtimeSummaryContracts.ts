@@ -1,5 +1,6 @@
 import { PRODUCT_IDS } from '@constant/product';
 import {
+    getAnswerlatticePredictiveTimestampMillis,
     isAnswerlatticePredictiveTriggerWithinWindow,
     normalizeAnswerlatticePredictiveTrigger,
     projectAnswerlatticePredictiveTriggerForRuntime,
@@ -24,6 +25,19 @@ export function parseAnswerlatticePredictiveTriggerIndex(
         return null;
     }
     if (!data.triggers || typeof data.triggers !== 'object' || Array.isArray(data.triggers)) return null;
+    if (
+        getAnswerlatticePredictiveTimestampMillis(data.lastUpdated) === null
+        || typeof data.version !== 'number'
+        || !Number.isSafeInteger(data.version)
+        || data.version <= 0
+        || typeof data.triggerCount !== 'number'
+        || !Number.isSafeInteger(data.triggerCount)
+        || data.triggerCount < 0
+        || typeof data.activeTriggerCount !== 'number'
+        || !Number.isSafeInteger(data.activeTriggerCount)
+        || data.activeTriggerCount < 0
+        || data.activeTriggerCount > data.triggerCount
+    ) return null;
 
     const entries = Object.entries(data.triggers);
     if (entries.length > ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT) return null;
@@ -38,12 +52,13 @@ export function parseAnswerlatticePredictiveTriggerIndex(
     const activeTriggerCount = Object.values(triggers).filter(trigger => (
         trigger.status === 'active' && isAnswerlatticePredictiveTriggerWithinWindow(trigger)
     )).length;
+    if (data.triggerCount !== Object.keys(triggers).length) return null;
     return {
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
         sId: scope.sId,
         lastUpdated: data.lastUpdated,
-        version: typeof data.version === 'number' && Number.isFinite(data.version) ? data.version : 0,
+        version: data.version,
         triggerCount: Object.keys(triggers).length,
         activeTriggerCount,
         triggers,

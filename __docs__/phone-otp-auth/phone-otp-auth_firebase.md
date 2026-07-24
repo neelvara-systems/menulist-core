@@ -70,6 +70,7 @@ Per verification:
 - Fail-closed challenge throttle happens before challenge verification, user resolution, or login-token writes.
 - 1 challenge reservation transaction read/update for valid, invalid, or expired attempts
 - bounded existing-user lookup queries in the documented login-identifier order; a missing user also uses one deterministic document read
+- one additional exact generated-email uniqueness query only when a uniquely resolved legacy phone profile has no email
 - 1 user update or create
 - 1 final transaction with exact challenge and user reads, plus login-token create and challenge update
 
@@ -94,3 +95,5 @@ The July 5 challenge ID boundary adds no reads/writes/deletes for valid OTP atte
 Phone OTP User Document ID Boundary adds no reads/writes/deletes for valid OTP attempts and does not change valid login behavior. Existing user profile updates, login-token `userId` writes, and consumed-token user comparisons now validate resolved user document IDs through `normalizePhoneOtpUserDocumentId()` before `users/{userId}` refs or token identity checks. Malformed, reserved, empty, whitespace-mutated, path-shaped, or oversized user IDs fail with the existing user-not-found path before user document refs or login-token trust. This adds no Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, Vercel deploy action, WhatsApp provider call, or owner-facing setting.
 
 July 11 transaction hardening adds a transient `verifying` status plus `verificationOperationId` and `verificationReservedUntil` fields to server-only challenge documents. Invalid-attempt, challenge-expiry, and login-token-expiry writes now commit before the helper throws. A successful verification replaces the former separate token/challenge writes with one transaction after exact challenge/user reads. The new emulator proves five-attempt exhaustion, expiry persistence, one concurrent winner, one-time exact-user consumption, and expired-token persistence. No rule, index, Cloud Function, Storage, provider, cache, public DTO, Firebase deploy, or Vercel deploy change is required.
+
+July 21 legacy email binding adds no collection, rule, index, Function, Storage, cache, public DTO, provider, Firebase deploy, or Vercel deploy change. A legacy phone-only user incurs one bounded generated-email uniqueness query before the existing user update. No query is added for users that already have email. A conflicting email owner fails closed before the phone profile is changed, and the challenge reservation returns to `pending` for safe resolution.

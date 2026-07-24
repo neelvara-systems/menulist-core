@@ -6,7 +6,7 @@ import type { ChatReference } from '@type/chatSession';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { Button, Card, Flex, Space, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { LuArrowRight, LuChevronDown, LuChevronUp, LuFileText, LuMaximize2 } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -35,6 +35,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
     const [loadingArticleId, setLoadingArticleId] = useState<string | null>(null);
     const [resolvedArticles, setResolvedArticles] = useState<Record<string, KnowledgeBaseArticleType>>({});
+    const articleRequestRef = useRef(0);
 
     if (!references || references.length === 0) {
         return null;
@@ -50,7 +51,6 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
     const resolveFullArticle = async (
         reference: ChatReference,
     ): Promise<ChatReference | KnowledgeBaseArticleType | null> => {
-        if (reference.content) return reference;
         if (resolvedArticles[reference.id]) return resolvedArticles[reference.id];
         setLoadingArticleId(reference.id);
         try {
@@ -70,17 +70,21 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
     };
 
     const togglePreview = async (reference: ChatReference) => {
+        const requestId = articleRequestRef.current + 1;
+        articleRequestRef.current = requestId;
         if (expandedArticleId === reference.id) {
             setExpandedArticleId(null);
             return;
         }
         const article = await resolveFullArticle(reference);
-        if (article) setExpandedArticleId(reference.id);
+        if (article && articleRequestRef.current === requestId) setExpandedArticleId(reference.id);
     };
 
     const openFullArticle = async (reference: ChatReference) => {
+        const requestId = articleRequestRef.current + 1;
+        articleRequestRef.current = requestId;
         const article = await resolveFullArticle(reference);
-        if (article) onArticleModalOpen(article);
+        if (article && articleRequestRef.current === requestId) onArticleModalOpen(article);
     };
 
     return (
@@ -91,7 +95,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {sortedReferences.map((ref) => {
                     const isExpanded = expandedArticleId === ref.id;
-                    const resolvedReference = resolvedArticles[ref.id] || ref;
+                    const resolvedArticle = resolvedArticles[ref.id];
                     const isLoading = loadingArticleId === ref.id;
                     return (
                         <motion.div
@@ -184,9 +188,9 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                 </Flex>
                             </Card>
 
-                            {/* Expandable Article Preview - Backend returns full article */}
+                            {/* Expandable Article Preview — current article is loaded on demand. */}
                             <AnimatePresence mode="wait">
-                                {isExpanded && resolvedReference.content && (
+                                {isExpanded && resolvedArticle && (
                                     <motion.div
                                         key={`preview-${ref.id}`}
                                         initial={{ opacity: 0, height: 0, marginTop: 0 }}
@@ -217,7 +221,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                         }}
                                     >
                                         <ArticleView
-                                            article={resolvedReference as KnowledgeBaseArticleType}
+                                            article={resolvedArticle}
                                             mode="preview"
                                             showBreadcrumbs={false}
                                             showTags={false}

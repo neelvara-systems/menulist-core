@@ -19,6 +19,8 @@ dimensions, canonical `embedding`, and cache version
 `embeddingV2` migration references below are preserved only as February audit
 evidence.
 
+Dedicated Answerlattice Functions now validate internal AI accounting at runtime before Firestore persistence: only registered actions, exact positive numeric workspace scope, bounded labels, nonnegative safe-integer counters, coherent token totals/source, and action-specific allowlisted compact response fields are admitted. Undeclared nested response keys are omitted rather than becoming owner-visible history; malformed known values fail closed. Malformed provider usage metadata falls back to bounded estimation and wrapper metadata such as embedding dimensions is not converted with JavaScript numeric coercion. Invalid input creates no row, and failure logs retain only fixed codes plus bounded type/length and error class/code/status metadata.
+
 ## June 2, 2026 Runtime Status
 
 The original February audit found missing usage tracking across the billable AI routes. The current runtime has the implementation alignment in place:
@@ -93,9 +95,9 @@ Rows below this status section are retained as February audit evidence. Any `COM
 | 19  | `aiUtils.ts`               | `generateKbFromSource` (Vertex)      | `gemini-2.5-pro`                 | KB generation from source (Vertex) | Source files (GCS URIs) + prompt                    | JSON (structured KB articles)                 | ❌ ZERO TRACKING                               |
 | 20  | `aiUtils.ts`               | `generateArticleEmbeddingUsingGenAi` | `text-embedding-004`             | KB article embedding (server)      | Article text (category+title+content)               | Vector (768 dimensions)                       | ❌ ZERO TRACKING                               |
 | 21  | `aiUtils.ts`               | `generateArticleEmbedding` (Vertex)  | `text-embedding-004`             | KB article embedding (Vertex)      | Article text                                        | Vector (768 dimensions)                       | ❌ ZERO TRACKING                               |
-| 22  | `feedbackAnalysis.ts`      | `generateFeedbackAnalysis`           | `gemini-2.5-flash` | Feedback intelligence              | Negative feedback messages                          | JSON (themes, severity, recommendations)      | ❌ ZERO TRACKING                               |
-| 23  | `weeklyNarrative.ts`       | `generateWeeklyNarrative`            | `gemini-2.5-flash` | Weekly narrative generation        | Aggregated weekly metrics                           | JSON (narrative, highlights, recommendations) | ❌ ZERO TRACKING                               |
-| 24  | `kbQuality.ts`             | `analyzeKBArticleQuality`            | `gemini-2.5-flash` | KB quality analysis                | Article + low-confidence queries + feedback         | JSON (qualityScore, issues, suggestions)      | ❌ ZERO TRACKING                               |
+| 22  | `feedbackAnalysis.ts`      | `generateFeedbackAnalysis`           | `gemini-2.5-flash` | Feedback intelligence              | Negative feedback messages                          | JSON (themes, severity, recommendations)      | DORMANT — not exported or scheduled            |
+| 23  | `weeklyNarrative.ts`       | `generateWeeklyNarrative`            | `gemini-2.5-flash` | Weekly narrative generation        | Aggregated weekly metrics                           | JSON (narrative, highlights, recommendations) | DORMANT — not exported or scheduled            |
+| 24  | `kbQuality.ts`             | `analyzeKBArticleQuality`            | `gemini-2.5-flash` | KB quality analysis                | Article + low-confidence queries + feedback         | JSON (qualityScore, issues, suggestions)      | DORMANT — not exported or scheduled            |
 | 25  | `ownerDashboardSummary.ts` | `generateOwnerDashboardSummary`      | `gemini-2.5-flash` | Weekly owner summary               | Weekly menu analytics metrics                       | JSON (bulletPoints)                           | ❌ ZERO TRACKING                               |
 | 26  | `ownerDashboardSummary.ts` | `generateDailyAISummary`             | `gemini-2.5-flash` | Daily owner summary                | Daily menu analytics metrics                        | JSON (bulletPoints)                           | ❌ ZERO TRACKING                               |
 | 27  | `ownerDashboardSummary.ts` | `generateMonthlyAISummary`           | `gemini-2.5-flash` | Monthly owner summary              | Monthly menu analytics metrics                      | JSON (bulletPoints)                           | ❌ ZERO TRACKING                               |
@@ -117,7 +119,7 @@ Rows below this status section are retained as February audit evidence. Any `COM
 
 | #   | File                            | Trigger                      | Calls AI Functions                                                 | Schedule              |
 | --- | ------------------------------- | ---------------------------- | ------------------------------------------------------------------ | --------------------- |
-| S1  | `masterScheduler.ts`            | `onSchedule('0 2 * * *')`    | feedbackIntelligence → #22, kbQuality → #24, weeklyNarrative → #23 | Daily 2 AM UTC        |
+| S1  | `masterScheduler.ts`            | Retired; only fail-closed compatibility callables remain | No AI calls | Not scheduled |
 | S2  | `aggregateCustomerAnalytics.ts` | `onSchedule('0 3 * * *')`    | ownerDashboardSummary → #25, #26, #27                              | Daily 3 AM UTC        |
 | S3  | `processMenuImagesJob.ts`       | Firestore `onCreate` trigger | processMenuImagesLogic → #17                                       | On-demand (job queue) |
 
@@ -349,9 +351,9 @@ These consume tokens but serve the platform (help center, analytics intelligence
 | 11  | KB Search (streaming)             | `/api/helpCenter/search-kb-stream`                       | Same as #8-10 but streaming mode.                                |
 | 12  | KB Article Embedding              | `/api/helpCenter/article-embedding`                      | No token tracking. Low volume.                                   |
 | 13  | KB Generation from Source         | `functions/src/utils/aiUtils.ts`                         | No token tracking. Uses Pro model.                               |
-| 14  | Feedback Intelligence             | `functions/src/services/gemini/feedbackAnalysis.ts`      | No token tracking. Scheduled.                                    |
-| 15  | Weekly Narrative                  | `functions/src/services/gemini/weeklyNarrative.ts`       | No token tracking. Scheduled.                                    |
-| 16  | KB Quality Analysis               | `functions/src/services/gemini/kbQuality.ts`             | No token tracking. Scheduled (batch).                            |
+| 14  | Feedback Intelligence             | `functions/src/services/gemini/feedbackAnalysis.ts`      | Dormant compatibility source; no active provider or tracking path. |
+| 15  | Weekly Narrative                  | `functions/src/services/gemini/weeklyNarrative.ts`       | Dormant compatibility source; no active provider or tracking path. |
+| 16  | KB Quality Analysis               | `functions/src/services/gemini/kbQuality.ts`             | Dormant compatibility source; no active provider or tracking path. |
 | 17  | Owner Dashboard Summary (daily)   | `functions/src/services/gemini/ownerDashboardSummary.ts` | No token tracking. Scheduled.                                    |
 | 18  | Owner Dashboard Summary (weekly)  | Same file                                                | No token tracking. Scheduled.                                    |
 | 19  | Owner Dashboard Summary (monthly) | Same file                                                | No token tracking. Scheduled.                                    |

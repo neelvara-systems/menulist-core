@@ -6,7 +6,9 @@ import {
     isMinuteWithinClockRange,
     isValidClockRange,
     minutesUntilClockStart,
+    normalizeProjectPresetReferenceMutation,
     normalizeTimeSlotPreset,
+    normalizeTimeSlotPresetCascadePending,
     normalizeTimeSlotPresetId,
     normalizeTimeSlotPresets,
     projectReferencesTimeSlotPreset,
@@ -76,6 +78,34 @@ assert.doesNotThrow(() => normalizeTimeSlotPresets([
     { id: "breakfast", label: "Breakfast", startTime: "08:00", endTime: "12:00" },
     { id: "brunch", label: "Brunch", startTime: "10:00", endTime: "14:00" },
 ]));
+assert.deepEqual(normalizeProjectPresetReferenceMutation({
+    type: "remove",
+    presetId: " late ",
+}), { type: "remove", presetId: "late" });
+assert.equal(normalizeProjectPresetReferenceMutation({
+    type: "update",
+    preset: { id: "late", label: "Late", startTime: "bad", endTime: "02:00" },
+}), null);
+assert.deepEqual(normalizeTimeSlotPresetCascadePending({
+    operationId: " 10-ABC123-10 ",
+    createdAt: "2026-07-23T08:00:00.000Z",
+    mutation: {
+        type: "update",
+        preset: { id: "late", label: "Late", startTime: "22:00", endTime: "02:00" },
+    },
+}), {
+    operationId: "10-ABC123-10",
+    createdAt: "2026-07-23T08:00:00.000Z",
+    mutation: {
+        type: "update",
+        preset: { id: "late", label: "Late", startTime: "22:00", endTime: "02:00" },
+    },
+});
+assert.equal(normalizeTimeSlotPresetCascadePending({
+    operationId: "10-ABC123-10",
+    createdAt: "not-a-date",
+    mutation: { type: "remove", presetId: "late" },
+}), null);
 
 const project = {
     projectId: "1-project-10",

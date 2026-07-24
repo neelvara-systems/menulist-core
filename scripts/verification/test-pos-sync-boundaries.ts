@@ -5,6 +5,7 @@ import {
     normalizePosSyncMenuVersion,
     resolvePosSyncDeliveryOutcome,
 } from '../../src/lib/posSync/deliveryState';
+import { parsePosDeliveryHistoryEntry } from '../../src/lib/posSync/deliveryHistory';
 import { buildMenuSnapshot } from '../../src/lib/posSync/payloadFormatter';
 import { createPosSyncPinnedLookup } from '../../src/lib/posSync/pinnedWebhookRequest';
 import {
@@ -75,6 +76,53 @@ assert.equal(normalizePosSyncMenuVersion(0), 0);
 assert.equal(normalizePosSyncMenuVersion(9), 9);
 assert.equal(normalizePosSyncMenuVersion('9'), null);
 assert.equal(normalizePosSyncMenuVersion(Number.NaN), null);
+
+const deliveryTimestamp = { toDate: () => new Date('2026-07-21T10:00:00.000Z') };
+assert.deepEqual(parsePosDeliveryHistoryEntry('del_mdx_0123456789ab', {
+    attempt: 1,
+    deliveryId: 'del_mdx_0123456789ab',
+    duration: 42,
+    error: 'internal provider detail',
+    menuVersion: 3,
+    payloadHash: 'internal-hash',
+    payloadSize: 100,
+    responseCode: 200,
+    sentAt: deliveryTimestamp,
+    status: 'success',
+}), {
+    attempt: 1,
+    deliveryId: 'del_mdx_0123456789ab',
+    duration: 42,
+    menuVersion: 3,
+    responseCode: 200,
+    sentAt: '2026-07-21T10:00:00.000Z',
+    status: 'success',
+});
+assert.equal(parsePosDeliveryHistoryEntry('del_mdx_0123456789ab', {
+    attempt: 1,
+    deliveryId: 'del_other_123456789abc',
+    duration: 42,
+    menuVersion: 3,
+    responseCode: 200,
+    sentAt: deliveryTimestamp,
+    status: 'success',
+}), null);
+assert.equal(parsePosDeliveryHistoryEntry('del_mdx_0123456789ab', {
+    attempt: 1,
+    duration: 42,
+    menuVersion: 3,
+    responseCode: 200,
+    sentAt: deliveryTimestamp,
+    status: 'unexpected',
+}), null);
+assert.equal(parsePosDeliveryHistoryEntry('del_mdx_0123456789ab', {
+    attempt: 1,
+    duration: Number.NaN,
+    menuVersion: 3,
+    responseCode: null,
+    sentAt: deliveryTimestamp,
+    status: 'failed',
+}), null);
 
 const connectionIssueMessage = 'Could not reach connected system';
 assert.deepEqual(resolvePosSyncDeliveryOutcome({

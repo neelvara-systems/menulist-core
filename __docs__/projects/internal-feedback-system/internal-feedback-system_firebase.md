@@ -1,7 +1,7 @@
 # Internal Feedback System - Firebase Contract
 
 **Status:** Implemented
-**Last Updated:** July 16, 2026
+**Last Updated:** July 23, 2026
 **Audience:** Developers, Firebase operators, production readiness reviewers
 
 ---
@@ -25,11 +25,13 @@ Guest Feedback target document-ID admission is cost-neutral for valid submission
 
 - `guestFeedback` creates: `allow create: if false;`
 - `guestFeedback` reads: allowed only for sessions that belong to the feedback tenant/store.
-- `guestFeedback` updates: tenant/store admins can update only `status`, `needsAttention`, `modifiedOn`, `modifiedBy`, and `ownerNote`.
+- `guestFeedback` updates: tenant/store admins can update only `status`, `needsAttention`, `modifiedOn`, `modifiedBy`, and `ownerNote`; `modifiedOn` must be the Firestore write time (`request.time`) produced by a server-timestamp transform.
 - `guestFeedback` deletes: denied from clients.
 - `feedbackEvents`: append-only event records with no client read, update, or delete access.
 
 Guest feedback writes do not invalidate public menu/OBP cache because feedback is private owner workflow data and does not change public menu, store, outlet, Official Business Page, or screen-display truth packets.
+
+Owner inbox reads and status writes carry a caller-captured tenant/store into the client DAL. The DAL still derives authority from the signed active session and rejects disagreement before Firestore work. Normal operation costs are unchanged: desktop keeps one list plus one aggregate count on initial/filter loads, mobile keeps one list read, pagination keeps its cursor read plus bounded query, and status remains one transaction. If a newer desktop list replaces the source row while a status transaction commits, the client performs one list/count reconciliation instead of projecting over newer state. Runtime result guards reject cross-scope rows, duplicate IDs, incoherent cursors, fractional counts, and wrong-row status acknowledgements before UI state changes.
 
 Feedback nudge storage diagnostics: the public menu inline feedback nudge uses browser-local sessionStorage only to avoid repeating the nudge in one tab session. Failed read/write paths log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
@@ -59,4 +61,4 @@ Public feedback retry idempotency uses a deterministic `guestFeedback` document 
 - Owner counts are separate scoped reads and must stay acknowledgement-guarded before rendering.
 - Status/reply updates are single-document writes after the client DAL verifies the shaped existing record.
 
-Run `npm run verify:guest-feedback-boundary` after any rule, index, retention, DAL, or public submit change.
+Run `npm run verify:guest-feedback-boundary` and `npm run test:guest-feedback:rules` after any rule, index, retention, DAL, or public submit change. The emulator command clears ambient Application Default Credential paths and invokes the repository-local `ts-node`; it must not require a production credential file.

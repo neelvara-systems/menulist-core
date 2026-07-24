@@ -1,48 +1,54 @@
-# SignalDesk Evidence Packets - Firebase Cost Plan
+# SignalDesk Evidence Packets - Firebase And Cost
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
-**Cost impact now:** None.
+**Status:** Implemented locally; QA index/Function deployment pending authentication
+**Last Updated:** July 21, 2026
 
 ## Collections
 
-| Collection | Purpose | Normal reads |
+| Collection | Purpose | Client rule |
 | --- | --- | --- |
-| `signaldeskEvidencePacketSummaries` | Target evidence list rows | Target detail |
-| `signaldeskEvidencePackets` | Full evidence packet | Target/evidence detail |
-| `signaldeskDecisionSnapshots` | Immutable decision records | Target/detail/audit |
-| `signaldeskEvidenceExpiryJobs` | Refresh/expiry jobs | Admin/debug |
+| `signaldeskEvidencePackets` | Private bounded facts and source-lifecycle authority. | No client read/write rule; default deny. |
+| `signaldeskEvidencePacketSummaries` | Protected workspace summary used by draft/approval/AI/outcome flows. | SignalDesk internal read; client write denied. |
+| `signaldeskAuditEvents` | Immutable create/expiry evidence. | Internal read; client write denied. |
+| `signaldeskCostDailySummaries` | Compact write/read accounting. | Internal read; client write denied. |
 
-## Read / Write Model
+There is no evidence expiry-job collection and no large-evidence Storage path in
+the active runtime.
 
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Target evidence tab | 1-3 | 0 | Summary docs. |
-| Evidence detail | 2-5 | 0 | Full packet only when opened. |
-| Create packet | 4-8 | 2-5 | Target, source policy, source facts; packet, summary, audit. |
-| Write decision snapshot | 1-4 | 1-2 | Immutable append. |
-| Expiry job | Bounded query | Updates | Cap batch size. |
+## Normal Cost
+
+| Flow | Reads | Writes |
+| --- | ---: | ---: |
+| New packet | 3 transaction reads: target, policy, deterministic summary. | 5: detail, summary, target projection, audit, daily cost. |
+| Exact replay | Same bounded authority reads. | 0. |
+| AI/Templates workspace | One bounded recent-summary query in that section. | 0. |
+| Historical expiry candidate | Bounded query plus detail/summary transaction reads. | Detail, present summary, and deterministic audit. |
+
+Packet creation makes no provider call and adds no listener.
 
 ## Indexes
 
-- `signaldeskEvidencePacketSummaries`: `targetId + updatedAt`
-- `signaldeskEvidencePacketSummaries`: `status + expiresAt`
-- `signaldeskDecisionSnapshots`: `targetId + createdAt`
-- `signaldeskDecisionSnapshots`: `decisionType + createdAt`
-- `signaldeskEvidenceExpiryJobs`: `status + dueAt`
-
-## Cost Controls
-
-- Large evidence should live in Storage with refs.
-- Decision snapshots are append-only but detail-only.
-- Dashboards use summaries, not full evidence packets.
-- Expiry jobs use bounded batches.
+- `signaldeskEvidencePacketSummaries`: `targetId ASC, updatedAt DESC` for current
+  downstream evidence selection.
+- `signaldeskEvidencePackets`: `pId ASC, sourceDataLifecycleState ASC,
+  sourceDataExpiresAt ASC` for independent historical expiry.
 
 ## Retention
 
-| Data | Default |
-| --- | --- |
-| Evidence summaries | 12-24 months |
-| Evidence packet details | 12 months or source policy shorter |
-| Decision snapshots | 24 months minimum |
-| Large evidence bundles | Per source policy |
+The packet follows the source-data expiry copied from current target authority.
+The consolidated `signaldeskMaintenanceScheduler` runs the source-data lifecycle
+hourly under its existing lease. Target expiry scrubs all target dependencies;
+the independent packet query prevents a target refresh from extending older
+evidence. Scrubbed records retain identity and audit-safe tombstone fields only.
+
+## Deployment
+
+Because this hardening changes SignalDesk Function logic and a Firestore index,
+the required QA target is:
+
+```bash
+firebase deploy --project menulist-signaldesk-qa --config firebase-signaldesk.json --only firestore:indexes,functions:signaldeskMaintenanceScheduler --non-interactive
+```
+
+Run only after `firebase login` restores an authorized account. Provider sending
+must remain disabled. No Vercel deployment is implied.

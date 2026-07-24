@@ -566,7 +566,7 @@ async function main() {
         approvalId: draftResult.approval.approvalId,
         channel: "instagram",
       }),
-      "Target is suppressed",
+      "DIRECT_PROVIDER_SEND_EMAIL_ONLY",
     );
   } finally {
     FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND = false;
@@ -607,10 +607,9 @@ async function main() {
 
   const sensitiveComplaint = "Spam complaint; private case SECRET-COMPLAINT-9911";
   await captureSignalDeskReplyServer(access, {
-    channel: "email",
+    conversationId,
     idempotencyKey: "fresh-lineage-critical-reply-v1",
     message: sensitiveComplaint,
-    targetId,
   });
   const missionAfterComplaint = (await db.collection(SIGNALDESK_COLLECTIONS.GROWTH_MISSIONS).doc(mission.growthMissionId).get()).data();
   assert.equal(JSON.stringify(missionAfterComplaint.missionActions).includes(sensitiveComplaint), false);

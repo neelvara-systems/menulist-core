@@ -1,0 +1,303 @@
+{
+  "_health": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList internal Admin-only operational health scratch/state collection; active daily Gemini provider probe exact-replaces one compact aiProvider_gemini document, while the dormant per-store health helper only uses transient connectivity documents that it creates/reads/deletes in one invocation",
+    "rulesStatus": "No explicit client rule path; root default deny blocks every browser read/write. Active and dormant producers use Admin SDK only",
+    "indexStatus": "Exact document read/write/delete only; no query, composite index or TTL index is required",
+    "findings": [
+      "AUDIT-AI-PROVIDER-HEALTH-MERGE-001"
+    ]
+  },
+  "_system": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Separate Admin-only coordination families in the MenuList and SignalDesk Firebase projects. MenuList owns per-task maintenance leases/state, one platform-daily lease and one paged subscription-reconciliation cursor. SignalDesk owns product-bound scheduler leases/state plus transactional target-lifecycle and AI-detail backfill cursors; SignalDesk rows require pId SD",
+    "rulesStatus": "No explicit client path in either product ruleset; unmatched browser reads/writes are denied. Every observed producer/consumer uses its product-local Admin SDK",
+    "indexStatus": "Every _system operation is an exact document read/write/delete or transaction; no query, composite index, single-field exemption or TTL policy is required",
+    "findings": [
+      "AUDIT-SCHEDULER-LEASE-OWNERSHIP-001",
+      "AUDIT-COLLECTION-CATALOG-CONSTANT-SCOPE-001"
+    ]
+  },
+  "billingCheckoutLeases": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Central MenuList Admin-only checkout coordination shared by MenuList and Answerlattice because both use one Razorpay provider namespace; one actor/request-bound document per product/tenant/store/kind versions and fences pre-provider, provider-ambiguous, exact-provider and short completed-replay state",
+    "rulesStatus": "Explicit client rule path denies every authenticated and unauthenticated browser read/write; emulator verified. All writers/readers use server Admin SDK after current product tenant/store billing authorization",
+    "indexStatus": "Exact document transactions own every state transition; daily health uses the declared status/expiresAt composite for separately capped processing, provider_creating and provider_created queries; no TTL policy applies because recovery state must not disappear automatically",
+    "findings": [
+      "AUDIT-BILLING-CHECKOUT-PROVIDER-FENCE-001",
+      "AUDIT-BILLING-CHECKOUT-RECOVERY-IDENTITY-001"
+    ]
+  },
+  "billingProviderPlans": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Central MenuList Admin-only Razorpay plan registry shared by MenuList and Answerlattice because both use one provider account; one SHA-256 exact product/user-type/plan/interval/currency/amount key owns versioned pre-provider, provider-ambiguous and immutable ready identity",
+    "rulesStatus": "Explicit client rule path denies every authenticated and unauthenticated browser read/write; emulator verified. Server callers derive plan facts from maintained MenuList, Answerlattice or reseller pricing after their own auth/scope admission",
+    "indexStatus": "Registry mutations/readiness use exact documents; daily recovery health uses the declared status/leaseExpiresAt composite for separately capped processing and provider_creating queries; provider scans are bounded external API pages and no TTL policy applies",
+    "findings": [
+      "AUDIT-BILLING-PROVIDER-PLAN-FENCE-001"
+    ]
+  },
+  "payment_transactions": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Product-local server-owned immutable/deterministic billing ledger. Subscription-bearing signed webhooks establish one exact subscription ID and one unique persisted product owner before selecting this ledger. Event-key audits then require exact dual product plus either no scope or complete agreeing numeric tenant/store aliases; product, workspace, event/type, provider entity IDs, amount, currency and provider time are immutable on replay. Top-up history is written only after immutable settlement supplies canonical billing scope/value, while unknown orders remain unscoped. Deterministic owner-referral reward rows retain their separate exact scoped contract. MenuList and Answerlattice owner histories are read-only, bounded and require all identity aliases; Founder Monitor reads only the shared MenuList project through an explicitly guarded maintenance backfill",
+    "rulesStatus": "Shared rules admit payment rows only with exact ML or AL product aliases plus present, agreeing tenant/store aliases and the current authorized workspace; dedicated Answerlattice rules enforce the same AL contract. Both deny all browser writes. Emulator coverage rejects conflicting direct rows and list queries that omit either compatibility alias before browser disclosure",
+    "indexStatus": "Both product composites cover pId + productId + event + tenantId + storeId + tId + sId + created_at desc. Writes use deterministic exact-document transactions and need no TTL. The guarded MenuList compatibility migration pages by document ID and repairs only explicit single-ML-alias legacy rows; alias-less/conflicting ownership remains quarantined",
+    "findings": [
+      "AUDIT-BILLING-AUDIT-TIMESTAMP-001",
+      "AUDIT-BILLING-LEDGER-PRODUCT-ISOLATION-001",
+      "AUDIT-BILLING-TRANSACTION-SCOPE-ALIAS-001",
+      "AUDIT-BILLING-PAYMENT-AUDIT-IMMUTABILITY-001",
+      "AUDIT-BILLING-WEBHOOK-PRODUCT-RESOLUTION-001",
+      "AUDIT-BILLING-WEBHOOK-SUBSCRIPTION-OWNERSHIP-001"
+    ]
+  },
+  "razorpayWebhookEvents": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Central MenuList Admin-only signed Razorpay idempotency ledger shared by MenuList and Answerlattice; exact agreeing provider product and subscription-ID declarations plus exactly one persisted cross-product subscription owner select product ownership before claim. Zero matches/read failures retry without a claim, while dual matches, declaration mismatch, conflicting IDs and unknown declarations persist nothing. One bounded deterministic provider event key then owns versioned attempt/lease, exact terminal state and bounded product/scope diagnostics. The existing maintenance scheduler observes failed/expired work and deletes terminal/stale-processing rows older than 90 days",
+    "rulesStatus": "Explicit universal client read/write deny is emulator-covered. The public route writes only after body caps, rate limiting, signature validation and event-envelope admission; every mutation uses Admin SDK transactions",
+    "indexStatus": "Exact document transactions own claim and attempt-fenced terminal state; daily health uses the declared status/processingExpiresAt composite and retention uses the automatic updatedAt range index. No TTL policy applies because cleanup deliberately coordinates active/terminal status",
+    "findings": [
+      "AUDIT-BILLING-WEBHOOK-LEASE-FENCE-001",
+      "AUDIT-BILLING-WEBHOOK-PRODUCT-RESOLUTION-001",
+      "AUDIT-BILLING-WEBHOOK-SUBSCRIPTION-OWNERSHIP-001"
+    ]
+  },
+  "feedbackEvents": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList compact non-PII tenant/store/project feedback event ledger; validated Admin submit helper is the only active writer, every client read/write is denied, and the leased maintenance scheduler owns bounded current/legacy retention",
+    "rulesStatus": "Explicit server-only rule path denies every client read and write; forged anonymous and authenticated events are emulator-verified denied",
+    "indexStatus": "Admin writes use deterministic create-only submission IDs; bounded expiry and legacy timestamp range cleanup use automatic single-field indexes and require no composite index",
+    "findings": [
+      "AUDIT-FEEDBACK-002"
+    ]
+  },
+  "guestFeedback": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList private tenant/store feedback with optional guest contact/message fields; validated public Admin route creates idempotently, exact assigned-store owner/manager clients read and transactionally resolve/reopen, owner-health Functions reads scoped windows, and Admin retention deletes expired raw rows",
+    "rulesStatus": "Client create/delete denied; exact tenant/store membership plus write role, allowlisted status fields, actor identity, attention invariant and Firestore request-time modification authority; emulator verified locally",
+    "indexStatus": "Store-scoped newest/status/needs-attention reads use declared composites, direct feedback reads use document identity, aggregate counts reuse scoped indexes, and bounded expiresOn retention uses its automatic single-field index",
+    "findings": [
+      "AUDIT-FEEDBACK-001",
+      "AUDIT-FEEDBACK-003",
+      "AUDIT-FEEDBACK-MODIFIED-TIME-AUTHORITY-001"
+    ]
+  },
+  "integrations": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Reserved MenuList Google Business Profile token-path scaffold only; no active collection, writer, reader, OAuth route, provider worker or owner connection flow exists while ENABLE_GBP_SYNC is false and every exported token operation throws before Firebase access",
+    "rulesStatus": "No explicit active rule path is required for the disabled scaffold; the nested reserved tenants/{tId}/integrations/gbp/{sId} path falls through to root default deny for clients, and any future activation requires an explicit server-only token rule review before the first write",
+    "indexStatus": "No active documents or queries exist, so no index or TTL policy is justified; activation requires a new cost/query/retention review rather than treating the reserved path as deployed storage",
+    "findings": []
+  },
+  "menuChangeLog": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList tenant/store/project private immutable event ledger; owner/manager exact-scope canonical browser writer plus supported legacy exact-scope shape, Admin nightly readers and assigned-store/platform private readers",
+    "rulesStatus": "Exact tenant/store membership, write role, path-payload scope, existing project, strict allowlisted shape and Firestore request-time create authority; client update/delete denied; emulator verified locally",
+    "indexStatus": "Dynamic store subcollections use automatic timestamp plus document-ID ordered bounded pagination with one lower and one upper timestamp range; no composite index required",
+    "findings": [
+      "AUDIT-MCL-WORKSPACE-001",
+      "AUDIT-MCL-RULES-002",
+      "AUDIT-MCL-APPEND-003",
+      "AUDIT-MCL-DEBOUNCE-004",
+      "AUDIT-MCL-RUNTIME-005",
+      "AUDIT-MCL-READS-006",
+      "AUDIT-MOL-EVENT-TIME-AUTHORITY-001",
+      "AUDIT-MOL-LEGACY-PROVENANCE-SCOPE-001"
+    ]
+  },
+  "menuSnapshots": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList tenant/store/project private immutable publish-time proof snapshot; owner/manager exact-scope browser writer, assigned-store/platform private reader and leased Admin expiry cleanup",
+    "rulesStatus": "Exact tenant/store membership, write role, existing project, bounded count-consistent shape, Firestore request-time creation, exact 90-day marker and bounded expiry; client update/delete denied; emulator verified locally",
+    "indexStatus": "Direct private reads plus per-store automatic expiresAt range cleanup; dynamic store collection names preclude one collection-group TTL policy and require no composite index",
+    "findings": [
+      "AUDIT-MCL-RULES-002",
+      "AUDIT-MENU-SNAPSHOT-RETENTION-AUTHORITY-001",
+      "AUDIT-MENU-SNAPSHOT-LEGACY-RETENTION-001"
+    ]
+  },
+  "masterOperationalState": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList project-scoped signal; tenant members may read same-tenant state, while only platform or current master-store owner/manager authority may create or advance the exact signal",
+    "rulesStatus": "rule path observed; exact project tenant/store ID binding, create-at-1, update-at-current+1, server timestamp, immutable two-field shape, delete denied; emulator verified locally",
+    "indexStatus": "Direct document reads only; no composite index required",
+    "findings": [
+      "AUDIT-MASTER-OPERATIONAL-WRITE-AUTHORITY-001",
+      "AUDIT-MASTER-OPERATIONAL-RUNTIME-SHAPE-001",
+      "AUDIT-MASTER-AWARENESS-ASYNC-STATE-001"
+    ]
+  },
+  "menuIntelligence": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList tenant/store/project private derived projection; Admin scheduler writer, strict Admin reader and separately authorized platform-only diagnostics; no owner/staff/public app reader",
+    "rulesStatus": "rule path observed; authenticated platform-only direct read, every client write denied; emulator verified locally",
+    "indexStatus": "Exact document access only; six high-cardinality map/audit fields have explicit single-field index exemptions, validUntil is an unindexed TTL field, and no composite index is required",
+    "findings": [
+      "AUDIT-CMI-ITEM-ID-PROTOTYPE-001",
+      "AUDIT-CMI-PRIVATE-READ-001",
+      "AUDIT-CMI-PERSISTED-SHAPE-001",
+      "AUDIT-CMI-READ-COMPUTE-WRITE-RACE-001",
+      "AUDIT-CMI-COMPACT-ANALYTICS-TRUST-001",
+      "AUDIT-CMI-PROJECTOR-INVARIANTS-001",
+      "AUDIT-CMI-DATE-REGRESSION-001",
+      "AUDIT-CMI-DIRECT-STATE-TRUST-001",
+      "AUDIT-CMI-IDENTITY-VALIDATION-ORDER-001",
+      "AUDIT-CMI-RANK-TIE-DETERMINISM-001",
+      "AUDIT-CMI-PERSISTED-CROSS-FIELD-INVARIANTS-001",
+      "AUDIT-CMI-FALSE-CONSTRAINT-CONTRACT-001",
+      "AUDIT-CMI-PROJECTION-USE-BYPASS-001",
+      "AUDIT-CMI-DIRECT-INPUT-TRUST-001",
+      "AUDIT-CMI-DISCRIMINATOR-COERCION-001",
+      "AUDIT-CMI-TTL-CONFIG-001"
+    ]
+  },
+  "menuItemState": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList tenant/store/project private rolling-window derived metrics; Admin scheduler is the sole writer and no browser, owner, staff or public reader is certified",
+    "rulesStatus": "No explicit client rule path; root default deny applies to all client reads and writes. Admin scheduler access is server-side only",
+    "indexStatus": "Per-project metrics subcollections use document-ID ordered exact pagination and direct document replacement/delete; no composite index is required",
+    "findings": [
+      "AUDIT-MOL-DERIVED-METRIC-MERGE-001",
+      "AUDIT-MOL-DUPLICATE-TYPE-DRIFT-001"
+    ]
+  },
+  "answerlattice_aiOperations": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "Answerlattice positive tenant/workspace-scoped server/Admin AI operation ledger. Restarts 450-455 review shared app-writer target selection, canonical path construction, agreement-based session identity, exact compact response-summary projection and closed outer document admission with writer-owned time. Restart 456 reviews exact safe-integer credits/units, canonical idempotency identity, complete arithmetic-consistent replay evidence and fail-closed malformed persistence. Restart 457 adds a deterministic reserved shell before the support-search provider call, then exact succeeded/refunded transitions with matching root recovery evidence. Functions producers, owner/platform API projection and remaining consumers retain their prior inventory/ranged status",
+    "rulesStatus": "Both shared and separate Answerlattice rules expose platform-admin read only and deny client writes. Server/Admin producers bypass rules and must use the exact product-local datastore; Restart 450 removes the prior fallback into MenuList when the Answerlattice Admin runtime is unavailable",
+    "indexStatus": "Protected history orders by createdOn with bounded filtering/continuation. The exact complete index set and every Functions producer remain pending reverse review",
+    "findings": [
+      "AUDIT-AI-OPERATION-PRODUCT-SCOPE-001",
+      "AUDIT-AI-OPERATION-SESSION-SCOPE-001",
+      "AUDIT-AI-OPERATION-RESPONSE-SUMMARY-ALLOWLIST-001",
+      "AUDIT-AI-OPERATION-DOCUMENT-ALLOWLIST-001",
+      "AUDIT-ANSWERLATTICE-AI-CREDIT-SCALAR-001",
+      "AUDIT-ANSWERLATTICE-SUPPORT-SEARCH-RESERVATION-001"
+    ]
+  },
+  "menulistAiOperations": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList tenant/store-scoped server/Admin AI operation ledger. Paid routes reserve exact credits before provider work, settle the same deterministic operation shell after valid output, or refund exact charged buckets once. Interactive shells are recovered by bounded maintenance; durable batch shells remain retry-owned. Owner history reads a bounded public-safe projection after current billing permission, while platform projection retains only its explicit diagnostics allowlist. Restarts 447-455 fully reviewed persisted credit/unit/balance/period evidence across reservation, finalizer/history replay, settlement, refund, recovery, browser balance mirroring, operation-log scalar projection, exact product/path targeting, agreement-based session identity, exact compact response-summary and closed outer document admission with writer-owned time; other extraction/operation families retain prior ranged review",
+    "rulesStatus": "Current exact tenant/store members may read their scoped operation subcollection through the protected server projection; browser mutation is not certified and server/Admin writers own accounting state. Existing rule and API source gates preserve tenant path identity, current permission and public/private field filtering",
+    "indexStatus": "Owner history uses bounded createdOn ordering plus action filtering/continuation behavior reviewed by the AI accounting gate. Pending reservation shells omit createdOn; automatic recovery uses the declared reservationRecoveryAt collection-group index and bounded per-store query. Refunded shells retain idempotency evidence for fourteen days before explicit maintenance deletion",
+    "findings": [
+      "AUDIT-AI-CAPACITY-RESERVATION-RACE-001",
+      "AUDIT-IMAGE-BATCH-DURABLE-RESERVATION-001",
+      "AUDIT-AI-RESERVATION-RECOVERY-ISOLATION-001",
+      "AUDIT-AI-OPERATIONS-RESPONSE-IDENTITY-001",
+      "AUDIT-AI-OPERATIONS-BILLING-PERMISSION-001",
+      "AUDIT-AI-CAPACITY-SUBSCRIPTION-SCOPE-ALIAS-001",
+      "AUDIT-AI-CREDIT-SCALAR-001",
+      "AUDIT-AI-ACCOUNTING-REPLAY-SCALAR-001",
+      "AUDIT-AI-OPERATION-LOG-SCALAR-001",
+      "AUDIT-AI-OPERATION-PRODUCT-SCOPE-001",
+      "AUDIT-AI-OPERATION-SESSION-SCOPE-001",
+      "AUDIT-AI-OPERATION-RESPONSE-SUMMARY-ALLOWLIST-001",
+      "AUDIT-AI-OPERATION-DOCUMENT-ALLOWLIST-001"
+    ]
+  },
+  "ownerControlUsage": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList tenant/store aggregate produced by confirmed owner controls; exact owner/manager scope writes and same-store reads, with Admin-only nightly platform aggregation",
+    "rulesStatus": "rule path observed; exact tenant/store document binding, create-at-one or one-control increment, current UTC month and server timestamps, staff/cross-scope/arbitrary rewrites/delete denied; emulator verified locally",
+    "indexStatus": "Direct document read plus Admin document-ID pagination; no composite index required",
+    "findings": [
+      "AUDIT-OWNER-CONTROL-WRITE-INTEGRITY-001",
+      "AUDIT-OWNER-CONTROL-RUNTIME-SHAPE-001",
+      "AUDIT-OWNER-CONTROL-SCHEDULER-BOUND-001",
+      "AUDIT-OWNER-CONTROL-EFFECT-ORDER-001",
+      "AUDIT-OWNER-CONTROL-MONTH-ROLLOVER-001"
+    ]
+  },
+  "systemHealth": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList internal operational current-state family; restart 413 fully reviewed the Admin-only billing singleton writer/query/alert flow, while other health document families remain pending reverse review",
+    "rulesStatus": "No browser billing-health producer or consumer was found; the billing singleton is Admin-written and falls through to root default deny. Remaining collection rule/caller families are not yet certified",
+    "indexStatus": "The billing singleton is one exact replacement write; its source observations use indexes on their source collections. Remaining systemHealth document/query/index contracts are pending",
+    "findings": [
+      "AUDIT-BILLING-HEALTH-MERGE-001"
+    ]
+  },
+  "posDeliveryLogs": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList nested store delivery history; server/Functions producers only, exact parent tenant/store owner reader, no client writer",
+    "rulesStatus": "rule path observed; nested exact parent tenant/store read path with client create/update/delete denied; emulator verified locally",
+    "indexStatus": "Nested ordered read uses the existing single-field timestamp index; no composite index required",
+    "findings": [
+      "AUDIT-POS-DELIVERY-HISTORY-RULES-001",
+      "AUDIT-POS-DELIVERY-HISTORY-PROJECTION-001",
+      "AUDIT-AUDIT-CATALOG-SCRIPT-001"
+    ]
+  },
+  "subscriptions": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "Product-local server-owned billing and entitlement truth. Restarts 417-433 reviewed exact product selection/mutation across MenuList owner, reseller, referral, account claim, AI, top-up, reconciliation, messaging, maintenance and Founder Monitor paths plus Answerlattice onboarding, activation, intake, AI accounting, entitlement and browser billing consumers. Signed subscription webhooks now require one exact provider subscription ID plus exactly one matching product-local document before the central claim; zero matches retry and conflicting/dual ownership fails before side effects. Global Functions consumers share one exact dual-ML, agreeing positive-safe-integer tenant/store alias projector before provider access, lifecycle delivery, entitlement mutation, credit recovery or monitoring joins. Every bounded fallback constrains both product and tenant/store alias pairs before its limit; MenuList entitlement, top-up settlement and every AI-credit reset/reservation/finalization/refund/consume transaction reproject current subscription truth through the exact shared boundary. Operation replay separately rejects conflicting scope aliases. Restart 447 requires exact safe-integer MenuList AI balances/allowances and rejects coercible or overflowing credit evidence before provider admission, debit or refund in both app and Functions. Restart 456 applies the same fail-closed scalar and arithmetic-evidence standard to Answerlattice support-search admission/debit/replay and prevents its subscription loader from converting malformed stored credits into valid-looking numbers. Restart 457 atomically debits Answerlattice support-search capacity before provider admission and restores the exact debited buckets only through evidence-checked request failure or bounded stale-reservation recovery. Current writers validate and persist exact dual product and agreeing numeric tenant/store aliases; initial persistence is create-only, direct/financial/identity mutations re-read exact current ownership, pending checkout/referral evidence proves both alias pairs, and top-up settlement additionally enforces the frozen billing store and safe-integer balance before financial use. Client provider/billing state is sequence-fenced by exact workspace scope, and MenuList server/browser/website admission requires exact MenuList session identity. Full collection certification remains in progress while historical producer/consumer evidence is reconciled in the manifest",
+    "rulesStatus": "Shared rules require both exact ML aliases plus present, agreeing tenant/store aliases and current MenuList tenant/store for MenuList reads, or both exact AL aliases plus present, agreeing tenant/store aliases/current Answerlattice workspace/billing permission for Answerlattice reads; dedicated Answerlattice rules enforce the same AL contract. All browser writes are denied and focused emulators reject same-scope foreign-product, conflicting-alias and incomplete-query access",
+    "indexStatus": "Product-prefixed composites cover owner active/paused/pending selection with both tenant/store alias pairs, entitlement, reconciliation, paid-cycle expiry, reseller lists and Founder Monitor. Shared and dedicated index files also define the six-field product/scope equality composite used by bounded Answerlattice activation/license/intake/server fallbacks. A guarded dry-run migration can complete only explicit single-ML-alias legacy rows; remote rule/index deployment and live legacy-shape counts remain unverified",
+    "findings": [
+      "AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001",
+      "AUDIT-BILLING-CLIENT-MUTATION-SURFACE-001",
+      "AUDIT-AL-ACTIVATION-SUBSCRIPTION-STARVATION-001",
+    "AUDIT-AI-CAPACITY-EMULATOR-CREDENTIAL-001",
+    "AUDIT-AL-ONBOARDING-SUBSCRIPTION-PRODUCT-COLLISION-001",
+    "AUDIT-ONBOARD-PERSISTED-SUBSCRIPTION-IDENTITY-001",
+    "AUDIT-BILLING-CLIENT-SCOPE-RACE-001",
+    "AUDIT-BILLING-MOBILE-SCOPE-RACE-001",
+    "AUDIT-MENULIST-ENTITLEMENT-SUBSCRIPTION-SCOPE-001",
+    "AUDIT-WEBSITE-PRICING-SUBSCRIPTION-SCOPE-RACE-001",
+    "AUDIT-BILLING-SESSION-PRODUCT-SCOPE-001",
+    "AUDIT-WEBSITE-PURCHASE-INTENT-RUNTIME-001",
+    "AUDIT-BILLING-TRANSACTION-SCOPE-ALIAS-001",
+    "AUDIT-BILLING-WRITER-SCOPE-ALIAS-001",
+    "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001",
+    "AUDIT-BILLING-FUNCTIONS-SCOPE-ALIAS-001",
+    "AUDIT-BILLING-BOUNDED-FALLBACK-SCOPE-ALIAS-001",
+    "AUDIT-AI-CAPACITY-SUBSCRIPTION-SCOPE-ALIAS-001",
+    "AUDIT-BILLING-TOPUP-SNAPSHOT-SCOPE-001",
+    "AUDIT-BILLING-WEBHOOK-PRODUCT-RESOLUTION-001",
+    "AUDIT-BILLING-WEBHOOK-SUBSCRIPTION-OWNERSHIP-001",
+    "AUDIT-BILLING-PROVIDER-SUBSCRIPTION-SCALAR-001",
+    "AUDIT-BILLING-REPLACEMENT-EVIDENCE-001",
+    "AUDIT-BILLING-CHECKOUT-RECOVERY-IDENTITY-001",
+    "AUDIT-BILLING-UPGRADE-INTENT-001",
+    "AUDIT-BILLING-CREDIT-RESET-SCALAR-001",
+    "AUDIT-AI-CREDIT-SCALAR-001",
+    "AUDIT-ANSWERLATTICE-AI-CREDIT-SCALAR-001",
+    "AUDIT-ANSWERLATTICE-SUPPORT-SEARCH-RESERVATION-001"
+    ]
+  },
+  "topups": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "MenuList server-owned immutable Razorpay order snapshot keyed by normalized order ID. Authenticated creation uses transaction create semantics; an exact pending replay preserves the original timestamp, while paid, foreign or conflicting collisions are rejected unchanged. Verify and signed webhook settlement require complete agreeing product, tenant, store, billing-store and pack identity, re-read the current exact-dual-ML subscription, preserve the frozen billing store, guard safe-integer balances and apply credits once. Browser access is limited to current exact tenant/store/product reads required by the maintained callback flow",
+    "rulesStatus": "Shared rules require both exact ML aliases plus present, agreeing tenant/store aliases and current MenuList tenant/store for reads, and deny all browser writes. Focused shared-rules emulation proves exact ML access and rejects conflicting scope, same-scope foreign-product and incomplete-product reads",
+    "indexStatus": "Owner list admission is product/scope constrained; create and settlement use exact document reads and transactions. Historical alias-less or incomplete-scope rows are not inferred or mutated, and no active owner history depends on them",
+    "findings": [
+      "AUDIT-BILLING-TOPUP-CURRENT-SUBSCRIPTION-001",
+      "AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001",
+      "AUDIT-BILLING-TOPUP-SNAPSHOT-SCOPE-001"
+    ]
+  },
+  "founderRevenueMovements": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList Admin-only deterministic revenue movement ledger. Signed Razorpay webhook and authenticated verification routes are required financial producers: explicit ML product, exact subscription ownership, exact paired direct workspace scope and exact provider/financial scalars are admitted before durable writes. Subscription webhook attribution comes from a cached exact stored subscription, while order cash requires immutable top-up settlement. Required failure rejects for provider/app replay; exact movement IDs make replay idempotent even after subscription state committed. The same Firestore transaction updates lifetime and India-day summaries and may seed first-payment onboarding transition truth. Guarded backfill and 30-minute reconciliation are secondary repair/consumer paths still under broader review",
+    "rulesStatus": "No browser reader or writer is certified; Admin SDK producers and platform-only summary consumers own the active flow, with root default deny protecting direct client access",
+    "indexStatus": "Direct deterministic writes need no composite index. Founder Monitor reads occurredAt-desc capped rows and India-day equality rows using maintained index behavior; full backfill/reconciliation certification remains in progress",
+    "findings": [
+      "AUDIT-FOUNDER-REVENUE-DURABILITY-001",
+      "AUDIT-FOUNDER-REVENUE-EMULATOR-CREDENTIAL-001",
+      "AUDIT-FOUNDER-LIFECYCLE-PROJECTION-REPLAY-001",
+      "AUDIT-FOUNDER-REVENUE-IDENTITY-001",
+      "AUDIT-FOUNDER-REVENUE-SCALAR-ADMISSION-001",
+      "AUDIT-FOUNDER-REVENUE-PROVIDER-BOUNDARY-001",
+      "AUDIT-BILLING-PROVIDER-SUBSCRIPTION-SCALAR-001",
+      "AUDIT-BILLING-REPLACEMENT-EVIDENCE-001"
+    ]
+  },
+  "answerlattice_aiCapacityReservations": {
+    "reviewStatus": "reviewed",
+    "ownershipModel": "Answerlattice server/Admin-only root recovery pointer for a deterministic nested reserved AI operation. The app transaction writes exact AL product, positive numeric tenant/store scope, canonical operation ID/hash, exact subscription ID/action/units and a bounded recovery timestamp only after atomically debiting the exact subscription buckets. The existing hourly Answerlattice master scheduler re-reads current pointer, nested operation and subscription evidence in one transaction, restores exact credits within the same billing period and ceiling, marks the nested operation refunded and deletes the pointer. Settlement and request failure delete the pointer transactionally; malformed or conflicting evidence remains fail-closed for operator repair",
+    "rulesStatus": "Dedicated and shared Answerlattice Firestore rules provide no client match, so root default deny protects reads, queries and writes. Focused emulator tests prove billing users, owners, managers and foreign-tenant users cannot access the collection; only trusted Admin app/Functions code participates",
+    "indexStatus": "Recovery uses the automatic single-field recoveryAt index with a due-time inequality, limit 50 and transaction-current due-time recheck. No composite index is required; remote deployment of the new Function remains blocked by Firebase CLI authentication",
+    "findings": ["AUDIT-ANSWERLATTICE-SUPPORT-SEARCH-RESERVATION-001", "AUDIT-ANSWERLATTICE-AI-RECOVERY-OBSERVABILITY-001"]
+  }
+}

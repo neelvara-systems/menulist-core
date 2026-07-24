@@ -43,7 +43,6 @@ import {
     normalizeAnswerlatticeEvidenceLinks,
     verifyAnswerlatticeVisitorToken,
 } from '@lib/answerlattice/verifiedWidgetContextServer';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
     AnswerlatticeSupportSearchCapacityError,
     createAnswerlatticeSupportSearchAccounting,
@@ -61,6 +60,14 @@ import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi'
 const MAX_QUERY_LENGTH = 500;
 const WIDGET_SEARCH_MAX_BODY_BYTES = ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH + (64 * 1024);
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
+const WIDGET_PUBLIC_INTERACTION_TYPES = new Set([
+    'dependency',
+    'inheritance',
+    'conflict',
+    'precedence',
+    'permission',
+    'workflow',
+]);
 const WidgetVisitorSchema = z.object({
     id: z.string().max(120).optional(),
     customerId: z.string().max(120).optional(),
@@ -129,6 +136,44 @@ const detectUserAgentFamily = (userAgent: string | null): string | null => {
     return 'other';
 };
 
+const normalizeWidgetGraphExpansion = (value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const graph = value as Record<string, unknown>;
+    const rawInteraction = graph.interactionDetected;
+    const interaction = rawInteraction && typeof rawInteraction === 'object' && !Array.isArray(rawInteraction)
+        ? rawInteraction as Record<string, unknown>
+        : null;
+    const interactionType = typeof interaction?.interactionType === 'string'
+        && WIDGET_PUBLIC_INTERACTION_TYPES.has(interaction.interactionType)
+        ? interaction.interactionType
+        : null;
+    const explanation = typeof interaction?.explanation === 'string'
+        ? interaction.explanation.trim().slice(0, 300)
+        : '';
+    const seenSuggestions = new Set<string>();
+    const relatedSuggestions = (Array.isArray(graph.relatedSuggestions) ? graph.relatedSuggestions : [])
+        .flatMap((suggestion): string[] => {
+            if (!suggestion || typeof suggestion !== 'object' || Array.isArray(suggestion)) return [];
+            const entityName = (suggestion as Record<string, unknown>).entityName;
+            if (typeof entityName !== 'string') return [];
+            const label = entityName.trim().slice(0, 180);
+            const key = label.toLowerCase();
+            if (!label || seenSuggestions.has(key)) return [];
+            seenSuggestions.add(key);
+            return [label];
+        })
+        .slice(0, 3);
+    const publicInteraction = interactionType && explanation
+        ? { interactionType, explanation }
+        : null;
+
+    if (!publicInteraction && relatedSuggestions.length === 0) return null;
+    return {
+        ...(publicInteraction ? { interactionDetected: publicInteraction } : {}),
+        relatedSuggestions,
+    };
+};
+
 const jsonResponse = (
     request: NextRequest,
     body: Record<string, any>,
@@ -168,6 +213,7 @@ export function OPTIONS(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    let supportSearchAccounting: ReturnType<typeof createAnswerlatticeSupportSearchAccounting> | null = null;
     // Feature flag check
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return jsonResponse(request, { error: 'Widget not enabled' }, { status: 404 });
@@ -193,16 +239,6 @@ export async function POST(request: NextRequest) {
         const preAuthRateLimitResponse = widgetRateLimitResponse(request, preAuthRateLimitResult);
         if (preAuthRateLimitResponse) return preAuthRateLimitResponse;
 
-        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
-        const rateLimitResult = await checkRateLimit({
-            key: `widget:${apiKeyRateLimitId}`,
-            limit: rateLimitConfig.limit,
-            window: rateLimitConfig.window,
-            failClosedOnProviderError: true,
-        });
-        const apiKeyRateLimitResponse = widgetRateLimitResponse(request, rateLimitResult);
-        if (apiKeyRateLimitResponse) return apiKeyRateLimitResponse;
-
         const authResult = await validatePublicApiKey(apiKey, {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
@@ -214,7 +250,7 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
-        const { storeData, storeId } = authResult;
+        const { answerlatticeScope, storeData, storeId } = authResult;
         const credential = authResult.credential || {};
         if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
@@ -225,9 +261,9 @@ export async function POST(request: NextRequest) {
         if (!hasPublicApiCredentialScope(credential, 'widget:search')) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
-        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
-        if (!tId || !sId) {
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
+        if (!tId || !sId || String(sId) !== storeId) {
             logRuntimeFailure('answerlattice_widget_search_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });
@@ -246,6 +282,16 @@ export async function POST(request: NextRequest) {
         })) {
             return jsonResponse(request, { error: 'Origin not allowed' }, { status: 403 });
         }
+
+        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+        const rateLimitResult = await checkRateLimit({
+            key: `widget:${apiKeyRateLimitId}`,
+            limit: rateLimitConfig.limit,
+            window: rateLimitConfig.window,
+            failClosedOnProviderError: true,
+        });
+        const apiKeyRateLimitResponse = widgetRateLimitResponse(request, rateLimitResult);
+        if (apiKeyRateLimitResponse) return apiKeyRateLimitResponse;
 
         // Parse and validate request body
         const bodyResult = await readBoundedJsonBody(request, WIDGET_SEARCH_MAX_BODY_BYTES, {
@@ -274,7 +320,6 @@ export async function POST(request: NextRequest) {
                 ? verifyAnswerlatticeVisitorToken(body.verifiedContextToken, storeData.answerlatticeVerifiedContext)
                 : null
             : null;
-        const verifiedContextRejected = hasVerifiedContextToken && !verifiedVisitor;
         const acceptUnsignedVisitor = !hasVerifiedContextToken;
         const evidenceLinks = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS
             ? normalizeAnswerlatticeEvidenceLinks(body.evidenceLinks, storeData.answerlatticeEvidenceAllowedHosts)
@@ -286,9 +331,9 @@ export async function POST(request: NextRequest) {
             try {
                 const { AnswerlatticeContextSchema } = await import('@lib/validation/contextSchema');
                 validatedContext = AnswerlatticeContextSchema.parse(
-                    verifiedContextRejected
-                        ? stripUnverifiedSensitiveContext(body.context)
-                        : body.context,
+                    verifiedVisitor
+                        ? body.context
+                        : stripUnverifiedSensitiveContext(body.context),
                 );
             } catch {
                 validatedContext = undefined;
@@ -352,7 +397,7 @@ export async function POST(request: NextRequest) {
 
         // ===== CORE SEARCH — Single source of truth =====
         const operationStart = Date.now();
-        const supportSearchAccounting = createAnswerlatticeSupportSearchAccounting({
+        supportSearchAccounting = createAnswerlatticeSupportSearchAccounting({
             actor: {
                 id: verifiedVisitor?.id || 'widget',
                 name: verifiedVisitor?.name || null,
@@ -456,15 +501,16 @@ export async function POST(request: NextRequest) {
         // Add graph expansion data for Knowledge Graph Exploitation (Item #11)
         // Widget receives compact version: interaction explanation + related suggestions only
         if (result.graphExpansion && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH) {
-            response.graphExpansion = {
-                interactionDetected: result.graphExpansion.interactionDetected || null,
-                relatedSuggestions: result.graphExpansion.relatedSuggestions || [],
-            };
+            const publicGraphExpansion = normalizeWidgetGraphExpansion(result.graphExpansion);
+            if (publicGraphExpansion) response.graphExpansion = publicGraphExpansion;
         }
 
         return jsonResponse(request, response);
 
     } catch (err: any) {
+        await supportSearchAccounting?.abort('request_failed').catch((refundError) => {
+            logRuntimeFailure('answerlattice_widget_search_reservation_refund_failed', refundError);
+        });
         if (err instanceof AnswerlatticeSupportSearchCapacityError) {
             return jsonResponse(request, {
                 error: err.message,

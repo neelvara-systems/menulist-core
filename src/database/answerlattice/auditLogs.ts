@@ -14,6 +14,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from '@constant/product';
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
@@ -54,6 +55,7 @@ export const getAuditLogs = async (tId: number, sId: number, maxResults: number 
             const boundedMaxResults = clampAuditLimit(maxResults, 100);
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
                 orderBy('timestamp', 'desc'),
@@ -80,6 +82,7 @@ export const getAnswerVersionHistory = async (tId: number, sId: number, answerId
         async () => {
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
                 where('entityType', '==', 'canonicalAnswer'),
@@ -106,6 +109,7 @@ export const getAuditLogsForEntity = async (tId: number, sId: number, entityId: 
         async () => {
             const q = query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
                 where('entityId', '==', entityId),

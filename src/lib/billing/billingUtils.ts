@@ -36,17 +36,24 @@ export const getPlanDetailsFromConstants = (notes: any) => {
  * Calculates the subscription end date based on start_at, total_count, and interval.
  * Used by both webhook handler and verify-subscription route.
  *
- * @param subscriptionEntity - The Razorpay subscription entity (must have start_at, total_count, notes.interval)
+ * @param input - Exact provider start time, total count and canonical interval after runtime projection
  * @returns Firebase Timestamp representing the subscription end date
  */
-export const getSubscriptionEndDate = (subscriptionEntity: any): Timestamp => {
-    const startAtMillis = subscriptionEntity.start_at * 1000;
+export const getSubscriptionEndDate = ({
+    interval,
+    startAtMillis,
+    totalCount,
+}: {
+    interval: 'MONTH' | 'YEAR';
+    startAtMillis: number;
+    totalCount: number;
+}): Timestamp => {
     const startDate = new Date(startAtMillis);
 
-    if (subscriptionEntity.notes.interval === 'YEAR') {
-        startDate.setFullYear(startDate.getFullYear() + subscriptionEntity.total_count);
-    } else if (subscriptionEntity.notes.interval === 'MONTH') {
-        startDate.setMonth(startDate.getMonth() + subscriptionEntity.total_count);
+    if (interval === 'YEAR') {
+        startDate.setUTCFullYear(startDate.getUTCFullYear() + totalCount);
+    } else {
+        startDate.setUTCMonth(startDate.getUTCMonth() + totalCount);
     }
 
     return Timestamp.fromDate(startDate);

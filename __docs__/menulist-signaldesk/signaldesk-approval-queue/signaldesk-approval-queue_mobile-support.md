@@ -1,34 +1,25 @@
-# SignalDesk Approval Queue - Mobile Support Assessment
+# SignalDesk Approval Queue - Mobile Support
 
-**Status:** Initial assessment
-**Created:** June 23, 2026
-**Mobile relevance decision:** No approval on mobile.
+**Status:** Observe-only by design
+**Last Updated:** July 21, 2026
 
-## Admission Test
+## Decision
 
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Partial | Queue may be checked often. |
-| Speed | Fail | Correct approval needs full context. |
-| Touch | Fail | Draft/evidence/policy comparison is dense. |
-| Value | Fail | Approval is not emergency work. |
+Mobile reuses the responsive SignalDesk workspace and projected approval data,
+but the shared `mobileReadOnly` boundary disables every action. It may show
+queue rows, packets, risk context, and status. It cannot refresh packets,
+approve, reject, export, reveal contact, hand off, or send.
 
-## Mobile Allowed
+## Why
 
-- pending approval count;
-- blocked approval count;
-- stale approval warning;
-- emergency pause via control room.
+Approval requires comparing source rights, evidence, rejected facts, message
+copy, route, sender, suppression, and prior-contact state. This is deliberate
+desktop review work, not an emergency mobile action. Emergency pause remains a
+separate Kill Switch flow.
 
-## Mobile Blocked
+## Acceptance
 
-- approve;
-- reject;
-- request changes;
-- edit draft;
-- reveal contact.
-
-## Acceptance Criteria
-
-- Mobile cannot approve anything.
-- Mobile can show counts only.
+- Mobile renders the same strict projected records without a separate data path.
+- All approval controls are disabled through the shared action boundary.
+- The protected API independently rejects mobile mutation attempts.
+- No mobile route bypass, direct Firestore write, or provider action exists.

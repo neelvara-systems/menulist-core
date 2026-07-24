@@ -1,16 +1,21 @@
 'use client'
 
-import { assertFeedbackListLoadSucceeded, getFeedbackList } from '@database/guestFeedback';
+import {
+    assertFeedbackListLoadSucceeded,
+    getFeedbackList,
+    type GuestFeedbackExpectedScope,
+} from '@database/guestFeedback';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import type { GuestFeedback } from '@type/guestFeedback';
 import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuCopy, LuExternalLink, LuQrCode, LuShare2, LuStar } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Empty, Flex, List, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
@@ -41,6 +46,33 @@ const FEEDBACK_LIST_CARD_STYLE = {
     borderRadius: 20,
     overflow: 'hidden' as const,
 };
+
+function resolveMobileFeedbackScope(
+    storeDetails: { storeId?: unknown; tenantId?: unknown } | null | undefined,
+): GuestFeedbackExpectedScope | null {
+    const storeId = Number(storeDetails?.storeId);
+    const tenantId = Number(storeDetails?.tenantId);
+    return Number.isSafeInteger(storeId)
+        && storeId > 0
+        && Number.isSafeInteger(tenantId)
+        && tenantId > 0
+        ? { storeId, tenantId }
+        : null;
+}
+
+function toMobileFeedbackItem(feedback: GuestFeedback): FeedbackItem {
+    return {
+        createdAt: feedback.createdOn.toDate().toISOString(),
+        customerName: feedback.customerName || 'Anonymous',
+        email: feedback.customerEmail || '',
+        id: feedback.id,
+        message: feedback.message || '',
+        needsAttention: feedback.needsAttention,
+        phone: feedback.customerPhone || '',
+        rating: feedback.rating,
+        status: feedback.status,
+    };
+}
 
 function hasMobileFeedbackClipboardWrite(): boolean {
     return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
@@ -96,7 +128,7 @@ async function copyMobileFeedbackLinkToClipboard(feedbackUrl: string): Promise<v
     }
 }
 
-export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenProps) {
+function MobileFeedbackScreenContent({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
     const common = useTranslations('Common');
     const { token } = theme.useToken();
@@ -113,6 +145,16 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const [isQrOpen, setIsQrOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const currentScopeRef = useRef<GuestFeedbackExpectedScope | null>(resolveMobileFeedbackScope(storeDetails));
+    const latestRequestRef = useRef(0);
+    const loadMoreInFlightRef = useRef(false);
+    const isMountedRef = useRef(true);
+    currentScopeRef.current = resolveMobileFeedbackScope(storeDetails);
+    const isExpectedScope = useCallback((expectedScope: GuestFeedbackExpectedScope) => (
+        isMountedRef.current
+        && currentScopeRef.current?.tenantId === expectedScope.tenantId
+        && currentScopeRef.current?.storeId === expectedScope.storeId
+    ), []);
     const publicBaseUrl = generateOBPUrl(
         storeDetails?.subdomain || '',
         storeDetails?.customDomain
@@ -123,47 +165,72 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         loadMore = false,
         cursorId?: string | null,
     ) => {
+        const expectedScope = currentScopeRef.current;
+        if (!expectedScope || !isExpectedScope(expectedScope)) return;
+        if (loadMore && loadMoreInFlightRef.current) return;
+        const requestId = latestRequestRef.current + 1;
+        latestRequestRef.current = requestId;
+        if (loadMore) loadMoreInFlightRef.current = true;
         try {
             if (loadMore) setIsLoadingMore(true);
             else setIsLoading(true);
-            const result = await getFeedbackList(targetFilter, 50, cursorId || undefined);
+            const result = await getFeedbackList(targetFilter, 50, cursorId || undefined, expectedScope);
             assertFeedbackListLoadSucceeded(
                 result,
                 'mobile_feedback_list_load_rejected',
+                expectedScope,
             );
-            const items: FeedbackItem[] = (result?.items || []).map((fb: any) => ({
-                createdAt: fb.createdOn?.toDate?.()?.toISOString?.() || '',
-                customerName: fb.customerName || 'Anonymous',
-                email: fb.customerEmail || '',
-                id: fb.id || fb.feedbackId,
-                message: fb.message || '',
-                needsAttention: fb.needsAttention || false,
-                phone: fb.customerPhone || '',
-                rating: fb.rating || 0,
-                status: fb.status || 'new',
-            }));
-            setFeedbackList((previous) => loadMore ? [...previous, ...items] : items);
+            if (
+                latestRequestRef.current !== requestId
+                || !isExpectedScope(expectedScope)
+            ) return;
+            const items = result.items.map(toMobileFeedbackItem);
+            setFeedbackList((previous) => {
+                if (
+                    latestRequestRef.current !== requestId
+                    || !isExpectedScope(expectedScope)
+                ) return previous;
+                if (!loadMore) return items;
+                const existingIds = new Set(previous.map((item) => item.id));
+                return [...previous, ...items.filter((item) => !existingIds.has(item.id))];
+            });
             setHasMore(result.hasMore);
             setLastDocId(result.lastDocId);
         } catch (err) {
-            logMobileOwnerFailure('mobile_feedback_load_failed', err, {
-                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                ...getBoundedMobileOwnerStringContext('filter', targetFilter),
-                ...getBoundedMobileOwnerStringContext('cursorId', cursorId),
-                loadMore,
-            });
-            Toast.show({ content: t('failedToLoad'), duration: 2000 });
+            if (
+                latestRequestRef.current === requestId
+                && isExpectedScope(expectedScope)
+            ) {
+                logMobileOwnerFailure('mobile_feedback_load_failed', err, {
+                    ...getMobileOwnerStoreLogContext(expectedScope.storeId, expectedScope.tenantId),
+                    ...getBoundedMobileOwnerStringContext('filter', targetFilter),
+                    ...getBoundedMobileOwnerStringContext('cursorId', cursorId),
+                    loadMore,
+                });
+                Toast.show({ content: t('failedToLoad'), duration: 2000 });
+            }
         } finally {
-            if (loadMore) setIsLoadingMore(false);
-            else setIsLoading(false);
+            if (loadMore) loadMoreInFlightRef.current = false;
+            if (
+                latestRequestRef.current === requestId
+                && isExpectedScope(expectedScope)
+            ) {
+                if (loadMore) setIsLoadingMore(false);
+                else setIsLoading(false);
+            }
         }
-    }, [filter, storeDetails?.storeId, storeDetails?.tenantId, t]);
+    }, [filter, isExpectedScope, storeDetails?.storeId, storeDetails?.tenantId, t]);
 
     useEffect(() => {
-        if (storeDetails?.storeId) {
+        if (currentScopeRef.current) {
             void fetchFeedback(filter, false, null);
         }
-    }, [fetchFeedback, storeDetails?.storeId]);
+    }, [fetchFeedback, filter, storeDetails?.storeId, storeDetails?.tenantId]);
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+        latestRequestRef.current += 1;
+    }, []);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -298,7 +365,14 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     };
 
     if (selectedFeedback) {
-        return <MobileFeedbackDetail feedback={selectedFeedback} onBack={() => setSelectedFeedback(null)} onStatusUpdate={handleStatusUpdate} />;
+        return (
+            <MobileFeedbackDetail
+                expectedScope={currentScopeRef.current}
+                feedback={selectedFeedback}
+                onBack={() => setSelectedFeedback(null)}
+                onStatusUpdate={handleStatusUpdate}
+            />
+        );
     }
 
     if (isLoading) {
@@ -471,6 +545,12 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             />
         </Flex>
     );
+}
+
+export default function MobileFeedbackScreen(props: MobileFeedbackScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+    return <MobileFeedbackScreenContent key={scopeKey} {...props} />;
 }
 
 function FeedbackLinkCard({

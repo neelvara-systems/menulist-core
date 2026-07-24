@@ -4,7 +4,7 @@
  * Caches resolved canonical answers in Upstash Redis as an optional fast path.
  * Only deterministic canonical answers are cached (not RAG responses).
  * 
- * Cache key: canon:v4:{tId}:{sId}:e:{entityHash}:v{version}:p:{planHash}:r:{roleHash}:s:{stateHash}
+ * Cache key: canon:v5:{tId}:{sId}:e:{entityHash}:v{version}:q:{queryHash}:c:{contextHash}:p:{planHash}:r:{roleHash}:s:{stateHash}
  * Invalidation: Version-based (automatic). TTL: 24 hours.
  * 
  * Reuses existing Upstash instance (same as rate limiting in src/lib/rateLimit.ts).
@@ -78,6 +78,8 @@ export function buildCacheKey(
     sId: number,
     topEntityId: string,
     answerVersion: number,
+    query: string,
+    contextToken: string,
     planId?: string,
     roleId?: string,
     stateId?: string,
@@ -95,7 +97,11 @@ export function buildCacheKey(
     const hashSegment = (value?: string) => value
         ? createHash('sha256').update(value).digest('base64url').slice(0, 22)
         : '_';
-    return `canon:v4:${tId}:${sId}:e:${hashSegment(entityId)}:v${answerVersion}:p:${hashSegment(planId)}:r:${hashSegment(roleId)}:s:${hashSegment(stateId)}`;
+    const normalizedQuery = query.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalizedQuery || !contextToken.trim()) {
+        throw new Error('Invalid Answerlattice instant-cache request identity.');
+    }
+    return `canon:v5:${tId}:${sId}:e:${hashSegment(entityId)}:v${answerVersion}:q:${hashSegment(normalizedQuery)}:c:${hashSegment(contextToken)}:p:${hashSegment(planId)}:r:${hashSegment(roleId)}:s:${hashSegment(stateId)}`;
 }
 
 export const normalizeCachedCanonicalAnswer = (
@@ -103,7 +109,7 @@ export const normalizeCachedCanonicalAnswer = (
     expected: { topEntityId: string; answerVersion: number },
 ): CachedCanonicalAnswer | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const source = value as Record<string, any>;
+    const source = value as Record<string, unknown>;
     const canonicalAnswerId = normalizeAnswerlatticeCanonicalAnswerId(source.canonicalAnswerId);
     const topEntityId = normalizeAnswerlatticeResolvedEntityId(source.topEntityId);
     const expectedEntityId = normalizeAnswerlatticeResolvedEntityId(expected.topEntityId);
@@ -124,6 +130,7 @@ export const normalizeCachedCanonicalAnswer = (
         || !source.craftedAnswer.trim()
         || typeof source.answerType !== 'string'
         || !ANSWERLATTICE_ANSWER_TYPE_SET.has(source.answerType)
+        || typeof source.confidence !== 'string'
         || !['high', 'medium', 'low'].includes(source.confidence)
         || !Array.isArray(source.matchedEntityIds)
         || source.matchedEntityIds.length > 50
@@ -155,8 +162,8 @@ export const normalizeCachedCanonicalAnswer = (
     const normalized: CachedCanonicalAnswer = {
         craftedAnswer: source.craftedAnswer,
         canonicalAnswerId,
-        confidence: source.confidence,
-        answerType: source.answerType,
+        confidence: source.confidence as CachedCanonicalAnswer['confidence'],
+        answerType: source.answerType as CachedCanonicalAnswer['answerType'],
         matchedEntityIds,
         citations: normalizeAnswerlatticePublicCitations(source.citations),
         procedure: procedure?.success ? procedure.data : null,
@@ -179,6 +186,8 @@ export async function instantCacheLookup(
     sId: number,
     topEntityId: string,
     answerVersion: number,
+    query: string,
+    contextToken: string,
     planId?: string,
     roleId?: string,
     stateId?: string,
@@ -187,7 +196,7 @@ export async function instantCacheLookup(
     if (!redis || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE) return null;
 
     try {
-        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, planId, roleId, stateId);
+        const key = buildCacheKey(tId, sId, topEntityId, answerVersion, query, contextToken, planId, roleId, stateId);
         
         // Race against timeout
         const result = await Promise.race([
@@ -267,6 +276,8 @@ export async function instantCacheWrite(
     answer: AnswerlatticeCanonicalAnswer,
     matchedEntityIds: string[],
     confidence: 'high' | 'medium' | 'low',
+    query: string,
+    contextToken: string,
     planId?: string,
     roleId?: string,
     stateId?: string,
@@ -296,7 +307,7 @@ export async function instantCacheWrite(
             || normalizedMatchedEntityIds.length !== matchedEntityIds.length
             || !normalizedMatchedEntityIds.includes(normalizedTopEntityId)
         ) return;
-        const key = buildCacheKey(tId, sId, normalizedTopEntityId, answerVersion, planId, roleId, stateId);
+        const key = buildCacheKey(tId, sId, normalizedTopEntityId, answerVersion, query, contextToken, planId, roleId, stateId);
 
         const payload: CachedCanonicalAnswer = {
             craftedAnswer: answer.content.detailedExplanation || answer.content.structuredSummary,

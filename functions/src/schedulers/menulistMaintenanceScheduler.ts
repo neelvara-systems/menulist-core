@@ -57,7 +57,10 @@ import {
     shouldDeleteCurrentImagePromptCacheDocument,
 } from './imagePromptCacheRetentionBoundary';
 import { selectDeterministicRetentionStorePage } from './retentionStorePageBoundary';
+import { deleteExpiredMenuSnapshotsInCollectionRef } from './menuSnapshotRetention';
+import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
 
+const MENULIST_PRODUCT_ID = 'ML' as const;
 const logger = functions.logger;
 
 const MINUTE_MS = 60 * 1000;
@@ -74,6 +77,7 @@ const LOCK_DOC_PREFIX = 'menulistMaintenanceTaskLock_';
 const MAX_DETAILS_JSON_BYTES = 12_000;
 const SCHEDULER_ALERT_CREATE_FAILED_CODE = 'MAINTENANCE_SCHEDULER_ALERT_CREATE_FAILED';
 const SCHEDULER_LEASE_RELEASE_FAILED_CODE = 'MAINTENANCE_TASK_LEASE_RELEASE_FAILED';
+const SCHEDULER_LEASE_LOST_CODE = 'MAINTENANCE_TASK_LEASE_LOST';
 const PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED_CODE = 'PUBLIC_MENU_DRAFT_IMAGE_DELETE_FAILED';
 const PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID_CODE = 'PUBLIC_MENU_DRAFT_IMAGE_PATH_INVALID';
 const RESELLER_LICENSE_EXPIRE_FAILED_CODE = 'RESELLER_LICENSE_EXPIRE_FAILED';
@@ -388,6 +392,7 @@ function cadenceStateUpdates(task: MaintenanceTask, now: Date, success: boolean)
 
 async function recordTaskOutcome(params: {
     task: MaintenanceTask;
+    leaseId: string;
     runId: string;
     startedAt: Date;
     finishedAt: Date;
@@ -395,11 +400,12 @@ async function recordTaskOutcome(params: {
     durationMs: number;
     details?: Record<string, unknown>;
     error?: string;
-}): Promise<void> {
+}): Promise<boolean> {
     const finishedTs = Timestamp.fromDate(params.finishedAt);
     const success = params.status === 'success';
     const cadenceUpdates = cadenceStateUpdates(params.task, params.startedAt, success);
     const stateRef = db.collection(DB_COLLECTIONS.SYSTEM).doc(STATE_DOC_ID);
+    const lockRef = db.collection(DB_COLLECTIONS.SYSTEM).doc(`${LOCK_DOC_PREFIX}${params.task.name}`);
 
     const taskState: Record<string, unknown> = {
         lastRunId: params.runId,
@@ -418,17 +424,39 @@ async function recordTaskOutcome(params: {
         taskState.lastError = params.error;
     }
 
-    await stateRef.set(
-        {
-            schedulerName: SCHEDULER_NAME,
-            updatedAt: finishedTs,
-            tasks: {
-                [params.task.name]: taskState,
+    return db.runTransaction(async (transaction) => {
+        const lockSnapshot = await transaction.get(lockRef);
+        if (lockSnapshot.data()?.leaseOwner !== params.leaseId) {
+            return false;
+        }
+
+        transaction.set(
+            stateRef,
+            {
+                schedulerName: SCHEDULER_NAME,
+                updatedAt: finishedTs,
+                tasks: {
+                    [params.task.name]: taskState,
+                },
             },
-        },
-        { merge: true },
-    );
+            { merge: true },
+        );
+        transaction.set(
+            lockRef,
+            {
+                leaseOwner: null,
+                leaseExpiresAt: Timestamp.fromMillis(0),
+                lastReleasedAt: finishedTs,
+                updatedAt: finishedTs,
+            },
+            { merge: true },
+        );
+        return true;
+    });
 }
+
+export const acquireTaskLeaseForTest = acquireTaskLease;
+export const recordTaskOutcomeForTest = recordTaskOutcome;
 
 async function persistMeaningfulRunLog(params: {
     runId: string;
@@ -479,8 +507,9 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
         const durationMs = finishedAt.getTime() - startedAt.getTime();
         const details = compactDetails(result.details);
 
-        await recordTaskOutcome({
+        const recorded = await recordTaskOutcome({
             task,
+            leaseId: lease.leaseId,
             runId,
             startedAt,
             finishedAt,
@@ -488,6 +517,11 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             durationMs,
             details,
         });
+        if (!recorded) {
+            const leaseError = new Error(SCHEDULER_LEASE_LOST_CODE) as Error & { code?: string };
+            leaseError.code = SCHEDULER_LEASE_LOST_CODE;
+            throw leaseError;
+        }
 
         return {
             name: task.name,
@@ -499,11 +533,14 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
     } catch (error) {
         const finishedAt = new Date();
         const durationMs = finishedAt.getTime() - startedAt.getTime();
-        const failureCode = getTaskFailureCode(task.name);
+        const failureCode = error instanceof Error && getSchedulerErrorCode(error) === SCHEDULER_LEASE_LOST_CODE
+            ? SCHEDULER_LEASE_LOST_CODE
+            : getTaskFailureCode(task.name);
         const errorContext = getSchedulerErrorContext(error);
 
-        await recordTaskOutcome({
+        const recorded = await recordTaskOutcome({
             task,
+            leaseId: lease.leaseId,
             runId,
             startedAt,
             finishedAt,
@@ -511,6 +548,14 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             durationMs,
             error: failureCode,
         });
+
+        if (!recorded) {
+            logger.error(`[${SCHEDULER_NAME}] Task outcome rejected after lease ownership changed`, {
+                task: task.name,
+                failureCode: SCHEDULER_LEASE_LOST_CODE,
+                ...errorContext,
+            });
+        }
 
         logger.error(`[${SCHEDULER_NAME}] Task failed`, {
             task: task.name,
@@ -735,9 +780,14 @@ async function deleteExpiredDocs(params: {
     now: Timestamp;
     limit?: number;
     kind?: string;
+    productField?: 'productId';
+    productValue?: 'ML';
 }): Promise<{ scanned: number; deleted: number }> {
-    const snapshot = await db
-        .collection(params.collection)
+    const collection = db.collection(params.collection);
+    const productScopedQuery = params.productField && params.productValue
+        ? collection.where(params.productField, '==', params.productValue)
+        : collection;
+    const snapshot = await productScopedQuery
         .where('expiresAt', '<=', params.now)
         .limit(params.limit || 50)
         .get();
@@ -854,30 +904,6 @@ async function runSystemAlertRetentionCleanup(): Promise<MaintenanceTaskResult> 
             scanned: snapshot.size,
         },
     };
-}
-
-async function deleteExpiredDocsInCollectionRef(params: {
-    collectionRef: FirebaseFirestore.CollectionReference;
-    now: Timestamp;
-    limit?: number;
-}): Promise<{ scanned: number; deleted: number }> {
-    const snapshot = await params.collectionRef
-        .where('expiresAt', '<=', params.now)
-        .limit(params.limit || 25)
-        .get();
-    const batch = db.batch();
-    let deleted = 0;
-
-    for (const doc of snapshot.docs) {
-        batch.delete(doc.ref);
-        deleted++;
-    }
-
-    if (deleted > 0) {
-        await batch.commit();
-    }
-
-    return { scanned: snapshot.size, deleted };
 }
 
 async function compactAiOperationDetailsInCollectionRef(params: {
@@ -1585,9 +1611,10 @@ async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
 
     for (const [sId, storeInfo] of storePage.entries) {
         const tId = storeInfo.tId;
-        const result = await deleteExpiredDocsInCollectionRef({
+        const result = await deleteExpiredMenuSnapshotsInCollectionRef({
             collectionRef: db.collection(DB_COLLECTIONS.MENU_SNAPSHOTS).doc(tId).collection(String(sId)),
             now,
+            retentionDays: FUNCTION_RETENTION_CONFIG.MENU_SNAPSHOT_RETENTION_DAYS,
             limit: MENU_SNAPSHOT_RETENTION_LIMIT_PER_STORE,
         });
         scanned += result.scanned;
@@ -1611,12 +1638,11 @@ async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
     };
 }
 
-async function runOwnerNotificationRetentionCleanup(): Promise<MaintenanceTaskResult> {
-    const now = Timestamp.now();
+async function runOwnerNotificationRetentionCleanup(now = Timestamp.now()): Promise<MaintenanceTaskResult> {
     const [events, deliveries, rateLimits, legacyMessages] = await Promise.all([
-        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS, now, limit: 50 }),
-        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_DELIVERIES, now, limit: 50 }),
-        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_RATE_LIMITS, now, limit: 50 }),
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS, now, limit: 50, productField: 'productId', productValue: 'ML' }),
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_DELIVERIES, now, limit: 50, productField: 'productId', productValue: 'ML' }),
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_RATE_LIMITS, now, limit: 50, productField: 'productId', productValue: 'ML' }),
         deleteExpiredDocs({ collection: DB_COLLECTIONS.MESSAGE_LOGS, now, limit: 50 }),
     ]);
     const deleted = events.deleted + deliveries.deleted + rateLimits.deleted + legacyMessages.deleted;
@@ -1633,6 +1659,8 @@ async function runOwnerNotificationRetentionCleanup(): Promise<MaintenanceTaskRe
         },
     };
 }
+
+export const runOwnerNotificationRetentionCleanupForTest = runOwnerNotificationRetentionCleanup;
 
 async function runFeedbackEventRetentionCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
@@ -1941,6 +1969,8 @@ async function runSubscriptionAccessExpiry(): Promise<MaintenanceTaskResult> {
     for (let page = 0; page < maxPages; page += 1) {
         const now = Timestamp.now();
         const snapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('pId', '==', MENULIST_PRODUCT_ID)
+            .where('productId', '==', MENULIST_PRODUCT_ID)
             .where('status', 'in', expiryStatuses)
             .where('cycleEndDate', '<=', now)
             .orderBy('cycleEndDate', 'asc')
@@ -1959,8 +1989,9 @@ async function runSubscriptionAccessExpiry(): Promise<MaintenanceTaskResult> {
                         id: currentSnapshot.id,
                     } as Record<string, any>;
                     const subscriptionId = normalizeSubscriptionDocumentId(currentSnapshot.id);
-                    const tenantScope = normalizeScopeDocumentId(current.tenantId ?? current.tId);
-                    const storeScope = normalizeScopeDocumentId(current.storeId ?? current.sId);
+                    const exactScope = getExactMenuListSubscriptionScope(current);
+                    const tenantScope = normalizeScopeDocumentId(exactScope?.tenantId);
+                    const storeScope = normalizeScopeDocumentId(exactScope?.storeId);
                     const cycleEndMillis = timestampMillis(current.cycleEndDate);
                     if (
                         !subscriptionId
@@ -2072,19 +2103,55 @@ async function runSubscriptionReconciliation(): Promise<MaintenanceTaskResult> {
     };
 }
 
+type BillingHealthState = {
+    ambiguousProviderPlanCount: number;
+    ambiguousProviderCheckoutCount: number;
+    checkedAt: Timestamp;
+    expiredProcessingCheckoutCount: number;
+    expiredProcessingProviderPlanCount: number;
+    failedWebhookEventCount: number;
+    hasLimitedCount: boolean;
+    orphanedProviderCheckoutCount: number;
+    staleWebhookClaimCount: number;
+    status: 'attention' | 'healthy';
+    updatedAt: FieldValue;
+    webhookEventsDeleted: number;
+};
+
+async function replaceBillingHealthState(state: BillingHealthState): Promise<void> {
+    await db.collection(DB_COLLECTIONS.SYSTEM_HEALTH).doc('billing').set(state);
+}
+
+export const replaceBillingHealthStateForTest = replaceBillingHealthState;
+
 async function runBillingHealthSnapshot(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const sampleLimit = 101;
     const webhookRetentionCutoff = Timestamp.fromMillis(Date.now() - 90 * DAY_MS);
-    const [expiredProcessingCheckoutLeases, orphanedProviderCheckouts, failedWebhookEvents, staleWebhookClaims, oldWebhookEvents] = await Promise.all([
+    const [expiredProcessingCheckoutLeases, ambiguousProviderCheckouts, orphanedProviderCheckouts, expiredProcessingProviderPlans, ambiguousProviderPlans, failedWebhookEvents, staleWebhookClaims, oldWebhookEvents] = await Promise.all([
         db.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES)
             .where('status', '==', 'processing')
             .where('expiresAt', '<=', now)
             .limit(sampleLimit)
             .get(),
         db.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES)
+            .where('status', '==', 'provider_creating')
+            .where('expiresAt', '<=', now)
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES)
             .where('status', '==', 'provider_created')
             .where('expiresAt', '<=', now)
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.BILLING_PROVIDER_PLANS)
+            .where('status', '==', 'processing')
+            .where('leaseExpiresAt', '<=', now)
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.BILLING_PROVIDER_PLANS)
+            .where('status', '==', 'provider_creating')
+            .where('leaseExpiresAt', '<=', now)
             .limit(sampleLimit)
             .get(),
         db.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS)
@@ -2102,7 +2169,10 @@ async function runBillingHealthSnapshot(): Promise<MaintenanceTaskResult> {
             .get(),
     ]);
     const expiredProcessingCheckoutCount = Math.min(expiredProcessingCheckoutLeases.size, sampleLimit - 1);
+    const ambiguousProviderCheckoutCount = Math.min(ambiguousProviderCheckouts.size, sampleLimit - 1);
     const orphanedProviderCheckoutCount = Math.min(orphanedProviderCheckouts.size, sampleLimit - 1);
+    const expiredProcessingProviderPlanCount = Math.min(expiredProcessingProviderPlans.size, sampleLimit - 1);
+    const ambiguousProviderPlanCount = Math.min(ambiguousProviderPlans.size, sampleLimit - 1);
     const failedWebhookEventCount = Math.min(failedWebhookEvents.size, sampleLimit - 1);
     const staleWebhookClaimCount = Math.min(staleWebhookClaims.size, sampleLimit - 1);
     const retainedWebhookEvents = oldWebhookEvents.docs
@@ -2117,22 +2187,31 @@ async function runBillingHealthSnapshot(): Promise<MaintenanceTaskResult> {
     }
     const hasLimitedCount = [
         expiredProcessingCheckoutLeases,
+        ambiguousProviderCheckouts,
         orphanedProviderCheckouts,
+        expiredProcessingProviderPlans,
+        ambiguousProviderPlans,
         failedWebhookEvents,
         staleWebhookClaims,
     ]
         .some((snapshot) => snapshot.size >= sampleLimit)
         || oldWebhookEvents.size >= 201;
     const status = (
-        expiredProcessingCheckoutCount > 0
+        ambiguousProviderCheckoutCount > 0
+        || ambiguousProviderPlanCount > 0
+        || expiredProcessingCheckoutCount > 0
+        || expiredProcessingProviderPlanCount > 0
         || orphanedProviderCheckoutCount > 0
         || failedWebhookEventCount > 0
         || staleWebhookClaimCount > 0
     ) ? 'attention' : 'healthy';
 
-    await db.collection(DB_COLLECTIONS.SYSTEM_HEALTH).doc('billing').set({
+    await replaceBillingHealthState({
+        ambiguousProviderPlanCount,
         checkedAt: now,
+        ambiguousProviderCheckoutCount,
         expiredProcessingCheckoutCount,
+        expiredProcessingProviderPlanCount,
         failedWebhookEventCount,
         hasLimitedCount,
         orphanedProviderCheckoutCount,
@@ -2140,20 +2219,23 @@ async function runBillingHealthSnapshot(): Promise<MaintenanceTaskResult> {
         status,
         updatedAt: FieldValue.serverTimestamp(),
         webhookEventsDeleted,
-    }, { merge: true });
+    });
 
     if (status === 'attention') {
         await createAlert({
             tId: 'system',
             sId: 'billing',
             type: 'health',
-            severity: orphanedProviderCheckoutCount > 0 || failedWebhookEventCount > 0
+            severity: ambiguousProviderCheckoutCount > 0 || ambiguousProviderPlanCount > 0 || orphanedProviderCheckoutCount > 0 || failedWebhookEventCount > 0
                 ? 'critical'
                 : 'warning',
             title: 'Billing Recovery Attention',
             message: 'Billing recovery state requires platform review. See the bounded billing health summary.',
             metadata: {
+                ambiguousProviderCheckoutCount,
+                ambiguousProviderPlanCount,
                 expiredProcessingCheckoutCount,
+                expiredProcessingProviderPlanCount,
                 failedWebhookEventCount,
                 hasLimitedCount,
                 orphanedProviderCheckoutCount,
@@ -2169,7 +2251,10 @@ async function runBillingHealthSnapshot(): Promise<MaintenanceTaskResult> {
     return {
         activity: status === 'attention',
         details: {
+            ambiguousProviderCheckoutCount,
+            ambiguousProviderPlanCount,
             expiredProcessingCheckoutCount,
+            expiredProcessingProviderPlanCount,
             failedWebhookEventCount,
             hasLimitedCount,
             orphanedProviderCheckoutCount,
@@ -2192,6 +2277,8 @@ async function repairPendingStorePlanEntitlements(params: {
 
     for (let page = 0; page < params.maxPages; page += 1) {
         let pendingQuery = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('pId', '==', MENULIST_PRODUCT_ID)
+            .where('productId', '==', MENULIST_PRODUCT_ID)
             .where('billingEntitlementSyncPending', '==', true)
             .orderBy(FieldPath.documentId())
             .limit(params.pageSize);
@@ -2206,6 +2293,9 @@ async function repairPendingStorePlanEntitlements(params: {
                 id: pendingDoc.id,
             } as Record<string, any>;
             try {
+                if (!getExactMenuListSubscriptionScope(subscription)) {
+                    throw new Error('Subscription entitlement scope is invalid.');
+                }
                 const entitlementSynced = await syncStorePlanEntitlement(
                     db,
                     subscription,
@@ -2269,6 +2359,8 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
 
     for (let page = 0; page < maxPages; page += 1) {
         const expiredSubs = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('pId', '==', MENULIST_PRODUCT_ID)
+            .where('productId', '==', MENULIST_PRODUCT_ID)
             .where('billingMode', '==', 'manual')
             .where('status', '==', 'active')
             .where('validUntil', '<=', graceCutoff)
@@ -2289,8 +2381,9 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
                         id: currentSnapshot.id,
                     } as Record<string, any>;
                     const subscriptionId = normalizeSubscriptionDocumentId(currentSnapshot.id);
-                    const tenantScope = normalizeScopeDocumentId(current.tenantId ?? current.tId);
-                    const storeScope = normalizeScopeDocumentId(current.storeId ?? current.sId);
+                    const exactScope = getExactMenuListSubscriptionScope(current);
+                    const tenantScope = normalizeScopeDocumentId(exactScope?.tenantId);
+                    const storeScope = normalizeScopeDocumentId(exactScope?.storeId);
                     const validUntilMillis = timestampMillis(current.validUntil);
                     if (
                         !subscriptionId

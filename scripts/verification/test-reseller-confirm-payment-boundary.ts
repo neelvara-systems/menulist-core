@@ -23,7 +23,8 @@ const admit = (subscriptionData: unknown, actorId = 'reseller_valid', isPlatform
 );
 
 assert.equal(admit(baseSubscription).kind, 'eligible');
-assert.equal(admit({ ...baseSubscription, productId: undefined, pId: undefined }).kind, 'eligible');
+assert.equal(admit({ ...baseSubscription, productId: undefined }).kind, 'malformed');
+assert.equal(admit({ ...baseSubscription, pId: undefined }).kind, 'malformed');
 assert.equal(admit({
     ...baseSubscription,
     status: 'active',

@@ -36,7 +36,7 @@ import { getExportMethod, getMealName, getShortButtonText } from '@util/campaign
 import { formatDateTime, fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuQrCode, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileTempStatusConfigurator, {
@@ -111,7 +111,7 @@ interface MobileHoursScreenProps {
     onOpenShare?: () => void;
 }
 
-export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOpenMenuTab, onOpenShare }: MobileHoursScreenProps) {
+function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTab, onOpenShare }: MobileHoursScreenProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileHours');
     const tToday = useTranslations('MobileToday');
@@ -145,10 +145,19 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeScopeRef = useRef(scopeKey);
+    const componentActiveRef = useRef(true);
+    const hoursActionInFlightRef = useRef(false);
+    activeScopeRef.current = scopeKey;
 
     useEffect(() => {
         const interval = window.setInterval(() => setHoursNow(new Date()), 60_000);
-        return () => window.clearInterval(interval);
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+            window.clearInterval(interval);
+        };
     }, []);
     const menuUrl = useMemo(() => {
         if (!storeDetails?.subdomain && !storeDetails?.customDomain) {
@@ -475,46 +484,77 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     };
 
     const saveTodayHours = async () => {
-        if (!storeDetails?.storeId) return;
+        const expectedStoreId = Number(storeDetails?.storeId);
+        const expectedTenantId = Number(storeDetails?.tenantId);
+        const requestScopeKey = scopeKey;
+        if (
+            !componentActiveRef.current
+            || activeScopeRef.current !== requestScopeKey
+            || hoursActionInFlightRef.current
+            || !Number.isSafeInteger(expectedStoreId)
+            || expectedStoreId <= 0
+            || !Number.isSafeInteger(expectedTenantId)
+            || expectedTenantId <= 0
+        ) return;
 
+        hoursActionInFlightRef.current = true;
         setIsSavingTodayHours(true);
-        const previousHours = storeDetails.workingHours || {};
+        const expectedTodayKey = todayKey;
+        const expectedTodayLabel = todayLabel;
+        const previousHours = { ...(storeDetails.workingHours || {}) };
         const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;
         const nextRange = `${todayOpenTime}-${todayCloseTime}`;
-        const nextHours = { ...previousHours, [todayKey]: nextRange };
+        const nextHours = { ...previousHours, [expectedTodayKey]: nextRange };
         const hoursLastUpdatedAt = new Date().toISOString();
-        setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours: nextHours }));
+        setStoreDetails((previous: any) => (
+            String(previous?.tenantId ?? '') === String(expectedTenantId)
+            && String(previous?.storeId ?? '') === String(expectedStoreId)
+                ? { ...previous, hoursLastUpdatedAt, workingHours: nextHours }
+                : previous
+        ));
 
         try {
             const writeResult = await updateStore({
                 hoursLastUpdatedAt,
-                storeId: storeDetails.storeId,
-                tenantId: storeDetails.tenantId,
-                workingHours: { [todayKey]: nextRange },
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
+                workingHours: { [expectedTodayKey]: nextRange },
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_today_hours_store_update_rejected',
             );
+            if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
             setIsTodayHoursSheetOpen(false);
-            Toast.show({ content: `${todayLabel} hours updated`, duration: 1400 });
+            Toast.show({ content: `${expectedTodayLabel} hours updated`, duration: 1400 });
         } catch (error) {
             logMobileOwnerFailure('mobile_today_hours_update_failed', error, {
-                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
-                ...getBoundedMobileOwnerStringContext('todayKey', todayKey),
+                ...getMobileOwnerStoreLogContext(expectedStoreId, expectedTenantId),
+                ...getBoundedMobileOwnerStringContext('todayKey', expectedTodayKey),
                 hasPreviousHours: Object.keys(previousHours).length > 0,
                 hasNextHours: Object.keys(nextHours).length > 0,
                 hasPreviousHoursLastUpdatedAt: Boolean(previousHoursLastUpdatedAt),
             });
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                hoursLastUpdatedAt: previousHoursLastUpdatedAt,
-                workingHours: previousHours,
-            }));
-            Toast.show({ content: t('failedToUpdate'), duration: 1500 });
+            setStoreDetails((previous: any) => (
+                String(previous?.tenantId ?? '') === String(expectedTenantId)
+                && String(previous?.storeId ?? '') === String(expectedStoreId)
+                && previous?.hoursLastUpdatedAt === hoursLastUpdatedAt
+                    ? {
+                        ...previous,
+                        hoursLastUpdatedAt: previousHoursLastUpdatedAt,
+                        workingHours: previousHours,
+                    }
+                    : previous
+            ));
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                Toast.show({ content: t('failedToUpdate'), duration: 1500 });
+            }
         } finally {
-            setIsSavingTodayHours(false);
+            hoursActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                setIsSavingTodayHours(false);
+            }
         }
     };
 
@@ -1177,4 +1217,10 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             </Popup>
         </Flex>
     );
+}
+
+export default function MobileHoursScreen(props: MobileHoursScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    return <MobileHoursScreenContent key={scopeKey} {...props} />;
 }

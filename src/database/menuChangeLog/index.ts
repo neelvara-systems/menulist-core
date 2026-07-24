@@ -46,6 +46,7 @@ import {
     orderBy,
     query,
     QueryConstraint,
+    serverTimestamp,
     startAfter,
     Timestamp,
     where,
@@ -237,11 +238,14 @@ async function executeLogWrite(
     try {
         const collectionRef = getCollectionRef(scope);
 
-        const logEntry: Omit<MenuChangeLogEntry, 'id'> = {
+        const logEntry = {
             ...entry,
             tId: scope.tId,
             sId: scope.sId,
-            timestamp: Timestamp.now(),
+            // The ledger timestamp is an integrity boundary used by rolling
+            // analytics. Let Firestore resolve it so a skewed or malicious
+            // browser clock cannot create a permanently future-dated event.
+            timestamp: serverTimestamp(),
         };
 
         await addDoc(collectionRef, replaceUndefined(logEntry));
@@ -505,6 +509,7 @@ export async function getChangeHistory(
 
             await visitStoredMenuChanges({
                 scope: await getActiveMenuChangeScope(),
+                endTimestamp: Timestamp.now(),
                 startAfterTimestamp: timestampCursor,
                 startAfterId: options.startAfterId,
             }, entry => {
@@ -543,6 +548,7 @@ export async function getChangeCountSince(
             await visitStoredMenuChanges({
                 scope: await getActiveMenuChangeScope(),
                 startTimestamp: sinceTimestamp,
+                endTimestamp: Timestamp.now(),
             }, entry => {
                 if (entry.projectId === normalizedProjectId
                     && entry.itemId === normalizedItemId
@@ -575,13 +581,17 @@ export async function getChangesInRange(
             if (startTimestamp.toMillis() > endTimestamp.toMillis()) {
                 throw new RangeError('Menu change log start date must not be after end date');
             }
+            const boundedEndTimestamp = Timestamp.fromMillis(Math.min(
+                endTimestamp.toMillis(),
+                Date.now(),
+            ));
             const normalizedLimit = normalizeMenuChangeLogQueryLimit(options.limit);
             const timestampCursor = getValidTimestampCursor(options.startAfterTimestamp);
             const entries: MenuChangeLogEntry[] = [];
             await visitStoredMenuChanges({
                 scope: await getActiveMenuChangeScope(),
                 startTimestamp,
-                endTimestamp,
+                endTimestamp: boundedEndTimestamp,
                 startAfterTimestamp: timestampCursor,
                 startAfterId: options.startAfterId,
             }, entry => {

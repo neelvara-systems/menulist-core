@@ -1,68 +1,56 @@
-# SignalDesk Demand Signals - Implementation Plan
+# SignalDesk Demand Signals - Implementation
 
-**Status:** Initial implementation blueprint
+**Status:** Implemented internal runtime
 **Created:** June 23, 2026
+**Runtime reconciled:** July 21, 2026
 
-## Suggested Future Modules
-
-```txt
-signaldesk/
-  demandSignals/
-    demandSignalTypes.ts
-    demandSignalIngest.ts
-    surfaceHookPolicy.ts
-    demandSignalSummaries.ts
-    referralSignals.ts
-    viralRouteAttribution.ts
-    DemandSignalPanel.tsx
-```
-
-## Data Flow
+## Runtime Modules
 
 ```txt
-MenuList-controlled surface or operator referral
-  -> validate allowed payload
-  -> normalize compact signal
-  -> apply suppression/source policy
-  -> append demand signal
-  -> update summaries
-  -> optionally create target review item
-  -> optionally connect route attribution
+src/app/api/signaldesk/actions/route.ts
+src/lib/signaldesk/workflowServer.ts
+src/lib/signaldesk/demandSignalContracts.ts
+src/lib/signaldesk/workspaceContracts.ts
+src/components/signaldesk/SignalDeskWorkspace.tsx
 ```
 
-## Capture Sources
+## Operator Capture
 
-| Source | First-build handling |
+```txt
+desktop Attribution form
+  -> target.review + feature/mobile/rate-limit/schema admission
+  -> actor/key request fingerprint
+  -> transaction reads claim and optional target
+  -> replay proves strict claim + event + immutable event-day summary
+  -> new capture validates strict target and deterministic summary authority
+  -> create event + exact summary + claim + audit + control + cost
+  -> workspace reads only strict bounded summaries
+```
+
+The browser retains one operation key for an unchanged retry. The server ignores caller target labels for target-scoped demand and rejects free-text labels for general demand. Summary identity is `day + signalType + sourceSurface + target/general`; its count is exact-replaced from validated current truth rather than increment-merged into an unknown document.
+
+## Other Producers
+
+| Producer | Demand behavior |
 | --- | --- |
-| QR/menu link | Aggregate by surface, market, route token, and time bucket. |
-| Claim/setup CTA | Create business-facing review item when enough business context exists. |
-| Customer request | Store compact event only; do not identify customer. |
-| Partner referral | Operator-entered or verified referral item. |
-| Shared route | Connect to outcome bridge route token when present. |
+| Content performance | Owner-quality outcomes may add a general `referral/manual` summary and control count inside the content transaction. |
+| Trust partner metrics | Owner leads, current-list submissions, and activations may add a general `referral/manual` summary and control count inside the partner transaction. |
 
-## Implementation Order
+Both producers write null target identity and skip all demand writes when `ENABLE_MENULIST_SIGNALDESK_DEMAND_SIGNALS` is false. They do not create raw demand events because their own immutable metric records are the evidence authority.
 
-1. Define allowed signal payloads.
-2. Define blocked fields and validation.
-3. Implement manual referral signal entry.
-4. Implement route-token signal ingest.
-5. Implement aggregate QR/link signal ingest.
-6. Implement summary updater.
-7. Add target review-item creation for business-facing signals only.
-8. Add control-room demand health metrics.
+## Read Model
 
-## Integration Points
+Dashboard/common and Attribution desktop workspaces read up to 30 strict summaries through the bounded generic projector. Malformed recent rows are skipped with bounded diagnostics and fill-through. No client method reads `signaldeskDemandSignals`.
 
-| Feature | Integration |
+## Failure Handling
+
+| Failure | Result |
 | --- | --- |
-| Target registry | Demand signals can prioritize or create review targets when business-facing. |
-| Outcome bridge | Route-token and outcome-linked signals share attribution references. |
-| Source policy | Signal payloads must include allowed source and purpose. |
-| Control room | Demand volume, stale hooks, and rejected payloads feed health summaries. |
-
-## Guardrails
-
-- No raw customer identity from anonymous public usage.
-- No automatic outreach from demand signal alone.
-- No bypass of source policy or suppression.
-- No full event-stream dashboard reads.
+| Feature disabled or mobile request | Reject before demand persistence. |
+| Missing permission | Reject through shared access guard. |
+| Target missing, foreign, or malformed | Reject before writes. |
+| Free-text target name without target ID | Reject before Firestore work. |
+| Existing summary malformed or wrong lineage | Reject the full transaction. |
+| Replay claim/event/summary missing or malformed | Fail closed; do not acknowledge duplicate. |
+| Same key with changed type/surface/target | Idempotency conflict. |
+| Suppressed target | Record compact demand; preserve suppression and all contact blocks. |

@@ -1,5 +1,6 @@
-import { KnowledgeBaseArticleType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
+import { KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
 import type { AnswerlatticePublicCitation } from '@type/answerlattice';
+import type { CoreSearchReference } from '@lib/search/types';
 
 /** @deprecated Use SearchAPIResponseType instead (typo preserved for backward compat) */
 export type SerachAPIResponseType = SearchAPIResponseType;
@@ -7,7 +8,7 @@ export type SerachAPIResponseType = SearchAPIResponseType;
 export type SearchAPIResponseType = {
     id?: string;
     craftedAnswer: string;
-    references: KnowledgeBaseArticleType[]; // Includes similarityScore for quality calculation
+    references: CoreSearchReference[];
     citations?: AnswerlatticePublicCitation[];
     suggestedQuestions?: string[]; // AI-generated follow-up questions
     imageProcessed?: boolean;
@@ -19,7 +20,7 @@ export type SearchDisplayResultReferenceType = {
     sectionId?: string;
     category: KnowledgeBaseCategory;
     section?: KnowledgeBaseSection;
-    article: KnowledgeBaseArticleType;
+    article: CoreSearchReference;
 };
 
 export type SearchDisplayResultDataType = {

@@ -35,6 +35,26 @@ export const AnswerlatticeHostedHelpConfigSchema = z.object({
     noIndex: z.boolean().default(false),
 });
 
+const StrictHostedHelpDomainSaveSchema = z.string().trim().min(4).max(253).superRefine((value, context) => {
+    if (normalizeHostedHelpDomain(value) !== value) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Hosted help domains must be canonical hostnames.',
+        });
+    }
+});
+
+export const StrictHostedHelpConfigSaveSchema = z.object({
+    enabled: z.boolean(),
+    domains: z.array(StrictHostedHelpDomainSaveSchema).max(MAX_HOSTED_HELP_DOMAINS),
+    primaryDomain: StrictHostedHelpDomainSaveSchema.nullable(),
+    title: z.string().trim().min(1).max(MAX_HOSTED_HELP_TEXT),
+    description: z.string().trim().min(1).max(MAX_HOSTED_HELP_DESCRIPTION),
+    showFaqs: z.boolean(),
+    showChangelog: z.boolean(),
+    noIndex: z.boolean(),
+}).strict();
+
 export type AnswerlatticeHostedHelpConfig = z.infer<typeof AnswerlatticeHostedHelpConfigSchema>;
 
 export const DEFAULT_ANSWERLATTICE_HOSTED_HELP_CONFIG: AnswerlatticeHostedHelpConfig = AnswerlatticeHostedHelpConfigSchema.parse({});
@@ -68,7 +88,14 @@ export function normalizeHostedHelpConfig(value: unknown): AnswerlatticeHostedHe
 }
 
 export function parseHostedHelpConfigSaveInput(value: unknown): AnswerlatticeHostedHelpConfig {
-    return normalizeHostedHelpConfig(value);
+    const parsed = StrictHostedHelpConfigSaveSchema.parse(value);
+    if (new Set(parsed.domains).size !== parsed.domains.length) {
+        throw new Error('Hosted help domains must be unique.');
+    }
+    if (parsed.primaryDomain !== null && !parsed.domains.includes(parsed.primaryDomain)) {
+        throw new Error('The primary hosted help domain must be included in the domain list.');
+    }
+    return normalizeHostedHelpConfig(parsed);
 }
 
 const normalizeDnsRecordText = (value: unknown, maxLength = MAX_HOSTED_HELP_DNS_RECORD_TEXT): string | null => {

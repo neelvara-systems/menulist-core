@@ -119,12 +119,19 @@ function normalizeStatus(value: unknown): string {
   return cleanText(value, 80).toLowerCase().replace(/\s+/g, '_');
 }
 
-function getProductId(data: Record<string, any>): string {
-  return cleanText(data.productId || data.pId || PRODUCT_ID, 12) || PRODUCT_ID;
-}
-
 function shouldTrack(data: Record<string, any>): boolean {
-  return getProductId(data) === PRODUCT_ID;
+  const tenantId = data.tenantId;
+  const storeId = data.storeId;
+  return data.pId === PRODUCT_ID
+    && data.productId === PRODUCT_ID
+    && typeof tenantId === 'number'
+    && Number.isSafeInteger(tenantId)
+    && tenantId > 0
+    && data.tId === tenantId
+    && typeof storeId === 'number'
+    && Number.isSafeInteger(storeId)
+    && storeId > 0
+    && data.sId === storeId;
 }
 
 function getDocumentDate(data: Record<string, any>): Date {
@@ -463,9 +470,21 @@ async function main() {
   console.log(`Collection limit per source: ${limitArg}`);
 
   const [subscriptionSnap, paymentTransactionSnap, topupSnap] = await Promise.all([
-    db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).limit(limitArg).get(),
-    db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).limit(limitArg).get(),
-    db.collection(DB_COLLECTIONS.TOPUPS).limit(limitArg).get(),
+    db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+      .where('pId', '==', PRODUCT_ID)
+      .where('productId', '==', PRODUCT_ID)
+      .limit(limitArg)
+      .get(),
+    db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS)
+      .where('pId', '==', PRODUCT_ID)
+      .where('productId', '==', PRODUCT_ID)
+      .limit(limitArg)
+      .get(),
+    db.collection(DB_COLLECTIONS.TOPUPS)
+      .where('pId', '==', PRODUCT_ID)
+      .where('productId', '==', PRODUCT_ID)
+      .limit(limitArg)
+      .get(),
   ]);
 
   const candidates: MovementCandidate[] = [

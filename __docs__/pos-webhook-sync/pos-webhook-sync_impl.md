@@ -56,6 +56,8 @@ desktop/mobile
 
 `PlatformGlobalDataProvider` registers the current store's enabled state and URL. It never registers the signing secret.
 
+Desktop POS state is keyed by exact tenant/store identity. Switching stores remounts the tab before paint, clears secret/test/draft state, hides delivery rows whose recorded scope does not match the current store, and invalidates in-flight history and connection-test requests. Async owner mutations retain their original persistence target, but their completion may update browser state only while that exact tenant/store component is still mounted. The parent settings updater independently compares the transaction's expected tenant/store with the current store before applying a completed patch.
+
 Both successful branches of `runUpdateProject()` call `triggerPosSyncForAcknowledgedProjectSave()` after persistence and cache invalidation:
 
 - standalone/master project transaction;
@@ -185,7 +187,7 @@ Both surfaces:
 - test through the shared request/response policy;
 - show only fixed owner-safe errors.
 
-Desktop also reads the last 20 delivery logs. Mobile exposes configuration and test inside the existing shell and does not create a separate route/data loader.
+Desktop also reads the last 20 delivery logs through an explicit parent-store tenant-and-store rule. Each server-owned row passes `parsePosDeliveryHistoryEntry()` before entering component state; identity, status, timestamp and numeric fields must be valid, while internal error/payload evidence and unknown fields are never projected. Malformed rows are omitted with bounded diagnostics. Mobile exposes configuration and test inside the existing shell and does not create a separate route/data loader.
 
 Provider setup instructions are an owner-device `mailto:` draft. No server email is sent. The counter is a preparation limit, not proof of delivery.
 
@@ -212,7 +214,7 @@ npx tsc --noEmit
 npm run lint
 ```
 
-The source verifier locks auth/order/SSRF/secret/mutation/mobile/docs boundaries. Behavioral tests lock URL, IP, pinned lookup, version outcome, and payload projection. Emulator tests lock server-secret denial and legacy-field immutability.
+The source verifier locks auth/order/SSRF/secret/delivery-history/mutation/mobile/docs boundaries. Behavioral tests lock URL, IP, pinned lookup, version outcome, payload projection, and owner-safe delivery-history parsing. Emulator tests lock server-secret denial, legacy-field immutability, authorized delivery-history queries, cross-scope denial, and server-only log writes.
 
 ## Deliberate non-goals
 

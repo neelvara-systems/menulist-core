@@ -47,6 +47,7 @@ export async function evaluatePublicTruthMonitorServerEntitlement(params: {
     const preliminary = evaluatePublicTruthMonitorEntitlement({
         storeDetails: storeData,
         storeId: sessionScope?.storeScope.numericId,
+        tenantId: sessionScope?.tenantScope.numericId,
     });
     if (preliminary.reason !== "not_paid") {
         return preliminary;
@@ -60,5 +61,6 @@ export async function evaluatePublicTruthMonitorServerEntitlement(params: {
         activeSubscription,
         storeDetails: storeData,
         storeId: sessionScope?.storeScope.numericId,
+        tenantId: sessionScope?.tenantScope.numericId,
     });
 }

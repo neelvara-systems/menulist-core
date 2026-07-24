@@ -5,6 +5,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { runAnswerlatticeAiProviderHealthCheck } from './aiProviderHealth';
+import { recoverAnswerlatticeAiCapacityReservations } from './aiCapacityReservationRecovery';
 import { discoverActiveTenants, runAnswerlatticeNightly } from './answerlatticeNightly';
 import {
     ANSWERLATTICE_DEFAULT_BUSINESS_DAY_END_TIME,
@@ -26,6 +27,7 @@ const TASK_LEASE_MS = 45 * MINUTE_MS;
 const TENANT_LEASE_MS = 45 * MINUTE_MS;
 const ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED = 'ANSWERLATTICE_MASTER_SCHEDULER_TASK_FAILED';
 const ANSWERLATTICE_MASTER_SCHEDULER_LEASE_RELEASE_FAILED = 'ANSWERLATTICE_MASTER_SCHEDULER_LEASE_RELEASE_FAILED';
+const ANSWERLATTICE_AI_CAPACITY_RESERVATION_RECOVERY_INCOMPLETE = 'ANSWERLATTICE_AI_CAPACITY_RESERVATION_RECOVERY_INCOMPLETE';
 
 type AnswerlatticeMasterSchedulerTrigger = 'scheduled' | 'manual';
 type AnswerlatticeMasterSchedulerStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
@@ -384,6 +386,23 @@ async function runGovernanceNightlyTask(context: {
     };
 }
 
+async function runAiCapacityReservationRecoveryTask(): Promise<AnswerlatticeSchedulerTaskResult> {
+    const result = await recoverAnswerlatticeAiCapacityReservations({
+        db,
+        limit: 50,
+        now: Timestamp.now(),
+    });
+    if (result.errors > 0) {
+        const error = new Error(ANSWERLATTICE_AI_CAPACITY_RESERVATION_RECOVERY_INCOMPLETE) as Error & { code: string };
+        error.code = ANSWERLATTICE_AI_CAPACITY_RESERVATION_RECOVERY_INCOMPLETE;
+        throw error;
+    }
+    return {
+        activity: result.refunded > 0,
+        details: result,
+    };
+}
+
 const TASKS: AnswerlatticeSchedulerTask[] = [
     {
         name: 'ai_provider_health_check',
@@ -391,6 +410,11 @@ const TASKS: AnswerlatticeSchedulerTask[] = [
         run: (context) => runAnswerlatticeAiProviderHealthCheck({
             force: context.trigger === 'manual' && context.forceAllTenants === true,
         }),
+    },
+    {
+        name: 'ai_capacity_reservation_recovery',
+        lockTtlMs: 5 * MINUTE_MS,
+        run: runAiCapacityReservationRecoveryTask,
     },
     {
         name: 'governance_nightly',

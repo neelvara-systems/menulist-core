@@ -15,6 +15,7 @@
 | Case | Expected |
 | --- | --- |
 | Feature flag disabled | `failed-precondition` |
+| Feature flag disabled and browser code attempts a new grounded Place-ID confirmation | Rejected before any Firestore read or write |
 | SAFE_MODE active | `unavailable` |
 | Rate limit exceeded | `resource-exhausted` |
 | Provider returns no grounding metadata | `no_grounded_result` and no source list |
@@ -57,3 +58,4 @@
 | Google Business Profile binding also exists | Removing one provider binding preserves every other provider binding |
 | Master store confirms a binding | No outlet propagation |
 | Platform Pull or public output is requested | Internal identity metadata is omitted |
+| Same provider Place ID could already identify another MenuList store | Grounded-candidate UI remains unreleased until an approved server-authoritative collision policy can fail closed and allow review/reversal |

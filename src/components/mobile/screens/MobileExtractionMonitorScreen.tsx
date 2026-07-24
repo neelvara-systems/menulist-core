@@ -14,7 +14,7 @@ import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatInrPaise } from '@util/formatters';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuClock, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
 import { Alert } from 'antd';
 import { Button, Card, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
@@ -63,9 +63,11 @@ function formatInrCost(value: number | undefined): string {
 export default function MobileExtractionMonitorScreen({ onBack }: MobileExtractionMonitorScreenProps) {
     const formatter = useFormatter();
     const { data: session, status } = useSession();
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
     const isEnabled = FEATURE_FLAGS.ENABLE_EXTRACTION_MONITORING_DASHBOARD;
+    const isMountedRef = useRef(true);
+    const latestRequestRef = useRef(0);
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<ExtractionHealthMetrics | null>(null);
     const [quality, setQuality] = useState<ExtractionQualityMetrics | null>(null);
@@ -76,30 +78,51 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
 
     const loadData = useCallback(async () => {
         if (!isPlatform || !isEnabled) return;
+        const requestId = latestRequestRef.current + 1;
+        latestRequestRef.current = requestId;
         setLoading(true);
         setLoadError(false);
         try {
             const snapshot = await getExtractionDashboardSnapshot({ status: filterToStatus(jobFilter), pageSize: 20 });
+            if (!isMountedRef.current || latestRequestRef.current !== requestId) return;
             setHealth(snapshot.health);
             setQuality(snapshot.quality);
             setCost(snapshot.cost);
             setJobs(snapshot.jobs);
         } catch {
+            if (!isMountedRef.current || latestRequestRef.current !== requestId) return;
             setLoadError(true);
             Toast.show({ content: 'Could not load extraction data', duration: 1800 });
         } finally {
-            setLoading(false);
+            if (isMountedRef.current && latestRequestRef.current === requestId) {
+                setLoading(false);
+            }
         }
     }, [isEnabled, isPlatform, jobFilter]);
 
     useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            latestRequestRef.current += 1;
+        };
+    }, []);
+
+    useEffect(() => {
         if (status === 'loading') return;
         if (!isPlatform || !isEnabled) {
+            latestRequestRef.current += 1;
             setLoading(false);
             return;
         }
         void loadData();
     }, [isEnabled, isPlatform, loadData, status]);
+
+    const selectJobFilter = useCallback((filter: JobFilter) => {
+        if (filter === jobFilter) return;
+        latestRequestRef.current += 1;
+        setJobFilter(filter);
+    }, [jobFilter]);
 
     if (!isEnabled) {
         return (
@@ -217,7 +240,7 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
                                         key={filter}
                                         color={jobFilter === filter ? 'primary' : 'default'}
                                         fill={jobFilter === filter ? 'solid' : 'outline'}
-                                        onClick={() => setJobFilter(filter)}
+                                        onClick={() => selectJobFilter(filter)}
                                         size="small"
                                     >
                                         {filter}

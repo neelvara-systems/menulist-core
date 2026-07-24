@@ -290,6 +290,60 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
     return { ready: true, claims: refreshedToken?.claims };
 }
 
+export async function syncAnswerlatticePlatformAuthForStore(
+    targetStoreId: number,
+): Promise<FirebaseAuthSyncResult> {
+    if (
+        typeof window === 'undefined'
+        || !Number.isSafeInteger(targetStoreId)
+        || targetStoreId <= 0
+    ) {
+        return { ready: false };
+    }
+
+    const response = await fetch('/api/auth/set-claims', {
+        ...AUTH_BROWSER_REQUEST_POLICY,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            productId: PRODUCT_IDS.ANSWERLATTICE,
+            targetStoreId,
+        }),
+    });
+    if (!response.ok) {
+        throw createFirebaseBootstrapError(
+            'Answerlattice platform authentication failed',
+            'answerlattice_platform_auth_sync_http_failed',
+            { statusCode: response.status },
+        );
+    }
+
+    const data = await readSetClaimsSyncResponseJson(response, 'refresh');
+    const answerlatticeCustomToken = getOptionalCustomToken(data.answerlatticeCustomToken);
+    if (!answerlatticeCustomToken) {
+        throw createFirebaseBootstrapError(
+            'Answerlattice platform authentication failed',
+            'answerlattice_platform_auth_sync_missing_token',
+        );
+    }
+    await syncAnswerlatticeAuthWithCustomToken(answerlatticeCustomToken);
+
+    const { answerlatticeAuth } = await import('@lib/firebase/answerlatticeFirebaseClient');
+    const tokenResult = await answerlatticeAuth?.currentUser?.getIdTokenResult(true);
+    if (
+        tokenResult?.claims?.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || tokenResult.claims.platformRole !== 'PLATFORM'
+        || String(tokenResult.claims.storeId || '') !== String(targetStoreId)
+    ) {
+        throw createFirebaseBootstrapError(
+            'Answerlattice platform authentication failed',
+            'answerlattice_platform_auth_sync_claims_mismatch',
+        );
+    }
+
+    return { ready: true, claims: tokenResult.claims };
+}
+
 export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuthSyncResult> {
     const effectiveSession = getEffectiveSessionForFirebaseAuth(session);
     const tenantId = getSessionTenantId(effectiveSession);

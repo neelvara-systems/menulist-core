@@ -1,66 +1,37 @@
 # SignalDesk Email Rail - Specification
 
-**Status:** Export rail plus owned sequencer queue implemented; provider send gated
-**Created:** June 23, 2026
+**Status:** Locally source-complete; provider send disabled
+**Last Updated:** July 21, 2026
 
-## Executive Summary
+## Scope
 
-Email Rail sends or exports approved SignalDesk messages through the first controlled outbound channel.
+Email Rail covers sender-domain authority, approved email export, assisted email
+handoff, one owned sequence step, gated SMTP execution, delivery/reply webhook
+normalization, suppression, incident pause, and owner-visible channel state.
 
-The first implementation starts with export plus a self-owned low-volume email sequencer queue before relying on Smartlead or another external sequencer. Provider send still requires sender-domain readiness, unsubscribe, bounce/complaint handling, suppression, approval, audit, configured email env, and the explicit provider-send gate.
-
-## Goals
-
-| Goal | Success signal |
-| --- | --- |
-| Start with safer outbound | Email/export before WhatsApp or social automation. |
-| Preserve compliance | Unsubscribe, physical address, sender identity, suppression. |
-| Protect sender reputation | Caps, bounces, complaints, pause controls. |
-| Preserve attribution | Every send/export links target/source/template/outcome. |
-
-## In Scope
-
-- export approved email drafts;
-- sender identity record;
-- sender-domain readiness checklist;
-- unsubscribe and suppression link;
-- bounce/complaint event ingestion later;
-- send caps;
-- email event summaries;
-- audit trail.
-- owned low-volume email sequence queue for approved drafts;
-- owner-visible step state and send gate.
-
-## Out Of Scope
-
-- mass blasting;
-- cold WhatsApp;
-- SMS/call;
-- Instagram/Messenger automation;
-- automated campaign optimizer.
-- mailbox warmup and rotation;
-- high-volume cold email sequencing.
+It excludes bulk blasting, automatic follow-ups, mailbox warmup or rotation,
+external sequencer API execution, auto-approval, and mobile mutation.
 
 ## Requirements
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| SDEMAIL-R001 | Send/export requires approved draft. | P0 |
-| SDEMAIL-R002 | Send/export rechecks suppression. | P0 |
-| SDEMAIL-R003 | Commercial email requires unsubscribe path. | P0 |
-| SDEMAIL-R004 | Sender identity and physical address policy required. | P0 |
-| SDEMAIL-R005 | Sender-domain readiness required before provider send. | P0 |
-| SDEMAIL-R006 | Bounce/complaint handling required before scale. | P0 |
-| SDEMAIL-R007 | Daily send caps required. | P0 |
-| SDEMAIL-R008 | Owned sequence queue must reuse approval, suppression, source-policy, sender-domain, pause, and audit gates. | P0 |
-| SDEMAIL-R009 | External sequencers such as Smartlead are optional fallback rails, not required for the first MenuList loop. | P1 |
+| ID | Requirement |
+| --- | --- |
+| SDEMAIL-R001 | Export, handoff, queue, and send require the current approved email draft and target lineage. |
+| SDEMAIL-R002 | Contact permission, source-policy use/retention, suppression, prior contact, CTA, and sender authority are checked transaction-current. |
+| SDEMAIL-R003 | The approved channel and draft channel must both be `email`; cross-channel reuse fails before provider work. |
+| SDEMAIL-R004 | Sender state must be active, authenticated, unsubscribe-ready, low-risk, and in a low-volume or ready ramp state. |
+| SDEMAIL-R005 | SMTP execution additionally requires configured From-domain authority, physical address, unsubscribe URL, bounded TLS settings, provider account, budget, and the provider-send flag. |
+| SDEMAIL-R006 | Global, email, and campaign pauses stop the relevant export/sequence path. |
+| SDEMAIL-R007 | Deterministic operation identities prevent duplicate export, handoff, queue, send, audit, and provider effects. |
+| SDEMAIL-R008 | Ambiguous provider outcomes become unresolved and cannot be retried automatically. |
+| SDEMAIL-R009 | Bounce, complaint, unsubscribe, DNC, privacy, and legal events use the signed webhook/suppression/incident boundary. |
+| SDEMAIL-R010 | Actionable approved/queued/ready work remains reachable ahead of terminal history. |
 
-## Acceptance Criteria
+## Acceptance
 
-- Export cannot include suppressed contact.
-- Send cannot run without approved draft.
-- Send cannot run without unsubscribe.
-- Send cannot run without sender-domain readiness.
-- Every send/export creates audit and attribution refs.
-- Owned sequencer cannot queue a step without a ready sender domain and approved draft.
-- Owned sequencer send cannot run while provider send is disabled.
+- Manual export never calls SMTP.
+- Provider send is unavailable in the current product configuration.
+- A changed recipient, sender, CTA, draft, policy, suppression state, or prior outcome invalidates current authority.
+- Completed replay returns identifiers/status only; recipient, subject, and body are not returned.
+- Permission-limited users do not see enabled controls that the API will reject.
+- No client can write Email Rail ledgers directly.

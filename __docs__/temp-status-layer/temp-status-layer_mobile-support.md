@@ -13,6 +13,8 @@ npm run verify:temporary-status-boundary
 
 The gate covers `MobileTempStatusScreen`, `MobileHoursScreen`, `MobileMoreScreen`, `AUTH_BROWSER_REQUEST_POLICY`, acknowledgement order, rollback, live expiry, and maintained mobile docs.
 
+The dedicated `MobileTempStatusScreen` remounts by exact tenant/store, admits only one set/clear action synchronously, and rechecks the initiating scope after confirmation and network stages. Optimistic set/clear projection requires both IDs and the captured prior status; failure rollback requires the exact optimistic store object still to own current context, so an older failure cannot restore status into another store or erase/replace a newer same-store update. Obsolete mounts suppress toast/loading settlement.
+
 ## MobileShell Paths
 
 - More > Temporary Status opens `MobileTempStatusScreen` inside `MobileShell` for owners with store-management authority.

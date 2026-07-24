@@ -61,10 +61,13 @@ The nightly function may aggregate this evidence for review. It does not automat
 
 - Source collection: `answerlattice_predictiveTriggers`.
 - Hot read model: `platformSummary/predictiveTriggers_{tId}_{sId}`.
-- Runtime cache: 60 seconds when active triggers exist; 5 minutes for an empty result.
-- A trigger mutation performs the trigger write, one bounded summary query, one summary write, and existing compiled-context invalidation work.
+- Runtime summary cache: tagged Next data cache with a 60-second recovery TTL for both populated and empty results; every successful owner summary rebuild requests exact-workspace `predictive` tag invalidation.
+- Concurrent same-workspace cache misses share one Firestore read; malformed/load failure states fail closed with bounded diagnostics.
+- The public loader debounces and coalesces same-context in-flight work but does not cache positive or negative predictive results; owner publication truth and Redis cooldown admission therefore cannot be bypassed in browser memory.
+- Ordinary prompt cooldown is one tenant/store-partitioned atomic Redis claim. Known issues bypass that cooldown and remain visible for their declared active window.
+- A trigger mutation atomically commits the trigger and its audit row, then performs one bounded summary query and an atomic summary/compiled-context invalidation batch. If that derived rebuild fails after commit, the owner sees a fixed synchronization warning instead of a false mutation failure.
 - An interaction writes an existing signal only when signal mutation is enabled and the event passes admission.
-- No new listener, collection, index, Storage object, AI call, or standalone scheduler was added by the Feature 18 hardening.
+- No new listener, collection, Storage object, AI call, or standalone scheduler is used. The current nightly evidence query has one mirrored exact-product composite index in both Firestore index manifests.
 
 ## Owner surfaces
 

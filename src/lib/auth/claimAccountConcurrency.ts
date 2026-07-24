@@ -1,5 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { DEFAULT_PRODUCT_ID } from '@constant/product';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export type ClaimAccountMode = 'email-password' | 'google' | 'whatsapp-phone';
@@ -222,8 +224,12 @@ export const runClaimAccountTransaction = async ({
     }
     const subscriptionsQuery = db
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', DEFAULT_PRODUCT_ID)
+        .where('productId', '==', DEFAULT_PRODUCT_ID)
         .where('tenantId', '==', scope.tenantId)
         .where('storeId', '==', scope.storeId)
+        .where('tId', '==', scope.tenantId)
+        .where('sId', '==', scope.storeId)
         .limit(MAX_CLAIMED_SUBSCRIPTIONS + 1);
     const subscriptionsSnapshot = await transaction.get(subscriptionsQuery);
     if (subscriptionsSnapshot.size > MAX_CLAIMED_SUBSCRIPTIONS) {
@@ -233,6 +239,14 @@ export const runClaimAccountTransaction = async ({
     await apply(transaction, current);
     const now = Timestamp.now();
     subscriptionsSnapshot.docs.forEach((subscriptionDoc) => {
+        const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscriptionDoc.data());
+        if (
+            !subscriptionScope
+            || subscriptionScope.tenantId !== scope.tenantId
+            || subscriptionScope.storeId !== scope.storeId
+        ) {
+            throw new ClaimTokenUnavailableError();
+        }
         transaction.update(subscriptionDoc.ref, {
             email: subscription.email,
             ...(subscription.name ? { name: subscription.name } : {}),

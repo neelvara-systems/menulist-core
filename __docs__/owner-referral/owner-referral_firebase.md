@@ -297,3 +297,7 @@ Never log tokens, business names, contacts, payment IDs, subscription IDs, or ba
 - [ ] Final operation counts are measured against the deployed QA project and this document is updated before enablement.
 - [ ] `firestore.rules` and `firestore.indexes.json` deploy successfully to `menulist-qa`; the July 10 attempt remains blocked by `firebaserules.googleapis.com` IAM `403` for both available CLI accounts.
 - [ ] Finance approves uncapped aggregate provider exposure.
+
+## Prior-payment subscription query identity (July 22, 2026)
+
+Referral attribution reads at most the maintained history cap from `subscriptions` using exact `pId/productId/tenantId/storeId/tId/sId` equality. Exact paid history still blocks retroactive attribution, a saturated exact history remains fail-closed, and conflicting duplicate aliases are excluded. No new collection, index, rule, scheduled work or normal-path write is introduced.

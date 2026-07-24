@@ -22,6 +22,7 @@ import {
 } from '@lib/answerlattice/widgetKeyManager';
 import {
     ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
+    normalizeAnswerlatticeWidgetConfigVersion,
     parseWidgetConfigSaveInput,
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
@@ -68,7 +69,7 @@ const buildConfigResponse = (storeData: Record<string, any>) => ({
     keys: buildAnswerlatticeWidgetKeySummaries(storeData.answerlatticeWidgetApi),
     keyLimit: ANSWERLATTICE_WIDGET_KEY_LIMIT,
     encryptionConfigured: false,
-    configVersion: Number(storeData.widgetConfigVersion || 0),
+    configVersion: normalizeAnswerlatticeWidgetConfigVersion(storeData.widgetConfigVersion),
     runtimeStatus: getWidgetRuntimeStatusFromStoreData(storeData),
 });
 
@@ -232,7 +233,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             keys: buildAnswerlatticeWidgetKeySummaries(storeData.answerlatticeWidgetApi),
             keyLimit: ANSWERLATTICE_WIDGET_KEY_LIMIT,
             encryptionConfigured: false,
-            configVersion: Number(storeData.widgetConfigVersion || 0) + 1,
+            configVersion: normalizeAnswerlatticeWidgetConfigVersion(storeData.widgetConfigVersion) + 1,
         });
     } catch (error) {
         if (error instanceof ZodError) {

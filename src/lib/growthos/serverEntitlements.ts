@@ -14,6 +14,7 @@ export async function evaluateGrowthOSServerEntitlement(params: {
     const preliminary = evaluateGrowthOSEntitlement({
         storeDetails: storeData,
         storeId,
+        tenantId,
     });
     if (preliminary.reason !== "not_paid") {
         return preliminary;
@@ -27,5 +28,6 @@ export async function evaluateGrowthOSServerEntitlement(params: {
         activeSubscription,
         storeDetails: storeData,
         storeId,
+        tenantId,
     });
 }

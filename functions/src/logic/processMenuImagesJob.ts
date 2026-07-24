@@ -44,6 +44,7 @@ import {
 } from "../sharedData/menuExtractionJob";
 import {
     findDuplicateMenuExtractionFileUids,
+    findInvalidMenuExtractionFileUidIndexes,
     resolveMenuExtractionBatchCompletion,
 } from "../sharedData/menuExtractionIntegrity";
 import { normalizePublicMenuDraftExtractedData } from "../sharedData/publicMenuDraftData";
@@ -333,6 +334,9 @@ function validateJobFiles(job: MenuImageProcessingJob): void {
     }
     if (job.files.length > MENU_EXTRACTION_JOB_LIMITS.MAX_FILES) {
         throw new Error("Too many files in extraction job.");
+    }
+    if (findInvalidMenuExtractionFileUidIndexes(job.files).length > 0) {
+        throw new Error("Invalid extraction file identities.");
     }
     if (findDuplicateMenuExtractionFileUids(job.files).length > 0) {
         throw new Error("Duplicate file identities in extraction job.");

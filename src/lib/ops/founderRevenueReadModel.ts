@@ -4,6 +4,7 @@ import {
   normalizeCancellationReasonCode,
   type CancellationReasonCode,
 } from '@lib/billing/cancellationReasons';
+import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -31,6 +32,7 @@ export interface FounderRevenueMovementInput {
   planId?: string | null;
   planName?: string | null;
   productId?: ProductId | string | null;
+  requireDurableWrite?: boolean;
   source: string;
   storeId?: number | string | null;
   subscriptionId?: string | null;
@@ -77,15 +79,95 @@ function normalizeFounderRevenueStoreDocumentId(value: unknown): string | null {
   return isValidFirestoreDocumentId(storeId) ? storeId : null;
 }
 
-function toDate(value: FounderRevenueMovementInput['occurredAt']): Date {
-  if (!value) return new Date();
+function toDate(value: FounderRevenueMovementInput['occurredAt'], requireDurableWrite = false): Date {
+  if (value == null) return new Date();
   if (value instanceof Date && Number.isFinite(value.getTime())) return value;
   if (typeof value === 'number') {
     const date = new Date(value > 1_000_000_000_000 ? value : value * 1000);
-    return Number.isFinite(date.getTime()) ? date : new Date();
+    if (Number.isFinite(date.getTime())) return date;
+    if (requireDurableWrite) throw new Error('Founder revenue movement time is invalid.');
+    return new Date();
   }
   const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date : new Date();
+  if (Number.isFinite(date.getTime())) return date;
+  if (requireDurableWrite) throw new Error('Founder revenue movement time is invalid.');
+  return new Date();
+}
+
+function resolveMovementAmountPaise(value: unknown, requireDurableWrite: boolean | undefined): number {
+  if (requireDurableWrite) {
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+      throw new Error('Founder revenue movement amount is invalid.');
+    }
+    return value;
+  }
+  return Math.max(0, Math.round(safeNumber(value)));
+}
+
+function resolveMovementScope(
+  input: Pick<FounderRevenueMovementInput, 'requireDurableWrite' | 'storeId' | 'subscriptionId' | 'tenantId'>,
+): { storeId: string | null; subscriptionId: string | null; tenantId: string | null } {
+  const subscriptionId = cleanText(input.subscriptionId, 160) || null;
+  if (!input.requireDurableWrite) {
+    return {
+      storeId: normalizeFounderRevenueStoreDocumentId(input.storeId),
+      subscriptionId,
+      tenantId: cleanText(input.tenantId, 80) || null,
+    };
+  }
+
+  const hasTenantId = input.tenantId != null;
+  const hasStoreId = input.storeId != null;
+  if (hasTenantId !== hasStoreId) {
+    throw new Error('Founder revenue movement scope is invalid.');
+  }
+  if (!hasTenantId) {
+    if (subscriptionId) throw new Error('Founder revenue movement scope is invalid.');
+    return { storeId: null, subscriptionId: null, tenantId: null };
+  }
+  if (
+    typeof input.tenantId !== 'number'
+    || !Number.isSafeInteger(input.tenantId)
+    || input.tenantId <= 0
+    || typeof input.storeId !== 'number'
+    || !Number.isSafeInteger(input.storeId)
+    || input.storeId <= 0
+  ) {
+    throw new Error('Founder revenue movement scope is invalid.');
+  }
+  return {
+    storeId: String(input.storeId),
+    subscriptionId,
+    tenantId: String(input.tenantId),
+  };
+}
+
+function getFounderSubscriptionMrrPaiseForMovement(
+  subscription: Partial<FirestoreSubscriptionDoc>,
+  requireDurableWrite: boolean | undefined,
+): number {
+  if (requireDurableWrite) {
+    if (
+      typeof subscription.amount !== 'number'
+      || !Number.isSafeInteger(subscription.amount)
+      || subscription.amount < 0
+      || (
+        subscription.quantity != null
+        && (
+          typeof subscription.quantity !== 'number'
+          || !Number.isSafeInteger(subscription.quantity)
+          || subscription.quantity <= 0
+        )
+      )
+    ) {
+      throw new Error('Founder subscription MRR amount is invalid.');
+    }
+  }
+  const amountPaise = getFounderSubscriptionMrrPaise(subscription);
+  if (requireDurableWrite && (!Number.isSafeInteger(amountPaise) || amountPaise < 0)) {
+    throw new Error('Founder subscription MRR amount is invalid.');
+  }
+  return amountPaise;
 }
 
 function getIndiaDayKey(date: Date): string {
@@ -98,12 +180,21 @@ function getMonthKey(date: Date): string {
   return local.toISOString().slice(0, 7);
 }
 
-function normalizedProductId(productId: unknown): string {
-  return cleanText(productId || PRODUCT_IDS.MENULIST, 12) || PRODUCT_IDS.MENULIST;
+function shouldTrackProduct(productId: unknown): boolean {
+  return productId === PRODUCT_IDS.MENULIST;
 }
 
-function shouldTrackProduct(productId: unknown): boolean {
-  return normalizedProductId(productId) === PRODUCT_IDS.MENULIST;
+function getRequiredMenuListSubscriptionScope(
+  productId: FounderRevenueMovementInput['productId'],
+  subscription: unknown,
+  requireDurableWrite: boolean | undefined,
+): { storeId: number; tenantId: number } | null {
+  if (!shouldTrackProduct(productId)) return null;
+  const scope = getMenuListSubscriptionEntitlementScope(subscription);
+  if (!scope && requireDurableWrite) {
+    throw new Error('Founder subscription scope is invalid.');
+  }
+  return scope;
 }
 
 function getMrrDelta(kind: FounderRevenueMovementKind, amountPaise: number): number {
@@ -220,17 +311,20 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
 
   const movementId = normalizeFounderRevenueMovementDocumentId(input.id);
   if (!movementId) {
+    if (input.requireDurableWrite) {
+      throw new Error('Founder revenue movement identity is invalid.');
+    }
     return { recorded: false, movementId: null };
   }
 
-  const amountPaise = Math.max(0, Math.round(safeNumber(input.amountPaise)));
-  const occurredAt = toDate(input.occurredAt);
+  const amountPaise = resolveMovementAmountPaise(input.amountPaise, input.requireDurableWrite);
+  const occurredAt = toDate(input.occurredAt, input.requireDurableWrite);
+  const movementScope = resolveMovementScope(input);
   const dayKey = getIndiaDayKey(occurredAt);
   const monthKey = getMonthKey(occurredAt);
   const mrrDeltaPaise = getMrrDelta(input.kind, amountPaise);
   const productId = PRODUCT_IDS.MENULIST;
-  const tenantId = cleanText(input.tenantId, 80) || null;
-  const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);
+  const { storeId, subscriptionId, tenantId } = movementScope;
   const FieldValue = admin.firestore.FieldValue;
   const dailyCounterUpdates: Record<string, any> = getDailyCounterUpdates(input.kind, amountPaise);
   const cancellationReasonCode = input.kind === 'churn'
@@ -279,7 +373,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
         productId,
         source: cleanText(input.source, 120),
         storeId,
-        subscriptionId: cleanText(input.subscriptionId, 160) || null,
+        subscriptionId,
         tenantId,
         tId: tenantId,
         sId: storeId,
@@ -320,7 +414,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
           movementId,
           occurredAt,
           storeId,
-          subscriptionId: cleanText(input.subscriptionId, 160) || null,
+          subscriptionId,
           tenantId,
         }), { merge: true });
       }
@@ -336,6 +430,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
       ...getBoundedRuntimeStringContext('tenantId', tenantId),
       ...getBoundedRuntimeStringContext('storeId', storeId),
     });
+    if (input.requireDurableWrite) throw error;
     return { recorded: false, movementId };
   }
 }
@@ -345,11 +440,20 @@ export async function recordFounderSubscriptionNewMrr(params: {
   source: string;
   subscription: Partial<FirestoreSubscriptionDoc> & { id?: string };
   occurredAt?: Date | number | string | null;
+  requireDurableWrite?: boolean;
 }) {
+  const scope = getRequiredMenuListSubscriptionScope(
+    params.productId,
+    params.subscription,
+    params.requireDurableWrite,
+  );
   const subscriptionId = cleanText(params.subscription.id || params.subscription.providerSubscriptionId, 160);
-  if (!subscriptionId) return { recorded: false, movementId: null };
+  if (!subscriptionId) {
+    if (params.requireDurableWrite) throw new Error('Founder subscription identity is invalid.');
+    return { recorded: false, movementId: null };
+  }
   return recordFounderRevenueMovement({
-    amountPaise: getFounderSubscriptionMrrPaise(params.subscription),
+    amountPaise: getFounderSubscriptionMrrPaiseForMovement(params.subscription, params.requireDurableWrite),
     currency: params.subscription.currency || 'INR',
     description: `${params.subscription.planName || 'Subscription'} became recurring revenue.`,
     eventName: 'subscription.active_mrr',
@@ -359,10 +463,11 @@ export async function recordFounderSubscriptionNewMrr(params: {
     planId: params.subscription.planId,
     planName: params.subscription.planName,
     productId: params.productId,
+    requireDurableWrite: params.requireDurableWrite,
     source: params.source,
-    storeId: params.subscription.storeId || params.subscription.sId,
+    storeId: scope?.storeId ?? null,
     subscriptionId,
-    tenantId: params.subscription.tenantId || params.subscription.tId,
+    tenantId: scope?.tenantId ?? null,
   });
 }
 
@@ -372,11 +477,20 @@ export async function recordFounderSubscriptionChurn(params: {
   source: string;
   subscription: Partial<FirestoreSubscriptionDoc> & { id?: string };
   occurredAt?: Date | number | string | null;
+  requireDurableWrite?: boolean;
 }) {
+  const scope = getRequiredMenuListSubscriptionScope(
+    params.productId,
+    params.subscription,
+    params.requireDurableWrite,
+  );
   const subscriptionId = cleanText(params.subscription.id || params.subscription.providerSubscriptionId, 160);
-  if (!subscriptionId) return { recorded: false, movementId: null };
+  if (!subscriptionId) {
+    if (params.requireDurableWrite) throw new Error('Founder subscription identity is invalid.');
+    return { recorded: false, movementId: null };
+  }
   return recordFounderRevenueMovement({
-    amountPaise: getFounderSubscriptionMrrPaise(params.subscription),
+    amountPaise: getFounderSubscriptionMrrPaiseForMovement(params.subscription, params.requireDurableWrite),
     cancellationReasonCode: params.cancellationReasonCode,
     currency: params.subscription.currency || 'INR',
     description: `${params.subscription.planName || 'Subscription'} left recurring revenue.`,
@@ -387,10 +501,11 @@ export async function recordFounderSubscriptionChurn(params: {
     planId: params.subscription.planId,
     planName: params.subscription.planName,
     productId: params.productId,
+    requireDurableWrite: params.requireDurableWrite,
     source: params.source,
-    storeId: params.subscription.storeId || params.subscription.sId,
+    storeId: scope?.storeId ?? null,
     subscriptionId,
-    tenantId: params.subscription.tenantId || params.subscription.tId,
+    tenantId: scope?.tenantId ?? null,
   });
 }
 
@@ -400,21 +515,42 @@ export async function recordFounderSubscriptionMrrChange(params: {
   previousMrrPaise?: number | null;
   previousSubscription?: Partial<FirestoreSubscriptionDoc> | null;
   productId?: ProductId | string | null;
+  requireDurableWrite?: boolean;
   source: string;
   subscription: Partial<FirestoreSubscriptionDoc> & { id?: string };
 }) {
+  const scope = getRequiredMenuListSubscriptionScope(
+    params.productId,
+    params.subscription,
+    params.requireDurableWrite,
+  );
   const subscriptionId = cleanText(params.subscription.id || params.subscription.providerSubscriptionId, 160);
   const eventKey = normalizeFounderRevenueMovementDocumentId(params.eventKey || 'change');
-  if (!subscriptionId || !eventKey) return { recorded: false, movementId: null };
+  if (!subscriptionId || !eventKey) {
+    if (params.requireDurableWrite) throw new Error('Founder subscription movement identity is invalid.');
+    return { recorded: false, movementId: null };
+  }
 
-  const previousMrrPaise = Math.max(
-    0,
-    Math.round(
-      safeNumber(params.previousMrrPaise)
-      || (params.previousSubscription ? getFounderSubscriptionMrrPaise(params.previousSubscription) : 0),
-    ),
+  if (
+    params.requireDurableWrite
+    && params.previousMrrPaise != null
+    && (
+      typeof params.previousMrrPaise !== 'number'
+      || !Number.isSafeInteger(params.previousMrrPaise)
+      || params.previousMrrPaise < 0
+    )
+  ) {
+    throw new Error('Founder previous MRR amount is invalid.');
+  }
+  const previousMrrPaise = params.previousMrrPaise != null
+    ? resolveMovementAmountPaise(params.previousMrrPaise, params.requireDurableWrite)
+    : params.previousSubscription
+      ? getFounderSubscriptionMrrPaiseForMovement(params.previousSubscription, params.requireDurableWrite)
+      : 0;
+  const nextMrrPaise = getFounderSubscriptionMrrPaiseForMovement(
+    params.subscription,
+    params.requireDurableWrite,
   );
-  const nextMrrPaise = getFounderSubscriptionMrrPaise(params.subscription);
   const deltaPaise = nextMrrPaise - previousMrrPaise;
   if (deltaPaise === 0) return { recorded: false, movementId: null };
 
@@ -433,9 +569,10 @@ export async function recordFounderSubscriptionMrrChange(params: {
     planId: params.subscription.planId,
     planName: params.subscription.planName,
     productId: params.productId,
+    requireDurableWrite: params.requireDurableWrite,
     source: params.source,
-    storeId: params.subscription.storeId || params.subscription.sId,
+    storeId: scope?.storeId ?? null,
     subscriptionId,
-    tenantId: params.subscription.tenantId || params.subscription.tId,
+    tenantId: scope?.tenantId ?? null,
   });
 }

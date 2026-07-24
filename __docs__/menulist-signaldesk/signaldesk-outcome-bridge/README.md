@@ -2,7 +2,7 @@
 
 **Status:** Runtime implemented; local emulator verified; production producer wiring pending external deployment verification
 **Created:** June 23, 2026
-**Runtime reconciled:** July 13, 2026
+**Runtime reconciled:** July 22, 2026
 **Parent:** [MenuList SignalDesk](../README.md)
 **Audience:** Internal growth operators and future implementers
 
@@ -10,7 +10,7 @@
 
 SignalDesk Outcome Bridge connects growth activity to real MenuList outcomes without taking ownership of MenuList onboarding, store truth, menu truth, or customer-facing flows.
 
-It creates tracked routes and records outcome events such as a prospect submitting a current list, reviewing a preview, approving a public link, downloading QR material, or becoming a paid/partner opportunity.
+It creates tracked routes and records the five implemented outcome events: route created, upload started, preview prepared, published, and owner-reviewed two-surface activation.
 
 ## Source Specs
 
@@ -27,7 +27,7 @@ It creates tracked routes and records outcome events such as a prospect submitti
 | [Implementation](./signaldesk-outcome-bridge_impl.md) | Bridge modules, flow, and MenuList boundary. |
 | [Firebase](./signaldesk-outcome-bridge_firebase.md) | Route token, attribution, outcome, and audit collections. |
 | [Compliance](./signaldesk-outcome-bridge_compliance.md) | Privacy, consent, route-token safety, and data boundaries. |
-| [Mobile Support](./signaldesk-outcome-bridge_mobile-support.md) | Read-only outcome visibility and blocked route actions. |
+| [Mobile Support](./signaldesk-outcome-bridge_mobile-support.md) | Dashboard-only mobile visibility and blocked outcome mutations. |
 | [Test Cases](./signaldesk-outcome-bridge_test-cases.md) | Attribution, route safety, and boundary tests. |
 
 ## Boundary
@@ -35,6 +35,8 @@ It creates tracked routes and records outcome events such as a prospect submitti
 This feature must not write MenuList business truth directly.
 
 MenuList remains the authority for stores, menus, owner approval, public URLs, billing, and onboarding state. SignalDesk records growth-side route and attribution events only.
+
+The Today desk now exposes a deliberately weaker manual handoff while the signed producer remains pending: it copies the existing anonymous founder-pilot MenuList `/create-menu` URL. Copying the link does not create a route token or outcome and carries no target, owner, store, project, phone, or business identifier. Operators record only later observed setup progress in Activations under the existing manual outcome authority.
 
 ## Production Gate
 

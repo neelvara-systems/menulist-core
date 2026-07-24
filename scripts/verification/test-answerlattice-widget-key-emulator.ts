@@ -60,6 +60,41 @@ async function run(): Promise<void> {
     assert.ok(getAnswerlatticeWidgetKeyRecordByHash(state, hashApiKey(firstRawKey)));
     assert.ok(getAnswerlatticeWidgetKeyRecordByHash(state, hashApiKey(secondRawKey)));
 
+    const firstKeyHash = hashApiKey(firstRawKey);
+    const secondKeyHash = hashApiKey(secondRawKey);
+    const firstKeyRecord = state.keysByHash[firstKeyHash];
+    const secondKeyRecord = state.keysByHash[secondKeyHash];
+    assert.ok(firstKeyRecord);
+    assert.ok(secondKeyRecord);
+    const duplicateManagementIdentity = normalizeAnswerlatticeWidgetApiState({
+        ...state,
+        keyHashes: [firstKeyHash, secondKeyHash],
+        keysByHash: {
+            [firstKeyHash]: { ...firstKeyRecord, id: 'duplicate-management-id' },
+            [secondKeyHash]: { ...secondKeyRecord, id: 'duplicate-management-id' },
+        },
+    });
+    assert.deepEqual(
+        duplicateManagementIdentity.keyHashes,
+        [],
+        'duplicate management IDs must invalidate every ambiguous widget credential',
+    );
+    assert.deepEqual(duplicateManagementIdentity.keysByHash, {});
+
+    const recordWithoutCreatedAt: Record<string, unknown> = { ...firstKeyRecord };
+    delete recordWithoutCreatedAt.createdAt;
+    const missingCreatedAtState = normalizeAnswerlatticeWidgetApiState({
+        ...state,
+        createdAt: undefined,
+        keyHashes: [firstKeyHash],
+        keysByHash: { [firstKeyHash]: recordWithoutCreatedAt },
+    });
+    assert.equal(
+        missingCreatedAtState.keysByHash[firstKeyHash]?.createdAt,
+        '1970-01-01T00:00:00.000Z',
+        'missing legacy creation time must normalize deterministically',
+    );
+
     const firstValidation = await validatePublicApiKey(firstRawKey, {
         allowLegacyRawFallback: false,
         includeAnswerlatticeWidgetApi: true,
@@ -67,6 +102,52 @@ async function run(): Promise<void> {
         preferAnswerlatticeWidgetApi: true,
     });
     assert.equal(firstValidation?.storeId, String(scope.storeId));
+    assert.deepEqual(firstValidation?.answerlatticeScope, scope);
+
+    for (const conflictingIdentity of [
+        { tenantId: scope.tenantId + 1 },
+        { storeId: scope.storeId + 1 },
+        { productId: PRODUCT_IDS.MENULIST },
+    ]) {
+        await storeRef().set(conflictingIdentity, { merge: true });
+        assert.equal(await validatePublicApiKey(firstRawKey, {
+            allowLegacyRawFallback: false,
+            includeAnswerlatticeWidgetApi: true,
+            includePublicApi: false,
+            preferAnswerlatticeWidgetApi: true,
+        }), null, `conflicting widget-store identity must fail closed: ${JSON.stringify(conflictingIdentity)}`);
+        await seedStore();
+        await storeRef().set({ answerlatticeWidgetApi: state }, { merge: true });
+    }
+
+    for (const conflictingCredential of [
+        { status: 'disabled' },
+        { productId: PRODUCT_IDS.MENULIST },
+        { purpose: 'answerlattice_public_api' },
+        { removeScopes: true },
+        { scopes: ['widget:config', 'unknown'] },
+        { scopes: ['widget:config', 'widget:config'] },
+    ]) {
+        const mutatedRecord: Record<string, unknown> = { ...firstKeyRecord, ...conflictingCredential };
+        delete mutatedRecord.removeScopes;
+        if ('removeScopes' in conflictingCredential) delete mutatedRecord.scopes;
+        await storeRef().update({
+            answerlatticeWidgetApi: {
+                ...state,
+                keysByHash: {
+                    ...state.keysByHash,
+                    [firstKeyHash]: mutatedRecord,
+                },
+            },
+        });
+        assert.equal(await validatePublicApiKey(firstRawKey, {
+            allowLegacyRawFallback: false,
+            includeAnswerlatticeWidgetApi: true,
+            includePublicApi: false,
+            preferAnswerlatticeWidgetApi: true,
+        }), null, `malformed managed widget credential must fail closed: ${JSON.stringify(conflictingCredential)}`);
+        await storeRef().update({ answerlatticeWidgetApi: state });
+    }
 
     await mutateAnswerlatticeWidgetKeys(scope, {
         action: 'revoke',
@@ -117,6 +198,24 @@ async function run(): Promise<void> {
     );
     state = normalizeAnswerlatticeWidgetApiState((await storeRef().get()).data()?.answerlatticeWidgetApi);
     assert.equal(state.keyHashes.length, ANSWERLATTICE_WIDGET_KEY_LIMIT);
+
+    await seedStore();
+    const legacyRawKey = keyFor('y', 8);
+    await storeRef().set({
+        answerlatticeWidgetApi: {
+            apiKeyHash: hashApiKey(legacyRawKey),
+            keyPrefix: legacyRawKey.slice(0, 7),
+            createdAt: new Date().toISOString(),
+        },
+    }, { merge: true });
+    const legacyValidation = await validatePublicApiKey(legacyRawKey, {
+        allowLegacyRawFallback: false,
+        includeAnswerlatticeWidgetApi: true,
+        includePublicApi: false,
+        preferAnswerlatticeWidgetApi: true,
+    });
+    assert.equal(legacyValidation?.credential?.legacy, true, 'the explicit top-level legacy hash path remains supported');
+    assert.deepEqual(legacyValidation?.answerlatticeScope, scope);
 
     await seedStore(PRODUCT_IDS.MENULIST);
     const wrongProductKey = keyFor('z', 9);

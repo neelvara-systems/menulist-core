@@ -63,7 +63,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     });
     if (rateLimit) return rateLimit;
 
-    if (isSignalDeskMobileRequest(request) && (validatedInput.status !== "active" || validatedInput.mobileConfirmation !== "MOBILE_EMERGENCY_PAUSE")) {
+    if (
+        isSignalDeskMobileRequest(request)
+        && (
+            validatedInput.status !== "active"
+            || validatedInput.scope !== "global-outbound"
+            || validatedInput.mobileConfirmation !== "MOBILE_EMERGENCY_PAUSE"
+        )
+    ) {
         await recordSignalDeskMobileActionBlockedServer({
             access: accessResult.access,
             action: "kill-switch",

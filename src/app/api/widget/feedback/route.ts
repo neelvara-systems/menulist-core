@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
-        const { storeData, storeId } = authResult;
+        const { answerlatticeScope, storeData, storeId } = authResult;
         const credential = authResult.credential || {};
         if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
@@ -197,9 +197,9 @@ export async function POST(request: NextRequest) {
         if (!hasPublicApiCredentialScope(credential, 'widget:feedback')) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
-        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeId);
-        if (tId === null || sId === null) {
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
+        if (!tId || !sId || String(sId) !== storeId) {
             logRuntimeFailure('answerlattice_widget_feedback_invalid_workspace_context', undefined, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
             });
@@ -285,15 +285,16 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Feedback record is invalid' }, { status: 409 });
         }
 
-        // Emit Answerlattice signal for negative feedback (feeds mutation pipeline)
-        if (feedbackCreated && !isGood && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
+        // Emit the durable, search-history-idempotent signal for both the first
+        // write and a retry of an already committed negative outcome.
+        if (authoritativeOutcome === 'not_resolved' && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
             try {
                 const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
                 const { ANSWERLATTICE_SIGNAL_TYPE } = await import('@type/answerlattice');
                 const matchedEntityId = Array.isArray(historyData.matchedEntityIds)
                     ? historyData.matchedEntityIds.find((id: unknown) => typeof id === 'string' && Boolean(id.trim()))
                     : undefined;
-                await emitAnswerlatticeSignal({
+                const signalEmitted = await emitAnswerlatticeSignal({
                     type: ANSWERLATTICE_SIGNAL_TYPE.CHAT_NEGATIVE,
                     entityId: matchedEntityId,
                     tId,
@@ -304,13 +305,21 @@ export async function POST(request: NextRequest) {
                         ...buildWidgetFeedbackContextMetadata(historyData),
                     },
                 });
+                if (!signalEmitted) {
+                    logRuntimeFailure('answerlattice_widget_feedback_signal_emit_failed', undefined, {
+                        ...getBoundedRuntimeStringContext('tenantId', tId),
+                        ...getBoundedRuntimeStringContext('storeId', sId),
+                        ...getBoundedRuntimeStringContext('searchHistoryId', searchHistoryId),
+                    });
+                    return jsonResponse(request, { error: 'Feedback signal could not be saved' }, { status: 503 });
+                }
             } catch (signalError) {
-                // Fire-and-forget — signal emission failure never blocks feedback
                 logRuntimeFailure('answerlattice_widget_feedback_signal_emit_failed', signalError, {
                     ...getBoundedRuntimeStringContext('tenantId', tId),
                     ...getBoundedRuntimeStringContext('storeId', sId),
                     ...getBoundedRuntimeStringContext('searchHistoryId', searchHistoryId),
                 });
+                return jsonResponse(request, { error: 'Feedback signal could not be saved' }, { status: 503 });
             }
         }
 

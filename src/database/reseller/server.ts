@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { RESELLER_CAPS } from "@config/resellerPricing";
 import { composeInitialSubscriptionPayloadServer } from "@database/subscriptions/server";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
@@ -131,6 +132,7 @@ export const createResellerOnboardingBillingServer = async (params: {
 
         if (operationSnapshot.exists) {
             const operation = operationSnapshot.data() || {};
+            const existingSubscription = subscriptionSnapshot.exists ? subscriptionSnapshot.data() || {} : {};
             if (
                 operation.operationId !== params.transaction.operationId
                 || operation.operationFingerprint !== params.transaction.operationFingerprint
@@ -138,6 +140,8 @@ export const createResellerOnboardingBillingServer = async (params: {
                 || operation.resellerId !== params.transaction.resellerId
                 || operation.subscriptionId !== params.subscriptionId
                 || !subscriptionSnapshot.exists
+                || existingSubscription.pId !== DEFAULT_PRODUCT_ID
+                || existingSubscription.productId !== DEFAULT_PRODUCT_ID
             ) {
                 throw new Error('Reseller onboarding operation id is already used by another action.');
             }

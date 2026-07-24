@@ -13,7 +13,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { Alert, Badge, Button, Card, Divider, Flex, Input, Modal, Typography, message, theme } from "antd";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LuCopy, LuKeyRound, LuLink, LuMapPin, LuRefreshCw, LuStore, LuTrash2 } from "react-icons/lu";
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from "../utils/businessSettingsDiagnostics";
 
@@ -22,6 +22,10 @@ const PUBLIC_API_KEY_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 
 type PublicApiKeyAction = 'generate' | 'revoke';
 type PublicApiKeyClientError = Error & { code?: string; status?: number };
+type PublicApiKeyScope = { storeId: string; tenantId: string };
+type PublicApiKeyActionResponse =
+    | ({ apiKey: string } & PublicApiKeyScope)
+    | ({ success: true } & PublicApiKeyScope);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -44,7 +48,8 @@ async function readPublicApiKeyActionResponse(
     response: Response,
     action: PublicApiKeyAction,
     context: Record<string, boolean | number | string | null | undefined>,
-): Promise<{ apiKey: string } | { success: true }> {
+    expectedScope: PublicApiKeyScope,
+): Promise<PublicApiKeyActionResponse> {
     let payload: unknown = null;
 
     try {
@@ -70,12 +75,30 @@ async function readPublicApiKeyActionResponse(
         throw createPublicApiKeyClientError(response, getPublicApiKeyRejectedCode(action));
     }
 
-    if (action === 'generate' && isRecord(payload) && typeof payload.apiKey === 'string' && payload.apiKey.startsWith('ml_')) {
-        return { apiKey: payload.apiKey };
-    }
+    if (
+        isRecord(payload)
+        && payload.storeId === expectedScope.storeId
+        && payload.tenantId === expectedScope.tenantId
+    ) {
+        if (
+            action === 'generate'
+            && typeof payload.apiKey === 'string'
+            && payload.apiKey.startsWith('ml_')
+        ) {
+            return {
+                apiKey: payload.apiKey,
+                storeId: expectedScope.storeId,
+                tenantId: expectedScope.tenantId,
+            };
+        }
 
-    if (action === 'revoke' && isRecord(payload) && payload.success === true) {
-        return { success: true };
+        if (action === 'revoke' && payload.success === true) {
+            return {
+                success: true,
+                storeId: expectedScope.storeId,
+                tenantId: expectedScope.tenantId,
+            };
+        }
     }
 
     const error = createPublicApiKeyClientError(response, 'PUBLIC_API_KEY_RESPONSE_INVALID');
@@ -129,8 +152,20 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     const isConnected = gbp?.isConnected ?? false;
     const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
     const [publicApiLoadingAction, setPublicApiLoadingAction] = useState<PublicApiKeyAction | null>(null);
+    const publicApiActionInFlightRef = useRef(false);
+    const integrationScopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeIntegrationScopeRef = useRef(integrationScopeKey);
+    const componentActiveRef = useRef(true);
     const publicApiKeyPrefix = generatedApiKey?.slice(0, 7) || storeDetails?.publicApi?.keyPrefix || '';
     const hasPublicApiKey = Boolean(publicApiKeyPrefix);
+
+    activeIntegrationScopeRef.current = integrationScopeKey;
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
 
     const getPublicApiKeyLogContext = useCallback((action: PublicApiKeyAction) => ({
         action,
@@ -142,6 +177,13 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
     const handleGeneratePublicApiKey = useCallback(async () => {
         const action: PublicApiKeyAction = 'generate';
+        const expectedScope = {
+            storeId: String(storeDetails?.storeId ?? '').trim(),
+            tenantId: String(storeDetails?.tenantId ?? '').trim(),
+        };
+        const requestScopeKey = `${expectedScope.tenantId}::${expectedScope.storeId}`;
+        if (!expectedScope.storeId || !expectedScope.tenantId || publicApiActionInFlightRef.current) return;
+        publicApiActionInFlightRef.current = true;
         setPublicApiLoadingAction(action);
 
         try {
@@ -149,22 +191,33 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action }),
+                body: JSON.stringify({ action, ...expectedScope }),
             });
-            const payload = await readPublicApiKeyActionResponse(response, action, getPublicApiKeyLogContext(action));
+            const payload = await readPublicApiKeyActionResponse(
+                response,
+                action,
+                getPublicApiKeyLogContext(action),
+                expectedScope,
+            );
             if (!('apiKey' in payload)) {
                 throw createPublicApiKeyClientError(response, 'PUBLIC_API_KEY_RESPONSE_INVALID');
             }
+            if (!componentActiveRef.current || activeIntegrationScopeRef.current !== requestScopeKey) return;
 
             setGeneratedApiKey(payload.apiKey);
-            setStoreDetails?.((previous: any) => ({
-                ...previous,
-                publicApi: {
-                    ...(previous?.publicApi || {}),
-                    keyPrefix: payload.apiKey.slice(0, 7),
-                    createdAt: new Date().toISOString(),
-                },
-            }));
+            setStoreDetails?.((previous: any) => (
+                String(previous?.storeId ?? '') === expectedScope.storeId
+                && String(previous?.tenantId ?? '') === expectedScope.tenantId
+                    ? {
+                        ...previous,
+                        publicApi: {
+                            ...(previous?.publicApi || {}),
+                            keyPrefix: payload.apiKey.slice(0, 7),
+                            createdAt: new Date().toISOString(),
+                        },
+                    }
+                    : previous
+            ));
             message.success('Public API key generated');
         } catch (error) {
             logBusinessSettingsFailure(
@@ -172,14 +225,26 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 error,
                 getPublicApiKeyLogContext(action),
             );
-            message.error('Failed to generate API key');
+            if (componentActiveRef.current && activeIntegrationScopeRef.current === requestScopeKey) {
+                message.error('Failed to generate API key');
+            }
         } finally {
-            setPublicApiLoadingAction(null);
+            publicApiActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeIntegrationScopeRef.current === requestScopeKey) {
+                setPublicApiLoadingAction(null);
+            }
         }
-    }, [getPublicApiKeyLogContext, setStoreDetails]);
+    }, [getPublicApiKeyLogContext, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const handleRevokePublicApiKey = useCallback(async () => {
         const action: PublicApiKeyAction = 'revoke';
+        const expectedScope = {
+            storeId: String(storeDetails?.storeId ?? '').trim(),
+            tenantId: String(storeDetails?.tenantId ?? '').trim(),
+        };
+        const requestScopeKey = `${expectedScope.tenantId}::${expectedScope.storeId}`;
+        if (!expectedScope.storeId || !expectedScope.tenantId || publicApiActionInFlightRef.current) return;
+        publicApiActionInFlightRef.current = true;
         setPublicApiLoadingAction(action);
 
         try {
@@ -187,12 +252,24 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 ...AUTH_BROWSER_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action }),
+                body: JSON.stringify({ action, ...expectedScope }),
             });
-            await readPublicApiKeyActionResponse(response, action, getPublicApiKeyLogContext(action));
+            await readPublicApiKeyActionResponse(
+                response,
+                action,
+                getPublicApiKeyLogContext(action),
+                expectedScope,
+            );
+            if (!componentActiveRef.current || activeIntegrationScopeRef.current !== requestScopeKey) return;
 
             setGeneratedApiKey(null);
             setStoreDetails?.((previous: any) => {
+                if (
+                    String(previous?.storeId ?? '') !== expectedScope.storeId
+                    || String(previous?.tenantId ?? '') !== expectedScope.tenantId
+                ) {
+                    return previous;
+                }
                 const { publicApi, ...rest } = previous || {};
                 return rest;
             });
@@ -203,11 +280,16 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 error,
                 getPublicApiKeyLogContext(action),
             );
-            message.error('Failed to revoke API key');
+            if (componentActiveRef.current && activeIntegrationScopeRef.current === requestScopeKey) {
+                message.error('Failed to revoke API key');
+            }
         } finally {
-            setPublicApiLoadingAction(null);
+            publicApiActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeIntegrationScopeRef.current === requestScopeKey) {
+                setPublicApiLoadingAction(null);
+            }
         }
-    }, [getPublicApiKeyLogContext, setStoreDetails]);
+    }, [getPublicApiKeyLogContext, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const confirmRevokePublicApiKey = useCallback(() => {
         Modal.confirm({
@@ -301,6 +383,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
                         <Flex gap={8} wrap="wrap">
                             <Button
+                                disabled={publicApiLoadingAction !== null}
                                 icon={<LuRefreshCw size={14} />}
                                 loading={publicApiLoadingAction === 'generate'}
                                 onClick={() => void handleGeneratePublicApiKey()}
@@ -311,6 +394,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                             {hasPublicApiKey ? (
                                 <Button
                                     danger
+                                    disabled={publicApiLoadingAction !== null}
                                     icon={<LuTrash2 size={14} />}
                                     loading={publicApiLoadingAction === 'revoke'}
                                     onClick={confirmRevokePublicApiKey}

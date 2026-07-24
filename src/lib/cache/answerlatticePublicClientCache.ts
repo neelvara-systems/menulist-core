@@ -71,6 +71,7 @@ export const revalidateAnswerlatticePublicClientCache = async (
     scope?: AnswerlatticePublicCacheScope | null,
     segments: AnswerlatticePublicCacheSegment | AnswerlatticePublicCacheSegment[] = 'all',
     context = 'answerlatticePublicClientCache',
+    options: { throwOnFailure?: boolean } = {},
 ): Promise<void> => {
     if (typeof window === 'undefined') {
         return;
@@ -81,6 +82,7 @@ export const revalidateAnswerlatticePublicClientCache = async (
         String(scope?.tId ?? 'session'),
         String(scope?.sId ?? 'session'),
         normalizedSegments.join(','),
+        options.throwOnFailure ? 'strict' : 'best-effort',
     ].join(':');
 
     const pending = pendingRevalidations.get(key);
@@ -110,16 +112,31 @@ export const revalidateAnswerlatticePublicClientCache = async (
                 }),
             });
 
-            if (!response.ok && process.env.NODE_ENV !== 'production') {
-                logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'bad_status', {
-                    responseStatus: response.status,
-                });
+            if (!response.ok) {
+                if (process.env.NODE_ENV !== 'production') {
+                    logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'bad_status', {
+                        responseStatus: response.status,
+                    });
+                }
+                if (options.throwOnFailure) {
+                    throw new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.bad_status);
+                }
             }
         } catch (error) {
+            if (
+                options.throwOnFailure
+                && error instanceof Error
+                && error.message === ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.bad_status
+            ) {
+                throw error;
+            }
             if (process.env.NODE_ENV !== 'production') {
                 logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'request_failed', {
                     errorName: error instanceof Error ? error.name : typeof error,
                 });
+            }
+            if (options.throwOnFailure) {
+                throw new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.request_failed);
             }
         } finally {
             window.clearTimeout(timeout);

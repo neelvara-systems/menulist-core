@@ -5,6 +5,7 @@ import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
 import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
 import { canManageStaffTarget } from '@lib/staffManagement/scopeBoundary';
 import { OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
+import type { StaffStoreOption, StaffUserSummary } from '@lib/staffManagement/types';
 import {
     buildStaffLoginDetailsText,
     copyTextToClipboard,
@@ -15,10 +16,9 @@ import {
     type StaffLoginDetailsShareInput,
 } from '@lib/staffManagement/shareLoginDetails';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { UserDataType } from '@type/platform/user';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { LuCopy, LuKeyRound, LuLogOut, LuMail, LuMessageCircle, LuPhone, LuPlus, LuShare2, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -192,7 +192,7 @@ function StaffLoginDetailsPanel({
     );
 }
 
-export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
+function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
     const t = useTranslations('MobileUsers');
     const { token } = theme.useToken();
     const { usersList, setUsersList, storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
@@ -202,16 +202,42 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const [newUserPhone, setNewUserPhone] = useState('');
     const [newUserRole, setNewUserRole] = useState('');
     const [isAdding, setIsAdding] = useState(false);
-    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [isUpdatingUser, setIsUpdatingUser] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<UserDataType | null>(null);
+    const [selectedUser, setSelectedUser] = useState<StaffUserSummary | null>(null);
     const [staffLoginDetails, setStaffLoginDetails] = useState<StaffLoginDetailsPopupState | null>(null);
-    const [staffStores, setStaffStores] = useState<any[]>([]);
+    const [staffStores, setStaffStores] = useState<StaffStoreOption[]>([]);
+    const isMountedRef = useRef(true);
+    const staffMutationInFlightRef = useRef(false);
+    const latestLoadRequestRef = useRef(0);
 
-    const users: UserDataType[] = usersList || [];
+    const users: StaffUserSummary[] = usersList || [];
     const roles = staffStores.find((store) => store.storeId === storeDetails?.storeId)?.roles || storeDetails?.roles || [];
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const currentScopeRef = useRef({
+        canAssignRoles,
+        canManageUsers,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    });
+    currentScopeRef.current = {
+        canAssignRoles,
+        canManageUsers,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    };
+    const isExpectedStaffScope = (
+        expectedTenantId: number,
+        expectedStoreId: number,
+        requireRoleAssignment = false,
+    ) => (
+        isMountedRef.current
+        && currentScopeRef.current.canManageUsers
+        && (!requireRoleAssignment || currentScopeRef.current.canAssignRoles)
+        && currentScopeRef.current.tenantId === expectedTenantId
+        && currentScopeRef.current.storeId === expectedStoreId
+    );
     const canManageTarget = (target: unknown) => canManageStaffTarget({
         canAssignRoles,
         canManageUsers,
@@ -234,35 +260,55 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
         ...metadata,
     });
 
-    useEffect(() => {
-        let cancelled = false;
+    useEffect(() => () => {
+        isMountedRef.current = false;
+        latestLoadRequestRef.current += 1;
+    }, []);
 
+    useEffect(() => {
+        const requestId = latestLoadRequestRef.current + 1;
+        latestLoadRequestRef.current = requestId;
         if (!storeDetails?.tenantId || !storeDetails?.storeId || !canManageUsers) {
             setUsersList([]);
             setStaffStores([]);
+            setIsLoadingUsers(false);
             return;
         }
 
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
         setIsLoadingUsers(true);
-        fetchStaffUsers(storeDetails.tenantId, storeDetails.storeId)
+        fetchStaffUsers(expectedTenantId, expectedStoreId)
             .then((data) => {
-                if (cancelled) return;
+                if (
+                    latestLoadRequestRef.current !== requestId
+                    || !isExpectedStaffScope(expectedTenantId, expectedStoreId)
+                ) {
+                    return;
+                }
                 setUsersList(data.users || []);
                 setStaffStores(data.stores || []);
             })
             .catch((err) => {
-                if (!cancelled) {
-                    logStaffClientFailure('mobile_staff_users_load_failed', err, buildMobileStaffLogContext('load_staff'));
-                    Toast.show({ content: 'Failed to load staff', duration: 2000 });
+                if (
+                    latestLoadRequestRef.current !== requestId
+                    || !isExpectedStaffScope(expectedTenantId, expectedStoreId)
+                ) {
+                    return;
                 }
+                setUsersList([]);
+                setStaffStores([]);
+                logStaffClientFailure('mobile_staff_users_load_failed', err, buildMobileStaffLogContext('load_staff'));
+                Toast.show({ content: 'Failed to load staff', duration: 2000 });
             })
             .finally(() => {
-                if (!cancelled) setIsLoadingUsers(false);
+                if (
+                    latestLoadRequestRef.current === requestId
+                    && isExpectedStaffScope(expectedTenantId, expectedStoreId)
+                ) {
+                    setIsLoadingUsers(false);
+                }
             });
-
-        return () => {
-            cancelled = true;
-        };
     }, [canManageUsers, setUsersList, storeDetails?.storeId, storeDetails?.tenantId, t]);
 
     const handleAddUser = async () => {
@@ -270,27 +316,51 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             Toast.show({ content: 'Enter a name or email', duration: 1500 });
             return;
         }
+        if (
+            !isMountedRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || !canManageUsers
+            || staffMutationInFlightRef.current
+        ) {
+            return;
+        }
 
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const submittedName = newUserName.trim();
+        const submittedEmail = newUserEmail.trim().toLowerCase();
+        const submittedPhone = newUserPhone.trim();
+        const submittedRole = newUserRole;
+        const submittedCountryCode = submittedPhone ? defaultStaffCountryCode : undefined;
+        const submittedDialCode = submittedPhone ? defaultStaffDialCode : undefined;
+        staffMutationInFlightRef.current = true;
+        latestLoadRequestRef.current += 1;
         setIsAdding(true);
         try {
             const data = await createStaffUser({
-                countryCode: newUserPhone.trim() ? defaultStaffCountryCode : undefined,
-                dialCode: newUserPhone.trim() ? defaultStaffDialCode : undefined,
-                email: newUserEmail.trim().toLowerCase() || undefined,
-                name: newUserName.trim() || undefined,
-                phoneNumber: newUserPhone.trim() || undefined,
-                role: newUserRole || undefined,
-                storeId: storeDetails?.storeId,
+                countryCode: submittedCountryCode,
+                dialCode: submittedDialCode,
+                email: submittedEmail || undefined,
+                name: submittedName || undefined,
+                phoneNumber: submittedPhone || undefined,
+                role: submittedRole || undefined,
+                storeId: expectedStoreId,
                 storeName: storeDetails?.name,
-                tenantId: storeDetails?.tenantId,
+                tenantId: expectedTenantId,
             });
 
-            setUsersList([...users, data.user]);
+            if (!isExpectedStaffScope(expectedTenantId, expectedStoreId)) return;
+            setUsersList((currentUsers: StaffUserSummary[] | null) => (
+                (currentUsers || []).some((item) => item.id === data.user.id)
+                    ? currentUsers
+                    : [...(currentUsers || []), data.user]
+            ));
             if (data.temporaryPasscode && data.staffLoginId) {
                 setStaffLoginDetails({
-                    countryCode: (data.user as any)?.countryCode || defaultStaffCountryCode,
-                    dialCode: (data.user as any)?.dialCode || defaultStaffDialCode,
-                    phoneNumber: (data.user as any)?.phoneNumber || newUserPhone,
+                    countryCode: (data.user as any)?.countryCode || submittedCountryCode,
+                    dialCode: (data.user as any)?.dialCode || submittedDialCode,
+                    phoneNumber: (data.user as any)?.phoneNumber || submittedPhone,
                     staffLoginId: data.staffLoginId,
                     temporaryPasscode: data.temporaryPasscode,
                     title: 'Staff login details',
@@ -323,102 +393,179 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             };
             const errorCode = err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code || '') : '';
             logStaffClientFailure('mobile_staff_create_user_failed', err, buildMobileStaffLogContext('create_staff', {
-                hasName: Boolean(newUserName.trim()),
-                hasEmail: Boolean(newUserEmail.trim()),
-                hasPhone: Boolean(newUserPhone.trim()),
-                ...getBoundedStaffStringContext('roleId', newUserRole),
+                hasName: Boolean(submittedName),
+                hasEmail: Boolean(submittedEmail),
+                hasPhone: Boolean(submittedPhone),
+                ...getBoundedStaffStringContext('roleId', submittedRole),
             }));
-            Toast.show({ content: knownStaffCreateCopy[errorCode] || 'Failed to add user', duration: 2000 });
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: knownStaffCreateCopy[errorCode] || 'Failed to add user', duration: 2000 });
+            }
         } finally {
-            setIsAdding(false);
+            staffMutationInFlightRef.current = false;
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                setIsAdding(false);
+            }
         }
     };
 
-    const handleToggleActive = async (user: UserDataType) => {
-        if (!canManageTarget(user)) return;
+    const handleToggleActive = async (user: StaffUserSummary) => {
+        if (
+            !isMountedRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || !canManageTarget(user)
+            || staffMutationInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const nextActive = !user.active;
+        staffMutationInFlightRef.current = true;
+        latestLoadRequestRef.current += 1;
         setIsUpdatingUser(true);
         try {
             const response = await updateStaffUser({
-                active: !user.active,
-                tenantId: storeDetails?.tenantId,
+                active: nextActive,
+                tenantId: expectedTenantId,
                 userId: user.id,
             });
-            setUsersList(users.map((item: any) => item.id === user.id ? response.user : item));
+            if (!isExpectedStaffScope(expectedTenantId, expectedStoreId)) return;
+            setUsersList((currentUsers: StaffUserSummary[] | null) => (
+                (currentUsers || []).map((item) => item.id === user.id && item === user ? response.user : item)
+            ));
+            setSelectedUser((current) => current === user ? response.user : current);
             Toast.show({ content: user.active ? t('userDeactivated') : t('userActivated'), duration: 1500 });
         } catch (err) {
             logStaffClientFailure('mobile_staff_active_toggle_failed', err, buildMobileStaffLogContext('toggle_active', {
-                nextActive: !user.active,
+                nextActive,
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
+            }
         } finally {
-            setIsUpdatingUser(false);
+            staffMutationInFlightRef.current = false;
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                setIsUpdatingUser(false);
+            }
         }
     };
 
-    const handleChangeRole = async (user: UserDataType, roleId: string) => {
-        if (!canAssignRoles) return;
+    const handleChangeRole = async (user: StaffUserSummary, roleId: string) => {
+        if (
+            !isMountedRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || !canAssignRoles
+            || staffMutationInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
         setIsUpdatingUser(true);
+        staffMutationInFlightRef.current = true;
+        latestLoadRequestRef.current += 1;
         try {
             const nextStores = ((user as any).stores || []).map((store: any) => (
-                store.storeId === storeDetails?.storeId ? { ...store, role: roleId } : store
+                store.storeId === expectedStoreId ? { ...store, role: roleId } : store
             ));
             const response = await updateStaffUser({
                 storeId: (user as any).storeId,
                 stores: nextStores,
-                tenantId: storeDetails?.tenantId,
+                tenantId: expectedTenantId,
                 userId: user.id,
             });
-            setUsersList(users.map((item: any) => item.id === user.id ? response.user : item));
-            setSelectedUser(response.user as any);
+            if (!isExpectedStaffScope(expectedTenantId, expectedStoreId, true)) return;
+            setUsersList((currentUsers: StaffUserSummary[] | null) => (
+                (currentUsers || []).map((item) => item.id === user.id && item === user ? response.user : item)
+            ));
+            setSelectedUser((current) => current === user ? response.user : current);
             Toast.show({ content: 'Staff member updated', duration: 1200 });
         } catch (err) {
             logStaffClientFailure('mobile_staff_role_change_failed', err, buildMobileStaffLogContext('change_role', {
                 ...getBoundedStaffStringContext('userId', user.id),
                 ...getBoundedStaffStringContext('roleId', roleId),
             }));
-            Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId, true)) {
+                Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
+            }
         } finally {
-            setIsUpdatingUser(false);
+            staffMutationInFlightRef.current = false;
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId, true)) {
+                setIsUpdatingUser(false);
+            }
         }
     };
 
-    const handleRemoveUser = async (user: UserDataType) => {
-        if (!canManageTarget(user)) return;
+    const handleRemoveUser = async (user: StaffUserSummary) => {
+        if (
+            !isMountedRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || !canManageTarget(user)
+            || staffMutationInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        staffMutationInFlightRef.current = true;
+        latestLoadRequestRef.current += 1;
         setIsUpdatingUser(true);
         try {
             const response = await removeStaffFromStore({
-                storeId: storeDetails?.storeId,
-                tenantId: storeDetails?.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
                 userId: user.id,
             });
-            setUsersList(response.user?.deleted || !userHasCurrentStore(response.user, storeDetails?.storeId)
-                ? users.filter((item: any) => item.id !== user.id)
-                : users.map((item: any) => item.id === user.id ? response.user : item));
-            setSelectedUser(null);
+            if (!isExpectedStaffScope(expectedTenantId, expectedStoreId)) return;
+            setUsersList((currentUsers: StaffUserSummary[] | null) => (
+                (currentUsers || []).flatMap((item) => {
+                    if (item.id !== user.id || item !== user) return [item];
+                    return response.user?.deleted || !userHasCurrentStore(response.user, expectedStoreId)
+                        ? []
+                        : [response.user];
+                })
+            ));
+            setSelectedUser((current) => current === user ? null : current);
             Toast.show({ content: 'Staff member removed', duration: 1500 });
         } catch (err) {
             logStaffClientFailure('mobile_staff_remove_failed', err, buildMobileStaffLogContext('remove_staff', {
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
+            }
         } finally {
-            setIsUpdatingUser(false);
+            staffMutationInFlightRef.current = false;
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                setIsUpdatingUser(false);
+            }
         }
     };
 
-    const handleResetPassword = async (user: UserDataType) => {
-        if (!canManageTarget(user)) return;
+    const handleResetPassword = async (user: StaffUserSummary) => {
+        if (
+            !isMountedRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || !canManageTarget(user)
+            || staffMutationInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        staffMutationInFlightRef.current = true;
+        latestLoadRequestRef.current += 1;
         setIsUpdatingUser(true);
         try {
             const data = await requestStaffPasswordReset({
-                storeId: storeDetails?.storeId,
-                tenantId: storeDetails?.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
                 userId: user.id,
             });
+            if (!isExpectedStaffScope(expectedTenantId, expectedStoreId)) return;
             if (data.user) {
-                setUsersList(users.map((item: any) => item.id === user.id ? data.user : item));
-                setSelectedUser(data.user as any);
+                setUsersList((currentUsers: StaffUserSummary[] | null) => (
+                    (currentUsers || []).map((item) => item.id === user.id && item === user ? data.user : item)
+                ));
+                setSelectedUser((current) => current === user ? data.user : current);
             }
             if (data.temporaryPasscode && data.staffLoginId) {
                 setStaffLoginDetails({
@@ -437,37 +584,60 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             logStaffClientFailure('mobile_staff_password_reset_failed', err, buildMobileStaffLogContext('reset_staff_access', {
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: getMobileStaffTargetFailureCopy(err, 'Could not reset staff access'), duration: 2000 });
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: getMobileStaffTargetFailureCopy(err, 'Could not reset staff access'), duration: 2000 });
+            }
         } finally {
-            setIsUpdatingUser(false);
+            staffMutationInFlightRef.current = false;
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                setIsUpdatingUser(false);
+            }
         }
     };
 
-    const handleForceSignOut = async (user: UserDataType) => {
-        if (!canManageTarget(user)) return;
+    const handleForceSignOut = async (user: StaffUserSummary) => {
+        if (
+            !isMountedRef.current
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || !canManageTarget(user)
+            || staffMutationInFlightRef.current
+        ) return;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        staffMutationInFlightRef.current = true;
+        latestLoadRequestRef.current += 1;
         setIsUpdatingUser(true);
         try {
             const data = await forceSignOutStaffUser({
-                storeId: storeDetails?.storeId,
-                tenantId: storeDetails?.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
                 userId: user.id,
             });
+            if (!isExpectedStaffScope(expectedTenantId, expectedStoreId)) return;
             if (data.user) {
-                setUsersList(users.map((item: any) => item.id === user.id ? data.user : item));
-                setSelectedUser(data.user as any);
+                setUsersList((currentUsers: StaffUserSummary[] | null) => (
+                    (currentUsers || []).map((item) => item.id === user.id && item === user ? data.user : item)
+                ));
+                setSelectedUser((current) => current === user ? data.user : current);
             }
             Toast.show({ content: 'Staff member signed out', duration: 1500 });
         } catch (err) {
             logStaffClientFailure('mobile_staff_force_signout_failed', err, buildMobileStaffLogContext('force_signout_staff', {
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: getMobileStaffTargetFailureCopy(err, 'Could not sign out staff member'), duration: 2000 });
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                Toast.show({ content: getMobileStaffTargetFailureCopy(err, 'Could not sign out staff member'), duration: 2000 });
+            }
         } finally {
-            setIsUpdatingUser(false);
+            staffMutationInFlightRef.current = false;
+            if (isExpectedStaffScope(expectedTenantId, expectedStoreId)) {
+                setIsUpdatingUser(false);
+            }
         }
     };
 
-    const getUserRoleName = (user: UserDataType) => {
+    const getUserRoleName = (user: StaffUserSummary) => {
         const storeMapping = (user as any)?.stores?.find((store: any) => store.storeId === storeDetails?.storeId);
         if (!storeMapping?.role) return t('noRole');
         const role = roles.find((item: any) => item.id === storeMapping.role);
@@ -577,9 +747,9 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                     {roles.map((role: any) => (
                                         <Button
                                             disabled={!canAssignRoles || isUpdatingUser}
-                                            fill={getUserRoleName(selectedUser as UserDataType) === role.name || (selectedUser as any)?.stores?.some((store: any) => store.storeId === storeDetails?.storeId && store.role === role.id) ? 'solid' : 'outline'}
+                                            fill={getUserRoleName(selectedUser) === role.name || selectedUser.stores?.some((store) => store.storeId === storeDetails?.storeId && store.role === role.id) ? 'solid' : 'outline'}
                                             key={role.id}
-                                            onClick={() => void handleChangeRole(selectedUser as UserDataType, role.id)}
+                                            onClick={() => void handleChangeRole(selectedUser, role.id)}
                                             size="small"
                                         >
                                             {role.name}
@@ -785,4 +955,11 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             </Popup>
         </Flex>
     );
+}
+
+export default function MobileUsersScreen(props: MobileUsersScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileUsersScreenContent key={scopeKey} {...props} />;
 }

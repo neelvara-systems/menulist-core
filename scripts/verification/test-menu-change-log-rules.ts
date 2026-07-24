@@ -7,25 +7,33 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import {
+    deleteDoc,
+    doc,
+    getDoc,
+    serverTimestamp,
+    setDoc,
+    Timestamp,
+    updateDoc,
+} from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-menu-change-log-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
 const NOW = Timestamp.fromMillis(1_700_000_000_000);
 
-const canonicalEvent = (tId: number, sId: number) => ({
+const canonicalEvent = (tId: number, sId: number, useServerTime = true) => ({
     projectId: `project-${sId}`,
     itemId: 'item-1',
     changeType: 'PRICE',
     oldValue: '10.00',
     newValue: '12.00',
     changedBy: 'OWNER',
-    timestamp: NOW,
+    timestamp: useServerTime ? serverTimestamp() : NOW,
     tId,
     sId,
 });
 
-const legacyEvent = (entryId: string, tId: number, sId: number) => ({
+const legacyEvent = (entryId: string, tId: number, sId: number, useServerTime = true) => ({
     id: entryId,
     type: 'PRICE_CHANGED',
     projectId: `project-${sId}`,
@@ -35,12 +43,14 @@ const legacyEvent = (entryId: string, tId: number, sId: number) => ({
     before: { price: '10.00' },
     after: { price: '12.00' },
     version: 1,
-    createdOn: NOW,
+    createdOn: useServerTime ? serverTimestamp() : NOW,
     tId,
     sId,
 });
 
-const canonicalSnapshot = (tId: number, sId: number) => ({
+const canonicalSnapshot = (tId: number, sId: number, useServerTime = true) => {
+    const createdAtMillis = useServerTime ? Date.now() : NOW.toMillis();
+    return ({
     projectId: `project-${sId}`,
     tId,
     sId,
@@ -59,11 +69,12 @@ const canonicalSnapshot = (tId: number, sId: number) => ({
         }],
         categories: [{ id: 'category-1', name: { en: 'Drinks' }, active: true }],
     },
-    createdAt: NOW,
-    expiresAt: Timestamp.fromMillis(NOW.toMillis() + (90 * 24 * 60 * 60 * 1000)),
+    createdAt: useServerTime ? serverTimestamp() : NOW,
+    expiresAt: Timestamp.fromMillis(createdAtMillis + (90 * 24 * 60 * 60 * 1000)),
     retentionDays: 90,
     snapshotMode: 'full_menu_short_term',
-});
+    });
+};
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -84,12 +95,15 @@ async function run(): Promise<void> {
                 setDoc(doc(db, 'projects', '1', '101', 'project-101'), { projectId: 'project-101' }),
                 setDoc(doc(db, 'projects', '1', '102', 'project-102'), { projectId: 'project-102' }),
                 setDoc(doc(db, 'projects', '2', '201', 'project-201'), { projectId: 'project-201' }),
-                setDoc(doc(db, 'menuChangeLog', '1', '101', 'seed-101'), canonicalEvent(1, 101)),
-                setDoc(doc(db, 'menuChangeLog', '1', '102', 'seed-102'), canonicalEvent(1, 102)),
-                setDoc(doc(db, 'menuChangeLog', '2', '201', 'seed-201'), canonicalEvent(2, 201)),
-                setDoc(doc(db, 'menuSnapshots', '1', '101', 'snapshot-seed-101'), canonicalSnapshot(1, 101)),
-                setDoc(doc(db, 'menuSnapshots', '1', '102', 'snapshot-seed-102'), canonicalSnapshot(1, 102)),
-                setDoc(doc(db, 'menuSnapshots', '2', '201', 'snapshot-seed-201'), canonicalSnapshot(2, 201)),
+                setDoc(doc(db, 'stores', '101'), { tenantId: 1, storeId: 101 }),
+                setDoc(doc(db, 'stores', '102'), { tenantId: 1, storeId: 102 }),
+                setDoc(doc(db, 'stores', '201'), { tenantId: 2, storeId: 201 }),
+                setDoc(doc(db, 'menuChangeLog', '1', '101', 'seed-101'), canonicalEvent(1, 101, false)),
+                setDoc(doc(db, 'menuChangeLog', '1', '102', 'seed-102'), canonicalEvent(1, 102, false)),
+                setDoc(doc(db, 'menuChangeLog', '2', '201', 'seed-201'), canonicalEvent(2, 201, false)),
+                setDoc(doc(db, 'menuSnapshots', '1', '101', 'snapshot-seed-101'), canonicalSnapshot(1, 101, false)),
+                setDoc(doc(db, 'menuSnapshots', '1', '102', 'snapshot-seed-102'), canonicalSnapshot(1, 102, false)),
+                setDoc(doc(db, 'menuSnapshots', '2', '201', 'snapshot-seed-201'), canonicalSnapshot(2, 201, false)),
             ]);
         });
 
@@ -191,8 +205,31 @@ async function run(): Promise<void> {
             { ...canonicalEvent(1, 101), changeType: 'FORGED' },
         ));
         await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'forged-system-actor'),
+            { ...canonicalEvent(1, 101), changedBy: 'SYSTEM' },
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'forged-canonical-user'),
+            { ...canonicalEvent(1, 101), userId: 'owner-201' },
+        ));
+        await assertSucceeds(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'canonical-current-user'),
+            { ...canonicalEvent(1, 101), userId: 'owner-101' },
+        ));
+        await assertFails(setDoc(
             doc(storeOneDb, 'menuChangeLog', '1', '101', 'bad-timestamp'),
             { ...canonicalEvent(1, 101), timestamp: 'today' },
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'client-controlled-timestamp'),
+            canonicalEvent(1, 101, false),
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'future-timestamp'),
+            {
+                ...canonicalEvent(1, 101),
+                timestamp: Timestamp.fromMillis(Date.now() + (365 * 24 * 60 * 60 * 1000)),
+            },
         ));
         await assertFails(setDoc(
             doc(storeOneDb, 'menuChangeLog', '1', '101', 'oversized-project'),
@@ -317,6 +354,42 @@ async function run(): Promise<void> {
             doc(storeTwoDb, 'menuChangeLog', '1', '101', 'legacy-cross-store'),
             legacyEvent('legacy-cross-store', 1, 101),
         ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'legacy-forged-actor'),
+            { ...legacyEvent('legacy-forged-actor', 1, 101), actorUserId: 'owner-201' },
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'legacy-unknown-project'),
+            { ...legacyEvent('legacy-unknown-project', 1, 101), projectId: 'missing-project' },
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'legacy-type-entity-mismatch'),
+            { ...legacyEvent('legacy-type-entity-mismatch', 1, 101), entityType: 'SYSTEM' },
+        ));
+        const validStoreEvent = {
+            ...legacyEvent('legacy-store-event', 1, 101),
+            type: 'POS_SYNC_SECRET_REGENERATED',
+            projectId: '101',
+            entityType: 'POS_SYNC',
+            entityId: '101',
+        };
+        await assertSucceeds(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'legacy-store-event'),
+            validStoreEvent,
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'legacy-store-forged-identity'),
+            {
+                ...validStoreEvent,
+                id: 'legacy-store-forged-identity',
+                projectId: '102',
+                entityId: '102',
+            },
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuChangeLog', '1', '101', 'legacy-client-controlled-time'),
+            legacyEvent('legacy-client-controlled-time', 1, 101, false),
+        ));
 
         await assertFails(updateDoc(seed101, { newValue: '99.00' }));
         await assertFails(deleteDoc(seed101));
@@ -364,6 +437,18 @@ async function run(): Promise<void> {
         await assertFails(setDoc(
             doc(storeOneDb, 'menuSnapshots', '1', '101', 'snapshot-extra-field'),
             { ...canonicalSnapshot(1, 101), internalOverride: true },
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuSnapshots', '1', '101', 'snapshot-client-controlled-created-at'),
+            canonicalSnapshot(1, 101, false),
+        ));
+        await assertFails(setDoc(
+            doc(storeOneDb, 'menuSnapshots', '1', '101', 'snapshot-forged-retention'),
+            {
+                ...canonicalSnapshot(1, 101),
+                expiresAt: Timestamp.fromMillis(Date.now() + (365 * 24 * 60 * 60 * 1000)),
+                retentionDays: 365,
+            },
         ));
         await assertFails(updateDoc(snapshotSeed101, { retentionDays: 365 }));
         await assertFails(deleteDoc(snapshotSeed101));

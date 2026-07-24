@@ -92,6 +92,9 @@ export async function confirmMapsPlaceCheckIdentity(
   storeId: number,
   result: MapsPlaceCheckClientResult,
 ): Promise<ExternalLocationIdentityMutationResult> {
+  if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK) {
+    throw new Error('maps_place_check_not_enabled');
+  }
   if (
     result.status !== 'needs_owner_confirmation'
     || result.attributionRequired !== true

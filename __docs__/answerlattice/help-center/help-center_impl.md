@@ -26,6 +26,10 @@ The July 16 item-28 pass adds no alternate support backend. Browser search respo
 
 The July 18 feature-flow pass binds every Help Center context cache to an exact `workspace:{tId}:{sId}` key and gives platform ticket lists a separate `platform` audience. Category and changelog request coalescing use per-scope maps rather than process-wide promises. Help Chat draft keys include exact workspace and consistent authenticated user identity; text is stored in a strict 24-hour envelope, legacy/foreign-scope keys are purged, and image drafts are never persisted. Managed FAQ load failure stays visible instead of silently replacing approved data with static copy.
 
+The public-content transport also binds that initiating workspace. Category, article, FAQ and changelog requests send the expected tenant/store only as corroboration; the authenticated route derives authority from the session, rejects a mismatch before cache reads, and acknowledges the exact admitted scope. The browser rejects a missing/mismatched acknowledgement. Category/article caches discard obsolete settlement, while FAQ/changelog/category direct consumers clear or ignore former-scope state through effect ownership or keyed rendering.
+
+The internal changelog Firestore read cache follows the same rule independently: latest and older-page DAL reads receive the initiating tenant/store, compare it with fresh active scope before `getDocs`, and the hook rejects settlement when its current scope key changed. Platform/help-center pagination supplies that same scope.
+
 ---
 
 ## 2. Complete File Map
@@ -426,22 +430,22 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
 
 **Path:** `{changelog_feedback|article_feedback}/{tId}/{sId}/doc1_{entryId}`
 
-### 3.9 AI Search History (`src/database/aiSearchHistory/index.ts`)
+### 3.9 AI Search History (`src/database/aiSearchHistory/server.ts` and `src/database/aiSearchHistory/index.ts`)
 
-| Function                                        | Reads | Writes | Notes                            |
-| ----------------------------------------------- | ----- | ------ | -------------------------------- |
-| `addAiSearchHistory(data)`                      | 0     | 1      | Save search response for caching |
-| `findCachedSearchByCacheKey(cacheKey, session)` | 1     | 0      | Cache lookup by key + tId        |
-| `updateAiSearchHistoryWithFeedback(data)`       | 0     | 1      | Add feedback to search record; returns explicit `{ success, searchHistoryId, updatedFields }` acknowledgement |
+| Function                                              | Reads | Writes | Notes |
+| ----------------------------------------------------- | ----- | ------ | ----- |
+| `addAiSearchHistoryServer(data)`                      | 0     | 1      | Admin SDK write of a compact search response; persists a SHA-256 digest rather than the raw cache key |
+| `findCachedSearchByCacheKeyServer(cacheKey, session)` | 1     | 0      | Admin SDK lookup by hashed cache key plus exact `pId + tId + sId` scope |
+| `updateAiSearchHistoryWithFeedback(data)`             | 1     | 1      | Client transaction verifies current actor and exact scope before writing feedback; returns explicit `{ success, searchHistoryId, updatedFields }` acknowledgement |
 
 ### 3.10 Query Embeddings (`src/database/queryEmbeddings/index.ts`)
 
 | Function                                       | Reads | Writes | Notes                                                        |
 | ---------------------------------------------- | ----- | ------ | ------------------------------------------------------------ |
-| `getCachedEmbedding(cacheKey)`                 | 1     | 0-1    | Read; stale rows return null and attempt best-effort cleanup |
+| `getCachedEmbedding(cacheKey)`                 | 1     | 0-1    | Read exact scope; invalid/stale/explicitly expired rows return null and use snapshot-preconditioned best-effort cleanup |
 | `saveCachedEmbedding(cacheKey, query, vector)` | 0     | 1      | Cache vector for reuse with Answerlattice retention fields   |
 
-**Note:** Uses `firestoreAdmin` (server-side) - this DAL is called from API routes, not client. Stale cleanup failures log `answerlattice_query_embedding_stale_delete_failed` with bounded cache-key presence/length and cache age only.
+**Note:** Uses the separate Answerlattice Admin client (server-side) and is called from the search pipeline, not the browser. Stale cleanup failures log `answerlattice_query_embedding_stale_delete_failed` with bounded cache-key presence/length and cache age only. Cleanup carries the read snapshot's update-time precondition, so a concurrent fresh replacement is preserved.
 
 ### 3.11 KB Generation Jobs (`src/database/kb-generation/jobs.ts`)
 
@@ -473,7 +477,7 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
    - Convert to base64
    - `generateSearchQueryFromImage()` → Gemini 2.5 Pro generates search query
 6. **Cache key construction** — `normalizeQuery()` + optional image hash
-7. **Response cache check** — `findCachedSearchByCacheKey()`
+7. **Response cache check** — `findCachedSearchByCacheKeyServer()`
 8. **Embedding cache check** — `getCachedEmbedding()`
 9. **Embedding generation** — `callGeminiEmbeddingWithMetadata()` → version-locked `gemini-embedding-2`
 10. **Save embedding to cache** — `saveCachedEmbedding()`
@@ -481,7 +485,7 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
 12. **Similarity filtering** — Primary threshold 0.6, fallback 0.4
 13. **Answer generation** — `callGeminiChat()` → Gemini 2.5 Flash
 14. **Reference enrichment** — Map referenced doc IDs to full article data
-15. **Save to search history** — `addAiSearchHistory()`
+15. **Save to search history** — `addAiSearchHistoryServer()`
 16. **Performance logging** — Detailed timing metrics for each stage
 
 ### 4.2 Embedding Generation
@@ -544,23 +548,23 @@ Re-generates embedding for a single article by ID. Failed regeneration logs stab
 ### 5.4 Feedback Intelligence
 
 **File:** `functions/src/analytics/feedbackIntelligence.ts`
-**Schedule:** Daily at 2:01 AM UTC (via master scheduler)
+**Runtime status:** Dormant compatibility source; not scheduled or exported.
 
-Analyzes negative feedback themes using Gemini. Writes to `insights/{tId}/stores/{sId}/ai/feedback`.
+This retained MenuList implementation documents historical recovery behavior only. The active MenuList scheduler records it as `moved_to_answerlattice_runtime`; dedicated Answerlattice nightly aggregation and deterministic chat intelligence own current feedback signals without reconnecting this Gemini worker.
 
 ### 5.5 KB Quality
 
 **File:** `functions/src/analytics/kbQuality.ts`
-**Schedule:** Daily at 2:05 AM UTC (via master scheduler)
+**Runtime status:** Dormant compatibility source; not scheduled or exported.
 
-Scores KB article quality using Gemini. Writes to `insights/{tId}/stores/{sId}/ai/kbQuality`.
+This retained MenuList implementation and its `insights/{tId}/stores/{sId}/ai/kbQuality` write shape are historical compatibility source, not current Answerlattice runtime truth.
 
 ### 5.6 Weekly Narrative
 
 **File:** `functions/src/analytics/weeklyNarrative.ts`
-**Schedule:** Sundays at 2:10 AM UTC (via master scheduler)
+**Runtime status:** Dormant compatibility source; not scheduled or exported.
 
-Generates weekly performance narrative. Writes to `insights/{tId}/stores/{sId}/ai/weekly`.
+This retained MenuList Gemini narrative worker is not active. Dedicated Answerlattice nightly aggregation owns current weekly support intelligence.
 
 ### 5.7 Negative Feedback Alert
 

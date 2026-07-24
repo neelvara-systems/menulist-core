@@ -1,9 +1,9 @@
 # MenuList SignalDesk - Documentation Hub
 
 **Project:** MenuList SignalDesk
-**Status:** Internal workflow, internal team access management, connector settings, governed source/research/content/partner rails, solo-founder Operating Layer, and bounded Revenue Operating Layer implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, proposal/calendar/payment providers, and Firebase deploy remain blocked or skipped
+**Status:** Internal workflow implemented for source testing; Feature 1-11 hardening complete through Email Rail, while provider send, paid campaigns, auto-publish, external certification, and pending SignalDesk Firebase deployments remain blocked or owner-controlled
 **Created:** June 23, 2026
-**Last Updated:** July 11, 2026
+**Last Updated:** July 22, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -90,8 +90,8 @@ Do not start with:
 | [SignalDesk Foundation](./signaldesk-foundation/README.md) | First per-feature doc set for access, roles, audit, and kill switches. |
 | [Target Registry](./signaldesk-target-registry/README.md) | Target, source candidate, contact identity, and import workflow doc set. |
 | [Source Policy](./signaldesk-source-policy/README.md) | Source rights, provenance, retention, and allowed-use doc set. |
-| [AI Intelligence](./signaldesk-ai-intelligence/README.md) | Fit, current-list gap, contactability, and eval doc set. |
-| [Evidence Packets](./signaldesk-evidence-packets/README.md) | Evidence, rejected facts, confidence, and decision snapshot doc set. |
+| [AI Intelligence](./signaldesk-ai-intelligence/README.md) | Deterministic scoring, bounded Gemini assist/volume, accounting, review, retention, and category-fair workspace history. |
+| [Evidence Packets](./signaldesk-evidence-packets/README.md) | Feature 8 locally source-complete: deterministic source-backed evidence, rejected claims, safe summary/detail separation, downstream authority, and paired retention. |
 | [Draft Control](./signaldesk-draft-control/README.md) | Templates, approved variables, safe drafts, and message guardrails doc set. |
 | [Approval Queue](./signaldesk-approval-queue/README.md) | Human review, approval states, and audit doc set. |
 | [Email Rail](./signaldesk-email-rail/README.md) | Email/export, sender readiness, unsubscribe, bounce, and complaint doc set. |
@@ -100,14 +100,14 @@ Do not start with:
 | [FHRS/FHIS Source Provider](./menulist-signaldesk_fhrs-fhis-source-provider.md) | Official UK food-business establishment seed for source/evidence use only; no contact permission or public rating feature. |
 | [Apify Source Broker](./menulist-signaldesk_apify-source-broker.md) | Gated Apify source discovery/evidence connector with env-controlled Actor ID, provider budget, and no raw payload storage. |
 | [Inbox](./signaldesk-inbox/README.md) | Unified inbox, reply classifier, suppression, and operator work-item doc set. |
-| [Outcome Bridge](./signaldesk-outcome-bridge/README.md) | Route tokens, MenuList outcomes, and attribution doc set. |
-| [Demand Signals](./signaldesk-demand-signals/README.md) | QR/link/share/claim/referral demand signal doc set. |
-| [Control Room](./signaldesk-control-room/README.md) | Channel health, cost, incidents, kill switches, and summaries doc set. |
-| [Content Distribution Rail](./signaldesk-content-distribution-rail/README.md) | Owned proof assets, platform-ready drafts, approvals, calendar queue, and manual performance capture. |
+| [Outcome Bridge](./signaldesk-outcome-bridge/README.md) | Feature 13 source-complete: qualified conversation/approval route lineage, signed/manual/demand outcomes, exact attribution and cost accounting, desktop-only detail, and MenuList truth isolation. |
+| [Demand Signals](./signaldesk-demand-signals/README.md) | Feature 14 source-complete: protected manual capture plus content/trust aggregate producers, strict replay/summary lineage, canonical target identity, exact cost accounting, desktop-only mutation, and no public tracking hook. |
+| [Control Room](./signaldesk-control-room/README.md) | Feature 15 source-complete: summary-only safety view, exact active pauses and unresolved incidents, confirmed/idempotent kill-switch changes, four-write cost truth, dashboard-only mobile emergency pause, and no research/send actions. |
+| [Content Distribution Rail](./signaldesk-content-distribution-rail/README.md) | Feature 16 source-complete: feature/permission-gated proof authority, owned assets, immutable draft revisions, approval/calendar queue, exact cost evidence, and manual publication performance capture without auto-publish. |
 | [Trust Partner Rail](./signaldesk-trust-partner-rail/README.md) | Partner/creator trust-channel testing, lean briefs, deal tracking, deliverables, and renewal decisions. |
-| [Operating Layer](./signaldesk-operating-layer/README.md) | Daily Growth Mission, experiment cards, offer CTA OS, reply playbooks, source quality learning, and 7-day trial controls. |
+| [Operating Layer](./signaldesk-operating-layer/README.md) | Feature 18 source-complete: parent/child-gated Daily Growth Mission, experiments, offers, reply playbooks, source quality, governed research, market-pod recommendations, exact replay, and desktop-only mutations. |
 | [Research Agent Table](./signaldesk-operating-layer/signaldesk-operating-layer_research-agent-table.md) | Prompt-to-table research workflow plus dashboard lead batch with source-provider runs, enrichment columns, pass/fail/unsure scoring, source transparency, idempotency, and market-pod mapping. |
-| [Revenue Operating Layer](./signaldesk-revenue-operating-layer/README.md) | Revenue accounts, commercial opportunities/offers, bounded operating envelopes, activation watches, and revenue-control summaries without provider send or MenuList truth writes. |
+| [Revenue Operating Layer](./signaldesk-revenue-operating-layer/README.md) | Strict revenue accounts, activation-authoritative opportunities, immutable offers, founder-approved bounded envelopes, exact-retry-safe watches, and compact summaries without provider send or MenuList truth writes. |
 | [Specification](./menulist-signaldesk_spec.md) | Business/product requirements for the internal project. |
 | [Implementation Plan](./menulist-signaldesk_impl.md) | Technical blueprint, architecture, module order, and reserved file layout. |
 | [Firebase Cost Plan](./menulist-signaldesk_firebase.md) | Separate Firebase posture, collections, cost controls, and dashboard read strategy. |
@@ -147,12 +147,12 @@ The project should be documented and built in this order:
 | 6 | Templates, safe drafts, and guardrails | Initial feature doc set created |
 | 7 | Human approval queue | Initial feature doc set created |
 | 8 | Email/export rail | Initial feature doc set created |
-| 9 | Inbox and reply classification | Initial feature doc set created |
-| 10 | MenuList outcome bridge and attribution | Initial feature doc set created |
-| 11 | Demand signals and QR/link flywheel | Initial feature doc set created |
-| 12 | Channel health, cost, and safety dashboard | Initial feature doc set created |
-| 13 | Content distribution rail | Runtime implemented for internal testing; auto-publish remains blocked |
-| 14 | Trust partner and creator rail | Runtime implemented for internal testing; real deals remain budget and owner approval gated |
+| 9 | Inbox and reply classification | Feature 12 locally source-complete; shared classifier, sticky safety state, transition-exact queue count, actionable-first reads, current-conversation UI binding, and focused emulator coverage verified |
+| 10 | MenuList outcome bridge and attribution | Feature 13 source-complete: canonical route lineage, immutable outcomes, exact replay/cost accounting, and focused emulator evidence |
+| 11 | Demand signals and QR/link flywheel | Feature 14 source-complete: flag/permission admission, strict event-summary-claim truth, cross-day replay, canonical target identity, exact cost accounting, desktop-only mutation, and bounded aggregate reads |
+| 12 | Channel health, cost, and safety dashboard | Feature 15 source-complete: flagged summary surface, exact pause/incident truth, confirmed permissions, idempotent four-write transitions, bounded reads, and dashboard-only mobile emergency activation |
+| 13 | Content distribution rail | Feature 16 source-complete: route/read/action admission, proof lifecycle, source/asset/draft/calendar/performance authority, exact write estimates, desktop-only operation, and no auto-publish |
+| 14 | Trust partner and creator rail | Feature 17 locally source-complete: flagged admission, founder approval, actor-bound retries, rail pause, attributable metrics, outcome-derived renewal, exact cost truth, desktop permissions, and dashboard-only mobile |
 | 15 | Solo-founder operating layer | Runtime implemented for internal testing; provider send, paid campaigns, public pages, and auto-publish remain blocked |
 | 16 | Growth playbook operating doctrine | Review doc created; adopt activation-proof loop and first-pod defaults before adding more automation |
 | 17 | Founder distribution research doctrine | Research doc created; prioritize Activation Concierge, proof assets, demand listening, and objection learning over send/provider expansion |
@@ -162,13 +162,13 @@ Reserved or owner-gated modules:
 
 - assisted WhatsApp, Instagram, and Messenger routing: implemented as gated handoff/provider-send plumbing
 - Apify source broker: implemented as gated discovery/evidence connector, not a scrape-and-send path
-- trust partner rail: internal partner profile, niche test, deal, brief, deliverable, metrics, renewal, and pause-scope runtime implemented; real partner spend remains budget and owner approval gated
+- trust partner rail: profile, niche, deal, brief, deliverable, metrics, renewal, and pause-scope runtime is locally source-complete; partner contact, contract, payment, publication, provider send, and real spend remain manual and founder-controlled
 - content distribution rail: internal owned-proof source, asset, draft, approval, calendar, and performance runtime implemented; auto-publish remains out of scope
 - Meta paid intent
 - campaign experiments
 - local cluster expansion
 - AI optimizer
-- solo-founder operating layer: Dashboard lead batch, Research Agent Table, Daily Growth Mission, Offer and CTA OS, Reply-to-Conversion Assistant, Experiment Cards, and Source Quality Learning are implemented as private runtime records and `/signaldesk` / `/signaldesk/mission`; self-serve owner route, referral loop, and public MenuList marketing surfaces remain separate MenuList-side work
+- solo-founder operating layer: Activation-first Today desk, read-only target journey, seven-day outcome snapshot, Research Agent Table, Daily Growth Mission, Offer and CTA OS, Reply-to-Conversion Assistant, Experiment Cards, and Source Quality Learning are implemented as private runtime/read-model behavior at `/signaldesk` and `/signaldesk/mission`; self-serve owner route, referral loop, and public MenuList marketing surfaces remain separate MenuList-side work
 - revenue operating layer: account qualification, interested-reply projection, two-surface-only win authority, opportunity/pipeline state, immutable offer versions, founder-reviewed market pods, operating envelopes, deterministic indexed outcome-to-activation projection, read-time seven-day stalls, and founder-attention/spend summaries are implemented at `/signaldesk/revenue`; calendar, proposal, signature, payment, and direct MenuList activation execution remain provider/product-owned boundaries
 
 ## Architecture Summary
@@ -244,6 +244,7 @@ Approved sources
 | 3.2 | 2026-06-27 | Bounded SignalDesk client DAL failure copy so overview, workspace, action, and pause failures no longer rethrow raw route response text into the internal UI. |
 | 3.3 | 2026-06-30 | Bounded shared API guard security logs so SignalDesk validation, authorization, rate-limit, and malformed-JSON events no longer spread raw `buildSecurityContext()` output. |
 | 3.4 | 2026-07-10 | Implemented the bounded Revenue Operating Layer at `/signaldesk/revenue`: deterministic account qualification, commercial opportunities, immutable offer versions, policy-referenced operating envelopes, activation watches, founder-attention/revenue summaries, client-write-denied rules, indexes, and emulator E2E coverage; exception-only and provider send remain blocked. |
+| 3.5 | 2026-07-21 | Revalidated Feature 19 end to end: layered flag enforcement, current authority rechecks, manual-win prevention, founder-only envelope approval, exact-retry no-op settlement, strict projections, role-bounded workspace data, desktop-only Revenue admission, and isolated emulator coverage. |
 | 3.5 | 2026-07-10 | Cross-check hardened revenue integrity: transactional idempotency and forecast deltas, required active-pod scope, compatible budget selection, one-currency pipeline enforcement, deterministic immutable offer/envelope IDs, activation-driven opportunity close, coherent expiry/hold/approval history, explicit offer selection, and hard mobile form disabling. |
 | 3.6 | 2026-07-10 | Wired the first-trial operating loop: held zero-budget Bengaluru defaults, interested-reply revenue qualification, automatic outcome-to-activation projection, read-time seven-day stall detection, recovery-only watch recheck, and a revenue/attention/spend-aware founder brief. |
 | 3.7 | 2026-07-10 | Cross-check closed pod-approval, published-only win, and long outcome-history defects: research/recommendations stay held, founder review is explicit, envelopes require approval evidence, only two-surface activation wins, and indexed earliest/latest/terminal outcome reads preserve lifecycle truth. |
@@ -252,3 +253,4 @@ Approved sources
 | 4.0 | 2026-07-11 | Implemented measurable AI shadow review using existing provider-run and model-evaluation records: founder accept/edit/reject/hold decisions, replacement-safe cumulative rates, founder-attention summaries, audit/timeline evidence, desktop controls, hard mobile blocking, verifier coverage, and emulator E2E; no send, publish, spend, new collection, or MenuList truth authority was added. |
 | 4.1 | 2026-07-11 | Implemented founder-triggered AI Volume Mode: up to five targets and three tasks, fast Gemini generation, independent critic, bounded same-provider escalation, founder cost maximum, paid-request idempotency, partial-failure evidence, parent/child workspace visibility, and no external-action authority. |
 | 4.2 | 2026-07-11 | Cross-check fixed expired AI Volume parents end to end: desktop persists/reuses the bounded retry payload, server reconstructs child/call/cost evidence, terminal status finalizes without provider calls, stable interruption evidence remains, and an old parent cannot release another batch's lock. |
+| 4.3 | 2026-07-21 | Feature 18 Operating Layer cross-check added full parent-route/workspace/action gating, child-rail read isolation, permission-specific controls, strict reply/source/pod projections, policy-run integrity, no-write exact replay, corrected mobile scope/cost docs, and focused deterministic E2E coverage. |

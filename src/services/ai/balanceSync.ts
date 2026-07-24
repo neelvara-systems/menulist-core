@@ -11,25 +11,28 @@
  * @see src/lib/ai/capacityCheck.ts — reservation settlement returns the scoped balance
  */
 
+import {
+    getNonNegativeCreditInteger,
+    getPositiveCreditInteger,
+} from '@data/shared/aiCreditScalarContract';
+
 export interface AIBalanceUpdate {
     billingStoreId: number;
     monthlyCredits: number;
     topUpCredits: number;
 }
 
-function normalizeBalanceUpdate(value: unknown): AIBalanceUpdate | null {
+export function normalizeAiBalanceUpdate(value: unknown): AIBalanceUpdate | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const balance = value as Record<string, unknown>;
-    const billingStoreId = Number(balance.billingStoreId);
-    const monthlyCredits = Number(balance.monthlyCredits);
-    const topUpCredits = Number(balance.topUpCredits);
+    const billingStoreId = getPositiveCreditInteger(balance.billingStoreId);
+    const monthlyCredits = getNonNegativeCreditInteger(balance.monthlyCredits);
+    const topUpCredits = getNonNegativeCreditInteger(balance.topUpCredits);
     if (
-        !Number.isSafeInteger(billingStoreId)
-        || billingStoreId <= 0
-        || !Number.isFinite(monthlyCredits)
-        || monthlyCredits < 0
-        || !Number.isFinite(topUpCredits)
-        || topUpCredits < 0
+        billingStoreId === null
+        || monthlyCredits === null
+        || topUpCredits === null
+        || !Number.isSafeInteger(monthlyCredits + topUpCredits)
     ) {
         return null;
     }
@@ -44,7 +47,7 @@ function normalizeBalanceUpdate(value: unknown): AIBalanceUpdate | null {
 export function syncBalanceFromResponse(responseJson: unknown): void {
     if (typeof window === 'undefined') return;
     if (!responseJson || typeof responseJson !== 'object' || Array.isArray(responseJson)) return;
-    const detail = normalizeBalanceUpdate((responseJson as Record<string, unknown>).remainingBalance);
+    const detail = normalizeAiBalanceUpdate((responseJson as Record<string, unknown>).remainingBalance);
     if (!detail) return;
 
     window.dispatchEvent(

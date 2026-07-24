@@ -26,7 +26,7 @@ async function run(): Promise<void> {
             });
             await setDoc(doc(context.firestore(), 'aiSearchHistory', 'search-1'), {
                 pId: 'AL', tId: 1, sId: 101, query: 'Question', craftedAnswer: 'Answer',
-                modifiedOn: NOW,
+                uId: 'owner-1', modifiedOn: NOW,
             });
             await setDoc(doc(context.firestore(), 'insights', '1', 'stores', '101', 'ai', 'weekly'), {
                 pId: 'AL', tId: 1, sId: 101, weekStart: '2026-07-01', weekEnd: '2026-07-07',

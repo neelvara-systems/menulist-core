@@ -38,9 +38,17 @@ export function isAnswerlatticeChatAnalyticsStoreScope(
 ): boolean {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const store = value as Record<string, unknown>;
-    return store.pId === 'AL'
-        && store.tId === expectedTId
-        && (store.sId === expectedSId || store.storeId === expectedSId)
+    const productIds = [store.pId, store.productId].filter((entry) => entry !== undefined);
+    const tenantIds = [store.tId, store.tenantId].filter((entry) => entry !== undefined);
+    const storeIds = [store.sId, store.storeId].filter((entry) => entry !== undefined);
+    return productIds.length > 0
+        && productIds.every((entry) => entry === 'AL')
+        && tenantIds.length > 0
+        && tenantIds.every((entry) => entry === expectedTId)
+        && storeIds.length > 0
+        && storeIds.every((entry) => entry === expectedSId)
         && store.active !== false
-        && store.deleted !== true;
+        && store.deleted !== true
+        && store.authDisabled !== true
+        && store.blocked !== true;
 }

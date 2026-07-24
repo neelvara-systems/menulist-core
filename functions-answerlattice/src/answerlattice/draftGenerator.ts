@@ -273,6 +273,7 @@ async function getSignalExamples(
         if (examples.length < 3) {
             const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
             const snap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+                .where('pId', '==', 'AL')
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('entityId', '==', entityId)
@@ -313,6 +314,7 @@ async function getExistingAnswerSummaries(tId: number, sId: number, entityId: st
 
     try {
         const snap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('scope.entityIds', 'array-contains', entityId)
@@ -650,6 +652,7 @@ export async function generateDraftsForNewProposals(
         // Scan a bounded pending queue, then claim supported proposal types in
         // transactions so another scheduler/manual request cannot process them.
         const proposalsSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('status', '==', 'pending_review')

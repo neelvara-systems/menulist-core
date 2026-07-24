@@ -1,55 +1,51 @@
 # SignalDesk Demand Signals - Specification
 
-**Status:** Initial planning spec
+**Status:** Implemented internal capture and summary contract
 **Created:** June 23, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Objective
 
-Capture compact, privacy-bounded signals that show business demand for MenuList, then route those signals into target prioritization and outcome attribution.
+Retain compact business-demand evidence for internal prioritization and attribution while preventing anonymous-customer identity, automatic outreach, or MenuList truth mutation.
 
-## Goals
+## Signal Vocabulary
 
-1. Record warm growth signals from MenuList-controlled surfaces.
-2. Summarize signal strength by target, market pod, source, and surface.
-3. Improve prioritization without turning customer behavior into personal tracking.
-4. Feed route and outcome attribution where a valid route token exists.
-5. Surface partner/referral opportunities for operator review.
+| Signal | Current meaning |
+| --- | --- |
+| `qr_scan` | Operator-confirmed QR demand observation. |
+| `link_click` | Operator-confirmed link demand observation. |
+| `share` | Operator-confirmed sharing demand observation. |
+| `claim_attempt` | Operator-confirmed business claim/setup intent. |
+| `referral` | Operator or an approved internal metric workflow observed referral/owner intent. |
+
+Every capture also carries one bounded source surface: `menu`, `qr`, `website`, `manual`, or `other`.
+
+## Requirements
+
+| ID | Requirement |
+| --- | --- |
+| DEM-001 | Capture requires `target.review`, desktop mode, feature enablement, a bounded actor operation key, and a strict payload. |
+| DEM-002 | A target ID must resolve to current strict `SD` target truth; caller target names never override it. |
+| DEM-003 | General signals store both target ID and target name as null; free-text identity without a target is rejected. |
+| DEM-004 | Event, daily source summary, idempotency claim, audit, control count, and cost count settle atomically. |
+| DEM-005 | Existing deterministic summaries must pass strict product, identity, field, and lineage validation before increment. |
+| DEM-006 | Exact replay must prove its actor-bound claim, immutable event, and event-day summary; changed intent fails closed. |
+| DEM-007 | Demand never creates a target, clears suppression, authorizes contact, sends, publishes, or writes MenuList truth. |
+| DEM-008 | Raw demand events are server authority only; clients receive bounded summary projections. |
 
 ## Non-Goals
 
-- No customer-level identity graph.
-- No tracking anonymous customers across unrelated businesses.
-- No public analytics product.
-- No automatic prospect creation from customer scan alone.
-- No MenuList owner-facing setting in the first build.
-
-## Signal Types
-
-| Signal | Meaning |
-| --- | --- |
-| `qr_scan_cluster` | QR/menu scan activity suggests a location/category has visible demand. |
-| `menu_link_share` | A MenuList link was shared or copied from an allowed surface. |
-| `claim_or_setup_click` | A business-facing claim/setup call to action was clicked. |
-| `customer_request_menu` | Customer asked for an updated or digital list where allowed. |
-| `owner_claim_attempt` | Business owner attempted to claim or start setup. |
-| `partner_referral` | Partner or operator records referral intent. |
-| `viral_route_touch` | Route token or share path created a measurable follow-on action. |
-
-## Eligibility Rules
-
-| Rule | Requirement |
-| --- | --- |
-| DEM-001 | Anonymous customer signals must stay aggregate and compact. |
-| DEM-002 | A prospect can be created only from business-facing or operator-verified signal. |
-| DEM-003 | Each signal must record allowed purpose and source surface. |
-| DEM-004 | Demand summaries must be derived from events. |
-| DEM-005 | Signals must not bypass suppression rules. |
-| DEM-006 | Route-token signals must connect to outcome bridge when available. |
+- No public MenuList event hook in the current runtime.
+- No customer identity, IP, device fingerprint, or cross-business graph.
+- No automatic target/prospect creation.
+- No referral review queue or hook-health collection.
+- No public analytics or MenuList owner setting.
+- No mobile demand-detail screen or mutation.
 
 ## Acceptance Criteria
 
-- QR/menu scan clusters can influence market-pod prioritization without identifying customers.
-- Owner claim attempt can create or update a target for review.
-- Partner referral creates a review item, not an automatic outreach send.
-- Suppressed targets remain blocked even if demand signals appear.
-- Dashboards read summaries, not raw public-surface event streams.
+- Concurrent identical captures produce one six-write effect set and one durable replay.
+- A retry after UTC day rollover returns the original event-day summary.
+- Foreign/malformed targets or deterministic summaries fail before partial writes.
+- Suppressed targets can contribute aggregate learning without changing suppression or outreach authority.
+- Content/trust owner-signal aggregates project with null target identity and obey the Demand Signals feature flag.

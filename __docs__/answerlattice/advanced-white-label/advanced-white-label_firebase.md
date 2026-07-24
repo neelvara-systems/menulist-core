@@ -6,7 +6,7 @@ Path: `platformSummary/branding_{tId}_{sId}`
 
 Required document identity: `pId: AL`, exact positive `tId`, exact positive `sId`, and one `branding` map. Standard Answerlattice composer metadata may also be present.
 
-The nested branding map is allowlisted. `customCss`, `fontFamily`, unknown root fields, insecure URLs, credential-bearing URLs, fragments, invalid colors, malformed email, and wrong document scope are rejected by both dedicated and shared Firestore rules.
+The nested branding map is allowlisted. Runtime and both rulesets share the same rule-expressible URL and support-email admission policy. `customCss`, `fontFamily`, unknown root fields, insecure or malformed URLs, credential-bearing URLs, fragments, ports, invalid colors, malformed email, and wrong document scope are rejected by both dedicated and shared Firestore rules.
 
 ## Authorization
 

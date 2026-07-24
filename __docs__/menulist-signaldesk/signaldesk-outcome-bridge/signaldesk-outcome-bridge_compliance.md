@@ -2,7 +2,7 @@
 
 **Status:** Runtime-enforced policy; local emulator verified
 **Created:** June 23, 2026
-**Runtime reconciled:** July 13, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Principle
 
@@ -41,8 +41,8 @@ SignalDesk must not copy:
 ## Manual Outcome Rules
 
 - Operator-entered outcomes require evidence note or linked MenuList reference.
-- Manual paid-plan or partner outcomes require admin role.
-- Outcome corrections require append-only correction event, not silent edits.
+- The current outcome vocabulary does not include paid-plan or partner events.
+- Existing events are immutable. There is no correction mutation; operators must not silently edit an event or summary.
 
 ## Suppression Interaction
 

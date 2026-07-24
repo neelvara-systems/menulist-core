@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { FieldValue, type WriteBatch } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { AnswerlatticeCompiledSourceVersions, AnswerlatticeContextSourceKey } from '@type/answerlattice';
 import {
     ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS,
@@ -12,6 +12,11 @@ import {
     isAnswerlatticeContextBundleManifestForScope,
     normalizeCompiledSourceVersions,
 } from './compiledContext';
+import {
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+} from './invalidationOwnership';
 
 type SourceVersionBumpMetadata = {
     reason?: string;
@@ -136,8 +141,7 @@ export const initializeAnswerlatticeCompiledContextControlPlaneAdmin = async (
     });
 };
 
-export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
-    batch: WriteBatch,
+export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (
     source: AnswerlatticeContextSourceKey,
     tId: number,
     sId: number,
@@ -145,43 +149,29 @@ export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
 ) => {
     const { tenantId, storeId } = assertScope(tId, sId);
     const db = getDb();
-    const now = FieldValue.serverTimestamp();
     const metadataFields = sanitizeMetadata(metadata);
-    const sourceRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId));
-    const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(getAnswerlatticeBundleManifestDocId(tenantId, storeId));
-    const sourceData = {
-        schemaVersion: 1,
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: tenantId,
-        sId: storeId,
-        [source]: FieldValue.increment(1),
-        updatedAt: now,
-        ...metadataFields,
-    };
-    const manifestData = {
-        schemaVersion: 1,
-        pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: tenantId,
-        sId: storeId,
-        status: 'stale',
-        staleReason: metadata?.reason || `${source}_changed`,
-        updatedAt: now,
-        ...metadataFields,
-    };
-
-    batch.set(sourceRef, sourceData, { merge: true });
-    batch.set(manifestRef, manifestData, { merge: true });
-};
-
-export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (
-    source: AnswerlatticeContextSourceKey,
-    tId: number,
-    sId: number,
-    metadata?: SourceVersionBumpMetadata,
-) => {
-    const batch = getDb().batch();
-    appendAnswerlatticeCompiledContextSourceChangeAdmin(batch, source, tId, sId, metadata);
-    await batch.commit();
+    await db.runTransaction(async transaction => {
+        const scope = { tId: tenantId, sId: storeId };
+        const ownership = await readAnswerlatticeInvalidationOwnership({ db, scope, transaction });
+        const now = FieldValue.serverTimestamp();
+        transaction.set(ownership.sourceVersionsRef, {
+            ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
+            schemaVersion: 1,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            [source]: FieldValue.increment(1),
+            updatedAt: now,
+            ...metadataFields,
+        }, { merge: true });
+        transaction.set(ownership.manifestRef, {
+            ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
+            schemaVersion: 1,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            status: 'stale',
+            staleReason: metadata?.reason || `${source}_changed`,
+            updatedAt: now,
+            ...metadataFields,
+        }, { merge: true });
+    });
 };

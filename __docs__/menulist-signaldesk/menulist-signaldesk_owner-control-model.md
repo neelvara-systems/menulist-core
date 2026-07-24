@@ -41,7 +41,7 @@ SignalDesk should move work upward only when the previous level is safe.
 | 0 | Record | Store source provenance, target summaries, audit events, replies, outcomes, and demand signals. |
 | 1 | Recommend | Score targets, show gaps, explain rejected facts, and suggest the next action. |
 | 2 | Prepare | Build evidence packets, safe drafts, reply classifications, and approval packets. |
-| 3 | Assist | Prepare channel handoffs for email, WhatsApp, Instagram, and Messenger after human approval. |
+| 3 | Assist | Prepare a channel handoff only from a human-approved draft for that exact channel. Current draft/approval creation is email-only; WhatsApp/Instagram remain gated and Messenger outbound is unsupported. |
 | 4 | Send | Provider send only after sender identity, physical address, unsubscribe, suppression, bounce, complaint, source policy, and channel readiness are complete. Currently disabled. |
 | 5 | Spend | Paid campaign automation. Explicitly skipped for now. |
 

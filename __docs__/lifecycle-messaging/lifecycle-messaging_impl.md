@@ -253,3 +253,7 @@ See `lifecycle-messaging_firebase.md` for detailed breakdown.
 ---
 
 _Last updated: Feb 20, 2026_
+
+## Exact subscription recipient scope (July 22, 2026)
+
+Renewal reminders and suspension warnings use only subscriptions with exact dual `ML` product aliases and present, agreeing positive numeric tenant/store aliases. Recipient tenant/store IDs come from the Functions exact-scope projector, not `tenantId ?? tId` fallback. Conflicting rows remain unmessaged and do not increment the successful candidate count; pagination still advances over the bounded source query.

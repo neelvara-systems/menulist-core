@@ -1,42 +1,43 @@
 # SignalDesk Inbox - Test Cases
 
-**Status:** Initial test matrix
-**Created:** June 23, 2026
-**Last Updated:** July 15, 2026
+**Status:** Executable boundary matrix
+**Last reviewed:** July 21, 2026
 
-## Functional Tests
+## Focused Emulator
 
-| ID | Test | Expected |
+```bash
+npm run test:signaldesk:inbox-boundary
+```
+
+| ID | Case | Expected |
 | --- | --- | --- |
-| INB-T001 | Inbound interested reply arrives | Conversation summary updates and work item is created. |
-| INB-T002 | Unsubscribe reply arrives | Suppression is written before follow-up eligibility changes. |
-| INB-T003 | Wrong-contact reply arrives | Contact identity is suppressed and target is flagged for review. |
-| INB-T004 | Complaint reply arrives | Suppression and control-room incident are created. |
-| INB-T005 | Operator overrides classifier | Override reason and audit event are stored. |
-| INB-T006 | Two identical reply captures race | One actor/key claim owns one message, classification, conversation transition, incident/pause, backlog, audit, and cost effect; the other returns durable replay. |
-| INB-T007 | Same reply key is reused with changed target/channel/message | Rejected as an idempotency conflict with no new effects. |
-| INB-T008 | Reply arrives after target is converted | Reply and safety truth are retained without downgrading the target from converted. |
+| INB-T001 | Positive manual reply | Classified `interested`; backlog increments once. |
+| INB-T002 | Second actionable reply | Message/classification retained; backlog does not inflate. |
+| INB-T003 | `Not interested` manual reply | Uses shared classifier; state becomes `not_interested`; backlog decrements once. |
+| INB-T004 | Complaint then positive reply | Complaint, suppression, and pause remain authoritative; no revenue account is created. |
+| INB-T005 | More than 30 newer terminal conversations | Older actionable conversation remains in Inbox. |
+| INB-T006 | Exact concurrent manual retry | One message/classification/incident/queue effect; one durable replay. |
+| INB-T007 | Changed facts under same key | Conflict with no second effects. |
+| INB-T008 | Fabricated or non-current conversation | Rejected before message/classification effects. |
+| INB-T009 | Converted target receives reply | Converted lifecycle is preserved. |
+| INB-T010 | DNC or wrong contact | Suppression is written synchronously. |
+| INB-T011 | Complaint/privacy/legal | Incident and appropriate kill switch are written synchronously. |
+| INB-T012 | Signed duplicate webhook | Exact duplicate returns replay; changed fingerprint conflicts. |
+| INB-T013 | Out-of-order webhook | Historical evidence retained; current state and backlog do not regress. |
+| INB-T014 | Supplied target conflicts with stored identity | Webhook fails closed. |
+| INB-T015 | Mobile capture attempt | Blocked and audited. |
+| INB-T016 | User lacks `target.review` | Server rejects; desktop capture controls are disabled. |
 
-## Cost Tests
+## Required Regression Gates
 
-| ID | Test | Expected |
-| --- | --- | --- |
-| INB-T010 | Load inbox list | Reads summaries only. |
-| INB-T011 | Open conversation detail | Reads paginated messages only for that conversation. |
-| INB-T012 | Filter by human review | Uses indexed summary query. |
+```bash
+npm run verify:signaldesk
+npm run test:signaldesk:inbox-boundary
+npm run test:signaldesk:access-boundary
+npm run test:signaldesk:source-data-lifecycle
+npm run test:signaldesk:workspace-contracts
+npm run test:signaldesk:workspace-client-contracts
+npm run typecheck
+```
 
-## Compliance Tests
-
-| ID | Test | Expected |
-| --- | --- | --- |
-| INB-T020 | Attempt follow-up after DNC | Blocked. |
-| INB-T021 | Reopen suppressed conversation as operator | Blocked unless admin. |
-| INB-T022 | Classifier marks complaint low confidence | Human review and incident path still trigger. |
-
-## Mobile Tests
-
-| ID | Test | Expected |
-| --- | --- | --- |
-| INB-T030 | Mobile inbox summary | Counts render without message body fetch. |
-| INB-T031 | Mobile emergency suppression | Requires admin confirmation and audit event. |
-| INB-T032 | Mobile send attempt | Not available. |
+Provider-delivery certification remains external and must use signed QA webhook fixtures; provider sending remains disabled.

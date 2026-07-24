@@ -2,7 +2,7 @@
 
 **Status:** ✅ VERIFIED (v1.7)
 **Date:** February 22, 2026
-**Last Source Gate Update:** July 13, 2026
+**Last Source Gate Update:** July 22, 2026
 
 ---
 
@@ -52,9 +52,10 @@ Feature flag is currently `ENABLE_PUBLIC_API: true`. The gate checks per-request
 - **MenuList product/identity scope:** Key mutation and pull reads retain legacy compatibility when product or embedded ID aliases are absent. Explicit `pId`/`productId` values must both be `ML`; explicit `tenantId`/`tId` and `storeId`/`sId` aliases must be exact numeric IDs, agree with one another, and match the authoritative tenant/store path. Failures stop before key writes or menu-summary/project reads and add no new Firebase operations.
 - **Credential metadata:** New key writes add `productId: ML`, `purpose: menulist_public_api`, and `scopes: [public:read]` inside the existing single `publicApi` update. This adds no operation; legacy credentials with no metadata remain readable, while explicit incompatible metadata fails before target reads.
 - **Route diagnostics:** Bounded unexpected-failure diagnostics on the business/menu GET routes add no Firestore reads, writes, deletes, Storage operations, Cloud Function calls, provider calls, cache invalidations, or Firebase deploy requirement. Response contracts and ETag behavior stay unchanged.
+- **Contract freeze and fixtures:** The July 22 Business Truth Contract and expanded pure compatibility fixture add no runtime read, write, delete, rule, index, Function, provider, or cache operation. They source-gate existing linked-outlet/item/variant/fact-value/ETag behavior only.
 
 **Verdict:** Acceptable. Feature flag is currently enabled in source. Rate limiting provides cost ceiling. The additional projects-summary read is required because `isDefault` is summary truth for public menu selection.
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 22, 2026

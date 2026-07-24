@@ -1,43 +1,36 @@
 # SignalDesk Operating Layer - Compliance
 
-**Status:** Implemented
+**Status:** Implemented and cross-checked
 **Created:** June 24, 2026
-**Last Updated:** July 16, 2026
+**Last Updated:** July 21, 2026
 
-## Rules
+## Mandatory Rules
 
-- Daily missions may recommend only approved action classes.
-- Missions cannot send, publish, spend, or mutate MenuList truth.
-- Offer/CTA records must store blocked claims.
-- Reply playbooks must map unsubscribe, stop, complaint, wrong-contact, and DNC-like replies to suppression or human review.
-- Source-quality snapshots must measure risk and outcomes, not only lead volume.
-- Research Agent Table rows must preserve source refs and use `pass`, `fail`, or `unsure` as review priority only; they are not contact permission.
-- Experiment cards must include stop rules before execution.
-- New experiment cards must define comparison windows, a primary metric, known confounders, and the next evidence readback before execution.
-- Every experiment review must record a fresh 2-1000 character result summary before repeat, narrow, hold, stop, or complete; `pending` cannot be submitted as a review decision.
-- Readback plans may support founder decisions only. They cannot automatically promote, roll back, send, publish, spend, or convert correlation into proof.
-- Provider send remains blocked until sender, physical address, unsubscribe, bounce, complaint, suppression sync, and caps are implemented and approved.
+- All APIs require authenticated SignalDesk access and the action-specific permission.
+- Parent and child feature flags are server-enforced.
+- Mobile mutation requests are denied server-side.
+- Source-policy and run references must exist and agree.
+- Research fit (`pass`, `fail`, `unsure`) is review priority, never contact consent.
+- Reply playbooks for stop, unsubscribe, complaint, wrong-contact, or DNC-like intent must preserve suppression/human-review routing.
+- Offer records preserve blocked claims and proof-match requirements.
+- Experiments require stop rules and a valid readback plan before execution.
+- Every experiment decision requires fresh evidence; `pending` is not a review action.
+- Disabled child rails cannot influence the Daily Growth Mission.
+- Exact retries cannot duplicate audit, timeline, or cost effects.
+- No record may mutate MenuList public/customer truth.
 
-## Banned Defaults
+## Forbidden Outcomes
 
-- No cold WhatsApp default.
-- No cold Instagram or Messenger DM default.
-- No "guaranteed sales" or ranking claims.
-- No invented MenuList proof.
-- No public SignalDesk page.
-- No auto-publish.
-- No paid campaign automation.
+- Cold WhatsApp, Instagram, or Messenger automation.
+- Guaranteed sales, ranking, or unsupported proof claims.
+- Automatic outbound send, public publish, paid campaign, winner promotion, rollback, or contact-permission inference.
+- Raw provider payload persistence in the Operating Layer.
+- Public SignalDesk pages.
 
-## Human Review
+## Founder Review
 
-Founder or growth reviewer must approve:
+Founder-admin authority remains required for market-pod approve/hold/reject decisions, first outbound channel use, sender identity, provider or partner spend, unsupported claim resolution, scale-up, and each experiment outcome decision. A recommendation cannot overwrite a founder-reviewed pod state.
 
-- first market pod;
-- source class;
-- sender identity;
-- first use of outbound channel;
-- provider spend;
-- partner spend;
-- unsupported claim resolution;
-- any scale-up decision.
-- every experiment decision after reviewing the stated metric and confounders and recording the fresh result summary.
+## Provider Boundary
+
+Research provider calls are permitted only through the governed Research Agent action after source policy, budget, provider readiness, kill switch, feature flag, role, and desktop checks. Provider sending remains disabled.

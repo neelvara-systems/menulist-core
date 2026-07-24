@@ -11,6 +11,10 @@ export const dynamic = 'force-dynamic';
 import { getChatStatisticsOptimized } from '@database/chatAnalytics';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { calculateROI, ChatAnalyticsData, getDefaultROIParams, ROICalculationParams } from '@lib/analytics/roiCalculations';
+import {
+    getAnswerlatticeScopedSession,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { withAuth } from '../../../../middleware/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { applyAnalyticsReadRateLimit } from '../readRateLimit';
@@ -18,8 +22,8 @@ import { applyAnalyticsReadRateLimit } from '../readRateLimit';
 const MAX_ROI_RANGE_DAYS = 90;
 const DEFAULT_ROI_RANGE_DAYS = 30;
 const MAX_ROI_HOURLY_COST = 1000;
-const MAX_ROI_CUSTOMER_LIFETIME_VALUE = 1_000_000;
 const MAX_ROI_PLATFORM_MONTHLY_COST = 100_000;
+const MAX_ROI_MINUTES_SAVED_PER_CONVERSATION = 480;
 const ROI_DAYS_PARAM_PATTERN = /^\d{1,3}$/;
 const ROI_MONEY_PARAM_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 
@@ -48,16 +52,18 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     try {
         // withAuth handles authentication, CORS, role, and blocked-account checks.
-        if (!session?.tId || !session?.sId) {
+        const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
+        if (!answerlatticeScope) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
+                { error: 'Forbidden' },
+                { status: 403 }
             );
         }
+        const scopedSession = getAnswerlatticeScopedSession(session);
         userIdForLog = session.uId || session.user?.id;
-        tenantIdForLog = session.tId;
+        tenantIdForLog = answerlatticeScope.tenantId;
 
-        const rateLimitResponse = await applyAnalyticsReadRateLimit(session, 'roi-metrics');
+        const rateLimitResponse = await applyAnalyticsReadRateLimit(scopedSession, 'roi-metrics');
         if (rateLimitResponse) return rateLimitResponse;
 
         // Get date range from query params (default: last 30 days)
@@ -70,13 +76,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         startDate.setDate(endDate.getDate() - days);
 
         // Fetch chat statistics from daily aggregates + today's bounded live data.
-        const stats = await getChatStatisticsOptimized(session, days);
+        const stats = await getChatStatisticsOptimized(scopedSession, days);
 
         // Transform stats to ChatAnalyticsData format
         const analyticsData: ChatAnalyticsData = {
             totalConversations: stats.totalChats || 0,
-            resolvedConversations: stats.totalChats || 0, // Assume all are resolved for now
-            averageResolutionTime: calculateAverageResolutionTime(stats),
+            qnaConversations: stats.qnaChats || 0,
+            assistantConversations: stats.assistantChats || 0,
             positiveFeedback: stats.positiveFeedback || 0,
             negativeFeedback: stats.negativeFeedback || 0,
             dateRange: {
@@ -87,16 +93,21 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         // Get calculation parameters (allow user overrides via query params)
         const hourlyCostParam = searchParams.get('hourlyCost');
-        const clvParam = searchParams.get('clv');
+        const minutesSavedParam = searchParams.get('minutesSaved');
         const platformCostParam = searchParams.get('platformCost');
         const hourlyCost = parseBoundedRoiMoneyParam(hourlyCostParam, MAX_ROI_HOURLY_COST);
-        const customerLifetimeValue = parseBoundedRoiMoneyParam(clvParam, MAX_ROI_CUSTOMER_LIFETIME_VALUE);
+        const minutesSavedPerConversation = parseBoundedRoiMoneyParam(
+            minutesSavedParam,
+            MAX_ROI_MINUTES_SAVED_PER_CONVERSATION,
+        );
         const platformMonthlyCost = parseBoundedRoiMoneyParam(platformCostParam, MAX_ROI_PLATFORM_MONTHLY_COST);
 
         const params: ROICalculationParams = {
             ...getDefaultROIParams(analyticsData),
             ...(hourlyCost !== undefined && { avgSupportAgentHourlyCost: hourlyCost }),
-            ...(customerLifetimeValue !== undefined && { avgCustomerLifetimeValue: customerLifetimeValue }),
+            ...(minutesSavedPerConversation !== undefined && {
+                assumedMinutesSavedPerConversation: minutesSavedPerConversation,
+            }),
             ...(platformMonthlyCost !== undefined && { platformMonthlyCost }),
         };
 
@@ -106,11 +117,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({
             success: true,
             data: {
+                tId: answerlatticeScope.tenantId,
+                sId: answerlatticeScope.storeId,
                 metrics: roiMetrics,
-                analyticsData,
                 params: {
                     avgSupportAgentHourlyCost: params.avgSupportAgentHourlyCost,
-                    avgCustomerLifetimeValue: params.avgCustomerLifetimeValue,
+                    assumedMinutesSavedPerConversation: params.assumedMinutesSavedPerConversation,
                     platformMonthlyCost: params.platformMonthlyCost,
                 },
                 dateRange: {
@@ -134,31 +146,3 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         );
     }
 });
-
-/**
- * Calculate average resolution time from stats
- * Uses average response time as proxy for resolution time
- */
-function calculateAverageResolutionTime(stats: any): number {
-    // If we have average response time, use it
-    if (stats.averageResponseTime) {
-        return stats.averageResponseTime;
-    }
-
-    // Otherwise, estimate based on mode
-    // QnA mode: typically 2-3 minutes
-    // Assistant mode: typically 5-10 minutes
-    const qnaCount = stats.qnaModeCount || 0;
-    const assistantCount = stats.assistantModeCount || 0;
-    const total = qnaCount + assistantCount;
-
-    if (total === 0) {
-        return 5; // Default assumption
-    }
-
-    const qnaAvg = 2.5; // 2.5 minutes average for QnA
-    const assistantAvg = 7; // 7 minutes average for Assistant
-
-    const weightedAvg = ((qnaCount * qnaAvg) + (assistantCount * assistantAvg)) / total;
-    return weightedAvg;
-}

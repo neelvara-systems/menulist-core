@@ -6,13 +6,13 @@
 
 ### 1. Signal Admission
 
-`src/lib/answerlattice/signalEmitter.ts` normalizes exact numeric scope, sanitizes bounded metadata, redacts obvious credentials/contact evidence, derives persistent identities, and emits through the dedicated Answerlattice Firebase client or Admin runtime.
+`src/lib/answerlattice/signalEmitter.ts` normalizes exact numeric scope, sanitizes bounded metadata, redacts obvious credentials/contact evidence, derives persistent identities, and emits through the dedicated Answerlattice Firebase client or Admin runtime. Its short-lived process dedupe key includes exact tenant and workspace scope; identical external event identifiers from different tenants cannot suppress one another before the scoped Firestore identity is evaluated.
 
 `src/database/answerlattice/signalEvents.ts` enforces session scope for browser writes. Persistent identities use deterministic document IDs. A duplicate is returned only when type, dedup key, entity, and payload fingerprint agree; changed replay throws `answerlattice_signal_replay_conflict`.
 
 ### 2. Signal Mutation
 
-`runSignalMutation()` in `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` reads a bounded 14-day signal window, normalizes resolved entity IDs, clusters admitted signal types, and creates deterministic pending proposals. The task fails closed rather than operating on a truncated window.
+`runSignalMutation()` in `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` reads a bounded, exact-`pId: AL` 14-day signal window, normalizes resolved entity IDs, clusters admitted signal types, and creates deterministic pending proposals. Drift detection, unresolved-signal resolution, mutation-impact counting, Support Board preparation, resolution extraction, and draft examples use the same product partition before their tenant/workspace predicates. The task fails closed rather than operating on a truncated window.
 
 ### 3. Draft Generation
 
@@ -47,6 +47,7 @@ The Answerlattice Nightly Mutation Impact Entity ID Boundary normalizes the impl
 | Failure | Behavior |
 |---|---|
 | Invalid scope or entity | Reject or skip before mutation |
+| String, fractional, zero, or negative signal scope in a browser create | Reject in both dedicated and shared Firestore rules |
 | Reused signal identity with changed payload | Reject replay |
 | Signal input exceeds bound | Fail task; do not mutate from partial evidence |
 | Draft provider or parse failure | Mark draft failed; keep proposal |

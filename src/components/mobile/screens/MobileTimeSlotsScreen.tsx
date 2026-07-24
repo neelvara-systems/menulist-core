@@ -1,14 +1,14 @@
 'use client'
 
-import { assertProjectPresetCascadeSucceeded, removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
+import { reconcileTimeSlotPresetCascade } from '@lib/menu/reconcileTimeSlotPresetCascade';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { LuCheck, LuClock, LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -24,7 +24,7 @@ interface MobileTimeSlotsScreenProps {
     onBack: () => void;
 }
 
-export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenProps) {
+function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
     const t = useTranslations('MobileTimeSlots');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
@@ -37,13 +37,81 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
     const [formStart, setFormStart] = useState('09:00');
     const [formEnd, setFormEnd] = useState('17:00');
     const [formColor, setFormColor] = useState(PRESET_COLORS[0]);
+    const actionInFlightRef = useRef(false);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeScopeRef = useRef(scopeKey);
+    const componentActiveRef = useRef(true);
+    const recoveryAttemptedOperationRef = useRef<string | null>(null);
 
+    activeScopeRef.current = scopeKey;
     useEffect(() => {
         if (storeDetails) {
             setPresets(storeDetails.timeSlotPresets || []);
             setIsLoading(false);
         }
     }, [storeDetails?.storeId, storeDetails?.timeSlotPresets]);
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+    useEffect(() => {
+        const pendingCascade = storeDetails?.timeSlotPresetCascadePending;
+        const expectedTenantId = Number(storeDetails?.tenantId);
+        const expectedStoreId = Number(storeDetails?.storeId);
+        if (
+            !pendingCascade
+            || recoveryAttemptedOperationRef.current === pendingCascade.operationId
+            || actionInFlightRef.current
+            || !Number.isSafeInteger(expectedTenantId)
+            || expectedTenantId <= 0
+            || !Number.isSafeInteger(expectedStoreId)
+            || expectedStoreId <= 0
+        ) {
+            return;
+        }
+        recoveryAttemptedOperationRef.current = pendingCascade.operationId;
+        const requestScopeKey = scopeKey;
+        actionInFlightRef.current = true;
+        setIsSaving(true);
+        void reconcileTimeSlotPresetCascade(
+            { tenantId: expectedTenantId, storeId: expectedStoreId },
+            pendingCascade,
+        )
+            .then(({ operationId }) => {
+                if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
+                setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(expectedTenantId)
+                        || String(previous?.storeId ?? '') !== String(expectedStoreId)
+                        || previous?.timeSlotPresetCascadePending?.operationId !== operationId
+                    ) {
+                        return previous;
+                    }
+                    const { timeSlotPresetCascadePending: _pendingCascade, ...rest } = previous;
+                    return rest;
+                });
+            })
+            .catch((error) => {
+                logMobileOwnerFailure('mobile_time_slot_preset_recovery_failed', error, {
+                    ...getMobileOwnerStoreLogContext(expectedStoreId, expectedTenantId),
+                    ...getBoundedMobileOwnerStringContext('operationId', pendingCascade.operationId),
+                });
+            })
+            .finally(() => {
+                actionInFlightRef.current = false;
+                if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                    setIsSaving(false);
+                }
+            });
+    }, [
+        scopeKey,
+        setStoreDetails,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        storeDetails?.timeSlotPresetCascadePending,
+    ]);
 
     const openAdd = () => {
         setEditingPreset(null);
@@ -92,28 +160,58 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             });
         }
 
+        const expectedTenantId = Number(storeDetails?.tenantId);
+        const expectedStoreId = Number(storeDetails?.storeId);
+        const requestScopeKey = scopeKey;
+        if (
+            !Number.isSafeInteger(expectedTenantId)
+            || expectedTenantId <= 0
+            || !Number.isSafeInteger(expectedStoreId)
+            || expectedStoreId <= 0
+            || actionInFlightRef.current
+        ) {
+            return;
+        }
+        actionInFlightRef.current = true;
         setIsSaving(true);
         try {
             let updated: TimeSlotPreset[];
             if (editingPreset) {
                 updated = presets.map((preset) => preset.id === editingPreset.id ? { ...editingPreset, color: formColor, endTime: formEnd, label, startTime: formStart } : preset);
             } else {
-                updated = [...presets, { color: formColor, endTime: formEnd, id: generatePresetId(storeDetails?.tenantId, storeDetails?.storeId), label, startTime: formStart }];
+                updated = [...presets, { color: formColor, endTime: formEnd, id: generatePresetId(expectedTenantId, expectedStoreId), label, startTime: formStart }];
             }
-            const writeResult = await updateTimeSlotPresets(storeDetails?.storeId, updated);
+            const updatedPresetForCascade = editingPreset
+                ? updated.find((preset) => preset.id === editingPreset.id)
+                : undefined;
+            if (editingPreset && !updatedPresetForCascade) {
+                throw new Error('mobile_time_slot_preset_cascade_update_rejected');
+            }
+            const writeResult = await updateTimeSlotPresets(
+                expectedStoreId,
+                updated,
+                updatedPresetForCascade
+                    ? { type: 'update', preset: updatedPresetForCascade }
+                    : undefined,
+            );
             assertTimeSlotPresetUpdateSucceeded(writeResult);
             if (editingPreset) {
-                const updatedPreset = updated.find((preset) => preset.id === editingPreset.id);
-                if (updatedPreset) {
-                    const cascadeResult = await updatePresetInAllCategories(updatedPreset);
-                    assertProjectPresetCascadeSucceeded(
-                        cascadeResult,
-                        'mobile_time_slot_preset_cascade_update_rejected',
-                    );
+                if (!writeResult.pendingCascade) {
+                    throw new Error('mobile_time_slot_preset_cascade_update_rejected');
                 }
+                await reconcileTimeSlotPresetCascade(
+                    { tenantId: expectedTenantId, storeId: expectedStoreId },
+                    writeResult.pendingCascade,
+                );
             }
+            if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
             setPresets(updated);
-            setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: updated }));
+            setStoreDetails((previous: any) => (
+                String(previous?.tenantId ?? '') === String(expectedTenantId)
+                && String(previous?.storeId ?? '') === String(expectedStoreId)
+                    ? { ...previous, timeSlotPresets: updated }
+                    : previous
+            ));
             setIsFormOpen(false);
             Toast.show({ content: editingPreset ? t('updated') : t('created'), icon: 'success', duration: 1500 });
         } catch (error) {
@@ -128,9 +226,75 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                 hasColor: Boolean(formColor),
                 shouldCascadeCategoryUpdate: Boolean(editingPreset),
             });
-            Toast.show({ content: t('failedToSave'), duration: 1500 });
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                Toast.show({ content: t('failedToSave'), duration: 1500 });
+            }
         } finally {
-            setIsSaving(false);
+            actionInFlightRef.current = false;
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                setIsSaving(false);
+            }
+        }
+    };
+
+    const handleDelete = async (preset: TimeSlotPreset) => {
+        const expectedTenantId = Number(storeDetails?.tenantId);
+        const expectedStoreId = Number(storeDetails?.storeId);
+        const requestScopeKey = scopeKey;
+        if (
+            !componentActiveRef.current
+            || activeScopeRef.current !== requestScopeKey
+            || !Number.isSafeInteger(expectedTenantId)
+            || expectedTenantId <= 0
+            || !Number.isSafeInteger(expectedStoreId)
+            || expectedStoreId <= 0
+            || actionInFlightRef.current
+        ) {
+            return;
+        }
+        actionInFlightRef.current = true;
+        setIsSaving(true);
+        try {
+            const updated = presets.filter((item) => item.id !== preset.id);
+            const writeResult = await updateTimeSlotPresets(
+                expectedStoreId,
+                updated,
+                { type: 'remove', presetId: preset.id },
+            );
+            assertTimeSlotPresetUpdateSucceeded(writeResult);
+            if (!writeResult.pendingCascade) {
+                throw new Error('mobile_time_slot_preset_cascade_delete_rejected');
+            }
+            await reconcileTimeSlotPresetCascade(
+                { tenantId: expectedTenantId, storeId: expectedStoreId },
+                writeResult.pendingCascade,
+            );
+            if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
+            setPresets(updated);
+            setStoreDetails((previous: any) => (
+                String(previous?.tenantId ?? '') === String(expectedTenantId)
+                && String(previous?.storeId ?? '') === String(expectedStoreId)
+                    ? { ...previous, timeSlotPresets: updated }
+                    : previous
+            ));
+            Toast.show({ content: t('deleted'), icon: 'success', duration: 1500 });
+        } catch (error) {
+            logMobileOwnerFailure('mobile_time_slot_preset_delete_failed', error, {
+                ...getMobileOwnerStoreLogContext(expectedStoreId, expectedTenantId),
+                ...getBoundedMobileOwnerStringContext('presetId', preset.id),
+                ...getBoundedMobileOwnerStringContext('presetLabel', preset.label),
+                presetCount: presets.length,
+                remainingPresetCount: Math.max(presets.length - 1, 0),
+                shouldCascadeCategoryDelete: true,
+            });
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                Toast.show({ content: t('failedToDelete'), duration: 1500 });
+            }
+        } finally {
+            actionInFlightRef.current = false;
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                setIsSaving(false);
+            }
         }
     };
 
@@ -192,31 +356,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                                 cancelText: t('cancel'),
                                                 confirmText: t('delete'),
                                                 content: t('deleteConfirm', { name: preset.label }),
-                                                onConfirm: async () => {
-                                                    try {
-                                                        const updated = presets.filter((item) => item.id !== preset.id);
-                                                        const writeResult = await updateTimeSlotPresets(storeDetails?.storeId, updated);
-                                                        assertTimeSlotPresetUpdateSucceeded(writeResult);
-                                                        const cascadeResult = await removePresetFromAllCategories(preset.id);
-                                                        assertProjectPresetCascadeSucceeded(
-                                                            cascadeResult,
-                                                            'mobile_time_slot_preset_cascade_delete_rejected',
-                                                        );
-                                                        setPresets(updated);
-                                                        setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: updated }));
-                                                        Toast.show({ content: t('deleted'), icon: 'success', duration: 1500 });
-                                                    } catch (error) {
-                                                        logMobileOwnerFailure('mobile_time_slot_preset_delete_failed', error, {
-                                                            ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                                                            ...getBoundedMobileOwnerStringContext('presetId', preset.id),
-                                                            ...getBoundedMobileOwnerStringContext('presetLabel', preset.label),
-                                                            presetCount: presets.length,
-                                                            remainingPresetCount: Math.max(presets.length - 1, 0),
-                                                            shouldCascadeCategoryDelete: true,
-                                                        });
-                                                        Toast.show({ content: t('failedToDelete'), duration: 1500 });
-                                                    }
-                                                },
+                                                onConfirm: () => handleDelete(preset),
                                             });
                                         }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuTrash2 color={token.colorError} size={16} /></Button>
                                     </Flex>
@@ -320,4 +460,10 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             </Popup>
         </Flex>
     );
+}
+
+export default function MobileTimeSlotsScreen(props: MobileTimeSlotsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+    return <MobileTimeSlotsScreenContent key={scopeKey} {...props} />;
 }

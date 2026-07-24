@@ -1,7 +1,13 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@constant/AI/unitCosts";
 import { DB_COLLECTIONS } from "@constant/database";
+import {
+    getCreditBillingPeriodKey,
+    getNonNegativeCreditInteger,
+    getPositiveCreditInteger,
+} from "@data/shared/aiCreditScalarContract";
 import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
+import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { getBillingPeriodKey } from "@lib/billing/billingPeriod";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
@@ -32,8 +38,9 @@ async function refreshMonthlyCreditsIfNeeded(
     subscription: FirestoreSubscriptionDoc,
 ): Promise<FirestoreSubscriptionDoc> {
     const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
-    const initialAllowance = Number(subscription.monthlyCreditsAllowance);
-    if (!normalizedSubscriptionId || !Number.isFinite(initialAllowance) || initialAllowance <= 0) {
+    const expectedScope = getMenuListSubscriptionEntitlementScope(subscription);
+    const initialAllowance = getPositiveCreditInteger(subscription.monthlyCreditsAllowance);
+    if (!normalizedSubscriptionId || !expectedScope || initialAllowance === null) {
         return subscription;
     }
 
@@ -55,10 +62,18 @@ async function refreshMonthlyCreditsIfNeeded(
             ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
             id: subscriptionSnap.id,
         };
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
+        if (
+            !currentScope
+            || currentScope.tenantId !== expectedScope.tenantId
+            || currentScope.storeId !== expectedScope.storeId
+        ) {
+            throw new Error('Billing subscription scope is invalid.');
+        }
         const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
-        const allowance = Number(current.monthlyCreditsAllowance);
+        const allowance = getPositiveCreditInteger(current.monthlyCreditsAllowance);
 
-        if (billingPeriod === null || current.creditsLastResetMonth === billingPeriod || !Number.isFinite(allowance) || allowance <= 0) {
+        if (billingPeriod === null || current.creditsLastResetMonth === billingPeriod || allowance === null) {
             return current;
         }
 
@@ -122,7 +137,7 @@ export async function checkAICapacity(
         };
     }
 
-    const normalizedQuantity = Number(quantity);
+    const normalizedQuantity = quantity;
     const unitsRequired = getUnitCost(actionType) * (
         Number.isSafeInteger(normalizedQuantity) && normalizedQuantity > 0 ? normalizedQuantity : 1
     );
@@ -133,6 +148,10 @@ export async function checkAICapacity(
     if (!subscription) {
         return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };
     }
+    const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
+    if (!subscriptionScope || subscriptionScope.tenantId !== tenantId) {
+        return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };
+    }
 
     // Lazy monthly credit reset: handles yearly plans (no monthly webhook) 
     // and acts as safety net for monthly plans. Race-safe (idempotent reset value).
@@ -140,17 +159,18 @@ export async function checkAICapacity(
     // E.g. sub starts Feb 15 → anchor=15 → billing months are 15th-to-15th.
     subscription = await refreshMonthlyCreditsIfNeeded(subscription);
 
-    const monthlyCredits = Number(subscription.monthlyCredits ?? 0);
-    const topUpCredits = Number(subscription.topUpCredits ?? 0);
+    const monthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
+    const topUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
     if (
-        !Number.isFinite(monthlyCredits)
-        || !Number.isFinite(topUpCredits)
-        || monthlyCredits < 0
-        || topUpCredits < 0
+        monthlyCredits === null
+        || topUpCredits === null
     ) {
         return { allowed: false, unitsRequired, remaining: 0, reason: 'exhausted', subscription };
     }
     const remaining = monthlyCredits + topUpCredits;
+    if (!Number.isSafeInteger(remaining)) {
+        return { allowed: false, unitsRequired, remaining: 0, reason: 'exhausted', subscription };
+    }
 
     // Soft enforcement: allow overdraft up to OVERDRAFT_BUFFER_PERCENT
     const overdraftAllowance = remaining * (OVERDRAFT_BUFFER_PERCENT / 100);
@@ -214,6 +234,18 @@ function normalizeAccountingScope(value: unknown): string | null {
         : null;
 }
 
+function getExactAccountingScopeAlias(
+    data: Record<string, unknown>,
+    compactKey: 'sId' | 'tId',
+    legacyKey: 'storeId' | 'tenantId',
+): string | null {
+    const values = [data[compactKey], data[legacyKey]].filter((value) => value !== undefined);
+    if (values.length === 0) return null;
+    const normalized = values.map(normalizeAccountingScope);
+    const [first] = normalized;
+    return first && normalized.every((value) => value === first) ? first : null;
+}
+
 function getReservationOperationRef(tId: string, sId: string, id: string) {
     return firestoreAdmin
         .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
@@ -224,7 +256,7 @@ function getReservationOperationRef(tId: string, sId: string, id: string) {
 
 function getPersistedBillingStoreId(data: Record<string, any>): string | null {
     return normalizeAccountingScope(data.accountingBillingStoreId)
-        ?? normalizeAccountingScope(data.sId ?? data.storeId);
+        ?? getExactAccountingScopeAlias(data, 'sId', 'storeId');
 }
 
 function assertReservationContract(
@@ -234,9 +266,9 @@ function assertReservationContract(
     if (
         data.accountingIdempotencyKey !== expected.id
         || data.action !== expected.action
-        || Number(data.accountingUnits) !== expected.unitsReserved
-        || normalizeAccountingScope(data.tId ?? data.tenantId) !== expected.tId
-        || normalizeAccountingScope(data.sId ?? data.storeId) !== expected.sId
+        || data.accountingUnits !== expected.unitsReserved
+        || getExactAccountingScopeAlias(data, 'tId', 'tenantId') !== expected.tId
+        || getExactAccountingScopeAlias(data, 'sId', 'storeId') !== expected.sId
         || getPersistedBillingStoreId(data) !== expected.billingStoreId
         || data.accountingSubscriptionId !== expected.subscriptionId
     ) {
@@ -252,9 +284,9 @@ function readPersistedReservation(
     if (data.accountingStatus !== "reserved" && data.accountingStatus !== "consumed") {
         throw new Error("AI capacity reservation is not available.");
     }
-    const monthlyCredits = Number(data.remainingMonthlyCredits);
-    const topUpCredits = Number(data.remainingTopUpCredits);
-    if (!Number.isFinite(monthlyCredits) || monthlyCredits < 0 || !Number.isFinite(topUpCredits) || topUpCredits < 0) {
+    const monthlyCredits = getNonNegativeCreditInteger(data.remainingMonthlyCredits);
+    const topUpCredits = getNonNegativeCreditInteger(data.remainingTopUpCredits);
+    if (monthlyCredits === null || topUpCredits === null) {
         throw new Error("AI capacity reservation balance is invalid.");
     }
     return {
@@ -271,13 +303,15 @@ async function sendCreditsExhaustedLifecycleMessage(
     balance: RemainingBalance,
 ) {
     if (balance.monthlyCredits !== 0 || balance.topUpCredits !== 0) return;
+    const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
+    if (!subscriptionScope) return;
     try {
         const { sendLifecycleMessage } = await import('@lib/messaging');
         sendLifecycleMessage({
-            storeId: String(subscription.storeId),
-            tenantId: String(subscription.tenantId),
+            storeId: String(subscriptionScope.storeId),
+            tenantId: String(subscriptionScope.tenantId),
             eventType: 'CREDITS_EXHAUSTED',
-            referenceId: `credits-exhausted-${subscription.storeId}-${new Date().toISOString().split('T')[0]}`,
+            referenceId: `credits-exhausted-${subscriptionScope.storeId}-${new Date().toISOString().split('T')[0]}`,
             recipientEmail: subscription.email || '',
             storeName: subscription.name || '',
             metadata: {},
@@ -315,21 +349,21 @@ function calculateConsumedBalance(
     chargedBalance: RemainingBalance;
 } {
     const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
-    const monthlyAllowance = Number(current.monthlyCreditsAllowance ?? 0);
+    const monthlyAllowance = getNonNegativeCreditInteger(current.monthlyCreditsAllowance ?? 0);
+    const storedMonthlyCredits = getNonNegativeCreditInteger(current.monthlyCredits ?? 0);
+    const topUpRemaining = getNonNegativeCreditInteger(current.topUpCredits ?? 0);
+    if (monthlyAllowance === null || storedMonthlyCredits === null || topUpRemaining === null) {
+        throw new Error('Not enough billing credits for this operation.');
+    }
     const monthlyRemaining = billingPeriod !== null
         && current.creditsLastResetMonth !== billingPeriod
-        && Number.isFinite(monthlyAllowance)
         && monthlyAllowance > 0
         ? monthlyAllowance
-        : Number(current.monthlyCredits ?? 0);
-    const topUpRemaining = Number(current.topUpCredits ?? 0);
+        : storedMonthlyCredits;
     const totalRemaining = monthlyRemaining + topUpRemaining;
     const effectiveCapacity = totalRemaining * (1 + (OVERDRAFT_BUFFER_PERCENT / 100));
     if (
-        !Number.isFinite(monthlyRemaining)
-        || !Number.isFinite(topUpRemaining)
-        || monthlyRemaining < 0
-        || topUpRemaining < 0
+        !Number.isSafeInteger(totalRemaining)
         || totalRemaining < 0
         || unitsToConsume > effectiveCapacity
     ) {
@@ -378,8 +412,9 @@ export async function reserveAiCapacity({
     }
     const expectedTenantId = normalizeAccountingScope(tId);
     const expectedStoreId = normalizeAccountingScope(sId);
-    const subscriptionTenantId = normalizeAccountingScope(subscription.tenantId ?? subscription.tId);
-    const subscriptionStoreId = normalizeAccountingScope(subscription.storeId ?? subscription.sId);
+    const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
+    const subscriptionTenantId = subscriptionScope ? String(subscriptionScope.tenantId) : null;
+    const subscriptionStoreId = subscriptionScope ? String(subscriptionScope.storeId) : null;
     if (
         !expectedTenantId
         || !expectedStoreId
@@ -423,18 +458,24 @@ export async function reserveAiCapacity({
         if (!subscriptionSnap.exists) throw new Error("Billing subscription is not available.");
 
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
-            normalizeAccountingScope(current.tenantId ?? current.tId) !== expectedTenantId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== expected.billingStoreId
+            !currentScope
+            || String(currentScope.tenantId) !== expectedTenantId
+            || String(currentScope.storeId) !== expected.billingStoreId
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
         const { balance, beforeBalance, billingPeriod, chargedBalance } = calculateConsumedBalance(current, unitsToReserve);
         const now = admin.firestore.Timestamp.now();
         const recoveryAt = admin.firestore.Timestamp.fromMillis(now.toMillis() + AI_CAPACITY_RESERVATION_TTL_MS);
-        const reservationAttempt = Number.isSafeInteger(Number(existing.accountingReservationAttempt))
-            ? Number(existing.accountingReservationAttempt) + 1
-            : 1;
+        const priorReservationAttempt = existing.accountingReservationAttempt === undefined
+            ? 0
+            : getNonNegativeCreditInteger(existing.accountingReservationAttempt);
+        if (priorReservationAttempt === null || priorReservationAttempt >= Number.MAX_SAFE_INTEGER) {
+            throw new Error('AI capacity reservation attempt is invalid.');
+        }
+        const reservationAttempt = priorReservationAttempt + 1;
 
         transaction.set(subscriptionRef, {
             monthlyCredits: balance.monthlyCredits,
@@ -449,7 +490,7 @@ export async function reserveAiCapacity({
             accountingIdempotencyKey: operationId,
             accountingMonthlyCreditCeiling: Math.max(
                 beforeBalance.monthlyCredits,
-                Number(current.monthlyCreditsAllowance ?? 0),
+                getNonNegativeCreditInteger(current.monthlyCreditsAllowance ?? 0) ?? 0,
             ),
             accountingRecoveryMode: recoveryMode,
             accountingReservationAttempt: reservationAttempt,
@@ -501,27 +542,43 @@ export async function finalizeAiCapacityReservation({
         assertReservationContract(existing, reservation);
         const persisted = readPersistedReservation(existing, reservation);
         if (existing.accountingStatus === "consumed") {
+            const replaySubscription = subscriptionSnap.exists
+                ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
+                : null;
+            const replayScope = replaySubscription
+                ? getMenuListSubscriptionEntitlementScope(replaySubscription)
+                : null;
+            if (
+                replaySubscription
+                && (
+                    !replayScope
+                    || String(replayScope.tenantId) !== reservation.tId
+                    || String(replayScope.storeId) !== reservation.billingStoreId
+                )
+            ) {
+                throw new Error('Billing subscription scope is invalid.');
+            }
             return {
                 alreadyConsumed: true,
                 balance: persisted.remainingBalance,
-                subscription: subscriptionSnap.exists
-                    ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
-                    : null,
+                subscription: replaySubscription,
             };
         }
         if (!subscriptionSnap.exists) throw new Error("Billing subscription is not available.");
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
-            normalizeAccountingScope(current.tenantId ?? current.tId) !== reservation.tId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.billingStoreId
+            !currentScope
+            || String(currentScope.tenantId) !== reservation.tId
+            || String(currentScope.storeId) !== reservation.billingStoreId
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
         if (
             operationData.action !== reservation.action
-            || Number(operationData.unitsConsumed) !== reservation.unitsReserved
-            || normalizeAccountingScope(operationData.tId ?? operationData.tenantId) !== reservation.tId
-            || normalizeAccountingScope(operationData.sId ?? operationData.storeId) !== reservation.sId
+            || operationData.unitsConsumed !== reservation.unitsReserved
+            || getExactAccountingScopeAlias(operationData, 'tId', 'tenantId') !== reservation.tId
+            || getExactAccountingScopeAlias(operationData, 'sId', 'storeId') !== reservation.sId
         ) {
             throw new Error("AI capacity reservation settlement conflict.");
         }
@@ -569,11 +626,15 @@ export async function refundAiCapacityReservation(
         const existing = operationSnap.data() || {};
         assertReservationContract(existing, reservation);
         if (existing.accountingStatus === "consumed" || existing.accountingStatus === "refunded") {
-            const monthlyCredits = Number(existing.refundRemainingMonthlyCredits ?? existing.remainingMonthlyCredits);
-            const topUpCredits = Number(existing.refundRemainingTopUpCredits ?? existing.remainingTopUpCredits);
+            const monthlyCredits = getNonNegativeCreditInteger(
+                existing.refundRemainingMonthlyCredits ?? existing.remainingMonthlyCredits,
+            );
+            const topUpCredits = getNonNegativeCreditInteger(
+                existing.refundRemainingTopUpCredits ?? existing.remainingTopUpCredits,
+            );
             return {
                 alreadyTerminal: true,
-                remainingBalance: Number.isFinite(monthlyCredits) && Number.isFinite(topUpCredits)
+                remainingBalance: monthlyCredits !== null && topUpCredits !== null
                     ? { billingStoreId: Number(reservation.billingStoreId), monthlyCredits, topUpCredits }
                     : null,
             };
@@ -582,38 +643,53 @@ export async function refundAiCapacityReservation(
             throw new Error("AI capacity reservation refund evidence is not available.");
         }
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
-            normalizeAccountingScope(current.tenantId ?? current.tId) !== reservation.tId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.billingStoreId
+            !currentScope
+            || String(currentScope.tenantId) !== reservation.tId
+            || String(currentScope.storeId) !== reservation.billingStoreId
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
-        const currentMonthlyCredits = Number(current.monthlyCredits ?? 0);
-        const currentTopUpCredits = Number(current.topUpCredits ?? 0);
-        const chargedMonthlyCredits = Number(existing.accountingChargedMonthlyCredits ?? 0);
-        const chargedTopUpCredits = Number(existing.accountingChargedTopUpCredits ?? 0);
-        const monthlyCreditCeiling = Number(existing.accountingMonthlyCreditCeiling ?? current.monthlyCreditsAllowance ?? 0);
+        const currentMonthlyCredits = getNonNegativeCreditInteger(current.monthlyCredits ?? 0);
+        const currentTopUpCredits = getNonNegativeCreditInteger(current.topUpCredits ?? 0);
+        const chargedMonthlyCredits = getNonNegativeCreditInteger(existing.accountingChargedMonthlyCredits ?? 0);
+        const chargedTopUpCredits = getNonNegativeCreditInteger(existing.accountingChargedTopUpCredits ?? 0);
+        const monthlyCreditCeiling = getNonNegativeCreditInteger(
+            existing.accountingMonthlyCreditCeiling ?? current.monthlyCreditsAllowance ?? 0,
+        );
         if (
-            !Number.isFinite(currentMonthlyCredits) || currentMonthlyCredits < 0
-            || !Number.isFinite(currentTopUpCredits) || currentTopUpCredits < 0
-            || !Number.isFinite(chargedMonthlyCredits) || chargedMonthlyCredits < 0
-            || !Number.isFinite(chargedTopUpCredits) || chargedTopUpCredits < 0
-            || !Number.isFinite(monthlyCreditCeiling) || monthlyCreditCeiling < 0
+            currentMonthlyCredits === null
+            || currentTopUpCredits === null
+            || chargedMonthlyCredits === null
+            || chargedTopUpCredits === null
+            || monthlyCreditCeiling === null
         ) {
             throw new Error("AI capacity reservation refund credit evidence is invalid.");
         }
         const currentBillingPeriod = getBillingPeriodKey(current.cycleStartDate);
-        const reservedBillingPeriod = Number(existing.accountingReservationBillingPeriod);
+        const rawReservedBillingPeriod = existing.accountingReservationBillingPeriod;
+        const reservedBillingPeriod = rawReservedBillingPeriod === null
+            ? null
+            : getCreditBillingPeriodKey(rawReservedBillingPeriod);
+        if (rawReservedBillingPeriod !== null && reservedBillingPeriod === null) {
+            throw new Error("AI capacity reservation refund billing period is invalid.");
+        }
         const sameBillingPeriod = currentBillingPeriod === null
-            ? existing.accountingReservationBillingPeriod === null
+            ? rawReservedBillingPeriod === null
             : currentBillingPeriod === reservedBillingPeriod;
         const refundedMonthlyCredits = sameBillingPeriod
             ? Math.min(chargedMonthlyCredits, Math.max(0, monthlyCreditCeiling - currentMonthlyCredits))
             : 0;
+        const nextMonthlyCredits = currentMonthlyCredits + refundedMonthlyCredits;
+        const nextTopUpCredits = currentTopUpCredits + chargedTopUpCredits;
+        if (!Number.isSafeInteger(nextMonthlyCredits) || !Number.isSafeInteger(nextTopUpCredits)) {
+            throw new Error("AI capacity reservation refund credit balance overflowed.");
+        }
         const nextBalance = {
             billingStoreId: Number(reservation.billingStoreId),
-            monthlyCredits: currentMonthlyCredits + refundedMonthlyCredits,
-            topUpCredits: currentTopUpCredits + chargedTopUpCredits,
+            monthlyCredits: nextMonthlyCredits,
+            topUpCredits: nextTopUpCredits,
         };
         const now = admin.firestore.Timestamp.now();
         transaction.set(subscriptionRef, {
@@ -696,15 +772,14 @@ export async function refundDurableAiCapacityReservationByIdSafely({
         if (operation.accountingStatus === "consumed" || operation.accountingStatus === "refunded") return;
         const subscriptionId = normalizeBillingSubscriptionDocumentId(operation.accountingSubscriptionId);
         const billingStoreId = getPersistedBillingStoreId(operation);
-        const unitsReserved = Number(operation.accountingUnits);
+        const unitsReserved = getPositiveCreditInteger(operation.accountingUnits);
         if (
             operation.accountingStatus !== "reserved"
             || operation.accountingRecoveryMode !== "durable_retry"
             || operation.action !== action
             || !subscriptionId
             || !billingStoreId
-            || !Number.isSafeInteger(unitsReserved)
-            || unitsReserved <= 0
+            || unitsReserved === null
         ) {
             throw new Error("Durable AI capacity reservation evidence is invalid.");
         }
@@ -766,8 +841,11 @@ export async function consumeAICapacity(
         if (!subscriptionSnap.exists) return null;
 
         const current = subscriptionSnap.data() as FirestoreSubscriptionDoc;
-        const billingStoreId = normalizeAccountingScope(current.storeId ?? current.sId);
-        if (!billingStoreId) throw new Error('Billing subscription scope is invalid.');
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
+        if (!currentScope) {
+            throw new Error('Billing subscription scope is invalid.');
+        }
+        const billingStoreId = String(currentScope.storeId);
         const { balance, billingPeriod } = calculateConsumedBalance(current, unitsToConsume);
 
         tx.set(subscriptionRef, {
@@ -812,10 +890,11 @@ export async function consumeAICapacityIdempotently({
     if (!Number.isSafeInteger(unitsToConsume) || unitsToConsume <= 0) {
         throw new Error('AI accounting units must be a positive safe integer.');
     }
-    const expectedTenantId = normalizeAccountingScope(operationData.tId ?? operationData.tenantId);
-    const expectedStoreId = normalizeAccountingScope(operationData.sId ?? operationData.storeId);
-    const subscriptionTenantId = normalizeAccountingScope(subscription.tenantId ?? subscription.tId);
-    const subscriptionStoreId = normalizeAccountingScope(subscription.storeId ?? subscription.sId);
+    const expectedTenantId = getExactAccountingScopeAlias(operationData, 'tId', 'tenantId');
+    const expectedStoreId = getExactAccountingScopeAlias(operationData, 'sId', 'storeId');
+    const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
+    const subscriptionTenantId = subscriptionScope ? String(subscriptionScope.tenantId) : null;
+    const subscriptionStoreId = subscriptionScope ? String(subscriptionScope.storeId) : null;
     if (
         !expectedTenantId
         || !expectedStoreId
@@ -835,33 +914,44 @@ export async function consumeAICapacityIdempotently({
             const existing = operationSnap.data() || {};
             if (
                 existing.accountingIdempotencyKey !== idempotencyKey
-                || Number(existing.accountingUnits) !== unitsToConsume
-                || normalizeAccountingScope(existing.tId ?? existing.tenantId) !== expectedTenantId
-                || normalizeAccountingScope(existing.sId ?? existing.storeId) !== expectedStoreId
+                || existing.accountingUnits !== unitsToConsume
+                || getExactAccountingScopeAlias(existing, 'tId', 'tenantId') !== expectedTenantId
+                || getExactAccountingScopeAlias(existing, 'sId', 'storeId') !== expectedStoreId
                 || existing.action !== operationData.action
             ) {
                 throw new Error('AI accounting idempotency conflict.');
             }
             if (existing.accountingStatus === 'consumed') {
-                const monthlyCredits = Number(existing.remainingMonthlyCredits);
-                const topUpCredits = Number(existing.remainingTopUpCredits);
-                if (!Number.isFinite(monthlyCredits) || !Number.isFinite(topUpCredits)) {
+                const monthlyCredits = getNonNegativeCreditInteger(existing.remainingMonthlyCredits);
+                const topUpCredits = getNonNegativeCreditInteger(existing.remainingTopUpCredits);
+                if (monthlyCredits === null || topUpCredits === null) {
                     throw new Error('AI accounting replay state is invalid.');
+                }
+                const replaySubscription = subscriptionSnap.exists
+                    ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
+                    : subscription;
+                const replayScope = getMenuListSubscriptionEntitlementScope(replaySubscription);
+                if (
+                    !replayScope
+                    || String(replayScope.tenantId) !== expectedTenantId
+                    || String(replayScope.storeId) !== subscriptionStoreId
+                ) {
+                    throw new Error('Billing subscription scope is invalid.');
                 }
                 return {
                     alreadyConsumed: true,
                     balance: { billingStoreId: Number(subscriptionStoreId), monthlyCredits, topUpCredits },
-                    subscription: subscriptionSnap.exists
-                        ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
-                        : subscription,
+                    subscription: replaySubscription,
                 };
             }
         }
         if (!subscriptionSnap.exists) throw new Error('Billing subscription is not available.');
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
+        const currentScope = getMenuListSubscriptionEntitlementScope(current);
         if (
-            normalizeAccountingScope(current.tenantId ?? current.tId) !== expectedTenantId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== subscriptionStoreId
+            !currentScope
+            || String(currentScope.tenantId) !== expectedTenantId
+            || String(currentScope.storeId) !== subscriptionStoreId
         ) {
             throw new Error('AI accounting persisted subscription scope mismatch.');
         }

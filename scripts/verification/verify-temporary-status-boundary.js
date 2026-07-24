@@ -221,8 +221,14 @@ forbidToken(desktopCard, 'err.message ||', 'Desktop Temporary Status card');
   "readTempStatusResponse(res, 'set'",
   "readTempStatusResponse(res, 'clear'",
   'hasPreviousStatus: Boolean(prevStatus)',
-  "setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }))",
+  'return <MobileTempStatusScreenContent key={scopeKey} {...props} />;',
+  'tempStatusActionInFlightRef.current',
+  'isExpectedStoreScope(expectedTenantId, expectedStoreId)',
+  "String(prev?.tenantId ?? '') !== String(expectedTenantId)",
+  "String(prev?.storeId ?? '') !== String(expectedStoreId)",
+  'prev === optimisticStoreDetails',
 ].forEach((token) => requireToken(mobileTempStatus, token, 'Mobile Temporary Status screen'));
+requireOccurrenceAtLeast(mobileTempStatus, 'prev === optimisticStoreDetails', 2, 'Mobile Temporary Status attempt-owned rollback');
 requireOccurrenceAtLeast(mobileTempStatus, "fetch('/api/store/temp-status'", 2, 'Mobile Temporary Status route calls');
 requireOccurrenceAtLeast(mobileTempStatus, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Mobile Temporary Status request policy');
 requireOrder(

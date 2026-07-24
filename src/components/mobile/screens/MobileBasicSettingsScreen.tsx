@@ -13,7 +13,7 @@ import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountr
 import { normalizeGeoCoordinateDraft } from '@lib/businessIdentity/geoCoordinates';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUser } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -63,7 +63,7 @@ function getInitialFormData(storeDetails: any, tenantDetails?: any) {
     };
 }
 
-export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSettingsScreenProps) {
+function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenProps) {
     const t = useTranslations('MobileSettings');
     const tBusiness = useTranslations('BusinessSettings');
     const { token } = theme.useToken();
@@ -84,9 +84,21 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const [formData, setFormData] = useState(getInitialFormData(storeDetails, tenantDetails));
     const [originalFormData, setOriginalFormData] = useState(() => getInitialFormData(storeDetails, tenantDetails));
     const [originalLogoUrl, setOriginalLogoUrl] = useState(storeDetails?.logo || '');
+    const componentActiveRef = useRef(true);
+    const basicSettingsSaveInFlightRef = useRef(false);
+    const currentStoreDetailsRef = useRef(storeDetails);
+    currentStoreDetailsRef.current = storeDetails;
     const isDirty = JSON.stringify(formData) !== JSON.stringify(originalFormData) || (selectedLogo?.url || '') !== originalLogoUrl;
 
     useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (basicSettingsSaveInFlightRef.current) return;
         const nextFormData = getInitialFormData(storeDetails, tenantDetails);
         setFormData((previous) => JSON.stringify(previous) === JSON.stringify(originalFormData) ? nextFormData : previous);
         setOriginalFormData(nextFormData);
@@ -94,7 +106,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     }, [storeDetails, tenantDetails]);
 
     const handleSave = useCallback(async () => {
-        if (!storeDetails?.storeId) return;
+        if (
+            !storeDetails?.storeId
+            || !storeDetails?.tenantId
+            || basicSettingsSaveInFlightRef.current
+        ) return;
         if (!formData.tenantName.trim()) {
             Toast.show({ content: 'Brand name is required', duration: 1500 });
             return;
@@ -110,6 +126,8 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             return;
         }
         const businessCategory = resolveStoreBusinessCategory(formData.businessType, storeDetails.businessCategory);
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
         const normalizedPhone = normalizePhoneNumberForStorage({
             countryCode: formData.countryCode,
             dialCode: formData.dialCode,
@@ -136,7 +154,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             phoneNumber: normalizedPhone.phoneNumber,
             postalCode: formData.postalCode,
             state: formData.state,
-            tenantId: storeDetails.tenantId, // Required for the atomic canonical-store/summary scope check
+            tenantId: expectedTenantId, // Required for the atomic canonical-store/summary scope check
         };
         if (normalizedGeo.geo || storeDetails.geo) updates.geo = normalizedGeo.geo;
         if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
@@ -145,56 +163,36 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             updates.preparedMedia = selectedLogo.preparedMedia;
         }
 
+        basicSettingsSaveInFlightRef.current = true;
         setIsSaving(true);
         const optimisticUpdates = { ...updates };
         delete optimisticUpdates.imageToUpdate;
         delete optimisticUpdates.imageType;
         delete optimisticUpdates.preparedMedia;
-        setStoreDetails((previous: any) => ({ ...previous, ...optimisticUpdates }));
+        const previousOptimisticValues = Object.fromEntries(
+            Object.keys(optimisticUpdates).map((key) => [key, storeDetails[key]]),
+        );
+        setStoreDetails((previous: any) => (
+            previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
+                ? { ...previous, ...optimisticUpdates }
+                : previous
+        ));
 
+        let savedStore: any;
         try {
-            const savedStore = await updateStore({
-                storeId: storeDetails.storeId,
-                tenantId: storeDetails.tenantId,
+            savedStore = await updateStore({
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
                 ...updates,
             } as any);
             assertStoreUpdateSucceeded(
                 savedStore,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_basic_settings_store_update_rejected',
             );
-            if (formData.tenantName.trim() && formData.tenantName.trim() !== tenantDetails?.name && storeDetails?.tenantId) {
-                const tenantResult = await updateTenant({
-                    name: formData.tenantName.trim(),
-                    tenantId: storeDetails.tenantId,
-                });
-                assertTenantUpdateSucceeded(
-                    tenantResult,
-                    storeDetails.tenantId,
-                    'mobile_basic_settings_tenant_update_rejected',
-                );
-                setTenantDetails((previous: any) => ({ ...(previous || {}), name: formData.tenantName.trim() }));
-            }
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                ...optimisticUpdates,
-                businessCategory: savedStore?.businessCategory ?? optimisticUpdates.businessCategory ?? previous.businessCategory,
-                logo: savedStore?.logo || previous.logo,
-            }));
-            if (savedStore?.logo) {
-                setSelectedLogo({
-                    name: logoAltName,
-                    size: 0,
-                    type: selectedLogo?.type || 'image/png',
-                    url: savedStore.logo,
-                });
-            }
-            setOriginalFormData(formData);
-            setOriginalLogoUrl(savedStore?.logo || selectedLogo?.url || storeDetails.logo || '');
-            Toast.show({ content: t('saved'), duration: 1000 });
         } catch (error) {
             logMobileOwnerFailure('mobile_basic_settings_save_failed', error, {
-                ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                ...getMobileOwnerStoreLogContext(expectedStoreId, expectedTenantId),
                 ...getBoundedMobileOwnerStringContext('businessName', formData.name),
                 ...getBoundedMobileOwnerStringContext('tenantName', formData.tenantName),
                 ...getBoundedMobileOwnerStringContext('businessType', formData.businessType),
@@ -203,39 +201,109 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 hasPhoneUpdate: Boolean(normalizedPhone.phone),
                 tenantNameChanged: formData.tenantName.trim() !== tenantDetails?.name,
             });
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                addressLine: storeDetails.addressLine,
-                area: storeDetails.area,
-                businessCategory: storeDetails.businessCategory,
-                city: storeDetails.city,
-                businessType: storeDetails.businessType,
-                contactPersonEmail: storeDetails.contactPersonEmail,
-                contactPersonName: storeDetails.contactPersonName,
-                contactPersonNumber: storeDetails.contactPersonNumber,
-                country: storeDetails.country,
-                countryCode: storeDetails.countryCode,
-                dialCode: storeDetails.dialCode,
-                email: storeDetails.email,
-                district: storeDetails.district,
-                geo: storeDetails.geo,
-                gstn: storeDetails.gstn,
-                name: storeDetails.name,
-                tenantName: storeDetails.tenantName,
-                postalCode: storeDetails.postalCode,
-                phone: (storeDetails as any).phone,
-                phoneNumber: storeDetails.phoneNumber,
-                state: storeDetails.state,
-            }));
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
-        } finally {
-            setIsSaving(false);
+            setStoreDetails((previous: any) => {
+                const stillOwnsOptimisticState = (
+                    previous?.storeId === expectedStoreId
+                    && previous?.tenantId === expectedTenantId
+                    && Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)
+                );
+                return stillOwnsOptimisticState
+                    ? { ...previous, ...previousOptimisticValues }
+                    : previous;
+            });
+            if (componentActiveRef.current) {
+                Toast.show({ content: t('failedToSave'), duration: 2000 });
+            }
+            basicSettingsSaveInFlightRef.current = false;
+            if (componentActiveRef.current) setIsSaving(false);
+            return;
         }
+
+        let tenantNameSynced = true;
+        if (formData.tenantName.trim() && formData.tenantName.trim() !== tenantDetails?.name) {
+            try {
+                const tenantResult = await updateTenant({
+                    name: formData.tenantName.trim(),
+                    tenantId: expectedTenantId,
+                });
+                assertTenantUpdateSucceeded(
+                    tenantResult,
+                    expectedTenantId,
+                    'mobile_basic_settings_tenant_update_rejected',
+                );
+                if (componentActiveRef.current) {
+                    setTenantDetails((previous: any) => ({ ...(previous || {}), name: formData.tenantName.trim() }));
+                }
+            } catch (error) {
+                tenantNameSynced = false;
+                logMobileOwnerFailure('mobile_basic_settings_tenant_sync_failed', error, {
+                    ...getMobileOwnerStoreLogContext(expectedStoreId, expectedTenantId),
+                    ...getBoundedMobileOwnerStringContext('tenantName', formData.tenantName),
+                });
+            }
+        }
+
+        const currentStoreOwnsAttempt = (
+            currentStoreDetailsRef.current?.storeId === expectedStoreId
+            && currentStoreDetailsRef.current?.tenantId === expectedTenantId
+            && Object.entries(optimisticUpdates).every(
+                ([key, value]) => currentStoreDetailsRef.current?.[key] === value,
+            )
+        );
+        setStoreDetails((previous: any) => (
+            previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
+            && Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)
+                ? {
+                    ...previous,
+                    businessCategory: savedStore?.businessCategory ?? optimisticUpdates.businessCategory ?? previous.businessCategory,
+                    logo: savedStore?.logo || previous.logo,
+                }
+                : previous
+        ));
+        if (componentActiveRef.current) {
+            if (currentStoreOwnsAttempt && savedStore?.logo) {
+                setSelectedLogo({
+                    name: logoAltName,
+                    size: 0,
+                    type: selectedLogo?.type || 'image/png',
+                    url: savedStore.logo,
+                });
+            }
+            if (currentStoreOwnsAttempt) {
+                setOriginalFormData(tenantNameSynced
+                    ? formData
+                    : { ...formData, tenantName: tenantDetails?.name || '' });
+                setOriginalLogoUrl(savedStore?.logo || selectedLogo?.url || storeDetails.logo || '');
+            } else {
+                const currentStore = currentStoreDetailsRef.current;
+                const currentForm = getInitialFormData(currentStore, tenantDetails);
+                setFormData(currentForm);
+                setOriginalFormData(currentForm);
+                setOriginalLogoUrl(currentStore?.logo || '');
+                setSelectedLogo(currentStore?.logo
+                    ? {
+                        name: currentStore?.tenantName || tenantDetails?.name || currentStore?.name || 'logo',
+                        size: 0,
+                        type: '',
+                        url: currentStore.logo,
+                    }
+                    : null);
+            }
+            Toast.show({
+                content: tenantNameSynced
+                    ? t('saved')
+                    : 'Business details saved, but the brand name still needs to be retried.',
+                duration: tenantNameSynced ? 1000 : 2500,
+            });
+        }
+        basicSettingsSaveInFlightRef.current = false;
+        if (componentActiveRef.current) setIsSaving(false);
     }, [formData, logoAltName, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
 
     const handleLogoSelect = useCallback(async (file: File) => {
         try {
             const prepared = await prepareMediaImage(file, 'businessLogo');
+            if (!componentActiveRef.current) return;
             setSelectedLogo({
                 blob: prepared.blob,
                 crop: prepared.crop,
@@ -257,7 +325,9 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 ...getBoundedMobileOwnerStringContext('fileName', file.name),
             });
-            Toast.show({ content: 'Could not prepare logo.', duration: 1800 });
+            if (componentActiveRef.current) {
+                Toast.show({ content: 'Could not prepare logo.', duration: 1800 });
+            }
         }
     }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
@@ -553,4 +623,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             />
         </Flex>
     );
+}
+
+export default function MobileBasicSettingsScreen(props: MobileBasicSettingsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileBasicSettingsScreenContent key={scopeKey} {...props} />;
 }

@@ -76,7 +76,7 @@ interface ComputedBlock {
     blockType: DecisionBlockType;
     item: ExtractedDataItem;
     reason: string;                      // i18n key or plain text
-    reasonParams?: Record<string, any>;  // Optional params for interpolation
+    reasonParams?: { minutes: number };
 }
 
 const OWNER_PINNED_TITLE_KEYS: Record<DecisionBlockType, PublicCustomerMessageKey> = {
@@ -321,7 +321,7 @@ function selectAvailableCandidate(
     usedItemIds: Set<string>,
     storeTimeZone?: string,
     pinnedId?: string
-): { item: ExtractedDataItem; reason: string; reasonParams?: Record<string, any> } | undefined {
+): { item: ExtractedDataItem; reason: string; reasonParams?: { minutes: number } } | undefined {
     // Build lookup map for O(1) access
     const itemMap = buildDecisionItemLookup(items);
 

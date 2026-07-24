@@ -579,9 +579,9 @@ async function createMenuSnapshot(
         const items = extractItemsMap(projectData);
         const categories = extractCategoriesMap(projectData);
         const retentionDays = Number(FEATURE_FLAGS.MENU_SNAPSHOT_RETENTION_DAYS || 90);
-        const createdAt = Timestamp.now();
+        const createdAtMillis = Date.now();
         const expiresAt = Timestamp.fromMillis(
-            createdAt.toMillis() + retentionDays * 24 * 60 * 60 * 1000,
+            createdAtMillis + retentionDays * 24 * 60 * 60 * 1000,
         );
 
         const snapshotRef = collection(
@@ -613,7 +613,9 @@ async function createMenuSnapshot(
                     active: cat.active,
                 })),
             },
-            createdAt,
+            // Security rules bind this transform to request.time. Snapshot
+            // retention must not inherit authority from the browser clock.
+            createdAt: serverTimestamp(),
             expiresAt,
             retentionDays,
             snapshotMode: "full_menu_short_term",
@@ -1642,9 +1644,16 @@ export function assertProjectDeleteSucceeded(
     throw new Error(rejectionCode);
 }
 
+export type ProjectExpectedScope = {
+    sId: number;
+    tId: number;
+};
+
 interface ProjectUpdateOptions {
+    expectedScope?: ProjectExpectedScope;
     preserveExistingVisualDefaults?: boolean;
     expectedModifiedOn?: number | string | Date | Timestamp;
+    syncPublicSummary?: boolean;
 }
 
 type ProjectPublishOptions = {
@@ -1694,6 +1703,15 @@ const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOp
     if (!operationScope) {
         throw new Error('Invalid active project operation scope');
     }
+    if (
+        options.expectedScope
+        && (
+            operationScope.tId !== options.expectedScope.tId
+            || operationScope.sId !== options.expectedScope.sId
+        )
+    ) {
+        throw new Error('Project update scope changed');
+    }
     const operationProjectId = normalizeMenuChangeLogIdentifier(data.projectId, 'projectId');
     const projectScope = normalizeProjectDocumentScope({
         tId: operationScope.tId,
@@ -1706,6 +1724,11 @@ const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOp
         firebaseClient,
         `${DATA_COLLECTION}/${projectScope.tId}/${projectScope.sId}`,
         projectScope.projectId,
+    );
+    const operationSummaryRef = doc(
+        firebaseClient,
+        PLATFORM_SUMMARY,
+        `projects_${operationScope.sId}`,
     );
 
     const currentProjectDoc = await getDoc(operationProjectRef);
@@ -1890,11 +1913,30 @@ const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOp
         }
 
         transaction.set(operationProjectRef, persistedUpdateData, { merge: true });
+        const savedProject = buildProjectAfterPartialUpdate(freshProject, persistedUpdateData);
+        if (options.syncPublicSummary) {
+            transaction.set(operationSummaryRef, {
+                lastUpdated: serverTimestamp(),
+                ...('name' in data
+                    ? buildSummaryProjectFieldPayload(projectScope.projectId, 'name', savedProject.name)
+                    : {}),
+                ...('description' in data
+                    ? buildSummaryProjectFieldPayload(projectScope.projectId, 'description', savedProject.description || '')
+                    : {}),
+                ...(data._specialMenu?.displayName
+                    ? buildSummaryProjectFieldPayload(
+                        projectScope.projectId,
+                        'specialMenuDisplayName',
+                        savedProject._specialMenu?.displayName,
+                    )
+                    : {}),
+            }, { merge: true });
+        }
         return {
             mceError,
             mceResult,
             previousProject: freshProject,
-            savedProject: buildProjectAfterPartialUpdate(freshProject, persistedUpdateData),
+            savedProject,
         };
     });
     const previousProject = transactionResult.previousProject;
@@ -1977,7 +2019,7 @@ const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOp
                 signalDocRef,
                 {
                     operationalVersion: increment(1),
-                    lastUpdatedAt: Timestamp.now(),
+                    lastUpdatedAt: serverTimestamp(),
                 },
                 { merge: true },
             );
@@ -2171,10 +2213,21 @@ const PROJECT_PRESET_CASCADE_CONCURRENCY = 4;
 const applyPresetMutationToAllProjects = async (
     mutation: ProjectPresetReferenceMutation,
     cacheContext: string,
+    expectedScope: { tenantId: number; storeId: number },
 ): Promise<ProjectPresetCascadeUpdateResult> => {
     const session = await getActiveSession();
     const scope = normalizeMenuChangeLogScope(session);
-    if (!scope) throw new Error("project_preset_cascade_scope_invalid");
+    if (
+        !scope
+        || !Number.isSafeInteger(expectedScope.tenantId)
+        || expectedScope.tenantId <= 0
+        || !Number.isSafeInteger(expectedScope.storeId)
+        || expectedScope.storeId <= 0
+        || scope.tId !== expectedScope.tenantId
+        || scope.sId !== expectedScope.storeId
+    ) {
+        throw new Error("project_preset_cascade_scope_invalid");
+    }
     const dataRef = collection(
         firebaseClient,
         DATA_COLLECTION,
@@ -2196,7 +2249,10 @@ const applyPresetMutationToAllProjects = async (
             const project = projectDoc.data() as Project;
             return project.deleted !== true
                 && projectDocumentMatchesScope(project, { ...scope, projectId: projectDoc.id })
-                && projectReferencesTimeSlotPreset(project, presetId);
+                && (
+                    mutation.type === "remove"
+                    || projectReferencesTimeSlotPreset(project, presetId)
+                );
         });
 
         const results = await mapWithConcurrency(
@@ -2222,9 +2278,12 @@ const applyPresetMutationToAllProjects = async (
                         }, { merge: true });
                         return true;
                     });
-                    if (changed) {
-                        await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);
-                    }
+                    // Revalidate every admitted candidate, including an already
+                    // projected document on retry. A Firestore commit can
+                    // succeed before cache invalidation fails. Remove retries
+                    // cannot rediscover the former reference, so they admit the
+                    // complete bounded store project set above.
+                    await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);
                     return { changed } as const;
                 } catch (error) {
                     return { changed: false, error } as const;
@@ -2243,7 +2302,10 @@ const applyPresetMutationToAllProjects = async (
     return { success: true, updatedProjects: updatedCount };
 };
 
-export const removePresetFromAllCategories = async (presetId: string) => {
+export const removePresetFromAllCategories = async (
+    presetId: string,
+    expectedScope: { tenantId: number; storeId: number },
+) => {
     return await apiCallComposer(
         async () => {
             const normalizedPresetId = normalizeTimeSlotPresetId(presetId);
@@ -2251,6 +2313,7 @@ export const removePresetFromAllCategories = async (presetId: string) => {
             return await applyPresetMutationToAllProjects(
                 { type: "remove", presetId: normalizedPresetId },
                 "removePresetFromAllCategories",
+                expectedScope,
             );
         },
         { presetId },
@@ -2284,7 +2347,10 @@ export function assertProjectPresetCascadeSucceeded(
  * independent of an extra store read. When the owner edits the preset, this
  * bounded cascade keeps public category visibility aligned with the preset.
  */
-export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {
+export const updatePresetInAllCategories = async (
+    preset: TimeSlotPreset,
+    expectedScope: { tenantId: number; storeId: number },
+) => {
     return await apiCallComposer(
         async () => {
             const normalizedPreset = normalizeTimeSlotPreset(preset);
@@ -2292,6 +2358,7 @@ export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {
             return await applyPresetMutationToAllProjects(
                 { type: "update", preset: normalizedPreset },
                 "updatePresetInAllCategories",
+                expectedScope,
             );
         },
         { presetId: preset?.id },
@@ -2629,14 +2696,39 @@ export const publishProject = async (
  * Get projects list using Summary Document Pattern (1 read)
  * Returns projects from platformSummary/projects_{sId}
  */
-const getProjectsListCore = async (includeInactive = false) => {
+const resolveExpectedProjectScope = (
+    session: unknown,
+    expectedScope: ProjectExpectedScope | undefined,
+    rejectionCode: string,
+) => {
+    const scope = normalizeMenuChangeLogScope(session);
+    if (
+        !scope
+        || (
+            expectedScope
+            && (
+                scope.tId !== expectedScope.tId
+                || scope.sId !== expectedScope.sId
+            )
+        )
+    ) {
+        throw new Error(rejectionCode);
+    }
+    return scope;
+};
+
+const getProjectsListCore = async (
+    includeInactive = false,
+    expectedScope?: ProjectExpectedScope,
+) => {
     const session = await getActiveSession();
-    const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${session.sId}`);
+    const scope = resolveExpectedProjectScope(session, expectedScope, "projects_list_scope_changed");
+    const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
     const summaryDoc = await getDoc(summaryDocRef);
     const projectsMap = summaryDoc.exists()
         ? filterProjectsSummaryMapForScope(
             extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>),
-            session,
+            scope,
         )
         : {};
 
@@ -2648,7 +2740,7 @@ const getProjectsListCore = async (includeInactive = false) => {
         .filter((p) => includeInactive || p.active !== false);
 
     if (projects.length === 0) {
-        const projectId = `${session.tId}-default-${session.sId}`;
+        const projectId = `${scope.tId}-default-${scope.sId}`;
         const defaultProject: ProjectMetadata = {
             projectId,
             name: "Menu",
@@ -2715,10 +2807,13 @@ export const getProjectsList = async (includeInactive = false) => {
     );
 };
 
-export const getProjectsListWithoutLoader = async (includeInactive = false) => {
+export const getProjectsListWithoutLoader = async (
+    includeInactive = false,
+    expectedScope?: ProjectExpectedScope,
+) => {
     return await apiCallComposerClientWithoutLoader(
-        async () => await getProjectsListCore(includeInactive),
-        { includeInactive },
+        async () => await getProjectsListCore(includeInactive, expectedScope),
+        { expectedScope, includeInactive },
         "getProjectsListWithoutLoader",
     );
 };
@@ -2776,11 +2871,15 @@ export const getDeletedProjectsList = async () => {
     );
 };
 
-const getProjectDataCore = async (projectId: string): Promise<Project> => {
+const getProjectDataCore = async (
+    projectId: string,
+    expectedScope?: ProjectExpectedScope,
+): Promise<Project> => {
     const session = await getActiveSession();
+    const sessionScope = resolveExpectedProjectScope(session, expectedScope, "project_read_scope_changed");
     const scope = normalizeProjectDocumentScope({
-        tId: session.tId,
-        sId: session.sId,
+        tId: sessionScope.tId,
+        sId: sessionScope.sId,
         projectId,
     });
     if (!scope) throw new Error('Invalid project read scope');
@@ -2823,10 +2922,13 @@ export const getProjectData = async (projectId: string): Promise<Project> => {
     );
 };
 
-export const getProjectDataWithoutLoader = async (projectId: string): Promise<Project> => {
+export const getProjectDataWithoutLoader = async (
+    projectId: string,
+    expectedScope?: ProjectExpectedScope,
+): Promise<Project> => {
     return await apiCallComposerClientWithoutLoader(
-        async () => await getProjectDataCore(projectId),
-        { projectId },
+        async () => await getProjectDataCore(projectId, expectedScope),
+        { expectedScope, projectId },
         "getProjectDataWithoutLoader",
     );
 };
@@ -3500,11 +3602,28 @@ const assertSpecialMenuProjectScope = (
     return projectScope;
 };
 
+export type SpecialMenuExpectedScope = ProjectExpectedScope;
+
+const assertExpectedSpecialMenuScope = (
+    scope: ProjectExpectedScope,
+    expectedScope?: SpecialMenuExpectedScope,
+) => {
+    if (
+        expectedScope
+        && (
+            scope.tId !== expectedScope.tId
+            || scope.sId !== expectedScope.sId
+        )
+    ) {
+        throw new Error("special_menu_scope_changed");
+    }
+};
+
 /**
  * Get all special menus for current store from projectsSummary.
  * Zero extra reads — reads from the same summary doc used by project listing.
  */
-export const getSpecialMenus = async (): Promise<{
+export const getSpecialMenus = async (expectedScope?: SpecialMenuExpectedScope): Promise<{
     specialMenus: Array<{
         projectId: string;
         displayName: string;
@@ -3522,6 +3641,7 @@ export const getSpecialMenus = async (): Promise<{
             const session = await getActiveSession();
             const scope = normalizeMenuChangeLogScope(session);
             if (!scope) throw new Error("special_menu_scope_invalid");
+            assertExpectedSpecialMenuScope(scope, expectedScope);
             const summaryRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
             const storeRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(scope.sId));
             const [summaryDoc, storeDoc] = await Promise.all([
@@ -3620,7 +3740,7 @@ export const createSpecialMenuProject = async (params: {
     mode: SpecialMenuMode;
     startsAt: string;
     endsAt: string;
-}) => {
+}, expectedScope?: SpecialMenuExpectedScope) => {
     return await apiCallComposer(
         async () => {
             const { allowOverlap, baseProjectId, displayName, localizedDisplayName, mode, startsAt, endsAt } = params;
@@ -3636,6 +3756,7 @@ export const createSpecialMenuProject = async (params: {
             const sess = await getActiveSession();
             const scope = normalizeMenuChangeLogScope(sess);
             if (!scope) throw new Error("special_menu_scope_invalid");
+            assertExpectedSpecialMenuScope(scope, expectedScope);
             assertSpecialMenuProjectScope(baseProjectId, scope.tId, scope.sId);
 
             const timestamp = Date.now().toString(36);
@@ -3783,7 +3904,7 @@ export const updateSpecialMenuProject = async (params: {
     localizedDisplayName?: Record<string, string>;
     endsAt: string;
     startsAt: string;
-}) => {
+}, expectedScope?: SpecialMenuExpectedScope) => {
     return await apiCallComposer(
         async () => {
             const { allowOverlap, projectId, description, displayName, localizedDescription, localizedDisplayName, startsAt, endsAt } = params;
@@ -3806,6 +3927,7 @@ export const updateSpecialMenuProject = async (params: {
             const sess = await getActiveSession();
             const scope = normalizeMenuChangeLogScope(sess);
             if (!scope) throw new Error("special_menu_scope_invalid");
+            assertExpectedSpecialMenuScope(scope, expectedScope);
             assertSpecialMenuProjectScope(projectId, scope.tId, scope.sId);
             const projectRef = doc(firebaseClient, DATA_COLLECTION, String(scope.tId), String(scope.sId), projectId);
             const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
@@ -3960,12 +4082,16 @@ export const updateSpecialMenuProject = async (params: {
  * Activate a scheduled special menu.
  * Sets project status to 'active' and updates store with active menu reference.
  */
-export const activateSpecialMenu = async (projectId: string) => {
+export const activateSpecialMenu = async (
+    projectId: string,
+    expectedScope?: SpecialMenuExpectedScope,
+) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = normalizeMenuChangeLogScope(session);
             if (!scope) throw new Error("special_menu_scope_invalid");
+            assertExpectedSpecialMenuScope(scope, expectedScope);
             const result = await transitionSpecialMenuLifecycle({
                 action: "activate",
                 db: firebaseClient,
@@ -3988,12 +4114,16 @@ export const activateSpecialMenu = async (projectId: string) => {
  * Deactivate an active special menu early.
  * Clears store active menu reference and restores base menu.
  */
-export const deactivateSpecialMenu = async (projectId: string) => {
+export const deactivateSpecialMenu = async (
+    projectId: string,
+    expectedScope?: SpecialMenuExpectedScope,
+) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = normalizeMenuChangeLogScope(session);
             if (!scope) throw new Error('special_menu_scope_invalid');
+            assertExpectedSpecialMenuScope(scope, expectedScope);
             await transitionSpecialMenuLifecycle({
                 action: 'deactivate',
                 db: firebaseClient,
@@ -4014,12 +4144,16 @@ export const deactivateSpecialMenu = async (projectId: string) => {
 /**
  * Cancel a scheduled (not yet active) special menu.
  */
-export const cancelSpecialMenu = async (projectId: string) => {
+export const cancelSpecialMenu = async (
+    projectId: string,
+    expectedScope?: SpecialMenuExpectedScope,
+) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = normalizeMenuChangeLogScope(session);
             if (!scope) throw new Error('special_menu_scope_invalid');
+            assertExpectedSpecialMenuScope(scope, expectedScope);
             await transitionSpecialMenuLifecycle({
                 action: 'cancel',
                 db: firebaseClient,

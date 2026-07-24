@@ -7,17 +7,17 @@ import { processAuthorityMaturationForAllStores } from './analytics/authorityMat
 import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetention';
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
 import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
-import { DB_COLLECTIONS, getMenuIntelligenceDocId } from './constants/database';
+import { DB_COLLECTIONS } from './constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 import { flush as flushSentry, initSentry } from './lib/sentry';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from './sharedData/platformNotificationRegistry';
 import { resolveNextSpecialMenuTransitionAt } from './sharedData/specialMenuSchedule';
-import { computeIntelligenceState, createAuditLogRunContext, fetchCurrentIntelligence } from './intelligence/menuIntelligence';
+import { computeAndPersistMenuIntelligence } from './intelligence/menuIntelligence';
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
-import { getQuickPickThreshold, isQuickPickEnabledForCategory, normalize, WEIGHTS } from './intelligence/shared/scoreNormalizer';
+import { compareDecisionScores, getQuickPickThreshold, isQuickPickEnabledForCategory, normalize, WEIGHTS } from './intelligence/shared/scoreNormalizer';
 import { revalidatePublicClientCacheForStore } from './logic/publicCacheRevalidation';
 import { transitionScheduledSpecialMenu } from './schedulers/specialMenuLifecycle';
 import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
@@ -47,6 +47,7 @@ const SCHEDULER_EXTRACTION_LEARNING_FAILED = 'SCHEDULER_EXTRACTION_LEARNING_FAIL
 const SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED = 'SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED';
 const SCHEDULER_STALENESS_CHECK_FAILED = 'SCHEDULER_STALENESS_CHECK_FAILED';
 const SCHEDULER_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_RUN_LOG_PERSIST_FAILED';
+const SCHEDULER_STORE_LEASE_FINALIZE_FAILED = 'SCHEDULER_STORE_LEASE_FINALIZE_FAILED';
 const SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED';
 const SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED';
 const SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED';
@@ -136,7 +137,9 @@ const NIGHTLY_LOCK_PREFIX = 'nightlyLock';
 const NIGHTLY_LOCK_LEASE_MS = 8 * 60 * 1000;
 const PLATFORM_DAILY_TASK_STATE_ID = 'decisionBlocksPlatformDaily';
 const PLATFORM_DAILY_TASK_LEASE_MS = 10 * 60 * 1000;
+const STORE_NIGHTLY_SCHEDULER_LEASE_MS = 10 * 60 * 1000;
 const PLATFORM_DAILY_TASK_RETRY_MS = 55 * 60 * 1000;
+const PLATFORM_DAILY_TASK_LEASE_LOST = 'PLATFORM_DAILY_TASK_LEASE_LOST';
 const PLATFORM_DAILY_TASK_NAMES = new Set([
     'authority_maturation',
     'menu_drift',
@@ -468,15 +471,22 @@ function getPlatformDailyTaskDayKey(now: Date): string {
     return now.toISOString().slice(0, 10);
 }
 
+interface PlatformDailyTaskLease {
+    stateRef: FirebaseFirestore.DocumentReference;
+    leaseOwner: string;
+    dayKey: string;
+}
+
 async function acquirePlatformDailyTaskLease(
     db: FirebaseFirestore.Firestore,
     now: Date,
-): Promise<FirebaseFirestore.DocumentReference | null> {
+): Promise<PlatformDailyTaskLease | null> {
     const stateRef = db.collection(DB_COLLECTIONS.SYSTEM).doc(PLATFORM_DAILY_TASK_STATE_ID);
     const dayKey = getPlatformDailyTaskDayKey(now);
     const nowMs = now.getTime();
+    const leaseOwner = `${dayKey}_${nowMs}_${Math.random().toString(36).slice(2, 10)}`;
 
-    return db.runTransaction(async (transaction) => {
+    const acquired = await db.runTransaction(async (transaction) => {
         const stateSnapshot = await transaction.get(stateRef);
         const state = stateSnapshot.data() || {};
         const leaseExpiresAtMs = state.leaseExpiresAt?.toMillis?.() || 0;
@@ -494,6 +504,7 @@ async function acquirePlatformDailyTaskLease(
 
         transaction.set(stateRef, {
             status: 'running',
+            leaseOwner,
             lastAttemptDayKey: dayKey,
             lastAttemptAt: Timestamp.fromDate(now),
             leaseExpiresAt: Timestamp.fromMillis(nowMs + PLATFORM_DAILY_TASK_LEASE_MS),
@@ -501,28 +512,97 @@ async function acquirePlatformDailyTaskLease(
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
 
-        return stateRef;
+        return true;
     });
+
+    return acquired ? { stateRef, leaseOwner, dayKey } : null;
 }
 
 async function completePlatformDailyTaskLease(
-    stateRef: FirebaseFirestore.DocumentReference,
-    dayKey: string,
+    lease: PlatformDailyTaskLease,
     status: 'completed' | 'failed',
-): Promise<void> {
-    await stateRef.set({
-        status,
-        leaseExpiresAt: FieldValue.delete(),
-        lastCompletedDayKey: status === 'completed' ? dayKey : FieldValue.delete(),
-        lastCompletedAt: status === 'completed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
-        lastFailedAt: status === 'failed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
-        updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
+): Promise<boolean> {
+    return lease.stateRef.firestore.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(lease.stateRef);
+        if (snapshot.data()?.leaseOwner !== lease.leaseOwner) {
+            return false;
+        }
+
+        transaction.set(lease.stateRef, {
+            status,
+            leaseOwner: FieldValue.delete(),
+            leaseExpiresAt: FieldValue.delete(),
+            lastCompletedDayKey: status === 'completed' ? lease.dayKey : FieldValue.delete(),
+            lastCompletedAt: status === 'completed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
+            lastFailedAt: status === 'failed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+        return true;
+    });
 }
 
 export const acquirePlatformDailyTaskLeaseForTest = acquirePlatformDailyTaskLease;
 export const completePlatformDailyTaskLeaseForTest = completePlatformDailyTaskLease;
 export const getPlatformDailyTaskDayKeyForTest = getPlatformDailyTaskDayKey;
+
+interface StoreNightlySchedulerLease {
+    stateRef: FirebaseFirestore.DocumentReference;
+    leaseOwner: string;
+}
+
+async function acquireStoreNightlySchedulerLease(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    runLogId: string,
+    now: Date,
+): Promise<StoreNightlySchedulerLease | null> {
+    const stateRef = db.collection(DB_COLLECTIONS.SYSTEM).doc(`storeNightlyScheduler_${tId}_${sId}`);
+    const nowMs = now.getTime();
+    const leaseOwner = runLogId;
+
+    const acquired = await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(stateRef);
+        const state = snapshot.data() || {};
+        const leaseExpiresAtMs = state.leaseExpiresAt?.toMillis?.() || 0;
+        if (state.status === 'running' && leaseExpiresAtMs > nowMs) return false;
+
+        transaction.set(stateRef, {
+            tId,
+            sId,
+            status: 'running',
+            leaseOwner,
+            runLogId,
+            leaseExpiresAt: Timestamp.fromMillis(nowMs + STORE_NIGHTLY_SCHEDULER_LEASE_MS),
+            startedAt: Timestamp.fromDate(now),
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+        return true;
+    });
+
+    return acquired ? { stateRef, leaseOwner } : null;
+}
+
+async function completeStoreNightlySchedulerLease(
+    lease: StoreNightlySchedulerLease,
+    status: 'completed' | 'failed',
+): Promise<boolean> {
+    return lease.stateRef.firestore.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(lease.stateRef);
+        if (snapshot.data()?.leaseOwner !== lease.leaseOwner) return false;
+        transaction.set(lease.stateRef, {
+            status,
+            leaseOwner: FieldValue.delete(),
+            leaseExpiresAt: FieldValue.delete(),
+            completedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+        return true;
+    });
+}
+
+export const acquireStoreNightlySchedulerLeaseForTest = acquireStoreNightlySchedulerLease;
+export const completeStoreNightlySchedulerLeaseForTest = completeStoreNightlySchedulerLease;
 
 // Scoring weights, duration thresholds, and normalize() imported from
 // functions/src/intelligence/shared/scoreNormalizer.ts (single source of truth)
@@ -760,17 +840,17 @@ async function computeForProject(
     const popularScores = items.filter((item) => getBehavioralClickCount(item) >= 3).map(item => ({
         item,
         score: calculatePopularScore(item, maxViews, maxClicks, maxOrders)
-    })).sort((a, b) => b.score - a.score);
+    })).sort(compareDecisionScores);
 
     const quickPickScores = isQuickPickEnabledForCategory(businessCategory) ? items.map(item => ({
         item,
         score: calculateQuickPickScore(item, businessCategory, maxPopularity)
-    })).filter(i => i.score >= 0).sort((a, b) => b.score - a.score) : [];
+    })).filter(i => i.score >= 0).sort(compareDecisionScores) : [];
 
     const bestValueScores = items.filter((item) => item.price > 0 && item.price <= avgPrice).map(item => ({
         item,
         score: calculateBestValueScore(item, maxPopularity, avgPrice)
-    })).filter(i => i.score >= 0).sort((a, b) => b.score - a.score);
+    })).filter(i => i.score >= 0).sort(compareDecisionScores);
 
     // Get top N candidates for each block
     // Note: We do NOT exclude duplicates across blocks here
@@ -853,6 +933,19 @@ async function saveDecisionBlocksForProject(
     return projectRef.path;
 }
 
+export async function clearStaleDecisionBlocksForProject(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    projectData: FirebaseFirestore.DocumentData,
+): Promise<string | null> {
+    if (!Object.prototype.hasOwnProperty.call(projectData, 'publicDecisionBlocks')) return null;
+    const projectRef = getProjectDocRef(db, String(tId), String(sId), String(projectId));
+    await projectRef.set({ publicDecisionBlocks: FieldValue.delete() }, { merge: true });
+    return projectRef.path;
+}
+
 async function computeAndSaveMenuIntelligence(
     db: FirebaseFirestore.Firestore,
     tId: string,
@@ -867,29 +960,18 @@ async function computeAndSaveMenuIntelligence(
     const items = extractActiveItems(projectData, analytics);
     if (items.length === 0) return false;
 
-    const currentIntelligence = await fetchCurrentIntelligence(
+    // This document is a complete scheduler-owned projection. Replacing it
+    // prunes deleted item keys and keeps map growth bounded. The prior-state
+    // read is in the same transaction so scheduled/manual overlap cannot lose
+    // run count, maturity, or audit lineage.
+    await computeAndPersistMenuIntelligence(
         db,
-        tId,
-        sId,
-        projectId,
         DB_COLLECTIONS.MENU_INTELLIGENCE,
-    );
-    const runContext = createAuditLogRunContext(
-        (currentIntelligence?.runCount || 0) + 1,
-        source,
-    );
-    const intelligence = computeIntelligenceState(
         items,
         analytics,
-        currentIntelligence,
         { tId, sId, projectId },
-        runContext,
+        source,
     );
-
-    const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
-    // This document is a complete scheduler-owned projection. Replacing it
-    // prunes deleted item keys and keeps map growth bounded.
-    await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence);
     return true;
 }
 
@@ -1369,12 +1451,17 @@ async function runNightlySchedulerForStore(
                         });
                         storeRun.successCount++;
                     } else {
+                        const clearedPath = await clearStaleDecisionBlocksForProject(
+                            db, tId, sId, projectId, projectData,
+                        );
+                        if (clearedPath) publicDecisionBlocksChanged = true;
                         logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
                             tId,
                             sId,
                             projectId,
                             phase: 'project_scoring',
                             operation: 'compute_project_blocks',
+                            metrics: { clearedStaleProjection: Boolean(clearedPath) },
                         });
                         storeRun.skippedCount++;
                     }
@@ -1514,8 +1601,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
     const db = firestoreAdmin;
     const runStartTime = Date.now();
-    let platformDailyTaskLease: FirebaseFirestore.DocumentReference | null = null;
-    let platformDailyTaskDayKey: string | null = null;
+    let platformDailyTaskLease: PlatformDailyTaskLease | null = null;
     const taskResults: Array<{ name: string; status: 'success' | 'failed' | 'skipped'; durationMs?: number; details?: Record<string, any>; error?: string }> = [];
     const results = {
         totalStores: 0,
@@ -1567,9 +1653,6 @@ export const computeDecisionBlocksScores = onSchedule({
 
         results.totalStores = storeIds.length;
         platformDailyTaskLease = await acquirePlatformDailyTaskLease(db, now);
-        platformDailyTaskDayKey = platformDailyTaskLease
-            ? getPlatformDailyTaskDayKey(now)
-            : null;
         const runPlatformDailyTasks = platformDailyTaskLease !== null;
 
         if (storeIds.length === 0 && !runPlatformDailyTasks) {
@@ -1671,6 +1754,24 @@ export const computeDecisionBlocksScores = onSchedule({
                 continue;
             }
 
+            const storeSchedulerLease = await acquireStoreNightlySchedulerLease(
+                db,
+                tId,
+                sId,
+                `scheduled_store_${runStartTime}_${tId}_${sId}`,
+                new Date(),
+            );
+            if (!storeSchedulerLease) {
+                logSchedulerInfo(logger, '[DecisionBlocks] Store scheduler already running, skipping', {
+                    tId,
+                    sId,
+                    phase: 'store_scheduler_lease',
+                    operation: 'skip_concurrent_store_scheduler',
+                });
+                results.skippedCount++;
+                continue;
+            }
+            let storeSchedulerLeaseStatus: 'completed' | 'failed' = 'failed';
             try {
                 logSchedulerInfo(logger, '[DecisionBlocks] Processing store', {
                     tId,
@@ -1899,12 +2000,17 @@ export const computeDecisionBlocksScores = onSchedule({
                                 });
                                 results.successCount++;
                             } else {
+                                const clearedPath = await clearStaleDecisionBlocksForProject(
+                                    db, tId, sId, projectId, projectData,
+                                );
+                                if (clearedPath) publicDecisionBlocksChanged = true;
                                 logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
                                     tId,
                                     sId,
                                     projectId,
                                     phase: 'project_scoring',
                                     operation: 'compute_project_blocks',
+                                    metrics: { clearedStaleProjection: Boolean(clearedPath) },
                                 });
                                 results.skippedCount++;
                             }
@@ -1988,6 +2094,7 @@ export const computeDecisionBlocksScores = onSchedule({
                     }
                 }
 
+                storeSchedulerLeaseStatus = 'completed';
             } catch (error: any) {
                 logSchedulerFailure(logger, '[DecisionBlocks] Store scoring failed', SCHEDULER_STORE_RECOVERY_FAILED, error, {
                     tId,
@@ -2002,6 +2109,34 @@ export const computeDecisionBlocksScores = onSchedule({
                     phase: 'store_scheduler',
                     operation: 'score_store',
                 }));
+            } finally {
+                try {
+                    const finalized = await completeStoreNightlySchedulerLease(
+                        storeSchedulerLease,
+                        storeSchedulerLeaseStatus,
+                    );
+                    if (!finalized) {
+                        logSchedulerWarn(logger, '[DecisionBlocks] Store scheduler lease ownership changed before finalization', {
+                            tId,
+                            sId,
+                            phase: 'store_scheduler_lease',
+                            operation: 'finalize_store_scheduler_lease',
+                        });
+                    }
+                } catch (leaseError) {
+                    logSchedulerFailure(
+                        logger,
+                        '[DecisionBlocks] Failed to finalize store scheduler lease',
+                        SCHEDULER_STORE_LEASE_FINALIZE_FAILED,
+                        leaseError,
+                        {
+                            tId,
+                            sId,
+                            phase: 'store_scheduler_lease',
+                            operation: 'finalize_store_scheduler_lease',
+                        },
+                    );
+                }
             }
         }
 
@@ -2083,7 +2218,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 logger.info(`  Phase 1 (Active): ${maturationResult.phase1Count}`);
                 logger.info(`  Phase 2 (Passive): ${maturationResult.phase2Count}`);
                 logger.info(`  Phase 3 (Dormant): ${maturationResult.phase3Count}`);
-                taskResults.push({ name: 'authority_maturation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: maturationResult.processed, phase1: maturationResult.phase1Count, phase2: maturationResult.phase2Count, phase3: maturationResult.phase3Count } });
+                taskResults.push({ name: 'authority_maturation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: maturationResult.processed, invalidDocuments: maturationResult.invalidDocuments, phase1: maturationResult.phase1Count, phase2: maturationResult.phase2Count, phase3: maturationResult.phase3Count } });
             } catch (maturationError: any) {
                 // Non-blocking - log but continue
                 logSchedulerFailure(logger, 'Authority Maturation analysis failed', SCHEDULER_AUTHORITY_MATURATION_FAILED, maturationError, {
@@ -2474,15 +2609,28 @@ export const computeDecisionBlocksScores = onSchedule({
         // @see __docs__/answerlattice/doctrine/08-product-separation-playbook.md
         // ═══════════════════════════════════════════════════════════════
 
-        if (platformDailyTaskLease && platformDailyTaskDayKey) {
+        if (platformDailyTaskLease) {
             const platformDailyTaskFailed = taskResults.some(
                 (task) => PLATFORM_DAILY_TASK_NAMES.has(task.name) && task.status === 'failed',
             );
-            await completePlatformDailyTaskLease(
+            const completed = await completePlatformDailyTaskLease(
                 platformDailyTaskLease,
-                platformDailyTaskDayKey,
                 platformDailyTaskFailed ? 'failed' : 'completed',
             );
+            if (!completed) {
+                logSchedulerFailure(
+                    logger,
+                    'Platform daily task outcome rejected after lease ownership changed',
+                    PLATFORM_DAILY_TASK_LEASE_LOST,
+                    Object.assign(new Error(PLATFORM_DAILY_TASK_LEASE_LOST), {
+                        code: PLATFORM_DAILY_TASK_LEASE_LOST,
+                    }),
+                    {
+                        phase: 'platform_daily_tasks',
+                        operation: 'complete_platform_daily_task_lease',
+                    },
+                );
+            }
             platformDailyTaskLease = null;
         }
 
@@ -2631,6 +2779,8 @@ export const triggerStoreNightlyScheduler = onCall({
     const runLogRef = db.collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS).doc(runLogId);
     const triggeredBy = request.auth.uid;
     const manualScope = { tId, sId };
+    let recoveryLease: StoreNightlySchedulerLease | null = null;
+    let recoveryLeaseStatus: 'completed' | 'failed' = 'failed';
 
     const writeRunLog = async (payload: Record<string, any>) => {
         await runLogRef.set({
@@ -2648,6 +2798,20 @@ export const triggerStoreNightlyScheduler = onCall({
     };
 
     try {
+        recoveryLease = await acquireStoreNightlySchedulerLease(
+            db,
+            tId,
+            sId,
+            runLogId,
+            new Date(runStartTime),
+        );
+        if (!recoveryLease) {
+            throw new HttpsError(
+                'already-exists',
+                'A nightly recovery is already running for this store.',
+            );
+        }
+
         await writeRunLog({
             startedAt: Timestamp.fromMillis(runStartTime),
             completedAt: null,
@@ -2853,6 +3017,7 @@ export const triggerStoreNightlyScheduler = onCall({
             },
         });
 
+        recoveryLeaseStatus = 'completed';
         return {
             success: status !== 'failed',
             runLogId,
@@ -2911,6 +3076,34 @@ export const triggerStoreNightlyScheduler = onCall({
 
         throw new HttpsError('internal', diagnostic.error, { runLogId, diagnostic });
     } finally {
+        if (recoveryLease) {
+            try {
+                const finalized = await completeStoreNightlySchedulerLease(recoveryLease, recoveryLeaseStatus);
+                if (!finalized) {
+                    logSchedulerWarn(logger, '[ManualSchedulerRecovery] Lease ownership changed before finalization', {
+                        tId,
+                        sId,
+                        runLogId,
+                        phase: 'manual_recovery_lease',
+                        operation: 'finalize_manual_recovery_lease',
+                    });
+                }
+            } catch (leaseError) {
+                logSchedulerFailure(
+                    logger,
+                    '[ManualSchedulerRecovery] Failed to finalize recovery lease',
+                    SCHEDULER_STORE_LEASE_FINALIZE_FAILED,
+                    leaseError,
+                    {
+                        tId,
+                        sId,
+                        runLogId,
+                        phase: 'manual_recovery_lease',
+                        operation: 'finalize_manual_recovery_lease',
+                    },
+                );
+            }
+        }
         await flushSentry();
     }
 });
@@ -3019,6 +3212,13 @@ export const triggerDecisionBlocksScoring = onCall({
             };
         }
 
+        const clearedPath = await clearStaleDecisionBlocksForProject(
+            db, tId, sId, projectId, projectData,
+        );
+        if (clearedPath) {
+            await revalidatePublicClientCacheForStore(sId, 'decisionBlocksScoring:manual-project-clear');
+            return { success: true, projectId, projectPath: clearedPath, cleared: true };
+        }
         return { success: false, message: 'No items to score' };
     }
 
@@ -3046,6 +3246,7 @@ export const triggerDecisionBlocksScoring = onCall({
         }
 
         let successCount = 0;
+        let clearedCount = 0;
         let failedCount = 0;
 
         for (const { projectId: pId, data: projectData } of projectEntries) {
@@ -3065,6 +3266,8 @@ export const triggerDecisionBlocksScoring = onCall({
                 if (blocks) {
                     await saveDecisionBlocksForProject(db, tId, sId, pId, blocks);
                     successCount++;
+                } else if (await clearStaleDecisionBlocksForProject(db, tId, sId, pId, projectData)) {
+                    clearedCount++;
                 }
             } catch (error) {
                 failedCount++;
@@ -3078,16 +3281,17 @@ export const triggerDecisionBlocksScoring = onCall({
             }
         }
 
-        if (successCount > 0) {
+        if (successCount + clearedCount > 0) {
             await revalidatePublicClientCacheForStore(sId, 'decisionBlocksScoring:manual-store');
         }
         const status = failedCount === 0
             ? 'success'
-            : successCount > 0 ? 'partial' : 'failed';
+            : successCount + clearedCount > 0 ? 'partial' : 'failed';
         return {
             success: status !== 'failed',
             status,
             successCount,
+            clearedCount,
             failedCount,
             total: projectEntries.length,
         };

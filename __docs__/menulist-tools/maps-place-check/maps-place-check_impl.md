@@ -129,10 +129,12 @@ as current.
 `src/database/stores/index.tsx` owns the narrow mutation boundary:
 
 - `confirmExternalLocationIdentity` validates the binding again, requires the
-  current tenant and active owner store, rejects deleted/blocked stores, stamps
-  the confirmation time in the DAL, and transactionally writes one Google Maps
-  provider binding. Generic store updates cannot submit identity metadata and
-  the browser path cannot manufacture a Google Business Profile connection.
+  current tenant and active owner store, requires the Maps Place Check feature
+  flag, rejects deleted/blocked stores, stamps the confirmation time in the DAL,
+  and transactionally writes one Google Maps provider binding. The client
+  confirmation adapter independently enforces the same flag. Generic store
+  updates cannot submit identity metadata and the browser path cannot
+  manufacture a Google Business Profile connection.
 - `clearExternalLocationIdentity` removes only the selected provider binding.
 - the existing owner `publicPresence.googleMapsUrl` mutation mirrors or removes
   the `google_maps` URI binding in the same store write;
@@ -199,3 +201,10 @@ path. It must:
 Public cache invalidation remains the responsibility of a separate canonical
 business-field mutation. The internal identity-only confirmation does not change
 public output.
+
+Provider smoke is necessary but not sufficient for grounded-candidate UI
+release. The current embedded store binding has no cross-store uniqueness claim.
+Before activation, MenuList must approve and source-gate a server-authoritative,
+transaction-safe, reversible collision policy for one provider location ID
+appearing on multiple stores. No speculative identity collection, alias table,
+or collision queue is added while the feature remains disabled.

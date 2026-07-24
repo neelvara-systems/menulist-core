@@ -802,7 +802,7 @@ Credits live **on the subscription document**, not on the tenant:
 
 - `subscription.topUpCredits` — accumulated from pack purchases
 - `subscription.monthlyCredits` — from subscription plan (implicit via plan lookup)
-- Verification route: `verify-topup/route.ts` line 145: `await updateSubscription(internalSub.id, { topUpCredits: newBalance })`
+- Settlement boundary: `verify-topup/route.ts` delegates to the server transaction in `src/lib/billing/topupSettlement.ts`, which re-reads an exact-dual-`ML` subscription and applies the immutable pending order exactly once.
 
 #### Type Definitions (`src/data/common.ts`)
 

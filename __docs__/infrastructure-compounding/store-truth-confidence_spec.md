@@ -26,7 +26,7 @@ MenuList currently has individual signals scattered across multiple systems:
 - **Authority Maturation** tracks owner control usage phases
 - **Menu Drift** tracks price/availability change frequency
 - **MCE** validates schema correctness at publish time
-- **Menu Snapshots** track publish history (menuVersion counter)
+- **Menu Snapshots** provide best-effort short-term publish evidence; the project `menuVersion` is the authoritative monotonic publish counter
 - **Extraction confidence** (10.1) tracks AI certainty
 - **Correction rate** (10.2) tracks owner correction frequency
 

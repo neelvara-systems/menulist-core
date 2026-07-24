@@ -15,7 +15,6 @@ import {
 } from '@lib/answerlattice/chatSessionContracts';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { ChatSession } from '@type/chatSession';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, startAfter, Timestamp, where } from 'firebase/firestore';
@@ -76,15 +75,12 @@ const toAnalyticsDate = (value: unknown): Date | null => {
     return null;
 };
 
-const getRequiredChatAnalyticsContext = async (): Promise<{
+const getRequiredChatAnalyticsContext = (session: unknown): {
     scope: ChatAnalyticsScope;
-    session: any;
-}> => {
-    const session = await getActiveSession();
+} => {
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope) throw new Error('answerlattice_chat_analytics_scope_missing');
     return {
-        session,
         scope: { tId: scope.tenantId, sId: scope.storeId },
     };
 };
@@ -96,8 +92,14 @@ const getChatAnalyticsScopeContext = (
 ) => ({
     operation,
     days,
-    ...getBoundedChatAnalyticsStringContext('tenantId', session?.tId),
-    ...getBoundedChatAnalyticsStringContext('storeId', session?.sId),
+    ...getBoundedChatAnalyticsStringContext(
+        'tenantId',
+        resolveAnswerlatticeSessionScope(session)?.tenantId,
+    ),
+    ...getBoundedChatAnalyticsStringContext(
+        'storeId',
+        resolveAnswerlatticeSessionScope(session)?.storeId,
+    ),
 });
 
 const getDocRef = async (docId: string) => {
@@ -132,7 +134,7 @@ export type ChatAnalyticsDay = AnswerlatticeChatAnalyticsDay;
 export const getTodayLiveStats = async (session: any) => {
     return await apiCallComposer(
         async () => {
-            const { scope } = await getRequiredChatAnalyticsContext();
+            const { scope } = getRequiredChatAnalyticsContext(session);
 
             // Nightly chat summaries use UTC date buckets. The live slice must
             // use the same boundary or today's total overlaps adjacent buckets.
@@ -230,7 +232,7 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
     return await apiCallComposer(
         async () => {
             const safeDays = normalizeAnswerlatticeAnalyticsDays(days, 30);
-            const { scope } = await getRequiredChatAnalyticsContext();
+            const { scope } = getRequiredChatAnalyticsContext(session);
 
             const today = new Date().toISOString().split('T')[0];
             const endDate = new Date();
@@ -363,7 +365,7 @@ export const getChatDashboardAggregatesOptimized = async (
         async () => {
             const queryWindow = getAnswerlatticeAnalyticsQueryWindow(dateRange);
             if (!queryWindow) throw new Error('answerlattice_chat_analytics_date_range_invalid');
-            const { scope } = await getRequiredChatAnalyticsContext();
+            const { scope } = getRequiredChatAnalyticsContext(session);
 
             const dailyStats = queryWindow.historicalEndDateKey
                 ? (await getDocs(query(
@@ -542,7 +544,7 @@ export const getConversationsPaginated = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const { scope } = await getRequiredChatAnalyticsContext();
+            const { scope } = getRequiredChatAnalyticsContext(session);
             const safePageSize = normalizeAnswerlatticeAnalyticsPageSize(pageSize, 20);
             if (filters?.mode && filters.mode !== 'qna' && filters.mode !== 'assistant') {
                 throw new Error('answerlattice_chat_analytics_mode_invalid');
@@ -642,6 +644,8 @@ export const getConversationsPaginated = async (
             }
 
             return {
+                tId: scope.tId,
+                sId: scope.sId,
                 sessions,
                 hasNextPage,
                 nextPageCursor,
@@ -662,7 +666,7 @@ export const getConversationsPaginated = async (
 export const getLastAnalyticsUpdate = async (session: any): Promise<Date | null> => {
     return await apiCallComposer(
         async () => {
-            const { scope } = await getRequiredChatAnalyticsContext();
+            const { scope } = getRequiredChatAnalyticsContext(session);
 
             const q = query(
                 await getCollectionRef(),

@@ -1,76 +1,60 @@
-# SignalDesk Source Policy - Specification
+# SignalDesk Source Policy Specification
 
-**Status:** Initial planning spec
-**Created:** June 23, 2026
+**Status:** Implemented
+**Last verified:** July 21, 2026
 
-## Executive Summary
+## Objective
 
-Source Policy is the rule system that decides what SignalDesk can do with data from manual lists, MenuList-owned signals, referrals, paid intent, public websites, Google/Places-like data, Foursquare, Apify-like sources, or any future provider.
+Prevent source data from being imported, retained, cited, personalized, contacted, exported, or used by a provider beyond explicit current authority.
 
-It must exist before imports, enrichment, AI evidence, drafts, or sends.
+## Policy Authority
 
-## Goals
+Each policy defines:
 
-| Goal | Success signal |
-| --- | --- |
-| Prevent source misuse | Source record says allowed fields, blocked fields, allowed use, and retention. |
-| Keep outreach eligible | Target cannot move to outreach unless source policy allows it. |
-| Control storage | Raw payloads expire or are blocked. |
-| Support audit | Every target can explain where facts came from and what can be done with them. |
-| Keep providers replaceable | Provider availability does not become architecture dependency. |
+- immutable `sourcePolicyId`, product `pId: SD`, name, source type, and optional provider;
+- access method and documented terms/review basis;
+- allowed fields, blocked fields, contact channels, attribution requirements, and prohibited uses;
+- allowed use for evidence, import, storage, personalization, contact, and provider execution;
+- raw-payload and refresh method;
+- retention days from 1 through 365;
+- owner, approval, last-review, expiry, status, and audit metadata.
 
-## Source Types
+Supported statuses are `active`, `approved`, `inactive`, `review_required`, and `blocked`. Runtime usability derives an additional presentation state such as active, expiring soon, expired, or review required.
 
-| Source | Default allowed use |
-| --- | --- |
-| Manual curated list | Candidate review after operator records source context. |
-| MenuList first-party signal | Prioritization and attribution. |
-| Referral | Candidate review with referral context. |
-| Paid intent | Warm lead handling after explicit user action. |
-| Public website | Manual evidence review. |
-| Google Maps / Places-like | Temporary candidate discovery only after source-policy review. |
-| FHRS/FHIS official UK establishment data | Official establishment seed and evidence only after provider source-policy review; contact permission is not inferred. |
-| Foursquare | Blocked for prospect outreach unless separate permission exists. |
-| Apify/Outscraper-style | Blocked by default; allowed only through the Apify Source Broker after provider source policy, owner provider approval, env-controlled Actor review, and budget cap. |
+## Required Invariants
 
-### Approved first-trial manual policies
+1. A policy document must have matching document identity and `pId: SD`.
+2. `displayName` is always an allowed field; no field may be both allowed and blocked.
+3. Import and storage authority require evidence authority.
+4. Personalization requires evidence authority.
+5. Contact authority requires evidence authority, at least one contact channel, the corresponding contact field, and an explicit bounded access method.
+6. Provider policies require an approved provider and `provider-refresh`; non-provider policies cannot claim provider identity.
+7. Expiry cannot exceed the policy retention window.
+8. Every high-risk workflow rechecks current policy state and requested use transactionally where it writes consequential truth.
+9. Policy failure is fail-closed and writes bounded blocked-operation evidence.
+10. Availability of public or provider data is never treated as contact permission.
 
-| Policy | Use | Contact | Personalization | Retention |
-| --- | --- | --- | --- | --- |
-| Public business research | Candidate discovery and official-source evidence review | No | No | 30 days |
-| Permissioned manual introduction | Expected founder introduction, explicit referral, partner handoff, or owner-requested follow-up | Yes | Yes, from permitted evidence only | 90 days, then review |
+## Renewal
 
-Public research and permissioned contact must not be combined into one default policy. Public availability alone cannot move a candidate into contact-eligible state.
+`renew-source-policy` is a founder-controlled review action. It accepts only policy ID, new review time, new expiry, and an actor-bound idempotency key.
 
-## Requirements
+- It preserves all source, provider, access, field, use, contact, terms, raw-payload, refresh, retention, owner, and creation fields.
+- It rejects blocked policies, regressing review dates, non-extending expiry, and expiry beyond the existing retention window.
+- Exact retries return the durable policy; changed facts under the same key fail.
+- It changes no target, source run, evidence, contact, draft, export, or public capability.
+- A held or tombstoned target remains held. Fresh data requires a new governed import/provider run.
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| SDP-R001 | Every source type must have policy before import. | P0 |
-| SDP-R002 | Policy must include allowed fields and blocked fields. | P0 |
-| SDP-R003 | Policy must include may-use-for-outreach boolean. | P0 |
-| SDP-R004 | Policy must include retention class and raw-payload handling. | P0 |
-| SDP-R005 | Policy must include source terms URL or internal approval note. | P0 |
-| SDP-R006 | Source run must enforce per-run cap and budget. | P0 |
-| SDP-R007 | Source policy changes must pause affected source runs until revalidated. | P0 |
-| SDP-R008 | Activating a source policy requires `signaldesk.configure`; standard growth-manager and operator roles cannot create an active policy. | P0 |
+## Owner Surface
 
-## Allowed Use Values
+The desktop Policies screen creates policies, shows current policy state, and renews review windows. The form forces evidence authority when contact is enabled and clears contact/personalization if evidence is disabled. Provider policies start evidence-only.
 
-| Value | Meaning |
-| --- | --- |
-| `candidate-discovery` | May identify a possible business target. |
-| `enrichment` | May enrich an already known target. |
-| `verification-only` | May verify a fact but not originate outreach. |
-| `owned-signal` | MenuList-controlled signal may drive prioritization. |
-| `blocked` | Source cannot be used. |
+The owner does not edit immutable policy terms in place. A materially different authority basis requires a new policy and fresh import lineage.
 
-## Acceptance Criteria
+## Non-Goals
 
-- Source import cannot run without approved source policy.
-- Target cannot use a field that source policy blocks.
-- Outreach cannot use a source where `mayUseForOutreach` is false.
-- Raw payload retention is enforced.
-- Source-policy change is audited.
-- Default manual candidate import selects the evidence-only public-business policy when it exists.
-- Permissioned contact remains a separate operator-selected policy.
+- No generic legal/compliance engine.
+- No automatic acceptance of provider terms.
+- No policy-version collection or mutable terms editor.
+- No renewal-driven target revival.
+- No mobile source-policy administration.
+- No provider send activation.

@@ -8,6 +8,16 @@ service cloud.firestore {
     }
 
     match /platformSummary/{document} {
+      allow get: if isAuthenticated()
+                 && (isAnswerlatticeSourceVersionsDoc(document) || isAnswerlatticeBundleManifestDoc(document))
+                 && hasAnswerlatticePlatformSummaryWritePermission(document)
+                 && (
+                   (
+                     !exists(/databases/$(database)/documents/platformSummary/$(document))
+                     && isAnswerlatticeCurrentWorkspaceControlDocument(document)
+                   )
+                   || isAnswerlatticeTenantMember(resource.data)
+                 );
       allow read: if isAuthenticated()
                   && ((isPlatformAdmin() && !document.matches('^integrationConfig_.*$'))
                       || (
@@ -190,10 +200,14 @@ service cloud.firestore {
     match /answerlattice_cacheVersions/{docId} {
       allow read: if isAnswerlatticeScopedReadWithKnowledgeControl()
         || isAnswerlatticeScopedReadWithPermission('canManageWidget');
-      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl()
-        || isAnswerlatticeScopedCreateWithPermission('canManageWidget');
-      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl()
-        || isAnswerlatticeScopedUpdateWithPermission('canManageWidget');
+      allow create: if (
+          isAnswerlatticeScopedCreateWithKnowledgeControl()
+          || isAnswerlatticeScopedCreateWithPermission('canManageWidget')
+        ) && isValidAnswerlatticeCacheVersionCreate(docId);
+      allow update: if (
+          isAnswerlatticeScopedUpdateWithKnowledgeControl()
+          || isAnswerlatticeScopedUpdateWithPermission('canManageWidget')
+        ) && isValidAnswerlatticeCacheVersionUpdate(docId);
       allow delete: if false;
     }
 
@@ -270,7 +284,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             hasExactAnswerlatticeBillingIdentity(resource.data)
-            && isAnswerlatticeTenantStoreMember(resource.data)
+            && isExactAnswerlatticeBillingScopeMember(resource.data)
             && hasAnswerlatticePermission('canManageBilling')
           )
         );
@@ -283,7 +297,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             hasExactAnswerlatticeBillingIdentity(resource.data)
-            && isAnswerlatticeTenantStoreMember(resource.data)
+            && isExactAnswerlatticeBillingScopeMember(resource.data)
             && hasAnswerlatticePermission('canManageBilling')
           )
         );
@@ -1336,6 +1350,10 @@ service cloud.firestore {
           'createdBy', 'modifiedBy', 'expiresAt'
         ])
         && data.pId == 'AL'
+        && data.tId is int
+        && data.tId > 0
+        && data.sId is int
+        && data.sId > 0
         && data.entityId is string
         && data.entityId.size() > 0
         && data.entityId.size() <= 180
@@ -1472,6 +1490,22 @@ service cloud.firestore {
       return document.matches('^bundleManifest_.*$');
     }
 
+    function isAnswerlatticeCurrentWorkspaceControlDocument(document) {
+      return request.auth != null
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && (
+          document == 'sourceVersions_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+          || document == 'bundleManifest_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+        );
+    }
+
     function isAnswerlatticeBrandingDoc(document) {
       return document.matches('^branding_.*$');
     }
@@ -1517,8 +1551,7 @@ service cloud.firestore {
           data[field] is string
           && data[field].size() > 8
           && data[field].size() <= 500
-          && data[field].matches('^https://[^ #]+$')
-          && !data[field].matches('^https://[^/]*@.*$')
+          && data[field].matches('^https://([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?[.])*[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?([/?][A-Za-z0-9._~!$&()*+,;=:@%/?-]*)?$')
         );
     }
 
@@ -1558,7 +1591,7 @@ service cloud.firestore {
         && isValidAnswerlatticeBrandingOptionalText(data.branding, 'supportEmail', 160)
         && (
           !data.branding.keys().hasAny(['supportEmail'])
-          || data.branding.supportEmail.matches('^[^ @]+@[^ @]+[.][^ @]+$')
+          || data.branding.supportEmail.matches('^[A-Za-z0-9!#$%&*+/=?^_`{|}~-]+([.][A-Za-z0-9!#$%&*+/=?^_`{|}~-]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?([.][A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$')
         )
         && isValidAnswerlatticeBrandingOptionalHttpsUrl(data.branding, 'privacyPolicyUrl')
         && isValidAnswerlatticeBrandingOptionalHttpsUrl(data.branding, 'termsUrl');
@@ -1667,6 +1700,16 @@ service cloud.firestore {
         'pId',
         'tId',
         'sId',
+        'publicBundleId',
+        'bundleVersion',
+        'activeVersion',
+        'lastReadyVersion',
+        'sourceVersions',
+        'bundles',
+        'stats',
+        'limits',
+        'generatedAt',
+        'lastBuildError',
         'status',
         'staleReason',
         'updatedAt',
@@ -1674,6 +1717,86 @@ service cloud.firestore {
         'lastSourceId',
         'lastSourceType'
       ];
+    }
+
+    function answerlatticeSourceVersionMutableKeys() {
+      return [
+        'workspaceProfile',
+        'widgetConfig',
+        'kb',
+        'docsNav',
+        'entities',
+        'entityRelations',
+        'canonical',
+        'surfaces',
+        'releases',
+        'branding',
+        'mcpPolicy',
+        'predictiveTriggers',
+        'updatedAt',
+        'lastReason',
+        'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function answerlatticeBundleManifestMutableKeys() {
+      return [
+        'status', 'staleReason', 'updatedAt', 'lastReason',
+        'lastSourceId', 'lastSourceType'
+      ];
+    }
+
+    function isAnswerlatticeSourceVersionSameOrNext(previousValue, nextValue) {
+      return previousValue is int
+        && previousValue >= 0
+        && nextValue is int
+        && (nextValue == previousValue || nextValue == previousValue + 1);
+    }
+
+    function isValidAnswerlatticeSourceVersion(value) {
+      return value is int && value >= 0 && value <= 9007199254740991;
+    }
+
+    function areAnswerlatticeSourceVersionsValid(data) {
+      return data is map
+        && data.keys().hasAll([
+          'workspaceProfile', 'widgetConfig', 'kb', 'docsNav', 'entities',
+          'entityRelations', 'canonical', 'surfaces', 'releases', 'branding',
+          'mcpPolicy', 'predictiveTriggers'
+        ])
+        && isValidAnswerlatticeSourceVersion(data.workspaceProfile)
+        && isValidAnswerlatticeSourceVersion(data.widgetConfig)
+        && isValidAnswerlatticeSourceVersion(data.kb)
+        && isValidAnswerlatticeSourceVersion(data.docsNav)
+        && isValidAnswerlatticeSourceVersion(data.entities)
+        && isValidAnswerlatticeSourceVersion(data.entityRelations)
+        && isValidAnswerlatticeSourceVersion(data.canonical)
+        && isValidAnswerlatticeSourceVersion(data.surfaces)
+        && isValidAnswerlatticeSourceVersion(data.releases)
+        && isValidAnswerlatticeSourceVersion(data.branding)
+        && isValidAnswerlatticeSourceVersion(data.mcpPolicy)
+        && isValidAnswerlatticeSourceVersion(data.predictiveTriggers);
+    }
+
+    function areAnswerlatticeSourceVersionUpdatesMonotonic() {
+      return isAnswerlatticeSourceVersionSameOrNext(resource.data.get('workspaceProfile', 0), request.resource.data.workspaceProfile)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('widgetConfig', 0), request.resource.data.widgetConfig)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('kb', 0), request.resource.data.kb)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('docsNav', 0), request.resource.data.docsNav)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('entities', 0), request.resource.data.entities)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('entityRelations', 0), request.resource.data.entityRelations)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('canonical', 0), request.resource.data.canonical)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('surfaces', 0), request.resource.data.surfaces)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('releases', 0), request.resource.data.releases)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('branding', 0), request.resource.data.branding)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('mcpPolicy', 0), request.resource.data.mcpPolicy)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('predictiveTriggers', 0), request.resource.data.predictiveTriggers)
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'workspaceProfile', 'widgetConfig', 'kb', 'docsNav', 'entities',
+          'entityRelations', 'canonical', 'surfaces', 'releases', 'branding',
+          'mcpPolicy', 'predictiveTriggers'
+        ]);
     }
 
     function isAnswerlatticeTenantSummaryScopeStable() {
@@ -1690,10 +1813,35 @@ service cloud.firestore {
           (
             isAnswerlatticeSourceVersionsDoc(document)
             && request.resource.data.keys().hasOnly(answerlatticeSourceVersionClientKeys())
+            && request.resource.data.keys().hasAll([
+              'schemaVersion', 'pId', 'tId', 'sId', 'workspaceProfile',
+              'widgetConfig', 'kb', 'docsNav', 'entities', 'entityRelations',
+              'canonical', 'surfaces', 'releases', 'branding', 'mcpPolicy',
+              'predictiveTriggers', 'updatedAt'
+            ])
+            && request.resource.data.schemaVersion == 1
+            && areAnswerlatticeSourceVersionsValid(request.resource.data)
           )
           || (
             isAnswerlatticeBundleManifestDoc(document)
             && request.resource.data.keys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.keys().hasAll([
+              'schemaVersion', 'pId', 'tId', 'sId', 'publicBundleId',
+              'bundleVersion', 'activeVersion', 'lastReadyVersion',
+              'sourceVersions', 'bundles', 'stats', 'limits', 'generatedAt',
+              'lastBuildError', 'status', 'staleReason', 'updatedAt'
+            ])
+            && request.resource.data.schemaVersion == 1
+            && request.resource.data.publicBundleId == ''
+            && request.resource.data.bundleVersion == 0
+            && request.resource.data.activeVersion == 0
+            && request.resource.data.lastReadyVersion == 0
+            && areAnswerlatticeSourceVersionsValid(request.resource.data.sourceVersions)
+            && request.resource.data.bundles is map
+            && request.resource.data.stats is map
+            && request.resource.data.limits is map
+            && request.resource.data.generatedAt == null
+            && request.resource.data.lastBuildError == null
             && request.resource.data.status == 'stale'
           )
           || (
@@ -1714,11 +1862,12 @@ service cloud.firestore {
         && (
           (
             isAnswerlatticeSourceVersionsDoc(document)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeSourceVersionClientKeys())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeSourceVersionMutableKeys())
+            && areAnswerlatticeSourceVersionUpdatesMonotonic()
           )
           || (
             isAnswerlatticeBundleManifestDoc(document)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeBundleManifestMutableKeys())
             && request.resource.data.status == 'stale'
           )
           || (
@@ -1743,8 +1892,49 @@ service cloud.firestore {
         && string(data.sId) == string(request.auth.token.get('storeId', null));
     }
 
+    function answerlatticeCacheVersionKeys() {
+      return [
+        'pId', 'tId', 'sId', 'source', 'version', 'modifiedOn',
+        'lastReason', 'lastSourceId', 'lastSourceType'
+      ];
+    }
+
+    function isValidAnswerlatticeCacheVersionIdentity(docId, data) {
+      return data.keys().hasAll(['pId', 'tId', 'sId', 'source', 'version', 'modifiedOn'])
+        && data.keys().hasOnly(answerlatticeCacheVersionKeys())
+        && (data.source == 'kb' || data.source == 'canonical')
+        && docId == data.source + '_' + string(data.tId) + '_' + string(data.sId)
+        && data.version is int
+        && data.version > 0;
+    }
+
+    function isValidAnswerlatticeCacheVersionCreate(docId) {
+      return isValidAnswerlatticeCacheVersionIdentity(docId, request.resource.data)
+        && request.resource.data.version == 1;
+    }
+
+    function isValidAnswerlatticeCacheVersionUpdate(docId) {
+      return isValidAnswerlatticeCacheVersionIdentity(docId, request.resource.data)
+        && isValidAnswerlatticeCacheVersionIdentity(docId, resource.data)
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.version == resource.data.version + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'version', 'modifiedOn', 'lastReason', 'lastSourceId', 'lastSourceType'
+        ]);
+    }
+
     function isValidAnswerlatticeChatActor(data) {
       return isPlatformAdmin()
+        || (
+          data.uId is string
+          && data.uId.size() > 0
+          && data.uId.size() <= 180
+          && (data.uId == request.auth.uid || data.uId == request.auth.token.get('uId', ''))
+        );
+    }
+
+    function isAnswerlatticeRecordActorOrPlatformSupport(data) {
+      return isPlatformSupportOperator()
         || (
           data.uId is string
           && data.uId.size() > 0
@@ -1805,12 +1995,17 @@ service cloud.firestore {
           'title', 'mode', 'messages', 'modifiedOn', 'modifiedBy',
           'internalNotes', 'adminStatus', 'priority', 'adminTags',
           'isUnread', 'lastAdminView'
-        ]);
+        ])
+        && (
+          !after.diff(before).affectedKeys().hasAny(['messages'])
+          || isAnswerlatticeRecordActorOrPlatformSupport(before)
+        );
     }
 
     function isValidAnswerlatticeAiSearchFeedbackUpdate(before, after) {
       return before.pId == 'AL'
         && after.pId == 'AL'
+        && isAnswerlatticeRecordActorOrPlatformSupport(before)
         && after.diff(before).affectedKeys().hasOnly([
           'isGood', 'reasonsToImprove', 'comments', 'submittedAt',
           'modifiedBy', 'modifiedOn'
@@ -2055,12 +2250,20 @@ service cloud.firestore {
     }
 
     function hasExactAnswerlatticeBillingIdentity(data) {
-      return (
-          data.get('pId', null) == 'AL'
-          || data.get('productId', null) == 'AL'
-        )
-        && data.get('pId', 'AL') == 'AL'
-        && data.get('productId', 'AL') == 'AL';
+      return data.keys().hasAll(['pId', 'productId'])
+        && data.pId == 'AL'
+        && data.productId == 'AL';
+    }
+
+    function isExactAnswerlatticeBillingScopeMember(data) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && data.keys().hasAll(['tId', 'tenantId', 'sId', 'storeId'])
+        && data.tId == data.tenantId
+        && data.sId == data.storeId
+        && string(data.tenantId) == string(request.auth.token.tenantId)
+        && string(data.storeId) == string(request.auth.token.storeId);
     }
 
     function isAnswerlatticeTenantPath(tId, sId) {

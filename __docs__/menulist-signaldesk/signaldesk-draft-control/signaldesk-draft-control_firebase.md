@@ -1,39 +1,58 @@
-# SignalDesk Draft Control - Firebase Cost Plan
+# SignalDesk Draft Control - Firebase And Cost
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
-**Cost impact now:** None.
+**Status:** Implemented; no new Firebase infrastructure in this feature pass
+**Last Updated:** July 21, 2026
 
 ## Collections
 
-| Collection | Purpose | Normal reads |
-| --- | --- | --- |
-| `signaldeskTemplateSummaries` | Template list | Small list |
-| `signaldeskTemplates` | Template detail/version | Template detail |
-| `signaldeskDraftSummaries` | Draft list for target/queue | Target/approval queue |
-| `signaldeskDrafts` | Draft body and guardrail result | Draft detail |
-| `signaldeskDraftGuardrailEvents` | Guardrail runs | Debug/audit only |
+| Collection | Role |
+| --- | --- |
+| `signaldeskTemplateSummaries` | Server-seeded template authority and workspace list. |
+| `signaldeskDraftSummaries` | Exact message plus evidence/CTA/sender/template lineage. |
+| `signaldeskApprovalQueue` | Pending human decision. |
+| `signaldeskApprovalPackets` | Exact review snapshot and action fingerprint. |
+| `signaldeskTargetSummaries` / `signaldeskTargets` | Current target, lifecycle, and private contact authority. |
+| `signaldeskSourcePolicies` | Current source/contact/personalization rights. |
+| `signaldeskEvidencePacketSummaries` | Current reviewed evidence summary. |
+| `signaldeskSelfServiceCtas` | Authoritative current preview CTA. |
+| `signaldeskSenderDomains` | Sender readiness and risk authority. |
+| `signaldeskAuditEvents`, `signaldeskRunTimelines` | Durable action evidence. |
+| `signaldeskQueueSummaries`, `signaldeskCostDailySummaries` | Compact operational summaries. |
 
-## Read / Write Model
+There is no `signaldeskDrafts`, template-detail, draft-guardrail-event, or
+Storage collection in the current implementation.
 
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Template list | 1 query | 0 | Small list. |
-| Create draft | 5-10 | 2-5 | Target, evidence, template, policy; draft, summary, event. |
-| Edit draft | 2-5 | 2-4 | Draft + guardrail result. |
-| Guardrail run | 3-8 | 1-3 | No raw dashboard scan. |
+## Cost Shape
 
-## Indexes
+- Admission uses bounded point reads and bounded queries. It never scans MenuList data.
+- A new draft writes eight bounded records: draft, approval, approval packet,
+  target merge, audit, timeline, queue summary, and daily cost summary.
+- Exact/concurrent replay performs bounded reads and zero writes.
+- Rejected admission performs no draft/approval/packet/queue/cost writes.
+- Workspace reads remain section-limited and use strict summary projection.
 
-- `signaldeskTemplateSummaries`: `channel + status`
-- `signaldeskDraftSummaries`: `targetId + updatedAt`
-- `signaldeskDraftSummaries`: `status + updatedAt`
-- `signaldeskDraftGuardrailEvents`: `draftId + createdAt`
+The existing approval-queue composite index supports queue ordering. Draft
+creation itself uses point reads and needs no new index.
 
-## Cost Controls
+## Security
 
-- Template bodies are small.
-- Draft bodies are read only on detail/review.
-- List views use summaries.
-- Guardrail events are not dashboard source.
-- AI draft generation caches evidence/template hash.
+- API admission requires SignalDesk access and `target.review` permission.
+- Mobile mutation is rejected by the shared API guard.
+- Firestore client writes are denied.
+- Contact identity and authority fingerprints are not exposed through workspace
+  or mutation response projectors.
+- SignalDesk uses the separate SignalDesk Firebase project and `SD` product marker.
+
+## Retention
+
+The consolidated source-data lifecycle scrubs unsent source-derived drafts and
+holds linked approvals when their source authority expires. Sent communication
+is marked for legal-retention review instead of being silently destroyed. No
+standalone scheduler was added.
+
+## Deployment
+
+This Draft Control pass changes only root application/runtime code, docs, and
+local verification. It changes no SignalDesk Function, rule, index, or Storage
+rule, so it requires no new Firebase deployment. Vercel deployment remains an
+owner-controlled release step.

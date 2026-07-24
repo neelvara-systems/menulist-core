@@ -1,7 +1,5 @@
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import {
-    ECOMSAI_PLATFORM_STORE_ID,
-    ECOMSAI_PLATFORM_TENANT_ID,
     ECOMSAI_PLATFORM_USER_ID,
     ECOMSAI_PLATFORM_USER_NAME,
     ECOMSAI_PLATFORM_USER_ROLE,
@@ -20,6 +18,8 @@ import { MinimalStoreDataType } from "@type/platform/store";
 import { getGracePeriodInfo } from "@util/razorpay";
 import { admitManualSubscriptionConfirmation } from "@lib/billing/manualSubscriptionConfirmation";
 import { appendBoundedBillingStatusHistory } from "@lib/billing/subscriptionStatusHistory";
+import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
+import { getProductSubscriptionBillingScope } from "@lib/billing/productSubscriptionScopeBoundary";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 
@@ -59,16 +59,40 @@ const composeServerSubscriptionPayload = (
     options: { isNew?: boolean } = {},
 ) => {
     const now = admin.firestore.Timestamp.now();
-    const productId = data.productId ?? data.pId ?? DEFAULT_PRODUCT_ID;
-    const tenantId = data.tId ?? data.tenantId ?? (options.isNew ? ECOMSAI_PLATFORM_TENANT_ID : undefined);
-    const storeId = data.sId ?? data.storeId ?? (options.isNew ? ECOMSAI_PLATFORM_STORE_ID : undefined);
+    const suppliedProductAliases = [data.pId, data.productId]
+        .filter((value) => value !== undefined);
+    if (suppliedProductAliases.some((value) => value !== DEFAULT_PRODUCT_ID)) {
+        throw new Error('MenuList subscription product identity is invalid.');
+    }
+    const productId = DEFAULT_PRODUCT_ID;
+    const hasSuppliedScope = ['tId', 'tenantId', 'sId', 'storeId']
+        .some((key) => Object.prototype.hasOwnProperty.call(data, key));
+    const scope = hasSuppliedScope || options.isNew
+        ? getProductSubscriptionBillingScope(DEFAULT_PRODUCT_ID, {
+            ...data,
+            pId: productId,
+            productId,
+        })
+        : null;
+    if ((hasSuppliedScope || options.isNew) && !scope) {
+        throw new Error('MenuList subscription tenant/store identity is invalid.');
+    }
     const userId = data.uId ?? data.userId ?? (options.isNew ? ECOMSAI_PLATFORM_USER_ID : undefined);
+    const {
+        pId: _pId,
+        productId: _productId,
+        sId: _sId,
+        storeId: _storeId,
+        tId: _tId,
+        tenantId: _tenantId,
+        ...subscriptionData
+    } = data;
     const payload = sanitizeForAdminFirestore({
-        ...data,
+        ...subscriptionData,
         productId,
         pId: productId,
-        ...(storeId !== undefined ? { sId: storeId } : {}),
-        ...(tenantId !== undefined ? { tId: tenantId } : {}),
+        ...(scope ? { sId: scope.storeId, storeId: scope.storeId } : {}),
+        ...(scope ? { tId: scope.tenantId, tenantId: scope.tenantId } : {}),
         ...(data.role || options.isNew ? { role: data.role ?? ECOMSAI_PLATFORM_USER_ROLE } : {}),
         ...(userId !== undefined ? { uId: userId } : {}),
         modifiedBy: data.modifiedBy ?? ECOMSAI_PLATFORM_USER_NAME,
@@ -88,7 +112,7 @@ export const createInitialSubscriptionServer = async (
     providerSubscriptionId: string,
     data: Omit<FirestoreSubscriptionDoc, "id">,
 ): Promise<void> => {
-    await getSubscriptionDocRefServer(providerSubscriptionId).set(
+    await getSubscriptionDocRefServer(providerSubscriptionId).create(
         composeInitialSubscriptionPayloadServer(data),
     );
 };
@@ -97,10 +121,14 @@ export const updateSubscriptionServer = async (
     subscriptionId: string,
     data: Partial<FirestoreSubscriptionDoc>,
 ): Promise<void> => {
-    await getSubscriptionDocRefServer(subscriptionId).set(
-        composeServerSubscriptionPayload(data),
-        { merge: true },
-    );
+    const subscriptionRef = getSubscriptionDocRefServer(subscriptionId);
+    await firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(subscriptionRef);
+        if (!snapshot.exists || !getMenuListSubscriptionEntitlementScope(snapshot.data())) {
+            throw new Error('MenuList subscription does not match the requested product and scope.');
+        }
+        transaction.set(subscriptionRef, composeServerSubscriptionPayload(data), { merge: true });
+    });
 };
 
 export const getSubscriptionByIdServer = async (id: string): Promise<FirestoreSubscriptionDoc | null> => {
@@ -109,7 +137,9 @@ export const getSubscriptionByIdServer = async (id: string): Promise<FirestoreSu
 
     const docSnap = await getSubscriptionsCollectionRefServer().doc(normalizedSubscriptionId).get();
     if (!docSnap.exists) return null;
-    return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+    const data = docSnap.data() as FirestoreSubscriptionDoc;
+    if (!getMenuListSubscriptionEntitlementScope(data)) return null;
+    return { ...data, id: docSnap.id };
 };
 
 export type ManualSubscriptionPaymentConfirmationResult =
@@ -229,6 +259,8 @@ const fetchSubscriptionRawServer = async (
     const collectionRef = getSubscriptionsCollectionRefServer();
 
     const activeSnapshot = await collectionRef
+        .where("pId", "==", DEFAULT_PRODUCT_ID)
+        .where("productId", "==", DEFAULT_PRODUCT_ID)
         .where("status", "in", ["active", "past_due", "cancelled", "paused"])
         .where("cycleEndDate", ">=", now)
         .where("tenantId", "==", tenantScope.numericId)
@@ -239,11 +271,17 @@ const fetchSubscriptionRawServer = async (
 
     if (!activeSnapshot.empty) {
         const docSnap = activeSnapshot.docs[0];
-        return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+        const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+        const scope = getMenuListSubscriptionEntitlementScope(subscription);
+        return scope?.tenantId === tenantScope.numericId && scope.storeId === storeScope.numericId
+            ? subscription
+            : null;
     }
 
     for (const status of ["paused", "pending"]) {
         const fallbackSnapshot = await collectionRef
+            .where("pId", "==", DEFAULT_PRODUCT_ID)
+            .where("productId", "==", DEFAULT_PRODUCT_ID)
             .where("status", "==", status)
             .where("tenantId", "==", tenantScope.numericId)
             .where("storeId", "==", storeScope.numericId)
@@ -252,7 +290,11 @@ const fetchSubscriptionRawServer = async (
 
         if (!fallbackSnapshot.empty) {
             const docSnap = fallbackSnapshot.docs[0];
-            return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+            const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+            const scope = getMenuListSubscriptionEntitlementScope(subscription);
+            return scope?.tenantId === tenantScope.numericId && scope.storeId === storeScope.numericId
+                ? subscription
+                : null;
         }
     }
 
@@ -282,6 +324,9 @@ const expireIfGracePeriodEndedServer = async (
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
+        if (!getMenuListSubscriptionEntitlementScope(current)) {
+            return { expired: false, subscription: null };
+        }
         if (current.status !== "past_due") {
             return { expired: false, subscription: current };
         }

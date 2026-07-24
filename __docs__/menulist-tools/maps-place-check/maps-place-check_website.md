@@ -9,6 +9,7 @@ Reason:
 - The runtime is owner/admin only.
 - The feature flag defaults off.
 - Maps-grounded content has attribution and source-display requirements.
+- Cross-store provider-ID collision handling is not yet an active runtime.
 - Public copy could imply automatic Google sync, which is not implemented.
 
 If this becomes visible later, frame it as:

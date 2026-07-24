@@ -1,11 +1,14 @@
 import { fetchAnswerlatticePublicArticle } from '@lib/answerlattice/publicContentClient';
-import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
+import {
+    useAnswerlatticeCacheScope,
+    useAnswerlatticePublicContentRequestScope,
+} from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Timestamp } from 'firebase/firestore';
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useRef } from 'react';
 
 // Max articles to keep in cache (LRU)
 const MAX_CACHED_ARTICLES = 20;
@@ -25,6 +28,9 @@ const MAX_CACHED_ARTICLES = 20;
 export const useArticleCache = () => {
     const { cachedArticles, setCachedArticles } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const scopeKey = useAnswerlatticeCacheScope();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
+    const currentScopeKeyRef = useRef(scopeKey);
+    currentScopeKeyRef.current = scopeKey;
     const scopedArticles = cachedArticles.scopeKey === scopeKey ? cachedArticles.articles : [];
 
     /**
@@ -170,7 +176,7 @@ export const useArticleCache = () => {
             onCacheMiss?: () => void; // Callback when fetching
         }
     ): Promise<AnswerlatticeReadableArticle | null> => {
-        if (!scopeKey) return null;
+        if (!scopeKey || !requestScope) return null;
         // ============================================
         // STEP 1: Force Refresh (Skip Cache)
         // ============================================
@@ -178,7 +184,8 @@ export const useArticleCache = () => {
             options.onCacheMiss?.();
 
             try {
-                const article = await fetchAnswerlatticePublicArticle(articleId);
+                const article = await fetchAnswerlatticePublicArticle(articleId, requestScope);
+                if (currentScopeKeyRef.current !== scopeKey) return null;
 
                 // Filter: Only cache active articles
                 if (article && isArticleActive(article)) {
@@ -218,7 +225,8 @@ export const useArticleCache = () => {
         options?.onCacheMiss?.();
 
         try {
-            const article = await fetchAnswerlatticePublicArticle(articleId);
+            const article = await fetchAnswerlatticePublicArticle(articleId, requestScope);
+            if (currentScopeKeyRef.current !== scopeKey) return null;
 
             // Filter: Only cache and return active articles
             if (article && isArticleActive(article)) {
@@ -236,7 +244,7 @@ export const useArticleCache = () => {
             });
             return null;
         }
-    }, [scopeKey, scopedArticles, addArticleToCache, moveArticleToEnd, isArticleActive]);
+    }, [scopeKey, requestScope, scopedArticles, addArticleToCache, moveArticleToEnd, isArticleActive]);
 
     return {
         // Primary method - use this!

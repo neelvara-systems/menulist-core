@@ -413,6 +413,38 @@ async function run() {
         /article identity is invalid/,
     );
 
+    const ownershipJobId = 'publish-job-foreign-invalidation';
+    const ownershipArticleId = 'publish-article-foreign-invalidation';
+    const cacheVersionRef = firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
+        .doc(`kb_${SCOPE.tId}_${SCOPE.sId}`);
+    await Promise.all([
+        jobs.doc(ownershipJobId).set(jobData(ownershipJobId, ownershipArticleId, {
+            status: 'publishing',
+            categories: finalCategories(ownershipArticleId),
+            embeddingPendingArticleIds: [],
+            embeddingCompletedArticleIds: [],
+            embeddingFailedArticleIds: [],
+            embeddingEnqueueStatus: 'queued',
+            embeddingRunId: 'publish_foreign_invalidation',
+        })),
+        articles.doc(ownershipArticleId).set(articleData(ownershipArticleId, ownershipJobId)),
+        cacheVersionRef.set({
+            pId: 'ML',
+            ...SCOPE,
+            source: 'kb',
+            version: 99,
+            marker: 'foreign-cache-version',
+        }),
+    ]);
+    await assert.rejects(
+        finalizePublishingJob(ownershipJobId),
+        /cache-version ownership conflict/,
+    );
+    assert.equal((await cacheVersionRef.get()).data().marker, 'foreign-cache-version');
+    assert.equal((await jobs.doc(ownershipJobId).get()).data().status, 'publishing');
+    assert.equal((await articles.doc(ownershipArticleId).get()).data().status, 'needs_review');
+    assert.equal((await articles.doc(ownershipArticleId).get()).data().active, false);
+
     process.stdout.write(`${sharedRuntime ? 'Shared' : 'Dedicated'} Answerlattice KB publishing emulator tests passed.\n`);
 }
 

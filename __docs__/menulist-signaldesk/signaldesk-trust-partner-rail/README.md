@@ -1,9 +1,9 @@
 # SignalDesk Trust Partner Rail - Documentation Hub
 
 **Feature:** SignalDesk Trust Partner Rail
-**Status:** Runtime implemented for internal testing; real partner outreach, payment, contract execution, provider send, and paid campaigns remain outside the system
+**Status:** Feature 17 locally source-complete; authenticated release-host smoke and real partner operation remain pending
 **Created:** June 24, 2026
-**Last Updated:** June 24, 2026
+**Last Updated:** July 21, 2026
 **Parent project:** [MenuList SignalDesk](../README.md)
 
 ---
@@ -38,7 +38,8 @@ The goal is not broad creator marketing. The goal is to find people or organizat
 market pod
 -> partner/creator shortlist
 -> 20-second trust test
--> owner approves 3-5 niche test
+-> policy approver creates a 3-5 niche test
+-> founder approves the partner and any spend
 -> lean brief with approved claims
 -> flat-fee deal record
 -> deliverable/reminder tracker
@@ -47,9 +48,20 @@ market pod
 -> renew, hold, or cut recommendation
 ```
 
+## Current Authority Boundaries
+
+- `/signaldesk/partners`, its workspace read, and every partner action honor the trust-rail feature flag.
+- Desktop is the only partner operation surface. SignalDesk mobile remains dashboard-only and all partner mutations are rejected.
+- Profile and deliverable operations require `source.configure`; niche tests and renewal recommendations require `policy.approve`; briefs require `draft.create`.
+- Only a founder-admin with `signaldesk.configure` can approve/activate a partner or approve spend.
+- Profile, niche, deliverable, metric, and renewal operations are actor-bound and retry-safe.
+- The `trust-partner` pause blocks forward-moving work while still allowing risk evidence, historical metrics, holds, and cuts.
+- SignalDesk records evidence and decisions only. It does not contact partners, sign contracts, execute payment, publish content, or enable provider send.
+
 ## Version History
 
 | Version | Date | Changes |
 | --- | --- | --- |
 | 0.1 | 2026-06-24 | Created initial Trust Partner Rail doc set from the X article review and MenuList-fit validation. |
 | 0.2 | 2026-06-24 | Added internal runtime for profiles, niche tests, flat-fee deal review, lean briefs, deliverables, compact metrics, renewal decisions, and pause controls. |
+| 0.3 | 2026-07-21 | Completed Feature 17 hardening: route/read flags, least-privilege reads, founder authority, pause enforcement, actor-bound retries, attributable live metrics, outcome-derived renewal, exact cost accounting, desktop permission parity, mobile truth, docs, and emulator coverage. |

@@ -1,12 +1,12 @@
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
-import { assertProjectPresetCascadeSucceeded, removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
-import { TimeSlotPreset } from '@type/platform/store';
+import { reconcileTimeSlotPresetCascade } from '@lib/menu/reconcileTimeSlotPresetCascade';
+import { TimeSlotPreset, TimeSlotPresetCascadePending } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
 import { Button, Card, Divider, Empty, Flex, message, Modal, Popconfirm, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuClock, LuPen, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 
@@ -17,7 +17,9 @@ interface TimeSlotPresetsTabProps {
     tenantId: number;
     storeId: number;
     presets: TimeSlotPreset[];
+    pendingCascade?: TimeSlotPresetCascadePending;
     onPresetsChange: (presets: TimeSlotPreset[]) => void;
+    onCascadeRecovered: (operationId: string) => void;
 }
 
 const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
@@ -25,7 +27,9 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
     tenantId,
     storeId,
     presets = [],
-    onPresetsChange
+    pendingCascade,
+    onPresetsChange,
+    onCascadeRecovered,
 }) => {
     const t = useTranslations('BusinessSettings');
     const { token } = theme.useToken();
@@ -38,6 +42,51 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
         color: DEFAULT_PRESET_COLORS[0]
     });
     const [loading, setLoading] = useState(false);
+    const actionInFlightRef = useRef(false);
+    const scopeKey = `${tenantId}::${storeId}`;
+    const activeScopeRef = useRef(scopeKey);
+    const componentActiveRef = useRef(true);
+    const recoveryAttemptedOperationRef = useRef<string | null>(null);
+
+    activeScopeRef.current = scopeKey;
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+    useEffect(() => {
+        if (
+            !pendingCascade
+            || recoveryAttemptedOperationRef.current === pendingCascade.operationId
+            || actionInFlightRef.current
+        ) {
+            return;
+        }
+        recoveryAttemptedOperationRef.current = pendingCascade.operationId;
+        const requestScopeKey = scopeKey;
+        actionInFlightRef.current = true;
+        setLoading(true);
+        void reconcileTimeSlotPresetCascade({ tenantId, storeId }, pendingCascade)
+            .then(({ operationId }) => {
+                if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                    onCascadeRecovered(operationId);
+                }
+            })
+            .catch((error) => {
+                logBusinessSettingsFailure('business_settings_time_slot_preset_recovery_failed', error, {
+                    ...getBoundedBusinessSettingsStringContext('tenantId', tenantId),
+                    ...getBoundedBusinessSettingsStringContext('storeId', storeId),
+                    ...getBoundedBusinessSettingsStringContext('operationId', pendingCascade.operationId),
+                });
+            })
+            .finally(() => {
+                actionInFlightRef.current = false;
+                if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                    setLoading(false);
+                }
+            });
+    }, [onCascadeRecovered, pendingCascade, scopeKey, storeId, tenantId]);
 
     const resetForm = useCallback(() => {
         setFormData({
@@ -86,6 +135,10 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
             return;
         }
 
+        const expectedScope = { tenantId, storeId };
+        const requestScopeKey = scopeKey;
+        if (actionInFlightRef.current) return;
+        actionInFlightRef.current = true;
         setLoading(true);
         try {
             let updatedPresets: TimeSlotPreset[];
@@ -116,18 +169,24 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
             }
 
             // Persist to DB and update context
-            const writeResult = await updateTimeSlotPresets(storeId, updatedPresets);
+            const updatedPresetForCascade = editingPreset
+                ? updatedPresets.find((preset) => preset.id === editingPreset.id)
+                : undefined;
+            if (editingPreset && !updatedPresetForCascade) {
+                throw new Error('business_settings_time_slot_preset_cascade_update_rejected');
+            }
+            const cascadeMutation = updatedPresetForCascade
+                ? { type: 'update' as const, preset: updatedPresetForCascade }
+                : undefined;
+            const writeResult = await updateTimeSlotPresets(storeId, updatedPresets, cascadeMutation);
             assertTimeSlotPresetUpdateSucceeded(writeResult);
             if (editingPreset) {
-                const updatedPreset = updatedPresets.find((preset) => preset.id === editingPreset.id);
-                if (updatedPreset) {
-                    const cascadeResult = await updatePresetInAllCategories(updatedPreset);
-                    assertProjectPresetCascadeSucceeded(
-                        cascadeResult,
-                        'business_settings_time_slot_preset_cascade_update_rejected',
-                    );
+                if (!writeResult.pendingCascade) {
+                    throw new Error('business_settings_time_slot_preset_cascade_update_rejected');
                 }
+                await reconcileTimeSlotPresetCascade(expectedScope, writeResult.pendingCascade);
             }
+            if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
             onPresetsChange(updatedPresets);
 
             setIsModalOpen(false);
@@ -144,27 +203,40 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                 isEditing: Boolean(editingPreset),
                 presetCount: presets.length,
             });
-            message.error(t('failedToSaveTimeSlot'));
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                message.error(t('failedToSaveTimeSlot'));
+            }
         } finally {
-            setLoading(false);
+            actionInFlightRef.current = false;
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                setLoading(false);
+            }
         }
     };
 
     const handleDelete = async (presetId: string) => {
+        const expectedScope = { tenantId, storeId };
+        const requestScopeKey = scopeKey;
+        if (actionInFlightRef.current) return;
+        actionInFlightRef.current = true;
         setLoading(true);
         try {
             // 1. Remove preset from store
             const updatedPresets = presets.filter(p => p.id !== presetId);
-            const writeResult = await updateTimeSlotPresets(storeId, updatedPresets);
+            const writeResult = await updateTimeSlotPresets(
+                storeId,
+                updatedPresets,
+                { type: 'remove', presetId },
+            );
             assertTimeSlotPresetUpdateSucceeded(writeResult);
 
             // 2. Cascade delete: Remove from all categories that use this preset
-            const cascadeResult = await removePresetFromAllCategories(presetId);
-            assertProjectPresetCascadeSucceeded(
-                cascadeResult,
-                'business_settings_time_slot_preset_cascade_delete_rejected',
-            );
+            if (!writeResult.pendingCascade) {
+                throw new Error('business_settings_time_slot_preset_cascade_delete_rejected');
+            }
+            await reconcileTimeSlotPresetCascade(expectedScope, writeResult.pendingCascade);
 
+            if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
             onPresetsChange(updatedPresets);
             message.success(t('timeSlotDeleted'));
         } catch (error) {
@@ -174,9 +246,14 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                 ...getBoundedBusinessSettingsStringContext('presetId', presetId),
                 presetCount: presets.length,
             });
-            message.error(t('failedToDeleteTimeSlot'));
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                message.error(t('failedToDeleteTimeSlot'));
+            }
         } finally {
-            setLoading(false);
+            actionInFlightRef.current = false;
+            if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
+                setLoading(false);
+            }
         }
     };
 

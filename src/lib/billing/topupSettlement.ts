@@ -2,6 +2,7 @@ type RecordLike = Record<string, unknown>;
 
 export type VerifiedTopupSettlement = {
     amount: number;
+    billingStoreId: number;
     creditsToAdd: number;
     currency: string;
     packId: string;
@@ -46,19 +47,35 @@ const resolveExactIdentityAliases = (
     expected: number,
 ): number | null => {
     const present = keys.filter((key) => record[key] !== undefined && record[key] !== null);
-    if (present.length === 0) return null;
+    if (present.length !== keys.length) return null;
     return present.every((key) => asExactPositiveSafeInteger(record[key]) === expected)
         ? expected
         : null;
 };
 
+const resolveNormalizedProviderIdentityAliases = (
+    record: RecordLike,
+    keys: string[],
+    expected: number,
+): number | null => {
+    const present = keys.filter((key) => record[key] !== undefined && record[key] !== null);
+    if (present.length !== keys.length) return null;
+    return present.every((key) => asPositiveSafeInteger(record[key]) === expected)
+        ? expected
+        : null;
+};
+
+const asBoundedNonEmptyString = (value: unknown, maxLength: number): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized.length > 0 && normalized.length <= maxLength ? normalized : null;
+};
+
 /**
  * Admit the transaction-current subscription before a paid top-up mutates it.
- * Scope aliases must agree exactly; explicit product aliases must also agree,
- * while legacy MenuList documents may omit product identity when requested.
+ * Scope aliases must agree exactly and both product aliases must be present.
  */
 export function resolveCurrentTopupSubscriptionSettlement(params: {
-    allowMissingProductId?: boolean;
     expectedProductId: string;
     expectedStoreId: number;
     expectedTenantId: number;
@@ -71,14 +88,9 @@ export function resolveCurrentTopupSubscriptionSettlement(params: {
     const storeId = resolveExactIdentityAliases(subscription, ['storeId', 'sId'], params.expectedStoreId);
     if (tenantId === null || storeId === null) return null;
 
-    const productAliases = ['productId', 'pId']
-        .filter((key) => subscription[key] !== undefined && subscription[key] !== null)
-        .map((key) => subscription[key]);
-    if (productAliases.length === 0 && !params.allowMissingProductId) return null;
     if (
-        productAliases.some((value) => (
-            typeof value !== 'string' || value !== params.expectedProductId
-        ))
+        subscription.pId !== params.expectedProductId
+        || subscription.productId !== params.expectedProductId
     ) {
         return null;
     }
@@ -130,27 +142,29 @@ export function resolveVerifiedTopupSettlement(params: {
     if (!order || !topup || !notes) return null;
 
     const providerOrderId = asTrimmedString(topup.providerOrderId);
-    const productId = asTrimmedString(topup.productId ?? topup.pId).toUpperCase();
-    const tenantId = asPositiveSafeInteger(topup.tenantId ?? topup.tId);
-    const storeId = asPositiveSafeInteger(topup.storeId ?? topup.sId);
-    const billingStoreId = asPositiveSafeInteger(topup.billingStoreId ?? topup.storeId ?? topup.sId);
+    const tenantId = resolveExactIdentityAliases(topup, ['tenantId', 'tId'], params.expectedTenantId);
+    const storeId = resolveExactIdentityAliases(topup, ['storeId', 'sId'], params.expectedStoreId);
+    const billingStoreId = asExactPositiveSafeInteger(topup.billingStoreId);
     const packId = asTrimmedString(topup.packId);
     const creditsToAdd = asPositiveSafeInteger(topup.creditsAdded);
     const amount = asPositiveSafeInteger(topup.amount);
     const currency = asTrimmedString(topup.currency).toUpperCase();
     const status = asTrimmedString(topup.status);
+    const packName = asBoundedNonEmptyString(topup.packName, 160);
     if (
         asTrimmedString(order.id) !== params.expectedOrderId
         || providerOrderId !== params.expectedOrderId
-        || productId !== params.expectedProductId
-        || tenantId !== params.expectedTenantId
-        || storeId !== params.expectedStoreId
+        || topup.pId !== params.expectedProductId
+        || topup.productId !== params.expectedProductId
+        || tenantId === null
+        || storeId === null
         || billingStoreId === null
         || !/^[a-zA-Z0-9_-]{1,100}$/.test(packId)
         || creditsToAdd === null
         || amount === null
         || !/^[A-Z]{3}$/.test(currency)
         || (status !== 'pending' && status !== 'paid')
+        || packName === null
     ) {
         return null;
     }
@@ -158,14 +172,16 @@ export function resolveVerifiedTopupSettlement(params: {
     if (
         asPositiveSafeInteger(order.amount) !== amount
         || asTrimmedString(order.currency).toUpperCase() !== currency
-        || asTrimmedString(notes.productId ?? notes.pId).toUpperCase() !== productId
-        || asPositiveSafeInteger(notes.tenantId ?? notes.tId) !== tenantId
-        || asPositiveSafeInteger(notes.storeId ?? notes.sId) !== storeId
-        || asPositiveSafeInteger(notes.billingStoreId ?? notes.storeId ?? notes.sId) !== billingStoreId
+        || notes.pId !== params.expectedProductId
+        || notes.productId !== params.expectedProductId
+        || resolveNormalizedProviderIdentityAliases(notes, ['tenantId', 'tId'], params.expectedTenantId) === null
+        || resolveNormalizedProviderIdentityAliases(notes, ['storeId', 'sId'], params.expectedStoreId) === null
+        || asPositiveSafeInteger(notes.billingStoreId) !== billingStoreId
         || asTrimmedString(notes.packId) !== packId
         || asPositiveSafeInteger(notes.creditAmount) !== creditsToAdd
         || asPositiveSafeInteger(notes.price) !== amount
         || asTrimmedString(notes.currency).toUpperCase() !== currency
+        || asBoundedNonEmptyString(notes.packName, 160) !== packName
     ) {
         return null;
     }
@@ -188,9 +204,10 @@ export function resolveVerifiedTopupSettlement(params: {
 
     return {
         amount,
+        billingStoreId,
         creditsToAdd,
         currency,
         packId,
-        packName: asTrimmedString(topup.packName ?? notes.packName).slice(0, 160),
+        packName,
     };
 }

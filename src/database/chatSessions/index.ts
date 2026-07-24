@@ -6,6 +6,8 @@ import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentCom
 import {
     ANSWERLATTICE_CHAT_SESSION_BATCH_UPDATE_LIMIT,
     ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT,
+    type AnswerlatticeChatSessionActorScope,
+    getAnswerlatticeChatSessionActorScope,
     normalizeAnswerlatticeChatFeedback,
     normalizeAnswerlatticeChatMessageForStorage,
     normalizeAnswerlatticeChatMessagesForStorage,
@@ -265,9 +267,31 @@ const normalizePositiveInteger = (value: unknown, fallback: number, max: number)
     return Math.min(Math.floor(parsed), max);
 };
 
-type AnswerlatticeChatSessionScope = {
+export type AnswerlatticeChatSessionScope = {
     tId: number;
     sId: number;
+};
+
+const requireExpectedChatSessionScope = (
+    current: AnswerlatticeChatSessionScope,
+    expected: AnswerlatticeChatSessionScope,
+): void => {
+    if (
+        normalizeAnswerlatticeScopeDocumentId(expected.tId) !== current.tId
+        || normalizeAnswerlatticeScopeDocumentId(expected.sId) !== current.sId
+    ) {
+        throw new Error('answerlattice_chat_expected_scope_changed');
+    }
+};
+
+const requireExpectedChatSessionActorScope = (
+    current: { scope: AnswerlatticeChatSessionScope; userId: string },
+    expected: AnswerlatticeChatSessionActorScope,
+): void => {
+    requireExpectedChatSessionScope(current.scope, expected);
+    if (String(expected.uId || '').trim() !== current.userId) {
+        throw new Error('answerlattice_chat_expected_actor_changed');
+    }
 };
 
 const getChatSessionScope = (session: any): AnswerlatticeChatSessionScope | undefined => {
@@ -287,14 +311,15 @@ const getRequiredChatMutationContext = async () => {
     return { scope, session, userId, userName };
 };
 
-const getRequiredChatReadContext = async () => {
-    const session = await getActiveSession();
+const getRequiredChatReadContext = (session: unknown) => {
     const scope = getChatSessionScope(session);
-    const userId = String(session?.user?.id || session?.uId || '').trim();
+    const sessionRecord = isRecord(session) ? session : {};
+    const userRecord = isRecord(sessionRecord.user) ? sessionRecord.user : {};
+    const userId = String(userRecord.id || sessionRecord.uId || '').trim();
     if (!scope || !userId || userId.length > 180) {
         throw new Error('answerlattice_chat_read_scope_missing');
     }
-    return { scope, session, userId };
+    return { scope, session: sessionRecord, userId };
 };
 
 const requirePersistedChatSession = (
@@ -347,7 +372,7 @@ const collectOwnedChatImageUrls = (
  */
 export const uploadChatImage = async (
     image: UserUploadedFileType,
-    _session: any
+    session: any
 ): Promise<UserUploadedFileType> => {
     return await apiCallComposer(
         async () => {
@@ -355,7 +380,7 @@ export const uploadChatImage = async (
             if (!isDataUrl(image.url) && !isDataUrl(image.source)) {
                 throw new Error('answerlattice_chat_image_data_url_required');
             }
-            const context = await getRequiredChatReadContext();
+            const context = getRequiredChatReadContext(session);
             const scopedSession = {
                 ...context.session,
                 tId: context.scope.tId,
@@ -426,9 +451,12 @@ export const uploadChatImage = async (
     );
 };
 
-export const discardUnpersistedChatImage = async (image: UserUploadedFileType | undefined): Promise<boolean> => {
+export const discardUnpersistedChatImage = async (
+    image: UserUploadedFileType | undefined,
+    session: unknown,
+): Promise<boolean> => {
     if (!image) return false;
-    const context = await getRequiredChatReadContext();
+    const context = getRequiredChatReadContext(session);
     const url = [image.url, image.source].find((candidate) => isOwnedChatImageUrl(candidate, context.scope));
     if (!url) return false;
     const summary = await cleanupChatImageUrls([url], 'search_failure');
@@ -438,10 +466,14 @@ export const discardUnpersistedChatImage = async (image: UserUploadedFileType | 
 /**
  * Save a new chat session to Firestore
  */
-export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
+export const saveChatSession = async (
+    data: Omit<ChatSession, 'id'>,
+    expectedActorScope: AnswerlatticeChatSessionActorScope,
+) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionActorScope(context, expectedActorScope);
             const title = String(data.title || '').trim();
             if (!title || title.length > 160 || (data.mode !== 'qna' && data.mode !== 'assistant')) {
                 throw new Error('answerlattice_chat_session_create_invalid');
@@ -496,7 +528,8 @@ export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
  */
 export const batchUpdateSessionMetadata = async (
     sessionIds: string[],
-    metadata: { adminStatus?: string; priority?: string; adminTags?: string[] }
+    metadata: { adminStatus?: string; priority?: string; adminTags?: string[] },
+    expectedScope: AnswerlatticeChatSessionScope,
 ) => {
     return await apiCallComposer(
         async () => {
@@ -509,6 +542,7 @@ export const batchUpdateSessionMetadata = async (
                 } satisfies ChatSessionBatchMetadataUpdateResult;
             }
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionScope(context.scope, expectedScope);
             const normalizedSessionIds = Array.from(new Set(sessionIds.map(normalizeAnswerlatticeChatSessionId)));
             if (
                 normalizedSessionIds.some((id) => !id)
@@ -551,7 +585,12 @@ export const batchUpdateSessionMetadata = async (
 /**
  * Update an existing chat session
  */
-export const updateChatSession = async (sessionId: string, updates: Partial<ChatSession>) => {
+export const updateChatSession = async (
+    sessionId: string,
+    updates: Partial<ChatSession>,
+    expectedScope: AnswerlatticeChatSessionScope,
+    expectedUserId?: string,
+) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
             const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
@@ -560,6 +599,7 @@ export const updateChatSession = async (sessionId: string, updates: Partial<Chat
                 throw new Error('answerlattice_chat_messages_require_explicit_operation');
             }
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionScope(context.scope, expectedScope);
             const metadata = parseAnswerlatticeChatMetadataMutation(updates);
             const updatedFields = Object.keys(metadata);
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
@@ -567,6 +607,13 @@ export const updateChatSession = async (sessionId: string, updates: Partial<Chat
                 const sessionSnapshot = await transaction.get(sessionRef);
                 if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
                 const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
+                if (
+                    expectedUserId !== undefined
+                    && (
+                        String(expectedUserId || '').trim() !== context.userId
+                        || current.uId !== context.userId
+                    )
+                ) throw new Error('answerlattice_chat_expected_actor_changed');
                 if (metadata.mode === 'qna' && current.mode === 'assistant' && current.messages.length > 0) {
                     throw new Error('answerlattice_chat_mode_transition_invalid');
                 }
@@ -597,7 +644,10 @@ export const updateChatSession = async (sessionId: string, updates: Partial<Chat
 export const appendChatSessionMessages = async (
     sessionId: string,
     messages: ChatSession['messages'],
-    options?: { mode?: ChatSession['mode'] },
+    options: {
+        mode?: ChatSession['mode'];
+        expectedActorScope: AnswerlatticeChatSessionActorScope;
+    },
 ) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
@@ -608,6 +658,7 @@ export const appendChatSessionMessages = async (
             }
             const incomingMessages = messages.map(normalizeAnswerlatticeChatMessageForStorage);
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionActorScope(context, options.expectedActorScope);
             if (!chatSessionImagesBelongToScope({ messages: incomingMessages }, context.scope)) {
                 throw new Error('answerlattice_chat_image_scope_invalid');
             }
@@ -618,6 +669,9 @@ export const appendChatSessionMessages = async (
                 const sessionSnapshot = await transaction.get(sessionRef);
                 if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
                 const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
+                if (current.uId !== context.userId) {
+                    throw new Error('answerlattice_chat_expected_actor_changed');
+                }
                 const messagesById = new Map(current.messages.map((message) => [message.id, message]));
                 const additions = incomingMessages.filter((message) => {
                     const existing = messagesById.get(message.id);
@@ -671,6 +725,7 @@ export const replaceChatSessionMessageBranch = async (
     sessionId: string,
     replacedMessageId: string,
     replacementMessage: ChatSession['messages'][number],
+    expectedActorScope: AnswerlatticeChatSessionActorScope,
 ) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
@@ -681,6 +736,7 @@ export const replaceChatSessionMessageBranch = async (
             }
             const replacement = normalizeAnswerlatticeChatMessageForStorage(replacementMessage);
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionActorScope(context, expectedActorScope);
             if (!chatSessionImagesBelongToScope({ messages: [replacement] }, context.scope)) {
                 throw new Error('answerlattice_chat_image_scope_invalid');
             }
@@ -690,6 +746,9 @@ export const replaceChatSessionMessageBranch = async (
                 const sessionSnapshot = await transaction.get(sessionRef);
                 if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
                 const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
+                if (current.uId !== context.userId) {
+                    throw new Error('answerlattice_chat_expected_actor_changed');
+                }
                 const replacedIndex = current.messages.findIndex((message) => message.id === normalizedReplacedMessageId);
                 if (replacedIndex < 0) throw new Error('answerlattice_chat_replaced_message_not_found');
                 const removedCandidates = collectOwnedChatImageUrls({
@@ -728,18 +787,25 @@ export const replaceChatSessionMessageBranch = async (
  * Delete a chat session from Firestore
  * Uses global loader to give clear visual feedback for this destructive action
  */
-export const deleteChatSession = async (sessionId: string) => {
+export const deleteChatSession = async (
+    sessionId: string,
+    expectedActorScope: AnswerlatticeChatSessionActorScope,
+) => {
     return await apiCallComposer(
         async () => {
             const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
             if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionActorScope(context, expectedActorScope);
             let imageUrls: string[] = [];
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const sessionRef = getDocRef(normalizedSessionId);
                 const sessionDoc = await transaction.get(sessionRef);
                 if (!sessionDoc.exists()) throw new Error('answerlattice_chat_session_not_found');
                 const current = requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
+                if (current.uId !== context.userId) {
+                    throw new Error('answerlattice_chat_expected_actor_changed');
+                }
                 imageUrls = collectOwnedChatImageUrls(current, context.scope);
                 transaction.delete(sessionRef);
             });
@@ -763,7 +829,7 @@ export const deleteChatSession = async (sessionId: string) => {
 export const getUserChatSessions = async (session: any) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const context = await getRequiredChatReadContext();
+            const context = getRequiredChatReadContext(session);
             const q = query(
                 getCollectionRef(),
                 where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
@@ -795,12 +861,12 @@ export const getUserChatSessions = async (session: any) => {
  * @param sessionId - The chat session ID to fetch
  * @returns Complete ChatSession with all messages and metadata
  */
-export const getChatSessionById = async (sessionId: string) => {
+export const getChatSessionById = async (sessionId: string, session: unknown) => {
     return await apiCallComposer(
         async () => {
             const normalizedSessionId = normalizeAnswerlatticeChatSessionId(sessionId);
             if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
-            const context = await getRequiredChatMutationContext();
+            const context = getRequiredChatReadContext(session);
             const sessionRef = getDocRef(normalizedSessionId);
             const sessionDoc = await getDoc(sessionRef);
 
@@ -810,7 +876,7 @@ export const getChatSessionById = async (sessionId: string) => {
 
             return requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
         },
-        { sessionId },
+        { sessionId, session },
         'getChatSessionById'
     );
 };
@@ -828,7 +894,8 @@ export const updateMessageFeedback = async (
         reasonsToImprove?: Array<{ value: string; label: string; }>;
         comments?: string;
         submittedAt?: Timestamp;
-    }
+    },
+    expectedActorScope: AnswerlatticeChatSessionActorScope,
 ) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
@@ -844,6 +911,7 @@ export const updateMessageFeedback = async (
                 throw new Error('answerlattice_chat_feedback_ids_invalid');
             }
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionActorScope(context, expectedActorScope);
             const normalizedFeedback = normalizeAnswerlatticeChatFeedback(feedback, Timestamp.now());
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const sessionRef = getDocRef(normalizedSessionId);
@@ -861,6 +929,9 @@ export const updateMessageFeedback = async (
                 }
                 const current = requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
                 const searchHistory = searchHistoryDoc.data();
+                if (current.uId !== context.userId || searchHistory.uId !== context.userId) {
+                    throw new Error('answerlattice_chat_feedback_actor_invalid');
+                }
                 if (
                     searchHistory.pId !== PRODUCT_IDS.ANSWERLATTICE
                     || normalizeAnswerlatticeScopeDocumentId(searchHistory.tId) !== context.scope.tId
@@ -957,8 +1028,8 @@ export const updateMessageFeedback = async (
  */
 export const updateSessionInternalNote = async (
     sessionId: string,
-    noteJson: any,
-    _session?: any
+    noteJson: unknown,
+    expectedScope: AnswerlatticeChatSessionScope,
 ) => {
     return await apiCallComposer(
         async () => {
@@ -966,6 +1037,7 @@ export const updateSessionInternalNote = async (
             if (!normalizedSessionId) throw new Error('answerlattice_chat_session_id_invalid');
             const content = normalizeAnswerlatticeInternalNote(noteJson);
             const context = await getRequiredChatMutationContext();
+            requireExpectedChatSessionScope(context.scope, expectedScope);
             let noteObject: Record<string, unknown> = {};
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const sessionRef = getDocRef(normalizedSessionId);
@@ -1044,7 +1116,7 @@ export const getAllChatSessionsForAdmin = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const { scope: sessionScope } = await getRequiredChatReadContext();
+            const { scope: sessionScope } = getRequiredChatReadContext(session);
 
             const pageSize = normalizePositiveInteger(filters?.pageSize, 20, ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT);
             const sortBy = filters?.sortBy || 'modifiedOn';
@@ -1148,7 +1220,7 @@ export const getChatStatistics = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const { scope: sessionScope } = await getRequiredChatReadContext();
+            const { scope: sessionScope } = getRequiredChatReadContext(session);
 
             // Query sessions for this tenant (capped at 500 to prevent unbounded Firestore reads)
             let q = query(
@@ -1255,7 +1327,7 @@ export const getChatStatistics = async (
 export const getTopQuestions = async (session: any, limitCount: number = 10) => {
     return await apiCallComposer(
         async () => {
-            const { scope: sessionScope } = await getRequiredChatReadContext();
+            const { scope: sessionScope } = getRequiredChatReadContext(session);
 
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
@@ -1305,7 +1377,7 @@ export const getTopQuestions = async (session: any, limitCount: number = 10) => 
 export const getKnowledgeGaps = async (session: any) => {
     return await apiCallComposer(
         async () => {
-            const { scope: sessionScope } = await getRequiredChatReadContext();
+            const { scope: sessionScope } = getRequiredChatReadContext(session);
 
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
@@ -1379,7 +1451,7 @@ export const getKnowledgeGaps = async (session: any) => {
 export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
     return await apiCallComposer(
         async () => {
-            const { scope: sessionScope } = await getRequiredChatReadContext();
+            const { scope: sessionScope } = getRequiredChatReadContext(session);
 
             const safeDays = normalizePositiveInteger(days, 7, MAX_CHAT_VOLUME_DAYS);
             const endDate = new Date();

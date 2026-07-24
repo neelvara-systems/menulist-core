@@ -1,6 +1,7 @@
 /** Answerlattice entity-candidate review DAL. Generated writes are server-only. */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { normalizeAnswerlatticeEntityCandidateId } from '@lib/answerlattice/entityCandidateIdBoundary';
 import {
@@ -30,6 +31,7 @@ export const getEntityCandidates = async (tId: number, sId: number) => apiCallCo
         const scope = await getActiveScope({ tId, sId });
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             orderBy('confidence', 'desc'),
@@ -48,6 +50,7 @@ export const getPendingCandidates = async (tId: number, sId: number) => apiCallC
         const scope = await getActiveScope({ tId, sId });
         const snapshot = await getDocs(query(
             collection(answerlatticeFirebaseClient, COLLECTION),
+            where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
             where('tId', '==', scope.tId),
             where('sId', '==', scope.sId),
             where('status', '==', 'pending'),

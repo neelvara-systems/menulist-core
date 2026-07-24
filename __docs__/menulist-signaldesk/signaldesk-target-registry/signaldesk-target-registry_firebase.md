@@ -1,59 +1,43 @@
 # SignalDesk Target Registry - Firebase Cost Plan
 
-**Status:** Initial planning doc
+**Status:** Runtime reconciled
 **Created:** June 23, 2026
-**Cost impact now:** None.
+**Last Updated:** July 21, 2026
 
-## Collections
+## Read Model
 
-| Collection | Purpose | Normal reads |
-| --- | --- | --- |
-| `signaldeskTargetSummaries` | Target list rows | Paginated target list |
-| `signaldeskTargets` | Full target detail | Target detail only |
-| `signaldeskSourceCandidates` | Source refs and imported facts | Target/import detail |
-| `signaldeskContactIdentities` | Contact records with masked/list-safe fields | Target detail only |
-| `signaldeskChannelIdentities` | Email/phone/social identities | Target detail only |
-| `signaldeskImportRuns` | Import run summaries | Import list |
-| `signaldeskImportRows` | Row-level validation/import status | Import detail only |
-| `signaldeskTargetStateEvents` | State changes | Target detail/audit only |
+| Flow | Bounded behavior |
+| --- | --- |
+| Current target window | Reads only until 30 valid newest rows are collected. Malformed rows can require additional 30-document pages within the ten-page scan ceiling. |
+| Older target window | Same bounded query after the validated `updatedAt + targetId` cursor. |
+| Dashboard consumers | Receive the current 30-target window; no listener and no complete registry scan. |
+| Import | Reads policy/retry authority, compact identity indexes, and only the target/contact/suppression/provenance documents addressed by the accepted rows. |
 
-## Read / Write Model
+The earlier implementation scanned up to 1,000 target documents before slicing to 30. Feature 5 replaced that with stop-after-valid paging.
 
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Target list page | 1 query | 0 | Summary collection only. |
-| Target detail | 4-10 docs | 0 | Target, contacts, source refs, state history page. |
-| Import 100 rows | 100-300 dedupe reads | 100-250 writes | Batch writes; cap rows. |
-| Create target manually | 2-5 | 2-5 | Target, summary, source candidate, audit/state. |
-| State change | 2-4 | 2-4 | Target, summary, state event, audit. |
-| Reveal contact | 2-5 | 1 audit write | No list-view reveal. |
+## Write Model
+
+A new manual row normally writes summary, detail, identity index, source candidate, and zero-to-four contact identities. One import also writes a source-run summary, retry claim, audit, control summary, and daily cost truth. Exact duplicate rows are collapsed before reads/writes. Re-imports preserve existing authority and avoid recreating identity/candidate documents.
+
+Provider imports add bounded provider claim/run/vendor/timeline and optional provider-retention truth. Provider runs are separately capped at 30 results; manual imports are capped at 50. Both remain below Firestore's transaction write ceiling under the current admitted field/channel contract.
 
 ## Indexes
 
-- `signaldeskTargetSummaries`: `status + updatedAt`
-- `signaldeskTargetSummaries`: `segment + updatedAt`
-- `signaldeskTargetSummaries`: `nextAction + updatedAt`
-- `signaldeskTargetSummaries`: `city + category + updatedAt`
-- `signaldeskContactIdentities`: `identityHash + channel`
-- `signaldeskImportRows`: `importRunId + status`
-- `signaldeskTargetStateEvents`: `targetId + createdAt`
+Existing target summary indexes support status, segment, next action, and later specialized workflows. Stable newest-first paging uses `updatedAt` plus document-name ordering and requires no new composite index; the Firestore emulator proves the query.
 
-Do not index raw contact values or raw source fields.
+Raw contact values, notes, permission evidence, and imported source fields must not be indexed for registry browsing.
 
-## Cost Controls
+## Cost Rules
 
-- Page size max 50.
-- No target list listeners.
-- No raw import-row dashboard scans.
-- Import rows should be deleted or archived per retention policy.
-- Target summary must contain only list-safe fields.
-- Dedupe should use hashes and compact keys.
+- No Target Registry listener.
+- No all-target scan for a 30-row page.
+- No row-level import documents.
+- No target state event collection in this feature.
+- Identity and suppression use deterministic point reads.
+- Disabled imports perform no provider or Firestore mutation work.
+- Direct browser writes remain denied.
+- Source lifecycle cleanup is owned by the existing SignalDesk maintenance path, not a new scheduler.
 
 ## Retention
 
-| Data | Default |
-| --- | --- |
-| Import rows | 30-90 days |
-| Target summaries | Until target deletion/restriction |
-| Contact identities | Minimum necessary; suppression preserved separately |
-| State events | 24 months |
+Target/contact/source data follows the active source-policy lifecycle fields stored on each governed record. Provider retention rows carry their own refresh and expiry evidence. Suppression and durable audit are retained independently so an expired source record cannot erase safety history.

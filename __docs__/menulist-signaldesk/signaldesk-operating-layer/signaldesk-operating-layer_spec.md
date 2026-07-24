@@ -1,87 +1,66 @@
-# SignalDesk Operating Layer - Spec
+# SignalDesk Operating Layer - Specification
 
-**Status:** Implemented
+**Status:** Implemented and cross-checked
 **Created:** June 24, 2026
-**Last Updated:** July 16, 2026
+**Last Updated:** July 21, 2026
 
 ## Goal
 
-SignalDesk should show the founder the smallest useful set of growth decisions for the day.
-
-The operating layer exists to prove one narrow acquisition loop before SignalDesk expands into more send, provider, partner, or content automation.
+Present no more than five evidence-backed founder decisions for the day while preserving source, approval, suppression, spend, and product-isolation authority.
 
 ## Included
 
-- Daily Growth Mission.
-- 7-day operating trial support.
-- Offer and CTA records.
-- Reply-to-conversion playbooks.
-- Lightweight experiment cards with baseline and candidate windows, one primary metric, known confounders, and a scheduled readback.
-- Source-quality learning snapshots.
-- Research Agent Table for prompt-to-table provider discovery, enrichment columns, pass/fail/unsure scoring, and source-transparent market mapping.
-- Dashboard lead batch for up to 30 prepared leads with validated/needs-evidence state, recommended action, contact path, and share message.
-- Founder review state for mission and experiment decisions.
+- Daily Growth Mission and seven-day trial state.
+- Experiment creation and founder readback decisions.
+- Offer/CTA authority.
+- Reply playbooks with suppression and escalation routing.
+- Source-quality snapshots.
+- Research Agent runs, research rows, and a maximum 30-row lead batch.
+- Founder-reviewed market-pod recommendations.
 
 ## Excluded
 
-- Public SignalDesk pages.
-- Public partner portal.
-- Public MenuList marketing pages.
-- Provider send.
-- Social auto-publish.
-- Paid campaign automation.
-- Automatic winner promotion, automatic rollback, or provider-fed metric decisions.
-- New Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, or sequencer adapters.
-- Direct writes into MenuList store, project, menu, billing, onboarding, or public output truth.
+- Public SignalDesk pages or partner portals.
+- Provider send, social auto-publish, paid campaign automation, or sequencer activation.
+- Automatic contact permission, winner promotion, rollback, or metric decisions.
+- Writes to MenuList customer or billing truth.
+- A mobile Operating Layer editor.
+
+## Authority Rules
+
+1. Parent feature disablement hides the Mission/Opportunities pages, blocks the Mission workspace section, and rejects every Operating Layer mutation.
+2. Research also requires its child feature flag, a usable source policy, configured provider readiness, a clear kill switch, budget admission, desktop runtime, and `source.configure`.
+3. Mission creation ignores data from any disabled child layer instead of reading stale records from that layer.
+4. Mission actions are deterministic, capped at five, and may only recommend approved action classes.
+5. Experiment creation requires a valid readback plan; review requires `target.review`, a fresh 2-1000 character result, and a non-pending decision.
+6. Offer mutation requires `signaldesk.configure`; reply playbooks require `draft.create`; source quality and market-pod recommendation require `source.configure`.
+7. Source-quality references must exist. When both a policy and run are supplied, the run must belong to that policy.
+8. A reply playbook that requires suppression must route to `suppress`; unsafe combinations are rejected before writes.
+9. Existing same-identity records are projected through the same strict reader contract. Malformed stored records fail closed.
+10. Exact retries return existing truth and create no repeat audit, timeline, or daily-cost effects. Changed identity conflicts where the action has an explicit immutable identity contract.
 
 ## Owner Workflow
 
-1. Open Dashboard.
-2. Review Today's Lead Batch: up to 30 prepared leads, each with why it matters, where to contact, what to share, and the next safe action.
-3. Run a Market Search prompt such as `independent cafes in Indiranagar Bengaluru with weak current-menu presence` when the approved pod, source, or partner list needs mapping.
-4. Open Mission for the deeper Research Agent Table, Daily Growth Mission, and experiment controls.
-5. Review no more than five ranked mission actions.
-6. Approve, hold, pause, redirect, or manually complete an action.
-7. Define the baseline window, candidate window, primary metric, known confounders, and next readback before creating an experiment card.
-8. Record a fresh 2-1000 character result summary and make the founder decision: repeat, narrow, hold, stop, or complete.
-9. Use source-quality snapshots to decide whether to continue, narrow, refresh, or stop a source.
-10. Use reply playbooks to convert replies without inventing claims.
+1. Use the desktop Dashboard to review the latest admitted lead batch.
+2. Run a governed Market Search only when source/provider admission is ready.
+3. Open Mission and prepare the daily mission.
+4. Review at most five actions.
+5. Create a controlled experiment, offer, reply playbook, or source-quality snapshot using the permission assigned to that action.
+6. Record fresh experiment evidence before repeat, narrow, hold, stop, or complete.
+7. Keep every outbound or spend action behind its separate approval and rail.
 
-## Acceptance
+## Experiment Contract
 
-- Mission route exists.
-- Dashboard loads the latest research runs/table rows and renders Today's Lead Batch.
-- Mission workspace loads missions, experiments, offers, reply playbooks, source-quality snapshots, market pods, CTAs, approvals, replies, outcomes, demand signals, content assets, and partner profiles.
-- Research Agent Table creates governed research runs and table rows with source refs, enrichment columns, pass/fail/unsure decisions, and market-pod updates.
-- Market Search is source-policy governed, capped at 30 rows, and does not infer contact permission from provider/source readiness.
-- Today's Lead Batch excludes failed research rows and suppressed/held/rejected fallback targets.
-- Market Search keeps a 30-row hard cap; the approved Bengaluru presets default to the 25-row first-trial batch.
-- Mission generation is deterministic and uses existing SignalDesk data.
-- Mission action list is capped at five actions.
-- Mission generation does not call paid providers.
-- Mission generation does not send messages.
-- New experiment cards store hypothesis, pod, source, CTA, proof asset, stop rule, result, decision, baseline/candidate windows, primary metric, confounders, and next readback.
-- Experiment windows cannot overlap; each window must end after it starts; the next readback cannot precede the candidate-window end.
-- Every repeat, narrow, hold, stop, or complete decision requires a fresh bounded result summary; `pending` is stored state, not a review action.
-- Legacy experiment cards remain visible with an explicit `readbackPlan: null` state rather than being hidden or backfilled with invented evidence.
-- Readback data informs the existing founder decision only; it cannot send, publish, spend, promote a winner, or roll back an experiment automatically.
-- Offer/CTA records keep approved owner asks and blocked claims.
-- Reply playbooks map common reply intents to approved next copy and routes.
-- Source-quality snapshots measure activation-oriented source quality, not raw lead volume.
+New cards use `signaldesk-experiment-readback-v1`:
 
-## First 7-Day Trial
+- baseline start/end;
+- candidate start/end;
+- one primary metric;
+- bounded unique confounders;
+- next readback at or after candidate completion.
 
-The first trial uses:
+Windows cannot overlap or reverse. Legacy cards remain readable as `readbackPlan: null`; the runtime never invents historical evidence.
 
-```txt
-one market pod
-one approved source list
-one CTA
-one sender identity
-one export-only rail
-one outcome report
-```
+## Seven-Day Trial
 
-The trial is not passed until SignalDesk can show source rights, evidence, approval, reply state, outcome state, and founder workload.
-
-The first approved Bengaluru trial defaults to manual preparation, 25 candidates, five owner conversations, five private previews, three two-surface activations within seven days, one permissioned proof asset, and zero external provider, media, or partner spend.
+The initial trial remains one market pod, one approved source list, one CTA, one sender identity, one export/manual rail, and one outcome report. It is not passed until source rights, evidence, approval, reply state, outcome state, and founder workload are visible. The default remains zero provider/media/partner spend unless separately approved.

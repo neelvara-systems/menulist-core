@@ -2,6 +2,7 @@
 
 **Status:** Runtime implemented and locally verified
 **Created:** July 10, 2026
+**Last verified:** July 21, 2026
 **Scope:** Private commercial lifecycle and autonomy-envelope records built on existing SignalDesk rails.
 
 ## Goal
@@ -88,7 +89,7 @@ Research and recommendation workers may update fit evidence, confidence, and `re
 
 Activation Watch may read only SignalDesk-owned outcome summaries/events. It may show route-created, upload-started, preview-prepared, published, activated, or stalled. Two-surface activation closes the linked commercial opportunity as won and removes its value from open and weighted pipeline summaries. It must not query or write broad MenuList store/project trees.
 
-The bounded derivation uses the latest 30 target summaries for current non-terminal context, the exact earliest target summary for the seven-day deadline, and a separate terminal-activation lookup. This prevents unordered or truncated history from losing two-surface activation or moving the deadline.
+The bounded derivation uses the latest 30 valid target outcome summaries for current non-terminal context, the target's canonical owner-qualified timestamp for the seven-day deadline, and a separate bounded terminal-activation lookup. This prevents truncated history from losing two-surface activation or moving the deadline.
 
 Recording a target-scoped outcome automatically attempts the same transactional activation-watch derivation used by the explicit recheck action. The outcome remains durable if the derived refresh needs recovery, and the bounded failure is logged without target contact data. Revenue workspace and Daily Growth Mission reads surface an elapsed seven-day deadline as stalled even when no maintenance scheduler has persisted a new status.
 
@@ -114,8 +115,8 @@ Opportunity currency is derived from its referenced commercial offer. A valued o
 | SD-REV-006 | Exception-only requested mode remains held. |
 | SD-REV-007 | Activation watches are derived from SignalDesk outcomes only. |
 | SD-REV-008 | Default UI reads compact revenue collections and one summary document. |
-| SD-REV-009 | Every mutation writes audit, run timeline, and cost-accounting updates. |
-| SD-REV-010 | Mobile remains observe-only; all revenue mutations are server-blocked on mobile. |
+| SD-REV-009 | Every state-changing mutation writes audit, run timeline, and cost-accounting updates; an exact successful retry writes nothing. |
+| SD-REV-010 | Mobile remains dashboard-only; the Revenue workspace and all revenue mutations are server-blocked on mobile. |
 | SD-REV-011 | Founder attention minutes are stored and summarized. |
 | SD-REV-012 | No action mutates MenuList store, menu, project, billing, publish, or customer truth. |
 | SD-REV-013 | Active and weighted pipeline values use one explicit currency. |
@@ -136,12 +137,22 @@ Opportunity currency is derived from its referenced commercial offer. A valued o
 | SD-REV-028 | Operating envelopes require stored founder market-pod approval evidence, not only `status: active`. |
 | SD-REV-029 | Activation derivation uses deterministic latest, earliest, and terminal target-outcome reads. |
 | SD-REV-030 | Operating-envelope approval is founder-only and transactionally revalidates every referenced control before write. |
+| SD-REV-031 | The page, workspace API, and direct workspace loader all enforce the Revenue feature flag. |
+| SD-REV-032 | Budget-policy configuration detail is returned only to roles with `signaldesk.configure`. |
+| SD-REV-033 | Manual opportunity updates cannot set `won`; verified two-surface activation is the only win authority. |
+| SD-REV-034 | Current target, source-policy, contactability, and suppression authority is revalidated before opportunity mutation. |
+| SD-REV-035 | Losing current qualification authority demotes an open opportunity to nurture and removes it from forecast. |
+| SD-REV-036 | Offer and envelope arrays reject duplicate terms or references. |
+| SD-REV-037 | Every stored and candidate revenue document passes the strict product-local workspace projector. |
+| SD-REV-038 | A pre-qualification verified activation may create one zero-value offerless win with an explicit activation-authority reason. |
 
 ## Acceptance Criteria
 
 - A qualified target can create one idempotent revenue account and commercial opportunity.
+- Exact retries preserve timestamps and do not repeat audit, timeline, cost, approval, or summary effects.
 - A published-only target remains open; only two-surface activation closes it as won.
 - A suppressed or blocked target cannot create an open opportunity.
+- An existing open opportunity is demoted when current source/contact authority becomes blocked or suppressed.
 - A standard commercial offer can be versioned without changing the existing Offer/CTA record.
 - An operating envelope cannot become executable through its own input.
 - A draft, held, expired, or exception-only envelope cannot present approval-only execution.

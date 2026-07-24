@@ -19,8 +19,8 @@ export interface WeeklySummaryData {
   highlights: string[];
   recommendations: string[];
   keyMetrics: {
-    volumeChange: number;
-    satisfactionChange: number;
+    volumeChangePercent: number | null;
+    positiveFeedbackSharePointChange: number | null;
     topCategory: string;
   };
   generatedAt: string;
@@ -81,18 +81,28 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
             {/* Key Metrics */}
             <Space size="middle" wrap>
               <Tag
-                color={data.keyMetrics.volumeChange >= 0 ? 'green' : 'red'}
+                color={
+                  data.keyMetrics.volumeChangePercent === null
+                    ? 'default'
+                    : data.keyMetrics.volumeChangePercent >= 0 ? 'green' : 'red'
+                }
                 style={{ fontSize: 14, padding: '4px 12px' }}
               >
-                Volume: {data.keyMetrics.volumeChange > 0 ? '+' : ''}
-                {data.keyMetrics.volumeChange}%
+                Volume: {data.keyMetrics.volumeChangePercent === null
+                  ? 'Not available'
+                  : `${data.keyMetrics.volumeChangePercent > 0 ? '+' : ''}${data.keyMetrics.volumeChangePercent}%`}
               </Tag>
               <Tag
-                color={data.keyMetrics.satisfactionChange >= 0 ? 'green' : 'red'}
+                color={
+                  data.keyMetrics.positiveFeedbackSharePointChange === null
+                    ? 'default'
+                    : data.keyMetrics.positiveFeedbackSharePointChange >= 0 ? 'green' : 'red'
+                }
                 style={{ fontSize: 14, padding: '4px 12px' }}
               >
-                Satisfaction: {data.keyMetrics.satisfactionChange > 0 ? '+' : ''}
-                {data.keyMetrics.satisfactionChange}%
+                Positive feedback share: {data.keyMetrics.positiveFeedbackSharePointChange === null
+                  ? 'Not available'
+                  : `${data.keyMetrics.positiveFeedbackSharePointChange > 0 ? '+' : ''}${data.keyMetrics.positiveFeedbackSharePointChange} pp`}
               </Tag>
               <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
                 Top: {data.keyMetrics.topCategory}

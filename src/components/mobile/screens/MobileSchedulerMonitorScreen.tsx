@@ -8,7 +8,7 @@ import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummar
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuActivity, LuClock, LuPlay, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
 import { Alert } from 'antd';
 import { Button, Card, Dialog, DotLoading, Flex, List, Select, Tag, Text, Title, Toast } from '../antd';
@@ -102,8 +102,13 @@ function renderTask(task: SchedulerTaskResult) {
 export default function MobileSchedulerMonitorScreen({ onBack }: MobileSchedulerMonitorScreenProps) {
     const formatter = useFormatter();
     const { data: session, status } = useSession();
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
+    const isMountedRef = useRef(true);
+    const isPlatformRef = useRef(isPlatform);
+    const latestLoadRequestRef = useRef(0);
+    const recoveryInFlightRef = useRef(false);
+    isPlatformRef.current = isPlatform;
     const [health, setHealth] = useState<SchedulerHealthSummary | null>(null);
     const [runs, setRuns] = useState<SchedulerRunLog[]>([]);
     const [settlement, setSettlement] = useState<SchedulerSettlementSummary | null>(null);
@@ -124,75 +129,106 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
 
     const loadData = useCallback(async () => {
         if (!isPlatform) return;
+        const requestId = latestLoadRequestRef.current + 1;
+        latestLoadRequestRef.current = requestId;
         setLoading(true);
         setLoadError(false);
         try {
             const snapshot = await getSchedulerDashboardSnapshot({ limit: 10 }, 50);
+            if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setHealth(snapshot.health);
             setRuns(snapshot.runHistory);
             setSettlement(snapshot.settlement);
         } catch {
+            if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setLoadError(true);
             Toast.show({ content: 'Could not load scheduler data', duration: 1800 });
         } finally {
-            setLoading(false);
+            if (
+                isMountedRef.current
+                && isPlatformRef.current
+                && latestLoadRequestRef.current === requestId
+            ) {
+                setLoading(false);
+            }
         }
     }, [isPlatform]);
 
     useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            latestLoadRequestRef.current += 1;
+            recoveryInFlightRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
         if (status === 'loading') return;
         if (!isPlatform) {
+            latestLoadRequestRef.current += 1;
             setLoading(false);
             return;
         }
         void loadData();
     }, [isPlatform, loadData, status]);
 
-    const handleNightlyRecovery = () => {
-        if (!selectedStore) {
-            Toast.show({ content: 'Select a store first', duration: 1600 });
+    const handleNightlyRecovery = async () => {
+        if (!selectedStore || recoveryInFlightRef.current) {
+            if (!selectedStore) {
+                Toast.show({ content: 'Select a store first', duration: 1600 });
+            }
             return;
         }
+        recoveryInFlightRef.current = true;
+        const recoveryStore = selectedStore;
+        const confirmed = await Dialog.confirm({
+            confirmText: 'Run recovery',
+            content: `Run the store-level nightly scheduler for ${recoveryStore.name || `store ${recoveryStore.sId}`}. This settles analytics and recomputes Decision Blocks and Menu Intelligence for all active projects under this store.`,
+            title: 'Run nightly recovery?',
+        });
+        if (!confirmed || !isMountedRef.current || !isPlatformRef.current) {
+            recoveryInFlightRef.current = false;
+            return;
+        }
+
         const buildRecoveryLogContext = (metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
             surface: 'mobile_scheduler_monitor',
             flow: 'trigger_store_nightly_scheduler',
-            ...getBoundedOpsStringContext('selectedStoreId', selectedStore.sId),
-            ...getBoundedOpsStringContext('selectedTenantId', selectedStore.tId),
+            ...getBoundedOpsStringContext('selectedStoreId', recoveryStore.sId),
+            ...getBoundedOpsStringContext('selectedTenantId', recoveryStore.tId),
             ...metadata,
         });
 
-        void Dialog.confirm({
-            confirmText: 'Run recovery',
-            content: `Run the store-level nightly scheduler for ${selectedStore.name || `store ${selectedStore.sId}`}. This settles analytics and recomputes Decision Blocks and Menu Intelligence for all active projects under this store.`,
-            onConfirm: async () => {
-                setTriggering(true);
-                try {
-                    const { getFunctions, httpsCallable } = await import('firebase/functions');
-                    const triggerFn = httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 });
-                    const result = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
-                    const summary = normalizeSchedulerRecoveryResponse(result?.data);
-                    if (!summary) throw new Error('mobile_scheduler_recovery_response_invalid');
-                    Toast.show({
-                        content: `${summary.status}: ${summary.successCount} DI success, ${summary.failedCount} failed`,
-                        duration: 2200,
-                    });
-                    await loadData();
-                } catch (error) {
-                    const runLogId = normalizeSchedulerRecoveryRunLogId(
-                        error && typeof error === 'object' && 'details' in error
-                            ? (error as { details?: { runLogId?: unknown } }).details?.runLogId
-                            : null,
-                    );
-                    logOpsFailure('mobile_scheduler_recovery_trigger_failed', error, buildRecoveryLogContext({
-                        ...getBoundedOpsStringContext('runLogId', runLogId),
-                    }));
-                    Toast.show({ content: 'Nightly recovery failed', duration: 2600 });
-                } finally {
-                    setTriggering(false);
-                }
-            },
-            title: 'Run nightly recovery?',
-        });
+        setTriggering(true);
+        try {
+            const { getFunctions, httpsCallable } = await import('firebase/functions');
+            const triggerFn = httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 });
+            const result = await triggerFn({ tId: recoveryStore.tId, sId: recoveryStore.sId });
+            const summary = normalizeSchedulerRecoveryResponse(result?.data);
+            if (!summary) throw new Error('mobile_scheduler_recovery_response_invalid');
+            if (!isMountedRef.current || !isPlatformRef.current) return;
+            Toast.show({
+                content: `${summary.status}: ${summary.successCount} DI success, ${summary.failedCount} failed`,
+                duration: 2200,
+            });
+            await loadData();
+        } catch (error) {
+            const runLogId = normalizeSchedulerRecoveryRunLogId(
+                error && typeof error === 'object' && 'details' in error
+                    ? (error as { details?: { runLogId?: unknown } }).details?.runLogId
+                    : null,
+            );
+            logOpsFailure('mobile_scheduler_recovery_trigger_failed', error, buildRecoveryLogContext({
+                ...getBoundedOpsStringContext('runLogId', runLogId),
+            }));
+            if (isMountedRef.current && isPlatformRef.current) {
+                Toast.show({ content: 'Nightly recovery failed', duration: 2600 });
+            }
+        } finally {
+            recoveryInFlightRef.current = false;
+            if (isMountedRef.current) setTriggering(false);
+        }
     };
 
     if (status !== 'loading' && !isPlatform) {
@@ -263,7 +299,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                                 {selectedStore ? (
                                     <Text type="secondary">Tenant {selectedStore.tId} · Store {selectedStore.sId}</Text>
                                 ) : null}
-                                <Button block color="primary" disabled={!selectedStore} loading={triggering} onClick={handleNightlyRecovery}>
+                                <Button block color="primary" disabled={!selectedStore || triggering} loading={triggering} onClick={() => { void handleNightlyRecovery(); }}>
                                     <Flex align="center" gap={6} justify="center">
                                         <LuPlay size={16} />
                                         <Text>Run Nightly Recovery</Text>

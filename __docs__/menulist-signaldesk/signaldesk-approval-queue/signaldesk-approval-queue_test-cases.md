@@ -1,31 +1,37 @@
 # SignalDesk Approval Queue - Test Cases
 
-**Status:** Initial test matrix
-**Created:** June 23, 2026
+**Status:** Executable boundary coverage
+**Last Updated:** July 21, 2026
 
-## Approval Tests
+## Focused Command
 
-| Test | Expected |
+```bash
+npm run test:signaldesk:approval-queue-boundary
+```
+
+## Covered Runtime Cases
+
+| Case | Expected |
 | --- | --- |
-| Approve without permission | Blocked. |
-| Approve while target suppressed | Blocked. |
-| Approve with expired evidence | Blocked. |
-| Approve with paused source policy | Blocked. |
-| Approve with active kill switch | Blocked. |
-| Approve valid draft | Approval, audit, and decision snapshot written. |
+| Rejection without enum reason | Rejected before transaction. |
+| `other` rejection without note | Rejected before transaction. |
+| Structured rejection | Approval/draft/packet/target transition and counters commit atomically. |
+| Conflicting concurrent approve/reject | Exactly one terminal decision commits. |
+| Exact same-actor terminal retry | Stored result returned; no second counter, audit, or cost effect. |
+| Changed retry status/reason | `Approval is not pending`. |
+| Missing draft | Approval blocked. |
+| Suppressed or held target | Approval blocked. |
+| Changed template or superseded approval | Stale authority blocked. |
+| Unsupported draft claim | Approval remains pending and block audit is written. |
+| Expired/revoked source, contact, CTA, or sender | Approval/export fails closed. |
+| Wrong channel handoff | Rejected. |
+| Exact packet refresh | One deterministic packet identity. |
+| Changed packet authority | Fingerprint mismatch blocks approval until refreshed. |
 
-## Invalidation Tests
+## Source Gates
 
-| Test | Expected |
-| --- | --- |
-| Draft changes after approval | Approval expires. |
-| Suppression arrives after approval | Approval expires/blocks action. |
-| Evidence expires after approval | Approval expires. |
-
-## Mobile Tests
-
-| Test | Expected |
-| --- | --- |
-| Mobile approves draft | Not available. |
-| Mobile rejects draft | Not available. |
-| Mobile sees queue count | Allowed. |
+`npm run verify:signaldesk` locks the permission map, typed route payload,
+pending-first read, exact terminal replay, strict desktop readiness predicate,
+mobile read-only contract, current documents, and focused command. Root
+TypeScript, scoped ESLint, workspace/client contracts, source lifecycle, docs
+links, and diff checks remain required before closure.

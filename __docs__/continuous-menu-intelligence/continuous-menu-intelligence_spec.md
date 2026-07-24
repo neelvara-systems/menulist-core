@@ -1,6 +1,6 @@
 # Continuous Menu Intelligence — Product Specification
 
-**Last verified:** July 16, 2026
+**Last verified:** July 21, 2026
 **Status:** Private observation/read-model layer; local source-complete for the audited feature. Firebase QA deployment and downstream-consumer certification remain pending.
 
 ## Purpose
@@ -21,19 +21,23 @@ CMI does not receive POS sales, orders, payments, inventory, ratings, reviews, o
 ## Authority boundary
 
 - The current project catalog is authoritative.
+- Compact analytics must match the exact tenant, store, project, writer kind, seven-day range and requested settled date; malformed, future or cross-scope snapshots fail to the existing missing-or-stale path.
+- Dashboard settlement exact-replaces the complete compact snapshot so deleted item/hour keys and unknown legacy fields cannot accumulate between windows.
 - Deleted, inactive, or analytics-only item IDs are excluded.
 - Current item aliases may retain earlier analytics continuity.
+- Prototype-sensitive, control-character, whitespace-variant, and overlong item IDs are excluded from derived scoring maps; canonical project truth remains unchanged.
 - Temporary `available` state does not remove an item from private observation; public runtime owns availability.
 - The CMI document is a complete scheduler-owned projection and is replaced on write so deleted item keys cannot accumulate.
-- Firestore rules allow authorized reads and deny client writes.
+- `validUntil` is configured as the collection group's Firestore TTL field. Expired private projections, including projects that later have no active items and therefore skip new CMI writes, are eligible for managed deletion.
+- Firestore rules allow direct reads only to the platform claim and deny all client writes. Owner/staff/public/downstream reads require a separately certified DTO boundary.
 
 ## Computation flow
 
 1. The unified scheduler fires hourly at minute 30 and processes due stores in their local settlement window.
 2. The scheduler reads the compact 7-day snapshot once per active project.
 3. The shared catalog-first extractor creates the current item set.
-4. CMI reads the previous state, computes confidence, time-slot observations, suppression observations, bounded priority, calibration, and health metadata.
-5. The complete `menuIntelligence` document is replaced.
+4. One Firestore transaction reads and strictly projects the previous state, computes confidence, time-slot observations, suppression observations, bounded priority, calibration, and health metadata.
+5. The same transaction completely replaces `menuIntelligence`, allowing Firestore retry to recompute against current truth when scheduled and manual runs overlap.
 
 `triggerStoreNightlyScheduler` runs the same store-level flow for platform recovery. `triggerDecisionBlocksScoring` does not recompute CMI.
 
@@ -56,17 +60,21 @@ CMI does not receive POS sales, orders, payments, inventory, ratings, reviews, o
 ## Correctness constraints
 
 - Recomputing the same settled analytics date may increment `runCount`, but must not advance confidence, stable days, top-item days, or calibration age.
+- Replaying an older settled analytics date fails before computation/write, so it cannot replace current evidence or move `lastAnalyticsDate` backwards.
 - Confidence can increase by at most `0.05` per new settled date; decreases can apply immediately on a new settled date.
 - Fatigue uses the stable-day streak before a new falling day, because the falling calculation resets the new stable counter.
 - A time slot is eligible only when it represents at least 10% of the item's recorded slot clicks. No hourly data means all slots remain neutral/eligible.
 - Nightly stored priority is not adjusted using the Cloud Function server hour. Time metadata is retained for a future consumer that has explicit store-local time context.
 - Low-data or stability mode uses neutral priority instead of hiding items.
-- Client DAL helpers return neutral/empty results when the private state is expired or the app feature flag is disabled.
+- No app/owner/public reader is certified. The app DAL performs no Firestore read and its reserved helpers return neutral/empty results.
+- Impossible analytics dates, noncanonical persistence identity, duplicate or over-limit item sets, malformed counters, invalid timestamp ordering and contradictory map/stat relationships fail closed before a later projection can be written.
+- The exported computation reprojects every non-null prior-state argument against the exact target document ID; TypeScript alone is never treated as runtime identity proof.
+- Canonical tenant/store/project identity and the composite document byte limit are validated before any Firestore document reference is constructed.
 
 ## Flags
 
 - Functions writes: `FUNCTION_FLAGS.ENABLE_CONTINUOUS_MENU_INTELLIGENCE`
-- App DAL reads: `FEATURE_FLAGS.ENABLE_CONTINUOUS_MENU_INTELLIGENCE`
+- Reserved app helper gate: `FEATURE_FLAGS.ENABLE_CONTINUOUS_MENU_INTELLIGENCE` (helpers remain neutral; no Firestore read)
 
 The Decision Blocks projection has its own independent flags and remains the only current customer-facing recommendation source.
 
@@ -86,11 +94,16 @@ CMI has no owner-facing desktop or mobile screen, toggle, score, explanation, or
 ## Acceptance checks
 
 - One current project catalog produces one bounded item map.
+- Unsafe dynamic item keys cannot enter or mutate confidence, priority, rank, suppression, or time maps.
+- The exported computation runtime-projects typed analytics, extracted items, and prior state, then computes only from those normalized values.
 - Alias analytics merge into the current item; stale IDs are pruned.
 - Same-date recovery is idempotent for maturity.
+- Equal-priority items use a binary item-ID tie-break, so catalog ordering cannot change rank or health evidence.
 - Fatigue can be reached only after the preceding stable streak and a new falling date.
 - Stored priority is independent of Function runtime timezone.
-- Expired DAL reads fail neutral.
+- Persisted reversal, calibration, stability, view-coverage, and top-item metadata must remain cross-field coherent.
+- Persisted and analytics discriminators must be exact primitive strings; coercible objects are invalid.
+- App helpers remain neutral and cannot load the private document.
 - Full state replacement removes deleted nested keys.
 
 Historical pre-audit specification: `_archive/pre-2026-07-16/continuous-menu-intelligence_spec.md`.

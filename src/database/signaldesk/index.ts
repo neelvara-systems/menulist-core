@@ -1,6 +1,8 @@
 import { SIGNALDESK_API_ROUTES } from "@constant/signaldesk/routes";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import type { SignalDeskAuditCursor } from "@lib/signaldesk/auditContracts";
+import type { SignalDeskTargetCursor } from "@lib/signaldesk/targetContracts";
 import type {
     SignalDeskAccessContext,
     SignalDeskAiVolumeRunSummary,
@@ -802,6 +804,7 @@ const readSignalDeskClientDataResponse = async <T>(
 export type SignalDeskAction =
     | "seed-defaults"
     | "create-source-policy"
+    | "renew-source-policy"
     | "import-targets"
     | "score-target"
     | "create-evidence"
@@ -903,6 +906,7 @@ const SIGNALDESK_ACTION_RESULT_PARSERS: SignalDeskActionResultParsers = {
     "create-route-token": projectSignalDeskCommonActionAcknowledgement,
     "create-sequencer-handoff": projectSignalDeskCommonActionAcknowledgement,
     "create-source-policy": projectSignalDeskCommonActionAcknowledgement,
+    "renew-source-policy": projectSignalDeskCommonActionAcknowledgement,
     "create-source-quality-snapshot": projectSignalDeskCommonActionAcknowledgement,
     "create-trust-partner-brief": projectSignalDeskCommonActionAcknowledgement,
     "create-trust-partner-niche-test": projectSignalDeskCommonActionAcknowledgement,
@@ -960,7 +964,9 @@ const SIGNALDESK_ACTION_RESULT_PARSERS: SignalDeskActionResultParsers = {
 };
 
 export type SignalDeskReadOptions = {
+    auditCursor?: SignalDeskAuditCursor;
     signal?: AbortSignal;
+    targetCursor?: SignalDeskTargetCursor;
 };
 
 export async function getSignalDeskOverview(
@@ -984,7 +990,16 @@ export async function getSignalDeskWorkspace(
     section: SignalDeskSection,
     options: SignalDeskReadOptions = {},
 ): Promise<SignalDeskWorkspaceResponse> {
-    const response = await fetch(`${SIGNALDESK_API_ROUTES.WORKSPACE}?section=${encodeURIComponent(section)}`, {
+    const query = new URLSearchParams({ section });
+    if (options.auditCursor) {
+        query.set("auditAfter", options.auditCursor.createdAt);
+        query.set("auditAfterId", options.auditCursor.auditEventId);
+    }
+    if (options.targetCursor) {
+        query.set("targetAfter", options.targetCursor.updatedAt);
+        query.set("targetAfterId", options.targetCursor.targetId);
+    }
+    const response = await fetch(`${SIGNALDESK_API_ROUTES.WORKSPACE}?${query.toString()}`, {
         cache: "no-store",
         headers: getSignalDeskClientModeHeaders(),
         signal: options.signal,

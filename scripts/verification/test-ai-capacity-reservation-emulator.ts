@@ -13,7 +13,7 @@ import {
 } from '../../src/lib/ai/capacityCheck';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '../../src/types/razorpay';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const tId = 71;
 const sId = 72;
@@ -35,7 +35,11 @@ function subscription(): FirestoreSubscriptionDoc {
         id: subscriptionId,
         monthlyCredits: 12,
         monthlyCreditsAllowance: 12,
+        pId: 'ML',
+        productId: 'ML',
+        sId,
         storeId: sId,
+        tId,
         tenantId: tId,
         topUpCredits: 0,
     } as unknown as FirestoreSubscriptionDoc;
@@ -46,7 +50,11 @@ async function resetSubscription(monthlyCredits = 12, topUpCredits = 0): Promise
         cycleStartDate: null,
         monthlyCredits,
         monthlyCreditsAllowance: 12,
+        pId: 'ML',
+        productId: 'ML',
+        sId,
         storeId: sId,
+        tId,
         tenantId: tId,
         topUpCredits,
     });
@@ -71,6 +79,36 @@ async function deleteOperation(id: string): Promise<void> {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+
+    await resetSubscription();
+    await subscriptionRef.set({ pId: 'CC', productId: 'CC' }, { merge: true });
+    await assert.rejects(
+        reserve('reservation-wrong-product', 1),
+        /persisted subscription scope mismatch/,
+        'same-scope other-product subscriptions must not fund MenuList AI operations',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 12);
+    assert.equal((await operationCollection.doc('reservation-wrong-product').get()).exists, false);
+
+    await resetSubscription();
+    await subscriptionRef.update({ tId: 99999 });
+    await assert.rejects(
+        reserve('reservation-conflicting-subscription-alias', 1),
+        /persisted subscription scope mismatch/,
+        'a conflicting persisted tenant alias must not fund MenuList AI work',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 12);
+    assert.equal((await operationCollection.doc('reservation-conflicting-subscription-alias').get()).exists, false);
+
+    await resetSubscription();
+    await subscriptionRef.update({ monthlyCredits: '12' });
+    await assert.rejects(
+        reserve('reservation-string-balance', 1),
+        /Not enough billing credits/,
+        'numeric-string subscription balances must not authorize paid AI work',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, '12');
+    assert.equal((await operationCollection.doc('reservation-string-balance').get()).exists, false);
 
     await resetSubscription();
     const concurrent = await Promise.allSettled([
@@ -152,6 +190,32 @@ async function run(): Promise<void> {
     assert.equal((await operationCollection.doc(reReserved.id).get()).data()?.accountingReservationAttempt, 2);
     await refundAiCapacityReservation(reReserved, 'retry_cleanup');
 
+    await resetSubscription(7, 5);
+    const malformedRefundEvidence = await reserve('reservation-malformed-refund-evidence', 9);
+    const malformedRefundRef = operationCollection.doc(malformedRefundEvidence.id);
+    const originalRefundEvidence = (await malformedRefundRef.get()).data();
+    await malformedRefundRef.update({ accountingChargedTopUpCredits: '2' });
+    await assert.rejects(
+        refundAiCapacityReservation(malformedRefundEvidence, 'must_reject_string_credit_evidence'),
+        /refund credit evidence is invalid/,
+        'numeric-string charged-credit evidence must not mint a refund',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 0);
+    assert.equal((await subscriptionRef.get()).data()?.topUpCredits, 3);
+    await malformedRefundRef.update({
+        accountingChargedTopUpCredits: originalRefundEvidence?.accountingChargedTopUpCredits,
+        accountingReservationBillingPeriod: '202607',
+    });
+    await assert.rejects(
+        refundAiCapacityReservation(malformedRefundEvidence, 'must_reject_string_period_evidence'),
+        /refund billing period is invalid/,
+        'numeric-string billing-period evidence must not authorize a refund',
+    );
+    await malformedRefundRef.update({
+        accountingReservationBillingPeriod: originalRefundEvidence?.accountingReservationBillingPeriod ?? null,
+    });
+    await refundAiCapacityReservation(malformedRefundEvidence, 'malformed_refund_cleanup');
+
     await resetSubscription();
     const conflictReservation = await reserve('reservation-conflict', 3);
     await assert.rejects(
@@ -165,6 +229,114 @@ async function run(): Promise<void> {
     );
     assert.equal((await operationCollection.doc(conflictReservation.id).get()).data()?.accountingStatus, 'reserved');
     await refundAiCapacityReservation(conflictReservation, 'conflict_cleanup');
+
+    await resetSubscription();
+    const transactionScopeConflict = await reserve('reservation-transaction-scope-conflict', 2);
+    await subscriptionRef.update({ sId: 99999 });
+    await assert.rejects(
+        finalizeAiOperationAccounting({
+            capacityReservation: transactionScopeConflict,
+            input: { action, sId, tId, unitsConsumed: 2 },
+            logLabel: 'AI reservation transaction scope conflict emulator',
+        }),
+        /persisted subscription scope mismatch/,
+        'transaction-current conflicting subscription aliases must block finalization',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 10);
+    assert.equal((await operationCollection.doc(transactionScopeConflict.id).get()).data()?.accountingStatus, 'reserved');
+    await subscriptionRef.update({ sId });
+    await refundAiCapacityReservation(transactionScopeConflict, 'transaction_scope_cleanup');
+
+    await resetSubscription();
+    const operationScopeConflict = await reserve('reservation-operation-scope-conflict', 2);
+    await operationCollection.doc(operationScopeConflict.id).update({ tenantId: 99999 });
+    await assert.rejects(
+        reserve(operationScopeConflict.id, 2),
+        /idempotency conflict/,
+        'conflicting operation scope aliases must not be accepted as reservation replay',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 10);
+    await operationCollection.doc(operationScopeConflict.id).update({ tenantId: FieldValue.delete() });
+    await refundAiCapacityReservation(operationScopeConflict, 'operation_scope_cleanup');
+
+    await resetSubscription();
+    const stringUnitsReplay = await reserve('reservation-string-units-replay', 2);
+    const stringUnitsReplayRef = operationCollection.doc(stringUnitsReplay.id);
+    await stringUnitsReplayRef.update({ accountingUnits: '2' });
+    await assert.rejects(
+        reserve(stringUnitsReplay.id, 2),
+        /idempotency conflict/,
+        'numeric-string accounting units must not satisfy idempotent reservation replay',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 10);
+    await stringUnitsReplayRef.update({ accountingUnits: 2 });
+    await refundAiCapacityReservation(stringUnitsReplay, 'string_units_cleanup');
+
+    await assert.rejects(
+        finalizeAiOperationAccounting({
+            idempotencyKey: 'reservation-string-input-units',
+            input: { action, sId, tId, unitsConsumed: '2' as unknown as number },
+            logLabel: 'String input units emulator',
+        }),
+        /accounting units are invalid/,
+        'numeric-string finalizer input units must fail before replay or persistence',
+    );
+    assert.equal((await operationCollection.doc('reservation-string-input-units').get()).exists, false);
+
+    const historicalReplayId = 'reservation-historical-string-replay';
+    const historicalReplayRef = operationCollection.doc(historicalReplayId);
+    await historicalReplayRef.set({
+        accountingBillingStoreId: sId,
+        accountingIdempotencyKey: historicalReplayId,
+        accountingStatus: 'consumed',
+        accountingUnits: '2',
+        action,
+        remainingMonthlyCredits: 10,
+        remainingTopUpCredits: 0,
+        sId,
+        tId,
+    });
+    await assert.rejects(
+        finalizeAiOperationAccounting({
+            idempotencyKey: historicalReplayId,
+            input: { action, sId, tId, unitsConsumed: 2 },
+            logLabel: 'Historical string unit replay emulator',
+        }),
+        /billing subscription is required/,
+        'numeric-string persisted units must not satisfy historical replay',
+    );
+    await historicalReplayRef.update({ accountingUnits: 2, remainingMonthlyCredits: '10' });
+    await assert.rejects(
+        finalizeAiOperationAccounting({
+            idempotencyKey: historicalReplayId,
+            input: { action, sId, tId, unitsConsumed: 2 },
+            logLabel: 'Historical string balance replay emulator',
+        }),
+        /accounting replay balance is invalid/,
+        'numeric-string remaining balances must not enter replay responses',
+    );
+    await historicalReplayRef.delete();
+
+    const freeReplayId = 'reservation-free-string-replay';
+    const freeReplayRef = operationCollection.doc(freeReplayId);
+    await freeReplayRef.set({
+        accountingIdempotencyKey: freeReplayId,
+        accountingStatus: 'not_required',
+        accountingUnits: '0',
+        action,
+        sId,
+        tId,
+    });
+    await assert.rejects(
+        finalizeAiOperationAccounting({
+            idempotencyKey: freeReplayId,
+            input: { action, sId, tId, unitsConsumed: 0 },
+            logLabel: 'Free string unit replay emulator',
+        }),
+        /idempotency conflict/,
+        'numeric-string zero units must not satisfy free-operation replay',
+    );
+    await freeReplayRef.delete();
 
     await resetSubscription(8, 0);
     const inheritedOutletReservation = await reserveAiCapacity({
@@ -286,6 +458,27 @@ async function run(): Promise<void> {
     assert.equal(deletion.deleted, 1, 'expired refunded reservation shells must be deleted');
     assert.equal((await operationCollection.doc(staleReservation.id).get()).exists, false);
 
+    await resetSubscription();
+    const conflictingScopeRecovery = await reserve('reservation-conflicting-scope-recovery', 2);
+    await operationCollection.doc(conflictingScopeRecovery.id).update({
+        reservationRecoveryAt: Timestamp.fromMillis(Date.now() - 1_000),
+    });
+    await subscriptionRef.update({ tId: 99999 });
+    const conflictingRecovery = await recoverAiCapacityReservationsInCollectionRef({
+        collectionRef: operationCollection,
+        db: firestoreAdmin,
+        limit: 10,
+        now: Timestamp.now(),
+        sId: String(sId),
+        tId: String(tId),
+    });
+    assert.equal(conflictingRecovery.refunded, 0, 'conflicting subscription scope must not receive a recovery refund');
+    assert.equal(conflictingRecovery.errors, 1);
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 10);
+    assert.equal((await operationCollection.doc(conflictingScopeRecovery.id).get()).data()?.accountingStatus, 'reserved');
+    await subscriptionRef.update({ tId });
+    await refundAiCapacityReservation(conflictingScopeRecovery, 'conflicting_scope_cleanup');
+
     await resetSubscription(6, 0);
     const inheritedStaleReservation = await reserveAiCapacity({
         action,
@@ -365,6 +558,28 @@ async function run(): Promise<void> {
     assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 12);
     await poisonRef.delete();
 
+    await resetSubscription();
+    const malformedRecoveryEvidence = await reserve('reservation-malformed-recovery-evidence', 2);
+    const malformedRecoveryRef = operationCollection.doc(malformedRecoveryEvidence.id);
+    await malformedRecoveryRef.update({
+        accountingChargedMonthlyCredits: '2',
+        reservationRecoveryAt: Timestamp.fromMillis(Date.now() - 1_000),
+    });
+    const malformedRecovery = await recoverAiCapacityReservationsInCollectionRef({
+        collectionRef: operationCollection,
+        db: firestoreAdmin,
+        limit: 10,
+        now: Timestamp.now(),
+        sId: String(sId),
+        tId: String(tId),
+    });
+    assert.equal(malformedRecovery.refunded, 0, 'numeric-string recovery evidence must not mint credits');
+    assert.equal(malformedRecovery.errors, 1);
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 10);
+    assert.equal((await malformedRecoveryRef.get()).data()?.accountingStatus, 'reserved');
+    await malformedRecoveryRef.update({ accountingChargedMonthlyCredits: 2 });
+    await refundAiCapacityReservation(malformedRecoveryEvidence, 'malformed_recovery_cleanup');
+
     const durableReservation = await reserveAiCapacity({
         action,
         idempotencyKey: 'reservation-durable-retry',
@@ -404,6 +619,16 @@ async function run(): Promise<void> {
         deleteOperation('reservation-concurrent-b'),
         deleteOperation('reservation-refundable'),
         deleteOperation('reservation-conflict'),
+        deleteOperation('reservation-conflicting-subscription-alias'),
+        deleteOperation('reservation-string-balance'),
+        deleteOperation('reservation-transaction-scope-conflict'),
+        deleteOperation('reservation-operation-scope-conflict'),
+        deleteOperation('reservation-string-units-replay'),
+        deleteOperation('reservation-string-input-units'),
+        deleteOperation('reservation-historical-string-replay'),
+        deleteOperation('reservation-free-string-replay'),
+        deleteOperation('reservation-malformed-refund-evidence'),
+        deleteOperation('reservation-malformed-recovery-evidence'),
         deleteOperation('reservation-cross-tenant'),
         deleteOperation('reservation-fractional'),
         deleteOperation('reservation-unsafe-integer'),

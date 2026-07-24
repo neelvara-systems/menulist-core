@@ -235,6 +235,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const existingSnapshot = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tenantId)
             .where('sId', '==', storeId)
             .where('articleId', '==', articleId)
@@ -276,6 +277,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const normalizedFaqs = normalizeGeneratedFaqs(parsed?.faqs);
         const linkedFaqQuery = db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tenantId)
             .where('sId', '==', storeId)
             .where('articleId', '==', articleId)

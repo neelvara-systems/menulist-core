@@ -116,6 +116,11 @@ Expected cases:
 - failed secret request preserves current displayed secret/status;
 - test accepts only shaped OK acknowledgement;
 - last 20 logs load store-scoped;
+- ordered/limited history reads require matching parent tenant and store claims;
+- wrong-tenant, wrong-store and unauthenticated history reads fail;
+- every client log write fails, including owner, staff and platform sessions;
+- malformed/mismatched delivery rows are omitted and observed rather than coerced;
+- owner state excludes provider error text, payload hash/size, and unknown stored fields;
 - provider email action opens a draft and counts preparation only;
 - no raw provider/secret data in diagnostics.
 

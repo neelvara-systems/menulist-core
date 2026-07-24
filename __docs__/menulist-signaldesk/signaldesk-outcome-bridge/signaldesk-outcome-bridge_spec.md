@@ -2,7 +2,7 @@
 
 **Status:** Implemented runtime contract; local emulator verified
 **Created:** June 23, 2026
-**Runtime reconciled:** July 13, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Objective
 
@@ -10,7 +10,7 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 
 ## Goals
 
-1. Create safe route tokens for approved growth actions.
+1. Create safe route tokens from a current interested conversation or the target's current exported/sent approval and draft.
 2. Record outcome events from MenuList-controlled surfaces or manual operator confirmation.
 3. Attribute outcomes back to target, source, channel, campaign/action, and conversation.
 4. Prevent SignalDesk from mutating MenuList store/menu truth directly.
@@ -21,7 +21,7 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 - No replacement of MenuList onboarding.
 - No direct Firestore writes to MenuList store/menu documents.
 - No owner/customer UI inside SignalDesk.
-- No public SignalDesk route.
+- No anonymous or unverified outcome mutation. The bounded public HTTP receiver accepts only timestamped raw-body HMAC requests.
 - No attribution model that rewards send volume over real outcomes.
 
 ## Outcome Events
@@ -38,7 +38,7 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 
 | ID | Requirement |
 | --- | --- |
-| OUT-001 | Every route token must have scope, expiry, target, and source action. |
+| OUT-001 | Every route token must have scope, expiry, target, and a canonical source action: the current interested conversation or the target's current exported/sent approval and matching draft. |
 | OUT-002 | Outcome events must be append-only. |
 | OUT-003 | Outcome summaries must be derived from events, not hand-edited. |
 | OUT-004 | MenuList writes must happen only through approved MenuList systems. |
@@ -49,13 +49,13 @@ Measure whether SignalDesk activity leads to meaningful MenuList outcomes while 
 ## Attribution Rules
 
 - First-touch, last-touch, and assisted-touch values may be stored, but summaries must show the method used.
-- Suppressed or invalid outreach must not receive positive attribution.
+- Suppression blocks new route issuance and further outreach. A separately authenticated outcome may still be recorded without clearing suppression or creating renewed contact authority.
 - Anonymous customer activity alone must not create a prospect.
 - Manual operator attribution requires audit.
 
 ## Acceptance Criteria
 
-- Approved email/export action can include a scoped route token.
+- A current interested conversation or current exported/sent approval can produce a scoped route token; optional CTA/template lineage must match the same current draft.
 - MenuList outcome event can be linked back to SignalDesk target and action.
 - Duplicate outcome events do not inflate summaries.
 - The same idempotency key with changed facts fails closed.

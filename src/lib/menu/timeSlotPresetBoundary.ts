@@ -1,5 +1,5 @@
 import type { Project } from "@template/main-app/projects/types";
-import type { TimeSlotPreset } from "@type/platform/store";
+import type { TimeSlotPreset, TimeSlotPresetCascadePending } from "@type/platform/store";
 
 const CLOCK_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const PRESET_ID_PATTERN = /^[A-Za-z0-9_-]{1,120}$/;
@@ -123,6 +123,37 @@ export const normalizeTimeSlotPresets = (value: unknown): TimeSlotPreset[] => {
 export type ProjectPresetReferenceMutation =
     | { type: "remove"; presetId: string }
     | { type: "update"; preset: TimeSlotPreset };
+
+export const normalizeProjectPresetReferenceMutation = (
+    value: unknown,
+): ProjectPresetReferenceMutation | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const candidate = value as { type?: unknown; presetId?: unknown; preset?: unknown };
+    if (candidate.type === "remove") {
+        const presetId = normalizeTimeSlotPresetId(candidate.presetId);
+        return presetId ? { type: "remove", presetId } : null;
+    }
+    if (candidate.type === "update") {
+        const preset = normalizeTimeSlotPreset(candidate.preset);
+        return preset ? { type: "update", preset } : null;
+    }
+    return null;
+};
+
+export const normalizeTimeSlotPresetCascadePending = (
+    value: unknown,
+): TimeSlotPresetCascadePending | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const candidate = value as Partial<Record<keyof TimeSlotPresetCascadePending, unknown>>;
+    const operationId = normalizeTimeSlotPresetId(candidate.operationId);
+    const createdAt = typeof candidate.createdAt === "string" ? candidate.createdAt.trim() : "";
+    const createdAtMs = Date.parse(createdAt);
+    const mutation = normalizeProjectPresetReferenceMutation(candidate.mutation);
+    if (!operationId || !createdAt || !Number.isFinite(createdAtMs) || !mutation) {
+        return null;
+    }
+    return { operationId, createdAt, mutation };
+};
 
 export type ProjectPresetReferenceProjection = {
     changed: boolean;

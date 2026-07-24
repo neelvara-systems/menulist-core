@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 import { DB_COLLECTIONS } from '../../src/constants/database';
 import {
@@ -10,6 +11,7 @@ import {
 import {
     getAnswerlatticeBundleManifestDocId,
     getAnswerlatticeSourceVersionsDocId,
+    isAnswerlatticeContextBundleManifestForScope,
 } from '../../src/lib/answerlattice/compiledContext';
 import {
     AnswerlatticeGovernanceError,
@@ -63,6 +65,12 @@ const toProposalAnswer = (answer: Record<string, any>, content: Record<string, u
     },
 });
 
+const hashValue = (value: string, length = 32) => createHash('sha256').update(value).digest('hex').slice(0, length);
+const searchIndexId = (entityId: string) => `entity_index_${hashValue(`1:101:${entityId}`)}`;
+const relationId = (fromEntityId: string, toEntityId: string, relationType: string) => (
+    `relation_${hashValue(`1:101:${fromEntityId}:${toEntityId}:${relationType}`)}`
+);
+
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
     if (!db) throw new Error('Answerlattice Firestore Admin is required');
@@ -113,8 +121,8 @@ async function run(): Promise<void> {
         'suggestedChange.draftSource': 'signal_cluster',
     });
 
-    const createApproval = await executeAnswerlatticeGovernanceAction({
-        action: 'approve_proposal',
+    const createApprovalAction = {
+        action: 'approve_proposal' as const,
         proposalId: createResult.proposalId,
         editedContent: {
             title: 'Recover a failed billing payment',
@@ -135,7 +143,53 @@ async function run(): Promise<void> {
                 },
             ],
         },
-    }, access);
+    };
+    const cacheVersionId = getAnswerlatticeCacheVersionDocId(
+        ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
+        1,
+        101,
+    );
+    const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeSourceVersionsDocId(1, 101));
+    const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeBundleManifestDocId(1, 101));
+    const cacheVersionRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS).doc(cacheVersionId);
+
+    await sourceVersionsRef.set({
+        pId: 'ML', tId: 1, sId: 101, marker: 'preserve-governance-source-collision',
+    });
+    await assert.rejects(
+        executeAnswerlatticeGovernanceAction(createApprovalAction, access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 409,
+    );
+    assert.equal((await sourceVersionsRef.get()).data()?.marker, 'preserve-governance-source-collision');
+    assert.equal((await createProposalRef.get()).data()?.status, 'pending_review');
+    await sourceVersionsRef.delete();
+
+    await manifestRef.set({
+        pId: 'ML', tId: 1, sId: 101, marker: 'preserve-governance-manifest-collision',
+    });
+    await assert.rejects(
+        executeAnswerlatticeGovernanceAction(createApprovalAction, access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 409,
+    );
+    assert.equal((await manifestRef.get()).data()?.marker, 'preserve-governance-manifest-collision');
+    assert.equal((await createProposalRef.get()).data()?.status, 'pending_review');
+    await manifestRef.delete();
+
+    await cacheVersionRef.set({
+        pId: 'ML', tId: 1, sId: 101, source: 'canonical', version: 9,
+        marker: 'preserve-cache-version-collision',
+    });
+    await assert.rejects(
+        executeAnswerlatticeGovernanceAction(createApprovalAction, access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 409,
+    );
+    assert.equal((await cacheVersionRef.get()).data()?.marker, 'preserve-cache-version-collision');
+    assert.equal((await createProposalRef.get()).data()?.status, 'pending_review');
+    await cacheVersionRef.delete();
+
+    const createApproval = await executeAnswerlatticeGovernanceAction(createApprovalAction, access);
     assert.ok(createApproval.answerId, 'approval must create a canonical answer');
 
     const answerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
@@ -155,11 +209,6 @@ async function run(): Promise<void> {
     assert.equal(answer?.validation?.validationSource, 'manual', 'human approval must remain the canonical validation authority');
     assert.equal((await createProposalRef.get()).data()?.status, 'implemented');
 
-    const cacheVersionId = getAnswerlatticeCacheVersionDocId(
-        ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
-        1,
-        101,
-    );
     assert.equal(
         (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS).doc(cacheVersionId).get()).data()?.version,
         1,
@@ -174,6 +223,11 @@ async function run(): Promise<void> {
         (await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(1, 101)).get()).data()?.status,
         'stale',
         'canonical approval must mark the compiled bundle stale',
+    );
+    assert.equal(
+        isAnswerlatticeContextBundleManifestForScope((await manifestRef.get()).data(), 1, 101),
+        true,
+        'first governance invalidation must create a complete valid compiled-context manifest',
     );
 
     const legacyUpdateResult = await executeAnswerlatticeGovernanceAction({
@@ -361,6 +415,85 @@ async function run(): Promise<void> {
         2,
         'a fresh approved update must invalidate canonical retrieval exactly once',
     );
+
+    const collisionEntityBase = {
+        pId: 'AL', tId: 1, sId: 101, type: 'integration', status: 'active', currentVersion: 1_000_000,
+        description: 'Collision-boundary entity.',
+    };
+    const foreignIndexSurvivorId = 'entity_foreign_index_survivor';
+    const foreignIndexDuplicateId = 'entity_foreign_index_duplicate';
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignIndexSurvivorId).set({
+            ...collisionEntityBase, name: 'Foreign Index Survivor', slug: 'foreign-index-survivor',
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignIndexDuplicateId).set({
+            ...collisionEntityBase, name: 'Foreign Index Duplicate', slug: 'foreign-index-duplicate',
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).doc(searchIndexId(foreignIndexSurvivorId)).set({
+            pId: 'ML', tId: 1, sId: 101, entityId: foreignIndexSurvivorId, marker: 'preserve-merge-index-collision',
+        }),
+    ]);
+    await assert.rejects(executeAnswerlatticeGovernanceAction({
+        action: 'merge_entities', requestId: 'governance_foreign_index_collision',
+        survivorId: foreignIndexSurvivorId, mergedId: foreignIndexDuplicateId,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
+            .doc(searchIndexId(foreignIndexSurvivorId)).get()).data()?.marker,
+        'preserve-merge-index-collision',
+    );
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignIndexDuplicateId).get()).data()?.status,
+        'active',
+    );
+
+    const foreignRelationSurvivorId = 'entity_foreign_relation_survivor';
+    const foreignRelationDuplicateId = 'entity_foreign_relation_duplicate';
+    const foreignRelationTargetId = 'entity_foreign_relation_target';
+    const foreignRelationTargetRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS)
+        .doc(relationId(foreignRelationSurvivorId, foreignRelationTargetId, 'requires'));
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationSurvivorId).set({
+            ...collisionEntityBase, name: 'Foreign Relation Survivor', slug: 'foreign-relation-survivor',
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationDuplicateId).set({
+            ...collisionEntityBase, name: 'Foreign Relation Duplicate', slug: 'foreign-relation-duplicate',
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationTargetId).set({
+            ...collisionEntityBase, name: 'Foreign Relation Target', slug: 'foreign-relation-target',
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).doc('foreign-relation-source').set({
+            pId: 'AL', tId: 1, sId: 101, fromEntityId: foreignRelationDuplicateId,
+            toEntityId: foreignRelationTargetId, relationType: 'requires',
+        }),
+        foreignRelationTargetRef.set({
+            pId: 'ML', tId: 1, sId: 101, fromEntityId: foreignRelationSurvivorId,
+            toEntityId: foreignRelationTargetId, relationType: 'requires', marker: 'preserve-merge-relation-collision',
+        }),
+    ]);
+    await assert.rejects(executeAnswerlatticeGovernanceAction({
+        action: 'merge_entities', requestId: 'governance_foreign_relation_collision',
+        survivorId: foreignRelationSurvivorId, mergedId: foreignRelationDuplicateId,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await foreignRelationTargetRef.get()).data()?.marker, 'preserve-merge-relation-collision');
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).doc('foreign-relation-source').get()).exists,
+        true,
+    );
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationDuplicateId).get()).data()?.status,
+        'active',
+    );
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignIndexSurvivorId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignIndexDuplicateId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).doc(searchIndexId(foreignIndexSurvivorId)).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationSurvivorId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationDuplicateId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(foreignRelationTargetId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).doc('foreign-relation-source').delete(),
+        foreignRelationTargetRef.delete(),
+    ]);
 
     const survivorId = 'entity_survivor';
     const duplicateId = 'entity_duplicate';

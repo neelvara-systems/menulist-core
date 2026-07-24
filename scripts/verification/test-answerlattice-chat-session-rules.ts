@@ -70,6 +70,9 @@ async function run(): Promise<void> {
         const platformSupportDb = testEnv.authenticatedContext('platform-support-1', {
             platformRole: 'PLATFORM_SUPPORT', role: 'PLATFORM_SUPPORT', uId: 'platform-support-1',
         }).firestore();
+        const platformAdminDb = testEnv.authenticatedContext('platform-admin-1', {
+            platformRole: 'PLATFORM', role: 'PLATFORM', uId: 'platform-admin-1',
+        }).firestore();
         const publicDb = testEnv.unauthenticatedContext().firestore();
         const sessionRef = doc(ownerDb, 'chatSessions', 'session-1');
 
@@ -110,6 +113,48 @@ async function run(): Promise<void> {
             messages: [message('message-1'), message('message-2')],
             modifiedOn: Timestamp.fromMillis(NOW.toMillis() + 1),
             modifiedBy: 'Owner',
+        }));
+        await assertFails(updateDoc(doc(supportDb, 'chatSessions', 'session-1'), {
+            messages: [message('message-1'), message('support-forged-message')],
+            modifiedOn: Timestamp.fromMillis(NOW.toMillis() + 2),
+            modifiedBy: 'Support',
+        }));
+        await assertSucceeds(updateDoc(doc(supportDb, 'chatSessions', 'session-1'), {
+            adminStatus: 'in_progress',
+            modifiedOn: Timestamp.fromMillis(NOW.toMillis() + 2),
+            modifiedBy: 'Support',
+        }));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'aiSearchHistory', 'history-owner-1'), {
+                pId: 'AL',
+                tId: 1,
+                sId: 101,
+                uId: 'owner-1',
+            });
+            await setDoc(doc(context.firestore(), 'aiSearchHistory', 'history-platform-test'), {
+                pId: 'AL',
+                tId: 1,
+                sId: 101,
+                uId: 'owner-1',
+            });
+        });
+        const feedbackUpdate = {
+            isGood: true,
+            reasonsToImprove: [],
+            comments: '',
+            submittedAt: Timestamp.fromMillis(NOW.toMillis() + 3),
+            modifiedOn: Timestamp.fromMillis(NOW.toMillis() + 3),
+            modifiedBy: 'Owner',
+        };
+        await assertSucceeds(updateDoc(doc(ownerDb, 'aiSearchHistory', 'history-owner-1'), feedbackUpdate));
+        await assertFails(updateDoc(doc(supportDb, 'aiSearchHistory', 'history-owner-1'), {
+            ...feedbackUpdate,
+            isGood: false,
+            modifiedBy: 'Support',
+        }));
+        await assertSucceeds(updateDoc(doc(platformAdminDb, 'aiSearchHistory', 'history-platform-test'), {
+            ...feedbackUpdate,
+            modifiedBy: 'Platform Admin',
         }));
         await assertFails(updateDoc(sessionRef, { uId: 'another-user', modifiedOn: NOW, modifiedBy: 'Owner' }));
         await assertFails(updateDoc(sessionRef, { createdOn: Timestamp.fromMillis(NOW.toMillis() + 1), modifiedOn: NOW, modifiedBy: 'Owner' }));

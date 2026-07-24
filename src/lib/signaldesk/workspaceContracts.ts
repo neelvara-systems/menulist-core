@@ -547,6 +547,7 @@ const draftSchema = z.object({
     subject: canonicalText(1, 240),
     targetId: canonicalIdentifier(3, 160),
     targetName: canonicalText(2, 180),
+    templateFingerprintHash: canonicalHash.nullable().optional(),
     templateId: canonicalIdentifier(3, 160),
     unsupportedClaims: uniqueArray(canonicalText(1, 500), 20).optional(),
     updatedAt: persistedTimestamp,
@@ -713,8 +714,19 @@ const commercialOpportunitySchema = z.object({
     if ((value.valueMinor > 0) !== Boolean(value.currency)) {
         context.addIssue({ code: z.ZodIssueCode.custom, message: "Opportunity currency does not match value." });
     }
-    if (value.stage === "offer" || value.stage === "decision" || value.stage === "won") {
+    if (value.stage === "offer" || value.stage === "decision") {
         if (!value.commercialOfferId) context.addIssue({ code: z.ZodIssueCode.custom, message: "Advanced opportunity lacks offer authority." });
+    }
+    if (
+        value.stage === "won"
+        && !value.commercialOfferId
+        && (
+            value.valueMinor !== 0
+            || (value.winLossReason !== "Existing two-surface activation outcome."
+                && value.winLossReason !== "Two-surface activation outcome recorded.")
+        )
+    ) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Offerless win lacks zero-value activation authority." });
     }
 });
 
@@ -1560,7 +1572,7 @@ const conversationProjector: WorkspaceCollectionProjector = {
         const record = productIdentity(raw, documentId, "conversationId");
         const authority = Object.fromEntries([
             "pId",
-            "channel", "conversationId", "lastInboundAt", "lastInboundOccurredAt", "lastMessagePreview", "lastOutboundAt", "state",
+            "channel", "conversationId", "lastInboundAt", "lastInboundOccurredAt", "latestMessageExportId", "lastMessagePreview", "lastOutboundAt", "state",
             "legalRetentionReviewReason", "legalRetentionReviewRequired", "sourceDataLifecycleCompletedAt", "sourceDataLifecycleKind",
             "sourceDataLifecycleState", "sourceDataLifecycleToken", "targetId", "targetName", "updatedAt", "updatedBy",
         ].filter(key => key in record).map(key => [key, record[key]]));

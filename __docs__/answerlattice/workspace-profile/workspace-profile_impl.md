@@ -27,6 +27,8 @@
 
 GET constructs its response through the strict response parser. A persisted workspace with no usable product name therefore fails closed instead of returning a nominal `200` payload that the browser cannot safely use.
 
+The same contract owns the app-side compiled-context product projection. Stored profile fields are re-admitted as exact bounded strings before bundle construction: product name uses the first valid legacy name field, URL must remain an HTTP(S) URL without credentials, support email must pass the bounded email contract, and billing/timing values use maintained safe defaults. The dedicated Functions runtime mirrors this projector. Neither builder may copy raw `stores` values into public `widget-bootstrap.json` or the private product summary.
+
 `workspaceProfileServer.ts` owns the transaction. It rereads the store, applies `isAnswerlatticeStoreInScope`, compares the revision, skips unchanged data, and atomically writes:
 
 1. `stores/{sId}`;

@@ -1,7 +1,8 @@
 # SignalDesk Content Distribution Rail
 
-**Status:** Runtime implemented for internal testing
+**Status:** Feature 16 locally source-complete; app release and live operator certification pending
 **Created:** June 24, 2026
+**Last Updated:** July 22, 2026
 **Audience:** Internal MenuList growth operation only
 
 ## Purpose
@@ -27,10 +28,16 @@ source asset -> canonical message -> channel drafts -> owner approval -> queued 
 | Surface | Status |
 | --- | --- |
 | Route | `/signaldesk/content` |
-| API actions | `upsert-content-source`, `create-content-asset`, `generate-content-distribution-drafts`, `review-content-distribution-draft`, `schedule-content-distribution-draft`, `record-content-performance` |
+| API actions | `upsert-content-source`, `upsert-proof-permission`, `create-content-asset`, `review-content-asset`, `generate-content-distribution-drafts`, `review-content-distribution-draft`, `schedule-content-distribution-draft`, `record-content-performance` |
 | Kill switch | `content-distribution` |
 | Feature flag | `ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL` |
 | Firestore | `signaldeskContentSources`, `signaldeskContentAssets`, `signaldeskContentDistributionDrafts`, `signaldeskContentCalendarItems`, `signaldeskContentPerformanceSummaries` |
+
+The feature flag gates the route, workspace API section, advanced-navigation link, UI mutations, and server mutations. The workspace loads its independent bounded lists in parallel. Target options are returned only to `signaldesk.configure` users because they are used to grant proof permission; draft-only operators receive no target registry rows.
+
+Mutation authority remains split by purpose: `source.configure` manages sources, `signaldesk.configure` manages proof permission, `draft.create` creates assets/drafts, `draft.approve` reviews assets/drafts and queues approved drafts, and `target.review` records manual performance. The UI repeats these gates, but the protected action API is authoritative.
+
+A durable verified two-surface activation can open Content with a target-scoped `proofTargetId`. Admission requires the target projection's activation timestamp, evidence reference, approved integrity state, and two distinct surfaces before the browser reviews current public proof permission and a usable existing source. It then prefills title/message fields for review only. Missing activation authority or permission remains visibly blocked. No asset, draft, approval, calendar item, publication, performance row, or MenuList record is created by opening the preparation path.
 
 ## Doc Set
 

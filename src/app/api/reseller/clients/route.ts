@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
+import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import { NextResponse } from "next/server";
@@ -33,16 +35,24 @@ export const GET = withAuth(async (request, session) => {
         const subscriptionsCollection = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
         const subscriptionsQuery = isPlatform
             ? subscriptionsCollection
+                .where('pId', '==', DEFAULT_PRODUCT_ID)
+                .where('productId', '==', DEFAULT_PRODUCT_ID)
                 .where('onboardingSource', '==', 'RESELLER_ONBOARDING')
                 .orderBy('createdOn', 'desc')
                 .limit(resultLimit + 1)
             : subscriptionsCollection
+                .where('pId', '==', DEFAULT_PRODUCT_ID)
+                .where('productId', '==', DEFAULT_PRODUCT_ID)
                 .where('resellerId', '==', resellerId)
                 .orderBy('createdOn', 'desc')
                 .limit(resultLimit + 1);
         const snapshot = await subscriptionsQuery.get();
-        const isPartial = snapshot.size > resultLimit;
-        const transactions = snapshot.docs.slice(0, resultLimit).map((doc) => {
+        const exactSubscriptionDocs = snapshot.docs.flatMap((doc) => {
+            const scope = getMenuListSubscriptionEntitlementScope(doc.data());
+            return scope ? [{ doc, scope }] : [];
+        });
+        const isPartial = snapshot.size > resultLimit || exactSubscriptionDocs.length > resultLimit;
+        const transactions = exactSubscriptionDocs.slice(0, resultLimit).map(({ doc, scope }) => {
             const subscription = doc.data() || {};
             const quantity = Math.max(1, Number(subscription.quantity || 1));
             const isManual = subscription.billingMode === 'manual';
@@ -64,7 +74,7 @@ export const GET = withAuth(async (request, session) => {
                 resellerId: subscription.resellerId || '',
                 resellerProfileId: subscription.resellerProfileId || null,
                 status: subscriptionStatus === 'pending' ? 'pending_payment' : subscriptionStatus,
-                storeId: Number(subscription.storeId),
+                storeId: scope.storeId,
                 storeName: subscription.name || '',
                 subscriptionAmount: amount,
                 subscriptionBillingMode: subscription.billingMode,
@@ -72,7 +82,7 @@ export const GET = withAuth(async (request, session) => {
                 subscriptionQuantity: quantity,
                 subscriptionShortUrl: normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl),
                 subscriptionStatus,
-                tenantId: Number(subscription.tenantId),
+                tenantId: scope.tenantId,
                 validUntil: subscription.validUntil?.toDate?.()?.toISOString?.()
                     || subscription.cycleEndDate?.toDate?.()?.toISOString?.()
                     || null,

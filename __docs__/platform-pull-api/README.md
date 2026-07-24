@@ -2,7 +2,7 @@
 
 > **External systems read business and menu data FROM MenuList — the pull counterpart to POS Webhook push.**
 
-**Status:** ✅ IMPLEMENTED (v1.12 — authentication, rate, and response identity hardened Jul 13, 2026)
+**Status:** ✅ IMPLEMENTED (v1.14 — contract inventory and compatibility fixtures hardened Jul 22, 2026)
 **Feature Flag:** `ENABLE_PUBLIC_API: true`
 **Date:** February 22, 2026
 
@@ -16,6 +16,7 @@
 | Developers | [Impl](./platform-pull-api_impl.md)             | Technical blueprint   |
 | Firebase   | [Firebase](./platform-pull-api_firebase.md)     | Cost tracking         |
 | Mobile     | [Mobile](./platform-pull-api_mobile-support.md) | Admission test        |
+| Architecture | [Business Truth Contract](../canonical-truth-infrastructure/canonical-truth-infrastructure_business-truth-contract.md) | Canonical-source and projection boundary |
 
 ---
 
@@ -29,7 +30,7 @@ npm run verify:platform-pull-api-boundary
 
 Source gate: `npm run verify:platform-pull-api-boundary`.
 
-The gate checks API-key generation/revocation, the Business Settings Integrations tab key UI, hashed key storage, duplicate-key rejection, strict key-management session document-ID admission, 1KB strict key-action body cap, `MANAGE_INTEGRATIONS` permission, fail-closed pre-auth and per-key limits, business/menu live key/target revalidation, target document-ID and MenuList numeric-ID admission, stable ETag identity, private success/error cache headers, API-key `Vary`, bounded diagnostics, menu summary selection, active temporary-status output, and this doc set.
+The gate checks API-key generation/revocation, the Business Settings Integrations tab key UI, hashed key storage, duplicate-key rejection, strict key-management session document-ID admission, 1KB strict key-action body cap, `MANAGE_INTEGRATIONS` permission, fail-closed pre-auth and per-key limits, business/menu live key/target revalidation, target document-ID and MenuList numeric-ID admission, stable ETag identity, private success/error cache headers, API-key `Vary`, bounded diagnostics, menu summary selection, active temporary-status output, the frozen Business Truth Contract, and this doc set.
 
 ---
 
@@ -87,4 +88,4 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 
 **Document Signature:** Cascade (Lead Architect)  
 **Created:** February 22, 2026  
-**Last Updated:** July 13, 2026
+**Last Updated:** July 22, 2026

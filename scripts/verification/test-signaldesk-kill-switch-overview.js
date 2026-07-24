@@ -66,6 +66,12 @@ const countWhere = async (collectionName, field, value) => {
   return snapshot.size;
 };
 
+const readWriteEstimate = async () => {
+  const day = new Date().toISOString().slice(0, 10);
+  const snapshot = await db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES).doc(day).get();
+  return Number(snapshot.data()?.firestoreWriteEstimate || 0);
+};
+
 const expectRejects = async (label, operation, expectedMessage) => {
   let rejected = false;
   try {
@@ -135,6 +141,10 @@ const seedOverviewSummaries = async () => {
 
 const assertSourceOrder = () => {
   const routeSource = fs.readFileSync(path.join(process.cwd(), "src/app/api/signaldesk/kill-switches/route.ts"), "utf8");
+  const workspaceRouteSource = fs.readFileSync(path.join(process.cwd(), "src/app/api/signaldesk/workspace/route.ts"), "utf8");
+  const workspaceSource = fs.readFileSync(path.join(process.cwd(), "src/components/signaldesk/SignalDeskWorkspace.tsx"), "utf8");
+  const controlPageSource = fs.readFileSync(path.join(process.cwd(), "src/app/(signaldesk)/signaldesk/control-room/page.tsx"), "utf8");
+  const controlsPageSource = fs.readFileSync(path.join(process.cwd(), "src/app/(signaldesk)/signaldesk/controls/page.tsx"), "utf8");
   const rateLimitIndex = routeSource.indexOf("const rateLimit = await applySignalDeskRateLimit");
   const blockedAuditIndex = routeSource.indexOf("await recordSignalDeskMobileActionBlockedServer");
   assert(rateLimitIndex > 0 && blockedAuditIndex > rateLimitIndex, "Mobile blocked-audit write occurs before the write limiter");
@@ -148,6 +158,19 @@ const assertSourceOrder = () => {
   assert(!setterSource.includes("channelStatus:"), "Kill-switch settlement still overwrites provider-derived channel health");
   assert(!setterSource.includes("expiresAt"), "Kill-switch settlement exposes unsupported automatic expiry");
   assert(!serverSource.includes('.where("status", "==", "active").limit(10)'), "Overview still truncates active kill-switch truth at ten rows");
+  assert(serverSource.includes('reason: `event:${isActive ? "kill_switch_activate" : "kill_switch_deactivate"}`'), "Kill-switch audit still persists free-form operator reason text");
+
+  assert(routeSource.includes('validatedInput.scope !== "global-outbound"'), "Mobile kill-switch API still accepts hidden scoped-pause actions");
+  assert(workspaceRouteSource.includes('section === "control-room" && !FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTROL_ROOM'), "Control Room workspace ignores its master flag");
+  assert(controlPageSource.includes("notFound()") && controlsPageSource.includes("notFound()"), "Control Room routes ignore their master flag");
+  assert(workspaceSource.includes("Modal.confirm({"), "Pause transitions do not require explicit UI confirmation");
+  assert(workspaceSource.includes("data.controlRoom.openIncidentCount"), "Control Room incident badge still reports only the capped list length");
+  const controlUi = workspaceSource.slice(
+    workspaceSource.indexOf('if (activeSection === "control-room") {'),
+    workspaceSource.indexOf('if (activeSection === "audit") {'),
+  );
+  assert(!controlUi.includes("<DashboardSection"), "Control Room still exposes dashboard research or lead mutations");
+  assert(controlUi.includes("<OperatingPanels data={data} />"), "Control Room lost its summary-first safety view");
 
   const typeSource = fs.readFileSync(path.join(process.cwd(), "src/types/signaldesk/index.ts"), "utf8");
   const killSwitchType = typeSource.slice(
@@ -263,6 +286,14 @@ async function main() {
       updatedAt: timestampNow(),
     });
   }));
+  await db.collection(SIGNALDESK_COLLECTIONS.INCIDENTS).doc("incident_acknowledged").set({
+    incidentId: "incident_acknowledged",
+    pId: SIGNALDESK_PRODUCT_CODE,
+    severity: "high",
+    status: "acknowledged",
+    title: "Acknowledged but unresolved incident",
+    updatedAt: timestampNow(),
+  });
   await Promise.all([
     db.collection(SIGNALDESK_COLLECTIONS.INCIDENTS).doc("incident_foreign").set({
       incidentId: "incident_foreign",
@@ -291,7 +322,7 @@ async function main() {
   ]);
   overview = await loadSignalDeskOverviewServer(access);
   assert.equal(overview.incidents.length, 50, "Overview did not retain its bounded incident list cap");
-  assert.equal(overview.controlRoom.openIncidentCount, 60, "Bounded list cap or malformed rows changed exact open-incident count");
+  assert.equal(overview.controlRoom.openIncidentCount, 61, "Bounded list cap, acknowledged state, or malformed rows changed exact unresolved-incident count");
   assert(overview.incidents.every((incident) => incident.incidentId.startsWith("incident_0")), "Malformed incident leaked into the projected list");
 
   await Promise.all([
@@ -336,14 +367,47 @@ async function main() {
     scope: "email",
     status: "active",
   };
+  const killSwitchCostBefore = await readWriteEstimate();
   const first = await setSignalDeskKillSwitchServer(exactRequest);
   const duplicate = await setSignalDeskKillSwitchServer(exactRequest);
   assert.deepEqual(duplicate, first, "Exact retry did not return the first durable result");
   assert.equal(await countWhere(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, "entityId", "scope_email"), 1, "Exact retry duplicated the kill-switch audit");
+  assert.equal(await readWriteEstimate(), killSwitchCostBefore + 4, "Kill-switch transition did not count switch, audit, claim, and cost writes exactly once");
+  const activationAuditSnapshot = await db.collection(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS)
+    .where("entityId", "==", "scope_email")
+    .limit(1)
+    .get();
+  assert.equal(activationAuditSnapshot.docs[0]?.data()?.reason, "event:kill_switch_activate", "Activation audit persisted operator free text");
   await expectRejects("Changed kill-switch idempotency facts", () => setSignalDeskKillSwitchServer({
     ...exactRequest,
     status: "inactive",
   }), "KILL_SWITCH_IDEMPOTENCY_CONFLICT");
+
+  const cleared = await setSignalDeskKillSwitchServer({
+    access,
+    idempotencyKey: "kill-switch-clear-email",
+    reason: "Clear email after the route inspection completes.",
+    scope: "email",
+    status: "inactive",
+  });
+  assert(cleared.deactivatedAt && cleared.deactivatedBy, "Deactivation did not retain actor and timestamp evidence");
+  const reactivated = await setSignalDeskKillSwitchServer({
+    access,
+    idempotencyKey: "kill-switch-reactivate-email",
+    reason: "Pause email again for the recovery-state test.",
+    scope: "email",
+    status: "active",
+  });
+  assert.equal(reactivated.deactivatedAt, null, "Reactivation retained a stale deactivation timestamp");
+  assert.equal(reactivated.deactivatedBy, null, "Reactivation retained a stale deactivation actor");
+  const emailAuditSnapshot = await db.collection(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS)
+    .where("entityId", "==", "scope_email")
+    .get();
+  assert.deepEqual(
+    emailAuditSnapshot.docs.map((document) => document.data().reason).sort(),
+    ["event:kill_switch_activate", "event:kill_switch_activate", "event:kill_switch_deactivate"],
+    "Kill-switch transition audits do not use stable event classifications",
+  );
 
   const concurrentExactRequest = {
     access,

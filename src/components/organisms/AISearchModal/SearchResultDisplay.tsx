@@ -2,9 +2,11 @@
 
 import CategoryIcon from '@atoms/CategoryIcon';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterTabRouting } from '@constant/navigations';
+import { getArticleById } from '@database/knowledgeBase/articles';
 import ArticleView from '@organisms/ArticleView';
-import { Button, Divider, List, theme, Typography } from 'antd';
-import { useState } from 'react';
+import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { Button, Divider, List, message, theme, Typography } from 'antd';
+import { useRef, useState } from 'react';
 import { LuArrowRight, LuExternalLink } from 'react-icons/lu';
 import { TbLayoutBottombarCollapse, TbLayoutNavbarCollapse } from 'react-icons/tb';
 import ActionButtons from './ActionButtons';
@@ -23,6 +25,40 @@ interface SearchResultDisplayProps {
 export default function SearchResultDisplay({ state, isTyping, answerContainerRef, handleSkipTyping, handleRegenerate }: SearchResultDisplayProps) {
     const { token } = theme.useToken();
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+    const [loadingArticleId, setLoadingArticleId] = useState<string | null>(null);
+    const [resolvedArticles, setResolvedArticles] = useState<Record<string, KnowledgeBaseArticleType>>({});
+    const previewRequestRef = useRef(0);
+
+    const toggleArticlePreview = async (articleId: string) => {
+        const requestId = previewRequestRef.current + 1;
+        previewRequestRef.current = requestId;
+        if (expandedArticleId === articleId) {
+            setExpandedArticleId(null);
+            return;
+        }
+        if (resolvedArticles[articleId]) {
+            setExpandedArticleId(articleId);
+            return;
+        }
+
+        setLoadingArticleId(articleId);
+        try {
+            const article = await getArticleById(articleId);
+            if (previewRequestRef.current !== requestId) return;
+            if (!article) {
+                message.warning('This help article is no longer available.');
+                return;
+            }
+            setResolvedArticles(current => ({ ...current, [articleId]: article }));
+            setExpandedArticleId(articleId);
+        } catch {
+            if (previewRequestRef.current === requestId) {
+                message.error('Unable to load this help article.');
+            }
+        } finally {
+            if (previewRequestRef.current === requestId) setLoadingArticleId(null);
+        }
+    };
 
     if (!state.data) return null;
 
@@ -79,6 +115,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                         dataSource={state.data.references}
                         renderItem={(item: SearchDisplayResultReferenceType, index) => {
                             const isExpanded = expandedArticleId === item.article.id;
+                            const resolvedArticle = resolvedArticles[item.article.id];
                             const articleHref = helpCenterArticleRouting(getHelpCenterArticleRouteSegment(item.article));
                             return (
                                 <div style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, padding: '8px 0' }}>
@@ -89,7 +126,8 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                                                 key={item.article.id}
                                                 type="link"
                                                 icon={isExpanded ? <TbLayoutNavbarCollapse /> : <TbLayoutBottombarCollapse />}
-                                                onClick={() => setExpandedArticleId(isExpanded ? null : item.article.id)}>
+                                                loading={loadingArticleId === item.article.id}
+                                                onClick={() => void toggleArticlePreview(item.article.id)}>
                                                 {isExpanded ? 'Hide Preview' : 'Preview'}
                                             </Button>
                                         ]}
@@ -101,10 +139,10 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                                             description={`${item.category.title} / ${item.section.title}`}
                                         />
                                     </List.Item>
-                                    {isExpanded && (
+                                    {isExpanded && resolvedArticle && (
                                         <div style={{ padding: '12px 16px', backgroundColor: token.colorFillTertiary, borderRadius: token.borderRadiusLG, marginTop: 8 }}>
                                             <ArticleView 
-                                                article={item.article}
+                                                article={resolvedArticle}
                                                 mode="preview"
                                                 showBreadcrumbs={false}
                                                 showTags={true}

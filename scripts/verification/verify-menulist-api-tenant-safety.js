@@ -1602,6 +1602,17 @@ function verifyMobileLocationsFailureContract() {
     'mobile locations store switch must not silently ignore rejected switch-store responses',
   );
   assert(!mobileLocations.includes('} catch {\n            Toast.show({ content: t(\'networkError\')'), 'mobile locations outlet create must log bounded network/client failures');
+  assert(mobileLocations.includes('return <MobileLocationsScreenContent key={scopeKey} {...props} />;'), 'Mobile Locations must remount drafts on exact tenant/store changes');
+  assert(mobileLocations.includes('locationActionInFlightRef.current'), 'Mobile Locations must serialize tenant/store mutations before React state settles');
+  assert(mobileLocations.includes('isExpectedLocationScope(expectedTenantId, expectedStoreId)'), 'Mobile Locations must recheck exact action scope after async stages');
+  assert(mobileLocations.includes("String(previous.tenantId ?? '') === String(expectedTenantId)"), 'Mobile Locations tenant-list settlement must require the admitted tenant');
+  assert(mobileLocations.includes("String(previous?.storeId ?? '') === String(expectedStoreId)"), 'Mobile Locations store settlement must require the admitted store');
+  assert(mobileLocations.includes('store.name === submittedTarget.name'), 'Mobile Locations rename settlement must preserve newer same-store name truth');
+  assert(mobileLocations.includes('store.outletSlug === submittedTarget.outletSlug'), 'Mobile Locations rename settlement must preserve newer same-store slug truth');
+  assert(mobileLocations.includes('previous.outletPolicy === sourcePolicy'), 'Mobile Locations policy settlement must preserve newer current-store policy truth');
+  assert(mobileLocations.includes('store.storeDetails?.outletPolicy === sourcePolicy'), 'Mobile Locations policy settlement must preserve newer tenant-summary policy truth');
+  assert(!mobileLocations.includes('setTenantDetails({ ...tenantDetails, storesList: updatedStoresList })'), 'Mobile Locations must not replace a captured tenant store list');
+  assert(!mobileLocations.includes('setStoreDetails({\n                    ...storeDetails,'), 'Mobile Locations must not replace captured generic store context');
   assert(outletActionGuards.includes('MULTI_OUTLET_ACTION_REQUEST_POLICY'), 'multi-outlet outlet action guards must expose a shared browser request policy');
   assert(outletActionGuards.includes("cache: 'no-store'"), 'multi-outlet outlet action requests must bypass browser cache');
   assert(outletActionGuards.includes("credentials: 'same-origin'"), 'multi-outlet outlet action requests must keep credentials same-origin');
@@ -2258,6 +2269,9 @@ function verifySessionScopedPublicTruthRoutes() {
       'key: `api-key-mgmt:${storeRateLimitHash}`',
       'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
       'RequestSchema.safeParse(body)',
+      'const requestedTenantId = normalizeSessionDocumentId(validation.data.tenantId);',
+      'const requestedStoreId = normalizeSessionDocumentId(validation.data.storeId);',
+      'if (requestedTenantId !== tenantId || requestedStoreId !== storeId)',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
       'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
       'const transactionResult = await db.runTransaction(async (transaction) => {',
@@ -3403,6 +3417,10 @@ function verifyTempStatusClientResponseDiagnostics() {
   assert(!mobileTempStatus.includes("fetch('/api/store/temp-status', {\n                cache: 'no-store'"), 'mobile temp status must not reintroduce inline request policy');
   assert(!mobileTempStatus.includes('res.json()'), 'mobile temp status screen must not use direct response parsing');
   assert(!mobileTempStatus.includes('.json().catch'), 'mobile temp status screen must not silently swallow malformed response JSON');
+  assert(mobileTempStatus.includes('return <MobileTempStatusScreenContent key={scopeKey} {...props} />;'), 'Mobile Temporary Status must remount drafts on exact tenant/store changes');
+  assert(mobileTempStatus.includes('tempStatusActionInFlightRef.current'), 'Mobile Temporary Status must reject duplicate set/clear actions before React state settles');
+  assert(mobileTempStatus.includes('isExpectedStoreScope(expectedTenantId, expectedStoreId)'), 'Mobile Temporary Status must recheck exact scope after confirmation and network stages');
+  assert((mobileTempStatus.match(/prev === optimisticStoreDetails/g) || []).length >= 2, 'Mobile Temporary Status rollback must require exact optimistic attempt ownership');
 
   assert((mobileHours.match(/readTempStatusResponse/g) || []).length >= 4, 'mobile Today/Hours temp status actions must use the shared parser for import, close-today, set, and clear');
   assert(mobileHours.includes('mobile_today_close_today_failed'), 'mobile Today closed-today failures must use bounded diagnostics');
@@ -3904,7 +3922,9 @@ function verifyAnalyticsErrorBoundary() {
       relPath,
       [
         'applyAnalyticsReadRateLimit',
-        `applyAnalyticsReadRateLimit(session, '${routeKey}')`,
+        routeKey === 'roi-metrics'
+          ? `applyAnalyticsReadRateLimit(scopedSession, '${routeKey}')`
+          : `applyAnalyticsReadRateLimit(session, '${routeKey}')`,
         'getBoundedAnalyticsStringContext',
         'logAnalyticsFailure',
         failureCode,
@@ -3915,8 +3935,8 @@ function verifyAnalyticsErrorBoundary() {
       assertOrder(
         relPath,
         [
-          `applyAnalyticsReadRateLimit(session, '${routeKey}')`,
-          'getChatStatisticsOptimized(session, days)',
+          `applyAnalyticsReadRateLimit(scopedSession, '${routeKey}')`,
+          'getChatStatisticsOptimized(scopedSession, days)',
         ],
         `${relPath} read limiter before analytics reads`,
       );
@@ -4500,21 +4520,23 @@ function verifyAnalyticsErrorBoundary() {
       'applyAnalyticsReadRateLimit',
       'const DEFAULT_ROI_RANGE_DAYS = 30;',
       'const MAX_ROI_HOURLY_COST = 1000;',
-      'const MAX_ROI_CUSTOMER_LIFETIME_VALUE = 1_000_000;',
       'const MAX_ROI_PLATFORM_MONTHLY_COST = 100_000;',
+      'const MAX_ROI_MINUTES_SAVED_PER_CONVERSATION = 480;',
       'const ROI_DAYS_PARAM_PATTERN = /^\\d{1,3}$/;',
       'const ROI_MONEY_PARAM_PATTERN = /^\\d+(?:\\.\\d{1,2})?$/;',
       'function parseBoundedRoiDaysParam(rawDays: string | null): number',
       'function parseBoundedRoiMoneyParam(rawValue: string | null, maxValue: number): number | undefined',
       'const days = parseBoundedRoiDaysParam(searchParams.get(\'days\'));',
       'const hourlyCost = parseBoundedRoiMoneyParam(hourlyCostParam, MAX_ROI_HOURLY_COST);',
-      'const customerLifetimeValue = parseBoundedRoiMoneyParam(clvParam, MAX_ROI_CUSTOMER_LIFETIME_VALUE);',
+      'const minutesSavedPerConversation = parseBoundedRoiMoneyParam(',
       'const platformMonthlyCost = parseBoundedRoiMoneyParam(platformCostParam, MAX_ROI_PLATFORM_MONTHLY_COST);',
       '...(hourlyCost !== undefined && { avgSupportAgentHourlyCost: hourlyCost })',
-      '...(customerLifetimeValue !== undefined && { avgCustomerLifetimeValue: customerLifetimeValue })',
+      'assumedMinutesSavedPerConversation: minutesSavedPerConversation',
       '...(platformMonthlyCost !== undefined && { platformMonthlyCost })',
       'export const GET = withAuth(async (request: NextRequest, session) => {',
-      'if (!session?.tId || !session?.sId)',
+      'const answerlatticeScope = resolveAnswerlatticeSessionScope(session);',
+      'if (!answerlatticeScope)',
+      'const scopedSession = getAnswerlatticeScopedSession(session);',
       "logAnalyticsFailure('analytics_roi_metrics_api_failed'",
     ],
     'ROI metrics route shared auth guard',
@@ -4523,6 +4545,8 @@ function verifyAnalyticsErrorBoundary() {
   assert(!roiMetricsRoute.includes('getActiveSession'), 'ROI metrics route must use withAuth instead of direct session lookup');
   assert(!roiMetricsRoute.includes('parseFloat('), 'ROI metrics route must not parse partial numeric override params');
   assert(!roiMetricsRoute.includes('parseInt('), 'ROI metrics route must not parse partial day params');
+  assert(!roiMetricsRoute.includes('resolvedConversations'), 'ROI metrics route must not invent resolved-conversation outcomes');
+  assert(!roiMetricsRoute.includes('avgCustomerLifetimeValue'), 'ROI metrics route must not infer retention value from feedback');
   assertIncludes(
     '__docs__/answerlattice/chat-monitoring/chat-monitoring_impl.md',
     [
@@ -4836,29 +4860,42 @@ function verifyAnalyticsErrorBoundary() {
       'analytics_dashboard_data_fetch_failed',
       'analytics_ai_intelligence_fetch_failed',
       'analytics_summary_metrics_fetch_failed',
-      'analytics_comparison_fetch_failed',
     ],
     'analytics DAL bounded diagnostics',
   );
   assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsDal), 'analytics DAL must not direct-console owner dashboard failures');
-  assert(analyticsDal.includes('Only emit health metrics backed by analytics aggregates'), 'analytics DAL health metrics must be source-backed');
+  assert(!analyticsDal.includes('generateHealthMetrics'), 'analytics DAL must not derive system health from incompatible chat/feedback denominators');
+  assert(!analyticsDal.includes('Knowledge Base Coverage'), 'analytics DAL must not label negative-feedback gap counts as knowledge-base coverage');
+  assert(!analyticsDal.includes('User Satisfaction'), 'analytics DAL must not label feedback share as measured user satisfaction');
   assert(!analyticsDal.includes('API Response Time'), 'analytics DAL must not emit fake API response-time health metrics');
   assert(!analyticsDal.includes('value: 245'), 'analytics DAL must not emit hard-coded API latency values');
   assert(!analyticsDal.includes('mock for now'), 'analytics DAL must not retain mock production-health comments');
   assert(analyticsDal.includes('totalMessages: statistics?.totalMessages || 0'), 'analytics DAL summary must carry source-backed total message counts');
-  assert(analyticsDal.includes('totalMessages: data.summary.totalMessages'), 'analytics comparison wrapper must use source-backed total message counts');
+  assert(analyticsComparisonView.includes('totalMessages: data.summary.totalMessages'), 'analytics comparison view must use source-backed total message counts');
+  assert(analyticsComparisonView.includes('resolveAnswerlatticeSessionScope(session)'), 'analytics comparison view must derive exact Answerlattice workspace identity');
+  assert(analyticsComparisonView.includes('getDashboardData(dateRange, session)'), 'analytics comparison view must pass its initiating session to the DAL');
+  assert(!analyticsComparisonView.includes('tenantId: string'), 'analytics comparison view must not accept a raw tenant ID as read authority');
+  assert(!analyticsComparisonView.includes('storeId: string'), 'analytics comparison view must not accept a raw store ID as read authority');
   assert(!analyticsDal.includes('activeUsers: 0'), 'analytics comparison wrapper must not emit fake active-user counts');
   assert(!analyticsDal.includes('totalMessages: 0, // Not in current summary'), 'analytics comparison wrapper must not zero source-backed total messages');
   assert(analyticsComparison.includes('totalMessages: ComparisonResult'), 'analytics comparison engine must compare total messages');
+  assert(analyticsComparison.includes("changeUnit: 'percent' | 'percentage-points'"), 'analytics comparison engine must preserve change units');
+  assert(analyticsComparison.includes('positiveFeedbackShare: ComparisonResult'), 'analytics comparison engine must expose literal feedback-share comparison');
+  assert(analyticsComparison.includes("changeUnit: 'percentage-points'"), 'analytics comparison engine must render feedback-share movement in percentage points');
+  assert(!analyticsComparison.includes('satisfaction: ComparisonResult'), 'analytics comparison engine must not infer satisfaction');
   assert(!analyticsComparison.includes('activeUsers: ComparisonResult'), 'analytics comparison engine must not expose fake active-user comparison');
   assert(analyticsComparisonView.includes('title="Total Messages"'), 'analytics comparison view must render source-backed total messages');
+  assert(analyticsComparisonView.includes('data.feedback.total > 0 ? data.summary.satisfactionRate : null'), 'analytics comparison view must preserve unavailable feedback share');
+  assert(analyticsComparisonView.includes('comparison.positiveFeedbackShare'), 'analytics comparison view must use literal feedback-share comparison');
   assert(!analyticsComparisonView.includes('title="Active Users"'), 'analytics comparison view must not render fake active users');
-  assert(chatInsights.includes('const feedbackResponseRate = dashboardData?.summary.totalChats'), 'Chat Insights feedback response rate must be derived from source aggregates');
-  assert(chatInsights.includes('value: feedbackResponseRate'), 'Chat Insights must render source-backed feedback response rate');
+  assert(chatInsights.includes("title: 'Positive Feedback Share'"), 'Chat Insights must label positive feedback divided by recorded feedback accurately');
+  assert(!chatInsights.includes('feedbackResponseRate'), 'Chat Insights must not divide feedback events by chat sessions as response coverage');
+  assert(!chatInsights.includes('SystemHealthSection'), 'Chat Insights must not present derived chat ratios as infrastructure/system health');
   assert(!chatInsights.includes('value: 88'), 'Chat Insights must not render hard-coded feedback response rate');
   assert(!chatInsights.includes('value: -10'), 'Chat Insights must not render hard-coded Knowledge Gaps trend');
   assert(!chatInsights.includes('description={analyticsMetadata?.lastError'), 'Chat Insights must not render stored analytics job errors directly');
-  assert(chatInsights.includes('Refresh this view. If the failure remains, check the analytics job logs.'), 'Chat Insights analytics failure copy must stay operator-safe');
+  assert(!chatInsights.includes('PlatformGlobalDataContext'), 'Chat Insights must not read MenuList store state for Answerlattice analytics status');
+  assert(!chatInsights.includes('analyticsMetadata?.lastStatus'), 'Chat Insights must not render cross-product analytics job status');
   assert(analyticsDashboard.includes('description="Try again later."'), 'Analytics dashboard must use fixed error description');
   assert(customerAppMetrics.includes('description="Try again later."'), 'Customer App metrics must use fixed error description');
   assert(!analyticsDashboard.includes('description={error.message}'), 'Analytics dashboard must not render raw exception text');
@@ -5066,6 +5103,7 @@ function verifyOwnerUtilitySecureLogging() {
   const opsControlRoom = read('src/components/templates/main-app/platform/opsControlRoom/index.tsx');
   const schedulerMonitor = read('src/components/templates/main-app/platform/schedulerMonitor/index.tsx');
   const storesDal = read('src/database/stores/index.tsx');
+  const timeSlotCascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const tenantsDal = read('src/database/tenants/index.tsx');
   const desktopBusinessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
@@ -5278,14 +5316,29 @@ function verifyOwnerUtilitySecureLogging() {
   assert(storesDal.includes("await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');"), 'Menu presence store writes must verify active session store before writing');
   assert(storesDal.includes("await assertActiveSessionStore(storeId, 'starter_activation_signal_store_scope_mismatch');"), 'Starter activation signal writes must verify active session store before writing');
   assert(storesDal.includes('await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");'), 'Time slot preset store writes must refresh public cache');
+  assert(storesDal.includes('timeSlotPresetCascadePending: pendingCascade'), 'Time slot preset edit/delete must atomically persist its project-cascade marker');
+  assert(storesDal.includes("throw new Error('time_slot_preset_cascade_pending');"), 'Time slot preset writes must reject while a prior cascade remains pending');
+  assert(storesDal.includes("throw new Error('time_slot_preset_cascade_operation_conflict');"), 'Time slot preset marker completion must reject a different operation');
+  assert(storesDal.includes('timeSlotPresetCascadePending: deleteField(),'), 'Time slot preset marker completion must transactionally clear the exact marker');
+  assert(timeSlotCascadeReconciler.includes('assertProjectPresetCascadeSucceeded('), 'Time slot preset reconciliation must require project cascade acknowledgement');
+  assert(timeSlotCascadeReconciler.includes('assertTimeSlotPresetCascadeCompleted(completionResult);'), 'Time slot preset reconciliation must require marker completion acknowledgement');
   assert(tenantsDal.includes('export function assertTenantUpdateSucceeded'), 'Tenant DAL must expose an explicit update acknowledgement guard');
   assert(!tenantsDal.includes('updateTenantsStoreslist'), 'Tenant DAL must not expose stale whole-list replacement');
   assert(mobileBasicSettings.includes('assertStoreUpdateSucceeded('), 'Mobile Basic Settings must require explicit store-write acknowledgement before local success state');
   assert(mobileBasicSettings.includes('mobile_basic_settings_store_update_rejected'), 'Mobile Basic Settings must include bounded store rejected acknowledgement code');
   assert(mobileBasicSettings.includes('assertTenantUpdateSucceeded('), 'Mobile Basic Settings must require explicit tenant-write acknowledgement before local tenant state');
   assert(mobileBasicSettings.includes('mobile_basic_settings_tenant_update_rejected'), 'Mobile Basic Settings must include bounded tenant rejected acknowledgement code');
+  assert(mobileBasicSettings.includes('return <MobileBasicSettingsScreenContent key={scopeKey} {...props} />;'), 'Mobile Basic Settings must remount drafts on exact tenant/store changes');
+  assert(mobileBasicSettings.includes('previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId'), 'Mobile Basic Settings must scope optimistic state to the admitted tenant/store');
+  assert(mobileBasicSettings.includes('Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)'), 'Mobile Basic Settings must rollback only its own optimistic attempt');
+  assert(mobileBasicSettings.includes('const currentStoreDetailsRef = useRef(storeDetails);'), 'Mobile Basic Settings must compare completion with current same-store context');
+  assert(mobileBasicSettings.includes('mobile_basic_settings_tenant_sync_failed'), 'Mobile Basic Settings must distinguish a post-store tenant synchronization failure');
   assert(desktopBusinessSettings.includes('assertStoreUpdateSucceeded('), 'Desktop Business Settings must require explicit store-write acknowledgement before local success state');
   assert(desktopBusinessSettings.includes('desktop_business_settings_store_update_rejected'), 'Desktop Business Settings must include bounded store update rejected acknowledgement code');
+  assert(desktopBusinessSettings.includes('<BusinessSettingsContent key={scopeKey}'), 'Desktop Business Settings must remount by exact tenant/store');
+  assert(desktopBusinessSettings.includes('const settingsSaveInFlightRef = useRef(false);'), 'Desktop Business Settings must reject duplicate same-scope saves');
+  assert(desktopBusinessSettings.includes('activeBusinessSettingsScopeRef.current !== requestScopeKey'), 'Desktop Business Settings must reject settlement admission after scope change');
+  assert(desktopBusinessSettings.includes('activeBusinessSettingsScopeRef.current === requestScopeKey'), 'Desktop Business Settings must guard local settlement by exact scope');
   assert(desktopBusinessSettings.includes('desktop_business_settings_store_create_rejected'), 'Desktop Business Settings must include bounded store create rejected acknowledgement code');
   assert(desktopBusinessSettings.includes('desktop_business_copy_store_update_rejected'), 'Desktop Business Copy must include bounded generated-copy store rejected acknowledgement code');
   assert(desktopBusinessSettings.includes('desktop_business_copy_translation_store_update_rejected'), 'Desktop Business Copy must include bounded translation-repair store rejected acknowledgement code');
@@ -5305,6 +5358,13 @@ function verifyOwnerUtilitySecureLogging() {
   assert(mobileBusinessAttributes.includes('mobile_business_attributes_store_update_rejected'), 'Mobile Business Attributes must include bounded store rejected acknowledgement code');
   assert(mobileBusinessAttributes.includes('enabledAttributeCount: Object.values(attributes).filter(Boolean).length'), 'Mobile Business Attributes must include bounded enabled count context');
   assert(mobileBusinessAttributes.includes('customAttributeCount: normalizedCustomAttributes.length'), 'Mobile Business Attributes must include bounded normalized custom count context');
+  assert(mobileBusinessAttributes.includes('return <MobileBusinessAttributesScreenContent key={scopeKey} {...props} />;'), 'Mobile Business Attributes must remount drafts on exact tenant/store changes');
+  assert(mobileBusinessAttributes.includes('previous?.storeId === expectedStoreId'), 'Mobile Business Attributes must scope optimistic state to the admitted store');
+  assert(mobileBusinessAttributes.includes('previous?.tenantId === expectedTenantId'), 'Mobile Business Attributes must scope optimistic state to the admitted tenant');
+  assert(mobileBusinessAttributes.includes('...(previous.publicPresence || {})'), 'Mobile Business Attributes must merge acknowledged custom attributes with current same-store public presence');
+  assert(!mobileBusinessAttributes.includes('optimisticPublicPresence'), 'Mobile Business Attributes must not project a captured public-presence sibling map optimistically');
+  assert(mobileBusinessAttributes.includes('previous?.businessAttributes === previousBusinessAttributes'), 'Mobile Business Attributes must not overwrite a newer same-store attribute update');
+  assert(mobileBusinessAttributes.includes('previous?.publicPresence?.customAttributes === previousCustomAttributes'), 'Mobile Business Attributes must not overwrite a newer same-store custom-attribute update');
   assert(mobileBusinessCopy.includes('assertStoreUpdateSucceeded('), 'Mobile Business Copy must require explicit store-write acknowledgement before local success state');
   assert(mobileBusinessCopy.includes('mobile_business_copy_store_update_rejected'), 'Mobile Business Copy must include bounded generated-copy store rejected acknowledgement code');
   assert(mobileBusinessCopy.includes('mobile_business_copy_translation_store_update_rejected'), 'Mobile Business Copy must include bounded translation-repair store rejected acknowledgement code');
@@ -5313,17 +5373,33 @@ function verifyOwnerUtilitySecureLogging() {
   assert(mobileLocaleSettings.includes('mobile_locale_settings_store_update_rejected'), 'Mobile Locale Settings must include bounded store rejected acknowledgement code');
   assert(mobileLocaleSettings.includes('activeLanguageCount: normalizedLanguagePolicy.activeLanguages.length'), 'Mobile Locale Settings must include bounded active-language count context');
   assert(mobileLocaleSettings.includes('currencyChanged: formData.currencyCode !== storeDetails.currencyCode || formData.currencySymbol !== storeDetails.currencySymbol'), 'Mobile Locale Settings must include bounded currency-change context');
+  assert(mobileLocaleSettings.includes('return <MobileLocaleSettingsScreenContent key={scopeKey} {...props} />;'), 'Mobile Locale Settings must remount drafts on exact tenant/store changes');
+  assert(mobileLocaleSettings.includes('previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId'), 'Mobile Locale Settings must scope optimistic state to the admitted tenant/store');
+  assert(mobileLocaleSettings.includes('localeSaveInFlightRef.current'), 'Mobile Locale Settings must reject duplicate saves before React state settles');
+  const mobileOfficialPage = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
+  assert(mobileOfficialPage.includes('return <MobileOfficialPageScreenContent key={scopeKey} {...props} />;'), 'Mobile Official Page must remount drafts on exact tenant/store changes');
+  assert(mobileOfficialPage.includes('previous?.storeId === expectedStoreId'), 'Mobile Official Page must scope optimistic state to the admitted store');
+  assert(mobileOfficialPage.includes('previous?.tenantId === expectedTenantId'), 'Mobile Official Page must scope optimistic state to the admitted tenant');
+  assert(mobileOfficialPage.includes('presenceSaveInFlightRef.current'), 'Mobile Official Page must reject duplicate saves before React state settles');
   assert(mobileAdvancedSettings.includes('assertStoreUpdateSucceeded('), 'Mobile Advanced Settings must require explicit store-write acknowledgement before local success state');
   assert(mobileAdvancedSettings.includes('mobile_advanced_settings_store_update_rejected'), 'Mobile Advanced Settings must include bounded store rejected acknowledgement code');
+  assert(mobileAdvancedSettings.includes('return <MobileAdvancedSettingsScreenContent key={scopeKey} {...props} />;'), 'Mobile Advanced Settings must remount drafts on exact tenant/store/mode changes');
+  assert(mobileAdvancedSettings.includes('saveInFlightRef.current'), 'Mobile Advanced Settings must reject duplicate saves before React state settles');
+  assert(mobileAdvancedSettings.includes('currentStoreDetails?.storeId !== expectedStoreId'), 'Mobile Advanced Settings must reject obsolete store settlement');
+  assert(mobileAdvancedSettings.includes('currentStoreDetails?.tenantId !== expectedTenantId'), 'Mobile Advanced Settings must reject obsolete tenant settlement');
   [
-    'mobile_seo_analytics_field_save_failed',
     'mobile_analytics_settings_save_failed',
     'mobile_seo_settings_save_failed',
   ].forEach((failureCode) => {
     assert(mobileSeoAnalytics.includes(failureCode), `Mobile SEO/Analytics Settings must include ${failureCode}`);
   });
-  assert(mobileSeoAnalytics.includes("getBoundedMobileOwnerStringContext('fieldName', field)"), 'Mobile SEO/Analytics field save must include bounded field-name context');
-  assert(mobileSeoAnalytics.includes('mobile_seo_analytics_field_store_update_rejected'), 'Mobile SEO/Analytics field save must include bounded store rejected acknowledgement code');
+  assert(!mobileSeoAnalytics.includes('const saveField = async'), 'Mobile SEO/Analytics must not retain the unused unsafe single-field writer');
+  assert(mobileSeoAnalytics.includes('return <MobileSeoAnalyticsScreenContent key={scopeKey} {...props} />;'), 'Mobile SEO/Analytics must remount drafts on exact tenant/store/mode changes');
+  assert(mobileSeoAnalytics.includes('saveInFlightRef.current'), 'Mobile SEO/Analytics must reject duplicate saves before React state settles');
+  assert(mobileSeoAnalytics.includes('currentDetails?.storeId === expectedStoreId'), 'Mobile SEO/Analytics must scope acknowledgement settlement to the admitted store');
+  assert(mobileSeoAnalytics.includes('currentDetails?.tenantId === expectedTenantId'), 'Mobile SEO/Analytics must scope acknowledgement settlement to the admitted tenant');
+  assert(mobileSeoAnalytics.includes('currentDetails?.analytics === previousAnalytics'), 'Mobile Analytics must not overwrite newer same-store analytics truth');
+  assert(mobileSeoAnalytics.includes('seoFields.every((field) => currentDetails[field] === sourceStoreDetails[field])'), 'Mobile SEO must not overwrite newer same-store SEO truth');
   assert(mobileSeoAnalytics.includes('mobile_analytics_settings_store_update_rejected'), 'Mobile Analytics Settings must include bounded store rejected acknowledgement code');
   assert(mobileSeoAnalytics.includes('mobile_seo_settings_store_update_rejected'), 'Mobile SEO Settings must include bounded store rejected acknowledgement code');
   assert(mobileSeoAnalytics.includes('enabledTrackingCount: countEnabledAnalyticsTracking(analyticsDraft)'), 'Mobile Analytics Settings must include bounded enabled tracking count context');
@@ -5331,10 +5407,19 @@ function verifyOwnerUtilitySecureLogging() {
   assert(mobileWorkingHours.includes('assertStoreUpdateSucceeded('), 'Mobile Working Hours must require explicit store-write acknowledgement before local success state');
   assert(mobileWorkingHours.includes('mobile_working_hours_store_update_rejected'), 'Mobile Working Hours must include bounded store rejected acknowledgement code');
   assert(mobileWorkingHours.includes('mobile_working_hours_save_failed'), 'Mobile Working Hours must log bounded save failures');
+  assert(mobileWorkingHours.includes('<MobileWorkingHoursEditScreenContent key={scopeKey}'), 'Mobile Working Hours must remount by exact tenant/store');
+  assert(mobileWorkingHours.includes("String(previous?.tenantId ?? '') === String(expectedTenantId)"), 'Mobile Working Hours must scope optimistic/rollback state by tenant');
+  assert(mobileWorkingHours.includes("String(previous?.storeId ?? '') === String(expectedStoreId)"), 'Mobile Working Hours must scope optimistic/rollback state by store');
   assert(mobileHours.includes('assertStoreUpdateSucceeded('), 'Mobile Today hours update must require explicit store-write acknowledgement before success state');
   assert(mobileHours.includes('mobile_today_hours_store_update_rejected'), 'Mobile Today hours update must include bounded store rejected acknowledgement code');
   assert(mobileHours.includes('mobile_today_hours_update_failed'), 'Mobile Today hours update must log bounded save failures');
+  assert(mobileHours.includes('<MobileHoursScreenContent key={scopeKey}'), 'Mobile Today must remount by exact tenant/store');
+  assert(mobileHours.includes('const hoursActionInFlightRef = useRef(false);'), 'Mobile Today hours must reject duplicate same-scope writes');
+  assert(mobileHours.includes("String(previous?.tenantId ?? '') === String(expectedTenantId)"), 'Mobile Today hours must scope optimistic/rollback state by tenant');
+  assert(mobileHours.includes("String(previous?.storeId ?? '') === String(expectedStoreId)"), 'Mobile Today hours must scope optimistic/rollback state by store');
   assert(mobileTimeSlots.includes('assertTimeSlotPresetUpdateSucceeded(writeResult);'), 'Mobile Time Slots must require explicit store-write acknowledgement before local success state');
+  assert(mobileTimeSlots.includes('await reconcileTimeSlotPresetCascade('), 'Mobile Time Slots must reconcile project references before local success state');
+  assert(mobileTimeSlots.includes('mobile_time_slot_preset_recovery_failed'), 'Mobile Time Slots must surface bounded pending-cascade recovery diagnostics');
   assert(mobileTimeSlots.includes('mobile_time_slot_preset_save_failed'), 'Mobile Time Slots must log bounded save failures');
   assert(mobileTimeSlots.includes('mobile_time_slot_preset_delete_failed'), 'Mobile Time Slots must log bounded delete failures');
   assert(mobileTimeSlots.includes("getBoundedMobileOwnerStringContext('presetLabel'"), 'Mobile Time Slots must include bounded preset-label context');
@@ -5540,11 +5625,16 @@ function verifyOwnerUtilitySecureLogging() {
       'mobile_special_menu_name_translation_failed',
       'mobile_special_menu_project_public_content_translation_failed',
       'logMobileOwnerFailure',
-      "getBoundedMobileOwnerStringContext('projectId', item?.projectId)",
-      "getBoundedMobileOwnerStringContext('selectedLanguage', selectedLanguage)",
+      "getBoundedMobileOwnerStringContext('projectId', sourceItem?.projectId)",
+      "getBoundedMobileOwnerStringContext('selectedLanguage', sourceSelectedLanguage)",
       'managedLanguageCount',
       'displayNameLength',
       'descriptionLength',
+      'return <MobileSpecialMenuScreenContent key={scopeKey} {...props} />;',
+      'getProjectDataWithoutLoader(projectId, expectedScope)',
+      'submitInFlightRef.current',
+      'translationInFlightRef.current',
+      'if (!isExpectedScope(expectedScope)) return;',
     ]],
     ['src/components/mobile/components/MobileProjectSelectorSheet.tsx', [
       'mobile_project_public_content_translation_failed',
@@ -6347,6 +6437,10 @@ function verifyOwnerUtilitySecureLogging() {
       'error: failureCode',
       'failureCode,',
       'sourceErrorName: error instanceof Error ? (error.name ||',
+      'export async function replaceAiProviderHealthState',
+      '.doc(HEALTH_DOC_ID).set(details);',
+      'await replaceAiProviderHealthState(details);',
+      'await replaceAiProviderHealthState(failureState).catch',
     ]],
     ['functions/src/schedulers/menulistMaintenanceScheduler.ts', [
       'function getTaskFailureCode',
@@ -6378,8 +6472,9 @@ function verifyOwnerUtilitySecureLogging() {
       '.limit(pageSize)',
       'const currentSnapshot = await transaction.get(subDoc.ref);',
       'normalizeSubscriptionDocumentId(currentSnapshot.id)',
-      'normalizeScopeDocumentId(current.tenantId ?? current.tId)',
-      'normalizeScopeDocumentId(current.storeId ?? current.sId)',
+      'getExactMenuListSubscriptionScope(current)',
+      'normalizeScopeDocumentId(exactScope?.tenantId)',
+      'normalizeScopeDocumentId(exactScope?.storeId)',
       'Math.max(0, Math.floor(activeOfflineStores) - 1)',
       "where('billingEntitlementSyncPending', '==', true)",
       "'menulistMaintenanceScheduler:pendingEntitlementRepair'",
@@ -7061,6 +7156,8 @@ function verifyOwnerUtilitySecureLogging() {
     ['functions/src/schedulers/aiProviderHealth.ts', "String(error || 'Unknown provider error')"],
     ['functions/src/schedulers/aiProviderHealth.ts', 'Gemini provider health check failed:'],
     ['functions/src/schedulers/aiProviderHealth.ts', 'error: message'],
+    ['functions/src/schedulers/aiProviderHealth.ts', '.set(details, { merge: true })'],
+    ['functions/src/schedulers/aiProviderHealth.ts', '}, { merge: true }).catch'],
     ['functions/src/schedulers/menulistMaintenanceScheduler.ts', 'error instanceof Error ? error.message'],
     ['functions/src/schedulers/menulistMaintenanceScheduler.ts', 'String(error ||'],
     ['functions/src/schedulers/menulistMaintenanceScheduler.ts', 'Task ${task.name} failed:'],
@@ -7625,7 +7722,7 @@ function verifyPaymentWebhookCheapFail() {
       'const requestBody = boundedBody.body;',
       'const isSignatureValid = await validateRazorpayWebhookSignature(requestBody, signature, secret);',
       'event = JSON.parse(requestBody);',
-      'const webhookClaim = await claimWebhookEventForProcessing(event, requestBody);',
+      'webhookClaim = await claimRazorpayWebhookEvent({',
     ],
     'Razorpay webhook cheap-fail, signature, and idempotency ordering',
   );
@@ -7634,7 +7731,6 @@ function verifyPaymentWebhookCheapFail() {
     'src/app/api/razorpay/webhook/route.ts',
     [
       'Razorpay Webhook FAILED',
-      'RAZORPAY_WEBHOOK_EVENTS',
       'writeProductPaymentTransactionAudit',
       'safeSyncProductSubscriptionEntitlementFromSubscription',
       "getRazorpayFailureLogData('razorpay_webhook_processing_failed', error)",
@@ -7647,6 +7743,16 @@ function verifyPaymentWebhookCheapFail() {
       "message: 'Webhook processing crashed. Payment state may be inconsistent. See bounded Razorpay webhook diagnostics.'",
     ],
     'Razorpay webhook payment mutation and alert anchors',
+  );
+  assertIncludes(
+    'src/lib/billing/razorpayWebhookLease.ts',
+    [
+      'DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS',
+      "outcome: 'processed' | 'processing'",
+      "current.attemptId !== params.attemptId",
+      "return 'ownership_lost';",
+    ],
+    'Razorpay webhook attempt-fenced ledger',
   );
   const webhookRoute = read('src/app/api/razorpay/webhook/route.ts');
   assert(!webhookRoute.includes('errorMessage: error instanceof Error ? error.message'), 'Razorpay webhook must not persist raw exception messages');
@@ -9075,7 +9181,6 @@ function verifyPaymentMutationBoundedJson() {
       'payment_subscription_verify_rejected',
       'payment_topup_verify_rejected',
       'payment_post_onboarding_failed',
-      'payment_onboarding_missing_purchase_intent',
       'payment_response_parse_failed',
       'getBoundedPaymentStringContext',
       'readJsonResponseWithLimit',
@@ -9985,6 +10090,21 @@ function verifyStaffClientDiagnostics() {
   assert(!staffClient.includes('data?.error ||'), 'staff client must not propagate raw API response error text');
   assert(!staffClient.includes('response.json().catch(() => ({}))'), 'staff client must not silently swallow malformed response JSON');
   assert(!staffClient.includes('const data = await response.json()'), 'staff client must not use direct unbounded response parsing');
+  assert(mobileRoles.includes('return <MobileRolesScreenContent key={scopeKey} {...props} />;'), 'Mobile Roles must remount drafts on exact tenant/store changes');
+  assert(mobileRoles.includes('roleMutationInFlightRef.current'), 'Mobile Roles must reject duplicate save/delete mutations before React state settles');
+  assert(mobileRoles.includes('currentStoreDetails?.tenantId === expectedTenantId'), 'Mobile Roles must scope response settlement to the admitted tenant');
+  assert(mobileRoles.includes('currentStoreDetails?.storeId === expectedStoreId'), 'Mobile Roles must scope response settlement to the admitted store');
+  assert(mobileRoles.includes('currentStoreDetails?.roles === sourceStoreDetails.roles'), 'Mobile role saves must not overwrite newer same-store role truth');
+  assert(mobileRoles.includes('currentStoreDetails?.roles === sourceRoles'), 'Mobile role deletes must not overwrite newer same-store role truth');
+  assert(!mobileRoles.includes('setStoreDetails({ ...storeDetails, roles: response.roles })'), 'Mobile Roles must not replace captured generic context after awaited mutations');
+  assert(mobileUsers.includes('return <MobileUsersScreenContent key={scopeKey} {...props} />;'), 'Mobile Users must remount local staff state on exact tenant/store changes');
+  assert(mobileUsers.includes('staffMutationInFlightRef.current'), 'Mobile Users must synchronously reject duplicate staff mutations');
+  assert(mobileUsers.includes('latestLoadRequestRef.current'), 'Mobile Users must invalidate obsolete staff list requests');
+  assert(mobileUsers.includes('isExpectedStaffScope(expectedTenantId, expectedStoreId)'), 'Mobile Users must scope response settlement to the admitted tenant/store');
+  assert((mobileUsers.match(/!isMountedRef\.current/g) || []).length >= 6, 'Every Mobile Users mutation must reject admission after its mounted scope is obsolete');
+  assert(mobileUsers.includes('item.id === user.id && item === user ? response.user : item'), 'Mobile Users must preserve newer same-store user truth');
+  assert(!mobileUsers.includes('setUsersList([...users, data.user])'), 'Mobile Users must not replace current staff truth from a captured create list');
+  assert(!mobileUsers.includes('setUsersList(users.map('), 'Mobile Users must not replace current staff truth from captured mutation lists');
 
   assert(staffLoginShare.includes('hasStaffLoginClipboardWrite'), 'staff login share helper must expose Clipboard API support detection');
   assert(staffLoginShare.includes('hasStaffLoginCopyFallback'), 'staff login share helper must expose textarea fallback support detection');

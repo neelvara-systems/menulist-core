@@ -1,6 +1,7 @@
 'use client'
 
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getAnswerlatticeChatSessionActorScope } from '@lib/answerlattice/chatSessionContracts';
 import { resolveAnswerlatticeHelpChatDraftScope } from '@lib/answerlattice/helpChatDrafts';
 import { Button, Drawer, Flex, Grid, Modal, Typography, theme } from 'antd';
 import { useEffect, useReducer, useState } from 'react';
@@ -22,13 +23,15 @@ interface HelpChatProps {
     productContext?: Record<string, any> | null;
 }
 
-function HelpChat({ open, onClose, productContext }: HelpChatProps) {
+interface HelpChatScopedProps extends HelpChatProps {
+    loggedInSession: ReturnType<typeof useClientAuthSession>;
+}
+
+function HelpChatScoped({ open, onClose, productContext, loggedInSession }: HelpChatScopedProps) {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md === false || (typeof window !== 'undefined' && window.innerWidth < 768);
 
-    // Auth session
-    const loggedInSession = useClientAuthSession();
     const draftScope = resolveAnswerlatticeHelpChatDraftScope(loggedInSession);
 
     // State Management
@@ -322,6 +325,21 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
                 onSubmit={handleFeedbackSubmit}
             />
         </Modal>
+    );
+}
+
+function HelpChat(props: HelpChatProps) {
+    const loggedInSession = useClientAuthSession();
+    const actorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+    const actorScopeKey = actorScope
+        ? `${actorScope.tId}:${actorScope.sId}:${actorScope.uId}`
+        : 'answerlattice-help-chat-unavailable';
+    return (
+        <HelpChatScoped
+            key={actorScopeKey}
+            {...props}
+            loggedInSession={loggedInSession}
+        />
     );
 }
 

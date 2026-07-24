@@ -328,6 +328,7 @@ const buildSummaryPatch = (scope: IntakeScope, patch: Record<string, any>) => ({
 const countReviewItems = async (scope: IntakeScope, jobId: string) => {
     const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     const snap = await db.collection(REVIEW_ITEMS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('jobId', '==', normalizedJobId)
@@ -366,6 +367,7 @@ const refreshJobCounters = async (scope: IntakeScope, jobId: string) => {
     const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     const [sourcesSnap, counts] = await Promise.all([
         db.collection(SOURCES)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('jobId', '==', normalizedJobId)
@@ -433,6 +435,7 @@ export async function listKnowledgeIntakeJobs(scopeInput: IntakeScope) {
     const scope = assertScope(scopeInput);
 
     const snap = await db.collection(JOBS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .orderBy('modifiedOn', 'desc')
@@ -524,6 +527,7 @@ export async function getKnowledgeIntakeBundle(scopeInput: IntakeScope, jobId: s
     const job = await ensureJobForScope(scope, normalizedJobId);
     const [sourcesSnap, reviewSnap] = await Promise.all([
         db.collection(SOURCES)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('jobId', '==', normalizedJobId)
@@ -531,6 +535,7 @@ export async function getKnowledgeIntakeBundle(scopeInput: IntakeScope, jobId: s
             .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCES_PER_JOB + 1)
             .get(),
         db.collection(REVIEW_ITEMS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('jobId', '==', normalizedJobId)
@@ -1288,6 +1293,7 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
         throw new Error('This intake job can no longer generate review drafts.');
     }
     const sourcesSnap = await db.collection(SOURCES)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('jobId', '==', normalizedJobId)
@@ -1360,6 +1366,7 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
 
     try {
         const existingSnap = await db.collection(REVIEW_ITEMS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('jobId', '==', normalizedJobId)
@@ -1747,6 +1754,7 @@ async function loadItemsForPublish(scope: IntakeScope, jobId: string, itemIds?: 
     }
 
     const snap = await db.collection(REVIEW_ITEMS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('jobId', '==', normalizedJobId)

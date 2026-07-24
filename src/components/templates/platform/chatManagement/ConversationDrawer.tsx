@@ -2,7 +2,11 @@
 
 import DrawerElement from '@antdComponent/drawerElement';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { assertChatSessionInternalNoteUpdateSucceeded, updateSessionInternalNote } from '@database/chatSessions';
+import {
+    assertChatSessionInternalNoteUpdateSucceeded,
+    type AnswerlatticeChatSessionScope,
+    updateSessionInternalNote,
+} from '@database/chatSessions';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatMessage, ChatSession } from '@type/chatSession';
 import { Avatar, Button, Card, Descriptions, Divider, Flex, Input, message, Statistic, Tag, theme, Typography } from 'antd';
@@ -15,10 +19,11 @@ const { TextArea } = Input;
 interface ConversationDrawerProps {
     open: boolean;
     session: ChatSession | null;
+    scope: AnswerlatticeChatSessionScope;
     onClose: () => void;
 }
 
-function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps) {
+function ConversationDrawer({ open, session, scope, onClose }: ConversationDrawerProps) {
     const { token } = theme.useToken();
     const [internalNote, setInternalNote] = useState('');
     const [savingNote, setSavingNote] = useState(false);
@@ -37,7 +42,7 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
 
         setSavingNote(true);
         try {
-            const noteUpdateResult = await updateSessionInternalNote(session.id, internalNote);
+            const noteUpdateResult = await updateSessionInternalNote(session.id, internalNote, scope);
             assertChatSessionInternalNoteUpdateSucceeded(
                 noteUpdateResult,
                 session.id,
@@ -81,12 +86,11 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
         lines.push(`**Mode:** ${session.mode === 'qna' ? 'QnA' : 'Assistant'}`);
         lines.push(`**Created:** ${session.createdOn?.toDate().toLocaleString() || 'N/A'}`);
 
-        // Calculate satisfaction (safe with optional chaining)
         const feedbackMessages = (session.messages || []).filter(m => m.feedback);
         const positive = feedbackMessages.filter(m => m.feedback?.isGood === true).length;
         const negative = feedbackMessages.filter(m => m.feedback?.isGood === false).length;
         if (feedbackMessages.length > 0) {
-            lines.push(`**Satisfaction:** ${positive > negative ? '👍 Positive' : '👎 Negative'}`);
+            lines.push(`**Recorded feedback:** ${positive} helpful, ${negative} not helpful`);
         }
         lines.push('');
         lines.push('---');
@@ -391,13 +395,13 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
                         const negative = messages.filter(m => m.feedback?.isGood === false).length;
                         const total = positive + negative;
                         if (total > 0) {
-                            const satisfaction = Math.round((positive / total) * 100);
+                            const positiveFeedbackShare = Math.round((positive / total) * 100);
                             return (
                                 <>
                                     <Divider style={{ margin: '16px 0' }} />
                                     <div>
                                         <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 12 }}>
-                                            Customer Satisfaction
+                                            Recorded Feedback
                                         </Text>
                                         <Flex gap={24}>
                                             <Statistic
@@ -413,11 +417,11 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
                                                 valueStyle={{ color: token.colorError, fontSize: 20 }}
                                             />
                                             <Statistic
-                                                title="Satisfaction Rate"
-                                                value={satisfaction}
+                                                title="Positive Feedback Share"
+                                                value={positiveFeedbackShare}
                                                 suffix="%"
                                                 valueStyle={{
-                                                    color: satisfaction >= 70 ? token.colorSuccess : satisfaction >= 40 ? token.colorWarning : token.colorError,
+                                                    color: positiveFeedbackShare >= 70 ? token.colorSuccess : positiveFeedbackShare >= 40 ? token.colorWarning : token.colorError,
                                                     fontSize: 20
                                                 }}
                                             />

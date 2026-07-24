@@ -59,7 +59,7 @@ All first-workspace helpers normalize user IDs through `src/lib/onboarding/onboa
 
 ## Razorpay convergence
 
-After the Firestore transaction, the route creates the provider plan/subscription using server plan data and an `onboardingAttemptId`. If provider create throws ambiguously, a bounded list scan accepts only the exact attempt identity. The route then persists a pending subscription.
+After the Firestore transaction, the route creates the provider plan/subscription using server plan data and an `onboardingAttemptId`. If provider create throws ambiguously, a bounded list scan accepts only the exact attempt identity. The route then persists a pending subscription. If that write throws after a possible commit, the exact-document recovery requires both ML product aliases, both user aliases, both numeric tenant aliases, both numeric store aliases, and exact provider/plan identity before acknowledging success; incomplete or conflicting rows enter the existing provider/local compensation path.
 
 If persistence reports failure, the route re-reads `subscriptions/{providerSubscriptionId}`. It accepts the record only when document/provider ID, provider, user, tenant, store, and plan identity match the attempted onboarding; status may already have advanced through a fast webhook. Otherwise it cancels the provider subscription, and only successful cancellation proceeds to local tenant/store/user/referral compensation. This avoids deactivating a workspace while a live provider subscription may still exist.
 
@@ -81,3 +81,20 @@ npm run test:onboarding-user-concurrency:emulator
 ```
 
 Do not replace provider, device, or deployed-host smoke with these source gates.
+
+## Exact subscription relinking scope (July 22, 2026)
+
+Account claim relinks billing owner identity only for subscriptions whose `pId/productId` are both `ML` and whose numeric `tId/tenantId` and `sId/storeId` are present and agreeing with the canonical claim workspace. The transaction query constrains all aliases and each result is reprojected before any subscription `userId/email/name` update. Conflicting or incomplete billing rows remain unchanged and cannot be adopted by a new owner claim.
+
+## Access-status request settlement (July 23, 2026)
+
+`SessionExpiryMonitor` binds every `/api/auth/access-status` poll to the exact browser session identity: user, tenant, store, product, role, and session expiry. A newer session or request invalidates the prior response, and effect cleanup invalidates in-flight work before route/session transitions. Only the current request may show the access-ended modal or call the shared sign-out flow.
+
+This prevents a delayed access-ended response for a prior account/workspace from signing out the newly selected session. The monitor retains the existing five-second startup check, thirty-second visible-page poll, same-origin/no-store/manual-redirect policy, 8 KiB response cap, fixed reason mapping, and transient-network retry behavior.
+
+Focused regression and source evidence:
+
+```bash
+npm run test:latest-request-guard
+npm run verify:auth-security-failure-matrix
+```

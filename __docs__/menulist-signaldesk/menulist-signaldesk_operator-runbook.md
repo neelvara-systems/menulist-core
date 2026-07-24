@@ -18,9 +18,27 @@ It should not make the team send more low-quality messages or force the founder 
 
 ## Daily Workflow
 
-### 0. Open Daily Growth Mission
+### 0. Open Today Activation Desk
 
-Start with the ranked daily mission before entering detail views.
+Start with the activation-first queue before entering detail views or starting another Market Search. It combines unresolved mission work with the currently loaded activation opportunities, removes already-resolved reply/approval work, deduplicates by target, and displays no more than five actions.
+
+For each focused target:
+
+- complete the executable action and wait for its durable success response before moving on;
+- use **Next** only to rotate the local focus without claiming completion;
+- open **Journey** to inspect the read-only opportunity-to-proof stages;
+- copy the anonymous MenuList setup link only for an explicitly reviewed manual handoff;
+- prepare proof only after durable activation time, evidence reference, approved integrity, two distinct surfaces, and current item-level permission are evidenced.
+
+If direct action authority is missing, open the existing review surface rather than bypassing the server guard. SignalDesk never performs MenuList setup, publish, activation, or public-truth writes.
+
+Use **Add targets** only when the queue is empty or the current operating decision explicitly requires new discovery.
+
+### 1. Review Seven-Day Outcomes
+
+Check routes, uploads, previews, published menus, two-surface activations, the routed-target cohort, interested targets, and stalled targets. The cohort percentage compares unique targets routed in the seven-day window with those same targets activated in that window. A stall requires the durable seven-day activation deadline to have elapsed; source-policy expiry is not an activation stall. These are compact projections of existing truth; do not optimize for lead volume, sent count, or vanity engagement.
+
+### 2. Review Daily Growth Mission Details
 
 The mission should contain no more than five actions:
 
@@ -32,7 +50,7 @@ The mission should contain no more than five actions:
 
 If the mission is noisy, do not widen execution. Fix grouping, blocked reasons, or source quality first.
 
-### 1. Observe Control Room
+### 3. Observe Control Room
 
 Review:
 
@@ -46,7 +64,7 @@ Review:
 
 If a critical alert exists, pause the affected channel or source before doing normal work.
 
-### 2. Monitor System-Prepared Work
+### 4. Monitor System-Prepared Work
 
 The system should prepare:
 
@@ -64,7 +82,7 @@ The founder or growth manager should review exceptions, not every raw row.
 
 Do not contact a target from source data alone.
 
-### 3. Approve Only Gate Decisions
+### 5. Approve Only Gate Decisions
 
 Approve or reject:
 
@@ -88,7 +106,7 @@ Before approval:
 - sender identity is correct;
 - unsubscribe or stop path exists where required.
 
-### 4. Handoff Or Export
+### 6. Handoff Or Export
 
 First build default:
 
@@ -103,7 +121,7 @@ Every send/export must create:
 - source/channel attribution;
 - next review date or follow-up rule.
 
-### 5. Watch Inbox Exceptions
+### 7. Watch Inbox Exceptions
 
 The system should classify replies first. Humans handle:
 
@@ -117,7 +135,7 @@ The system should classify replies first. Humans handle:
 
 DNC/unsubscribe/wrong-contact/complaint cases must be suppressed immediately.
 
-### 6. Monitor Outcomes
+### 8. Monitor Outcomes
 
 Record or ingest:
 

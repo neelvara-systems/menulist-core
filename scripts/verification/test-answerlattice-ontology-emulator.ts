@@ -1,11 +1,17 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import type { AnswerlatticeAccessContext } from '../../src/lib/answerlattice/accessControl';
 import {
     executeAnswerlatticeOntologyAction,
     upsertAnswerlatticeExtractedEntityCandidate,
 } from '../../src/lib/answerlattice/ontologyServer';
+import {
+    getAnswerlatticeBundleManifestDocId,
+    getAnswerlatticeSourceVersionsDocId,
+    isAnswerlatticeContextBundleManifestForScope,
+} from '../../src/lib/answerlattice/compiledContext';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 
 const access: AnswerlatticeAccessContext = {
@@ -28,6 +34,11 @@ const entityInput = (slug: string, name = slug) => ({
     currentVersion: 1_000_000,
 });
 
+const sha = (value: string) => createHash('sha256').update(value).digest('hex');
+const entityIdForRequest = (requestId: string) => `entity_${sha(`1:101:${requestId}`).slice(0, 32)}`;
+const searchIndexId = (entityId: string) => `entity_index_${sha(`1:101:${entityId}`).slice(0, 32)}`;
+const slugIndexId = (slug: string) => `entity_slug_${sha(`1:101:${slug}`).slice(0, 32)}`;
+
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
     if (!db) throw new Error('Answerlattice Firestore Admin is required');
@@ -38,11 +49,66 @@ async function run(): Promise<void> {
         'answerlattice_auditLogs', 'platformSummary',
     ]) await db.recursiveDelete(db.collection(collection));
 
+    await db.collection('answerlattice_entities').doc('foreign-product-same-slug').set({
+        pId: 'ML', tId: 1, sId: 101, type: 'feature', name: 'Foreign Billing Retry', slug: 'billing-retry',
+        description: 'A foreign-product row must not reserve an Answerlattice slug.', status: 'active', currentVersion: 1_000_000,
+    });
+
+    const foreignCreateRequestId = 'ontology_foreign_slug_create';
+    const foreignCreateSlugRef = db.collection('answerlattice_entitySlugIndex').doc(slugIndexId('foreign-owned-create'));
+    await foreignCreateSlugRef.set({
+        pId: 'ML', tId: 1, sId: 101, slug: 'foreign-owned-create',
+        entityId: entityIdForRequest(foreignCreateRequestId), marker: 'preserve-create-collision',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'create_entity', requestId: foreignCreateRequestId,
+        entity: entityInput('foreign-owned-create', 'Foreign-owned Create'),
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.deepEqual((await foreignCreateSlugRef.get()).data(), {
+        pId: 'ML', tId: 1, sId: 101, slug: 'foreign-owned-create',
+        entityId: entityIdForRequest(foreignCreateRequestId), marker: 'preserve-create-collision',
+    });
+
+    const sourceVersionsRef = db.collection('platformSummary').doc(getAnswerlatticeSourceVersionsDocId(1, 101));
+    await sourceVersionsRef.set({
+        pId: 'ML', tId: 1, sId: 101, marker: 'preserve-source-version-collision',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'create_entity', requestId: 'ontology_foreign_source_versions',
+        entity: entityInput('foreign-source-versions', 'Foreign Source Versions'),
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await sourceVersionsRef.get()).data()?.marker, 'preserve-source-version-collision');
+    assert.equal(
+        (await db.collection('answerlattice_entities').doc(entityIdForRequest('ontology_foreign_source_versions')).get()).exists,
+        false,
+    );
+    await sourceVersionsRef.delete();
+
+    const manifestRef = db.collection('platformSummary').doc(getAnswerlatticeBundleManifestDocId(1, 101));
+    await manifestRef.set({
+        pId: 'ML', tId: 1, sId: 101, marker: 'preserve-manifest-collision',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'create_entity', requestId: 'ontology_foreign_manifest',
+        entity: entityInput('foreign-manifest', 'Foreign Manifest'),
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await manifestRef.get()).data()?.marker, 'preserve-manifest-collision');
+    assert.equal(
+        (await db.collection('answerlattice_entities').doc(entityIdForRequest('ontology_foreign_manifest')).get()).exists,
+        false,
+    );
+    await manifestRef.delete();
+
     const create = await executeAnswerlatticeOntologyAction({
         action: 'create_entity', requestId: 'ontology_create_1', entity: entityInput('billing-retry', 'Billing Retry'),
     }, access);
     assert.equal(create.replayed, false);
     assert.ok(create.entity?.id);
+    assert.equal(
+        isAnswerlatticeContextBundleManifestForScope((await manifestRef.get()).data(), 1, 101),
+        true,
+        'first invalidation must create a complete valid compiled-context manifest',
+    );
     const replay = await executeAnswerlatticeOntologyAction({
         action: 'create_entity', requestId: 'ontology_create_1', entity: entityInput('billing-retry', 'Billing Retry'),
     }, access);
@@ -52,6 +118,52 @@ async function run(): Promise<void> {
     }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
 
     const entityId = create.entity!.id;
+    const entitySearchIndexRef = db.collection('answerlattice_entitySearchIndex').doc(searchIndexId(entityId));
+    const validEntitySearchIndex = (await entitySearchIndexRef.get()).data();
+    assert.ok(validEntitySearchIndex);
+    await entitySearchIndexRef.set({
+        pId: 'ML', tId: 1, sId: 101, entityId,
+        marker: 'preserve-search-index-collision',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'update_entity', requestId: 'ontology_foreign_search_index_update', entityId,
+        changes: { description: 'Must not overwrite the foreign search index.' },
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await entitySearchIndexRef.get()).data()?.marker, 'preserve-search-index-collision');
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'rebuild_search_index', requestId: 'ontology_foreign_search_index_rebuild', entityId,
+        weight: 1.5,
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await entitySearchIndexRef.get()).data()?.marker, 'preserve-search-index-collision');
+    await entitySearchIndexRef.set(validEntitySearchIndex!);
+
+    const foreignTargetSlugRef = db.collection('answerlattice_entitySlugIndex').doc(slugIndexId('foreign-owned-update'));
+    await foreignTargetSlugRef.set({
+        pId: 'ML', tId: 1, sId: 101, slug: 'foreign-owned-update', entityId,
+        marker: 'preserve-update-collision',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'update_entity', requestId: 'ontology_foreign_slug_update', entityId,
+        changes: { slug: 'foreign-owned-update' },
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await foreignTargetSlugRef.get()).data()?.marker, 'preserve-update-collision');
+    assert.equal((await db.collection('answerlattice_entities').doc(entityId).get()).data()?.slug, 'billing-retry');
+
+    const currentSlugRef = db.collection('answerlattice_entitySlugIndex').doc(slugIndexId('billing-retry'));
+    await currentSlugRef.set({
+        pId: 'ML', tId: 1, sId: 101, slug: 'billing-retry', entityId,
+        marker: 'preserve-delete-collision',
+    });
+    await assert.rejects(executeAnswerlatticeOntologyAction({
+        action: 'update_entity', requestId: 'ontology_foreign_old_slug_update', entityId,
+        changes: { slug: 'safe-renamed-slug' },
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await currentSlugRef.get()).data()?.marker, 'preserve-delete-collision');
+    await currentSlugRef.set({
+        pId: 'AL', tId: 1, sId: 101, slug: 'billing-retry', entityId,
+        createdAt: new Date(), updatedAt: new Date(),
+    });
+
     const update = await executeAnswerlatticeOntologyAction({
         action: 'update_entity', requestId: 'ontology_update_1', entityId, changes: { aliases: ['billing retry'] },
     }, access);

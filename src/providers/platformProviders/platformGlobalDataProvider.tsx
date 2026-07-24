@@ -6,13 +6,13 @@ import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/kno
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
-import { UserDataType } from '@type/platform/user';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { SupportTicketType } from '@type/supportTicket';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { registerPosSyncDeliveryConfig, unregisterPosSyncDeliveryConfig } from '@lib/posSync/eventBuilder';
+import type { StaffUserSummary } from '@lib/staffManagement/types';
 import { Timestamp } from 'firebase/firestore';
-import { createContext, useEffect, useState } from 'react';
+import { createContext, type Dispatch, type SetStateAction, useEffect, useState } from 'react';
 
 export type PlatformGlobalDataProviderType = {
 
@@ -25,8 +25,8 @@ export type PlatformGlobalDataProviderType = {
     userPermissions: any;
     setUserPermissions: any;
 
-    usersList: UserDataType[];
-    setUsersList: any;
+    usersList: StaffUserSummary[] | null;
+    setUsersList: Dispatch<SetStateAction<StaffUserSummary[] | null>>;
 
     fontsList: FontPresetsType[];
     setFontsList: any;

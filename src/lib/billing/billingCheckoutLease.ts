@@ -10,6 +10,7 @@ export type BillingCheckoutClaim =
     | { outcome: 'in_progress' }
     | { outcome: 'conflict' }
     | { outcome: 'recover_attempt'; attemptId: string; startedAtMillis: number }
+    | { outcome: 'recover_provider'; attemptId: string; startedAtMillis: number }
     | { outcome: 'provider_created'; attemptId: string; providerEntityId: string; startedAtMillis: number };
 
 type BillingCheckoutLeaseRecord = {
@@ -20,6 +21,7 @@ type BillingCheckoutLeaseRecord = {
     productId?: unknown;
     providerEntityId?: unknown;
     requestHash?: unknown;
+    stateVersion?: unknown;
     startedAt?: unknown;
     status?: unknown;
     storeId?: unknown;
@@ -38,6 +40,7 @@ type BillingCheckoutLeaseIdentity = {
 const BILLING_CHECKOUT_PROCESSING_LEASE_MS = 2 * 60 * 1000;
 const BILLING_CHECKOUT_PROVIDER_RECOVERY_MS = 24 * 60 * 60 * 1000;
 const BILLING_CHECKOUT_COMPLETED_REPLAY_MS = 2 * 60 * 1000;
+const BILLING_CHECKOUT_STATE_VERSION = 2;
 
 function digest(value: string): string {
     return createHash('sha256').update(value).digest('hex');
@@ -149,12 +152,47 @@ export async function claimBillingCheckoutLease(
                 return { outcome: sameRequest ? 'in_progress' as const : 'conflict' as const };
             }
 
+            if (existing.status === 'processing' && existing.stateVersion !== BILLING_CHECKOUT_STATE_VERSION) {
+                if (!sameRequest || !attemptId) return { outcome: 'conflict' as const };
+                return {
+                    outcome: 'recover_provider' as const,
+                    attemptId,
+                    startedAtMillis,
+                };
+            }
+
             if (existing.status === 'processing' && sameRequest && attemptId) {
                 return {
                     outcome: 'recover_attempt' as const,
                     attemptId,
                     startedAtMillis,
                 };
+            }
+
+            if (existing.status === 'provider_creating' && attemptId) {
+                if (!sameRequest) return { outcome: 'conflict' as const };
+                if (expiresAtMillis > nowMillis) return { outcome: 'in_progress' as const };
+                return {
+                    outcome: 'recover_provider' as const,
+                    attemptId,
+                    startedAtMillis,
+                };
+            }
+
+            const completedProviderEntityId = typeof existing.providerEntityId === 'string'
+                ? existing.providerEntityId
+                : '';
+            const mayReplaceExpiredPreProviderLease = existing.status === 'processing'
+                && existing.stateVersion === BILLING_CHECKOUT_STATE_VERSION
+                && !sameRequest
+                && Boolean(attemptId)
+                && expiresAtMillis > 0;
+            const mayReplaceExpiredCompletedReplay = existing.status === 'completed'
+                && Boolean(attemptId)
+                && Boolean(completedProviderEntityId)
+                && expiresAtMillis > 0;
+            if (!mayReplaceExpiredPreProviderLease && !mayReplaceExpiredCompletedReplay) {
+                return { outcome: 'conflict' as const };
             }
         }
 
@@ -165,9 +203,39 @@ export async function claimBillingCheckoutLease(
             startedAt: Timestamp.fromMillis(nowMillis),
             expiresAt: Timestamp.fromMillis(nowMillis + BILLING_CHECKOUT_PROCESSING_LEASE_MS),
             status: 'processing',
+            stateVersion: BILLING_CHECKOUT_STATE_VERSION,
             updatedAt: Timestamp.fromMillis(nowMillis),
         });
         return { outcome: 'acquired' as const, attemptId, startedAtMillis: nowMillis };
+    });
+}
+
+export async function markBillingCheckoutProviderCreateStarted(params: {
+    attemptId: string;
+    identity: BillingCheckoutLeaseIdentity;
+}): Promise<boolean> {
+    const context = getLeaseContext(params.identity);
+    const ref = firestoreAdmin.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES).doc(context.leaseId);
+    const nowMillis = Date.now();
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) return false;
+        const existing = snapshot.data() as BillingCheckoutLeaseRecord;
+        if (
+            !recordMatchesScope(existing, context)
+            || existing.attemptId !== params.attemptId
+            || existing.requestHash !== context.requestHash
+            || existing.actorHash !== context.actorHash
+            || existing.stateVersion !== BILLING_CHECKOUT_STATE_VERSION
+            || getTimestampMillis(existing.expiresAt) <= nowMillis
+            || !['processing', 'provider_creating'].includes(String(existing.status))
+        ) return false;
+        transaction.set(ref, {
+            status: 'provider_creating',
+            updatedAt: Timestamp.fromMillis(nowMillis),
+        }, { merge: true });
+        return true;
     });
 }
 
@@ -189,6 +257,7 @@ export async function renewExpiredBillingCheckoutLease(
             || existing.attemptId !== expiredAttemptId
             || existing.requestHash !== context.requestHash
             || existing.actorHash !== context.actorHash
+            || existing.stateVersion !== BILLING_CHECKOUT_STATE_VERSION
             || getTimestampMillis(existing.expiresAt) > nowMillis
         ) return { acquired: false };
 
@@ -199,9 +268,53 @@ export async function renewExpiredBillingCheckoutLease(
             startedAt: Timestamp.fromMillis(nowMillis),
             expiresAt: Timestamp.fromMillis(nowMillis + BILLING_CHECKOUT_PROCESSING_LEASE_MS),
             status: 'processing',
+            stateVersion: BILLING_CHECKOUT_STATE_VERSION,
             updatedAt: Timestamp.fromMillis(nowMillis),
         });
         return { acquired: true, attemptId, startedAtMillis: nowMillis };
+    });
+}
+
+/**
+ * Top-up orders have a provider-enforced unique receipt derived from the
+ * attempt ID. That lets a retry keep the same provider identity fence. Razorpay
+ * subscriptions do not expose an equivalent create idempotency key, so they
+ * must remain in recovery-only mode once provider creation has started.
+ */
+export async function renewBillingCheckoutProviderRecoveryLease(
+    identity: BillingCheckoutLeaseIdentity,
+    attemptId: string,
+): Promise<boolean> {
+    const context = getLeaseContext(identity);
+    if (context.kind !== 'topup') return false;
+    const ref = firestoreAdmin.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES).doc(context.leaseId);
+    const nowMillis = Date.now();
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) return false;
+        const existing = snapshot.data() as BillingCheckoutLeaseRecord;
+        if (
+            !recordMatchesScope(existing, context)
+            || !(
+                existing.status === 'provider_creating'
+                || (
+                    existing.status === 'processing'
+                    && existing.stateVersion !== BILLING_CHECKOUT_STATE_VERSION
+                )
+            )
+            || existing.attemptId !== attemptId
+            || existing.requestHash !== context.requestHash
+            || existing.actorHash !== context.actorHash
+            || getTimestampMillis(existing.expiresAt) > nowMillis
+        ) return false;
+        transaction.set(ref, {
+            expiresAt: Timestamp.fromMillis(nowMillis + BILLING_CHECKOUT_PROCESSING_LEASE_MS),
+            stateVersion: BILLING_CHECKOUT_STATE_VERSION,
+            status: 'provider_creating',
+            updatedAt: Timestamp.fromMillis(nowMillis),
+        }, { merge: true });
+        return true;
     });
 }
 
@@ -214,6 +327,9 @@ export async function markBillingCheckoutProviderCreated(params: {
     const ref = firestoreAdmin.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES).doc(context.leaseId);
     const nowMillis = Date.now();
 
+    const providerEntityId = String(params.providerEntityId || '').trim();
+    if (!providerEntityId) return false;
+
     return firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(ref);
         if (!snapshot.exists) return false;
@@ -224,8 +340,19 @@ export async function markBillingCheckoutProviderCreated(params: {
             || existing.requestHash !== context.requestHash
             || existing.actorHash !== context.actorHash
         ) return false;
+        if (existing.status === 'provider_created' || existing.status === 'completed') {
+            return existing.providerEntityId === providerEntityId;
+        }
+        if (
+            existing.status !== 'provider_creating'
+            && !(
+                existing.status === 'processing'
+                && existing.stateVersion !== BILLING_CHECKOUT_STATE_VERSION
+            )
+        ) return false;
         transaction.set(ref, {
-            providerEntityId: params.providerEntityId,
+            providerEntityId,
+            stateVersion: BILLING_CHECKOUT_STATE_VERSION,
             status: 'provider_created',
             expiresAt: Timestamp.fromMillis(nowMillis + BILLING_CHECKOUT_PROVIDER_RECOVERY_MS),
             updatedAt: Timestamp.fromMillis(nowMillis),
@@ -258,6 +385,7 @@ export async function completeBillingCheckoutLease(params: {
             || existing.attemptId !== params.attemptId
             || existing.requestHash !== context.requestHash
             || existing.actorHash !== context.actorHash
+            || !['provider_created', 'completed'].includes(String(existing.status))
             || typeof existing.providerEntityId !== 'string'
             || existing.providerEntityId.length === 0
         ) return false;
@@ -273,6 +401,7 @@ export async function completeBillingCheckoutLease(params: {
 export async function releaseBillingCheckoutLease(params: {
     attemptId: string;
     identity: BillingCheckoutLeaseIdentity;
+    providerEntityId?: string;
 }): Promise<boolean> {
     const context = getLeaseContext(params.identity);
     const ref = firestoreAdmin.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES).doc(context.leaseId);
@@ -287,6 +416,13 @@ export async function releaseBillingCheckoutLease(params: {
             || existing.requestHash !== context.requestHash
             || existing.actorHash !== context.actorHash
         ) return false;
+        const canReleasePreProvider = existing.status === 'processing'
+            && existing.stateVersion === BILLING_CHECKOUT_STATE_VERSION;
+        const canReleaseCompensatedProvider = existing.status === 'provider_created'
+            && typeof params.providerEntityId === 'string'
+            && params.providerEntityId.length > 0
+            && existing.providerEntityId === params.providerEntityId;
+        if (!canReleasePreProvider && !canReleaseCompensatedProvider) return false;
         transaction.delete(ref);
         return true;
     });

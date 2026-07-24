@@ -53,6 +53,47 @@ async function run(): Promise<void> {
         'embedding cache must reject a different workspace even when the cache key is reused',
     );
 
+    const expiredCacheKey = `${scope.tId}:${scope.sId}:expired-query-embedding`;
+    const expiredDocRef = db.collection(DB_COLLECTIONS.QUERY_EMBEDDINGS)
+        .doc(embeddingDocumentId(expiredCacheKey));
+    await expiredDocRef.set({
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        ...scope,
+        cacheKeyHash: createHash('sha256').update(expiredCacheKey).digest('hex'),
+        queryLength: 8,
+        vector: vectorValues,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() - 60_000),
+        retentionDays: 30,
+        hitCount: 0,
+    });
+    assert.equal(
+        await getCachedEmbedding(expiredCacheKey, scope),
+        null,
+        'embedding cache must reject an explicitly expired row even before asynchronous TTL deletion',
+    );
+    assert.equal((await expiredDocRef.get()).exists, false, 'expired embedding cache row should be removed');
+
+    const missingCreatedAtCacheKey = `${scope.tId}:${scope.sId}:missing-created-at`;
+    const missingCreatedAtDocRef = db.collection(DB_COLLECTIONS.QUERY_EMBEDDINGS)
+        .doc(embeddingDocumentId(missingCreatedAtCacheKey));
+    await missingCreatedAtDocRef.set({
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        ...scope,
+        cacheKeyHash: createHash('sha256').update(missingCreatedAtCacheKey).digest('hex'),
+        queryLength: 8,
+        vector: vectorValues,
+        expiresAt: new Date(Date.now() + 60_000),
+        retentionDays: 30,
+        hitCount: 0,
+    });
+    assert.equal(
+        await getCachedEmbedding(missingCreatedAtCacheKey, scope),
+        null,
+        'legacy embedding cache rows without creation time must fail closed',
+    );
+    assert.equal((await missingCreatedAtDocRef.get()).exists, false, 'invalid legacy embedding row should be removed');
+
     const historyCacheKey = `${scope.tId}:${scope.sId}:rag-v5:billing invoice failure`;
     const fullReference: any = {
         id: 'article-billing-failure',
@@ -80,7 +121,10 @@ async function run(): Promise<void> {
         craftedAnswer: 'Open Billing, review the failed invoice, and retry with an active payment method.',
         references: [fullReference],
         citations: [citationCandidate],
+        suggestedQuestions: ['How can I retry the invoice?'],
         answerSource: 'rag',
+        answerType: 'faq',
+        drifted: false,
         canonical: false,
         fallbackReason: 'canonical_scope_context_required',
         clarification: { type: 'scope_context', requiredContext: ['plan', 'role', 'plan'] },
@@ -91,6 +135,10 @@ async function run(): Promise<void> {
 
     const historyDoc = await db.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY).doc(history.id).get();
     assert.equal(historyDoc.data()?.cacheKey, createHash('sha256').update(historyCacheKey).digest('hex'));
+    assert.equal(historyDoc.data()?.responseCacheVersion, 2);
+    assert.deepEqual(historyDoc.data()?.suggestedQuestions, ['How can I retry the invoice?']);
+    assert.equal(historyDoc.data()?.answerType, 'faq');
+    assert.equal(historyDoc.data()?.drifted, false);
     assert.equal(historyDoc.data()?.references?.[0]?.content, undefined);
     assert.equal(historyDoc.data()?.references?.[0]?.embedding, undefined);
     assert.equal(historyDoc.data()?.references?.[0]?.tId, undefined);
@@ -100,11 +148,13 @@ async function run(): Promise<void> {
     const cachedHistory = await findCachedSearchByCacheKeyServer(historyCacheKey, {
         tId: scope.tId,
         sId: scope.sId,
-        uId: 'owner-31',
-    } as any);
+    });
     assert.equal(cachedHistory?.id, history.id);
     assert.equal(cachedHistory?.references.length, 1);
     assert.equal(cachedHistory?.references[0]?.id, fullReference.id);
+    assert.deepEqual(cachedHistory?.suggestedQuestions, ['How can I retry the invoice?']);
+    assert.equal(cachedHistory?.answerType, 'faq');
+    assert.equal(cachedHistory?.drifted, false);
     assert.deepEqual(cachedHistory?.citations, [{
         id: 'citation-billing-failure',
         title: 'Failed invoice documentation',
@@ -115,10 +165,16 @@ async function run(): Promise<void> {
         await findCachedSearchByCacheKeyServer(historyCacheKey, {
             tId: scope.tId,
             sId: scope.sId + 1,
-            uId: 'owner-31',
-        } as any),
+        }),
         null,
         'search-history cache must not cross workspace scope',
+    );
+
+    await historyDoc.ref.update({ responseCacheVersion: 1 });
+    assert.equal(
+        await findCachedSearchByCacheKeyServer(historyCacheKey, scope),
+        null,
+        'legacy compact history rows must remain analytics records but cannot replay as complete responses',
     );
 
     process.stdout.write('Answerlattice search cache emulator tests passed.\n');

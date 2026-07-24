@@ -116,13 +116,31 @@ function getProjectRef(projectId: string) {
     return firestoreAdmin.collection(PROJECTS_COLLECTION).doc(tId).collection(sId).doc(projectId);
 }
 
+function matchesOptionalProjectScopeValue(value: unknown, expected: string): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value !== 'string' && typeof value !== 'number') return false;
+    return String(value) === expected;
+}
+
+function normalizeProjectLanguageCode(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase();
+    return /^[a-z]{2,3}(?:-[a-z]{2,4})?$/.test(normalized) ? normalized : null;
+}
+
 function normalizeProjectLanguages(
-    existingLanguages: string[] = [],
+    existingLanguages: unknown[] = [],
     detectedLanguages: LanguageInput[] = [],
 ): string[] {
+    const normalizedExistingLanguages = existingLanguages
+        .map(normalizeProjectLanguageCode)
+        .filter((code): code is string => code !== null);
+    const normalizedDetectedLanguages = detectedLanguages
+        .map((language) => normalizeProjectLanguageCode(language?.code))
+        .filter((code): code is string => code !== null);
     const collected = [
-        ...existingLanguages,
-        ...detectedLanguages.map((language) => String(language.code || '').trim().toLowerCase()).filter(Boolean),
+        ...normalizedExistingLanguages,
+        ...normalizedDetectedLanguages,
     ];
 
     const deduped = Array.from(new Set(collected));
@@ -134,11 +152,14 @@ function normalizeProjectLanguages(
 }
 
 function getDetectedDefaultLanguage(detectedLanguages: LanguageInput[] = []): string {
-    const primaryLanguage = detectedLanguages.find((language) => language.isPrimary)?.code;
-    if (primaryLanguage) return String(primaryLanguage).trim().toLowerCase();
+    const primaryLanguage = normalizeProjectLanguageCode(
+        detectedLanguages.find((language) => language.isPrimary)?.code,
+    );
+    if (primaryLanguage) return primaryLanguage;
 
-    const firstLanguage = detectedLanguages[0]?.code;
-    return firstLanguage ? String(firstLanguage).trim().toLowerCase() : CANONICAL_SOURCE_LANGUAGE;
+    return detectedLanguages
+        .map((language) => normalizeProjectLanguageCode(language?.code))
+        .find((code): code is string => code !== null) || CANONICAL_SOURCE_LANGUAGE;
 }
 
 function resolvePlainText(value: unknown): string {
@@ -294,6 +315,7 @@ export async function saveFilesToProject(
         languagesCount: languages.length,
     });
 
+    const projectScope = parseProjectId(projectId);
     const projectRef = getProjectRef(projectId);
 
     try {
@@ -307,6 +329,18 @@ export async function saveFilesToProject(
             if (!existingProject) {
                 throw new Error('Project not found.');
             }
+            if (existingProject.deleted === true) {
+                throw new Error('Project is not available for extraction.');
+            }
+            if (
+                !matchesOptionalProjectScopeValue(existingProject.projectId, projectId)
+                || !matchesOptionalProjectScopeValue(existingProject.tId, projectScope.tId)
+                || !matchesOptionalProjectScopeValue(existingProject.tenantId, projectScope.tId)
+                || !matchesOptionalProjectScopeValue(existingProject.sId, projectScope.sId)
+                || !matchesOptionalProjectScopeValue(existingProject.storeId, projectScope.sId)
+            ) {
+                throw new Error('Project identity does not match extraction scope.');
+            }
             if (existingProject.files !== undefined && !Array.isArray(existingProject.files)) {
                 throw new Error('Invalid project files data.');
             }
@@ -314,8 +348,8 @@ export async function saveFilesToProject(
                 throw new Error('Invalid project languages data.');
             }
             const existingFiles: ProjectFileEntry[] = existingProject.files || [];
-            const existingLanguages: string[] = existingProject.languages || [];
-            const existingDefaultLanguage: string | undefined = existingProject?.defaultLanguage;
+            const existingLanguages: unknown[] = existingProject.languages || [];
+            const existingDefaultLanguage = normalizeProjectLanguageCode(existingProject?.defaultLanguage);
             const jobFilesToAppend = selectNewMenuExtractionProjectFiles(existingFiles, jobFiles);
             const jobFileUidsToAppend = new Set(jobFilesToAppend.map((file) => file.uid));
 
@@ -405,10 +439,15 @@ export async function saveFilesToProject(
 
             // 5. Merge languages (unique by code, preserve primary flag)
             const mergedLanguages = normalizedProjectLanguages;
-            const newLanguageCodes = mergedLanguages.filter((languageCode) => !existingLanguages.includes(languageCode));
+            const normalizedExistingLanguageCodes = new Set(
+                existingLanguages
+                    .map(normalizeProjectLanguageCode)
+                    .filter((code): code is string => code !== null),
+            );
+            const newLanguageCodes = mergedLanguages.filter((languageCode) => !normalizedExistingLanguageCodes.has(languageCode));
             const detectedDefaultLanguage = getDetectedDefaultLanguage(languages);
-            const resolvedDefaultLanguage = mergedLanguages.includes(existingDefaultLanguage || '')
-                ? String(existingDefaultLanguage).trim().toLowerCase()
+            const resolvedDefaultLanguage = existingDefaultLanguage && mergedLanguages.includes(existingDefaultLanguage)
+                ? existingDefaultLanguage
                 : (mergedLanguages.includes(detectedDefaultLanguage) ? detectedDefaultLanguage : CANONICAL_SOURCE_LANGUAGE);
 
             // 6. Prepare update data

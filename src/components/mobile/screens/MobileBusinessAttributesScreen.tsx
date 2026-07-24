@@ -8,7 +8,7 @@ import { getBusinessAttributeGroupsForType, normalizeBusinessAttributes, normali
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuPlus, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -22,7 +22,7 @@ interface MobileBusinessAttributesScreenProps {
     onBack: () => void;
 }
 
-export default function MobileBusinessAttributesScreen({ onBack }: MobileBusinessAttributesScreenProps) {
+function MobileBusinessAttributesScreenContent({ onBack }: MobileBusinessAttributesScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
@@ -31,6 +31,10 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
     const [customAttributes, setCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
     const [originalAttributes, setOriginalAttributes] = useState<Record<string, boolean>>(() => normalizeBusinessAttributes(storeDetails?.businessAttributes));
     const [originalCustomAttributes, setOriginalCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
+    const componentActiveRef = useRef(true);
+    const attributesSaveInFlightRef = useRef(false);
+    const currentStoreDetailsRef = useRef(storeDetails);
+    currentStoreDetailsRef.current = storeDetails;
     const attributeGroups = useMemo(
         () => getBusinessAttributeGroupsForType(storeDetails?.businessType, storeDetails?.businessCategory),
         [storeDetails?.businessCategory, storeDetails?.businessType],
@@ -39,13 +43,29 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
         JSON.stringify(attributes) !== JSON.stringify(originalAttributes)
         || JSON.stringify(customAttributes) !== JSON.stringify(originalCustomAttributes);
 
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+
     const saveAttributes = useCallback(async () => {
-        if (!storeDetails?.storeId) return;
+        if (
+            !storeDetails?.storeId
+            || !storeDetails?.tenantId
+            || attributesSaveInFlightRef.current
+        ) return;
+        attributesSaveInFlightRef.current = true;
         setIsSaving(true);
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
+        const previousBusinessAttributes = storeDetails.businessAttributes;
+        const previousCustomAttributes = storeDetails.publicPresence?.customAttributes;
         const normalizedCustomAttributes = normalizeCustomBusinessAttributes(customAttributes);
         const payload = {
-            storeId: storeDetails.storeId,
-            tenantId: storeDetails.tenantId,
+            storeId: expectedStoreId,
+            tenantId: expectedTenantId,
             businessAttributes: getStoreDeepDifference(attributes, originalAttributes, {
                 detectRemovedRootKeys: true,
             }),
@@ -53,26 +73,46 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                 customAttributes: normalizedCustomAttributes,
             },
         };
-
-        setStoreDetails((previous: any) => ({
-            ...previous,
-            businessAttributes: attributes,
-            publicPresence: {
-                ...(previous?.publicPresence || {}),
-                customAttributes: normalizedCustomAttributes,
-            },
-        }));
-
         try {
             const writeResult = await updateStore(payload as any);
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_business_attributes_store_update_rejected',
             );
-            setOriginalAttributes(attributes);
-            setCustomAttributes(normalizedCustomAttributes);
-            setOriginalCustomAttributes(normalizedCustomAttributes);
+            const currentStoreOwnsAttempt = (
+                currentStoreDetailsRef.current?.storeId === expectedStoreId
+                && currentStoreDetailsRef.current?.tenantId === expectedTenantId
+                && currentStoreDetailsRef.current?.businessAttributes === previousBusinessAttributes
+                && currentStoreDetailsRef.current?.publicPresence?.customAttributes === previousCustomAttributes
+            );
+            setStoreDetails((previous: any) => (
+                previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
+                && previous?.businessAttributes === previousBusinessAttributes
+                && previous?.publicPresence?.customAttributes === previousCustomAttributes
+                    ? {
+                        ...previous,
+                        businessAttributes: attributes,
+                        publicPresence: {
+                            ...(previous.publicPresence || {}),
+                            customAttributes: normalizedCustomAttributes,
+                        },
+                    }
+                    : previous
+            ));
+            if (!componentActiveRef.current) return;
+            if (currentStoreOwnsAttempt) {
+                setOriginalAttributes(attributes);
+                setCustomAttributes(normalizedCustomAttributes);
+                setOriginalCustomAttributes(normalizedCustomAttributes);
+            } else {
+                const currentAttributes = normalizeBusinessAttributes(currentStoreDetailsRef.current?.businessAttributes);
+                const currentCustomAttributes = normalizeCustomBusinessAttributes(currentStoreDetailsRef.current?.publicPresence?.customAttributes);
+                setAttributes(currentAttributes);
+                setOriginalAttributes(currentAttributes);
+                setCustomAttributes(currentCustomAttributes);
+                setOriginalCustomAttributes(currentCustomAttributes);
+            }
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch (error) {
             logMobileOwnerFailure('mobile_business_attributes_save_failed', error, {
@@ -83,14 +123,12 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                 customAttributeCount: normalizedCustomAttributes.length,
                 hadPreviousCustomAttributes: originalCustomAttributes.length > 0,
             });
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                businessAttributes: originalAttributes,
-                publicPresence: storeDetails.publicPresence,
-            }));
-            Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
+            if (componentActiveRef.current) {
+                Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
+            }
         } finally {
-            setIsSaving(false);
+            attributesSaveInFlightRef.current = false;
+            if (componentActiveRef.current) setIsSaving(false);
         }
     }, [attributes, customAttributes, originalAttributes, originalCustomAttributes.length, setStoreDetails, storeDetails, tMobile]);
 
@@ -193,4 +231,11 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
             </Flex>
         </Flex>
     );
+}
+
+export default function MobileBusinessAttributesScreen(props: MobileBusinessAttributesScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileBusinessAttributesScreenContent key={scopeKey} {...props} />;
 }

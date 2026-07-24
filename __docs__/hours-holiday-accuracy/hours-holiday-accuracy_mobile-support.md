@@ -2,7 +2,7 @@
 
 **Status:** MobileShell parity implemented
 
-**Last verified:** July 16, 2026
+**Last verified:** July 23, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This mobile-support doc is source-gated mobile working-hours evidence only; Hours mobile release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated mobile working-hours and Today quick-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, and production-host smoke.
 
@@ -14,9 +14,9 @@ Run `npm run verify:working-hours-boundary`, `npm run test:time-slot-data-flow`,
 
 | Flow | Screen | Contract |
 | --- | --- | --- |
-| Current status and quick edit | `MobileHoursScreen` | Store-timezone weekday/status; minute refresh; one-day patch; optimistic rollback |
-| Full regular week | `MobileWorkingHoursEditScreen` | Seven days; overnight accepted; only changed days persisted; removed days deleted |
-| Reusable category windows | `MobileTimeSlotsScreen` | Shared validation; overlaps allowed; store/cascade acknowledgement; context refresh |
+| Current status and quick edit | `MobileHoursScreen` | Exact-store remount; store-timezone weekday/status; minute refresh; one-day patch; attempt-owned optimistic rollback |
+| Full regular week | `MobileWorkingHoursEditScreen` | Exact-store remount; seven days; overnight accepted; only changed days persisted; removed days deleted |
+| Reusable category windows | `MobileTimeSlotsScreen` | Shared validation; overlaps allowed; exact-scope settlement; durable cascade recovery; context refresh |
 
 `MobileWorkingHoursEditScreen` and `MobileTimeSlotsScreen` are More sub-screens. Today remains the normal daily entry. No mobile route bypass, reload, desktop escape, or second data loader is introduced.
 
@@ -27,13 +27,15 @@ Run `npm run verify:working-hours-boundary`, `npm run test:time-slot-data-flow`,
 - Equal or malformed clock endpoints are rejected before save.
 - The saved toast appears only after `assertStoreUpdateSucceeded()`.
 - Failed optimistic Today/full-hours mutations restore prior `workingHours` and `hoursLastUpdatedAt`.
+- Rollback requires the same tenant, store, and optimistic update timestamp. Switching stores or a newer same-store save prevents stale restore, toast, dialog, or loading settlement.
 - Time-slot success appears only after the store write and required project cascade acknowledge success.
+- Edit/delete atomically leaves an operation marker with store truth. A switch or interruption cannot settle into the next store; returning to the exact store attempts bounded recovery before another preset mutation.
 - No raw exception/provider text is shown.
 
 ## Parity Notes
 
 - Desktop and mobile both support overnight hours and overlapping presets.
-- Both use the same store DAL, cache invalidation, preset normalization, and category cascade.
+- Both use the same store DAL, cache invalidation, preset normalization, exact-scope category reconciliation, and operation-owned recovery marker.
 - Mobile Today derives `todayKey` from the store timezone, not the handset timezone.
 - Legacy multiple ranges are displayed from the first range in current editors; untouched days remain byte-preserved. Public readers can render all valid ranges.
 

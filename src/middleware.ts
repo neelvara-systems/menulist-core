@@ -34,6 +34,7 @@ import {
     resolveKnownProductIdByHostname,
 } from '@constant/deploymentTargets';
 import {
+    SIGNALDESK_API_BASE_PATH,
     SIGNALDESK_BASE_PATH,
     SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH,
 } from '@constant/signaldesk/routes';
@@ -422,6 +423,13 @@ function isSignalDeskHostPassthroughPath(pathname: string): boolean {
     );
 }
 
+function isSignalDeskRuntimePath(pathname: string): boolean {
+    return pathname === SIGNALDESK_BASE_PATH
+        || pathname.startsWith(`${SIGNALDESK_BASE_PATH}/`)
+        || pathname === SIGNALDESK_API_BASE_PATH
+        || pathname.startsWith(`${SIGNALDESK_API_BASE_PATH}/`);
+}
+
 function buildSignalDeskHostRewritePath(pathname: string): string {
     if (!pathname || pathname === '/') return SIGNALDESK_BASE_PATH;
     if (pathname === SIGNALDESK_BASE_PATH || pathname.startsWith(`${SIGNALDESK_BASE_PATH}/`)) {
@@ -714,6 +722,14 @@ export async function middleware(request: NextRequest) {
             const response = rewriteWithProductHeaders(request, url, product, basePath);
             return applySecurityHeaders(request, response);
         }
+    }
+
+    // SignalDesk is a private product host. Its canonical app and API paths
+    // must not become alternate entry points on MenuList or sister-product
+    // domains. Local development remains path-based, and the dedicated host
+    // and /sd alias have already been handled above.
+    if (isSignalDeskRuntimePath(pathname) && !isLocalDevelopmentHost(hostname)) {
+        return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
     }
 
     // 1a. Vercel hostname-based product routing.

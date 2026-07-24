@@ -137,6 +137,13 @@ async function run() {
     );
     assert.match(routeSource, /buildArticleSourceFingerprint\(currentArticle\) !== sourceFingerprint/);
     assert.match(routeSource, /\{ persistCandidates: false \}/);
+    assert.match(routeSource, /readAnswerlatticeInvalidationOwnership\(\{/);
+    assert.match(routeSource, /getAnswerlatticeMissingBundleManifestBase\(scope\)/);
+    assert.ok(
+        routeSource.indexOf('const invalidationOwnership = await readAnswerlatticeInvalidationOwnership')
+            < routeSource.indexOf('transaction.update(articleRef'),
+        'article invalidation ownership must be verified before transaction writes begin',
+    );
     assert.ok(
         routeSource.indexOf('const matchedEntityIds = await syncArticleEntityIds')
             < routeSource.indexOf('for (const candidate of result.candidateDrafts'),

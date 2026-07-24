@@ -57,6 +57,9 @@ async function run(): Promise<void> {
         await assertFails(getDoc(doc(otherDb, 'answerlattice_signalEvents', 'sig-ticket-1')));
         await assertFails(setDoc(doc(ownerDb, 'answerlattice_signalEvents', 'wrong-product'), signal({ pId: 'ML' })));
         await assertFails(setDoc(doc(ownerDb, 'answerlattice_signalEvents', 'wrong-scope'), signal({ tId: 2, sId: 202 })));
+        await assertFails(setDoc(doc(ownerDb, 'answerlattice_signalEvents', 'string-tenant-scope'), signal({ tId: '1' })));
+        await assertFails(setDoc(doc(ownerDb, 'answerlattice_signalEvents', 'string-store-scope'), signal({ sId: '101' })));
+        await assertFails(setDoc(doc(ownerDb, 'answerlattice_signalEvents', 'fractional-scope'), signal({ tId: 1.5 })));
         await assertFails(setDoc(doc(ownerDb, 'answerlattice_signalEvents', 'wrong-type'), signal({ type: 'arbitrary' })));
         const missingExpiry = signal();
         delete (missingExpiry as Record<string, unknown>).expiresAt;

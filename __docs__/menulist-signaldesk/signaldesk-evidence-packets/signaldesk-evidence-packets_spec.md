@@ -1,64 +1,85 @@
 # SignalDesk Evidence Packets - Specification
 
-**Status:** Initial planning spec
-**Created:** June 23, 2026
+**Status:** Implemented
+**Last Updated:** July 21, 2026
 
-## Executive Summary
+## Purpose
 
-Evidence Packets explain why SignalDesk believes a target has a MenuList opportunity and what facts are safe to use.
+An Evidence Packet records what SignalDesk can currently and safely say about
+one target from its approved source lineage. It makes uncertainty explicit and
+provides the evidence boundary used by later internal workflows.
 
-They protect the team from vague AI scoring, unsupported claims, source misuse, and unsafe outreach.
+## Admission
 
-## Goals
+Creation requires:
 
-| Goal | Success signal |
+- authenticated SignalDesk access with `target.review`;
+- a desktop request;
+- a current, strictly shaped target with active source-data lifecycle;
+- the target's current source policy;
+- policy status and retention that are still usable for `evidence`;
+- `allowedUse.evidence === true`.
+
+The server remains authoritative. The desktop disables the Evidence action when
+the loaded policy is predictably unusable, but this is only an owner-experience
+guard.
+
+## Stored Summary
+
+| Field | Contract |
 | --- | --- |
-| Preserve evidence | Every target action links to source-backed facts. |
-| Record uncertainty | Rejected facts and low-confidence facts are explicit. |
-| Control claims | Drafts can only use approved evidence. |
-| Support audit | Every decision snapshot is reviewable. |
-| Keep evidence fresh | Evidence has expiry/review state. |
+| `evidencePacketId` | Deterministic `evidence_<32 hex>` identity. |
+| `targetId`, `targetName` | Current target identity and display name. |
+| `confidence` | High only for high source confidence; blocked becomes low; other values become medium. |
+| `allowedUse` | Always includes `evidence`; includes `draft-personalization` only when current policy permits personalization. |
+| `summary` | Bounded classification of current approved target facts. |
+| `rejectedFacts` | Explicit unverified or unsupported claims. |
+| `currentMenuPresence` | Versioned `current-menu-presence-v1` diagnostic with observed format, truth gap, source references, contradictions, and unverified owner/mobile states. |
+| timestamps | Server-owned creation and update time. |
 
-## Evidence Packet Content
+The private detail adds only category, city, current-list URL, website, and
+source-lifecycle lineage. It does not store raw contact values, provider payloads,
+free-form operator notes, or inferred commercial impact.
 
-| Field | Meaning |
-| --- | --- |
-| Source facts | Facts allowed by source policy. |
-| Rejected facts | Facts not trusted, blocked, stale, or unsupported. |
-| Confidence | High, medium, or low. |
-| Current-list gap | Menu/service/rate/list opportunity evidence. |
-| Contactability | Allowed contact/channel evidence. |
-| Source policy refs | Which policy governs the facts. |
-| Expiry/review date | When evidence must be refreshed. |
-| Decision refs | Decisions made from this evidence. |
+## Deterministic Identity
 
-## Decision Snapshot Types
+Identity includes the target, approved uses, source policy/run/observation,
+display and location facts, current-list facts, opportunity, confidence,
+diagnostic version, and suppression state. Exact retries return the existing
+summary without duplicate writes. A relevant source or suppression change
+creates a new immutable packet instead of mutating the old one.
 
-| Type | Purpose |
-| --- | --- |
-| `score` | AI/human scoring result. |
-| `hold` | Why target is held. |
-| `reject` | Why target is rejected. |
-| `draft` | Why draft is allowed. |
-| `approve` | Why action is approved. |
-| `send` | Final pre-send/export decision. |
-| `route` | MenuList route decision. |
-| `attribute` | Outcome attribution decision. |
+## Next Action
 
-## Requirements
+Evidence creation advances a target to `draft` only when personalization is
+allowed and the target is otherwise draft-eligible. Evidence-only, suppressed,
+held, or rejected targets move to `hold`; the UI must not promise a draft action
+the server will reject.
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| SDE-R001 | Drafts cannot use facts outside approved evidence. | P0 |
-| SDE-R002 | Every evidence packet must link source policy. | P0 |
-| SDE-R003 | Low-confidence evidence cannot approve send/export. | P0 |
-| SDE-R004 | Rejected facts must be visible to reviewers. | P0 |
-| SDE-R005 | Evidence expiry blocks new sends until refreshed. | P0 |
-| SDE-R006 | Decision snapshots must be immutable once written. | P0 |
+## Downstream Authority
+
+- Draft creation requires the latest valid summary, current personalization
+  authority, current source policy, target readiness, contact authority, sender,
+  CTA, and template.
+- Approval packets and approval decisions re-read evidence in their transaction.
+- AI Assist binds evidence and source authority before and after provider work.
+- Outcome and route-token flows require current target/evidence lineage.
+- Evidence alone never approves, exports, contacts, sends, publishes, or writes
+  MenuList truth.
+
+## Retention
+
+Target expiry scrubs evidence detail and summary in the consolidated source-data
+lifecycle. Historical evidence details are also queried by their own expiry so a
+later target refresh cannot extend an older packet's retention. The paired
+summary is scrubbed in the same transaction.
 
 ## Acceptance Criteria
 
-- A target cannot be drafted without evidence packet.
-- Evidence packet cannot cite blocked source field.
-- Decision snapshot shows actor/system, rule version, confidence, and evidence refs.
-- Expired evidence blocks new outreach.
+- Exact/concurrent creation converges on one packet and one summary.
+- Policy expiry, missing evidence rights, inactive source lifecycle, and malformed
+  authority fail before packet writes.
+- Suppression-sensitive diagnostics cannot reuse an older clear-state identity.
+- Evidence-only authority cannot advance to draft.
+- Detail and summary expire together even after target refresh.
+- Mobile and unauthorized callers cannot mutate evidence.

@@ -1,20 +1,13 @@
 import { createHash } from 'crypto';
 import { getFunctions } from 'firebase-admin/functions';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import {
     ANSWERLATTICE_CACHE_SOURCES,
-    getAnswerlatticeCacheVersionBumpData,
-    getAnswerlatticeCacheVersionDocId,
+    appendAnswerlatticeCacheVersionBump,
 } from '../answerlattice/cacheVersionManifest';
-import {
-    getAnswerlatticeBundleManifestDocId,
-    getAnswerlatticeSourceVersionsDocId,
-} from '../answerlattice/compiledContextVersions';
-import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
 import {
     ANSWERLATTICE_FAQS_COLLECTION,
-    ANSWERLATTICE_CACHE_VERSIONS_COLLECTION,
     INGESTION_JOB_COLLECTION,
     INGESTION_JOB_STATUS,
     IngestionJob,
@@ -279,15 +272,6 @@ export async function finalizePublishingJob(jobId: string): Promise<{ published:
             sourceId: safeJobId,
             sourceType: 'kb_generation_job',
         };
-        const cacheVersionRef = firestoreAdmin
-            .collection(ANSWERLATTICE_CACHE_VERSIONS_COLLECTION)
-            .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.KB, job.tId, job.sId));
-        const sourceVersionsRef = firestoreAdmin
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeSourceVersionsDocId(job.tId, job.sId));
-        const bundleManifestRef = firestoreAdmin
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeBundleManifestDocId(job.tId, job.sId));
         const categoriesRef = firestoreAdmin
             .collection(KB_CATEGORIES_COLLECTION)
             .doc(getCategoriesDocId(job.tId, job.sId));
@@ -345,6 +329,16 @@ export async function finalizePublishingJob(jobId: string): Promise<{ published:
         }
         if (Buffer.byteLength(JSON.stringify(existingCategories), 'utf8') > MAX_NAVIGATION_BYTES) return;
 
+        await appendAnswerlatticeCacheVersionBump(
+            transaction,
+            firestoreAdmin,
+            ANSWERLATTICE_CACHE_SOURCES.KB,
+            job.tId,
+            job.sId,
+            maintenanceMetadata,
+            ['docsNav'],
+        );
+
         for (const [articleId, articleSnap] of articleDocs) {
             const article = articleSnap.data() || {};
             transaction.set(articleSnap.ref, {
@@ -386,40 +380,6 @@ export async function finalizePublishingJob(jobId: string): Promise<{ published:
             failureStage: null,
             publishedOn: completedAt,
             modifiedOn: completedAt,
-        }, { merge: true });
-        transaction.set(
-            cacheVersionRef,
-            getAnswerlatticeCacheVersionBumpData(
-                ANSWERLATTICE_CACHE_SOURCES.KB,
-                job.tId,
-                job.sId,
-                maintenanceMetadata,
-            ),
-            { merge: true },
-        );
-        transaction.set(sourceVersionsRef, {
-            schemaVersion: 1,
-            pId: PRODUCT_ID,
-            tId: job.tId,
-            sId: job.sId,
-            kb: FieldValue.increment(1),
-            docsNav: FieldValue.increment(1),
-            updatedAt: completedAt,
-            lastReason: maintenanceMetadata.reason,
-            lastSourceId: maintenanceMetadata.sourceId,
-            lastSourceType: maintenanceMetadata.sourceType,
-        }, { merge: true });
-        transaction.set(bundleManifestRef, {
-            schemaVersion: 1,
-            pId: PRODUCT_ID,
-            tId: job.tId,
-            sId: job.sId,
-            status: 'stale',
-            staleReason: maintenanceMetadata.reason,
-            updatedAt: completedAt,
-            lastReason: maintenanceMetadata.reason,
-            lastSourceId: maintenanceMetadata.sourceId,
-            lastSourceType: maintenanceMetadata.sourceType,
         }, { merge: true });
         published = true;
     });

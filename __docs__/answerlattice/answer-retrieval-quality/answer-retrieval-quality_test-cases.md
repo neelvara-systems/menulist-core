@@ -6,13 +6,14 @@
 | --- | --- |
 | Valid canonical evidence | Private source IDs parse and public citation projection removes `sourceId`. |
 | Credential or token URL | Governance/retrieval rejects the citation. |
+| Camel/compact credential query key | `accessToken`, `apiKey`, `clientSecret`, `refreshToken`, and `sig` are rejected by both app and Functions public projections; an unrelated key such as `monkey` remains valid. |
 | Local/private/reserved host | Public citation is rejected. |
 | Normal host beginning with `fd` | Citation remains valid; it is not confused with private IPv6. |
 | IPv4-mapped IPv6 loopback | Citation is rejected after URL normalization. |
 | Duplicate citation URL | Public projection keeps one link. |
 | Missing plan/role/state | Governed fallback includes deduplicated structured clarification. |
 | Validation score below 0.5 | Canonical confidence is `low`. |
-| Cached canonical hit | `canon:v4` returns the evaluated confidence and approved citations only after key/payload/freshness validation. |
+| Cached canonical hit | `canon:v5` returns the evaluated confidence and approved citations only after query/context/entity key, payload, and freshness validation. Graph-aware selection bypasses this cache. |
 | Knowledge Intake canonical publish | Mutation proposal retains private `proposedEvidence.sourceIds`. |
 | Help response with `sourceId` | Browser response guard rejects it. |
 | Chat persistence | Public citations and clarification survive without private evidence. |
@@ -21,6 +22,7 @@
 ## Focused commands
 
 - `npm run test:answerlattice-retrieval-contracts`
+- `npm run test:answerlattice-context-bundle-version-boundary`
 - `npm run test:answerlattice-chat-session-contracts`
 - `npm run test:answerlattice-canonical-scope`
 - `npm run test:answerlattice-governance-contracts`
@@ -37,7 +39,7 @@
 
 ## External proof not included in local completion
 
-- configured Upstash Redis write/read using `canon:v4`;
+- configured Upstash Redis write/read using `canon:v5` with distinct query/context keys;
 - authenticated hosted desktop and narrow-width governance review;
 - deployed widget, Help Center, Help Chat, and public API answer with a real approved citation;
 - deployed scope-missing request that shows clarification and creates the expected support signal/handoff;

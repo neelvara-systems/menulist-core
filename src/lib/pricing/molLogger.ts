@@ -15,8 +15,8 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { normalizeMenuChangeLogScope } from "@database/menuChangeLog/menuChangeLogBoundary";
 import { replaceUndefined } from "@lib/apiHelper";
 import { firebaseClient as db } from "@lib/firebase/firebaseClient";
-import type { LogMOLParams, MOLEvent } from "@type/mol.types";
-import { collection, doc, setDoc, Timestamp } from "firebase/firestore";
+import type { LogMOLParams } from "@type/mol.types";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import {
     getBoundedPricingStringContext,
     logPricingDiagnostic,
@@ -48,10 +48,12 @@ export async function logMOLEvent(params: LogMOLParams): Promise<void> {
         const eventRef = doc(molCollectionRef);
 
         // Build event object
-        const event: MOLEvent = replaceUndefined({
+        const event = replaceUndefined({
             id: eventRef.id,
             ...eventData,
-            createdOn: Timestamp.now(),
+            // Firestore rules bind the resolved legacy event time to
+            // request.time. A browser clock is not ledger authority.
+            createdOn: serverTimestamp(),
             tId: scope.tId,
             sId: scope.sId,
         });

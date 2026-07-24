@@ -34,7 +34,7 @@ Client writes are denied. The shared recovery rules require the same readiness a
 
 ## Idempotency
 
-The source hash excludes server timestamps. Identical admitted daily evidence produces the same hash and skips the weekly write.
+The source hash excludes server timestamps and includes schema version 2. Identical admitted daily evidence produces the same hash and skips the weekly write. The scheduled and manual writers use the same field names, units, nullability, tie-breaking, bounds and deterministic text, preventing writer-to-writer hash churn. Exact replacement removes retired derived fields; the schema transition causes at most one changed write.
 
 ## Scheduler
 
@@ -45,6 +45,8 @@ There is no standalone weekly function. Weekly preparation is part of the existi
 - No raw conversation body is copied into the weekly document.
 - Repeated questions and gaps are bounded and normalized from daily summaries.
 - No model prompt, response, token usage, or AI operation is stored.
+- Volume movement is percent; positive-feedback-share movement is percentage points. A missing denominator is stored as `null`.
+- Message feedback is not called satisfaction, and no negative-gap count is represented as all feedback.
 - The weekly summary is advisory and does not become a canonical answer.
 - There is no claimed email delivery or recurring owner notification.
 

@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from "@constant/product";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { normalizeBillingSubscriptionScopeDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -23,8 +24,12 @@ export const getBillingHistoryForStore = async (tenantId: unknown, storeId: unkn
             // Firestore rules independently require the signed-in user to own both scopes.
             const q = query(
                 getCollectionRef(),
+                where("pId", "==", PRODUCT_IDS.MENULIST),
+                where("productId", "==", PRODUCT_IDS.MENULIST),
                 where("tenantId", "==", tenantScope.numericId),
+                where("tId", "==", tenantScope.numericId),
                 where("storeId", "==", storeScope.numericId),
+                where("sId", "==", storeScope.numericId),
                 // Successful payments plus zero-cash referral credit rewards.
                 where("event", "in", ["subscription.charged", "order.paid", "owner_referral.reward_issued"]),
                 orderBy("created_at", "desc"), // Show the most recent payments first

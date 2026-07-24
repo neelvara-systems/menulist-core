@@ -1,69 +1,49 @@
 # SignalDesk Inbox - Specification
 
-**Status:** Initial planning spec
-**Created:** June 23, 2026
+**Status:** Implemented contract
+**Last reviewed:** July 21, 2026
 
 ## Objective
 
-Provide one controlled internal inbox for SignalDesk replies and operator notes, with classification that moves conversations into safe next states.
+Provide one private, bounded view of SignalDesk conversations and a controlled way to record real replies without allowing an inbound signal to bypass lineage, suppression, incident, or revenue boundaries.
 
-## Goals
+## Actors
 
-1. Show active conversations that need human attention.
-2. Classify replies into simple growth-safe states.
-3. Create suppression records immediately when a reply requires no further outreach.
-4. Preserve all operator actions and classifier decisions for audit.
-5. Keep list views cheap by reading summaries instead of full message histories.
+| Actor | Current access |
+| --- | --- |
+| Founder admin | View and capture replies; all safety controls remain available. |
+| Growth manager | View and capture replies through `target.review`. |
+| Operator | View and capture replies through `target.review`. |
+| Compliance reviewer | Read Inbox and audit/safety state; cannot capture replies under the current role contract. |
+| Read-only analyst | Read projected conversation summaries only. |
+| Provider webhook | May ingest only after provider-specific signature or secret verification and authority resolution. |
+
+## Reply States
+
+`interested`, `not_interested`, `dnc`, `wrong_contact`, `complaint`, `privacy_request`, `legal_request`, and `needs_review` are the implemented inbound classifications. Conversation lineage may also be `new`, `exported`, or `contacted` before a reply.
+
+Classification precedence is safety first, then explicit negative intent, then positive intent, then `needs_review`. The manual capture path imports the same classifier used by signed webhooks.
+
+## Requirements
+
+| ID | Requirement |
+| --- | --- |
+| INB-001 | Manual capture requires `target.review`, a bounded message, an actor-scoped idempotency key, and the target's exact current non-`new` conversation. |
+| INB-002 | Signed provider events resolve target authority from stored contact/delivery identity; a supplied target ID is not trusted alone. |
+| INB-003 | Every accepted inbound event writes a normalized message and deterministic rules classification. Raw provider payloads are not stored. |
+| INB-004 | Safety classifications synchronously write suppression; complaint/privacy/legal classifications also open an incident and activate the channel or global outbound pause. |
+| INB-005 | A later non-safety reply cannot weaken an existing safety conversation state or enter the revenue lifecycle. |
+| INB-006 | Inbox backlog changes only when a conversation crosses the actionable/non-actionable boundary. Counts never fall below zero. |
+| INB-007 | Converted target status is never downgraded by a reply. |
+| INB-008 | Out-of-order provider replies remain message evidence but cannot regress current conversation or queue state. |
+| INB-009 | The Inbox list prioritizes up to 30 safety summaries, then up to 30 interested/review summaries, then up to 30 recent unique summaries. |
+| INB-010 | Mobile may observe summaries but cannot capture replies or manual contacts. |
 
 ## Non-Goals
 
 - No autonomous reply sending.
-- No cold WhatsApp or social automation.
-- No generic CRM replacement.
-- No public support inbox.
-- No MenuList owner/customer messaging surface.
-
-## Actors
-
-| Actor | Access |
-| --- | --- |
-| Growth operator | Reviews inbox, classifies replies, assigns next action. |
-| Growth admin | Overrides classification, closes conversations, manages suppression. |
-| Compliance reviewer | Reviews complaint, DNC, unsubscribe, and wrong-contact cases. |
-| System classifier | Suggests classification only; cannot send. |
-
-## Reply Classifications
-
-| Classification | Required action |
-| --- | --- |
-| `interested` | Create follow-up work item or route to outcome bridge. |
-| `needs_human_review` | Hold all automation until operator review. |
-| `pricing_question` | Attach approved pricing response draft only. |
-| `objection` | Attach approved objection category and draft only. |
-| `not_now` | Pause follow-up by configured period. |
-| `unsubscribe` | Suppress immediately. |
-| `do_not_contact` | Suppress immediately. |
-| `wrong_contact` | Suppress contact and mark target contactability issue. |
-| `complaint` | Suppress, flag incident, and notify admin. |
-| `bounce_or_invalid` | Suppress address/channel identity. |
-
-## Core Requirements
-
-| ID | Requirement |
-| --- | --- |
-| INB-001 | Inbox list must read from `signaldeskConversationSummaries`, not full histories. |
-| INB-002 | Every reply must link to target, channel identity, source, campaign/action, and route token when available. |
-| INB-003 | Classifier output must include confidence, reason codes, model/version, and required operator state. |
-| INB-004 | Suppression classifications must write suppression before any follow-up work item can be created. |
-| INB-005 | Operators must be able to override the classifier with a reason. |
-| INB-006 | Human-review conversations must block scheduled follow-up. |
-| INB-007 | Complaint events must create an incident for the control room. |
-| INB-008 | Full message bodies must be opened only from conversation detail. |
-
-## Acceptance Criteria
-
-- An interested reply appears in the inbox within the expected ingest window.
-- An unsubscribe reply creates suppression and removes follow-up eligibility.
-- A classifier mistake can be overridden and audited.
-- Inbox list loads without scanning message documents.
-- Complaint cases show in both inbox and control-room incident queues.
+- No generic CRM or public support inbox.
+- No full conversation-detail timeline in the current UI.
+- No assignment/work-item collection.
+- No classifier override or reopen-suppression control.
+- No AI consent or legal decision making.

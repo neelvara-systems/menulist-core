@@ -2,11 +2,14 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import TiptapEditor from '@atoms/TiptapEditor';
-import { assertChatSessionInternalNoteUpdateSucceeded, updateSessionInternalNote } from '@database/chatSessions';
-import { useClientAuthSession } from '@hook/useClientAuthSession';
+import {
+    assertChatSessionInternalNoteUpdateSucceeded,
+    type AnswerlatticeChatSessionScope,
+    updateSessionInternalNote,
+} from '@database/chatSessions';
 import { Button, Flex, message, Modal, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuClock, LuPencil, LuSave, LuStickyNote, LuUser } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -15,6 +18,7 @@ interface TeamNoteModalProps {
     open: boolean;
     onClose: () => void;
     sessionId: string | null;
+    scope: AnswerlatticeChatSessionScope;
     initialNote?: any; // TipTap JSON content
     noteMetadata?: {
         lastEditedBy?: string;
@@ -24,11 +28,15 @@ interface TeamNoteModalProps {
     onSave?: (noteJson: any) => void; // Callback to update parent state
 }
 
-function TeamNoteModal({ open, onClose, sessionId, initialNote, noteMetadata, onSave }: TeamNoteModalProps) {
-    const loggedInSession = useClientAuthSession();
+function TeamNoteModal({ open, onClose, sessionId, scope, initialNote, noteMetadata, onSave }: TeamNoteModalProps) {
     const [noteContent, setNoteContent] = useState<any>(null);
     const [savingNote, setSavingNote] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const saveOwnerRef = useRef(0);
+    const saveInProgressRef = useRef(false);
+    const activeContextKey = `${scope.tId}:${scope.sId}:${sessionId || ''}:${open ? 'open' : 'closed'}`;
+    const activeContextKeyRef = useRef(activeContextKey);
+    activeContextKeyRef.current = activeContextKey;
 
     // Initialize note content and editing mode when modal opens
     useEffect(() => {
@@ -55,17 +63,24 @@ function TeamNoteModal({ open, onClose, sessionId, initialNote, noteMetadata, on
     }, [open, initialNote]);
 
     const handleSaveNote = async () => {
-        if (!sessionId) return;
+        if (!sessionId || saveInProgressRef.current) return;
 
+        saveInProgressRef.current = true;
+        const actionOwner = ++saveOwnerRef.current;
+        const expectedContextKey = activeContextKey;
+        const expectedSessionId = sessionId;
         setSavingNote(true);
         try {
-            // Save TipTap JSON with user metadata
-            const noteUpdateResult = await updateSessionInternalNote(sessionId, noteContent, loggedInSession);
+            const noteUpdateResult = await updateSessionInternalNote(expectedSessionId, noteContent, scope);
             assertChatSessionInternalNoteUpdateSucceeded(
                 noteUpdateResult,
-                sessionId,
+                expectedSessionId,
                 'platform_chat_team_note_update_rejected',
             );
+            if (
+                saveOwnerRef.current !== actionOwner
+                || activeContextKeyRef.current !== expectedContextKey
+            ) return;
 
             // Update parent component's state
             if (onSave) {
@@ -74,10 +89,18 @@ function TeamNoteModal({ open, onClose, sessionId, initialNote, noteMetadata, on
 
             message.success('Your team note has been saved successfully');
             onClose();
-        } catch (error) {
-            message.error('Unable to save your note. Please check your connection and try again');
+        } catch {
+            if (
+                saveOwnerRef.current === actionOwner
+                && activeContextKeyRef.current === expectedContextKey
+            ) {
+                message.error('Unable to save your note. Please check your connection and try again');
+            }
         } finally {
-            setSavingNote(false);
+            if (saveOwnerRef.current === actionOwner) {
+                saveInProgressRef.current = false;
+                setSavingNote(false);
+            }
         }
     };
 

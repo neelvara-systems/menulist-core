@@ -37,6 +37,8 @@ Signed `platformRole === 'PLATFORM'` is necessary but not sufficient.
 
 Control Room, Scheduler and Extraction snapshots reject when a source cannot be read. Desktop and mobile show an unavailable/stale warning; they do not convert a permission/index/network failure into SAFE_MODE OFF, zero failures, no alerts or a healthy pipeline.
 
+Scheduler monitor filters and refreshes are latest-request-owned on desktop and mobile. Manual recovery is additionally protected by one synchronous action guard per mounted surface and the server's tenant/store lease shared with the hourly scheduler. Recovery callable responses require a valid status/count/run-log envelope; duplicate current work is rejected before scheduler side effects.
+
 Stored Control Room alert text is projected as presence/length summaries. Scheduler run and settlement rows are normalized, bounded and control-character-cleaned before rendering. Recovery callable responses require a valid status/count/run-log envelope; `partial` is warning copy and `failed` is error copy.
 
 ## SAFE_MODE scope

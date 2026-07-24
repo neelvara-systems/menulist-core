@@ -293,6 +293,19 @@ for (const route of billableRoutes) {
 
   const accountingCore = read('src/lib/ai/accounting.ts');
   const capacityCore = read('src/lib/ai/capacityCheck.ts');
+  const aiCreditScalarContract = read('src/data/shared/aiCreditScalarContract.ts');
+  const functionsAiCreditScalarContract = read('functions/src/sharedData/aiCreditScalarContract.ts');
+  assert(
+    aiCreditScalarContract === functionsAiCreditScalarContract,
+    'MenuList AI credit scalar contract is byte-identical across app and Functions runtimes',
+  );
+  [
+    'getNonNegativeCreditInteger',
+    "typeof value === 'number'",
+    'Number.isSafeInteger(value)',
+    'getPositiveCreditInteger',
+    'getCreditBillingPeriodKey',
+  ].forEach((token) => assert(aiCreditScalarContract.includes(token), `AI credit scalar contract includes exact-value token ${token}`));
   [
     'reserveAiCapacity',
     'finalizeAiCapacityReservation',
@@ -311,8 +324,22 @@ for (const route of billableRoutes) {
   ].forEach((token) => assert(capacityCore.includes(token), `AI capacity core preserves effective inherited billing scope token ${token}`));
   assert(accountingCore.includes('paid provider work requires a pre-provider credit reservation'), 'shared accounting rejects unreserved paid provider output');
   assert(accountingCore.includes('finalizeAiCapacityReservation'), 'shared accounting settles reserved capacity atomically');
-  assert(accountingCore.includes('Number(data.accountingBillingStoreId ?? data.sId)'), 'legacy idempotent replay retains the effective billing store scope');
+  assert(accountingCore.includes('getPositiveCreditInteger(data.accountingBillingStoreId ?? data.sId)'), 'legacy idempotent replay requires an exact effective billing store scope');
   assert(accountingCore.includes('remainingBalance: { billingStoreId, monthlyCredits, topUpCredits }'), 'legacy idempotent replay returns a scoped balance event');
+  [
+    'const unitsConsumed = getNonNegativeCreditInteger(',
+    'data.accountingUnits !== unitsConsumed',
+    'getNonNegativeCreditInteger(data.remainingMonthlyCredits)',
+    'getNonNegativeCreditInteger(data.remainingTopUpCredits)',
+    '!Number.isSafeInteger(monthlyCredits + topUpCredits)',
+  ].forEach((token) => assert(accountingCore.includes(token), `shared accounting includes exact AI credit scalar token ${token}`));
+  [
+    'Number(input.unitsConsumed',
+    'Number(data.accountingUnits)',
+    'Number(data.accountingBillingStoreId',
+    'Number(data.remainingMonthlyCredits)',
+    'Number(data.remainingTopUpCredits)',
+  ].forEach((token) => assert(!accountingCore.includes(token), `shared accounting forbids coercive AI credit scalar token ${token}`));
 
   const batchReservationStart = batchWorker.indexOf("if (!promptCacheImage) {");
   const batchReservationIndex = batchWorker.indexOf('capacityReservation = await reserveAiCapacity({', batchReservationStart);
@@ -328,10 +355,27 @@ for (const route of billableRoutes) {
   assert(batchWorker.includes('refundDurableAiCapacityReservationByIdSafely'), 'terminal batch acknowledgements recover stranded durable reservations by operation ID');
   assert(capacityCore.includes('Number.isSafeInteger(unitsToReserve)'), 'capacity reservations reject fractional and unsafe integer units');
   const accountingSource = read('src/lib/ai/accounting.ts');
-  assert(accountingSource.includes('Number.isSafeInteger(unitsConsumed)'), 'shared accounting finalizer rejects fractional and unsafe integer units');
+  assert(accountingSource.includes('getNonNegativeCreditInteger(input.unitsConsumed ?? getUnitCost(input.action))'), 'shared accounting finalizer rejects fractional and unsafe integer units');
   assert(capacityCore.includes('Number.isSafeInteger(unitsToConsume)'), 'legacy credit helpers reject fractional and unsafe integer units');
   assert(capacityCore.includes('refundDurableAiCapacityReservationByIdSafely'), 'capacity core exposes bounded durable reservation recovery');
   assert(batchWorker.includes('if (!retainCapacityReservationForRetry) {'), 'batch failures refund unless the same durable staged output remains retryable');
+  [
+    'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)',
+    'getNonNegativeCreditInteger(subscription.topUpCredits ?? 0)',
+    'if (!Number.isSafeInteger(remaining)) {',
+    'getPositiveCreditInteger(operation.accountingUnits)',
+    'getCreditBillingPeriodKey(rawReservedBillingPeriod)',
+    'AI capacity reservation refund credit balance overflowed.',
+  ].forEach((token) => assert(capacityCore.includes(token), `capacity core includes exact AI credit scalar token ${token}`));
+  [
+    'Number(data.accountingUnits)',
+    'Number(operationData.unitsConsumed)',
+    'Number(existing.accountingUnits)',
+    'Number(current.monthlyCredits',
+    'Number(current.topUpCredits',
+    'Number(existing.accountingCharged',
+    'Number(existing.accountingReservationBillingPeriod)',
+  ].forEach((token) => assert(!capacityCore.includes(token), `capacity core forbids coercive AI credit scalar token ${token}`));
 
   const reservationRecovery = read('functions/src/schedulers/aiCapacityReservationRecovery.ts');
   assert(reservationRecovery.includes("operation.accountingStatus === 'refunded'"), 'maintenance deletes expired refunded reservation shells');
@@ -340,6 +384,18 @@ for (const route of billableRoutes) {
   assert(reservationRecovery.includes('operation.accountingBillingStoreId || operation.sId'), 'maintenance refunds an inherited-outlet reservation against its effective billing store');
   assert(reservationRecovery.includes('currentRecoveryAt > params.now.toMillis()'), 'maintenance rechecks the current recovery deadline inside the transaction');
   assert(reservationRecovery.includes('errors++'), 'one malformed reservation cannot abort later rows in the same store');
+  [
+    'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)',
+    'getNonNegativeCreditInteger(subscription.topUpCredits ?? 0)',
+    'getCreditBillingPeriodKey(rawReservedBillingPeriod)',
+    'AI capacity reservation refund credit balance overflowed.',
+  ].forEach((token) => assert(reservationRecovery.includes(token), `reservation recovery includes exact AI credit scalar token ${token}`));
+  [
+    'Number(subscription.monthlyCredits',
+    'Number(subscription.topUpCredits',
+    'Number(operation.accountingCharged',
+    'Number(operation.accountingReservationBillingPeriod)',
+  ].forEach((token) => assert(!reservationRecovery.includes(token), `reservation recovery forbids coercive AI credit scalar token ${token}`));
   assert(maintenanceSchedulerSource.includes('recoverAiCapacityReservationsInCollectionRef'), 'consolidated maintenance scheduler runs bounded reservation recovery');
   assert(maintenanceSchedulerSource.includes('storeErrors += reservationResult.errors'), 'consolidated maintenance scheduler reports per-row reservation recovery failures');
   assert(maintenanceSchedulerSource.includes('AI_OPERATION_STORE_CLEANUP_FAILED_CODE'), 'consolidated maintenance scheduler isolates and logs per-store cleanup failures');
@@ -353,6 +409,11 @@ for (const route of billableRoutes) {
     'reservation records the distinct effective billing store',
     'legacy replay responses retain the effective billing store scope',
     'stale inherited-outlet reservations refund the effective HQ subscription',
+    'numeric-string subscription balances must not authorize paid AI work',
+    'numeric-string accounting units must not satisfy idempotent reservation replay',
+    'numeric-string charged-credit evidence must not mint a refund',
+    'numeric-string billing-period evidence must not authorize a refund',
+    'numeric-string recovery evidence must not mint credits',
   ].forEach((token) => assert(reservationEmulator.includes(token), `reservation emulator covers inherited-outlet scope token ${token}`));
   assert(packageJson.includes('"@napi-rs/canvas": "0.1.84"'), 'root package pins server-side canvas encoder dependency');
 }
@@ -409,8 +470,6 @@ for (const route of billableRoutes) {
     'const promptReviewText = sanitizeReviewPromptText(reviewText, REVIEW_PROMPT_TEXT_MAX_LENGTH);',
     'const promptBusinessType = sanitizeReviewPromptText(businessType, REVIEW_BUSINESS_TYPE_MAX_LENGTH);',
     'JSON.stringify(promptReviewText)',
-    'businessType: promptBusinessType || null',
-    'reviewLength: promptReviewText.length',
     'getReviewReplyClientResponseSummary',
     "responseSummaryKind: 'review_reply_suggestion'",
     'replyLength: reply.length',
@@ -424,6 +483,8 @@ for (const route of billableRoutes) {
   });
   assert(!reviewSuggest.includes("logger.error('Failed to record review reply AI transaction'"), 'review reply suggestion route must not raw-log accounting failures');
   assert(!reviewSuggest.includes('clientResponse: {\n                        rating,\n                        reply,'), 'review reply suggestion route must not persist generated reply text in transaction input');
+  assert(!reviewSuggest.includes('businessType: promptBusinessType || null'), 'review reply operation rows must not persist request-derived business type outside the compact result summary');
+  assert(!reviewSuggest.includes('reviewLength: promptReviewText.length'), 'review reply operation rows must not persist request-derived review length outside bounded runtime diagnostics');
   assert(!reviewSuggest.includes('transactionError, {'), 'review reply suggestion route must not pass raw accounting exceptions and context to logger');
   assert(!reviewSuggest.includes('reviewText.slice(0, 2000)'), 'review reply suggestion route must not inject raw review text into the prompt');
   assert(!reviewSuggest.includes('const normalizedType = businessType.toLowerCase();'), 'review reply suggestion route must not use raw business type for industry constraints');
@@ -669,7 +730,8 @@ for (const route of billableRoutes) {
     'responseTextLength',
     'usageMetadata',
     'summarizeClientResponseForOperation',
-    'isPreSummarizedClientResponse',
+    'projectAiOperationClientResponseSummary',
+    'AI_OPERATION_RESPONSE_SUMMARY_SCHEMAS',
     'responseSummaryKind',
     'descriptionSummary',
     'translationsCount',
@@ -681,9 +743,25 @@ for (const route of billableRoutes) {
   });
   assert(!operationLog.includes('clientResponse: input.clientResponse'), 'AI operation log must not always store raw client responses');
   assert(!operationLog.includes('clientResponse: input.clientResponse ||'), 'AI operation log must not fallback to raw client responses');
+  assert(!operationLog.includes('return omitUndefined(response)'), 'AI operation log must not clone marker-only response summaries');
   assert(!operationLog.includes('if (typeof response === "string") return response'), 'AI operation log must not store raw string provider responses');
   assert(!operationLog.includes('response.text.slice'), 'AI operation log must not store raw provider response text slices');
   assert(!operationLog.includes('text: typeof response.text'), 'AI operation log must not serialize raw provider text');
+  const buildOperationLogStart = operationLog.indexOf('export function buildAiOperationLog');
+  const buildOperationLogEnd = operationLog.indexOf('export function normalizeAiOperationDocumentId', buildOperationLogStart);
+  const buildOperationLog = operationLog.slice(buildOperationLogStart, buildOperationLogEnd);
+  assert(buildOperationLogStart >= 0 && buildOperationLogEnd > buildOperationLogStart, 'AI operation log projector block is detectable');
+  assert(!buildOperationLog.includes('...input'), 'AI operation log must not spread arbitrary top-level input fields into persistence');
+  assert(operationLog.includes('createdOn: now'), 'AI operation documents use server-owned creation time');
+  assert(!operationLog.includes('createdOn: input.createdOn'), 'AI operation documents must not accept caller-owned creation time');
+  assert(operationLog.includes('requireAiOperationBillingMode'), 'AI operation documents validate billing mode');
+  assert(operationLog.includes('requireAiOperationTokenCountSource'), 'AI operation documents validate token-count source');
+}
+
+{
+  const answerTestServer = read('src/lib/answerlattice/answerTestServer.ts');
+  assert(answerTestServer.includes('providerOperationCount: resolved.aiProviderOperations?.length || 0'), 'Answerlattice answer-test accounting stores only provider-operation count');
+  assert(!answerTestServer.includes('providerOperations: resolved.aiProviderOperations'), 'Answerlattice answer-test accounting must not persist provider-operation arrays');
 }
 
 {
@@ -1072,7 +1150,7 @@ for (const route of billableRoutes) {
     assert(!extractionMonitoringSpec.includes(token), `AI extraction monitoring spec must not retain stale aiUsageLog token ${token}`);
   });
   [
-    'accounting_only stores count/shape summaries',
+    'accounting_only stores exact allowlisted or generic count/shape summaries',
     'detailed mode stores bounded metadata, not raw provider text',
   ].forEach((token) => {
     assert(aiEnhancementPacksFirebase.includes(token), `AI enhancement packs Firebase doc documents compact operation row token ${token}`);
@@ -1667,9 +1745,21 @@ for (const route of billableRoutes) {
 	    .forEach((file) => {
 	      const locale = JSON.parse(fs.readFileSync(file, 'utf8'));
 	      if (!locale.MobileMenu) return;
+	      const enhancementPackRequired = locale.MobileMenu.enhancementPackRequired;
+	      const isCanonicalEnglishLocale = path.basename(file) === 'en-US.json';
 	      assert(
-	        locale.MobileMenu.enhancementPackRequired === 'Get more enhancements to continue. Open Billing to add an enhancement pack.',
-	        `${path.relative(repoRoot, file)} defines the owner-safe mobile enhancement-pack message`,
+	        typeof enhancementPackRequired === 'string'
+	          && enhancementPackRequired.trim().length > 0
+	          && enhancementPackRequired.length <= 240,
+	        `${path.relative(repoRoot, file)} defines a bounded owner-safe mobile enhancement-pack message`,
+	      );
+	      assert(
+	        !enhancementPackRequired.toLowerCase().includes('translation credit'),
+	        `${path.relative(repoRoot, file)} does not reuse stale translation-credit wording for general enhancements`,
+	      );
+	      if (isCanonicalEnglishLocale) assert(
+	        enhancementPackRequired === 'Get more enhancements to continue. Open Billing to add an enhancement pack.',
+	        'en-US defines the canonical owner-safe mobile enhancement-pack message',
 	      );
 	    });
 
@@ -3187,6 +3277,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
 }
 
 const accounting = read('src/lib/ai/accounting.ts');
+const operationLogSource = read('src/lib/ai/operationLog.ts');
 assert(accounting.includes('recordAiOperationForSession'), 'shared accounting finalizer records session operations');
 assert(accounting.includes('recordAiOperation(operationInput)'), 'shared accounting finalizer records worker operations without session');
 assert(accounting.includes('ai_accounting_operation_log_failed'), 'shared accounting finalizer treats operation logging as best effort with bounded diagnostics');
@@ -3201,6 +3292,41 @@ assert(
   accounting.indexOf('ai_accounting_operation_log_failed') < accounting.lastIndexOf('if (capacitySubscription && unitsConsumed > 0)'),
   'shared accounting finalizer does not let log failure skip credit consumption'
 );
+[
+  'type JsonRecord = Record<string, unknown>;',
+  'getGeminiUsageMetadata(response: unknown)',
+  'requireNonNegativeSafeInteger(input.promptTokenCount',
+  'requireNonNegativeSafeInteger(input.candidatesTokenCount',
+  'requireNonNegativeSafeInteger(input.totalTokenCount',
+  'requirePositiveSafeInteger(input.tokenPerCredit',
+  'requireNonNegativeSafeInteger(input.unitsConsumed',
+  'requireNonNegativeSafeInteger(input.realCostPaise',
+  'requireSafeInteger(input.marginPaise',
+  'normalizeAiOperationWriteScope(',
+  'assertAiOperationStorageAvailable(',
+  'normalizeAiOperationForSessionInput(',
+  "throw new Error('Answerlattice AI operation storage is unavailable.')",
+  "typeof value === 'number' && Number.isFinite(value)",
+].forEach((token) => assert(operationLogSource.includes(token), `AI operation log includes exact scalar/type token ${token}`));
+[
+  'type JsonRecord = Record<string, any>',
+  'clientResponse?: any',
+  'geminiResponse?: any',
+  'const numberValue = Number(value)',
+  'Number(input.promptTokenCount',
+  'Number(input.candidatesTokenCount',
+  'Number(input.totalTokenCount',
+  'Number(input.unitsConsumed',
+  'Number(input.realCostPaise',
+  'Number(input.ourChargePaise',
+  'Number(input.marginPaise',
+  "String(input.pId || '').toUpperCase()",
+  "shouldWriteAnswerlatticeOperation = productId === PRODUCT_IDS.ANSWERLATTICE\n        && answerlatticeFirestoreAdmin",
+  'recordAiOperationForSession(session: any',
+  'pId: input.pId ?? session?.pId',
+  'tId: input.tId ?? session?.tId',
+  'sId: input.sId ?? session?.sId',
+].forEach((token) => assert(!operationLogSource.includes(token), `AI operation log forbids coercive scalar/type token ${token}`));
 
 const aiOperationsDal = read('src/database/aiOperations/index.tsx');
 const answerlatticeAiOperationsDal = read('src/database/answerlattice/aiOperations.ts');
@@ -3464,9 +3590,11 @@ assert(
 );
 [
   "import { normalizeBillingSubscriptionDocumentId } from \"@lib/billing/subscriptionDocumentIdBoundary\";",
+  "import { getMenuListSubscriptionEntitlementScope } from \"@lib/billing/menuListSubscriptionEntitlementBoundary\";",
   'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);',
-  'const initialAllowance = Number(subscription.monthlyCreditsAllowance);',
-  'if (!normalizedSubscriptionId || !Number.isFinite(initialAllowance) || initialAllowance <= 0) {',
+  'const expectedScope = getMenuListSubscriptionEntitlementScope(subscription);',
+  'const initialAllowance = getPositiveCreditInteger(subscription.monthlyCreditsAllowance);',
+  'if (!normalizedSubscriptionId || !expectedScope || initialAllowance === null) {',
   'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);',
   'throw new Error("Billing subscription is not available.");',
   'unitsToConsume > effectiveCapacity',
@@ -3474,6 +3602,10 @@ assert(
 ].forEach((token) => {
   assert(capacityCheck.includes(token), `AI capacity check includes subscription document ID boundary token ${token}`);
 });
+assert(capacityCheck.includes('const currentScope = getMenuListSubscriptionEntitlementScope(current);'), 'AI capacity transactions reproject exact current subscription scope');
+assert(capacityCheck.includes('getExactAccountingScopeAlias'), 'AI capacity operation replay requires agreeing scope aliases');
+assert(!capacityCheck.includes('current.tenantId ?? current.tId'), 'AI capacity transactions do not collapse conflicting current tenant aliases');
+assert(!capacityCheck.includes('current.storeId ?? current.sId'), 'AI capacity transactions do not collapse conflicting current store aliases');
 assert(!capacityCheck.includes('.doc(subscription.id)'), 'AI capacity check must not build raw subscription document refs');
 [
   'Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts`',
@@ -3641,6 +3773,13 @@ assert(mobileTransactionsPage.includes('MENULIST_OWNER_AI_ACTIONS.map'), 'mobile
 assert(!mobileTransactionsPage.includes('Object.values(AI_ACTIONS_TYPES)'), 'mobile owner transaction filter must not expose cross-product AI actions');
 assert(mobileTransactionsPage.includes('type TransactionItem = AiOperationHistoryRow;'), 'mobile transaction state uses the normalized row contract');
 assert(!mobileTransactionsPage.includes('useRef<any>'), 'mobile transaction cursor state is not untyped');
+assert(mobileTransactionsPage.includes('const sessionScopeKey = ['), 'mobile transaction history binds state to exact browser session scope');
+assert(mobileTransactionsPage.includes('const requestId = requestGuard.begin();'), 'mobile transaction history claims each page request');
+assert(mobileTransactionsPage.includes('if (!requestGuard.isCurrent(requestId)) return;'), 'mobile transaction history refuses stale page responses');
+assert(mobileTransactionsPage.includes('const visibleTransactions = transactionScopeKey === sessionScopeKey ? transactions : [];'), 'mobile transaction history partitions rendered rows by exact session scope');
+assert(mobileTransactionsPage.includes('const visibleSelectedTransaction = transactionScopeKey === sessionScopeKey ? selectedTransaction : null;'), 'mobile transaction detail refuses a prior-scope selection');
+assert(mobileTransactionsPage.includes('requestGuardRef.current?.invalidate();'), 'mobile transaction effect cleanup invalidates in-flight page work');
+assert(!mobileTransactionsPage.includes('{transactions.map((tx)'), 'mobile transaction list must not render unpartitioned rows');
 
 const operationPresentation = read('src/lib/ai/operationPresentation.ts');
 assert(operationPresentation.includes('formatAiOperationActionLabel'), 'AI operation presentation helper centralizes owner action labels');
@@ -3657,16 +3796,33 @@ assert(!operationPresentation.includes('clientResponse?: any'), 'AI operation pr
 {
   const balanceSync = read('src/services/ai/balanceSync.ts');
   const sessionProvider = read('src/providers/sessionProvider.tsx');
+  const packageJson = JSON.parse(read('package.json'));
   [
     'billingStoreId: number;',
-    'Number.isSafeInteger(billingStoreId)',
-    'billingStoreId <= 0',
+    'getPositiveCreditInteger(balance.billingStoreId)',
+    'getNonNegativeCreditInteger(balance.monthlyCredits)',
+    'getNonNegativeCreditInteger(balance.topUpCredits)',
+    '!Number.isSafeInteger(monthlyCredits + topUpCredits)',
     'return { billingStoreId, monthlyCredits, topUpCredits };',
   ].forEach((token) => assert(balanceSync.includes(token), `AI balance sync validates scoped response token ${token}`));
-  assert(
-    sessionProvider.includes('Number(prev.storeId ?? prev.sId) !== detail.billingStoreId'),
-    'session provider ignores AI balance updates for a different active subscription',
-  );
+  assert(!balanceSync.includes('Number(balance.'), 'AI balance sync must not coerce server response credit scalars');
+  assert(sessionProvider.includes('normalizeAiBalanceUpdate((e as CustomEvent<unknown>).detail)'), 'session provider revalidates direct custom-event payloads');
+  assert(sessionProvider.includes('getMenuListSubscriptionEntitlementScope(prev)'), 'session provider requires exact MenuList subscription product/workspace scope');
+  assert(!sessionProvider.includes('Number(prev.storeId ?? prev.sId) !== detail.billingStoreId'), 'session provider must not coerce active subscription scope');
+  assert(packageJson.scripts?.['test:ai-balance-sync-boundary'], 'package exposes AI balance sync scalar regression suite');
+  assert(packageJson.scripts?.['verify:ai-accounting']?.includes('test:ai-balance-sync-boundary'), 'AI accounting aggregate runs balance sync scalar regression');
+  assert(packageJson.scripts?.['test:ai-operation-log-scalar-boundary'], 'package exposes AI operation-log scalar regression suite');
+  assert(packageJson.scripts?.['test:ai-operation-log-scalar-boundary']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'), 'AI operation-log scalar regression clears inherited credentials');
+  assert(packageJson.scripts?.['verify:ai-accounting']?.includes('test:ai-operation-log-scalar-boundary'), 'AI accounting aggregate runs operation-log scalar regression');
+  assert(packageJson.scripts?.['test:ai-operation-log-scope-boundary'], 'package exposes AI operation-log scope regression suite');
+  assert(packageJson.scripts?.['test:ai-operation-log-scope-boundary']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'), 'AI operation-log scope regression clears inherited credentials');
+  assert(packageJson.scripts?.['verify:ai-accounting']?.includes('test:ai-operation-log-scope-boundary'), 'AI accounting aggregate runs operation-log scope regression');
+  assert(packageJson.scripts?.['test:ai-operation-log-response-summary-boundary'], 'package exposes AI operation response-summary regression suite');
+  assert(packageJson.scripts?.['test:ai-operation-log-response-summary-boundary']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'), 'AI operation response-summary regression clears inherited credentials');
+  assert(packageJson.scripts?.['verify:ai-accounting']?.includes('test:ai-operation-log-response-summary-boundary'), 'AI accounting aggregate runs operation response-summary regression');
+  assert(packageJson.scripts?.['test:ai-operation-log-document-boundary'], 'package exposes AI operation document regression suite');
+  assert(packageJson.scripts?.['test:ai-operation-log-document-boundary']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'), 'AI operation document regression clears inherited credentials');
+  assert(packageJson.scripts?.['verify:ai-accounting']?.includes('test:ai-operation-log-document-boundary'), 'AI accounting aggregate runs operation document regression');
 }
 
 {

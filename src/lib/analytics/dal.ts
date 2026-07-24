@@ -80,14 +80,6 @@ export interface DashboardData {
       createdOn?: Date;
     }>;
   };
-  health: Array<{
-    name: string;
-    status: 'healthy' | 'warning' | 'critical';
-    value: number;
-    threshold: number;
-    unit?: string;
-    message?: string;
-  }>;
 }
 
 export interface AIIntelligenceData {
@@ -132,7 +124,6 @@ export async function getDashboardData(
         total: statistics?.totalFeedback || 0,
         recent: [],
       },
-      health: generateHealthMetrics(statistics, knowledgeGaps || []),
     };
   } catch (error) {
     logAnalyticsFailure('analytics_dashboard_data_fetch_failed', error, {
@@ -233,110 +224,6 @@ export async function getSummaryMetrics(
   }
 }
 
-/**
- * Simple summary type for comparison engine
- */
-export interface AnalyticsSummary {
-  totalChats: number;
-  satisfactionRate: number;
-  avgMessagesPerChat: number;
-  totalMessages: number;
-  totalFeedback: number;
-  positiveCount: number;
-  negativeCount: number;
-}
-
-/**
- * Fetch analytics data for comparisons (wrapper for comparison engine)
- */
-export async function getAnalytics(
-  tenantId: string,
-  storeId: string,
-  dateRange: DateRange
-): Promise<{ summary: AnalyticsSummary }> {
-  try {
-    // Build session context
-    const session = { tId: tenantId, sId: storeId };
-    
-    // Fetch from optimized DAL
-    const data = await getDashboardData(dateRange, session);
-
-    // Return in format expected by comparison engine
-    return {
-      summary: {
-        totalChats: data.summary.totalChats,
-        satisfactionRate: data.summary.satisfactionRate,
-        avgMessagesPerChat: data.summary.avgMessagesPerChat,
-        totalMessages: data.summary.totalMessages,
-        totalFeedback: data.feedback.total,
-        positiveCount: data.feedback.positive,
-        negativeCount: data.feedback.negative,
-      },
-    };
-  } catch (error) {
-    logAnalyticsFailure('analytics_comparison_fetch_failed', error, {
-      ...getAnalyticsDalScopeContext(tenantId, storeId),
-      ...getAnalyticsDalDateRangeContext(dateRange),
-    });
-    throw error;
-  }
-}
-
-// ================================================================
-// HELPER FUNCTIONS
-// ================================================================
-
-/**
- * Generate system health metrics from statistics
- */
-function generateHealthMetrics(
-  statistics: {
-    totalChats?: number;
-    satisfactionRate?: number;
-  } | null | undefined,
-  knowledgeGaps: NormalizedKnowledgeGap[],
-): DashboardData['health'] {
-  const metrics: DashboardData['health'] = [];
-
-  // Only emit health metrics backed by analytics aggregates. Infrastructure
-  // latency/uptime metrics need a real monitoring source before they appear here.
-
-  // KB Coverage based on knowledge gaps
-  const totalQueries = statistics?.totalChats || 0;
-  const unansweredQueries = knowledgeGaps.reduce((total, gap) => total + Math.max(0, Number(gap.count) || 0), 0);
-  const rawCoverage = totalQueries > 0 ? ((totalQueries - unansweredQueries) / totalQueries) * 100 : 100;
-  const coverage = Math.min(100, Math.max(0, rawCoverage));
-  
-  metrics.push({
-    name: 'Knowledge Base Coverage',
-    status: coverage >= 90 ? 'healthy' : coverage >= 75 ? 'warning' : 'critical',
-    value: Math.round(coverage),
-    threshold: 100,
-    unit: '%',
-    message: coverage >= 90 
-      ? 'Excellent coverage' 
-      : coverage >= 75
-      ? `${100 - Math.round(coverage)}% of queries need better answers`
-      : 'Critical: Many queries lack good answers',
-  });
-
-  // Satisfaction Health
-  const satisfaction = statistics?.satisfactionRate || 0;
-  metrics.push({
-    name: 'User Satisfaction',
-    status: satisfaction >= 80 ? 'healthy' : satisfaction >= 60 ? 'warning' : 'critical',
-    value: satisfaction,
-    threshold: 100,
-    unit: '%',
-    message: satisfaction >= 80
-      ? 'Users are satisfied'
-      : satisfaction >= 60
-      ? 'Satisfaction below target'
-      : 'Critical: Low user satisfaction',
-  });
-
-  return metrics;
-}
 
 /**
  * Format date range for Firestore queries

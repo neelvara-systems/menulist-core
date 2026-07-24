@@ -54,6 +54,16 @@ RESOLVER (at data layer):
 | ADR-6 | `projectsSummary` stores special menu metadata               | Dashboard list shows special menus inline. No extra reads.                                                                                                       |
 | ADR-7 | Behavior template derived from `getBusinessCategory()`       | 7 existing categories map to 3 templates. No new taxonomy.                                                                                                       |
 | ADR-8 | Auto-set temp status banner on activation                    | Bridges special menu switching with existing Temp Status Layer.                                                                                                  |
+| ADR-9 | Exact tenant/store request ownership                         | SWR keys, DAL reads/mutations, mobile project state, and mobile screen settlement carry the same captured scope; stale requests cannot populate another scope. |
+| ADR-10 | Translation updates project + summary atomically             | Public name/description/special-menu display-name translation uses the project update transaction's optional summary projection rather than two separately acknowledged writes. |
+
+### Tenant, cache, and browser-state boundary
+
+- `useSpecialMenus()` keys data by tenant and store and passes that same expected scope into every special-menu DAL call.
+- Project list/detail DAL reads reject a session whose current tenant/store differs from the caller's captured scope.
+- `MobileProjectsProvider` admits only project IDs whose encoded tenant/store matches the current exact scope, masks values before current-scope hydration, and uses latest-request ownership for both list and forced detail reads.
+- Owner project selection uses `mobileSelectedProjectId:{tenantId}:{storeId}`. Exact-scope consumers do not read the old unscoped or store-only key.
+- `MobileSpecialMenuScreen` and its create/edit/card children remount or suppress settlement when tenant/store or source-item ownership changes.
 
 ---
 

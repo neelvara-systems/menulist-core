@@ -170,13 +170,13 @@ Diagnostics record only bounded session/message/search-history/tenant/store/arti
 | `aggregateDailyStats(session, date)`                    |  N (day)   |   1    | Daily aggregate doc creation                |
 | `getLastAnalyticsUpdate(session)`                       |     1      |   0    | Data freshness check                        |
 
-**AI Search History:** `src/database/aiSearchHistory/index.ts` (76 lines)
+**AI Search History:** `src/database/aiSearchHistory/server.ts` for server-owned cache persistence and `src/database/aiSearchHistory/index.ts` for authenticated actor feedback
 
-| Function                                        | Reads | Writes | Notes                          |
-| ----------------------------------------------- | :---: | :----: | ------------------------------ |
-| `addAiSearchHistory(data)`                      |   0   |   1    | Save full response for caching |
-| `findCachedSearchByCacheKey(cacheKey, session)` |   1   |   0    | Cache lookup by key + tId      |
-| `updateAiSearchHistoryWithFeedback(data)`       |   0   |   1    | Add feedback to search record with explicit `{ success, searchHistoryId, updatedFields }` acknowledgement |
+| Function                                              | Reads | Writes | Notes |
+| ----------------------------------------------------- | :---: | :----: | ----- |
+| `addAiSearchHistoryServer(data)`                      |   0   |   1    | Admin SDK write of the compact cache response; the persisted cache key is SHA-256 hashed |
+| `findCachedSearchByCacheKeyServer(cacheKey, session)` |   1   |   0    | Admin SDK lookup by hashed cache key plus exact `pId + tId + sId` scope |
+| `updateAiSearchHistoryWithFeedback(data)`             |   1   |   1    | Client transaction verifies the current actor and exact scope before adding feedback; returns explicit `{ success, searchHistoryId, updatedFields }` acknowledgement |
 
 HelpChat answer feedback requires both write acknowledgements before local feedback state or thank-you copy advances. `submitSearchFeedback()` asserts the `aiSearchHistory` feedback update and the chat-session message feedback mirror, then emits the negative-feedback signal only after both writes are acknowledged. Failed or malformed acknowledgement results route through the existing bounded HelpChat feedback failure diagnostics.
 
@@ -184,11 +184,11 @@ HelpChat session deletion is optimistic for responsiveness but requires `assertC
 
 The development-only bulk-clear control deletes only the current user's loaded sessions. It passes those bounded IDs through `deleteChatSession()` sequentially, preserves partial acknowledgements, removes only acknowledged IDs from local state, and never attempts client deletion of server-owned `aiSearchHistory` or `queryEmbeddings` rows. This keeps local/QA behavior on the same separate-Answerlattice Firebase and tenant/storage boundary as normal chat deletion.
 
-**Query Embeddings:** `src/database/queryEmbeddings/index.ts` (93 lines)
+**Query Embeddings:** `src/database/queryEmbeddings/index.ts`
 
 | Function                                       | Reads | Writes | Notes                                             |
 | ---------------------------------------------- | :---: | :----: | ------------------------------------------------- |
-| `getCachedEmbedding(cacheKey)`                 |   1   |  0-1   | Read cached vector; stale rows return null and attempt best-effort cleanup with bounded failure diagnostics |
+| `getCachedEmbedding(cacheKey)`                 |   1   |  0-1   | Read exact scoped vector; missing creation time, age over 30 days, or explicit expiry returns null and attempts snapshot-preconditioned cleanup with bounded failure diagnostics |
 | `saveCachedEmbedding(cacheKey, query, vector)` |   0   |   1    | Cache 768-dim vector with 30-day retention fields |
 
 ---
@@ -212,7 +212,7 @@ The development-only bulk-clear control deletes only the current user's loaded s
    d. Convert to base64
    e. Generate bounded visual search context → generateSearchQueryFromImage() [Gemini 2.5 Flash]
 9. Build scoped cache key   → query + image/context/mode + KB/canonical source versions
-10. Response cache check    → findCachedSearchByCacheKey(key, scope)
+10. Response cache check    → findCachedSearchByCacheKeyServer(key, scope)
    → HIT: Return cached response immediately
 11. Canonical lookup        → approved canonical answer remains authoritative
 12. Approved FAQ lookup     → deterministic fallback before RAG
@@ -388,7 +388,7 @@ All variants include:
 | Regenerate                       | MessageActions → handleRegenerate → onRetry (regenerate mode) → search API → replace message                                   |    ✅    |
 | Mode switch                      | QnA actions "Ask Follow-up" → handleStartFollowUp → setCurrentMode('assistant')                                                |    ✅    |
 | Session persist                  | saveChatSession / updateChatSession → Firestore chatSessions                                                                   |    ✅    |
-| Cache hit                        | search-kb → findCachedSearchByCacheKey → return cached response                                                                |    ✅    |
+| Cache hit                        | search-kb → findCachedSearchByCacheKeyServer → return projected cached response                                                 |    ✅    |
 | Embedding cache                  | search-kb → getCachedEmbedding → return cached vector                                                                          |    ✅    |
 
 ### 7.3 Feature 16 Widget Runtime Addendum

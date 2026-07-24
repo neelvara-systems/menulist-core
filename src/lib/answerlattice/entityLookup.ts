@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
@@ -124,6 +125,7 @@ export async function searchAnswerlatticeEntityLookupOptions(
     const db = getAnswerlatticeAdminDb();
     const indexRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX);
     const prefixSnapshot = await indexRef
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('prefixTokens', 'array-contains-any', queryTokens)

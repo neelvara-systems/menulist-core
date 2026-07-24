@@ -302,4 +302,5 @@
 "packages/asset-factory/raw/.gitkeep","repository-control placeholder with no executable or data contract","not applicable"
 "packages/asset-factory/working/.gitignore","repository-control placeholder with no executable or data contract","not applicable"
 "packages/asset-factory/working/.gitkeep","repository-control placeholder with no executable or data contract","not applicable"
+"scripts/localization/translate-owner-locale-units.py","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"
 "src/constants/analyticsMetrics.js.map","generated diagnostic, source-map, or session output; producing source remains in scope","runtime, build, or audit tooling"

@@ -7,12 +7,14 @@
 **Parent Feature:** #4 — Multi-Outlet Brand Consistency  
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
 **Date:** January 2026
-**Last Updated:** June 27, 2026
+**Last Updated:** July 21, 2026
 **Author:** Cascade (Codebase Authority)
 
 > **May 20, 2026 mobile parity update:** The same awareness contract is now available in mobile menu editing through `MobileMasterUpdateNotice`, using `useMasterUpdateAwareness`, `buildSummaryText()`, the persisted `masterSnapshot`, "Got it" acknowledgment, and reopenable "Last changes" history.
 >
 > **June 27, 2026 diagnostic hardening:** Master update awareness and linked-outlet resolution diagnostics now use `src/lib/multiOutlet/diagnostics.ts`. Failure logs record normalized failure codes plus bounded project/master/store presence, length, counts, versions, and source error metadata only. Raw project IDs, store IDs, owner menu payloads, and provider/browser errors are not direct-console logged.
+>
+> **July 21, 2026 persistence and async-state hardening:** `masterOperationalState` now has an exact two-field runtime projector and write rule. The awareness hook keeps current same-project snapshots/overrides in a ref without reconnecting the listener, cancels superseded fetches with a request sequence, rechecks project identity after awaits, and clears project-specific refs/UI state on outlet switches. The inline hook listing in section 6.1 is retained as the original design sketch only; `src/hooks/useMasterUpdateAwareness.ts` is the executable authority and includes these later guards.
 
 ---
 
@@ -722,7 +724,13 @@ This hook is the core runtime engine. It listens to the `masterOperationalState`
 
 **Pattern reference:** Follows the same `onSnapshot` architecture as `useMasterJobStatus.ts` (`src/hooks/useMasterJobStatus.ts:43`), which already uses Firestore listeners for real-time multi-outlet state.
 
-```typescript
+```text
+HISTORICAL DESIGN SKETCH — not the current executable source.
+The live hook additionally uses parseMasterOperationalState(), current-project
+and request-generation refs, post-await identity guards, independent persisted
+acknowledgement synchronization, visibility reattachment, local project update,
+bounded diagnostics, and project-change state reset. Do not copy this sketch.
+
 "use client";
 
 /**
@@ -1257,6 +1265,8 @@ masterOperationalState/
 
 **Doc size:** ~100 bytes. Firestore minimum charge = 1 read regardless of size, so tiny doc = minimal network/parsing cost.
 
+**Runtime and rule contract (July 21, 2026):** The document has exactly `operationalVersion` and `lastUpdatedAt`. Creation must resolve to version `1`; every update must be exactly the prior integer plus one; `lastUpdatedAt` must be Firestore `request.time`. Tenant writers must have an owner/manager role and an active store claim matching the final store segment of the master project ID. Same-tenant outlet users may read the signal, but cannot mutate a different store's master signal. Platform admins retain access but must obey the same shape/version/timestamp contract. Clients project persisted state through `parseMasterOperationalState()` before using it; malformed legacy/Admin rows are ignored with bounded diagnostics.
+
 ### 8.2 Add to DB_COLLECTIONS
 
 **File:** `src/constants/database.ts`  
@@ -1305,7 +1315,7 @@ if (
         doc: firestoreDoc,
         setDoc,
         increment,
-        Timestamp,
+        serverTimestamp,
       } = await import("firebase/firestore");
 
       const signalDocRef = firestoreDoc(
@@ -1321,7 +1331,7 @@ if (
         signalDocRef,
         {
           operationalVersion: increment(1),
-          lastUpdatedAt: Timestamp.now(),
+          lastUpdatedAt: serverTimestamp(),
         },
         { merge: true },
       );
@@ -1336,6 +1346,8 @@ if (
 ```
 
 > **Note:** `increment()` is a Firestore server-side atomic operation. If the doc doesn't exist yet, `setDoc` with `merge: true` creates it with `operationalVersion: 1`. If it exists, `increment(1)` atomically adds 1 to the current value. This eliminates the read-then-write race condition where two concurrent saves could skip a version.
+
+The Firestore rule independently requires create-at-1, exact `+1`, `request.time`, the exact two-field shape, and current master-store write scope. The transform is therefore both concurrency-safe and rule-verifiable.
 
 ### 8.4 Operational Change Detection Function
 
@@ -2200,6 +2212,11 @@ The `masterOperationalState` signal doc is ~100 bytes — negligible storage cos
 | No snapshot → no banner                           | Migration safety                         |
 | Signal version unchanged → no banner              | Version comparison works                 |
 | Signal version > snapshot version → banner shows  | Full listener flow works                 |
+| Malformed/extra-field signal → no banner          | Runtime projector fails closed and logs  |
+| Same-tenant other-store signal write              | Rules deny cross-store tampering          |
+| Create at version other than 1                    | Rules deny a forged baseline              |
+| Update by anything except exactly +1              | Rules preserve monotonic truth            |
+| Client timestamp instead of server timestamp      | Rules require `request.time`              |
 | Rapid version changes → only 1 fetch (debounce)   | 5s debounce prevents wasted fetches      |
 | Non-operational save → no signal doc update       | `detectOperationalChange` filters noise  |
 | Acknowledge → banner disappears                   | Write + state update                     |

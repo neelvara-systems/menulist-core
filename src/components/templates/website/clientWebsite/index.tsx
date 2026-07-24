@@ -15,6 +15,7 @@ import {
     DeviceTypes,
     PageType,
 } from "@template/main-app/projects/b2cView/types";
+import type { PrecomputedDecisionBlocks } from "@template/main-app/projects/types";
 import { StoreDataType } from "@type/platform/store";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -41,7 +42,7 @@ const CustomerAppController = dynamic(
 interface ClientMenuRendererProps {
     projectData: any;
     storeDetails: StoreDataType;
-    precomputedBlocks?: any | null; // Precomputed Decision Blocks from Cloud Function
+    precomputedBlocks?: PrecomputedDecisionBlocks | null;
     projectId?: string; // Required for project-wise analytics
     initialLanguage?: string;
     // T5-N-01: R5 Layer resolution analytics — 'layer1' for claimed-slug match,

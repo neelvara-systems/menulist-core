@@ -112,8 +112,10 @@ assertIncludes(constants, 'PUBLIC_TRUTH_MONITOR_SOURCE_BOUNDARY', 'source bounda
 assertIncludes(types, 'PublicTruthMonitorSummaryDocument', 'summary type');
 assertIncludes(types, 'PublicTruthMonitorHistoryEntry', 'history entry type');
 assertIncludes(entitlement, 'hasValidSubscriptionAccess', 'paid plan entitlement');
+assertIncludes(entitlement, 'isMenuListSubscriptionEntitledForTenant(subscription, tenantId)', 'paid plan exact MenuList tenant entitlement');
 assertIncludes(entitlement, 'getPublicTruthMonitorPaidPlanIds', 'paid plan list helper');
 assertIncludes(serverEntitlement, 'getActiveSubscriptionForStoreServer', 'server subscription check');
+assertIncludes(serverEntitlement, 'tenantId: sessionScope?.tenantScope.numericId', 'server exact tenant entitlement input');
 assertIncludes(serverEntitlement, 'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";', 'server entitlement session scope document-ID guard import');
 assertIncludes(serverEntitlement, 'export function normalizePublicTruthMonitorSessionScopeDocumentId(', 'server entitlement session scope normalizer');
 assertIncludes(serverEntitlement, 'documentId !== raw || !/^[1-9]\\d*$/.test(documentId) || !isValidFirestoreDocumentId(documentId)', 'server entitlement exact numeric scope guard');

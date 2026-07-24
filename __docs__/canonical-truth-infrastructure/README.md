@@ -8,6 +8,7 @@
 |----------|----------|---------|
 | [Firebase](canonical-truth-infrastructure_firebase.md) | Cost Control | Every read/write with cost estimates |
 | [Phase 0 Verification](canonical-truth-infrastructure_phase0-verification.md) | Developers | Codebase audit results |
+| [Business Truth Contract](canonical-truth-infrastructure_business-truth-contract.md) | Product and engineering | Frozen canonical-source and projection inventory |
 
 ## What Is This?
 
@@ -39,7 +40,7 @@ Owner clicks publish → publishProject() → version++ → snapshot saved → s
 | `src/database/menuChangeLog/index.ts` | Append-only event ledger DAL |
 | `src/lib/mce/` | Menu Correctness Engine (validation) |
 | `src/lib/public-truth-tools/externalLocationIdentity.ts` | Provider-neutral external location binding validation |
-| `src/types/menuObservation.ts` | MOL types (change log, drift metrics) |
+| `src/types/menuObservation.ts` | Browser MOL change-log input, stored-event, scope, and pending-write types |
 | `src/config/features.ts` | Feature flags (ENABLE_MCE, ENABLE_MENU_OBSERVATION) |
 | `src/constants/database.ts` | Collection names |
 
@@ -73,3 +74,4 @@ Owner clicks publish → publishProject() → version++ → snapshot saved → s
 | 2025-02-24 | Initial creation — Phase 0 verification + Phase 1 implementation | Cascade |
 | 2026-07-16 | Resolved outlet snapshots, size preflight, summary-mode and TTL truth documented | Codex |
 | 2026-07-19 | Added the embedded provider-neutral external location identity boundary and linked its source contract | Codex |
+| 2026-07-22 | Froze the existing Business Truth Contract, public update semantics, version policy, and external-location collision activation gate without adding a second data model | Codex |

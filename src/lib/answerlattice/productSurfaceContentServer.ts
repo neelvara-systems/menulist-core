@@ -113,6 +113,7 @@ const buildTicketStats = (tickets: SupportTicketType[]): AnswerlatticeSurfaceTic
 async function loadActiveSurfaces(tId: number, sId: number): Promise<AnswerlatticeProductSurface[]> {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_PRODUCT_SURFACES)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('active', '==', true)
@@ -131,6 +132,7 @@ async function loadActiveSurfaces(tId: number, sId: number): Promise<Answerlatti
 async function loadPublishedArticles(tId: number, sId: number): Promise<KnowledgeBaseArticleType[]> {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.KB_ARTICLES)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'published')
@@ -145,6 +147,7 @@ async function loadPublishedArticles(tId: number, sId: number): Promise<Knowledg
 async function loadPublishedFaqs(tId: number, sId: number): Promise<AnswerlatticeFaq[]> {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'published')

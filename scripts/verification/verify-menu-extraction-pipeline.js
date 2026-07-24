@@ -85,6 +85,15 @@ filesEqual(
   'Shared menu extraction integrity contract is mirrored byte-for-byte',
 );
 
+contains(
+  'src/data/shared/menuExtractionIntegrity.ts',
+  [
+    'export function findInvalidMenuExtractionFileUidIndexes',
+    'throw new Error("MENU_EXTRACTION_INVALID_INCOMING_FILE_UID");',
+  ],
+  'Shared extraction identity contract rejects malformed incoming file UIDs before persistence',
+);
+
 filesEqual(
   'src/data/shared/businessAttributeDefaults.ts',
   'functions/src/sharedData/businessAttributeDefaults.ts',
@@ -1900,7 +1909,7 @@ contains(
     'public_create_menu_response_parse_failed',
     'public_create_menu_response_invalid',
     'isNonEmptyString(payload?.draftId)',
-    'router.push(`/create-menu/preview/${payload.draftId}`)',
+    'router.push(`${createMenuPreviewPath}/${payload.draftId}`)',
     "setError(t('CreateMenu.uploadFailed'))",
     "setError(t('CreateMenu.linkFailed'))",
   ],
@@ -3577,6 +3586,8 @@ contains(
     'normalizePublicMenuDraftExtractedData(sourceData)',
     'normalizeExtractedBusinessProfile(menuData?.extractedBusinessProfile)',
     'validateJobRouting(job)',
+    'findInvalidMenuExtractionFileUidIndexes(job.files)',
+    'throw new Error("Invalid extraction file identities.");',
     'findDuplicateMenuExtractionFileUids(job.files)',
     'resolveMenuExtractionBatchCompletion(result.batchResults',
     'partialResultNeedsReview',
@@ -3752,10 +3763,14 @@ contains(
     'function getSaveFilesErrorContext',
     'function getExistingProjectSummary',
     'function buildProjectSummaryDefaultsUpdate',
+    'function normalizeProjectLanguageCode',
+    'const normalizedExistingLanguages = existingLanguages',
     "import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../sharedData/menuExtractionProjectSize';",
     "...getBoundedSaveFilesStringContext('projectId', projectId)",
     "sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error",
     "throw new Error('Project not found.');",
+    "throw new Error('Project is not available for extraction.');",
+    "throw new Error('Project identity does not match extraction scope.');",
     'firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${sId}`)',
     '[`projects.${projectId}`]',
     "const estimatedBytes = Buffer.byteLength(JSON.stringify(updateData), 'utf8');",
@@ -4244,6 +4259,26 @@ contains(
     'scripts/verification/test-menu-extraction-job-rules.ts',
   ],
   'Menu extraction tenant isolation has a registered Firestore rules emulator regression',
+);
+
+const packageScripts = JSON.parse(read('package.json')).scripts;
+const messagingEmulatorScriptNames = Object.keys(packageScripts).filter((scriptName) =>
+  /^test:messaging-.*:emulator$/.test(scriptName),
+);
+const messagingEmulatorCredentialIsolationFailures = messagingEmulatorScriptNames.filter(
+  (scriptName) => {
+    const command = packageScripts[scriptName];
+    return (
+      typeof command !== 'string' ||
+      !command.startsWith('env -u GOOGLE_APPLICATION_CREDENTIALS ') ||
+      !command.includes('"env -u GOOGLE_APPLICATION_CREDENTIALS ts-node ')
+    );
+  },
+);
+addCheck(
+  'Every messaging Firestore emulator command clears inherited application credentials in parent and child processes',
+  messagingEmulatorScriptNames.length === 8 && messagingEmulatorCredentialIsolationFailures.length === 0,
+  messagingEmulatorCredentialIsolationFailures.join(', '),
 );
 
 contains(

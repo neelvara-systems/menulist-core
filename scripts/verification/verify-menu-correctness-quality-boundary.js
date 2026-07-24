@@ -15,6 +15,7 @@ const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPa
 const mce = read('src/lib/mce/correctnessResolver.ts');
 const quality = read('src/lib/mce/qualitySignals.ts');
 const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
+const snapshotRetention = read('functions/src/schedulers/menuSnapshotRetention.ts');
 const verification = read('__docs__/menu-correctness-engine/menu-correctness-engine_verification-2026-07-16.md');
 
 assertIncludes(projects, 'persistedPublishData._mce = publishMceRuntime.toMCEMetadata(mceResult);', 'standalone publish MCE stamp');
@@ -28,6 +29,9 @@ assertIncludes(mce, 'validatePrice(price).success', 'canonical stored-price vali
 assertIncludes(quality, 'isDescriptionMissing(item, [lang])', 'primary-language description signal');
 assertIncludes(maintenanceScheduler, 'selectDeterministicRetentionStorePage(', 'menu snapshot deterministic retention paging');
 assertIncludes(maintenanceScheduler, 'including inactive stores whose old snapshots still need expiry', 'inactive-store snapshot retention boundary');
+assertIncludes(maintenanceScheduler, 'deleteExpiredMenuSnapshotsInCollectionRef({', 'menu snapshot shared retention helper');
+assertIncludes(snapshotRetention, ".where('createdAt', '<=', cutoff)", 'legacy/current snapshot creation-time retention query');
+assertNotIncludes(snapshotRetention, ".where('expiresAt', '<=', params.now)", 'legacy snapshot expiry-only orphaning query');
 assertNotIncludes(read('scripts/setup-firestore-ttl.sh'), '--collection-group=menuSnapshots', 'ineffective dynamic-subcollection TTL policy');
 assertIncludes(verification, 'Linked outlet ordinary saves remain protected by the authenticated outlet-save schema and policy transaction', 'linked MCE truth boundary');
 assertIncludes(verification, 'Owner/release pending', 'external evidence boundary');

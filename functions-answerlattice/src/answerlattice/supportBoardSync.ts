@@ -217,7 +217,7 @@ async function loadEntityInfo(
         for (const doc of docs) {
             if (!doc.exists) continue;
             const data = doc.data() || {};
-            if (data.tId !== tId || data.sId !== sId) continue;
+            if (data.pId !== PRODUCT_ID || data.tId !== tId || data.sId !== sId) continue;
             result.set(doc.id, {
                 name: truncateText(data.name || doc.id, 90),
                 type: truncateText(data.type || 'feature', 40),
@@ -432,6 +432,7 @@ async function buildReleaseImpactCandidates(
 
     const releasesSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)
+        .where('pId', '==', PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -483,6 +484,7 @@ async function loadSupportBoardSourceDocs(
 
     const [historySnap, signalSnap, driftSnap] = await Promise.all([
         db.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+            .where('pId', '==', PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('canonical', '==', false)
@@ -491,6 +493,7 @@ async function loadSupportBoardSourceDocs(
             .limit(SUPPORT_BOARD_SYNC_LIMITS.maxSearchHistoryReads + 1)
             .get(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+            .where('pId', '==', PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('timestamp', '>=', windowStart)
@@ -498,6 +501,7 @@ async function loadSupportBoardSourceDocs(
             .limit(SUPPORT_BOARD_SYNC_LIMITS.maxSignalReads + 1)
             .get(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('pId', '==', PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('governance.driftFlag', '==', true)
@@ -664,6 +668,9 @@ async function upsertSupportBoardCards(
         }
 
         const existing = snapshot.data() || {};
+        if (existing.pId !== PRODUCT_ID || existing.tId !== tId || existing.sId !== sId) {
+            throw new Error('Answerlattice support-board source identity conflicts with an existing document scope');
+        }
         if (existing.status === SUPPORT_BOARD_STATUS.RESOLVED) {
             skippedResolved++;
             return;
@@ -705,6 +712,7 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
 }> {
     const cardsSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS)
+        .where('pId', '==', PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .orderBy('modifiedOn', 'desc')
@@ -765,6 +773,13 @@ async function writeSupportBoardSummary(tId: number, sId: number, syncStats: {
     const sourceHash = hashPayload(summaryCore);
     const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`supportBoardSummary_${tId}_${sId}`);
     const existing = await summaryRef.get();
+    if (existing.exists && (
+        existing.data()?.pId !== PRODUCT_ID
+        || existing.data()?.tId !== tId
+        || existing.data()?.sId !== sId
+    )) {
+        throw new Error('Answerlattice support-board summary identity conflicts with an existing document scope');
+    }
     if (existing.exists && existing.data()?.sourceHash === sourceHash) {
         return { written: false, ...coreCounts, breakdownFresh };
     }

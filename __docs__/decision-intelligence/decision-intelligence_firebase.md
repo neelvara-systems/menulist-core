@@ -2,7 +2,7 @@
 
 **Feature:** Featured Choices (internal Decision Blocks)
 **Status:** Local source-complete; Firebase QA deployment and release certification pending
-**Last Updated:** July 17, 2026
+**Last Updated:** July 21, 2026
 **Priority:** HIGH — Timezone-aware Cloud Function scoring + project-embedded customer-facing read model.
 
 > **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated scheduler/cost evidence only; Decision Intelligence release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, browser/mobile customer-menu QA, public-cache evidence, provider/runtime smoke where relevant, and production-host smoke.
@@ -24,8 +24,8 @@
 
 | Operation                          | Collection                               | Trigger              | Frequency                  | Docs Read | Indexed?         | Notes                                                                                                   |
 | ---------------------------------- | ---------------------------------------- | -------------------- | -------------------------- | --------- | ---------------- | ------------------------------------------------------------------------------------------------------- |
-| Customer: fetch precomputed blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | Customer page load | Per menu cache miss | 0 additional | Project read | Public menu uses the embedded valid projection already loaded with project data. If missing or expired, runtime falls back to owner-pinned/no automatic ranking without another Firestore read. File: `src/app/client/[[...slug]]/page.tsx` |
-| Scoring: read project data         | `projects/{tId}/{sId}/{projectId}`       | Scheduled scoring    | Per active project         | 1         | Direct doc       | Cloud Function reads full project for item analysis.                                                    |
+| Customer: fetch precomputed blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | Customer page load | Per menu cache miss | 0 additional | Project read | Public menu projects the embedded value through an exact identity-bound allowlist and emits only current candidate references, ISO timestamps, and bounded renderer stats. Unknown, malformed, foreign, future, missing, or expired data falls back to owner-pinned/no automatic ranking without another Firestore read. File: `src/app/client/[[...slug]]/page.tsx` |
+| Scoring: read project data         | `projects/{tId}/{sId}/{projectId}`       | Scheduled scoring    | Per active project         | 1         | Direct doc       | Cloud Function reads the full project, then rejects malformed/unbounded catalogs, duplicate current IDs and unsafe merged counters before any write. |
 | Scoring: read analytics snapshot   | `analytics/{tId}_{sId}_{projectId}_intelligence_7d` | Scheduled scoring and manual platform recovery | Per active project | 1 | Direct doc | Uses the scheduler-written compact 7-day snapshot; missing/stale snapshots score as empty instead of running hidden daily range reads. |
 | Scoring: read active project list  | `platformSummary/projects_{sId}`         | Scheduled scoring    | Per store                  | 1         | Direct doc       | A valid empty summary ends the lookup. Only a missing/malformed legacy summary uses the compatibility collection query. |
 | Scoring: read store summary        | `platformSummary/storesSummary`          | Scheduled run        | 1 per scheduler invocation | 1         | Direct doc       | Used for store scheduling, tenant/store IDs, business category, timezone, and active status.             |
@@ -36,12 +36,14 @@
 | Operation                      | Collection                               | Trigger                  | Frequency          | Docs Written | Fields                                                | Notes                                       |
 | ------------------------------ | ---------------------------------------- | ------------------------ | ------------------ | ------------ | ----------------------------------------------------- | ------------------------------------------- |
 | Scoring: write computed blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | Scheduled/manual scoring complete | Per active project with items | 1 project merge | popular, quickPick, bestValue candidates + computedAt | Controlled by `ENABLE_DECISION_BLOCKS_SCORING`; there is no separate Decision Blocks document. Successful writes are followed by one public-cache revalidation attempt per affected store. |
+| Scoring: clear stale blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | Current active project has no scoreable items and a prior generated field exists | Transition only | 1 project merge-delete; 0 when already absent | Deletes generated field only | Uses the already-loaded project data, preserves canonical truth, and triggers the same per-store public-cache revalidation path. |
 | Scoring: write run log         | `schedulerRunLogs/{autoId}`              | Scheduled scoring complete | 1 per run          | 1            | status, tasks[], errors[], durations, counts, `expiresAt` | Persisted for Scheduler Monitor Dashboard with configured retention. |
+| Store scheduler execution lease | `_system/storeNightlyScheduler_{tId}_{sId}` | Each scheduled/manual store attempt | Per store attempt | 2 transaction reads + 2 writes when admitted; collision is 1 read/0 writes | Ten-minute exact-owner lease shared by hourly and manual execution; prevents duplicate store effects and permits stale recovery. |
 | Owner: update selection controls | `projects/{tId}/{sId}/{projectId}`       | Owner saves Featured section | Per save | 1 | `menuSettings.decisionBlocks` | Saved through `updateProject()`, which strips generated `publicDecisionBlocks` from owner payloads and invalidates public menu/OBP cache tags. |
 
 ### Deletes
 
-None — project `publicDecisionBlocks` projections are overwritten during scoring, never deleted.
+Generated-field delete only — an existing `publicDecisionBlocks` field is removed when the current project has no scoreable active items. The project document and canonical menu truth remain. Repeating the empty state performs zero writes.
 
 ---
 
@@ -63,6 +65,7 @@ None — project `publicDecisionBlocks` projections are overwritten during scori
 - **60s Vercel cache**: Customer-facing reads cached, reducing Firestore reads significantly.
 - **Store-scoped scoring**: Hourly trigger filters stores by local settlement window, avoiding one large global daily run.
 - **Compact analytics input**: Decision Blocks consume the 7-day intelligence snapshot instead of opening daily range reads during scheduled or platform-manual scoring.
+- **Bounded deterministic scoring**: Active items and aliases are capped at 2,000, merged counters remain safe integers, and equal-score candidates use binary item-ID ordering. Invalid input aborts before a project write.
 - **Runtime availability filter**: Blocks filtered client-side for sold-out items (no extra read).
 - **Bounded cache invalidation**: Project projection writes are coalesced into one public cache invalidation request per store, rather than one request per project.
 - **Private CMI index fanout removed**: Decision Intelligence shares the nightly loop with CMI. The high-cardinality CMI item maps and audit array are direct-document state only and are exempt from automatic single-field indexing in `firestore.indexes.json`. This lowers each CMI replacement's index work and storage without changing the Decision Blocks projection or queries.

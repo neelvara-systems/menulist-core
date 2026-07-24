@@ -14,13 +14,14 @@ import {
   getAnswerlatticeWeeklySummaryFreshness,
   parseAnswerlatticeWeeklySummary,
 } from '@lib/answerlattice/analyticsIntelligenceContracts';
+import { getAnswerlatticeChatWorkspaceScopeKey } from '@lib/answerlattice/chatAnalyticsContracts';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Alert, Button, Card, Empty, message, Space, Spin, Statistic, Typography } from 'antd';
 import { doc, getDoc } from 'firebase/firestore';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuCalendar, LuDownload, LuRefreshCw, LuTrendingDown, LuTrendingUp } from 'react-icons/lu';
 
 const WEEKLY_DIGEST_LOAD_FAILED_MESSAGE = 'Failed to load weekly digest. Please try again later';
@@ -31,35 +32,57 @@ const WEEKLY_DIGEST_LOAD_FAILED_MESSAGE = 'Failed to load weekly digest. Please 
 
 export default function WeeklyDigest() {
   const session = useClientAuthSession();
+  const resolvedScope = resolveAnswerlatticeSessionScope(session);
+  const tenantId = resolvedScope?.tenantId ?? null;
+  const storeId = resolvedScope?.storeId ?? null;
+  const scopeKey = getAnswerlatticeChatWorkspaceScopeKey(
+    tenantId && storeId ? { tId: tenantId, sId: storeId } : null,
+  );
   const [digest, setDigest] = useState<AnswerlatticeWeeklySummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const requestOwnerRef = useRef(0);
+  const inFlightScopeRef = useRef<string | null>(null);
+  const mountedRef = useRef(false);
+  const scopeKeyRef = useRef(scopeKey);
+  scopeKeyRef.current = scopeKey;
 
   // Fetch digest from Firestore
-  const fetchDigest = async () => {
-    const scope = resolveAnswerlatticeSessionScope(session);
-    if (!scope) {
+  const fetchDigest = useCallback(async () => {
+    if (!tenantId || !storeId || !scopeKey) {
       setDigest(null);
       setLoading(false);
       return;
     }
+    if (inFlightScopeRef.current === scopeKey) return;
 
+    const requestOwner = ++requestOwnerRef.current;
+    const expectedScopeKey = scopeKey;
+    inFlightScopeRef.current = expectedScopeKey;
+    setDigest(null);
+    setLoading(true);
     try {
-      setLoading(true);
-
       const digestRef = doc(
         answerlatticeFirebaseClient,
         'insights',
-        String(scope.tenantId),
+        String(tenantId),
         'stores',
-        String(scope.storeId),
+        String(storeId),
         'ai',
         'weekly'
       );
 
       const digestDoc = await getDoc(digestRef);
+      if (
+        !mountedRef.current
+        || requestOwnerRef.current !== requestOwner
+        || scopeKeyRef.current !== expectedScopeKey
+      ) return;
 
       if (digestDoc.exists()) {
-        const parsed = parseAnswerlatticeWeeklySummary(digestDoc.data(), scope);
+        const parsed = parseAnswerlatticeWeeklySummary(
+          digestDoc.data(),
+          { tenantId, storeId },
+        );
         if (!parsed) {
           throw new Error('answerlattice_weekly_digest_contract_invalid');
         }
@@ -68,12 +91,31 @@ export default function WeeklyDigest() {
         setDigest(null);
       }
     } catch (error) {
-      logRuntimeFailure('platform_weekly_digest_load_failed', error);
-      message.error(WEEKLY_DIGEST_LOAD_FAILED_MESSAGE);
+      if (
+        mountedRef.current
+        && requestOwnerRef.current === requestOwner
+        && scopeKeyRef.current === expectedScopeKey
+      ) {
+        setDigest(null);
+        logRuntimeFailure('platform_weekly_digest_load_failed', error);
+        message.error(WEEKLY_DIGEST_LOAD_FAILED_MESSAGE);
+      }
     } finally {
-      setLoading(false);
+      if (
+        requestOwnerRef.current === requestOwner
+        && inFlightScopeRef.current === expectedScopeKey
+      ) {
+        inFlightScopeRef.current = null;
+      }
+      if (
+        mountedRef.current
+        && requestOwnerRef.current === requestOwner
+        && scopeKeyRef.current === expectedScopeKey
+      ) {
+        setLoading(false);
+      }
     }
-  };
+  }, [scopeKey, storeId, tenantId]);
 
   // Export as text
   const handleExport = () => {
@@ -94,10 +136,12 @@ ${digest.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 KEY METRICS
 - Conversation Volume: ${digest.sourceCompleteness.comparisonComplete
-  ? `${digest.keyMetrics.volumeChange > 0 ? '+' : ''}${digest.keyMetrics.volumeChange.toFixed(1)}%`
+  && digest.keyMetrics.volumeChangePercent !== null
+  ? `${digest.keyMetrics.volumeChangePercent > 0 ? '+' : ''}${digest.keyMetrics.volumeChangePercent.toFixed(1)}%`
   : 'Not available'}
-- Recorded Feedback: ${digest.sourceCompleteness.comparisonComplete
-  ? `${digest.keyMetrics.satisfactionChange > 0 ? '+' : ''}${digest.keyMetrics.satisfactionChange.toFixed(1)}%`
+- Positive Feedback Share: ${digest.sourceCompleteness.comparisonComplete
+  && digest.keyMetrics.positiveFeedbackSharePointChange !== null
+  ? `${digest.keyMetrics.positiveFeedbackSharePointChange > 0 ? '+' : ''}${digest.keyMetrics.positiveFeedbackSharePointChange.toFixed(1)} percentage points`
   : 'Not available'}
 - Top Repeated Question: ${digest.keyMetrics.topCategory}
 - Current Source Days: ${digest.sourceCompleteness.currentDays ?? 'Not recorded'}/7
@@ -116,8 +160,13 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
   };
 
   useEffect(() => {
-    fetchDigest();
-  }, [session]);
+    mountedRef.current = true;
+    void fetchDigest();
+    return () => {
+      mountedRef.current = false;
+      requestOwnerRef.current += 1;
+    };
+  }, [fetchDigest]);
 
   // ================================================================
   // LOADING STATE
@@ -210,30 +259,34 @@ Generated: ${new Date(digest.generatedAt).toLocaleString()}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           <Statistic
             title="Conversation volume change"
-            value={comparisonComplete ? digest.keyMetrics.volumeChange : 'Not available'}
-            precision={comparisonComplete ? 1 : undefined}
-            suffix={comparisonComplete ? '%' : undefined}
-            prefix={comparisonComplete
-              ? digest.keyMetrics.volumeChange >= 0
+            value={comparisonComplete && digest.keyMetrics.volumeChangePercent !== null
+              ? digest.keyMetrics.volumeChangePercent
+              : 'Not available'}
+            precision={comparisonComplete && digest.keyMetrics.volumeChangePercent !== null ? 1 : undefined}
+            suffix={comparisonComplete && digest.keyMetrics.volumeChangePercent !== null ? '%' : undefined}
+            prefix={comparisonComplete && digest.keyMetrics.volumeChangePercent !== null
+              ? digest.keyMetrics.volumeChangePercent >= 0
                 ? <LuTrendingUp style={{ color: '#52c41a' }} />
                 : <LuTrendingDown style={{ color: '#ff4d4f' }} />
               : undefined}
-            valueStyle={comparisonComplete
-              ? { color: digest.keyMetrics.volumeChange >= 0 ? '#52c41a' : '#ff4d4f' }
+            valueStyle={comparisonComplete && digest.keyMetrics.volumeChangePercent !== null
+              ? { color: digest.keyMetrics.volumeChangePercent >= 0 ? '#52c41a' : '#ff4d4f' }
               : undefined}
           />
           <Statistic
-            title="Recorded feedback change"
-            value={comparisonComplete ? digest.keyMetrics.satisfactionChange : 'Not available'}
-            precision={comparisonComplete ? 1 : undefined}
-            suffix={comparisonComplete ? '%' : undefined}
-            prefix={comparisonComplete
-              ? digest.keyMetrics.satisfactionChange >= 0
+            title="Positive feedback share change"
+            value={comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null
+              ? digest.keyMetrics.positiveFeedbackSharePointChange
+              : 'Not available'}
+            precision={comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? 1 : undefined}
+            suffix={comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? 'pp' : undefined}
+            prefix={comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null
+              ? digest.keyMetrics.positiveFeedbackSharePointChange >= 0
                 ? <LuTrendingUp style={{ color: '#52c41a' }} />
                 : <LuTrendingDown style={{ color: '#ff4d4f' }} />
               : undefined}
-            valueStyle={comparisonComplete
-              ? { color: digest.keyMetrics.satisfactionChange >= 0 ? '#52c41a' : '#ff4d4f' }
+            valueStyle={comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null
+              ? { color: digest.keyMetrics.positiveFeedbackSharePointChange >= 0 ? '#52c41a' : '#ff4d4f' }
               : undefined}
           />
           <div>

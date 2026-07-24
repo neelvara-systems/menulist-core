@@ -372,16 +372,20 @@ const getProvisioningScopeFromUser = (
     user: Record<string, any>,
     userId: string,
 ): AnswerlatticeOnboardingResumeScope | null => {
-    const tenantId = normalizeAnswerlatticeScopeDocumentId(user.tenantId ?? user.tId);
-    const storeId = normalizeAnswerlatticeScopeDocumentId(user.storeId ?? user.sId);
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(user.tenantId);
+    const compactTenantId = normalizeAnswerlatticeScopeDocumentId(user.tId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(user.storeId);
+    const compactStoreId = normalizeAnswerlatticeScopeDocumentId(user.sId);
     const attemptId = String(user.onboardingAttemptId || '').trim();
     const requestFingerprint = String(user.onboardingRequestFingerprint || '').trim();
-    const productId = user.pId ?? user.productId;
     if (
         user.id !== userId
-        || productId !== PRODUCT_IDS.ANSWERLATTICE
+        || user.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || user.productId !== PRODUCT_IDS.ANSWERLATTICE
         || !tenantId
+        || compactTenantId !== tenantId
         || !storeId
+        || compactStoreId !== storeId
         || !attemptId
         || !requestFingerprint
     ) {

@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Firebase
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-19
+> **Version:** 1.3.1
+> **Last Updated:** 2026-07-23
 > **Audience:** Developers
 > **Firebase Project:** Answerlattice (separate from MenuList's menulist-qa)
 
@@ -89,6 +89,8 @@ Uses existing `platformSummary` collection. No new collection needed.
 Every config carries exact `pId: 'AL'`, `tId`, and `sId` ownership. The server settings/test routes and Functions reader compare those fields with the session/event-derived document ID. A fully unowned legacy document can be claimed once inside an ownership-validating transaction; partial or conflicting identity fails closed. The settings save re-reads and validates ownership in the same transaction that writes Slack/email state. The owner settings merge is field-owned: it changes Slack/email plus identity/audit time only, leaving controlled adapters and circuit-breaker state untouched.
 
 **Secret rule boundary:** `integrationConfig_*` is excluded from all client reads, creates, and updates in both `firestore-answerlattice.rules` and the shared recovery rules, including the platform-admin branch. Admin SDK routes/Functions remain authoritative. The owner API returns only `webhookConfigured`; it never returns the raw Slack webhook.
+
+Server reads still treat the stored config as untrusted after ownership succeeds. Owner GET/test projection and the Functions adapter normalizer independently reject credential-bearing/nonstandard-port/query/fragment Slack URLs, malformed recipients/filters/channels, and non-integer circuit-breaker counters. A malformed legacy destination is reported as unconfigured/disabled and cannot authorize a test event or provider delivery. PUT does not preserve an invalid legacy webhook when Slack is enabled.
 
 **Health summary:** `platformSummary/integrationHealth_{tId}_{sId}` stores sanitized last-success/last-failure state for owner UI. Functions update its nested adapter map in an ownership-validating transaction, so each health write is `1R + 1W`. Fully unowned legacy rows can be claimed; partial/conflicting rows fail closed. Raw delivery logs are not read by the settings screen. The settings API maps any stored adapter `lastError` to fixed review copy before returning health to the browser.
 

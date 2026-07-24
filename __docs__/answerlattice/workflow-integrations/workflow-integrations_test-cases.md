@@ -1,7 +1,7 @@
 # Answerlattice — External Workflow Integrations — Test Cases
 
-> **Version:** 1.3.0
-> **Last Updated:** 2026-07-19
+> **Version:** 1.3.1
+> **Last Updated:** 2026-07-23
 > **Audience:** Engineering / QA / Product
 
 ---
@@ -38,6 +38,8 @@ Self-service scope is Slack and email only. Linear and GitHub code is internal c
 | WI-018 | Circuit reaches threshold or cooldown probe races | Circuit opens at threshold; only one bounded probe lease wins | Config emulator |
 | WI-019 | Owner tests unsaved/disabled adapters | Test is unavailable or API rejects; saved enabled Slack/email receive controlled test regardless ordinary filters | UI/API contract |
 | WI-020 | Owner disables or disconnects Slack/email | Saved configuration reflects disabled/removed destination; no future event is dispatched to it | API normalization + config store |
+| WI-021 | Legacy Slack URL contains userinfo, nonstandard port, query, fragment, or foreign host | GET reports unconfigured/disabled; PUT cannot preserve it; test queues no event; Functions dispatch stays disabled | Shared stored-config projector + Functions adapter boundary |
+| WI-022 | Stored channel/circuit-breaker counter uses an object or numeric string | Channel is not stringified and failure count falls back to zero; no malformed typed state reaches owner/provider logic | Workflow and adapter contract suites |
 
 ---
 
@@ -102,3 +104,4 @@ Checked 2026-07-19:
 | Date | Version | Change |
 |---|---|---|
 | 2026-07-19 | 1.3.0 | Added complete source, emulator, provider, deployment, and founder-evidence matrix for Feature 34. |
+| 2026-07-23 | 1.3.1 | Added exact stored-config projection, credential/port rejection and noncoercing circuit-breaker admission. |

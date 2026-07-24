@@ -1,95 +1,89 @@
 # SignalDesk AI Intelligence - Test Cases
 
-**Status:** Initial test matrix
-**Created:** June 23, 2026
-**Last Updated:** July 11, 2026
+**Status:** Current source and emulator matrix
+**Last Updated:** July 21, 2026
 
-## Output Validation Tests
+## Admission and Security
 
-| Test | Expected |
+| Case | Expected |
 | --- | --- |
-| AI returns invalid schema | Blocked and review item created. |
-| AI omits evidence refs | Blocked or low-confidence review. |
-| AI uses blocked source field | Blocked. |
-| AI recommends send approval | Blocked. |
-| AI marks consent as present without proof | Blocked. |
-| AI run is accepted unchanged | Review evidence and cumulative acceptance rate update once. |
-| AI run is marked edited without a reason | Blocked. |
-| AI run is re-reviewed | Previous decision count and minute contribution are reversed before replacement. |
-| Rules-only score is submitted for shadow review | Blocked. |
-| Non-founder submits shadow review | Blocked. |
-| Volume child critic passes | Child completes with two calls and no escalation. |
-| Volume child critic revises or holds | Approved Gemini escalation runs and child records three calls. |
-| Escalation provider is not executable | Child remains review-required and records escalation blocked without calling another provider. |
-| Batch exceeds five targets, three tasks, or founder cost cap | Blocked before provider calls. |
-| Direct server caller supplies a short idempotency key or invalid bound | Blocked before provider calls. |
-| Two concurrent standalone AI Assist calls use the exact same key and request | Both converge on one durable worker run and one paid model call. |
-| Completed standalone AI Assist is retried exactly | Durable output replays without a model call. |
-| Standalone or volume-child provider/critic/escalation fails after claim | Exact claim becomes `unresolved` with one stable audit event; exact retry is review-required and makes no model call. |
-| AI final transaction commits but acknowledgement is lost | Completed claim plus deterministic worker returns success without repeating model work. |
-| Standalone AI Assist key is reused with changed target, task, instruction, or mode | Fails with an idempotency conflict before a model call. |
-| Two distinct standalone AI Assist requests race for one remaining provider-budget slot | One reserves and executes; the other fails before a model call. |
-| Standalone AI Assist starts while an AI Volume lock is active | Blocked before a model call unless it is a child of that exact volume parent. |
-| Provider spend changes after AI Volume preflight but before lock acquisition | Transaction-current lock admission rechecks the complete projected cost and blocks an over-cap batch. |
-| Optional Gemini provider-budget policy is absent at finalization | Provider-account spend is recorded and the policy remains absent; no spend-only partial policy is created. |
-| Existing paid-request key is reused with changed targets, tasks, instruction, or cost ceiling | Fails with an idempotency conflict before provider calls. |
-| Two concurrent callers submit the exact same paid request | Both converge on one parent and only the committing worker executes the paid child set. |
-| Legacy parent has no request fingerprint | Replays only when stored founder, targets, tasks, instruction, and cost ceiling exactly match. |
-| Another non-expired volume run holds the global lock | Overlapping batch is blocked before provider calls; an expired lock can be recovered. |
-| Expired running parent has some completed children | Retry reconstructs child IDs/calls/cost, records one recovery audit/timeline, and finalizes as partial without provider calls. |
-| Expired running parent has no completed children | Retry finalizes as blocked with `ai_volume_run_interrupted`. |
-| Recovered parent is retried again | Existing terminal parent returns without another recovery write. |
-| Old parent recovery sees a lock owned by a newer batch | Parent is recovered but the newer lock is not released or changed. |
-| Desktop request fails or returns running | Bounded payload and key remain locally available for `Retry Batch`; scope controls remain locked. |
-| Desktop receives terminal batch result | Local retry payload clears automatically. |
-| Founder clears a retry after a pre-parent validation/configuration block | Local retry payload clears without server mutation. |
-| One child provider call fails | Successful children remain; parent becomes partial with stable failure code. |
-| All children fail | Parent becomes blocked. |
-| Non-founder or mobile starts volume mode | Blocked before provider work. |
-| AI-worker kill switch is active | Volume batch blocked. |
-| Final output retains any rejected fact | Confidence is forced low and founder review remains required. |
-| Volume result attempts send/publish/opportunity/MenuList mutation | No corresponding record or truth write exists. |
+| Missing auth, membership, or action permission | Rejected before data/provider work. |
+| Mobile AI execution or shadow review | Rejected by action-class guard. |
+| Held/rejected/suppressed target | Hidden from desktop AI selectors and rejected by server. |
+| Expired/blocked/non-permitted source policy | Rejected before provider work and safely audited. |
+| Stale evidence identity or source lineage | Rejected; no usable output. |
+| Non-Gemini active route | Not offered by UI and rejected by server. |
+| AI-worker kill switch active | Rules/provider work rejected. |
 
-## Scoring Tests
+## Provider and Output
 
-| Test | Expected |
+| Case | Expected |
 | --- | --- |
-| Strong restaurant menu gap | High current-list gap score with evidence. |
-| Salon service-list target | Fit accepted, not restaurant-only. |
-| No evidence of list problem | Low current-list gap or hold. |
-| Source policy blocked | Risk high and action held. |
-| Suppressed contact | Contactability blocked. |
-| Two concurrent identical score requests | One content-addressed score, decision snapshot, operation ledger, audit/cost set, and target projection. |
-| Source policy expires before score settlement | Transaction refuses all score effects. |
-| Two concurrent identical evidence requests | One rights-aware evidence detail/summary and one target/audit/cost effect set. |
-| Evidence or personalization rights change | New packet identity; stale allowed-use truth is not replayed. |
+| Prompt contains instruction-like target/evidence text | Treated as data; system authority remains unchanged. |
+| Output exceeds schema, contains extra keys, or is invalid JSON | Fails closed; raw output is not persisted. |
+| Provider omits required fields | Fails closed. |
+| Rejected facts remain | Final confidence is low. |
+| Critic passes | Two calls; no escalation. |
+| Critic holds/revises or confidence is low | Same-provider escalation runs only when configured and budgeted. |
+| Escalation unavailable | Child remains review-required with escalation blocked. |
 
-## Cost Tests
+## Idempotency and Accounting
 
-| Test | Expected |
+| Case | Expected |
 | --- | --- |
-| Same evidence hash reruns immediately | Cache hit. |
-| List page triggers AI for every row | Fails. |
-| Worker runs without budget cap | Blocked. |
-| Prompt includes full conversation history unnecessarily | Fails. |
-| Volume projected cost exceeds founder maximum | Blocked before the first call. |
-| Volume projected cost exceeds remaining provider daily/monthly budget | Blocked before the parent or first call. |
-| Critic/escalation calls complete | Every call contributes to provider/budget and daily AI estimates. |
+| Concurrent exact assist requests | One claim, one provider execution, same durable run returned. |
+| Completed assist exact retry | No provider call or duplicate spend. |
+| Same key with changed facts | Idempotency conflict before provider work. |
+| Two requests race for one remaining budget slot | One reserves; one fails before provider work. |
+| Provider/critic/escalation fails after claim | Claim becomes unresolved; exact retry does not repeat work. |
+| Final commit succeeds but acknowledgement is lost | Completed claim replays the stored run. |
+| Source authority changes during provider latency | Output is not exposed; claim records unresolved authority change. |
 
-## Compliance Tests
+## Volume and Recovery
 
-| Test | Expected |
+| Case | Expected |
 | --- | --- |
-| AI invents discount | Blocked. |
-| AI claims official WhatsApp partnership | Blocked. |
-| AI recommends Google Maps scraping as truth | Blocked. |
-| AI recommends cold WhatsApp from public phone | Blocked. |
+| More than 5 targets, 3 tasks, 15 pairs, or USD 5 | Rejected before provider work. |
+| Aggregate provider budget insufficient | Rejected before parent execution. |
+| Another live volume parent owns lock | Rejected before child work. |
+| Some child calls fail | Successful children remain; parent is partial with stable codes. |
+| All children fail | Parent is blocked. |
+| Expired parent has some/all/no children | Recovery finalizes partial/completed/blocked without provider calls. |
+| Old parent sees a newer lock owner | Newer lock remains unchanged. |
+| Browser retry receives non-terminal/failure response | Exact bounded payload/key remains in local storage. |
+| Terminal result | Local retry payload clears. |
 
-## Mobile Tests
+## Review and Workspace
 
-| Test | Expected |
+| Case | Expected |
 | --- | --- |
-| Mobile runs AI scoring | Not available. |
-| Mobile approves AI output | Not available. |
-| Mobile records AI shadow review | Not available and server-blocked. |
-| Mobile pauses AI worker | Allowed with audit. |
+| Non-founder review | Rejected. |
+| Rules score reviewed as provider output | Rejected. |
+| Non-accepted review without reason | Rejected. |
+| Review decision replaced | Previous eval/minute contribution is reversed, then new contribution applied. |
+| Exact review replay | No audit, timeline, summary, or cost write. |
+| More than 30 newer volume rows exist | Provider runs and rules scores remain visible through independent queries. |
+| Invalid persisted run | Strict projector rejects it and emits bounded diagnostic evidence. |
+
+## Retention and Side Effects
+
+| Case | Expected |
+| --- | --- |
+| New score/assist | Receives active 90-day AI-detail lifecycle metadata. |
+| Legacy AI row | Backfilled or safely scrubbed by lifecycle task. |
+| Detail expires | Source-derived output/reasons/instruction are removed; compact evidence remains. |
+| Any AI flow completes | No message export, provider send, publish, opportunity mutation, or MenuList truth write. |
+
+## Commands
+
+```bash
+npm run verify:signaldesk
+npm run test:signaldesk:ai-intelligence-boundary
+npm run test:signaldesk:fresh-lineage
+npm run test:signaldesk:source-data-lifecycle
+npm run test:signaldesk:workspace-contracts
+npm run test:signaldesk:workspace-client-contracts
+npm run typecheck
+```
+
+Hosted QA must additionally prove the deployed composite index, current Gemini credentials/budgets, provider terms, attributed model behavior, and desktop review presentation. Provider sending stays disabled.

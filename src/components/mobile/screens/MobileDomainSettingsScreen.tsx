@@ -5,11 +5,12 @@ import { assertStoreUpdateSucceeded, checkCustomDomainAvailability, updateStore 
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Input as AntInput, List as AntList, Steps, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuCheck,
     LuCheckCircle2,
@@ -173,12 +174,22 @@ async function readMobileDomainSettingsDomainResponseJson<T>(
     return payload as T;
 }
 
-export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSettingsScreenProps) {
+function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScreenProps) {
     const t = useTranslations('BusinessSettings');
     const common = useTranslations('Common');
     const tMobile = useTranslations('MobileSettings');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const domainScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+    const domainScopeKeyRef = useRef(domainScopeKey);
+    domainScopeKeyRef.current = domainScopeKey;
+    const componentActiveRef = useRef(true);
+    const statusRequestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!statusRequestGuardRef.current) statusRequestGuardRef.current = createLatestRequestGuard();
+    const subdomainCheckGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!subdomainCheckGuardRef.current) subdomainCheckGuardRef.current = createLatestRequestGuard();
+    const domainCheckGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!domainCheckGuardRef.current) domainCheckGuardRef.current = createLatestRequestGuard();
 
     const [subdomainValue, setSubdomainValue] = useState(storeDetails?.subdomain || '');
     const [domainInput, setDomainInput] = useState(storeDetails?.customDomain || '');
@@ -192,6 +203,16 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
     const [domainStatus, setDomainStatus] = useState<any>(null);
     const [domainLinkCopied, setDomainLinkCopied] = useState(false);
     const [copiedDnsValue, setCopiedDnsValue] = useState<string | null>(null);
+
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+            statusRequestGuardRef.current!.invalidate();
+            subdomainCheckGuardRef.current!.invalidate();
+            domainCheckGuardRef.current!.invalidate();
+        };
+    }, []);
 
     const subdomainUrl = useMemo(
         () => (storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null),
@@ -249,6 +270,8 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
 
     const refreshStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
+        const requestScopeKey = domainScopeKey;
+        const requestId = statusRequestGuardRef.current!.begin();
         setStatusLoading(true);
         try {
             const response = await fetch('/api/domain', AUTH_BROWSER_REQUEST_POLICY);
@@ -263,6 +286,13 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 buildMobileDomainSettingsLogContext('refresh_domain_status_response'),
             );
             if (
+                !statusRequestGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
+            if (
                 !data
                 || typeof data.hasDomain !== 'boolean'
                 || (data.hasDomain && (!isNonEmptyString(data.domain) || typeof data.verified !== 'boolean'))
@@ -273,25 +303,57 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             }
             setDomainStatus(data);
             if (data.hasDomain) {
-                setStoreDetails({
-                    ...storeDetails,
-                    customDomain: data.domain,
-                    domainVerified: data.verified === true,
+                setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(storeDetails.tenantId ?? '')
+                        || String(previous?.storeId ?? '') !== String(storeDetails.storeId ?? '')
+                    ) {
+                        return previous;
+                    }
+                    return {
+                        ...previous,
+                        customDomain: data.domain,
+                        domainVerified: data.verified === true,
+                    };
                 });
             } else {
                 setDomainInput('');
-                setStoreDetails({ ...storeDetails, customDomain: undefined, domainVerified: undefined });
+                setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(storeDetails.tenantId ?? '')
+                        || String(previous?.storeId ?? '') !== String(storeDetails.storeId ?? '')
+                    ) {
+                        return previous;
+                    }
+                    return { ...previous, customDomain: undefined, domainVerified: undefined };
+                });
             }
         } catch (error) {
+            if (
+                !statusRequestGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logStoreDataFailure('mobile_domain_settings_status_load_failed', error, buildMobileDomainSettingsLogContext('refresh_domain_status'));
             Toast.show({ content: common('error'), duration: 1500 });
         } finally {
-            setStatusLoading(false);
+            if (
+                statusRequestGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && domainScopeKeyRef.current === requestScopeKey
+            ) {
+                setStatusLoading(false);
+            }
         }
-    }, [common, setStoreDetails, storeDetails]);
+    }, [common, domainScopeKey, setStoreDetails, storeDetails]);
 
     useEffect(() => {
         void refreshStatus();
+        return () => {
+            statusRequestGuardRef.current!.invalidate();
+        };
     }, [refreshStatus]);
 
     const checkAvailability = useCallback(async (input: string) => {
@@ -303,6 +365,8 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             setAvailability(null);
             return;
         }
+        const requestScopeKey = domainScopeKey;
+        const requestId = subdomainCheckGuardRef.current!.begin();
         setCheckingSubdomain(true);
         try {
             const response = await fetch(
@@ -322,6 +386,13 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     responseStatus: response.status,
                     maxBytes: MOBILE_DOMAIN_SETTINGS_RESPONSE_JSON_MAX_BYTES,
                 });
+            }
+            if (
+                !subdomainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
             }
             if (!response.ok) {
                 if (response.status === 429 && data?.available === false) {
@@ -349,12 +420,25 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             setAvailability(data);
             if (data?.normalized) setSubdomainValue(data.normalized);
         } catch (error) {
+            if (
+                !subdomainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logStoreDataFailure('mobile_domain_settings_subdomain_check_failed', error, buildMobileDomainSettingsLogContext('check_subdomain'));
             setAvailability({ available: false, reason: t('checkAvailabilityFailed') });
         } finally {
-            setCheckingSubdomain(false);
+            if (
+                subdomainCheckGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && domainScopeKeyRef.current === requestScopeKey
+            ) {
+                setCheckingSubdomain(false);
+            }
         }
-    }, [subdomainLocked, t]);
+    }, [domainScopeKey, subdomainLocked, t]);
 
     const saveSubdomain = useCallback(async () => {
         const nextSubdomain = availability?.normalized || subdomainValue.trim();
@@ -363,26 +447,46 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             Toast.show({ content: t('subdomainLockedMessage'), duration: 1500 });
             return;
         }
+        const requestScopeKey = domainScopeKey;
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
         setSavingSubdomain(true);
         try {
-            const writeResult = await updateStore({ storeId: storeDetails.storeId, subdomain: nextSubdomain } as any);
+            const writeResult = await updateStore({ storeId: expectedStoreId, subdomain: nextSubdomain } as any);
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_domain_settings_subdomain_store_update_rejected',
             );
-            setStoreDetails({ ...storeDetails, subdomain: nextSubdomain });
-            Toast.show({ content: tMobile('saved'), duration: 1200 });
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setStoreDetails((previous: any) => {
+                    if (
+                        String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                        || String(previous?.storeId ?? '') !== String(expectedStoreId)
+                    ) {
+                        return previous;
+                    }
+                    return { ...previous, subdomain: nextSubdomain };
+                });
+                Toast.show({ content: tMobile('saved'), duration: 1200 });
+            }
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_subdomain_save_failed', error, buildMobileDomainSettingsLogContext('save_subdomain'));
-            Toast.show({ content: common('error'), duration: 1500 });
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                Toast.show({ content: common('error'), duration: 1500 });
+            }
         } finally {
-            setSavingSubdomain(false);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setSavingSubdomain(false);
+            }
         }
-    }, [availability?.normalized, common, setStoreDetails, storeDetails, subdomainLocked, subdomainValue, t, tMobile]);
+    }, [availability?.normalized, common, domainScopeKey, setStoreDetails, storeDetails, subdomainLocked, subdomainValue, t, tMobile]);
 
     const addDomain = async () => {
         if (!domainInput.trim()) return;
+        const requestScopeKey = domainScopeKey;
+        const expectedTenantId = storeDetails?.tenantId;
+        const expectedStoreId = storeDetails?.storeId;
         setDomainLoading(true);
         try {
             const response = await fetch('/api/domain', {
@@ -401,6 +505,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 'add',
                 buildMobileDomainSettingsLogContext('add_domain_response'),
             );
+            if (!componentActiveRef.current || domainScopeKeyRef.current !== requestScopeKey) return;
             if (data?.success !== true || !isNonEmptyString(data.domain)) {
                 logStoreDataFailure(
                     'mobile_domain_settings_add_response_invalid',
@@ -414,7 +519,15 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 throw createMobileDomainSettingsStatusError('mobile_domain_settings_add_response_invalid', response.status);
             }
             const verified = data.verified === true;
-            setStoreDetails({ ...storeDetails, customDomain: data.domain, domainVerified: verified });
+            setStoreDetails((previous: any) => {
+                if (
+                    String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                    || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                ) {
+                    return previous;
+                }
+                return { ...previous, customDomain: data.domain, domainVerified: verified };
+            });
             setDomainInput(data.domain);
             setDomainAvailability({ available: true, normalized: data.domain });
             setDomainStatus({
@@ -430,30 +543,59 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             }
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_add_failed', error, buildMobileDomainSettingsLogContext('add_domain'));
-            Toast.show({ content: common('error'), duration: 1800 });
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                Toast.show({ content: common('error'), duration: 1800 });
+            }
         } finally {
-            setDomainLoading(false);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setDomainLoading(false);
+            }
         }
     };
 
     const checkDomainAvailability = async () => {
         if (!normalizedDomainInput) return;
+        const requestScopeKey = domainScopeKey;
+        const requestId = domainCheckGuardRef.current!.begin();
         setCheckingDomain(true);
         try {
             const data = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            if (
+                !domainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             setDomainAvailability(data);
             if (data?.normalized) {
                 setDomainInput(data.normalized);
             }
         } catch (error) {
+            if (
+                !domainCheckGuardRef.current!.isCurrent(requestId)
+                || !componentActiveRef.current
+                || domainScopeKeyRef.current !== requestScopeKey
+            ) {
+                return;
+            }
             logStoreDataFailure('mobile_domain_settings_custom_domain_check_failed', error, buildMobileDomainSettingsLogContext('check_custom_domain'));
             setDomainAvailability({ available: false, reason: common('error') });
         } finally {
-            setCheckingDomain(false);
+            if (
+                domainCheckGuardRef.current!.isCurrent(requestId)
+                && componentActiveRef.current
+                && domainScopeKeyRef.current === requestScopeKey
+            ) {
+                setCheckingDomain(false);
+            }
         }
     };
 
     const removeDomain = async () => {
+        const requestScopeKey = domainScopeKey;
+        const expectedTenantId = storeDetails?.tenantId;
+        const expectedStoreId = storeDetails?.storeId;
         setDomainLoading(true);
         try {
             const response = await fetch('/api/domain', {
@@ -470,6 +612,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 'remove',
                 buildMobileDomainSettingsLogContext('remove_domain_response'),
             );
+            if (!componentActiveRef.current || domainScopeKeyRef.current !== requestScopeKey) return;
             if (data?.success !== true || data.removed !== true) {
                 logStoreDataFailure(
                     'mobile_domain_settings_remove_response_invalid',
@@ -482,7 +625,15 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 );
                 throw createMobileDomainSettingsStatusError('mobile_domain_settings_remove_response_invalid', response.status);
             }
-            setStoreDetails({ ...storeDetails, customDomain: undefined, domainVerified: undefined });
+            setStoreDetails((previous: any) => {
+                if (
+                    String(previous?.tenantId ?? '') !== String(expectedTenantId ?? '')
+                    || String(previous?.storeId ?? '') !== String(expectedStoreId ?? '')
+                ) {
+                    return previous;
+                }
+                return { ...previous, customDomain: undefined, domainVerified: undefined };
+            });
             setDomainInput('');
             setDomainStatus(null);
             Toast.show({ content: tMobile('saved'), duration: 1200 });
@@ -491,9 +642,13 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             }
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_remove_failed', error, buildMobileDomainSettingsLogContext('remove_domain'));
-            Toast.show({ content: common('error'), duration: 1500 });
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                Toast.show({ content: common('error'), duration: 1500 });
+            }
         } finally {
-            setDomainLoading(false);
+            if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
+                setDomainLoading(false);
+            }
         }
     };
 
@@ -815,4 +970,11 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             </Flex>
         </Flex>
     );
+}
+
+export default function MobileDomainSettingsScreen(props: MobileDomainSettingsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
+
+    return <MobileDomainSettingsScreenContent key={scopeKey} {...props} />;
 }

@@ -138,7 +138,7 @@ export const FUNCTION_FLAGS = {
      *
      * Step 16 of nightly batch: auto-generates suggested triggers from
      * friction patterns, rebuilds platformSummary cache, computes
-     * effectiveness scores, auto-disables low-performing triggers.
+     * owner-review engagement evidence. It never changes trigger status.
      *
      * Max 5 auto-suggestions per run. Cost: ~$0.01/tenant/night.
      *

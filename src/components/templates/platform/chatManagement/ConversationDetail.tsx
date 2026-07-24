@@ -3,7 +3,11 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import ScrollToBottomButton, { useScrollToBottom } from '@atoms/ScrollToBottomButton/ScrollToBottomButton';
 import ArticleViewModal from '@organisms/ArticleViewModal';
-import { assertChatSessionUpdateSucceeded, updateChatSession } from '@database/chatSessions';
+import {
+    assertChatSessionUpdateSucceeded,
+    type AnswerlatticeChatSessionScope,
+    updateChatSession,
+} from '@database/chatSessions';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatSession, ADMIN_STATUS_OPTIONS, ADMIN_PRIORITY_OPTIONS } from '@type/chatSession';
 import { Avatar, Button, Empty, Flex, Input, message, Popover, Tag, theme, Tooltip, Typography } from 'antd';
@@ -18,31 +22,54 @@ const { Text, Paragraph, Title } = Typography;
 
 interface ConversationDetailProps {
     session: ChatSession | null;
+    scope: AnswerlatticeChatSessionScope;
     onNoteUpdate?: (sessionId: string, noteJson: any) => void;
     onSessionUpdate?: (sessionId: string, updates: Partial<ChatSession>) => void; // Callback to refresh session list
 }
 
-function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: ConversationDetailProps) {
+function ConversationDetail({ session, scope, onNoteUpdate, onSessionUpdate }: ConversationDetailProps) {
     const { token } = theme.useToken();
     const [noteModalVisible, setNoteModalVisible] = useState(false);
     const [metadataPopoverOpen, setMetadataPopoverOpen] = useState(false);
+    const metadataActionOwnerRef = useRef(0);
+    const metadataActionInProgressRef = useRef(false);
+    const activeContextKey = `${scope.tId}:${scope.sId}:${session?.id || ''}`;
+    const activeContextKeyRef = useRef(activeContextKey);
+    activeContextKeyRef.current = activeContextKey;
 
     // Single metadata update handler (called from popover)
     const handleMetadataSave = async (updates: Partial<ChatSession>) => {
-        if (!session?.id) return;
+        if (!session?.id || metadataActionInProgressRef.current) return;
+        metadataActionInProgressRef.current = true;
+        const actionOwner = ++metadataActionOwnerRef.current;
+        const expectedContextKey = activeContextKey;
+        const sessionId = session.id;
         try {
             // Single database call with all updates
-            const updateResult = await updateChatSession(session.id, updates);
+            const updateResult = await updateChatSession(sessionId, updates, scope);
             assertChatSessionUpdateSucceeded(
                 updateResult,
-                session.id,
+                sessionId,
                 'platform_chat_metadata_session_update_rejected',
             );
-            onSessionUpdate?.(session.id, updates);
+            if (
+                metadataActionOwnerRef.current !== actionOwner
+                || activeContextKeyRef.current !== expectedContextKey
+            ) return;
+            onSessionUpdate?.(sessionId, updates);
             message.success('Metadata updated', 2);
         } catch (error) {
-            message.error('Failed to update metadata');
+            if (
+                metadataActionOwnerRef.current === actionOwner
+                && activeContextKeyRef.current === expectedContextKey
+            ) {
+                message.error('Failed to update metadata');
+            }
             throw error;
+        } finally {
+            if (metadataActionOwnerRef.current === actionOwner) {
+                metadataActionInProgressRef.current = false;
+            }
         }
     };
 
@@ -136,12 +163,11 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
         lines.push(`**Mode:** ${session.mode === 'qna' ? 'QnA' : 'Assistant'}`);
         lines.push(`**Created:** ${session.createdOn?.toDate().toLocaleString() || 'N/A'}`);
 
-        // Calculate satisfaction (safe with optional chaining)
         const feedbackMessages = (session.messages || []).filter(m => m.feedback);
         const positive = feedbackMessages.filter(m => m.feedback?.isGood === true).length;
         const negative = feedbackMessages.filter(m => m.feedback?.isGood === false).length;
         if (feedbackMessages.length > 0) {
-            lines.push(`**Satisfaction:** ${positive > negative ? '👍 Positive' : '👎 Negative'}`);
+            lines.push(`**Recorded feedback:** ${positive} helpful, ${negative} not helpful`);
         }
         lines.push('');
         lines.push('---');
@@ -323,14 +349,14 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
                         const negative = session.messages.filter(m => m.feedback?.isGood === false).length;
                         const total = positive + negative;
                         if (total > 0) {
-                            const satisfaction = Math.round((positive / total) * 100);
+                            const positiveFeedbackShare = Math.round((positive / total) * 100);
                             return (
                                 <Tooltip title={`${positive} helpful, ${negative} not helpful`}>
                                     <Tag
-                                        color={satisfaction >= 70 ? 'success' : satisfaction >= 40 ? 'warning' : 'error'}
+                                        color={positiveFeedbackShare >= 70 ? 'success' : positiveFeedbackShare >= 40 ? 'warning' : 'error'}
                                         style={{ margin: 0, cursor: 'default' }}
                                     >
-                                        {satisfaction}% satisfied
+                                        {positiveFeedbackShare}% positive feedback
                                     </Tag>
                                 </Tooltip>
                             );
@@ -536,6 +562,7 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
                 open={noteModalVisible}
                 onClose={() => setNoteModalVisible(false)}
                 sessionId={session?.id || null}
+                scope={scope}
                 initialNote={session?.internalNotes?.[0]?.content}
                 noteMetadata={{
                     lastEditedBy: session?.internalNotes?.[0]?.modifiedBy,

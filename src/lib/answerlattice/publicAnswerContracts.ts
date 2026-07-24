@@ -15,12 +15,19 @@ export type AnswerlatticePublicFallbackReason = typeof ANSWERLATTICE_PUBLIC_FALL
 
 const PUBLIC_FALLBACK_REASON_SET = new Set<string>(ANSWERLATTICE_PUBLIC_FALLBACK_REASONS);
 const SCOPE_CONTEXT_VALUES = new Set(['plan', 'role', 'state']);
-const SENSITIVE_QUERY_KEY_PATTERN = /(?:^|[_-])(auth|code|credential|key|secret|signature|token)(?:$|[_-])/i;
+const SENSITIVE_QUERY_KEY_SEGMENT_PATTERN = /(?:^|[_-])(auth|code|credential|key|secret|signature|sig|token)(?:$|[_-])/i;
+const SENSITIVE_QUERY_KEY_COMPACT_PATTERN = /^(?:(?:access|api|auth|client|private|refresh|session|signed)(?:code|credential|credentials|key|secret|signature|sig|token)|code|credential|credentials|key|secret|signature|sig|token)$/i;
 const IPV4_PATTERN = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
+
+const isSensitivePublicCitationQueryKey = (value: string): boolean => {
+    const segmented = value.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+    return SENSITIVE_QUERY_KEY_SEGMENT_PATTERN.test(segmented)
+        || SENSITIVE_QUERY_KEY_COMPACT_PATTERN.test(segmented.replace(/[^a-z0-9]/gi, ''));
+};
 
 const isBlockedPublicCitationHost = (hostname: string): boolean => {
     const normalized = hostname.toLowerCase().replace(/^\[(.*)\]$/, '$1');
@@ -89,7 +96,7 @@ export const normalizeAnswerlatticePublicCitationUrl = (value: unknown): string 
             || parsed.username
             || parsed.password
             || isBlockedPublicCitationHost(parsed.hostname)
-            || Array.from(parsed.searchParams.keys()).some(key => SENSITIVE_QUERY_KEY_PATTERN.test(key))
+            || Array.from(parsed.searchParams.keys()).some(isSensitivePublicCitationQueryKey)
         ) return null;
         return parsed.toString();
     } catch {

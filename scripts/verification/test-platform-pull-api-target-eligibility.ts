@@ -6,6 +6,7 @@ import {
 } from '../../src/lib/publicApi/businessProjection';
 import { isMenuListPublicApiEntityEligible } from '../../src/lib/publicApi/targetEligibility';
 import { buildPullApiETagPayload } from '../../src/lib/publicApi/responseIdentity';
+import { buildCanonicalItemUrl } from '../../src/lib/menu/itemTruthUrls';
 import {
     MAX_CUSTOM_BUSINESS_ATTRIBUTES,
     normalizeBusinessAttributes,
@@ -134,6 +135,15 @@ assert.notDeepEqual(
     'changed public truth must change the pull-response identity payload',
 );
 
+const canonicalItemUrl = new URL(buildCanonicalItemUrl(
+    'https://example.menulist.ai/menu',
+    'item / 1',
+    'hi',
+));
+assert.equal(canonicalItemUrl.origin + canonicalItemUrl.pathname, 'https://example.menulist.ai/menu');
+assert.equal(canonicalItemUrl.searchParams.get('item'), 'item / 1', 'item identity must survive URL encoding');
+assert.equal(canonicalItemUrl.searchParams.get('lang'), 'hi', 'localized item URLs must retain language identity');
+
 async function verifyLinkedOutletPullProjection(): Promise<void> {
     const masterProjectId = '1-master-menu-10';
     const masterProject: Project = {
@@ -152,6 +162,22 @@ async function verifyLinkedOutletPullProjection(): Promise<void> {
                         category: 'category-1',
                         name: { en: 'Inherited item' },
                         price: '100',
+                        attributes: [{
+                            id: 'size-large',
+                            active: true,
+                            name: { en: 'Large' },
+                            price: '150',
+                        }],
+                        allergens: ['milk'],
+                        dietaryTags: ['vegetarian'],
+                        decisionFacts: {
+                            allergens: {
+                                value: ['milk'],
+                                source: 'owner',
+                                confirmed: true,
+                                updatedAt: '2026-07-22T00:00:00.000Z',
+                            },
+                        },
                     }],
                     languages: [{ code: 'en', name: 'English', isPrimary: true }],
                 },
@@ -203,6 +229,18 @@ async function verifyLinkedOutletPullProjection(): Promise<void> {
             payload.menu.items.map((item) => ({ id: item.id, price: item.price })),
             [{ id: 'item-1', price: '125' }],
             'linked outlet pull output must merge master items with outlet overrides',
+        );
+        assert.deepEqual(
+            payload.menu.items[0]?.attributes,
+            [{ id: 'size-large', active: true, name: { en: 'Large' }, price: '150' }],
+            'variant identity and price must remain stable in the public menu projection',
+        );
+        assert.deepEqual(payload.menu.items[0]?.allergens, ['milk']);
+        assert.deepEqual(payload.menu.items[0]?.dietaryTags, ['vegetarian']);
+        assert.deepEqual(
+            payload.menu.items[0]?.decisionFacts,
+            { allergens: { value: ['milk'] } },
+            'public pull output may expose the approved value but must not leak internal provenance metadata',
         );
     } finally {
         clearMasterCache();

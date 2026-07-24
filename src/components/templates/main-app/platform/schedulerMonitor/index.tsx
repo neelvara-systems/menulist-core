@@ -10,7 +10,7 @@ import { Alert, Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const { Title, Text } = Typography;
 
@@ -142,8 +142,13 @@ function SchedulerMonitor() {
     const [loadError, setLoadError] = useState(false);
     const [filterStatus, setFilterStatus] = useState<SchedulerRunStatus | undefined>(undefined);
     const [filterTrigger, setFilterTrigger] = useState<SchedulerTrigger | undefined>(undefined);
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
+    const isMountedRef = useRef(true);
+    const isPlatformRef = useRef(isPlatform);
+    const latestLoadRequestRef = useRef(0);
+    const recoveryInFlightRef = useRef(false);
+    isPlatformRef.current = isPlatform;
     const {
         error: storesError,
         loading: storesLoading,
@@ -163,6 +168,8 @@ function SchedulerMonitor() {
             setLoading(false);
             return;
         }
+        const requestId = latestLoadRequestRef.current + 1;
+        latestLoadRequestRef.current = requestId;
         setLoading(true);
         setLoadError(false);
         try {
@@ -171,10 +178,12 @@ function SchedulerMonitor() {
             if (filterTrigger) filter.trigger = filterTrigger;
 
             const snapshot = await getSchedulerDashboardSnapshot(filter, 50);
+            if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setHealth(snapshot.health);
             setRunHistory(snapshot.runHistory);
             setSettlement(snapshot.settlement);
         } catch (error) {
+            if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setLoadError(true);
             logOpsFailure('ops_scheduler_monitor_load_failed', error, {
                 isPlatform,
@@ -184,41 +193,85 @@ function SchedulerMonitor() {
             });
             message.error('Failed to load scheduler data');
         } finally {
-            setLoading(false);
+            if (
+                isMountedRef.current
+                && isPlatformRef.current
+                && latestLoadRequestRef.current === requestId
+            ) {
+                setLoading(false);
+            }
         }
     }, [filterStatus, filterTrigger, isPlatform]);
 
     useEffect(() => {
-        if (sessionStatus === 'loading') return;
-        loadData();
-    }, [loadData, sessionStatus]);
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            latestLoadRequestRef.current += 1;
+            recoveryInFlightRef.current = false;
+        };
+    }, []);
 
-    const handleManualNightlyRecovery = async () => {
-        if (!selectedStore) {
-            message.warning('Select a store first');
+    useEffect(() => {
+        if (sessionStatus === 'loading') return;
+        if (!isPlatform) {
+            latestLoadRequestRef.current += 1;
+            setLoading(false);
             return;
         }
+        void loadData();
+    }, [isPlatform, loadData, sessionStatus]);
+
+    const changeStatusFilter = useCallback((value: SchedulerRunStatus | undefined) => {
+        if (value === filterStatus) return;
+        latestLoadRequestRef.current += 1;
+        setFilterStatus(value);
+    }, [filterStatus]);
+
+    const changeTriggerFilter = useCallback((value: SchedulerTrigger | undefined) => {
+        if (value === filterTrigger) return;
+        latestLoadRequestRef.current += 1;
+        setFilterTrigger(value);
+    }, [filterTrigger]);
+
+    const handleManualNightlyRecovery = () => {
+        if (!selectedStore || recoveryInFlightRef.current) {
+            if (!selectedStore) {
+                message.warning('Select a store first');
+            }
+            return;
+        }
+        recoveryInFlightRef.current = true;
+        const recoveryStore = selectedStore;
 
         Modal.confirm({
             title: 'Run Store Nightly Recovery',
             content: (
                 <div>
-                    <p>This runs the store-level nightly scheduler path for {selectedStore.name || `store ${selectedStore.sId}`}.</p>
+                    <p>This runs the store-level nightly scheduler path for {recoveryStore.name || `store ${recoveryStore.sId}`}.</p>
                     <p>It settles analytics, recomputes Decision Blocks, and recomputes Menu Intelligence for all active projects under this store.</p>
                     <p><strong>This may take up to 9 minutes.</strong> The page will refresh when complete.</p>
                 </div>
             ),
             okText: 'Run Recovery',
             okButtonProps: { type: 'primary' },
+            onCancel: () => {
+                recoveryInFlightRef.current = false;
+            },
             onOk: async () => {
+                if (!isMountedRef.current || !isPlatformRef.current) {
+                    recoveryInFlightRef.current = false;
+                    return;
+                }
                 setTriggerLoading(true);
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const fns = getFunctions();
                     const triggerFn = httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 });
-                    const result = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
+                    const result = await triggerFn({ tId: recoveryStore.tId, sId: recoveryStore.sId });
                     const data = normalizeSchedulerRecoveryResponse(result?.data);
                     if (!data) throw new Error('ops_scheduler_recovery_response_invalid');
+                    if (!isMountedRef.current || !isPlatformRef.current) return;
                     const summary = `Nightly recovery ${data.status}: ${data.successCount} DI success, ${data.failedCount} failed · ${data.runLogId}`;
                     if (data.status === 'success') message.success(summary);
                     else if (data.status === 'partial') message.warning(summary);
@@ -231,13 +284,16 @@ function SchedulerMonitor() {
                             : null,
                     );
                     logOpsFailure('ops_scheduler_manual_recovery_failed', error, {
-                        ...getBoundedOpsStringContext('storeId', selectedStore.sId),
-                        ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
+                        ...getBoundedOpsStringContext('storeId', recoveryStore.sId),
+                        ...getBoundedOpsStringContext('tenantId', recoveryStore.tId),
                         ...getBoundedOpsStringContext('runLogId', runLogId),
                     });
-                    message.error(`Nightly recovery failed${runLogId ? ` · Run log: ${runLogId}` : ''}`);
+                    if (isMountedRef.current && isPlatformRef.current) {
+                        message.error(`Nightly recovery failed${runLogId ? ` · Run log: ${runLogId}` : ''}`);
+                    }
                 } finally {
-                    setTriggerLoading(false);
+                    recoveryInFlightRef.current = false;
+                    if (isMountedRef.current) setTriggerLoading(false);
                 }
             },
         });
@@ -543,7 +599,7 @@ function SchedulerMonitor() {
                         allowClear
                         style={{ width: 120 }}
                         value={filterStatus}
-                        onChange={(v) => setFilterStatus(v)}
+                        onChange={changeStatusFilter}
                         options={[
                             { value: 'success', label: 'Success' },
                             { value: 'partial', label: 'Partial' },
@@ -558,7 +614,7 @@ function SchedulerMonitor() {
                         allowClear
                         style={{ width: 120 }}
                         value={filterTrigger}
-                        onChange={(v) => setFilterTrigger(v)}
+                        onChange={changeTriggerFilter}
                         options={[
                             { value: 'scheduled', label: 'Scheduled' },
                             { value: 'manual', label: 'Manual' },

@@ -292,3 +292,7 @@ Reseller mutations go through API routes (server-side with `withAuth`), `DATA_WR
 
 **DOCUMENT STATUS:** 📝 DOCUMENTED  
 **Last Updated:** July 16, 2026
+
+## Manual billing duplicate-scope boundary (July 22, 2026)
+
+The bounded renewal and location-capacity subscription queries use equality filters for `pId/productId/tenantId/storeId/tId/sId/billingMode`. Firestore can merge equality indexes for this shape; restart 429 adds no composite, rule or Functions change. Each mutation already re-reads the exact subscription and operation ledger transactionally; it now also rejects current product/scope alias conflict before subscription or reseller-counter writes.

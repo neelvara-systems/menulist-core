@@ -14,6 +14,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from '@constant/product';
 import { collection, doc, getDoc, getDocs, limit, query, where } from "@firebase/firestore";
 import { runAnswerlatticeGovernanceAction } from '@lib/answerlattice/governanceClient';
 import type { AnswerlatticeCanonicalProposalAnswer } from '@lib/answerlattice/governanceContracts';
@@ -21,6 +22,8 @@ import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolved
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { createRuntimeId } from '@lib/runtime/randomId';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import getActiveSession from '@lib/auth/getActiveSession';
 import { AnswerlatticeCanonicalAnswer } from "@type/answerlattice";
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS;
@@ -51,6 +54,14 @@ const getGovernanceRetryRequestId = (retryKey: string): string => {
 };
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
+const getActiveScope = async (expected?: { tId?: unknown; sId?: unknown }) => {
+    const session = await getActiveSession();
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) throw new Error('Answerlattice workspace scope is required');
+    if (expected?.tId !== undefined && expected.tId !== scope.tenantId) throw new Error('Answerlattice tenant scope mismatch');
+    if (expected?.sId !== undefined && expected.sId !== scope.storeId) throw new Error('Answerlattice workspace scope mismatch');
+    return { tId: scope.tenantId, sId: scope.storeId };
+};
 const getDocRef = (docId: string) => {
     const normalizedDocId = normalizeAnswerlatticeCanonicalAnswerId(docId);
     if (!normalizedDocId) throw new Error('Invalid canonical answer id');
@@ -75,10 +86,12 @@ const toProposalAnswer = (
 export const getCanonicalAnswers = async (tId: number, sId: number) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 limit(500)
             );
             const snapshot = await getDocs(q);
@@ -99,13 +112,15 @@ export const getCanonicalAnswers = async (tId: number, sId: number) => {
 export const getActiveAnswersForEntity = async (tId: number, sId: number, entityId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
             const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
             if (!normalizedEntityId) return [];
 
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('scope.entityIds', 'array-contains', normalizedEntityId),
                 where('status', '==', 'active'),
                 limit(200)
@@ -127,10 +142,12 @@ export const getActiveAnswersForEntity = async (tId: number, sId: number, entity
 export const getDriftedAnswers = async (tId: number, sId: number) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
             const q = query(
                 getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('governance.driftFlag', '==', true),
                 limit(500)
             );
@@ -151,12 +168,18 @@ export const getDriftedAnswers = async (tId: number, sId: number) => {
 export const getCanonicalAnswerById = async (answerId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope();
             const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
             if (!normalizedAnswerId) return null;
 
             const docSnap = await getDoc(getDocRef(normalizedAnswerId));
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id } as AnswerlatticeCanonicalAnswer;
+                const answer = { ...docSnap.data(), id: docSnap.id } as AnswerlatticeCanonicalAnswer;
+                return answer.pId === PRODUCT_IDS.ANSWERLATTICE
+                    && answer.tId === scope.tId
+                    && answer.sId === scope.sId
+                    ? answer
+                    : null;
             }
             return null;
         },

@@ -375,6 +375,221 @@
   line-height: 1.2;
 }
 
+.panelDescription {
+  display: block;
+  margin-top: 4px;
+  color: #66756f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.activationDesk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
+  gap: 14px;
+}
+
+.activationDeskFocus {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 210px;
+  border-top: 1px solid #d8dedb;
+  padding-top: 14px;
+}
+
+.activationDeskFocus p,
+.activationDeskFocus small {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.activationDeskFocus p {
+  color: #25332e;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.activationDeskFocus small {
+  color: #66756f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.activationDeskStep {
+  display: block;
+  margin-bottom: 6px;
+  color: #66756f;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.activationDeskQueue {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  border-left: 1px solid #eef1ef;
+  padding-left: 12px;
+}
+
+.activationDeskQueueItem,
+.activationDeskQueueActive {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 2px 8px;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 8px;
+  color: #34433e;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.activationDeskQueueActive {
+  background: #eef6f1;
+  color: #174c2b;
+}
+
+.activationDeskQueueItem:hover {
+  background: #f7f9f8;
+}
+
+.activationDeskQueueItem > span,
+.activationDeskQueueActive > span {
+  grid-row: 1 / span 2;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5ebe8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.activationDeskQueueItem strong,
+.activationDeskQueueActive strong,
+.activationDeskQueueItem small,
+.activationDeskQueueActive small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.activationDeskQueueItem strong,
+.activationDeskQueueActive strong {
+  font-size: 12px;
+}
+
+.activationDeskQueueItem small,
+.activationDeskQueueActive small {
+  color: #66756f;
+  font-size: 11px;
+}
+
+.weeklyOutcomeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid #e4e9e6;
+  border-radius: 6px;
+  background: #e4e9e6;
+}
+
+.weeklyOutcomeGrid > div {
+  display: grid;
+  gap: 3px;
+  min-height: 66px;
+  align-content: center;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.weeklyOutcomeGrid strong {
+  font-size: 18px;
+}
+
+.weeklyOutcomeGrid span {
+  color: #66756f;
+  font-size: 11px;
+}
+
+.discoveryDisclosure {
+  border: 1px solid #d8dedb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.discoverySummary {
+  min-height: 48px;
+  padding: 14px;
+  color: #34433e;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.discoveryDisclosure[open] .discoverySummary {
+  border-bottom: 1px solid #eef1ef;
+}
+
+.discoveryDisclosure > form {
+  border: 0;
+  box-shadow: none;
+}
+
+.journeyList {
+  display: grid;
+}
+
+.journeyStep {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  border-top: 1px solid #eef1ef;
+  padding: 10px 0;
+}
+
+.journeyStep:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.journeyStep > span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef1ef;
+  color: #44514d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.journeyStep strong,
+.journeyStep small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.journeyStep strong {
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.journeyStep small {
+  color: #66756f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .statusList {
   display: grid;
   gap: 10px;
@@ -666,8 +881,16 @@
 
   .grid,
   .controlModel,
-  .contentGrid {
+  .contentGrid,
+  .activationDesk {
     grid-template-columns: 1fr;
+  }
+
+  .activationDeskQueue {
+    border-top: 1px solid #eef1ef;
+    border-left: 0;
+    padding-top: 12px;
+    padding-left: 0;
   }
 
   .formGrid,
@@ -696,5 +919,11 @@
 
   .actions {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .weeklyOutcomeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -1,34 +1,26 @@
-# SignalDesk Draft Control - Mobile Support Assessment
+# SignalDesk Draft Control - Mobile Support
 
-**Status:** Initial assessment
-**Created:** June 23, 2026
-**Mobile relevance decision:** No.
+**Status:** Implemented observe-only posture
+**Last Updated:** July 21, 2026
 
-## Admission Test
+## Decision
 
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Partial | Draft review may happen often, but not safely on mobile. |
-| Speed | Fail | Needs evidence and policy context. |
-| Touch | Fail | Text editing/review is dense. |
-| Value | Fail | Not urgent away from desk. |
+Mobile may inspect current SignalDesk workspace truth but may not create or
+advance drafts. Dense evidence, exact copy, source rights, sender readiness, and
+approval context require desktop review.
 
-## Mobile Allowed
+## Current Behavior
 
-- draft queue count;
-- blocked draft count;
-- template paused status;
-- emergency pause via foundation.
+- The shared responsive workspace marks mobile/coarse-pointer use as observe-only.
+- Draft, evidence, score, approval, export, send, template seed, and configuration actions are disabled.
+- The protected action API independently rejects mobile mutation attempts.
+- Draft and queue summaries can still be observed when the user's role may read that section.
+- Emergency pause behavior belongs to the Foundation/Kill Switch feature and does not grant draft mutation.
 
-## Mobile Blocked
+## Acceptance
 
-- create draft;
-- edit draft;
-- approve draft;
-- send/export draft;
-- edit template.
-
-## Acceptance Criteria
-
-- Mobile cannot create/edit/approve drafts.
-- Mobile can see counts only.
+- No mobile gesture or direct action call can create a draft.
+- Desktop admission mirrors current policy/evidence/template/sender/CTA readiness,
+  but the server remains authoritative.
+- Mobile does not expose contact identities or private authority bindings.
+- No separate mobile data loader, route, or Firebase query is introduced.

@@ -1,16 +1,14 @@
 /**
- * ROI Calculation Logic for Chat Admin Panel
- * 
- * Calculates business value metrics from chat analytics data
- * Used by: ROI Calculator component
- * 
- * @module roiCalculations
+ * Assumption-labelled ROI scenario calculations for Answerlattice chat analytics.
+ *
+ * Observed analytics are kept separate from operator-provided planning assumptions.
+ * The output must not imply measured resolution, retention, or revenue impact.
  */
 
 export interface ChatAnalyticsData {
     totalConversations: number;
-    resolvedConversations: number;
-    averageResolutionTime: number; // in minutes
+    qnaConversations: number;
+    assistantConversations: number;
     positiveFeedback: number;
     negativeFeedback: number;
     dateRange: {
@@ -20,211 +18,161 @@ export interface ChatAnalyticsData {
 }
 
 export interface ROIMetrics {
-    // Time Savings
-    totalHoursSaved: number;
-    monthlyHoursSaved: number;
-    
-    // Cost Savings
-    totalCostSaved: number;
-    monthlyCostSaved: number;
-    
-    // Automation Metrics
-    conversationsHandled: number;
-    automationRate: number; // percentage
-    
-    // Revenue Protection
-    satisfiedCustomers: number;
-    estimatedRevenueProtected: number;
-    churnReductionRate: number;
-    
-    // ROI Metrics
+    estimatedTotalHoursSaved: number;
+    estimatedMonthlyHoursSaved: number;
+    estimatedTotalCostSaved: number;
+    estimatedMonthlyCostSaved: number;
+    conversationsObserved: number;
+    qnaConversations: number;
+    assistantConversations: number;
+    positiveFeedbackSignals: number;
+    negativeFeedbackSignals: number;
     platformCost: number;
-    netSavings: number;
-    roi: number; // percentage
-    paybackPeriod: number; // months
+    estimatedNetSavings: number;
+    estimatedRoi: number;
+    estimatedPaybackPeriod: number | null;
 }
 
 export interface ROICalculationParams {
-    // Required: From analytics
     analyticsData: ChatAnalyticsData;
-    
-    // User-configurable parameters
-    avgSupportAgentHourlyCost?: number; // Default: $25/hr USD
-    avgCustomerLifetimeValue?: number; // Default: $500
-    platformMonthlyCost?: number; // Default: $99 (Pro plan)
-    
-    // Assumptions
-    avgHumanResponseTime?: number; // minutes per conversation, Default: 15
-    churnRateWithoutAI?: number; // percentage, Default: 20%
-    churnRateWithAI?: number; // percentage, Default: 15%
+    avgSupportAgentHourlyCost?: number;
+    platformMonthlyCost?: number;
+    assumedMinutesSavedPerConversation?: number;
 }
 
+const DEFAULT_HOURLY_COST = 25;
+const DEFAULT_PLATFORM_MONTHLY_COST = 99;
+const DEFAULT_MINUTES_SAVED_PER_CONVERSATION = 8;
+
+const requireNonNegativeFinite = (value: number, field: string): number => {
+    if (!Number.isFinite(value) || value < 0) {
+        throw new RangeError(`${field} must be a non-negative finite number`);
+    }
+    return value;
+};
+
+const requireNonNegativeInteger = (value: number, field: string): number => {
+    if (!Number.isSafeInteger(value) || value < 0) {
+        throw new RangeError(`${field} must be a non-negative safe integer`);
+    }
+    return value;
+};
+
+const roundOneDecimal = (value: number): number => Math.round(value * 10) / 10;
+
 /**
- * Calculate comprehensive ROI metrics from chat analytics
+ * Calculates an illustrative cost/time scenario from observed conversation counts.
+ *
+ * `assumedMinutesSavedPerConversation` is deliberately explicit: Answerlattice does
+ * not currently persist a measured manual-support baseline or a resolution outcome.
  */
 export function calculateROI(params: ROICalculationParams): ROIMetrics {
     const {
         analyticsData,
-        avgSupportAgentHourlyCost = 25, // $25/hr
-        avgCustomerLifetimeValue = 500, // $500 LTV
-        platformMonthlyCost = 99, // $99/month Pro plan
-        avgHumanResponseTime = 15, // 15 min per chat
-        churnRateWithoutAI = 0.20, // 20% churn
-        churnRateWithAI = 0.15, // 15% churn (5% improvement)
+        avgSupportAgentHourlyCost = DEFAULT_HOURLY_COST,
+        platformMonthlyCost = DEFAULT_PLATFORM_MONTHLY_COST,
+        assumedMinutesSavedPerConversation = DEFAULT_MINUTES_SAVED_PER_CONVERSATION,
     } = params;
 
-    const { totalConversations, resolvedConversations, averageResolutionTime, positiveFeedback, negativeFeedback } = analyticsData;
-
-    // Calculate date range in days
-    const dateRangeDays = Math.ceil(
-        (analyticsData.dateRange.end.getTime() - analyticsData.dateRange.start.getTime()) / (1000 * 60 * 60 * 24)
+    const totalConversations = requireNonNegativeInteger(
+        analyticsData.totalConversations,
+        'analyticsData.totalConversations',
     );
-    const monthsInRange = dateRangeDays / 30;
+    const qnaConversations = requireNonNegativeInteger(
+        analyticsData.qnaConversations,
+        'analyticsData.qnaConversations',
+    );
+    const assistantConversations = requireNonNegativeInteger(
+        analyticsData.assistantConversations,
+        'analyticsData.assistantConversations',
+    );
+    const positiveFeedbackSignals = requireNonNegativeInteger(
+        analyticsData.positiveFeedback,
+        'analyticsData.positiveFeedback',
+    );
+    const negativeFeedbackSignals = requireNonNegativeInteger(
+        analyticsData.negativeFeedback,
+        'analyticsData.negativeFeedback',
+    );
+    if (qnaConversations + assistantConversations > totalConversations) {
+        throw new RangeError('conversation mode counts cannot exceed total conversations');
+    }
+    const hourlyCost = requireNonNegativeFinite(
+        avgSupportAgentHourlyCost,
+        'avgSupportAgentHourlyCost',
+    );
+    const monthlyPlatformCost = requireNonNegativeFinite(
+        platformMonthlyCost,
+        'platformMonthlyCost',
+    );
+    const minutesSavedPerConversation = requireNonNegativeFinite(
+        assumedMinutesSavedPerConversation,
+        'assumedMinutesSavedPerConversation',
+    );
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 1. TIME SAVINGS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    // AI average response time (from analytics)
-    const aiAverageTimePerConversation = averageResolutionTime; // already in minutes
-    
-    // Human average response time (assumption)
-    const humanAverageTimePerConversation = avgHumanResponseTime;
-    
-    // Time saved per conversation
-    const timeSavedPerConversation = Math.max(0, humanAverageTimePerConversation - aiAverageTimePerConversation);
-    
-    // Total time saved (in hours)
-    const totalMinutesSaved = totalConversations * timeSavedPerConversation;
-    const totalHoursSaved = totalMinutesSaved / 60;
-    
-    // Monthly time saved
-    const monthlyHoursSaved = monthsInRange > 0 ? totalHoursSaved / monthsInRange : 0;
+    const startTime = analyticsData.dateRange.start.getTime();
+    const endTime = analyticsData.dateRange.end.getTime();
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+        throw new RangeError('analyticsData.dateRange must be a valid positive interval');
+    }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 2. COST SAVINGS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    // Cost saved = Hours saved × Hourly rate
-    const totalCostSaved = totalHoursSaved * avgSupportAgentHourlyCost;
-    const monthlyCostSaved = monthlyHoursSaved * avgSupportAgentHourlyCost;
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 3. AUTOMATION METRICS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    const conversationsHandled = totalConversations;
-    const automationRate = resolvedConversations > 0 ? (resolvedConversations / totalConversations) * 100 : 0;
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 4. REVENUE PROTECTION (Churn Reduction)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    // Satisfied customers (positive feedback)
-    const satisfiedCustomers = positiveFeedback;
-    
-    // Churn reduction: AI reduces churn by 5% (configurable)
-    const churnReductionRate = ((churnRateWithoutAI - churnRateWithAI) / churnRateWithoutAI) * 100;
-    
-    // Estimate customers retained due to better support
-    // Assumption: Positive feedback correlates with retention
-    const customersRetained = satisfiedCustomers * (churnRateWithoutAI - churnRateWithAI);
-    
-    // Estimated revenue protected
-    const estimatedRevenueProtected = customersRetained * avgCustomerLifetimeValue;
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 5. ROI CALCULATION
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
-    // Total value generated
-    const totalValueGenerated = totalCostSaved + estimatedRevenueProtected;
-    
-    // Platform cost over the period
-    const totalPlatformCost = platformMonthlyCost * monthsInRange;
-    
-    // Net savings
-    const netSavings = totalValueGenerated - totalPlatformCost;
-    
-    // ROI percentage
-    const roi = totalPlatformCost > 0 ? (netSavings / totalPlatformCost) * 100 : 0;
-    
-    // Payback period (months)
-    const monthlyNetSavings = monthlyCostSaved + (estimatedRevenueProtected / monthsInRange) - platformMonthlyCost;
-    const paybackPeriod = monthlyNetSavings > 0 ? platformMonthlyCost / monthlyNetSavings : Infinity;
+    const rangeDays = (endTime - startTime) / (1000 * 60 * 60 * 24);
+    const monthsInRange = rangeDays / 30;
+    const estimatedTotalHoursSaved = (totalConversations * minutesSavedPerConversation) / 60;
+    const estimatedMonthlyHoursSaved = estimatedTotalHoursSaved / monthsInRange;
+    const estimatedTotalCostSaved = estimatedTotalHoursSaved * hourlyCost;
+    const estimatedMonthlyCostSaved = estimatedMonthlyHoursSaved * hourlyCost;
+    const platformCost = monthlyPlatformCost * monthsInRange;
+    const estimatedNetSavings = estimatedTotalCostSaved - platformCost;
+    const estimatedRoi = platformCost > 0
+        ? (estimatedNetSavings / platformCost) * 100
+        : 0;
+    const estimatedMonthlyNetSavings = estimatedMonthlyCostSaved - monthlyPlatformCost;
+    const estimatedPaybackPeriod = estimatedMonthlyNetSavings > 0
+        ? monthlyPlatformCost / estimatedMonthlyNetSavings
+        : null;
 
     return {
-        // Time Savings
-        totalHoursSaved: Math.round(totalHoursSaved),
-        monthlyHoursSaved: Math.round(monthlyHoursSaved),
-        
-        // Cost Savings
-        totalCostSaved: Math.round(totalCostSaved),
-        monthlyCostSaved: Math.round(monthlyCostSaved),
-        
-        // Automation Metrics
-        conversationsHandled,
-        automationRate: Math.round(automationRate * 10) / 10, // 1 decimal place
-        
-        // Revenue Protection
-        satisfiedCustomers,
-        estimatedRevenueProtected: Math.round(estimatedRevenueProtected),
-        churnReductionRate: Math.round(churnReductionRate * 10) / 10,
-        
-        // ROI Metrics
-        platformCost: Math.round(totalPlatformCost),
-        netSavings: Math.round(netSavings),
-        roi: Math.round(roi * 10) / 10,
-        paybackPeriod: paybackPeriod === Infinity ? Infinity : Math.round(paybackPeriod * 10) / 10,
+        estimatedTotalHoursSaved: roundOneDecimal(estimatedTotalHoursSaved),
+        estimatedMonthlyHoursSaved: roundOneDecimal(estimatedMonthlyHoursSaved),
+        estimatedTotalCostSaved: Math.round(estimatedTotalCostSaved),
+        estimatedMonthlyCostSaved: Math.round(estimatedMonthlyCostSaved),
+        conversationsObserved: totalConversations,
+        qnaConversations,
+        assistantConversations,
+        positiveFeedbackSignals,
+        negativeFeedbackSignals,
+        platformCost: Math.round(platformCost),
+        estimatedNetSavings: Math.round(estimatedNetSavings),
+        estimatedRoi: roundOneDecimal(estimatedRoi),
+        estimatedPaybackPeriod: estimatedPaybackPeriod === null
+            ? null
+            : roundOneDecimal(estimatedPaybackPeriod),
     };
 }
 
-/**
- * Format currency for display
- */
 export function formatCurrency(amount: number, currency: 'USD' | 'INR' = 'USD'): string {
     const symbol = currency === 'USD' ? '$' : '₹';
     return `${symbol}${Math.round(amount).toLocaleString()}`;
 }
 
-/**
- * Format hours for display
- */
 export function formatHours(hours: number): string {
-    if (hours < 1) {
-        return `${Math.round(hours * 60)} min`;
-    }
-    return `${Math.round(hours)} hrs`;
+    if (hours < 1) return `${Math.round(hours * 60)} min`;
+    return `${roundOneDecimal(hours)} hrs`;
 }
 
-/**
- * Format payback period for display
- */
-export function formatPaybackPeriod(months: number): string {
-    if (months === Infinity) {
-        return 'N/A';
-    }
-    if (months < 1) {
-        return '<1 month';
-    }
-    if (months === 1) {
-        return '1 month';
-    }
+export function formatPaybackPeriod(months: number | null): string {
+    if (months === null) return 'N/A';
+    if (months < 1) return '<1 month';
+    if (months === 1) return '1 month';
     return `${Math.round(months)} months`;
 }
 
-/**
- * Get default calculation parameters
- * Can be overridden by user preferences
- */
 export function getDefaultROIParams(analyticsData: ChatAnalyticsData): ROICalculationParams {
     return {
         analyticsData,
-        avgSupportAgentHourlyCost: 25, // $25/hr
-        avgCustomerLifetimeValue: 500, // $500
-        platformMonthlyCost: 99, // $99/month
-        avgHumanResponseTime: 15, // 15 minutes
-        churnRateWithoutAI: 0.20, // 20%
-        churnRateWithAI: 0.15, // 15%
+        avgSupportAgentHourlyCost: DEFAULT_HOURLY_COST,
+        platformMonthlyCost: DEFAULT_PLATFORM_MONTHLY_COST,
+        assumedMinutesSavedPerConversation: DEFAULT_MINUTES_SAVED_PER_CONVERSATION,
     };
 }

@@ -1025,6 +1025,7 @@ function verifyPwaTrackingDiagnostics() {
   const installPrompt = read('src/components/customerApp/InstallPrompt.tsx');
   const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
+  const desktopBusinessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
   const customerAppSpec = read('__docs__/customer-app/customer-app_spec.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
@@ -1104,6 +1105,26 @@ function verifyPwaTrackingDiagnostics() {
   assertIncludes(desktopSettings, 'hasCopyFallback', 'Desktop Customer App install-link fallback support metadata');
   assertIncludes(desktopSettings, "const copied = document.execCommand('copy');", 'Desktop Customer App textarea copy acknowledgement');
   assertIncludes(desktopSettings, "getBoundedPwaStringContext('installLink', installLink)", 'Desktop Customer App bounded install-link context');
+  [
+    'customerAppScopeKeyRef.current === requestScopeKey',
+    'componentActiveRef.current',
+    "String(previous?.tenantId ?? '') !== String(expectedTenantId)",
+    "String(previous?.storeId ?? '') !== String(expectedStoreId)",
+  ].forEach((token) => {
+    assertIncludes(desktopSettings, token, 'Desktop Customer App tenant/store settlement guard');
+    assertIncludes(mobileSettings, token, 'Mobile Customer App tenant/store settlement guard');
+  });
+  assertIncludes(
+    mobileSettings,
+    'return <MobileCustomerAppScreenContent key={scopeKey} {...props} />;',
+    'Mobile Customer App tenant/store keyed remount',
+  );
+  assertIncludes(desktopBusinessSettings, '<CustomerAppTab', 'Desktop Customer App mounted surface');
+  assertIncludes(
+    desktopBusinessSettings,
+    'key={`${String(storeDetails?.tenantId ?? \'\')}:${String(storeDetails?.storeId ?? \'\')}`}',
+    'Desktop Customer App tenant/store keyed remount',
+  );
   assertIncludes(installTracker, 'storageAvailable: false', 'Customer App install no-storage failure diagnostics');
   assertIncludes(installTracker, 'storageAvailable: true', 'Customer App install storage failure diagnostics');
   assertNotIncludes(installDetection, '} catch {\n    return false;\n  }', 'Customer App install detection must not silently fail');

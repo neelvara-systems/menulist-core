@@ -428,7 +428,7 @@ const INTENT_PATTERNS: { intent: QueryIntent; patterns: RegExp[] }[] = [
     },
 ];
 
-function classifyIntent(query: string): QueryIntent {
+export function classifyCanonicalQueryIntent(query: string): QueryIntent {
     for (const { intent, patterns } of INTENT_PATTERNS) {
         for (const pattern of patterns) {
             if (pattern.test(query)) {
@@ -531,6 +531,7 @@ function applyContextBoosts(
 function scoreBySpecificity(
     answers: AnswerlatticeCanonicalAnswer[],
     context: RetrievalContext,
+    intent: QueryIntent,
     graphExpansionEntities?: string[]
 ): AnswerlatticeCanonicalAnswer[] {
     return answers
@@ -585,7 +586,11 @@ function scoreBySpecificity(
             }
 
             // Guided Workflows: procedure affinity for how_to intent
-            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && answer.answerType === 'procedure') {
+            if (
+                FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS
+                && intent === 'how_to'
+                && answer.answerType === 'procedure'
+            ) {
                 score += 15;
             }
 
@@ -689,7 +694,7 @@ export async function attemptCanonicalRetrieval(
         }
 
         // Layer 2: Intent classification (narrows context)
-        const intent = classifyIntent(query);
+        const intent = classifyCanonicalQueryIntent(query);
 
         // Get current version for version window filtering
         let currentVersion = context.currentVersion;
@@ -877,7 +882,7 @@ export async function attemptCanonicalRetrieval(
         const ranked = scoreBySpecificity(rankableAnswers, {
             ...context,
             currentVersion,
-        }, graphExpansion?.expandedEntities);
+        }, intent, graphExpansion?.expandedEntities);
 
         const bestAnswer = ranked[0];
 

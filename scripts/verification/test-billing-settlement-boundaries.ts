@@ -41,6 +41,24 @@ import {
     getActivePlanTypeForSubscription,
     hasCurrentSubscriptionPlanEntitlement,
 } from '../../src/lib/billing/subscriptionPlanEntitlement';
+import {
+    getMenuListSubscriptionEntitlementScope,
+    isMenuListSubscriptionEntitledForTenant,
+} from '../../src/lib/billing/menuListSubscriptionEntitlementBoundary';
+import { getProductSubscriptionBillingScope } from '../../src/lib/billing/productSubscriptionScopeBoundary';
+import {
+    requireRazorpayRevenueAmountPaise,
+    resolveRazorpayAuditAmountPaise,
+    resolveRazorpayRevenueOccurredAtMillis,
+    resolveRazorpaySubscriptionState,
+    resolveRazorpaySubscriptionQuantity,
+    resolveRazorpayWebhookProductDeclaration,
+    resolveRazorpayWebhookSubscriptionId,
+    resolveRazorpayWebhookSubscriptionProduct,
+} from '../../src/lib/billing/razorpayRevenueProjectionBoundary';
+import { PRODUCT_IDS } from '../../src/constants/product';
+import { resolveSubscriptionReplacementEvidence } from '../../src/lib/billing/subscriptionReplacementEvidence';
+import { isMatchingCheckoutProviderSubscription } from '../../src/lib/billing/checkoutProviderSubscriptionRecovery';
 
 const utcDate = (year: number, monthIndex: number, day: number) => new Date(Date.UTC(year, monthIndex, day));
 const cycleStart = utcDate(2026, 0, 31);
@@ -51,9 +69,282 @@ assert.equal(getBillingPeriodKey({ seconds: Math.floor(cycleStart.getTime() / 1_
 assert.equal(getBillingPeriodKey({ seconds: 0 }), null);
 assert.equal(getProviderCycleBillingPeriodKey(1_767_225_600), 202601);
 assert.equal(getProviderCycleBillingPeriodKey('not-a-number'), null);
+assert.equal(getProviderCycleBillingPeriodKey('1767225600'), null);
 assert.equal(isValidBillingPeriodKey(202601), true);
 assert.equal(isValidBillingPeriodKey(202600), false);
 assert.equal(isValidBillingPeriodKey(202613), false);
+assert.equal(requireRazorpayRevenueAmountPaise(12000), 12000);
+assert.throws(() => requireRazorpayRevenueAmountPaise('12000'), /revenue amount is invalid/);
+assert.throws(() => requireRazorpayRevenueAmountPaise(12.5), /revenue amount is invalid/);
+assert.throws(() => requireRazorpayRevenueAmountPaise(0), /revenue amount is invalid/);
+assert.equal(resolveRazorpayAuditAmountPaise(0), 0);
+assert.equal(resolveRazorpayAuditAmountPaise(undefined), null);
+assert.throws(() => resolveRazorpayAuditAmountPaise('12000'), /audit amount is invalid/);
+assert.equal(resolveRazorpayRevenueOccurredAtMillis(1_767_225_600), 1_767_225_600_000);
+assert.equal(resolveRazorpayRevenueOccurredAtMillis(null), undefined);
+assert.throws(() => resolveRazorpayRevenueOccurredAtMillis('1767225600'), /event time is invalid/);
+assert.throws(() => resolveRazorpayRevenueOccurredAtMillis(0), /event time is invalid/);
+assert.deepEqual(resolveRazorpayWebhookProductDeclaration({
+    productId: 'ML',
+    payload: { payment: { entity: { notes: { pId: 'ML' } } } },
+}), { outcome: 'declared', productId: 'ML' });
+assert.deepEqual(resolveRazorpayWebhookProductDeclaration({
+    pId: 'AL',
+    payload: { subscription: { entity: { notes: { productId: 'AL' } } } },
+}), { outcome: 'declared', productId: 'AL' });
+assert.deepEqual(resolveRazorpayWebhookProductDeclaration({
+    productId: 'ML',
+    payload: { order: { entity: { notes: { pId: 'AL' } } } },
+}), { outcome: 'invalid' });
+assert.deepEqual(resolveRazorpayWebhookProductDeclaration({ productId: 'menulist' }), { outcome: 'invalid' });
+assert.deepEqual(resolveRazorpayWebhookProductDeclaration({ payload: {} }), { outcome: 'missing' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionId({
+    payload: {
+        payment: { entity: { subscription_id: 'sub_exact' } },
+        subscription: { entity: { id: 'sub_exact' } },
+    },
+}), { outcome: 'declared', subscriptionId: 'sub_exact' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionId({
+    payload: {
+        payment: { entity: { subscription_id: 'sub_payment' } },
+        subscription: { entity: { id: 'sub_subscription' } },
+    },
+}), { outcome: 'invalid' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionId({
+    payload: { payment: { entity: { subscription_id: 101 } } },
+}), { outcome: 'invalid' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionId({
+    payload: { payment: { entity: { subscription_id: ' sub_invalid' } } },
+}), { outcome: 'invalid' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionId({ payload: {} }), { outcome: 'missing' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'missing' },
+    hasAnswerlatticeSubscription: false,
+    hasMenuListSubscription: true,
+}), { outcome: 'resolved', productId: PRODUCT_IDS.MENULIST });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'missing' },
+    hasAnswerlatticeSubscription: true,
+    hasMenuListSubscription: false,
+}), { outcome: 'resolved', productId: PRODUCT_IDS.ANSWERLATTICE });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'missing' },
+    hasAnswerlatticeSubscription: false,
+    hasMenuListSubscription: false,
+}), { outcome: 'unresolved' });
+const exactProviderSubscriptionState = {
+    charge_at: 1_769_904_000,
+    current_end: 1_769_904_000,
+    current_start: 1_767_225_600,
+    paid_count: 1,
+    quantity: 2,
+    start_at: 1_767_225_600,
+    total_count: 12,
+};
+assert.deepEqual(resolveRazorpaySubscriptionState(exactProviderSubscriptionState), {
+    chargeAtMillis: 1_769_904_000_000,
+    chargeAtSeconds: 1_769_904_000,
+    currentEndMillis: 1_769_904_000_000,
+    currentEndSeconds: 1_769_904_000,
+    currentStartMillis: 1_767_225_600_000,
+    currentStartSeconds: 1_767_225_600,
+    paidCount: 1,
+    quantity: 2,
+    startAtMillis: 1_767_225_600_000,
+    startAtSeconds: 1_767_225_600,
+    totalCount: 12,
+});
+assert.equal(resolveRazorpaySubscriptionState({
+    ...exactProviderSubscriptionState,
+    current_start: '1767225600',
+}), null);
+assert.equal(resolveRazorpaySubscriptionState({
+    ...exactProviderSubscriptionState,
+    quantity: '2',
+}), null);
+assert.equal(resolveRazorpaySubscriptionState({
+    ...exactProviderSubscriptionState,
+    paid_count: 13,
+}), null);
+assert.equal(resolveRazorpaySubscriptionState({
+    ...exactProviderSubscriptionState,
+    current_end: exactProviderSubscriptionState.current_start,
+}), null);
+assert.equal(resolveRazorpaySubscriptionState({
+    ...exactProviderSubscriptionState,
+    quantity: undefined,
+}, 3)?.quantity, 3);
+assert.equal(resolveRazorpaySubscriptionState({
+    ...exactProviderSubscriptionState,
+    quantity: undefined,
+}, '3'), null);
+assert.equal(resolveRazorpaySubscriptionQuantity(4), 4);
+assert.equal(resolveRazorpaySubscriptionQuantity('4'), null);
+assert.equal(resolveRazorpaySubscriptionQuantity(4.5), null);
+const exactReplacementEvidence = {
+    founderMonitorReplacementForSubscriptionId: 'sub_previous',
+    founderMonitorReplacementMrrPaise: 299900,
+};
+assert.deepEqual(resolveSubscriptionReplacementEvidence(
+    exactReplacementEvidence,
+    { ...exactReplacementEvidence },
+), {
+    outcome: 'replacement',
+    previousMrrPaise: 299900,
+    subscriptionId: 'sub_previous',
+});
+assert.deepEqual(resolveSubscriptionReplacementEvidence({}, {
+    founderMonitorReplacementMrrPaise: 0,
+}), { outcome: 'none' });
+assert.deepEqual(resolveSubscriptionReplacementEvidence({
+    ...exactReplacementEvidence,
+    founderMonitorReplacementMrrPaise: '299900',
+}), { outcome: 'invalid' });
+assert.deepEqual(resolveSubscriptionReplacementEvidence({
+    ...exactReplacementEvidence,
+    founderMonitorReplacementForSubscriptionId: 101,
+}), { outcome: 'invalid' });
+assert.deepEqual(resolveSubscriptionReplacementEvidence(
+    exactReplacementEvidence,
+    { ...exactReplacementEvidence, founderMonitorReplacementForSubscriptionId: 'sub_other' },
+), { outcome: 'invalid' });
+assert.deepEqual(resolveSubscriptionReplacementEvidence(
+    exactReplacementEvidence,
+    { ...exactReplacementEvidence, founderMonitorReplacementMrrPaise: 199900 },
+), { outcome: 'invalid' });
+assert.deepEqual(resolveSubscriptionReplacementEvidence({
+    founderMonitorReplacementMrrPaise: 299900,
+}), { outcome: 'invalid' });
+const checkoutRecoveryExpectation = {
+    attemptId: 'attempt_exact',
+    planId: 'starter',
+    providerPlanId: 'plan_exact',
+    productId: 'ML',
+    quantity: 2,
+    storeId: 202,
+    tenantId: 101,
+};
+const checkoutRecoveryCandidate = {
+    id: 'sub_recovered',
+    notes: {
+        checkoutAttemptId: 'attempt_exact',
+        planId: 'starter',
+        productId: 'ML',
+        quantity: '2',
+        storeId: '202',
+        tenantId: '101',
+    },
+    plan_id: 'plan_exact',
+    quantity: 2,
+    status: 'created',
+};
+assert.equal(isMatchingCheckoutProviderSubscription(checkoutRecoveryCandidate, checkoutRecoveryExpectation), true);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    id: 'checkout_recovered',
+}, checkoutRecoveryExpectation), false);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    quantity: 3,
+}, checkoutRecoveryExpectation), false);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    quantity: '2',
+}, checkoutRecoveryExpectation), false);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    notes: { ...checkoutRecoveryCandidate.notes, quantity: '02' },
+}, checkoutRecoveryExpectation), false);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    notes: { ...checkoutRecoveryCandidate.notes, tenantId: '1.01e2' },
+}, checkoutRecoveryExpectation), false);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    notes: { ...checkoutRecoveryCandidate.notes, checkoutAttemptId: 101 },
+}, checkoutRecoveryExpectation), false);
+assert.equal(isMatchingCheckoutProviderSubscription({
+    ...checkoutRecoveryCandidate,
+    notes: { ...checkoutRecoveryCandidate.notes, quantity: undefined },
+    quantity: undefined,
+}, { ...checkoutRecoveryExpectation, quantity: 1 }), true);
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'missing' },
+    hasAnswerlatticeSubscription: true,
+    hasMenuListSubscription: true,
+}), { outcome: 'conflict' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'declared', productId: PRODUCT_IDS.MENULIST },
+    hasAnswerlatticeSubscription: false,
+    hasMenuListSubscription: true,
+}), { outcome: 'resolved', productId: PRODUCT_IDS.MENULIST });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'declared', productId: PRODUCT_IDS.MENULIST },
+    hasAnswerlatticeSubscription: true,
+    hasMenuListSubscription: false,
+}), { outcome: 'conflict' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'declared', productId: PRODUCT_IDS.ANSWERLATTICE },
+    hasAnswerlatticeSubscription: true,
+    hasMenuListSubscription: true,
+}), { outcome: 'conflict' });
+assert.deepEqual(resolveRazorpayWebhookSubscriptionProduct({
+    declaration: { outcome: 'declared', productId: PRODUCT_IDS.ANSWERLATTICE },
+    hasAnswerlatticeSubscription: false,
+    hasMenuListSubscription: false,
+}), { outcome: 'unresolved' });
+
+const exactMenuListEntitlementSubscription = {
+    pId: 'ML',
+    productId: 'ML',
+    tId: 101,
+    tenantId: 101,
+    sId: 202,
+    storeId: 202,
+};
+assert.deepEqual(getMenuListSubscriptionEntitlementScope(exactMenuListEntitlementSubscription), {
+    tenantId: 101,
+    storeId: 202,
+});
+assert.equal(isMenuListSubscriptionEntitledForTenant(exactMenuListEntitlementSubscription, 101), true);
+assert.equal(isMenuListSubscriptionEntitledForTenant(exactMenuListEntitlementSubscription, 999), false);
+assert.equal(isMenuListSubscriptionEntitledForTenant({
+    ...exactMenuListEntitlementSubscription,
+    productId: 'AL',
+}, 101), false);
+assert.deepEqual(getProductSubscriptionBillingScope(PRODUCT_IDS.MENULIST, exactMenuListEntitlementSubscription), {
+    tenantId: 101,
+    storeId: 202,
+});
+assert.equal(getProductSubscriptionBillingScope(PRODUCT_IDS.MENULIST, {
+    ...exactMenuListEntitlementSubscription,
+    productId: 'AL',
+}), null);
+assert.equal(getProductSubscriptionBillingScope(PRODUCT_IDS.MENULIST, {
+    ...exactMenuListEntitlementSubscription,
+    tId: 999,
+}), null);
+assert.deepEqual(getProductSubscriptionBillingScope(PRODUCT_IDS.ANSWERLATTICE, {
+    pId: 'AL',
+    productId: 'AL',
+    tId: 303,
+    tenantId: 303,
+    sId: 404,
+    storeId: 404,
+}), { tenantId: 303, storeId: 404 });
+assert.equal(isMenuListSubscriptionEntitledForTenant({
+    ...exactMenuListEntitlementSubscription,
+    tId: 999,
+}, 101), false);
+assert.equal(getMenuListSubscriptionEntitlementScope({
+    ...exactMenuListEntitlementSubscription,
+    sId: 999,
+}), null);
+assert.equal(isMenuListSubscriptionEntitledForTenant({
+    ...exactMenuListEntitlementSubscription,
+    tenantId: '101',
+    tId: '101',
+}, 101), false);
 
 const statusHistory = appendBoundedBillingStatusHistory(
     Array.from({ length: BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT + 20 }, (_, index) => index),
@@ -253,8 +544,11 @@ const order = {
     amount: 299900,
     currency: 'INR',
     notes: {
+        pId: 'ML',
         productId: 'ML',
+        tId: 101,
         tenantId: 101,
+        sId: 202,
         storeId: 202,
         billingStoreId: 303,
         packId: 'enhancement',
@@ -266,8 +560,11 @@ const order = {
 };
 const topupSnapshot = {
     providerOrderId: 'order_valid123',
+    pId: 'ML',
     productId: 'ML',
+    tId: 101,
     tenantId: 101,
+    sId: 202,
     storeId: 202,
     billingStoreId: 303,
     packId: 'enhancement',
@@ -296,6 +593,7 @@ const settlementInput = {
 
 assert.deepEqual(resolveVerifiedTopupSettlement(settlementInput), {
     amount: 299900,
+    billingStoreId: 303,
     creditsToAdd: 250,
     currency: 'INR',
     packId: 'enhancement',
@@ -309,6 +607,38 @@ assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
     expectedProductId: 'AL',
 }), null);
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, pId: 'AL' },
+}), null, 'conflicting immutable top-up product aliases must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, tId: 999 },
+}), null, 'conflicting immutable top-up tenant aliases must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, sId: 999 },
+}), null, 'conflicting immutable top-up store aliases must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, pId: undefined },
+}), null, 'incomplete immutable top-up product identity must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    order: { ...order, notes: { ...order.notes, tId: 999 } },
+}), null, 'conflicting provider tenant aliases must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    order: { ...order, notes: { ...order.notes, productId: 'AL' } },
+}), null, 'conflicting provider product aliases must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    order: { ...order, notes: { ...order.notes, billingStoreId: 304 } },
+}), null, 'provider and immutable billing-store identity must agree');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, packName: 'Other Pack' },
+}), null, 'immutable and provider pack names must agree');
 
 const currentTopupSubscription = {
     productId: 'ML',
@@ -363,10 +693,21 @@ assert.equal(resolveCurrentTopupSubscriptionSettlement({
     expectedProductId: 'ML',
     expectedTenantId: 101,
     expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, tId: undefined },
+}), null, 'incomplete transaction-current tenant aliases must fail closed');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, sId: undefined },
+}), null, 'incomplete transaction-current store aliases must fail closed');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
     subscriptionSnapshot: { ...currentTopupSubscription, topUpCredits: '9' },
 }), null, 'coercible persisted balances must not enter credit arithmetic');
-assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
-    allowMissingProductId: true,
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
     expectedProductId: 'ML',
     expectedTenantId: 101,
     expectedStoreId: 202,
@@ -375,14 +716,7 @@ assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
         storeId: 202,
         topUpCredits: 0,
     },
-}), {
-    creditsLastResetMonth: null,
-    monthlyCredits: 0,
-    monthlyCreditsAllowance: 0,
-    storeId: 202,
-    tenantId: 101,
-    topUpCredits: 0,
-}, 'legacy MenuList subscriptions may omit product identity when all scope and balance fields are valid');
+}), null, 'legacy alias-less subscriptions must be migrated before credit mutation');
 assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
     payment: { ...payment, amount: 1 },
@@ -435,6 +769,11 @@ assert.equal(
 );
 assert.equal(
     isAnswerlatticeSubscriptionInScope({ pId: 'AL', tId: 101, sId: 202 }, { tId: 101, sId: 202 }),
+    false,
+    'single-alias Answerlattice subscriptions must fail closed',
+);
+assert.equal(
+    isAnswerlatticeSubscriptionInScope({ pId: 'AL', productId: 'AL', tId: 101, sId: 202 }, { tId: 101, sId: 202 }),
     true,
 );
 assert.equal(

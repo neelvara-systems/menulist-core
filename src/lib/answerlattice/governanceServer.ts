@@ -12,12 +12,7 @@ import {
 } from '@data/shared/answerlatticeDrift';
 import {
     ANSWERLATTICE_CACHE_SOURCES,
-    getAnswerlatticeCacheVersionDocId,
 } from '@lib/answerlattice/cacheVersionManifest';
-import {
-    getAnswerlatticeBundleManifestDocId,
-    getAnswerlatticeSourceVersionsDocId,
-} from '@lib/answerlattice/compiledContext';
 import {
     normalizeAnswerlatticeCanonicalAnswerId,
     normalizeAnswerlatticeMutationProposalId,
@@ -55,6 +50,14 @@ import {
 } from './governanceContracts';
 import { buildAnswerlatticeEntityPrefixTokens } from './entitySearchTokens';
 import { ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT } from './faqContent';
+import {
+    AnswerlatticeInvalidationOwnershipError,
+    getAnswerlatticeInvalidationCacheSources,
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+    type AnswerlatticeInvalidationOwnership,
+} from './invalidationOwnership';
 import { ANSWERLATTICE_PRODUCT_SURFACE_LIMIT } from './productSurfaceContent';
 import { buildAnswerlatticeProposalImpactAffectedEntityIds } from './proposalImpactContracts';
 import { answerlatticeTokenize } from './tokenizer';
@@ -172,6 +175,32 @@ const getEntityRelationId = (
     toEntityId: string,
     relationType: string,
 ) => `relation_${hashValue(`${scope.tId}:${scope.sId}:${fromEntityId}:${toEntityId}:${relationType}`, 32)}`;
+
+const searchIndexIsOwnedBy = (
+    value: unknown,
+    scope: GovernanceScope,
+    entityId: string,
+) => Boolean(
+    value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && documentIsInScope(value as Record<string, unknown>, scope)
+    && (value as Record<string, unknown>).entityId === entityId,
+);
+
+const relationIsOwnedBy = (
+    value: unknown,
+    scope: GovernanceScope,
+    relation: Pick<AnswerlatticeEntityRelation, 'fromEntityId' | 'toEntityId' | 'relationType'>,
+) => Boolean(
+    value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && documentIsInScope(value as Record<string, unknown>, scope)
+    && (value as Record<string, unknown>).fromEntityId === relation.fromEntityId
+    && (value as Record<string, unknown>).toEntityId === relation.toEntityId
+    && (value as Record<string, unknown>).relationType === relation.relationType,
+);
 
 const buildEntitySearchIndex = (
     entity: Pick<AnswerlatticeEntity, 'id' | 'name' | 'description' | 'aliases'>,
@@ -413,19 +442,22 @@ const assertCanonicalCandidate = (candidate: Record<string, any>) => {
     }
 };
 
+type InvalidationOptions = {
+    reason: string;
+    sourceId: string;
+    canonical?: boolean;
+    entities?: boolean;
+    entityRelations?: boolean;
+    faqs?: boolean;
+    kb?: boolean;
+    surfaces?: boolean;
+};
+
 const addInvalidationWrites = (
     transaction: Transaction,
     scope: GovernanceScope,
-    options: {
-        reason: string;
-        sourceId: string;
-        canonical?: boolean;
-        entities?: boolean;
-        entityRelations?: boolean;
-        faqs?: boolean;
-        kb?: boolean;
-        surfaces?: boolean;
-    },
+    ownership: AnswerlatticeInvalidationOwnership,
+    options: InvalidationOptions,
 ) => {
     const db = getDb();
     const now = FieldValue.serverTimestamp();
@@ -448,8 +480,7 @@ const addInvalidationWrites = (
 
     if (options.canonical) {
         transaction.set(
-            db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
-                .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, scope.tId, scope.sId)),
+            ownership.cacheVersionRefs[ANSWERLATTICE_CACHE_SOURCES.CANONICAL]!,
             {
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: scope.tId,
@@ -466,8 +497,7 @@ const addInvalidationWrites = (
     }
     if (options.kb || options.faqs) {
         transaction.set(
-            db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
-                .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId)),
+            ownership.cacheVersionRefs[ANSWERLATTICE_CACHE_SOURCES.KB]!,
             {
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: scope.tId,
@@ -484,15 +514,17 @@ const addInvalidationWrites = (
     }
 
     transaction.set(
-        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeSourceVersionsDocId(scope.tId, scope.sId)),
-        sourceVersionChanges,
+        ownership.sourceVersionsRef,
+        {
+            ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
+            ...sourceVersionChanges,
+        },
         { merge: true },
     );
     transaction.set(
-        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(getAnswerlatticeBundleManifestDocId(scope.tId, scope.sId)),
+        ownership.manifestRef,
         {
+            ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
             schemaVersion: 1,
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
@@ -507,10 +539,35 @@ const addInvalidationWrites = (
     );
 };
 
+const readInvalidationOwnership = async (
+    transaction: Transaction,
+    scope: GovernanceScope,
+    options: InvalidationOptions,
+): Promise<AnswerlatticeInvalidationOwnership> => {
+    try {
+        return await readAnswerlatticeInvalidationOwnership({
+            cacheSources: getAnswerlatticeInvalidationCacheSources(options),
+            db: getDb(),
+            scope,
+            transaction,
+        });
+    } catch (error) {
+        if (error instanceof AnswerlatticeInvalidationOwnershipError) {
+            throw new AnswerlatticeGovernanceError(
+                'answerlattice_invalidation_ownership_conflict',
+                409,
+                'Answer cache authority needs repair before this action can continue.',
+            );
+        }
+        throw error;
+    }
+};
+
 const getLatestActiveVersion = async (transaction: Transaction, scope: GovernanceScope) => {
     const db = getDb();
     const releases = await transaction.get(
         db.collection(RELEASE_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('status', '==', 'active')
@@ -549,6 +606,7 @@ const assertNoActiveOverlap = async (
     const db = getDb();
     const snapshot = await transaction.get(
         db.collection(CANONICAL_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('status', '==', 'active')
@@ -1026,7 +1084,7 @@ async function approveProposal(
                 modifiedBy: actor.label,
                 modifiedOn: now,
             });
-            transaction.set(db.collection(AUDIT_COLLECTION).doc(`proposal_approved_${hashValue(proposalId)}`), {
+            transaction.create(db.collection(AUDIT_COLLECTION).doc(`proposal_approved_${hashValue(proposalId)}`), {
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: scope.tId,
                 sId: scope.sId,
@@ -1038,7 +1096,7 @@ async function approveProposal(
                 performedBy: actor.label,
                 timestamp: now,
                 createdOn: now,
-            }, { merge: false });
+            });
             return { answerId: undefined, status: 'approved' as const };
         }
 
@@ -1075,6 +1133,12 @@ async function approveProposal(
             }
         }
 
+        const invalidationOptions: InvalidationOptions = {
+            reason: targetAnswerId ? 'canonical_answer_update' : 'canonical_answer_create',
+            sourceId: answerId,
+            canonical: true,
+        };
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope, invalidationOptions);
         const now = FieldValue.serverTimestamp();
         const answerWrite = {
             ...candidate,
@@ -1098,7 +1162,7 @@ async function approveProposal(
             modifiedBy: actor.label,
             modifiedOn: now,
         });
-        transaction.set(db.collection(AUDIT_COLLECTION).doc(`canonical_apply_${hashValue(proposalId)}`), {
+        transaction.create(db.collection(AUDIT_COLLECTION).doc(`canonical_apply_${hashValue(proposalId)}`), {
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
             sId: scope.sId,
@@ -1113,11 +1177,7 @@ async function approveProposal(
             timestamp: now,
             createdOn: now,
         });
-        addInvalidationWrites(transaction, scope, {
-            reason: targetAnswerId ? 'canonical_answer_update' : 'canonical_answer_create',
-            sourceId: answerId,
-            canonical: true,
-        });
+        addInvalidationWrites(transaction, scope, invalidationOwnership, invalidationOptions);
         return { answerId, status: 'implemented' as const };
     });
 
@@ -1181,7 +1241,7 @@ async function updateProposalStatus(
             modifiedBy: actor.label,
             modifiedOn: now,
         });
-        transaction.set(db.collection(AUDIT_COLLECTION).doc(`${targetStatus}_${hashValue(proposalId)}`), {
+        transaction.create(db.collection(AUDIT_COLLECTION).doc(`${targetStatus}_${hashValue(proposalId)}`), {
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
             sId: scope.sId,
@@ -1217,17 +1277,20 @@ async function evaluateDrift(
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1_000);
     const [answersSnapshot, entitiesSnapshot, signalsSnapshot] = await Promise.all([
         db.collection(CANONICAL_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('status', '==', 'active')
             .limit(MAX_GOVERNANCE_QUERY_DOCUMENTS + 1)
             .get(),
         db.collection(ENTITY_COLLECTION)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .limit(MAX_DRIFT_ENTITY_DOCUMENTS + 1)
             .get(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
             .where('timestamp', '>=', windowStart)
@@ -1310,6 +1373,12 @@ async function evaluateDrift(
             const snapshots = await transaction.getAll(...chunk.map(answer => (
                 db.collection(CANONICAL_COLLECTION).doc(answer.id)
             )));
+            const invalidationOptions: InvalidationOptions = {
+                reason: 'canonical_answer_drift_detected',
+                sourceId: `drift_evaluation_${offset}`,
+                canonical: true,
+            };
+            const invalidationOwnership = await readInvalidationOwnership(transaction, scope, invalidationOptions);
             let changed = 0;
             const now = FieldValue.serverTimestamp();
 
@@ -1376,11 +1445,7 @@ async function evaluateDrift(
             }
 
             if (changed > 0) {
-                addInvalidationWrites(transaction, scope, {
-                    reason: 'canonical_answer_drift_detected',
-                    sourceId: `drift_evaluation_${offset}`,
-                    canonical: true,
-                });
+                addInvalidationWrites(transaction, scope, invalidationOwnership, invalidationOptions);
             }
             return changed;
         });
@@ -1437,6 +1502,12 @@ async function validateDrift(
         await assertEntityBindings(transaction, scope, entityIds, answer.status === 'active');
         await assertNoActiveOverlap(transaction, scope, validatedCandidate, answerId);
         assertCanonicalCandidate(validatedCandidate);
+        const invalidationOptions: InvalidationOptions = {
+            reason: 'canonical_answer_drift_validated',
+            sourceId: answerId,
+            canonical: true,
+        };
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope, invalidationOptions);
         const now = FieldValue.serverTimestamp();
         transaction.update(answerRef, {
             governance: {
@@ -1467,11 +1538,7 @@ async function validateDrift(
             timestamp: now,
             createdOn: now,
         });
-        addInvalidationWrites(transaction, scope, {
-            reason: 'canonical_answer_drift_validated',
-            sourceId: answerId,
-            canonical: true,
-        });
+        addInvalidationWrites(transaction, scope, invalidationOwnership, invalidationOptions);
     });
 
     return { success: true, action: action.action, answerId };
@@ -1491,6 +1558,8 @@ async function mergeEntities(
     const operationHash = hashValue(`${scope.tId}:${scope.sId}:${survivorId}:${mergedId}`);
     const operationAuditRef = db.collection(AUDIT_COLLECTION).doc(`entity_merge_${operationHash}`);
     const ontologyCounterRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`ontologyCounters_${scope.tId}_${scope.sId}`);
+    const deterministicSurvivorIndexRef = db.collection(SEARCH_INDEX_COLLECTION)
+        .doc(`entity_index_${hashValue(`${scope.tId}:${scope.sId}:${survivorId}`, 32)}`);
 
     const result = await db.runTransaction(async transaction => {
         const existingOperation = await transaction.get(operationAuditRef);
@@ -1528,6 +1597,7 @@ async function mergeEntities(
 
         const answersSnapshot = await transaction.get(
             db.collection(CANONICAL_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('scope.entityIds', 'array-contains', mergedId)
@@ -1535,6 +1605,7 @@ async function mergeEntities(
         );
         const survivorActiveAnswersSnapshot = await transaction.get(
             db.collection(CANONICAL_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('scope.entityIds', 'array-contains', survivorId)
@@ -1565,6 +1636,7 @@ async function mergeEntities(
         );
         const fromRelations = await transaction.get(
             db.collection(RELATION_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('fromEntityId', '==', mergedId)
@@ -1572,6 +1644,7 @@ async function mergeEntities(
         );
         const survivorFromRelations = await transaction.get(
             db.collection(RELATION_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('fromEntityId', '==', survivorId)
@@ -1579,6 +1652,7 @@ async function mergeEntities(
         );
         const survivorToRelations = await transaction.get(
             db.collection(RELATION_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('toEntityId', '==', survivorId)
@@ -1586,6 +1660,7 @@ async function mergeEntities(
         );
         const toRelations = await transaction.get(
             db.collection(RELATION_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('toEntityId', '==', mergedId)
@@ -1593,6 +1668,7 @@ async function mergeEntities(
         );
         const survivorIndexes = await transaction.get(
             db.collection(SEARCH_INDEX_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('entityId', '==', survivorId)
@@ -1600,11 +1676,13 @@ async function mergeEntities(
         );
         const mergedIndexes = await transaction.get(
             db.collection(SEARCH_INDEX_COLLECTION)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', scope.tId)
                 .where('sId', '==', scope.sId)
                 .where('entityId', '==', mergedId)
                 .limit(MAX_ENTITY_SEARCH_INDEX_RECORDS + 1),
         );
+        const deterministicSurvivorIndexSnapshot = await transaction.get(deterministicSurvivorIndexRef);
 
         if (
             answersSnapshot.size > MAX_ENTITY_MERGE_REFERENCES
@@ -1790,13 +1868,37 @@ async function mergeEntities(
                 },
             };
         });
+        const relationTargetSnapshots = await Promise.all(relationMutations.flatMap(mutation => (
+            mutation.target && mutation.target.ref.path !== mutation.sourceRef.path
+                ? [transaction.get(mutation.target.ref).then(snapshot => ({ mutation, snapshot }))]
+                : []
+        )));
+        for (const { mutation, snapshot } of relationTargetSnapshots) {
+            if (snapshot.exists && mutation.target && !relationIsOwnedBy(snapshot.data(), scope, mutation.target.value)) {
+                throw new AnswerlatticeGovernanceError(
+                    'entity_merge_relation_target_conflict',
+                    409,
+                    'A rewritten entity relation identifier is already owned by another product or relationship.',
+                );
+            }
+        }
         const combinedAliases = Array.from(new Set([
             ...(survivor.aliases || []),
             ...(merged.aliases || []),
             merged.name.toLowerCase().trim(),
         ].filter(Boolean))).slice(0, 20);
-        const survivorIndexRef = survivorIndexes.docs[0]?.ref
-            || db.collection(SEARCH_INDEX_COLLECTION).doc(`entity_index_${hashValue(`${scope.tId}:${scope.sId}:${survivorId}`, 32)}`);
+        const survivorIndexRef = survivorIndexes.docs[0]?.ref || deterministicSurvivorIndexRef;
+        if (
+            survivorIndexes.empty
+            && deterministicSurvivorIndexSnapshot.exists
+            && !searchIndexIsOwnedBy(deterministicSurvivorIndexSnapshot.data(), scope, survivorId)
+        ) {
+            throw new AnswerlatticeGovernanceError(
+                'entity_merge_search_index_scope_invalid',
+                409,
+                'The survivor search index identifier is already owned by another product or entity.',
+            );
+        }
         const survivorIndexWeight = Number(survivorIndexes.docs[0]?.data()?.weight || 1);
         const survivorSearchIndex = buildEntitySearchIndex(
             { ...survivor, aliases: combinedAliases },
@@ -1825,6 +1927,17 @@ async function mergeEntities(
             );
         }
 
+        const invalidationOptions: InvalidationOptions = {
+            reason: 'entity_merge',
+            sourceId: survivorId,
+            canonical: changedAnswers.length > 0,
+            entities: true,
+            entityRelations: sourceRelationsById.size > 0,
+            faqs: changedFaqs.length > 0,
+            kb: changedArticles.length > 0,
+            surfaces: changedSurfaces.length > 0,
+        };
+        const invalidationOwnership = await readInvalidationOwnership(transaction, scope, invalidationOptions);
         const now = FieldValue.serverTimestamp();
         for (const changed of changedAnswers) {
             const answerRef = db.collection(CANONICAL_COLLECTION).doc(changed.previous.id);
@@ -1833,7 +1946,7 @@ async function mergeEntities(
                 modifiedBy: actor.label,
                 modifiedOn: now,
             });
-            transaction.set(db.collection(AUDIT_COLLECTION).doc(`entity_merge_answer_${hashValue(`${operationHash}:${changed.previous.id}`)}`), {
+            transaction.create(db.collection(AUDIT_COLLECTION).doc(`entity_merge_answer_${hashValue(`${operationHash}:${changed.previous.id}`)}`), {
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: scope.tId,
                 sId: scope.sId,
@@ -1845,7 +1958,7 @@ async function mergeEntities(
                 performedBy: actor.label,
                 timestamp: now,
                 createdOn: now,
-            }, { merge: false });
+            });
         }
         for (const article of changedArticles) {
             transaction.update(article.ref, {
@@ -1933,16 +2046,7 @@ async function mergeEntities(
             timestamp: now,
             createdOn: now,
         });
-        addInvalidationWrites(transaction, scope, {
-            reason: 'entity_merge',
-            sourceId: survivorId,
-            canonical: changedAnswers.length > 0,
-            entities: true,
-            entityRelations: sourceRelationsById.size > 0,
-            faqs: changedFaqs.length > 0,
-            kb: changedArticles.length > 0,
-            surfaces: changedSurfaces.length > 0,
-        });
+        addInvalidationWrites(transaction, scope, invalidationOwnership, invalidationOptions);
         return {
             transferredAnswers: changedAnswers.length,
             transferredArticles: changedArticles.length,

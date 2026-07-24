@@ -24,6 +24,7 @@ import {
 } from '../../functions-answerlattice/src/integrations/types';
 import {
     normalizeEmailConfig,
+    normalizeIntegrationConfig,
     normalizeSlackConfig,
     sanitizeIntegrationPayload,
 } from '../../functions-answerlattice/src/integrations/safety';
@@ -120,6 +121,30 @@ async function main(): Promise<void> {
         eventFilters: ['nightly_summary'],
         webhookUrl: 'https://hooks.slack.com/services/T/B/secret#unexpected',
     }).enabled, false);
+    assert.equal(normalizeSlackConfig({
+        enabled: true,
+        eventFilters: ['nightly_summary'],
+        webhookUrl: 'https://user:secret@hooks.slack.com/services/T/B/secret',
+    }).enabled, false);
+    assert.equal(normalizeSlackConfig({
+        enabled: true,
+        eventFilters: ['nightly_summary'],
+        webhookUrl: 'https://hooks.slack.com:444/services/T/B/secret',
+    }).enabled, false);
+    assert.equal(normalizeSlackConfig({
+        enabled: true,
+        channel: { privateValue: 'must-not-stringify' },
+        webhookUrl: 'https://hooks.slack.com/services/T/B/secret',
+    }).channel, '');
+    assert.equal(normalizeIntegrationConfig({
+        circuitBreaker: {
+            slack: {
+                consecutiveFailures: '12',
+                disabledAt: null,
+                probeStartedAt: null,
+            },
+        },
+    }, { pId: 'AL', tId: 11, sId: 22 }).circuitBreaker.slack.consecutiveFailures, 0);
 
     const malformedLegacyEvent: IntegrationEvent = {
         ...event,

@@ -1,76 +1,58 @@
-# SignalDesk Control Room - Implementation Plan
+# SignalDesk Control Room - Implementation
 
-**Status:** Initial implementation blueprint
-**Created:** June 23, 2026
+**Status:** Implemented
+**Revalidated:** July 21, 2026
 
-## Suggested Future Modules
+## Runtime Map
 
-```txt
-signaldesk/
-  controlRoom/
-    controlRoomTypes.ts
-    healthSummaries.ts
-    killSwitchService.ts
-    incidentService.ts
-    costSummaries.ts
-    aiEvalSummaries.ts
-    ControlRoomDashboard.tsx
-    KillSwitchPanel.tsx
-    IncidentQueue.tsx
-```
-
-## Data Flow
-
-```txt
-feature events and daily jobs
-  -> update bounded health summaries
-  -> detect thresholds
-  -> create or update incidents
-  -> apply kill switch when configured
-  -> render control room from summaries
-```
-
-## Summary-First Rule
-
-The dashboard must read derived summaries:
-
-- channel health summary,
-- queue summary,
-- source health summary,
-- AI eval summary,
-- cost summary,
-- incident summary,
-- outcome summary,
-- demand summary.
-
-Raw event lists are only for drill-down and admin/debug workflows.
-
-## Implementation Order
-
-1. Define summary schemas and stale-state rules.
-2. Implement kill-switch service.
-3. Implement incident service.
-4. Wire email rail health summaries.
-5. Wire inbox and approval queue summaries.
-6. Wire source and AI summaries.
-7. Wire cost summaries.
-8. Add control-room dashboard.
-9. Add mobile emergency summary.
-
-## Threshold Examples
-
-| Threshold | Action |
+| Boundary | Authority |
 | --- | --- |
-| Complaint rate over limit | Pause affected channel and create incident. |
-| Bounce rate over limit | Pause sender identity and create review item. |
-| AI low-confidence spike | Pause AI auto-suggestions and create eval incident. |
-| Source rejection spike | Pause source run and flag source policy review. |
-| Firestore reads exceed planned budget | Flag cost incident and reduce raw views. |
+| Overview read/projection | `src/lib/signaldesk/server.ts` |
+| Workspace section admission | `src/app/api/signaldesk/workspace/route.ts` and `src/database/signaldesk/index.ts` |
+| Pause mutation | `src/app/api/signaldesk/kill-switches/route.ts` and `setSignalDeskKillSwitchServer` |
+| Desktop/mobile shared UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` |
+| Client retry coordination | `src/hooks/signaldesk/useSignalDeskOverview.ts` |
+| Kill-switch/overview emulator | `scripts/verification/test-signaldesk-kill-switch-overview.js` |
 
-## Guardrails
+## Read Flow
 
-- Kill switches must be checked by sending, import, AI, and follow-up paths.
-- Summary freshness must be visible.
-- Admin controls require confirmation.
-- Incident resolution requires note.
-- No dashboard should encourage send volume as the primary success measure.
+The overview reads:
+
+1. the canonical control summary;
+2. the canonical queue summary;
+3. today's cost summary;
+4. eleven canonical kill-switch documents in parallel; and
+5. one bounded query for `open` or `acknowledged` incidents.
+
+The Controls workspace then reads only budget policies, provider accounts, run
+timelines, and self-service CTAs. It deliberately does not call the dashboard
+common loader or load targets, approvals, conversations, outcomes, demand rows,
+research runs, or research-table rows.
+
+All overview objects pass strict product, identity, enum, numeric, timestamp and
+allowlist projection before returning to the browser. Legacy summary identity is
+repaired only when the old row is otherwise valid.
+
+## Pause Transaction
+
+For a new actor/idempotency key, one transaction reads the claim, current scope
+document and today's strict cost summary, then writes:
+
+1. the exact current scope document;
+2. one classification-only audit event;
+3. one actor/request-bound completed claim; and
+4. the exact-replaced daily cost summary with `firestoreWriteEstimate + 4`.
+
+An exact retry returns the stored result and writes zero records. Changed facts
+under one key conflict. Foreign or malformed current pause truth fails closed.
+
+## UI Boundary
+
+The page shows summary cards, operating/safety/incident panels, confirmed pause
+controls, advanced navigation, run timelines, CTAs and investment holds. Ant
+Design confirmation is required before activation or recovery. The incident badge
+uses the exact unresolved count, while the list remains capped.
+
+The feature flag hides both route aliases and navigation and rejects the Controls
+workspace read. It does not disable existing pause enforcement or emergency pause
+infrastructure.

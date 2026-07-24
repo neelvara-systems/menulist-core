@@ -46,6 +46,10 @@
 
 - Activation load reads the store plus compact activation, context, coverage, trust, and compiled-context manifest docs only.
 - Daily Governance status reads one store doc, two platformSummary docs, and five capped scheduler logs.
+- Daily Governance browser parsing rejects numeric-string/fractional metrics, impossible local dates, unknown nested statuses and read-model/run-count disagreement.
+- Persisted scheduler durations and counts accept exact nonnegative safe integers only; malformed scalar evidence projects to zero and cannot become plausible owner status.
+- Foreign/malformed embedded subscription summaries cannot complete License readiness and do not suppress the bounded exact-scope legacy fallback.
+- Case-mutated subscription status, numeric-string subscription amount, and numeric-string widget seen count do not become owner readiness or billing/runtime truth.
 - First-client launch proof adds no Firestore calls beyond the activation summary response.
 - Content Control workbench adds no extra Firestore calls beyond the activation summary response.
 - Test-as-Customer checklist and Surface Readiness matrix add no extra Firestore calls beyond the activation summary response.

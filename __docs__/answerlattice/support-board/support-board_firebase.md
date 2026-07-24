@@ -49,10 +49,11 @@ Compact nightly summary:
 
 Required indexes:
 
-- `tId asc, sId asc, modifiedOn desc`
-- `tId asc, sId asc, status asc, modifiedOn desc`
-- `tId asc, sId asc, priority asc`
-- `aiSearchHistory`: `tId asc, sId asc, canonical asc, createdOn desc` for nightly recurring fallback scan
+- `pId asc, tId asc, sId asc, modifiedOn desc`
+- `pId asc, tId asc, sId asc, status asc, modifiedOn desc`
+- `pId asc, tId asc, sId asc, priority asc`
+- `answerlattice_canonicalAnswers`: `pId asc, tId asc, sId asc, governance.driftFlag asc` for product-partitioned drift candidates
+- `aiSearchHistory`: `pId asc, tId asc, sId asc, canonical asc, createdOn desc` for product-partitioned nightly recurring fallback and Support Board scans; mirrored in dedicated and shared index manifests
 
 ## Cost Model
 

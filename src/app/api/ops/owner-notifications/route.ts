@@ -474,6 +474,7 @@ async function getRecentEventRows(params: {
 }): Promise<OwnerNotificationOpsEventRow[]> {
   const snapshot = await params.db
     .collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)
+    .where('productId', '==', params.productId)
     .orderBy('updatedAt', 'desc')
     .limit(params.scanLimit)
     .get();
@@ -522,6 +523,7 @@ async function getDetail(params: {
 
   const deliveriesSnap = await params.db
     .collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .where('productId', '==', params.productId)
     .where('eventId', '==', eventId)
     .orderBy('createdAt', 'desc')
     .limit(DELIVERY_DETAIL_LIMIT)

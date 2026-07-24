@@ -1,35 +1,35 @@
-# SignalDesk Source Policy - Documentation Hub
+# SignalDesk Source Policy
 
-**Feature:** SignalDesk Source Policy
-**Status:** Initial doc set
-**Created:** June 23, 2026
-**Last Updated:** June 23, 2026
-**Parent project:** [MenuList SignalDesk](../README.md)
+**Status:** Runtime-backed; source-data lifecycle is implemented locally and requires an authorized Firebase release
+**Last verified:** July 21, 2026
+**Parent:** [MenuList SignalDesk](../README.md)
 
----
+Source Policy is the authority boundary between data availability and permitted use. Every import, provider run, evidence packet, personalized draft, export, handoff, and downstream control must recheck the current policy instead of trusting an earlier UI decision.
 
-## What This Feature Covers
+## Current Contract
 
-Source Policy defines what SignalDesk may collect, store, use, display, export, or contact from each source.
+- Policies are strict `SD` documents in `signaldeskSourcePolicies`.
+- Creation records source type, provider, access basis, allowed and blocked fields, contact channels, allowed uses, prohibited uses, retention, attribution, review time, and expiry.
+- Contact authority requires evidence authority plus an owner-supplied, permissioned-referral, or licensed-API basis.
+- Public-business research defaults to evidence-only and cannot create contact authority.
+- Renewal extends only the reviewed authority window. It cannot change policy terms, revive retained target data, renew a blocked policy, or exceed the existing retention period.
+- Mobile remains read-only for policy creation, renewal, source runs, and scoped policy controls. The only mobile mutation in SignalDesk is the separately governed global emergency pause.
+- Source-data expiry is handled by the consolidated hourly SignalDesk maintenance scheduler. The code, indexes, and emulator proof exist locally; deployed behavior must not be claimed until the Firebase release is verified.
 
-It exists because source providers are not truth providers, and data availability is not outreach permission.
-
-## Quick Navigation
+## Documents
 
 | Document | Purpose |
 | --- | --- |
-| [Specification](./signaldesk-source-policy_spec.md) | Source-policy requirements and allowed-use model. |
-| [Implementation Plan](./signaldesk-source-policy_impl.md) | Policy registry contracts and guard points. |
-| [Firebase Cost Plan](./signaldesk-source-policy_firebase.md) | Policy and source-run collections. |
-| [Compliance Policy](./signaldesk-source-policy_compliance.md) | Google/Foursquare/Apify/manual source guardrails. |
-| [Mobile Support](./signaldesk-source-policy_mobile-support.md) | Mobile posture for source policy. |
-| [Test Cases](./signaldesk-source-policy_test-cases.md) | Source-policy test matrix. |
+| [Specification](./signaldesk-source-policy_spec.md) | Current authority and lifecycle requirements. |
+| [Implementation](./signaldesk-source-policy_impl.md) | Actual schemas, actions, guards, UI, and scheduler paths. |
+| [Firebase](./signaldesk-source-policy_firebase.md) | Current collections, reads, writes, indexes, and deployment boundary. |
+| [Compliance](./signaldesk-source-policy_compliance.md) | Product safety rules and owner responsibilities. |
+| [Mobile](./signaldesk-source-policy_mobile-support.md) | Dashboard-only mobile posture. |
+| [Tests](./signaldesk-source-policy_test-cases.md) | Current source, renewal, import, and lifecycle verification. |
 
 ## Version History
 
-| Version | Date | Changes |
+| Version | Date | Change |
 | --- | --- | --- |
-| 0.1 | 2026-06-23 | Created initial source policy doc set. |
-| 0.2 | 2026-06-23 | Updated Apify from blocked-only planning to gated Source Broker use after source policy, provider approval, env Actor review, and budget cap. |
-| 0.3 | 2026-07-15 | Added the locally implemented, deploy-gated source-data retention lifecycle, root-writer contract, Firebase query/cost model, and focused emulator coverage. |
-| 0.4 | 2026-07-15 | Closed the public-capability gap by making target retention revoke active outcome route tokens and scrub retained token display names. |
+| 0.1-0.4 | June-July 2026 | Initial policy and source-data retention design. |
+| 0.5 | July 21, 2026 | Rebuilt from runtime truth; added immutable-terms renewal, corrected mobile behavior, removed nonexistent collections, and recorded current lifecycle release status. |

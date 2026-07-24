@@ -105,6 +105,20 @@ async function main() {
   const publicAlias = await request("/sd", { host: PUBLIC_HOST, method: "HEAD" });
   assert(publicAlias.status === 404, "/sd alias is not exposed on public MenuList host", `received ${publicAlias.status}`);
 
+  for (const pathname of [
+    "/signaldesk",
+    "/signaldesk/signin",
+    "/api/signaldesk/overview",
+  ]) {
+    const publicSignalDeskPath = await request(pathname, { host: PUBLIC_HOST, method: "HEAD" });
+    assert(
+      publicSignalDeskPath.status === 404,
+      `${pathname} is not exposed on public MenuList host`,
+      `received ${publicSignalDeskPath.status}`,
+    );
+    assert(headerIncludes(publicSignalDeskPath, "x-robots-tag", "noindex"), `${pathname} public-host denial is noindexed`);
+  }
+
   const privatePage = await request("/signaldesk");
   assert(privatePage.status === 200, "/signaldesk unauthenticated page returns local dev shell", `received ${privatePage.status}`);
   assert(privatePage.body.includes("/signaldesk/signin?callbackUrl=%2Fsignaldesk"), "/signaldesk unauthenticated page redirects to the isolated SignalDesk sign-in");

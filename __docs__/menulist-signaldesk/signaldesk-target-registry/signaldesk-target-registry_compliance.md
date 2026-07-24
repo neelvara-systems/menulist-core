@@ -1,53 +1,48 @@
 # SignalDesk Target Registry - Compliance Policy
 
-**Status:** Initial planning doc
+**Status:** Runtime-backed policy
 **Created:** June 23, 2026
+**Last Updated:** July 21, 2026
 
 ## Core Rule
 
-A target record is an internal candidate, not permission to contact.
+A target is an internal research candidate, not permission to contact.
 
-## PII Rules
+## Source And Contact Admission
 
-- Mask email and phone in list views.
-- Reveal raw contact only after role check and audit.
-- Store identity hashes for dedupe and suppression lookup.
-- Do not export contact values from the registry directly.
-- Do not put raw contact values into AI prompts by default.
+- Every import requires an active source policy that allows import and the specific admitted fields.
+- Manual imports cannot claim trusted provider identity.
+- Provider fields require the matching provider policy and trusted provider-run completion.
+- Retained contact identity requires both an allowed contact use/channel and a permission-evidence reference.
+- Public availability of a phone, email, website, or social handle does not create consent.
+- Re-import cannot upgrade an existing blocked, review-required, or expired contact permission state.
 
-## Source Provenance Rules
+## Privacy
 
-Every target must link to:
+- Target list responses contain no raw email, phone, Instagram, notes, permission evidence, provider payload, or contact record.
+- Raw values remain in private detail/contact documents and are never available through direct client Firestore writes.
+- Reveal is a separate permissioned, reason-required, audited action and remains unavailable on mobile.
+- Imported row content and free-form notes are not copied into durable audit reason fields.
+- Raw contact values must not enter AI prompts by default.
 
-- source type;
-- source owner;
-- import/run ID;
-- allowed fields;
-- retention class;
-- outreach eligibility;
-- expiry/review date.
+## Identity And Suppression
 
-## Blocked Transitions
-
-| Condition | Block |
-| --- | --- |
-| No source candidate | Cannot move to `ready`. |
-| Suppression exists | Cannot draft, export, send, or follow up. |
-| Source policy unclear | Target stays `held`. |
-| Duplicate unresolved | Target stays `held`. |
-| Raw restricted provider content | Cannot use in public artifact or outbound message. |
+- Exact deterministic identity is reused; uncertain identity is never automatically merged.
+- Provider identity can bind only to attributable provider record evidence.
+- Contact identity cannot rebind to another target or source policy.
+- Existing suppression ledger evidence holds the target and blocks downstream outreach.
+- Wrong contact, complaint, or suppression safety history is preserved independently of source-data expiry.
 
 ## Operator Rules
 
-- Never copy raw contact values into notes unless required.
-- Never mark target ready because a public phone exists.
-- Never infer consent from source availability.
-- Always mark wrong-contact and DNC immediately.
+- Use only reviewed source policies.
+- Include permission evidence for every retained contact row.
+- Do not put raw contact data into notes.
+- Do not bypass a held target by re-importing it.
+- Resolve identity/policy conflicts through reviewed data correction, never direct client writes.
 
-## Open Questions
+## Production Review Items
 
-| Question | Owner |
-| --- | --- |
-| Exact contact retention period | Founder + compliance review |
-| Contractor contact reveal policy | Founder |
-| First approved import source | Founder |
+- Founder/compliance approval of source-specific retention terms.
+- Provider terms and attribution evidence before enabling a new provider.
+- Hosted role, mobile-block, and contact-reveal QA before production use.

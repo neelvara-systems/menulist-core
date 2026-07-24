@@ -1,92 +1,96 @@
 /**
- * Comparison View Component
- * Shows period-over-period comparisons with interactive controls
+ * Period comparison for the active Answerlattice workspace.
+ *
+ * Workspace identity is derived from the authenticated product account. Numeric
+ * tenant/store props are intentionally not accepted as read authority.
  */
 
 'use client';
 
-import { Card, Select, Space, Spin, Typography } from 'antd';
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import useSWR from 'swr';
-import type { DateRange } from '@lib/analytics/dal';
-import { getAnalytics } from '@lib/analytics/dal';
-import type { ComparisonPeriod, PeriodComparison } from '@lib/analytics/comparison';
-import { 
-  compareMetrics, 
-  getComparisonDateRange, 
-  getPeriodLabel 
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+  getDashboardData,
+  type DateRange,
+} from '@lib/analytics/dal';
+import {
+  compareMetrics,
+  getComparisonDateRange,
+  getPeriodLabel,
+  type AnalyticsSummary,
+  type ComparisonPeriod,
 } from '@lib/analytics/comparison';
+import { Card, Select, Space, Spin, Typography } from 'antd';
+import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { MetricCardWithComparison } from './TrendIndicator';
 
 const { Title, Text } = Typography;
 
-// ================================================================
-// TYPES
-// ================================================================
-
-interface ComparisonViewProps {
-  tenantId: string;
-  storeId: string;
+export interface ComparisonViewProps {
   dateRange: DateRange;
   refreshInterval?: number;
 }
 
-// ================================================================
-// COMPONENT
-// ================================================================
+const toAnalyticsSummary = (
+  data: Awaited<ReturnType<typeof getDashboardData>>,
+): AnalyticsSummary => ({
+  totalChats: data.summary.totalChats,
+  positiveFeedbackShare: data.feedback.total > 0 ? data.summary.satisfactionRate : null,
+  avgMessagesPerChat: data.summary.avgMessagesPerChat,
+  totalMessages: data.summary.totalMessages,
+  totalFeedback: data.feedback.total,
+  positiveCount: data.feedback.positive,
+  negativeCount: data.feedback.negative,
+});
 
 export function ComparisonView({
-  tenantId,
-  storeId,
   dateRange,
-  refreshInterval = 60000,
+  refreshInterval = 60_000,
 }: ComparisonViewProps) {
+  const session = useClientAuthSession();
+  const scope = resolveAnswerlatticeSessionScope(session);
   const [period, setPeriod] = useState<ComparisonPeriod>('wow');
-  const [comparison, setComparison] = useState<PeriodComparison | null>(null);
+  const previousDateRange = useMemo(
+    () => getComparisonDateRange(period, dateRange.start, dateRange.end),
+    [dateRange.end, dateRange.start, period],
+  );
+  const scopeKey = scope ? `${scope.tenantId}:${scope.storeId}` : null;
 
-  // Fetch current period data
   const { data: currentData, isLoading: currentLoading } = useSWR(
-    ['analytics', tenantId, storeId, dateRange],
-    () => getAnalytics(tenantId, storeId, dateRange),
-    { refreshInterval, dedupingInterval: 60000 }
+    scopeKey
+      ? ['answerlattice-analytics-comparison', scopeKey, dateRange.start.toISOString(), dateRange.end.toISOString()]
+      : null,
+    async () => toAnalyticsSummary(await getDashboardData(dateRange, session)),
+    { refreshInterval, dedupingInterval: 60_000 },
   );
-
-  // Calculate previous period date range
-  const previousDateRange = getComparisonDateRange(
-    period,
-    dateRange.start,
-    dateRange.end
-  );
-
-  // Fetch previous period data
   const { data: previousData, isLoading: previousLoading } = useSWR(
-    ['analytics', tenantId, storeId, previousDateRange],
-    () => getAnalytics(tenantId, storeId, previousDateRange),
-    { refreshInterval, dedupingInterval: 60000 }
+    scopeKey
+      ? [
+          'answerlattice-analytics-comparison',
+          scopeKey,
+          previousDateRange.start.toISOString(),
+          previousDateRange.end.toISOString(),
+        ]
+      : null,
+    async () => toAnalyticsSummary(await getDashboardData(previousDateRange, session)),
+    { refreshInterval, dedupingInterval: 60_000 },
   );
 
-  // Calculate comparison when both datasets are available
-  useEffect(() => {
-    if (currentData && previousData) {
-      const comp = compareMetrics(currentData.summary, previousData.summary);
-      setComparison(comp);
-    }
-  }, [currentData, previousData]);
-
+  const comparison = currentData && previousData
+    ? compareMetrics(currentData, previousData)
+    : null;
   const isLoading = currentLoading || previousLoading;
 
   return (
     <Card
-      title={
+      title={(
         <Space>
-          <Title level={4} style={{ margin: 0 }}>
-            Performance Comparison
-          </Title>
+          <Title level={4} style={{ margin: 0 }}>Performance Comparison</Title>
           <Text type="secondary">({getPeriodLabel(period)})</Text>
         </Space>
-      }
-      extra={
+      )}
+      extra={(
         <Select
           value={period}
           onChange={setPeriod}
@@ -97,7 +101,7 @@ export function ComparisonView({
           ]}
           style={{ width: 180 }}
         />
-      }
+      )}
       bordered={false}
     >
       {isLoading ? (
@@ -107,126 +111,42 @@ export function ComparisonView({
       ) : !comparison ? (
         <Text type="secondary">No comparison data available</Text>
       ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 16,
+          }}
         >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '16px',
-            }}
-          >
-            <MetricCardWithComparison
-              title="Total Conversations"
-              value={comparison.volume.current}
-              comparison={comparison.volume}
-              format={(v) => v.toLocaleString()}
-            />
-
-            <MetricCardWithComparison
-              title="Satisfaction Rate"
-              value={comparison.satisfaction.current}
-              comparison={comparison.satisfaction}
-              format={(v) => v.toFixed(1)}
-              suffix="%"
-            />
-
-            <MetricCardWithComparison
-              title="Avg Messages per Chat"
-              value={comparison.avgMessages.current}
-              comparison={comparison.avgMessages}
-              format={(v) => v.toFixed(1)}
-            />
-
-            <MetricCardWithComparison
-              title="Total Messages"
-              value={comparison.totalMessages.current}
-              comparison={comparison.totalMessages}
-              format={(v) => v.toLocaleString()}
-            />
-          </div>
-
-          {/* Insights Section */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            style={{
-              marginTop: 24,
-              padding: 16,
-              background: '#f5f5f5',
-              borderRadius: 8,
-            }}
-          >
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>
-              Key Insights:
-            </Text>
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {getInsights(comparison).map((insight, idx) => (
-                <li key={idx}>
-                  <Text>{insight}</Text>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        </motion.div>
+          <MetricCardWithComparison
+            title="Total Conversations"
+            value={comparison.volume.current}
+            comparison={comparison.volume}
+            format={(value) => value.toLocaleString()}
+          />
+          <MetricCardWithComparison
+            title="Positive Feedback Share"
+            value={comparison.positiveFeedbackShare.current ?? 'Not available'}
+            comparison={comparison.positiveFeedbackShare}
+            format={(value) => value.toFixed(1)}
+            suffix="%"
+          />
+          <MetricCardWithComparison
+            title="Avg Messages per Chat"
+            value={comparison.avgMessages.current}
+            comparison={comparison.avgMessages}
+            format={(value) => value.toFixed(1)}
+          />
+          <MetricCardWithComparison
+            title="Total Messages"
+            value={comparison.totalMessages.current}
+            comparison={comparison.totalMessages}
+            format={(value) => value.toLocaleString()}
+          />
+        </div>
       )}
     </Card>
   );
 }
-
-// ================================================================
-// HELPER FUNCTIONS
-// ================================================================
-
-/**
- * Generate insights from comparison data
- */
-function getInsights(comparison: PeriodComparison): string[] {
-  const insights: string[] = [];
-
-  // Volume insights
-  if (Math.abs(comparison.volume.changePercent) > 10) {
-    const direction = comparison.volume.trend === 'up' ? 'increased' : 'decreased';
-    insights.push(
-      `Conversation volume ${direction} by ${Math.abs(comparison.volume.changePercent).toFixed(1)}%`
-    );
-  }
-
-  // Satisfaction insights
-  if (comparison.satisfaction.changePercent > 5) {
-    insights.push(`Satisfaction improved by ${comparison.satisfaction.changePercent.toFixed(1)}%`);
-  } else if (comparison.satisfaction.changePercent < -5) {
-    insights.push(
-      `Satisfaction declined by ${Math.abs(comparison.satisfaction.changePercent).toFixed(1)}% - review feedback`
-    );
-  }
-
-  // Efficiency insights
-  if (comparison.avgMessages.changePercent < -10) {
-    insights.push(
-      `Chat efficiency improved - ${Math.abs(comparison.avgMessages.changePercent).toFixed(1)}% fewer messages needed`
-    );
-  }
-
-  // Message volume
-  if (comparison.totalMessages.changePercent > 15) {
-    insights.push(`Message volume increased by ${comparison.totalMessages.changePercent.toFixed(1)}%`);
-  }
-
-  // Default insight if no significant changes
-  if (insights.length === 0) {
-    insights.push('Performance is stable compared to previous period');
-  }
-
-  return insights;
-}
-
-// ================================================================
-// EXPORTS
-// ================================================================
 
 export default ComparisonView;

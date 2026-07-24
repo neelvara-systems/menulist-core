@@ -98,7 +98,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Feature Flags**    | source-controlled build/runtime constants in `src/config/features.ts` | ✅ SOURCE-COMPLETE |
 | **Menu Validation**  | MCE 17-rule engine                                   | ✅ COMPLETE            |
 | **Event Logging**    | MOL append-only ledger                               | ✅ COMPLETE            |
-| **Menu Snapshots**   | Immutable on publish                                 | ✅ COMPLETE            |
+| **Menu Snapshots**   | Best-effort short-term immutable evidence after publish | ✅ COMPLETE         |
 | **Error Tracking**   | Sentry dual-project (dev/prod DSNs)                  | ✅ COMPLETE (flag OFF) |
 | **Ops Alerting**     | Telegram + systemAlerts collection                   | ✅ COMPLETE (flag OFF) |
 | **Console Removal**  | `removeConsole` in production build                  | ✅ COMPLETE            |

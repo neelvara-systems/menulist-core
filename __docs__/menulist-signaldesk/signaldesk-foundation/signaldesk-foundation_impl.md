@@ -2,9 +2,10 @@
 
 **Status:** Runtime implemented for internal testing
 **Created:** June 23, 2026
-**Runtime:** Protected SignalDesk shell, role access, kill switches, audit, mobile read-only enforcement, and internal team access management are implemented.
+**Last Updated:** July 21, 2026
+**Runtime:** Protected SignalDesk shell, current-user/session admission, role access, kill switches, audit, mobile read-only enforcement, and transactional internal team access management are implemented.
 
-## Future File Layout
+## Implemented File Layout
 
 Implement in this monorepo first with product-isolated folders:
 
@@ -26,7 +27,7 @@ functions-signaldesk/src/kill-switches/
 
 Do not place SignalDesk code in MenuList owner/customer routes. Do not use default MenuList Firebase clients for SignalDesk data.
 
-## Foundation Implementation Gate
+## Foundation Implementation Gate - Complete
 
 Before writing feature logic:
 
@@ -81,33 +82,31 @@ SignalDesk Settings includes an internal-only team access panel. Founder admins 
 - activate, deactivate, or update the member;
 - keep every membership mutation behind `/api/signaldesk/actions` and audit it as `team_member_upsert` or `team_member_deactivate`.
 
-The access resolver checks platform admin first, then `signaldeskTeamMembers` by document ID, stored `userId`, and normalized `emailLower`. This keeps the practical partner flow simple without creating public signup, owner/customer navigation, or direct client writes.
+The access resolver first validates the signed-in identity against the current MenuList user document through `getCurrentUser`. This enforces current active/block/deletion/auth-disable/email/session-revocation truth. Platform authority is then derived from that current record rather than from a cached session role.
+
+For a non-platform user, the resolver checks `signaldeskTeamMembers` by document ID, stored `userId`, and normalized `emailLower`. Exactly one active, correctly shaped human membership must match. Ambiguous matches, malformed permissions, a `system-worker` role, or identity disagreement fail closed. Direct browser reads remain platform-only; active team members use protected server APIs.
+
+Team-member creation and update use one Firestore transaction. The transaction reads the explicit/canonical member candidates plus bounded user-ID and email queries before writing. It rejects ambiguous identity, missing explicit records, changed bound user IDs, and self-deactivation based on the persisted row. Member, audit, and daily-cost truth commit together.
 
 ## Audit Event Contract
 
 ```ts
 type SignalDeskAuditEvent = {
   auditEventId: string;
+  pId: "SD";
   actorId: string;
   actorRole: SignalDeskRole;
-  action:
-    | "login"
-    | "contact_reveal"
-    | "target_update"
-    | "draft_approval"
-    | "message_export"
-    | "message_send"
-    | "policy_update"
-    | "kill_switch_activate"
-    | "kill_switch_deactivate";
-  entityType?: string;
-  entityId?: string;
-  reason?: string;
-  ipHash?: string;
-  userAgentHash?: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  reason: `event:${string}` | null;
   createdAt: string;
 };
 ```
+
+Audit writes are server-only and normally share the mutation transaction/batch. Caller detail is intentionally reduced to `event:{action}` because target identity, evidence, message content, recipients, and operator free text may be sensitive. Authentication/authorization failures go to bounded secure diagnostics and do not create Firestore rows per hostile request.
+
+The protected Audit workspace reads 50 valid rows ordered by `createdAt DESC, document ID DESC`. The desktop control can request the next page with that exact two-part cursor. The route rejects partial, malformed, oversized, or non-audit cursor use. Malformed/foreign rows are skipped with bounded diagnostics; the query continues only within the existing projection scan ceiling.
 
 ## Kill Switch Contract
 
@@ -119,9 +118,12 @@ type SignalDeskKillSwitch = {
     | "email"
     | "whatsapp"
     | "instagram"
+    | "messenger"
     | "source-provider"
     | "ai-worker"
     | "campaign"
+    | "content-distribution"
+    | "trust-partner"
     | "menu-list-bridge";
   targetId?: string;
   status: "active" | "inactive";
@@ -133,15 +135,21 @@ type SignalDeskKillSwitch = {
 };
 ```
 
+The private switch state retains the operator reason needed for review. Its separate audit row stores only `event:kill_switch_activate` or `event:kill_switch_deactivate`. Exact and concurrent retries reuse the actor-bound claim and cannot create another transition or audit. Reactivation clears prior deactivation metadata so the current state cannot imply that an active pause is already cleared.
+
+Desktop founder controls can manage all governed scopes. Mobile can only activate `global-outbound` with the explicit emergency confirmation marker; scoped activation and every deactivation remain desktop-only.
+
 ## Required Guards
 
 Every mutation must check:
 
-1. internal session exists;
-2. role has permission;
-3. relevant kill switch is inactive unless the action is pause/acknowledge;
-4. request validates against schema;
-5. audit event is written.
+1. internal session exists and is current;
+2. current MenuList user remains active and unblocked;
+3. exactly one current SignalDesk authority resolves;
+4. role has permission;
+5. relevant kill switch is inactive unless the action is pause/acknowledge;
+6. request validates against schema;
+7. audit event is written.
 
 Contact reveal additionally requires:
 
@@ -158,7 +166,7 @@ Contact reveal additionally requires:
 | `/signaldesk` | Internal dashboard shell. |
 | `/signaldesk/control-room` | Kill switches, incidents, cost/channel summaries. |
 | `/signaldesk/policies` | Read-only policy state in first build. |
-| `/signaldesk/audit` | Admin audit event search. |
+| `/signaldesk/audit` | Admin newest-first audit history with explicit older-page loading. |
 
 ## Validation
 
@@ -167,8 +175,10 @@ Contact reveal additionally requires:
 - API test every mutation without permission.
 - API test every mutation with active global outbound pause.
 - Audit test contact reveal.
+- Audit test stable pagination across identical timestamps and malformed/foreign rows.
 - Mobile test emergency pause only.
+- Emulator-test stale platform claims, blocked current users, ambiguous memberships, self-deactivation, and concurrent identity collisions.
 
-## No Runtime Change
+## Runtime Boundary
 
-This is a planning doc. No auth, route, role, or Firebase rule was implemented in this pass.
+The foundation runtime is implemented. SignalDesk remains private and product-scoped: canonical app/API paths are denied on non-SignalDesk production hosts, dedicated/local/approved-alias routing is preserved, and both app-server and Functions Firebase initialization reject foreign project authority before data access. Provider sending remains separately flag-disabled.

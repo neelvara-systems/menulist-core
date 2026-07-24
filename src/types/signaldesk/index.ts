@@ -480,6 +480,7 @@ export interface SignalDeskDraftSummary {
     draftId: string;
     targetId: string;
     targetName: string;
+    templateFingerprintHash?: string | null;
     templateId: string;
     channel: SignalDeskOutboundChannel;
     status: "draft" | "queued" | "approved" | "rejected" | "exported" | "sent" | "failed";

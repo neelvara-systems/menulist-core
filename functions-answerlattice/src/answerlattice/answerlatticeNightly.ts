@@ -51,9 +51,8 @@ import { hasEnabledIntegrationAdapter } from '../integrations/configStore';
 import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/eventBus';
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
 import {
+    appendAnswerlatticeCacheVersionBump,
     bumpAnswerlatticeCacheVersion,
-    getAnswerlatticeCacheVersionBumpData,
-    getAnswerlatticeCacheVersionDocId,
     ANSWERLATTICE_CACHE_SOURCES,
 } from './cacheVersionManifest';
 import { syncChatAnalyticsNightly } from './chatAnalyticsAggregation';
@@ -66,7 +65,6 @@ import {
 } from './dataRetention';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { generateDraftsForNewProposals } from './draftGenerator';
-import { appendCompiledContextSourceChange } from './compiledContextVersions';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
 import { syncKnowledgeIntakeSummary } from './knowledgeIntakeSummary';
@@ -320,6 +318,7 @@ export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
 
     const snapshot = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+        .where('pId', '==', 'AL')
         .select('tId', 'sId')
         .limit(SCHEDULER_LIMITS.tenantDiscoveryDocs)
         .get();
@@ -424,6 +423,7 @@ async function runDriftDetection(
 
     const answersQuery = db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -431,6 +431,7 @@ async function runDriftDetection(
 
     const entitiesQuery = db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .limit(SCHEDULER_LIMITS.entitiesPerTenant + 1);
@@ -438,9 +439,11 @@ async function runDriftDetection(
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const signalsQuery = db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('timestamp', '>=', windowStart)
+        .orderBy('timestamp', 'desc')
         .limit(SCHEDULER_LIMITS.signalEventsPerWindow + 1);
 
     const [answersSnap, entitiesSnap, signalsSnap] = await Promise.all([
@@ -569,41 +572,11 @@ async function runDriftDetection(
 
     for (let offset = 0; offset < writes.length; offset += SCHEDULER_LIMITS.driftWriteAnswersPerBatch) {
         const chunk = writes.slice(offset, offset + SCHEDULER_LIMITS.driftWriteAnswersPerBatch);
-        const batch = db.batch();
         const now = Timestamp.now();
-        for (const item of chunk) {
-            batch.update(item.document.ref, {
-                'governance.driftFlag': true,
-                'governance.driftReason': item.state.driftReason,
-                'governance.reviewRequired': true,
-                modifiedOn: now,
-                modifiedBy: 'system:drift_engine_nightly',
-            }, { lastUpdateTime: item.document.updateTime! });
-            const auditId = `drift_nightly_${createHash('sha256')
-                .update(`${tId}:${sId}:${item.document.id}:${item.state.driftReason}`)
-                .digest('hex')
-                .slice(0, 40)}`;
-            batch.create(db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(auditId), {
-                pId: 'AL',
-                tId,
-                sId,
-                action: 'drift_detected',
-                entityType: 'canonicalAnswer',
-                entityId: item.document.id,
-                previousState: {
-                    driftFlag: item.answer.governance.driftFlag,
-                    driftReason: item.answer.governance.driftReason || null,
-                },
-                newState: { driftFlag: true, driftReason: item.state.driftReason },
-                performedBy: 'system:drift_engine_nightly',
-                timestamp: now,
-                createdOn: now,
-            });
-        }
-        batch.set(
-            db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
-                .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId)),
-            getAnswerlatticeCacheVersionBumpData(
+        await db.runTransaction(async transaction => {
+            await appendAnswerlatticeCacheVersionBump(
+                transaction,
+                db,
                 ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
                 tId,
                 sId,
@@ -612,15 +585,37 @@ async function runDriftDetection(
                     sourceId: `nightly_drift_${offset}`,
                     sourceType: 'canonical_answer',
                 },
-            ),
-            { merge: true },
-        );
-        appendCompiledContextSourceChange(batch, db, 'canonical', tId, sId, {
-            reason: 'drift_detected',
-            sourceId: `nightly_drift_${offset}`,
-            sourceType: 'canonical_answer',
+            );
+            for (const item of chunk) {
+                transaction.update(item.document.ref, {
+                    'governance.driftFlag': true,
+                    'governance.driftReason': item.state.driftReason,
+                    'governance.reviewRequired': true,
+                    modifiedOn: now,
+                    modifiedBy: 'system:drift_engine_nightly',
+                }, { lastUpdateTime: item.document.updateTime! });
+                const auditId = `drift_nightly_${createHash('sha256')
+                    .update(`${tId}:${sId}:${item.document.id}:${item.state.driftReason}`)
+                    .digest('hex')
+                    .slice(0, 40)}`;
+                transaction.create(db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(auditId), {
+                    pId: 'AL',
+                    tId,
+                    sId,
+                    action: 'drift_detected',
+                    entityType: 'canonicalAnswer',
+                    entityId: item.document.id,
+                    previousState: {
+                        driftFlag: item.answer.governance.driftFlag,
+                        driftReason: item.answer.governance.driftReason || null,
+                    },
+                    newState: { driftFlag: true, driftReason: item.state.driftReason },
+                    performedBy: 'system:drift_engine_nightly',
+                    timestamp: now,
+                    createdOn: now,
+                });
+            }
         });
-        await batch.commit();
         result.driftDetected += chunk.length;
     }
 
@@ -667,6 +662,7 @@ async function createPendingMutationProposalIfAbsent(
     const proposalRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).doc(proposalId);
     const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(`created_${proposalId}`);
     const pendingQuery = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', input.tId)
         .where('sId', '==', input.sId)
         .where('relatedEntityIds', 'array-contains', input.entityId)
@@ -731,6 +727,7 @@ async function runSignalMutation(
 
     const signalsSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('timestamp', '>=', windowStart)
@@ -781,6 +778,7 @@ async function runSignalMutation(
             // Check for existing canonical answers
             const answersSnap = await db
                 .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+                .where('pId', '==', 'AL')
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('scope.entityIds', 'array-contains', entityId)
@@ -883,10 +881,12 @@ async function resolveUnresolvedSignals(
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const unresolvedSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('entityId', '==', 'unresolved')
         .where('timestamp', '>=', windowStart)
+        .orderBy('timestamp', 'desc')
         .limit(200)
         .get();
     readObserver?.record({
@@ -903,6 +903,7 @@ async function resolveUnresolvedSignals(
     // Load entity search index for matching
     const indexSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .limit(SCHEDULER_LIMITS.searchIndexEntriesPerTenant)
@@ -1177,12 +1178,14 @@ async function aggregateTrustMetrics(
 
         const [answersSnap, entitiesSnap, signalsSnap, previousSnap] = await Promise.all([
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+                .where('pId', '==', 'AL')
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'active')
                 .limit(SCHEDULER_LIMITS.activeAnswersPerTenant + 1)
                 .get(),
             db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+                .where('pId', '==', 'AL')
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('status', '==', 'active')
@@ -1490,10 +1493,12 @@ async function detectRecurringFallbacks(
         // Query search history for non-canonical results (misses)
         const historySnap = await db
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('canonical', '==', false)
             .where('createdOn', '>=', windowStart)
+            .orderBy('createdOn', 'desc')
             .limit(500)
             .get();
         readObserver?.record({
@@ -1528,6 +1533,7 @@ async function detectRecurringFallbacks(
 
             const answersSnap = await db
                 .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+                .where('pId', '==', 'AL')
                 .where('tId', '==', tId)
                 .where('sId', '==', sId)
                 .where('scope.entityIds', 'array-contains', entityId)
@@ -1609,6 +1615,7 @@ async function countMutationImpactSignals(input: {
 }): Promise<number> {
     const snapshot = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', input.tId)
         .where('sId', '==', input.sId)
         .where('entityId', '==', input.entityId)
@@ -1646,6 +1653,7 @@ async function trackMutationImpact(
         // Find implemented proposals without impact tracking
         const proposalsSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('status', '==', 'implemented')
@@ -1781,6 +1789,7 @@ async function rebuildEntityGraphIndex(
     // 1. Load active entities
     const entitiesSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -1812,6 +1821,7 @@ async function rebuildEntityGraphIndex(
     // 2. Load all relations
     const relationsSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .limit(SCHEDULER_LIMITS.graphRelationsPerTenant + 1)
@@ -1833,6 +1843,7 @@ async function rebuildEntityGraphIndex(
     // 3. Count active canonical answers per entity
     const answersSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+        .where('pId', '==', 'AL')
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -2574,7 +2585,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'friction_aggregation',
                 'aggregateFrictionStats',
-                (readObserver) => aggregateFrictionStats(tId, sId, readObserver) as Promise<any>,
+                (readObserver) => aggregateFrictionStats(tId, sId, readObserver, new Date(startedAtMs)) as Promise<any>,
                 (taskResult) => { result.totalFrictionEntities += taskResult.entitiesProcessed; },
                 (taskResult) => ({
                     entitiesProcessed: taskResult.entitiesProcessed,
@@ -2587,7 +2598,7 @@ export async function runAnswerlatticeNightly(options: {
                 tenantRun,
                 'friction_cleanup',
                 'cleanupExpiredFrictionStats',
-                () => cleanupExpiredFrictionStats(tId, sId) as Promise<any>,
+                () => cleanupExpiredFrictionStats(tId, sId, 90, 100, new Date(startedAtMs)) as Promise<any>,
                 (taskResult) => { result.totalFrictionStatsCleanedUp += taskResult.cleaned; },
                 (taskResult) => ({
                     cleaned: taskResult.cleaned,
@@ -2595,7 +2606,7 @@ export async function runAnswerlatticeNightly(options: {
                 })
             );
 
-            const dayOfWeek = new Date().getUTCDay(); // 0 = Sunday
+            const dayOfWeek = new Date(startedAtMs).getUTCDay(); // 0 = Sunday
             if (dayOfWeek === 0) {
                 await runTenantTask(
                     tenantRun,
@@ -2607,7 +2618,7 @@ export async function runAnswerlatticeNightly(options: {
                     },
                     (taskResult) => ({
                         generated: taskResult.generated,
-                        skipped: taskResult.skipped,
+                        skippedReason: taskResult.skippedReason || null,
                         enabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE,
                     })
                 );
@@ -2777,7 +2788,7 @@ export async function runAnswerlatticeNightly(options: {
                     tenantRun,
                     'predictive_trigger_sync',
                     'runPredictiveTriggerSync',
-                    () => runPredictiveTriggerSync(tId, sId) as Promise<any>,
+                    () => runPredictiveTriggerSync(tId, sId, new Date(startedAtMs)) as Promise<any>,
                     (taskResult) => {
                         result.predictiveSuggestionsGenerated += taskResult.suggestionsGenerated;
                         result.predictiveTriggersTotal += taskResult.triggerCount;

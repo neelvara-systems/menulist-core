@@ -79,6 +79,7 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
     const windowStart = new Date();
     windowStart.setDate(windowStart.getDate() - ROLLING_WINDOW_DAYS);
     const windowStartTimestamp = Timestamp.fromDate(windowStart);
+    const windowEndTimestamp = Timestamp.now();
 
     analyticsLogger.info('[ExtractionLearning] Starting nightly aggregation');
 
@@ -140,6 +141,7 @@ export async function processExtractionLearningForAllStores(): Promise<Extractio
                     }
                     let correctionQuery = changeLogRef
                         .where('timestamp', '>=', windowStartTimestamp)
+                        .where('timestamp', '<=', windowEndTimestamp)
                         .orderBy('timestamp', 'asc')
                         .orderBy(FieldPath.documentId(), 'asc')
                         .limit(CHANGE_LOG_PAGE_SIZE);

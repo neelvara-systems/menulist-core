@@ -1,12 +1,14 @@
 'use client';
 
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
-import { getStoreContextName } from '@lib/businessIdentity/names';
+import { useAnswerlatticePlatformWorkspaceOptions } from '@hook/answerlattice/useAnswerlatticePlatformWorkspaceOptions';
+import { syncAnswerlatticePlatformAuthForStore } from '@lib/auth/firebaseAuthSync';
+import {
+    backfillAnswerlatticeChatAnalytics,
+    type AnswerlatticeChatAnalyticsBackfillResult,
+} from '@lib/answerlattice/chatAnalyticsBackfillClient';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { backfillAggregates } from '@services/chatAnalytics';
 import {
     Alert,
     Button,
@@ -30,23 +32,17 @@ import {
 } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useContext, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuAlertTriangle, LuCheckCircle, LuClock, LuDatabase, LuSkipForward, LuXCircle } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
-interface BackfillResult {
-    date: string;
-    chats: number;
-    status: 'success' | 'skipped';
-    partial: boolean;
-}
+type BackfillResult = AnswerlatticeChatAnalyticsBackfillResult;
 
 export default function AnalyticsBackfill() {
     const router = useRouter();
-    const { data: loggedInSession, status: sessionStatus }: any = useSession();
+    const { data: loggedInSession, status: sessionStatus } = useSession();
     const dispatch = useAppDispatch();
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const [days, setDays] = useState<number | null>(30);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -60,17 +56,34 @@ export default function AnalyticsBackfill() {
     const [progress, setProgress] = useState<number>(0);
     const platformRole = loggedInSession?.platformRole || loggedInSession?.user?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
+    const mountedRef = useRef(true);
+    const processingRef = useRef(false);
+    const actionIdRef = useRef(0);
+    const isPlatformRef = useRef(isPlatform);
+    const operatorIdentityRef = useRef<string | null>(null);
+    isPlatformRef.current = isPlatform;
+    operatorIdentityRef.current = isPlatform
+        ? String(loggedInSession?.uId || loggedInSession?.user?.id || '') || null
+        : null;
     const {
+        error: storesError,
         loading: storesLoading,
-        selectedStore,
         selectedStoreId,
+        selectedWorkspace,
         selectOptions,
         setSelectedStoreId,
-    } = usePlatformStoreSummaryOptions(sessionStatus === 'authenticated' && isPlatform);
+    } = useAnswerlatticePlatformWorkspaceOptions(sessionStatus === 'authenticated' && isPlatform);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            actionIdRef.current += 1;
+        };
+    }, []);
 
     // Calculate date range for display
-    const getDateRange = () => {
-        const daysValue = days || 30; // Use default if null
+    const getDateRange = (daysValue: number) => {
         const endDate = new Date();
         endDate.setDate(endDate.getDate() - 1); // Yesterday (backfill starts from yesterday)
 
@@ -125,19 +138,21 @@ export default function AnalyticsBackfill() {
             message.warning('Please enter a valid number of days (1-90)');
             return;
         }
-        if (!selectedStore?.tId || !selectedStore?.sId) {
-            message.warning('Select a store first');
+        if (!selectedWorkspace) {
+            message.warning('Select an Answerlattice workspace first');
             return;
         }
 
-        const dateRange = getDateRange();
+        const confirmedDays = days;
+        const confirmedWorkspace = selectedWorkspace;
+        const dateRange = getDateRange(confirmedDays);
         Modal.confirm({
             title: 'Confirm Report Generation',
             icon: <LuAlertTriangle />,
             content: (
                 <div>
                     <Paragraph>
-                        You are about to generate reports for the past <Text strong>{days} days</Text>.
+                        You are about to generate reports for the past <Text strong>{confirmedDays} days</Text>.
                     </Paragraph>
                     <Paragraph type="secondary" style={{ fontSize: '13px', marginBottom: '4px' }}>
                         <strong>Date Range:</strong> {dateRange.formatted}
@@ -146,10 +161,10 @@ export default function AnalyticsBackfill() {
                         This operation will:
                     </Paragraph>
                     <ul style={{ fontSize: '13px', marginTop: 0 }}>
-                        <li>Analyze conversations from {days} day{days > 1 ? 's' : ''}</li>
-                        <li>Take about {Math.ceil(days * 1.5)} seconds to complete</li>
+                        <li>Analyze conversations from {confirmedDays} day{confirmedDays > 1 ? 's' : ''}</li>
+                        <li>Take about {Math.ceil(confirmedDays * 1.5)} seconds to complete</li>
                         <li>Skip days that already have reports</li>
-                        <li>Process data for: <Text strong>{selectedStore?.name || `Store ${selectedStore?.sId}`}</Text></li>
+                        <li>Process data for: <Text strong>{confirmedWorkspace.name}</Text></li>
                     </ul>
                     <Paragraph type="warning" style={{ fontSize: '13px', marginBottom: 0 }}>
                         ⚠️ This process reads a lot of data. Only continue if you need past reports.
@@ -160,16 +175,31 @@ export default function AnalyticsBackfill() {
             okType: 'primary',
             cancelText: 'Cancel',
             width: 520,
-            onOk: handleBackfill,
+            onOk: () => handleBackfill({
+                days: confirmedDays,
+                sId: confirmedWorkspace.sId,
+                tId: confirmedWorkspace.tId,
+            }),
         });
     };
 
-    const handleBackfill = async () => {
-        if (!selectedStore?.tId || !selectedStore?.sId) {
-            message.warning('Select a store first');
+    const handleBackfill = async (target: { days: number; sId: number; tId: number }) => {
+        if (processingRef.current || !isPlatformRef.current) {
+            message.warning('A report generation request is already running or access is no longer available');
             return;
         }
 
+        processingRef.current = true;
+        const actionId = actionIdRef.current + 1;
+        actionIdRef.current = actionId;
+        const operatorIdentity = operatorIdentityRef.current;
+        const ownsAction = () => mountedRef.current && actionIdRef.current === actionId;
+        const isCurrentAction = () => (
+            ownsAction()
+            && isPlatformRef.current
+            && Boolean(operatorIdentity)
+            && operatorIdentityRef.current === operatorIdentity
+        );
         setIsProcessing(true);
         setResults([]);
         setSummary(null);
@@ -177,11 +207,10 @@ export default function AnalyticsBackfill() {
         dispatch(startLoader('Generating reports...'));
 
         try {
-            const result = await backfillAggregates(
-                Number(selectedStore.tId),
-                Number(selectedStore.sId),
-                days || 30
-            );
+            const auth = await syncAnswerlatticePlatformAuthForStore(target.sId);
+            if (!auth.ready || !isCurrentAction()) return;
+            const result = await backfillAnswerlatticeChatAnalytics(target.tId, target.sId, target.days);
+            if (!isCurrentAction()) return;
 
             setResults(result.results);
 
@@ -200,15 +229,19 @@ export default function AnalyticsBackfill() {
 
             message.success(`Successfully created reports for ${successCount} days, skipped ${skippedCount} unchanged days`, 8);
 
-        } catch (error: any) {
-            logRuntimeFailure('platform_analytics_backfill_failed', error, {
-                ...getBoundedRuntimeStringContext('selectedStoreId', selectedStoreId),
-                days: days || 30,
+        } catch (error) {
+            if (!isCurrentAction()) return;
+            logRuntimeFailure('answerlattice_platform_analytics_backfill_failed', error, {
+                ...getBoundedRuntimeStringContext('selectedStoreId', target.sId),
+                days: target.days,
             });
             message.error('Report generation failed. Please try again or contact support', 10);
             setProgress(0);
         } finally {
-            setIsProcessing(false);
+            if (actionIdRef.current === actionId) {
+                processingRef.current = false;
+            }
+            if (ownsAction()) setIsProcessing(false);
             dispatch(stopLoader('Generating reports...'));
         }
     };
@@ -474,15 +507,24 @@ export default function AnalyticsBackfill() {
                             value={selectedStoreId}
                             onChange={setSelectedStoreId}
                             options={selectOptions}
-                            placeholder="Select store"
+                            placeholder="Select Answerlattice workspace"
+                            disabled={isProcessing}
                             style={{ width: '100%' }}
                         />
+                        {storesError ? (
+                            <Alert
+                                message="Could not load Answerlattice workspaces"
+                                description="Current Answerlattice platform access is required."
+                                type="error"
+                                showIcon
+                            />
+                        ) : null}
                         <Descriptions column={2} size="small">
-                            <Descriptions.Item label="Store Name">
-                                {selectedStore?.name || getStoreContextName(storeDetails as any, 'N/A')}
+                            <Descriptions.Item label="Workspace">
+                                {selectedWorkspace?.name || 'N/A'}
                             </Descriptions.Item>
-                            <Descriptions.Item label="Tenant / Store">
-                                {selectedStore ? `T${selectedStore.tId} / S${selectedStore.sId}` : 'N/A'}
+                            <Descriptions.Item label="Tenant / Workspace">
+                                {selectedWorkspace ? `T${selectedWorkspace.tId} / S${selectedWorkspace.sId}` : 'N/A'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Access">
                                 <Tag color="gold">Platform</Tag>
@@ -529,7 +571,7 @@ export default function AnalyticsBackfill() {
                                 </Text>
                                 <Text type="secondary">
                                     <LuDatabase style={{ marginRight: '4px' }} />
-                                    Date range: {getDateRange().formatted}
+                                    Date range: {getDateRange(days).formatted}
                                 </Text>
                             </Space>
                         </Col>

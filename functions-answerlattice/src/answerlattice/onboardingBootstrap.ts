@@ -39,6 +39,7 @@ import {
     callAnswerlatticeGeminiContent,
     recordGeminiCallOperation,
 } from './aiOperationAccounting';
+import { parseExactAnswerlatticeScope } from './scopeBoundary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS (mirrored from src/config/onboardingBootstrapConfig.ts)
@@ -242,9 +243,9 @@ async function ensureOntologyCounter(tId: number, sId: number): Promise<void> {
     const current = await counterRef.get();
     if (current.exists) return;
     const [entities, candidates, relations] = await Promise.all([
-        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('tId', '==', tId).where('sId', '==', sId).count().get(),
-        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'pending').count().get(),
-        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('tId', '==', tId).where('sId', '==', sId).count().get(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).where('pId', '==', ANSWERLATTICE_PRODUCT_ID).where('tId', '==', tId).where('sId', '==', sId).count().get(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES).where('pId', '==', ANSWERLATTICE_PRODUCT_ID).where('tId', '==', tId).where('sId', '==', sId).where('status', '==', 'pending').count().get(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS).where('pId', '==', ANSWERLATTICE_PRODUCT_ID).where('tId', '==', tId).where('sId', '==', sId).count().get(),
     ]);
     await db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(counterRef);
@@ -354,6 +355,7 @@ async function discoverBootstrapCandidates(): Promise<BootstrapCandidate[]> {
     try {
         // Find published KB jobs that haven't been bootstrapped yet
         const jobsSnap = await db.collection(DB_COLLECTIONS.KB_GENERATION_JOBS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('status', '==', 'published')
             .limit(50)
             .get();
@@ -368,12 +370,10 @@ async function discoverBootstrapCandidates(): Promise<BootstrapCandidate[]> {
                 data.onboardingBootstrap?.status === 'promoting' ||
                 data.onboardingBootstrap?.status === 'drafting') continue;
 
-            const tId = typeof data.tId === 'string' ? parseInt(data.tId) : data.tId;
-            const sId = typeof data.sId === 'string' ? parseInt(data.sId) : data.sId;
+            const scope = parseExactAnswerlatticeScope(data.tId, data.sId);
+            if (!scope) continue;
 
-            if (!tId || !sId) continue;
-
-            candidates.push({ tId, sId, jobId: jobDoc.id });
+            candidates.push({ ...scope, jobId: jobDoc.id });
         }
     } catch (error) {
         logger.error('[Answerlattice Bootstrap] Discovery failed', {
@@ -397,6 +397,7 @@ async function extractEntitiesForTenant(
 
     // Load published articles for this tenant (multi-tenant isolation)
     const articlesSnap = await db.collection(DB_COLLECTIONS.KB_ARTICLES)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'published')
@@ -414,6 +415,7 @@ async function extractEntitiesForTenant(
 
     // Load existing entities for registry-guided extraction (dedup)
     const existingEntitiesSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .select('name', 'slug', 'aliases')
@@ -567,6 +569,7 @@ async function countCandidatesForReview(
     sId: number
 ): Promise<number> {
     const candidates = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'pending')
@@ -602,6 +605,7 @@ async function generateDraftsForApprovedEntities(
     // Draft only from already owner-approved active entities. Generated
     // candidates remain pending until an explicit ontology action promotes one.
     const entitiesSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -612,6 +616,7 @@ async function generateDraftsForApprovedEntities(
 
     // Get all published articles for this tenant (multi-tenant isolation)
     const articlesSnap = await db.collection(DB_COLLECTIONS.KB_ARTICLES)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'published')
@@ -632,6 +637,7 @@ async function generateDraftsForApprovedEntities(
 
         // Check if proposal already exists for this entity (idempotent)
         const existingProposalSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('relatedEntityIds', 'array-contains', entityDoc.id)
@@ -643,6 +649,7 @@ async function generateDraftsForApprovedEntities(
 
         // Also check if a canonical answer already exists for this entity
         const existingAnswerSnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('scope.entityIds', 'array-contains', entityDoc.id)
@@ -871,6 +878,7 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                 // Check if entities already exist and skip flag is on
                 if (CONFIG.SKIP_IF_ENTITIES_EXIST) {
                     const existingEntities = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+                        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
                         .where('tId', '==', tId)
                         .where('sId', '==', sId)
                         .limit(1)

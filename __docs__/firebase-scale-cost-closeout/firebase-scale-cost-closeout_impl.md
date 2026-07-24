@@ -9,6 +9,13 @@
 timezones. Before store work begins, it transactionally reads
 `_system/decisionBlocksPlatformDaily`.
 
+The lease carries a unique owner token. Completion runs in a transaction,
+re-reads the current state, and writes completion/failure fields only when that
+token still owns the lease. The consolidated maintenance scheduler uses the
+same owner-checked finalization rule and atomically records task outcome plus
+lease release. Expired predecessors therefore cannot overwrite replacement
+state.
+
 The lease admits work when:
 
 - `lastCompletedDayKey` is not the current UTC date;

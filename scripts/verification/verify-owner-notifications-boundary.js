@@ -84,10 +84,14 @@ function verifyLifecycleSubscriptionIndexes(firestoreIndexes, answerlatticeFires
   ));
 
   assert(hasFields([
+    { fieldPath: 'pId', order: 'ASCENDING' },
+    { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'status', order: 'ASCENDING' },
     { fieldPath: 'renewsOn', order: 'ASCENDING' },
   ]), 'Lifecycle renewal reminder query must keep its subscriptions composite index');
   assert(hasFields([
+    { fieldPath: 'pId', order: 'ASCENDING' },
+    { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'status', order: 'ASCENDING' },
     { fieldPath: 'pastDueSinceAt', order: 'ASCENDING' },
   ]), 'Lifecycle suspension warning query must keep its subscriptions composite index');
@@ -97,14 +101,17 @@ function verifyLifecycleSubscriptionIndexes(firestoreIndexes, answerlatticeFires
     && JSON.stringify(index.fields) === JSON.stringify(expected)
   ));
   assert(hasCollectionFields('ownerNotificationEvents', [
+    { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'status', order: 'ASCENDING' },
     { fieldPath: 'updatedAt', order: 'ASCENDING' },
   ]), 'Owner notification retry query must keep its status/updatedAt index');
   assert(hasCollectionFields('ownerNotificationDeliveries', [
+    { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'status', order: 'ASCENDING' },
     { fieldPath: 'createdAt', order: 'ASCENDING' },
   ]), 'Owner notification digest query must keep its status/createdAt index');
   const detailIndex = [
+    { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'eventId', order: 'ASCENDING' },
     { fieldPath: 'createdAt', order: 'DESCENDING' },
   ];
@@ -114,6 +121,16 @@ function verifyLifecycleSubscriptionIndexes(firestoreIndexes, answerlatticeFires
     && index.queryScope === 'COLLECTION'
     && JSON.stringify(index.fields) === JSON.stringify(detailIndex)
   )), 'Answerlattice owner notification detail must keep its newest-first event index');
+  const recentIndex = [
+    { fieldPath: 'productId', order: 'ASCENDING' },
+    { fieldPath: 'updatedAt', order: 'DESCENDING' },
+  ];
+  assert(hasCollectionFields('ownerNotificationEvents', recentIndex), 'MenuList owner notification recent list must keep its product/newest index');
+  assert(answerlatticeParsed.indexes.some((index) => (
+    index.collectionGroup === 'ownerNotificationEvents'
+    && index.queryScope === 'COLLECTION'
+    && JSON.stringify(index.fields) === JSON.stringify(recentIndex)
+  )), 'Answerlattice owner notification recent list must keep its product/newest index');
 }
 
 function verifyFirestoreDocumentIdHelper(helper) {
@@ -196,10 +213,19 @@ function verifyOpsRoute(route) {
   ], 'Owner notification ops POST admission order');
 
   assertOrder(route, [
+    'async function getRecentEventRows(params:',
+    '.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)',
+    ".where('productId', '==', params.productId)",
+    ".orderBy('updatedAt', 'desc')",
+    '.limit(params.scanLimit)',
+  ], 'Owner notification recent event product partition');
+
+  assertOrder(route, [
     'const eventId = requireOwnerNotificationEventId(params.eventId);',
     'const eventSnap = await params.db',
     '.doc(eventId)',
     'const deliveriesSnap = await params.db',
+    ".collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)\n    .where('productId', '==', params.productId)",
     '.where(\'eventId\', \'==\', eventId)',
     ".orderBy('createdAt', 'desc')",
     '.limit(DELIVERY_DETAIL_LIMIT)',
@@ -413,6 +439,12 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'const failed = failedSnap.data().count;',
   ].forEach((token) => assertIncludes(processor, token, 'Functions owner notification processor'));
 
+  [
+    ".where('productId', '==', 'ML')",
+    'export async function retryFailedOwnerNotifications',
+    'export async function getOwnerNotificationDigest',
+  ].forEach((token) => assertIncludes(processor, token, 'Functions owner notification product-partitioned retry/digest'));
+
   assertOrder(processor, [
     'const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(event.tenantId);',
     'const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(event.storeId);',
@@ -428,6 +460,13 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'run: runOwnerNotificationRetentionCleanup',
     'lockTtlMs: 10 * MINUTE_MS',
   ].forEach((token) => assertIncludes(scheduler, token, 'MenuList maintenance scheduler owner notification cleanup'));
+
+  [
+    "productField: 'productId'",
+    "productValue: 'ML'",
+    ".where(params.productField, '==', params.productValue)",
+    'export const runOwnerNotificationRetentionCleanupForTest = runOwnerNotificationRetentionCleanup;',
+  ].forEach((token) => assertIncludes(scheduler, token, 'MenuList owner notification retention product partition'));
 
   [
     'await response.text()',
@@ -723,8 +762,10 @@ function verifyDocsAndPackage(
     'record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before retry',
     'Production deploys require QA evidence and explicit production deploy approval.',
     'do not reuse older broad Functions command shapes',
-    '`ownerNotificationEvents(status ASC, updatedAt ASC)`',
-    '`ownerNotificationDeliveries(status ASC, createdAt ASC)`',
+    '`ownerNotificationEvents(productId ASC, status ASC, updatedAt ASC)`',
+    '`ownerNotificationDeliveries(productId ASC, status ASC, createdAt ASC)`',
+    '`ownerNotificationDeliveries(productId ASC, eventId ASC, createdAt DESC)`',
+    '`ownerNotificationEvents(productId ASC, updatedAt DESC)`',
     'The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded',
     'GET and POST keep signed platform admission',
     'simple Firestore document ID',

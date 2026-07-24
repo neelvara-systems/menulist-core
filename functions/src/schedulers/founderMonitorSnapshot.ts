@@ -5,6 +5,7 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
+import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
 
 const logger = functions.logger;
 const INDIA_OFFSET_MS = 330 * 60 * 1000;
@@ -228,6 +229,23 @@ async function readCollection(collectionName: string, limit: number, orderField?
     }
 }
 
+async function readMenuListSubscriptions() {
+    try {
+        return await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('pId', '==', 'ML')
+            .where('productId', '==', 'ML')
+            .orderBy('modifiedOn', 'desc')
+            .limit(SUBSCRIPTION_LIMIT)
+            .get();
+    } catch (error) {
+        logger.warn('[FounderMonitor] MenuList subscription read failed', {
+            limit: SUBSCRIPTION_LIMIT,
+            errorName: error instanceof Error ? error.name : typeof error,
+        });
+        return null;
+    }
+}
+
 function appendUniqueCleanId(value: unknown, target: string[]) {
     const id = cleanText(value, 80);
     if (id && !target.includes(id)) target.push(id);
@@ -418,7 +436,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     ] = await Promise.all([
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get(),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storeTruthConfidence').get(),
-        readCollection(DB_COLLECTIONS.SUBSCRIPTIONS, SUBSCRIPTION_LIMIT, 'modifiedOn'),
+        readMenuListSubscriptions(),
         readCollection(DB_COLLECTIONS.SUPPORT_TICKETS, SUPPORT_TICKET_LIMIT, 'createdOn'),
         db.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS)
             .where('businessDayKey', '==', todayKey)
@@ -434,10 +452,18 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     const movementReadCapped = todayMovementSnap.size >= MOVEMENT_RECONCILE_LIMIT;
     const onboardingTransitionReadCapped = (onboardingTransitionSnap?.size || 0) >= ONBOARDING_TRANSITION_LIMIT;
 
-    const subscriptions: SnapshotDocumentData[] = (subscriptionSnap?.docs || []).map((doc) => ({
-        ...((doc.data() || {}) as Record<string, any>),
-        id: doc.id,
-    }));
+    const subscriptions: SnapshotDocumentData[] = (subscriptionSnap?.docs || []).flatMap((doc) => {
+        const data = (doc.data() || {}) as Record<string, any>;
+        const scope = getExactMenuListSubscriptionScope(data);
+        return scope ? [{
+            ...data,
+            id: doc.id,
+            sId: scope.storeId,
+            storeId: scope.storeId,
+            tId: scope.tenantId,
+            tenantId: scope.tenantId,
+        }] : [];
+    });
     const subscriptionByStore = new Map<string, SnapshotDocumentData>();
     subscriptions.forEach((subscription) => {
         const storeId = cleanText(subscription.storeId || subscription.sId, 80);

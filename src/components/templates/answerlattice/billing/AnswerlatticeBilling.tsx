@@ -16,7 +16,7 @@ import { Alert, Button, Card, Empty, Flex, Grid, List, Space, Spin, Typography, 
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCreditCard, LuLifeBuoy, LuReceipt } from 'react-icons/lu';
 import ActiveSubscriptionCard from '@/components/templates/main-app/billing/ActiveSubscriptionCard';
 import BillingHistory from '@/components/templates/main-app/billing/BillingHistory';
@@ -31,17 +31,30 @@ export default function AnswerlatticeBilling() {
     const { data: session, status } = useSession();
     const { token } = theme.useToken();
     const scope = useMemo(() => resolveAnswerlatticeSessionScope(session), [session]);
+    const billingScopeKey = scope ? `${PRODUCT_IDS.ANSWERLATTICE}:${scope.tenantId}:${scope.storeId}` : null;
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
     const formatter = useFormatter();
     const router = useRouter();
-    const [activeSubscription, setActiveSubscription] = useState<FirestoreSubscriptionDoc | null>(null);
-    const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
+    const [loadedActiveSubscription, setLoadedActiveSubscription] = useState<FirestoreSubscriptionDoc | null>(null);
+    const [activeSubscriptionScopeKey, setActiveSubscriptionScopeKey] = useState<string | null>(null);
+    const [loadedBillingHistory, setLoadedBillingHistory] = useState<BillingHistoryItem[]>([]);
+    const [billingHistoryScopeKey, setBillingHistoryScopeKey] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasBillingLoadError, setHasBillingLoadError] = useState(false);
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<{ action: 'upgrade' | 'new'; active: boolean }>({ action: 'upgrade', active: false });
     const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
+    const subscriptionRequestSequenceRef = useRef(0);
+    const billingHistoryRequestSequenceRef = useRef(0);
+    const billingScopeKeyRef = useRef<string | null>(billingScopeKey);
+    billingScopeKeyRef.current = billingScopeKey;
+    const activeSubscription = activeSubscriptionScopeKey === billingScopeKey
+        ? loadedActiveSubscription
+        : null;
+    const billingHistory = billingHistoryScopeKey === billingScopeKey
+        ? loadedBillingHistory
+        : [];
     const plans = useMemo(() => getBillingPlansForProduct(PRODUCT_IDS.ANSWERLATTICE, 'B2B'), []);
     const packs = useMemo(() => getCreditPacksForProduct(PRODUCT_IDS.ANSWERLATTICE), []);
     const currentHostname = getCurrentHostname();
@@ -59,9 +72,13 @@ export default function AnswerlatticeBilling() {
     }), [scope?.tenantId, scope?.storeId]);
 
     const refetchActiveSubscription = useCallback(async () => {
+        const requestSequence = ++subscriptionRequestSequenceRef.current;
+        const requestScopeKey = billingScopeKey;
+        setLoadedActiveSubscription(null);
+        setActiveSubscriptionScopeKey(null);
+        setLoadedBillingHistory([]);
+        setBillingHistoryScopeKey(null);
         if (!scope?.tenantId || !scope?.storeId) {
-            setActiveSubscription(null);
-            setBillingHistory([]);
             setHasBillingLoadError(false);
             setIsLoading(false);
             return;
@@ -71,11 +88,21 @@ export default function AnswerlatticeBilling() {
         setHasBillingLoadError(false);
         try {
             const subscription = await getAnswerlatticeActiveSubscriptionForStore(scope.tenantId, scope.storeId);
-            setActiveSubscription(subscription);
-            setBillingHistory([]);
+            if (
+                subscriptionRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
+            setLoadedActiveSubscription(subscription);
+            setActiveSubscriptionScopeKey(requestScopeKey);
         } catch (error) {
-            setActiveSubscription(null);
-            setBillingHistory([]);
+            if (
+                subscriptionRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
+            setLoadedActiveSubscription(null);
+            setActiveSubscriptionScopeKey(null);
+            setLoadedBillingHistory([]);
+            setBillingHistoryScopeKey(null);
             setHasBillingLoadError(true);
             logPaymentFailure(
                 'answerlattice_billing_subscription_load_failed',
@@ -84,20 +111,35 @@ export default function AnswerlatticeBilling() {
             );
             message.error('Could not load Answerlattice billing.');
         } finally {
-            setIsLoading(false);
+            if (
+                subscriptionRequestSequenceRef.current === requestSequence
+                && billingScopeKeyRef.current === requestScopeKey
+            ) {
+                setIsLoading(false);
+            }
         }
-    }, [getBillingFailureContext, scope?.tenantId, scope?.storeId]);
+    }, [billingScopeKey, getBillingFailureContext, scope?.tenantId, scope?.storeId]);
 
     useEffect(() => {
         if (status === 'loading') return;
         void refetchActiveSubscription();
+        return () => {
+            subscriptionRequestSequenceRef.current += 1;
+            billingHistoryRequestSequenceRef.current += 1;
+        };
     }, [refetchActiveSubscription, status]);
 
     const fetchBillingHistory = async () => {
         if (!scope?.tenantId || !scope?.storeId) return;
+        const requestSequence = ++billingHistoryRequestSequenceRef.current;
+        const requestScopeKey = billingScopeKey;
         try {
             const rawHistory = await getAnswerlatticeBillingHistoryForStore(scope.tenantId, scope.storeId);
-            setBillingHistory(formatBillingHistoryEvents(rawHistory, {
+            if (
+                billingHistoryRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
+            setLoadedBillingHistory(formatBillingHistoryEvents(rawHistory, {
                 formatBillingCycle: (startSeconds, endSeconds) => {
                     if (!startSeconds || !endSeconds) return undefined;
                     const startDate = formatter.dateTime(new Date(startSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
@@ -105,7 +147,12 @@ export default function AnswerlatticeBilling() {
                     return `${startDate}-${endDate}`;
                 },
             }));
+            setBillingHistoryScopeKey(requestScopeKey);
         } catch (error) {
+            if (
+                billingHistoryRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return;
             logPaymentFailure(
                 'answerlattice_billing_history_load_failed',
                 error,
@@ -139,11 +186,13 @@ export default function AnswerlatticeBilling() {
     };
 
     const handleCreditsPurchase = async (packId: string) => {
+        const purchaseScopeKey = billingScopeKey;
         try {
             const pack = packs.find((candidate) => candidate.packId === packId);
             if (!pack) throw new Error('Answerlattice credit pack not found');
             const paymentResult = await handleTopupPurchase(pack, activeSubscription?.currency || 'INR');
-            setActiveSubscription((previous) => previous
+            if (billingScopeKeyRef.current !== purchaseScopeKey) return;
+            setLoadedActiveSubscription((previous) => previous
                 ? {
                     ...previous,
                     topUpCredits: typeof paymentResult?.newCreditBalance === 'number'

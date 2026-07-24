@@ -5,7 +5,6 @@ import { buildAnswerlatticeVersionDriftReason } from '@data/shared/answerlattice
 import type { AnswerlatticeAccessContext } from '@lib/answerlattice/accessControl';
 import {
     ANSWERLATTICE_CACHE_SOURCES,
-    getAnswerlatticeCacheVersionDocId,
 } from '@lib/answerlattice/cacheVersionManifest';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -19,15 +18,16 @@ import {
     type AnswerlatticeReleaseActionResult,
 } from './releaseContracts';
 import {
-    getAnswerlatticeBundleManifestDocId,
-    getAnswerlatticeSourceVersionsDocId,
-} from './compiledContext';
+    AnswerlatticeInvalidationOwnershipError,
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+} from './invalidationOwnership';
 
 const RELEASES = DB_COLLECTIONS.ANSWERLATTICE_RELEASES;
 const ENTITIES = DB_COLLECTIONS.ANSWERLATTICE_ENTITIES;
 const ANSWERS = DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS;
 const AUDIT_LOGS = DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS;
-const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
@@ -37,6 +37,25 @@ const stableJson = (value: Record<string, unknown>) => JSON.stringify(
         return result;
     }, {}),
 );
+
+const readReleaseInvalidationOwnership = async (
+    transaction: FirebaseFirestore.Transaction,
+    access: AnswerlatticeAccessContext,
+) => {
+    try {
+        return await readAnswerlatticeInvalidationOwnership({
+            cacheSources: [ANSWERLATTICE_CACHE_SOURCES.CANONICAL],
+            db: getDb(),
+            scope: { tId: access.scope.tenantId, sId: access.scope.storeId },
+            transaction,
+        });
+    } catch (error) {
+        if (error instanceof AnswerlatticeInvalidationOwnershipError) {
+            throw new AnswerlatticeReleaseError(409, 'Release cache authority needs repair before activation can continue.');
+        }
+        throw error;
+    }
+};
 
 const releaseIdForRequest = (tId: number, sId: number, requestId: string) => (
     `release_${sha256(`${tId}:${sId}:${requestId}`).slice(0, 40)}`
@@ -54,6 +73,7 @@ export class AnswerlatticeReleaseError extends Error {
     ) {
         super(message);
         this.name = 'AnswerlatticeReleaseError';
+        Object.setPrototypeOf(this, AnswerlatticeReleaseError.prototype);
     }
 }
 
@@ -275,6 +295,7 @@ async function finishReleaseActivation(
         if (answersSnapshot.size > ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS) {
             throw new AnswerlatticeReleaseError(409, 'This release affects more answers than one safe activation can process.');
         }
+        const invalidationOwnership = await readReleaseInvalidationOwnership(transaction, access);
 
         evaluatedAnswers = answersSnapshot.size;
         for (const answerSnapshot of answersSnapshot.docs) {
@@ -320,7 +341,7 @@ async function finishReleaseActivation(
                 modifiedOn: FieldValue.serverTimestamp(),
                 modifiedBy: actor.label,
             });
-            transaction.set(
+            transaction.create(
                 db.collection(AUDIT_LOGS).doc(auditId('drift', releaseId, answerSnapshot.id)),
                 {
                     pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -338,7 +359,6 @@ async function finishReleaseActivation(
                     timestamp: FieldValue.serverTimestamp(),
                     createdOn: FieldValue.serverTimestamp(),
                 },
-                { merge: false },
             );
             driftedAnswers += 1;
         }
@@ -357,18 +377,20 @@ async function finishReleaseActivation(
             modifiedOn: now,
             modifiedBy: actor.label,
         });
-        transaction.set(
+        transaction.create(
             db.collection(AUDIT_LOGS).doc(auditId('activated', releaseId)),
             buildAudit(access, actor.id, 'release_activated', releaseId, { status: 'processing' }, {
                 status: 'active',
                 evaluatedAnswers,
                 driftedAnswers,
             }),
-            { merge: false },
         );
         transaction.set(
-            db.collection(PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(access.scope.tenantId, access.scope.storeId)),
+            invalidationOwnership.sourceVersionsRef,
             {
+                ...(!invalidationOwnership.sourceVersionsExists
+                    ? getAnswerlatticeMissingSourceVersionsBase({ tId: access.scope.tenantId, sId: access.scope.storeId })
+                    : {}),
                 schemaVersion: 1,
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: access.scope.tenantId,
@@ -384,12 +406,7 @@ async function finishReleaseActivation(
         );
         if (driftedAnswers > 0) {
             transaction.set(
-                db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
-                    .doc(getAnswerlatticeCacheVersionDocId(
-                        ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
-                        access.scope.tenantId,
-                        access.scope.storeId,
-                    )),
+                invalidationOwnership.cacheVersionRefs[ANSWERLATTICE_CACHE_SOURCES.CANONICAL]!,
                 {
                     pId: PRODUCT_IDS.ANSWERLATTICE,
                     tId: access.scope.tenantId,
@@ -405,8 +422,11 @@ async function finishReleaseActivation(
             );
         }
         transaction.set(
-            db.collection(PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(access.scope.tenantId, access.scope.storeId)),
+            invalidationOwnership.manifestRef,
             {
+                ...(!invalidationOwnership.manifestExists
+                    ? getAnswerlatticeMissingBundleManifestBase({ tId: access.scope.tenantId, sId: access.scope.storeId })
+                    : {}),
                 schemaVersion: 1,
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: access.scope.tenantId,
@@ -433,6 +453,7 @@ const releaseActivationFailure = async (
     const db = getDb();
     const actor = getActor(access);
     const releaseRef = db.collection(RELEASES).doc(releaseId);
+    let invalidAuditCollision = false;
     await db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(releaseRef);
         if (!snapshot.exists) return;
@@ -444,6 +465,17 @@ const releaseActivationFailure = async (
             || release.data.activation?.requestId !== requestId) {
             return;
         }
+        const failureAuditRef = db.collection(AUDIT_LOGS).doc(auditId('activation_failed', releaseId, requestId));
+        const failureAuditSnapshot = await transaction.get(failureAuditRef);
+        const existingAudit = failureAuditSnapshot.data();
+        const existingAuditIsOwned = failureAuditSnapshot.exists
+            && existingAudit?.pId === PRODUCT_IDS.ANSWERLATTICE
+            && existingAudit?.tId === access.scope.tenantId
+            && existingAudit?.sId === access.scope.storeId
+            && existingAudit?.action === 'release_activation_failed'
+            && existingAudit?.entityType === 'release'
+            && existingAudit?.entityId === releaseId;
+        invalidAuditCollision = failureAuditSnapshot.exists && !existingAuditIsOwned;
         const now = FieldValue.serverTimestamp();
         transaction.update(releaseRef, {
             status: 'pending',
@@ -458,15 +490,23 @@ const releaseActivationFailure = async (
             modifiedOn: now,
             modifiedBy: actor.label,
         });
-        transaction.set(
-            db.collection(AUDIT_LOGS).doc(auditId('activation_failed', releaseId, requestId)),
-            buildAudit(access, actor.id, 'release_activation_failed', releaseId, { status: 'processing' }, {
-                status: 'pending',
-                failureCode: 'release_drift_evaluation_failed',
-            }),
-            { merge: false },
-        );
+        if (!failureAuditSnapshot.exists) {
+            transaction.create(
+                failureAuditRef,
+                buildAudit(access, actor.id, 'release_activation_failed', releaseId, { status: 'processing' }, {
+                    status: 'pending',
+                    failureCode: 'release_drift_evaluation_failed',
+                }),
+            );
+        }
     });
+    if (invalidAuditCollision) {
+        logRuntimeFailure(
+            'answerlattice_release_activation_failure_audit_collision',
+            new Error('release_activation_failure_audit_collision'),
+            { hasTenantScope: true, hasStoreScope: true },
+        );
+    }
 };
 
 async function activateRelease(

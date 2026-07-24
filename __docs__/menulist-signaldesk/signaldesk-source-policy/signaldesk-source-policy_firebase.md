@@ -1,83 +1,61 @@
-# SignalDesk Source Policy - Firebase Cost Plan
+# SignalDesk Source Policy Firebase Contract
 
-**Status:** Retention Patch R1 implemented locally; deploy blocked pending root-writer integration
-**Created:** June 23, 2026
-**Cost impact now:** No production impact until the gated Firebase deploy. The implemented hourly task adds bounded reads/writes when enabled and deployed.
+**Status:** App runtime complete; lifecycle Function/index release not verified remotely
+**Last verified:** July 21, 2026
 
-## Collections
+## Actual Persistence
 
-| Collection | Purpose | Normal reads |
+| Collection | Role |
+| --- | --- |
+| `signaldeskSourcePolicies` | Strict policy authority plus lifecycle progress. |
+| `signaldeskIdempotencyKeys` | Actor/request-bound create and renew claims. |
+| `signaldeskSourceRuns` | Governed import/provider run summaries. |
+| `signaldeskProviderSourceRetention` | Provider refresh/expiry and scrub authority. |
+| `signaldeskTargetSummaries` | Source-policy lineage, hold/tombstone, and lifecycle progress. |
+| `signaldeskTargets` plus linked workflow collections | Bounded source-derived dependency scrubbing. |
+| `signaldeskRouteTokens` | Revocation of active target-bound public capabilities. |
+| `signaldeskAuditEvents`, `signaldeskRunTimelines`, `signaldeskIncidents` | Durable success/failure evidence. |
+| `signaldeskDailyCostSummaries`, `signaldeskControlSummary` | Compact operational accounting/status. |
+| `_system` | Consolidated scheduler task leases and outcomes. |
+
+There are no `signaldeskSourcePolicyVersions`, `signaldeskSourceRunEvents`, or `signaldeskSourceRetentionJobs` collections in the current contract.
+
+## Operation Cost Shape
+
+| Operation | Reads | Writes |
 | --- | --- | --- |
-| `signaldeskSourcePolicies` | Source rules | Small policy list |
-| `signaldeskSourcePolicyVersions` | Immutable policy snapshots | Policy detail/audit |
-| `signaldeskSourceRuns` | Source run summaries | Recent list |
-| `signaldeskSourceRunEvents` | Detailed run events | Run detail/debug only |
-| `signaldeskSourceRetentionJobs` | Expiry/deletion jobs | Admin/debug only |
+| Policy list | Bounded ordered scan, normally one small query | None |
+| Create policy | Claim and deterministic policy reads | Policy, claim, audit, control summary, daily cost |
+| Renew policy | Claim and policy reads | Policy merge, claim, audit, daily cost |
+| Import/provider use | Policy plus workflow-specific authority reads | Existing import/provider lineage writes only |
+| Lifecycle pass | Capped due/retry/overflow queries and bounded dependency pages | Authority/progress/tombstone writes plus deterministic evidence |
 
-## Read / Write Model
-
-| Flow | Reads | Writes | Notes |
-| --- | ---: | ---: | --- |
-| Policy list | 1 query | 0 | Small collection. |
-| Create/update policy | 2-4 | 2-4 | Policy, version, audit. |
-| Start source run | 2-5 | 2-3 | Policy, kill switch, run summary. |
-| Complete source run | 2-5 | 2-5 | Run summary, event, cost summary. |
-| Retention cleanup | Bounded query | Deletes/writes | Must cap per job. |
+No new read is added to ordinary public MenuList or owner MenuList surfaces. SignalDesk remains isolated in its separate Firebase project and `pId: SD` documents.
 
 ## Indexes
 
-- `signaldeskSourcePolicies`: `provider + status`
-- `signaldeskSourceRuns`: `provider + status + startedAt`
-- `signaldeskSourceRunEvents`: `sourceRunId + createdAt`
-- `signaldeskSourceRetentionJobs`: `status + dueAt`
+`firestore-signaldesk.indexes.json` contains product-scoped indexes for:
 
-## Cost Controls
+- due, blocked, pending, and retry policy lifecycle queries;
+- targets by policy and target pending/retry queries;
+- provider retention due, explicit scrub-ready, and retry queries.
 
-- Source policy list is small and cacheable.
-- Source run events are not dashboard source.
-- Retention cleanup must process bounded batches.
-- No raw provider payload in Firestore unless compact and approved.
+Every lifecycle query is bounded and includes `pId: SD`. Overflow is detected with a sentinel and resumed by stored cursors.
 
-## Retention
+## Retention Behavior
 
-| Data | Default |
-| --- | --- |
-| Source policy versions | 24 months minimum |
-| Source run summaries | 24 months |
-| Source run events | 90-180 days |
-| Raw payload refs | Per source policy, usually 30 days max |
+Policy `retentionDays` controls the maximum review/expiry window and source-derived retention authority. It does not define deletion of financial, suppression, legal, outcome, audit, or idempotency evidence.
 
-## Active Patch R1 Persistence Model
+Expired source-derived target data is hold-first and scrubbed in phases. Sent or inbound communication is retained with legal-review metadata rather than silently deleted. Active public route tokens tied to the target are revoked.
 
-Patch R1 does not create per-run retention-job documents and does not perform bulk deletes. Lifecycle authority and resumable progress live on existing policy, provider-retention, and target-summary documents. Deterministic audit, incident, and timeline documents provide observability without creating a new scheduled function.
+## Deployment Boundary
 
-| Collection | Patch R1 role | Ownership |
-| --- | --- | --- |
-| `signaldeskSourcePolicies` | Expiry/block authority, target-scan cursor, retry state, final counts | `pId: SD`, document ID equals `sourcePolicyId` |
-| `signaldeskTargetSummaries` | Hold-first authority, dependency phase/cursor, tombstone, retry state, final counts | `pId: SD`, document ID equals `targetId` |
-| `signaldeskProviderSourceRetention` | Natural retention due rows and explicit negative `scrub_ready` rows | `pId: SD`, document ID equals `providerSourceRetentionId` |
-| `signaldeskRouteTokens` | Active target-bound public capabilities are deterministically revoked; retained token hashes remain replay/audit evidence and target display names are scrubbed | `pId: SD`, document ID is derived from the token hash |
-| `signaldeskTargets` and target-linked source/evidence/outbound collections | Bounded scrub phases keyed by `targetId` | SignalDesk documents only; foreign `pId` records are never mutated |
-| `signaldeskIncidents`, `signaldeskAuditEvents`, `signaldeskRunTimelines` | Deterministic failure and completion evidence | System actor `signaldesk-source-data-lifecycle` |
-| `_system` | Independent hourly task leases and outcomes | `pId: SD` |
+The source-data lifecycle code, scheduler integration, Function flag, indexes, and emulator suite exist locally. Existing validation records state that no Firebase release was applied after the lifecycle integration. Until an authenticated `menulist-signaldesk-qa` deployment and post-deploy proof are recorded, remote cleanup behavior remains pending.
 
-### Required composite indexes
+Required scoped release targets when authorized:
 
-`firestore-signaldesk.indexes.json` includes product-scoped indexes for:
+```bash
+firebase deploy --project menulist-signaldesk-qa --config firebase-signaldesk.json --only firestore:indexes,functions:signaldeskMaintenanceScheduler --non-interactive
+```
 
-- policy due, blocked, pending, and retry queries;
-- target-by-policy materialization plus target pending/retry queries;
-- provider natural-due, explicit `scrub_ready`, and retry queries.
-
-All due/retry queries include `pId: SD` before status/time filters. Each query reads at most its configured cap plus one overflow sentinel. Dependency phases are bounded and cursor-resumable.
-
-### Write and cost behavior
-
-- Policy materialization: one policy write plus deterministic audit/timeline writes, followed by bounded target pages.
-- Target materialization: target summary, audit, and timeline writes before dependency scrub.
-- Provider materialization: provider tombstone and target hold in one transaction.
-- Dependency reconciliation: at most one bounded target-linked page per phase step, plus one target progress write. Route-token closure is one bounded dependency phase and does not create a replacement token.
-- Failure: authority retry metadata, one stable incident, one stable audit, control-room counters, and one stable timeline.
-- Repeat execution is idempotent: completed lifecycle tokens do not recreate scrub writes or counters.
-
-No production index or Function deploy was performed for Patch R1 because root writer/action integration is still required.
+Confirm the exact project alias in the environment runbook before execution. Provider sending and unrelated app/Vercel deployment remain outside this release.

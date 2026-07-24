@@ -1,6 +1,6 @@
 /**
  * FeedbackInsightsSection Component
- * User satisfaction and feedback analysis
+ * Recorded feedback analysis
  */
 
 import React from 'react';
@@ -13,7 +13,7 @@ const { Title } = Typography;
 
 export interface FeedbackInsightsSectionProps {
   title?: string;
-  satisfactionStats: StatCardProps[];
+  feedbackStats: StatCardProps[];
   feedbackData: FeedbackListProps['data'];
   loading?: boolean;
   onRefresh?: () => Promise<void>;
@@ -21,8 +21,8 @@ export interface FeedbackInsightsSectionProps {
 }
 
 export const FeedbackInsightsSection: React.FC<FeedbackInsightsSectionProps> = ({
-  title = 'Feedback & Satisfaction',
-  satisfactionStats,
+  title = 'Recorded Feedback',
+  feedbackStats,
   feedbackData,
   loading = false,
   onRefresh,
@@ -44,9 +44,9 @@ export const FeedbackInsightsSection: React.FC<FeedbackInsightsSectionProps> = (
         {onRefresh && <RefreshButton onRefresh={onRefresh} loading={loading} />}
       </Space>
 
-      {/* Satisfaction Stats */}
+      {/* Recorded feedback stats */}
       <Row gutter={[16, 16]}>
-        {satisfactionStats.map((stat, index) => (
+        {feedbackStats.map((stat, index) => (
           <Col key={stat.title || index} xs={24} sm={12} md={8} lg={6}>
             <StatCard {...stat} loading={loading} />
           </Col>

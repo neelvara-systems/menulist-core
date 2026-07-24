@@ -212,7 +212,7 @@ Menu page (`page.tsx:504-582`):
 | `menuVersion: number` | ✅ | Monotonic increment on publish — `project.types.ts` |
 | `lastPublishedAt: Timestamp` | ✅ | Server-side timestamp — `database/projects/index.ts` |
 | `dateModified` in schema.org | ✅ | ISO 8601 on all public pages — `obp/schema.ts:80-84` |
-| Menu snapshots | ✅ | Immutable snapshot on every publish — `menuSnapshots` collection |
+| Menu snapshots | ✅ | Best-effort short-term immutable evidence after publish — `menuSnapshots` collection; `menuVersion` remains authoritative when snapshot capture is skipped or fails |
 | MOL (Menu Observation Log) | ✅ | Append-only event ledger tracking all changes |
 | `storeTruthConfidence` | ✅ | Nightly composite score — `functions/src/analytics/storeTruthConfidence.ts` |
 | MCE validation stamps | ✅ | `_mce` metadata on project docs |

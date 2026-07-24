@@ -1,6 +1,6 @@
 # Decision Intelligence — Implementation
 
-**Last verified:** July 16, 2026
+**Last verified:** July 21, 2026
 **Authority:** Current codebase.
 
 **Launch boundary:** Not current launch certification or deploy approval. This implementation is local source evidence only; release still requires current production-readiness audit and External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, and production-host smoke.
@@ -57,6 +57,14 @@ The generated projection is not accepted from owner project mutation payloads.
 
 An analytics map entry cannot create an item by itself.
 
+The extractor rejects malformed file/item containers, duplicate current IDs, more than 2,000 active items or aliases, and analytics sums that would leave JavaScript's safe-integer range. Its output re-enters the exact `ExtractedItem` projector before scoring, so direct and catalog-derived inputs share one runtime contract.
+
+## Public DTO boundary
+
+`src/lib/decisionBlocks/publicProjection.ts` is the only raw embedded-projection admission into the public route. It requires exact resolved tenant/store/project identity, three bounded candidate arrays, coherent bounded stats, primitive fields, and a current timestamp window. Unknown top-level or candidate fields fail closed. The returned DTO omits internal scores and duplicated catalog name/category/price/duration fields; the renderer resolves the current item from canonical menu truth and receives ISO timestamps only. Typed props preserve this DTO through the website renderer, menu page, and Decision Blocks component.
+
+`clearStaleDecisionBlocksForProject()` uses the already-loaded project snapshot to avoid a read. When scoring finds no current item and the generated field exists, it merge-deletes only `publicDecisionBlocks`; when the field is already absent, it performs zero writes. Both hourly scheduler paths and project/store manual recovery use the helper. A successful delete participates in the same per-store public-cache invalidation as a replacement write.
+
 ## Scoring
 
 Popular scoring uses views, weighted behavioral clicks, the currently unused zero order field, bounded owner boost, and the current bestseller bonus. Candidate admission separately requires at least three behavioral clicks on the item. Public reason text is always the neutral `decision.popular.default.popular` for automatic candidates.
@@ -75,7 +83,7 @@ Value scoring:
 - computes the average from priced items only; and
 - admits only candidates at or below that average before popularity/value scoring.
 
-Each enabled block stores at most three candidates. Runtime owns final selection.
+Each enabled block stores at most three candidates. Equal scores use binary item-ID order as the stable secondary key, so candidate persistence does not inherit file/category traversal order. Runtime owns final selection.
 
 ## Scheduler and cache
 

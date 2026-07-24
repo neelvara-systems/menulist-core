@@ -21,7 +21,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization
 import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { getBoundedHookStringContext, logHookFailure } from "./hookDiagnostics";
 import type { SpecialMenuMode, SpecialMenuStatus } from "@template/main-app/projects/types";
-import { useCallback, useContext } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import useSWR from "swr";
 
 export interface SpecialMenuListItem {
@@ -158,12 +158,26 @@ export interface UseSpecialMenusReturn {
 export function useSpecialMenus(): UseSpecialMenusReturn {
     const enabled = FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING;
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
-    const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
-    const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
+    const expectedScope = useMemo(() => (
+        Number.isSafeInteger(storeDetails?.tenantId)
+        && Number(storeDetails?.tenantId) > 0
+        && Number.isSafeInteger(storeDetails?.storeId)
+        && Number(storeDetails?.storeId) > 0
+            ? {
+                sId: Number(storeDetails.storeId),
+                tId: Number(storeDetails.tenantId),
+            }
+            : null
+    ), [storeDetails?.storeId, storeDetails?.tenantId]);
+    const tId = expectedScope ? String(expectedScope.tId) : null;
+    const sId = expectedScope ? String(expectedScope.sId) : null;
 
     const { data, error, isLoading, mutate } = useSWR<SpecialMenuListResponse>(
         enabled && tId && sId ? ["special-menus-list", tId, sId] : null,
-        () => getSpecialMenus(),
+        () => {
+            if (!expectedScope) throw new Error("special_menu_scope_invalid");
+            return getSpecialMenus(expectedScope);
+        },
         {
             revalidateOnFocus: false,
             dedupingInterval: 30000,
@@ -208,7 +222,8 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
             endsAt: string;
         }) => {
             try {
-                const result = await dalCreate(data);
+                if (!expectedScope) throw new Error("special_menu_scope_invalid");
+                const result = await dalCreate(data, expectedScope);
                 assertSpecialMenuCreateSucceeded(result);
                 const nextStatus = (result.summaryData.specialMenuStatus || "scheduled") as SpecialMenuStatus;
                 const persistedDisplayName = result.summaryData.specialMenuDisplayName;
@@ -253,7 +268,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_CREATE_FAILED_MESSAGE };
             }
         },
-        [mutate, mutateSpecialMenus],
+        [expectedScope, mutateSpecialMenus],
     );
 
     const updateSpecialMenu = useCallback(
@@ -268,7 +283,8 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
             endsAt: string;
         }) => {
             try {
-                const result = await dalUpdate(data);
+                if (!expectedScope) throw new Error("special_menu_scope_invalid");
+                const result = await dalUpdate(data, expectedScope);
                 assertSpecialMenuUpdateSucceeded(result, data.projectId);
                 const nextStatus = result.status;
 
@@ -306,13 +322,14 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_UPDATE_FAILED_MESSAGE };
             }
         },
-        [mutateSpecialMenus],
+        [expectedScope, mutateSpecialMenus],
     );
 
     const activateMenu = useCallback(
         async (projectId: string) => {
             try {
-                const result = await dalActivate(projectId);
+                if (!expectedScope) throw new Error("special_menu_scope_invalid");
+                const result = await dalActivate(projectId, expectedScope);
                 assertSpecialMenuLifecycleSucceeded(result, projectId, "active", "special_menu_activate_rejected");
                 await mutateSpecialMenus((current) => ({
                     activeMenuId: projectId,
@@ -332,13 +349,14 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_ACTIVATE_FAILED_MESSAGE };
             }
         },
-        [mutateSpecialMenus],
+        [expectedScope, mutateSpecialMenus],
     );
 
     const deactivateMenu = useCallback(
         async (projectId: string) => {
             try {
-                const result = await dalDeactivate(projectId);
+                if (!expectedScope) throw new Error("special_menu_scope_invalid");
+                const result = await dalDeactivate(projectId, expectedScope);
                 assertSpecialMenuLifecycleSucceeded(result, projectId, "expired", "special_menu_deactivate_rejected");
                 await mutateSpecialMenus((current) => ({
                     activeMenuId: current.activeMenuId === projectId ? null : current.activeMenuId,
@@ -356,13 +374,14 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_DEACTIVATE_FAILED_MESSAGE };
             }
         },
-        [mutateSpecialMenus],
+        [expectedScope, mutateSpecialMenus],
     );
 
     const cancelMenu = useCallback(
         async (projectId: string) => {
             try {
-                const result = await dalCancel(projectId);
+                if (!expectedScope) throw new Error("special_menu_scope_invalid");
+                const result = await dalCancel(projectId, expectedScope);
                 assertSpecialMenuLifecycleSucceeded(result, projectId, "cancelled", "special_menu_cancel_rejected");
                 await mutateSpecialMenus((current) => ({
                     ...current,
@@ -380,7 +399,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_CANCEL_FAILED_MESSAGE };
             }
         },
-        [mutateSpecialMenus],
+        [expectedScope, mutateSpecialMenus],
     );
 
     return {

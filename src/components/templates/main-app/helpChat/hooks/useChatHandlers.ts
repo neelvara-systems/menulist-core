@@ -11,6 +11,7 @@ import {
     updateChatSession,
     uploadChatImage,
 } from '@database/chatSessions';
+import { getAnswerlatticeChatSessionActorScope } from '@lib/answerlattice/chatSessionContracts';
 import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
 import { resolveAnswerlatticeHelpChatDraftScope } from '@lib/answerlattice/helpChatDrafts';
 import { createRuntimeId } from '@lib/runtime/randomId';
@@ -87,6 +88,13 @@ export function useChatHandlers({
     const activeSessionRef = useRef(activeSession);
     const chatSessionsRef = useRef(chatSessions);
     const currentModeRef = useRef(currentMode);
+    const mountedRef = useRef(true);
+    const currentActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+    const currentActorScopeKey = currentActorScope
+        ? `${currentActorScope.tId}:${currentActorScope.sId}:${currentActorScope.uId}`
+        : null;
+    const currentActorScopeKeyRef = useRef(currentActorScopeKey);
+    currentActorScopeKeyRef.current = currentActorScopeKey;
 
     // 🔒 FIX FEEDBACK RACE CONDITIONS: Track in-progress feedback submissions
     const feedbackInProgressRef = useRef<Set<string>>(new Set());
@@ -97,6 +105,21 @@ export function useChatHandlers({
         chatSessionsRef.current = chatSessions;
         currentModeRef.current = currentMode;
     }, [activeSession, chatSessions, currentMode]);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
+
+    const isCurrentActorScope = (scope: typeof currentActorScope): boolean => (
+        Boolean(
+            mountedRef.current
+            && scope
+            && currentActorScopeKeyRef.current === `${scope.tId}:${scope.sId}:${scope.uId}`
+        )
+    );
 
     // 🔒 FIX RACE CONDITIONS: Add request queue
     const { enqueue, isProcessing } = useRequestQueue();
@@ -112,8 +135,8 @@ export function useChatHandlers({
             mode: currentModeRef.current,
             messageCount,
             ...getBoundedHelpChatStringContext('sessionId', sessionId),
-            ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-            ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+            ...getBoundedHelpChatStringContext('tenantId', currentActorScope?.tId),
+            ...getBoundedHelpChatStringContext('storeId', currentActorScope?.sId),
         });
     };
 
@@ -161,6 +184,12 @@ export function useChatHandlers({
     // Handler: Send Message
     // targetMode: Optional mode override to fix race condition with suggested questions
     const onSendMessage = async (content: string, image?: UserUploadedFileType, targetMode?: ChatMode) => {
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        const initiatingSession = loggedInSession;
+        if (!initiatingActorScope) {
+            antMessage.error('Your Answerlattice workspace is unavailable.');
+            return;
+        }
         // 🔒 FIX: Prevent rapid sends while previous request is processing
         if (isProcessing()) {
             antMessage.warning('Please wait for the previous message to complete');
@@ -180,7 +209,7 @@ export function useChatHandlers({
                 let uploadedImage = image;
                 if (image) {
                     // Pass full session for tenant/store-scoped storage path
-                    uploadedImage = await uploadChatImage(image, loggedInSession);
+                    uploadedImage = await uploadChatImage(image, initiatingSession);
                 }
 
                 const newUserMessage: ChatMessage = {
@@ -247,6 +276,9 @@ export function useChatHandlers({
                         conversationHistory,
                         effectiveMode
                     );
+                    if (!isCurrentActorScope(initiatingActorScope)) {
+                        throw new Error('answerlattice_help_chat_actor_scope_changed');
+                    }
 
                     // Create AI message
                     const aiMessage: ChatMessage = {
@@ -292,7 +324,10 @@ export function useChatHandlers({
                                 const updateResult = await appendChatSessionMessages(
                                     activeSession.id,
                                     [newUserMessage, aiMessage],
-                                    isModeTransition ? { mode: 'assistant' } : undefined,
+                                    {
+                                        ...(isModeTransition ? { mode: 'assistant' as const } : {}),
+                                        expectedActorScope: initiatingActorScope,
+                                    },
                                 );
                                 assertChatSessionUpdateSucceeded(
                                     updateResult,
@@ -321,28 +356,33 @@ export function useChatHandlers({
                         };
 
                         try {
-                            const savedSession = await saveChatSession(newSession);
+                            const savedSession = await saveChatSession(newSession, initiatingActorScope);
                             assertChatSessionSaveSucceeded(
                                 savedSession,
                                 'help_chat_new_session_save_rejected',
                             );
-                            setChatSessions(prev => {
-                                const withoutTemp = prev.filter(s => s.id !== null || s.messages.length > 1);
-                                return [savedSession, ...withoutTemp];
-                            });
-                            setActiveSessionId(savedSession.id);
+                            if (isCurrentActorScope(initiatingActorScope)) {
+                                setChatSessions(prev => {
+                                    const withoutTemp = prev.filter(s => s.id !== null || s.messages.length > 1);
+                                    return [savedSession, ...withoutTemp];
+                                });
+                                setActiveSessionId(savedSession.id);
+                            }
                         } catch (err) {
-                            antMessage.error('Failed to save chat session');
-                            setChatSessions(prev => prev.map((session, index) =>
-                                index === 0 && session.id === null
-                                    ? { ...session, messages: [newUserMessage, aiMessage] }
-                                    : session
-                            ));
+                            if (isCurrentActorScope(initiatingActorScope)) {
+                                antMessage.error('Failed to save chat session');
+                                setChatSessions(prev => prev.map((session, index) =>
+                                    index === 0 && session.id === null
+                                        ? { ...session, messages: [newUserMessage, aiMessage] }
+                                        : session
+                                ));
+                            }
                         }
                     }
 
                     // Clear draft after successful response
-                    clearDraft(activeSessionId, resolveAnswerlatticeHelpChatDraftScope(loggedInSession));
+                    if (!isCurrentActorScope(initiatingActorScope)) return;
+                    clearDraft(activeSessionId, resolveAnswerlatticeHelpChatDraftScope(initiatingSession));
 
                     // Start typing animation
                     dispatchChatState({
@@ -353,20 +393,22 @@ export function useChatHandlers({
                 } catch (error) {
                     if (uploadedImage && uploadedImage !== image) {
                         try {
-                            await discardUnpersistedChatImage(uploadedImage);
-                            setChatSessions((previous) => previous.map((chatSession) => ({
-                                ...chatSession,
-                                messages: chatSession.messages.map((chatMessage) => (
-                                    chatMessage.id === newUserMessage.id
-                                        ? { ...chatMessage, image: undefined }
-                                        : chatMessage
-                                )),
-                            })));
+                            await discardUnpersistedChatImage(uploadedImage, initiatingSession);
+                            if (isCurrentActorScope(initiatingActorScope)) {
+                                setChatSessions((previous) => previous.map((chatSession) => ({
+                                    ...chatSession,
+                                    messages: chatSession.messages.map((chatMessage) => (
+                                        chatMessage.id === newUserMessage.id
+                                            ? { ...chatMessage, image: undefined }
+                                            : chatMessage
+                                    )),
+                                })));
+                            }
                         } catch (cleanupError) {
                             logHelpChatFailure('help_chat_unpersisted_image_cleanup_failed', cleanupError, {
                                 ...getBoundedHelpChatStringContext('activeSessionId', activeSessionId),
-                                ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-                                ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                                ...getBoundedHelpChatStringContext('tenantId', initiatingActorScope.tId),
+                                ...getBoundedHelpChatStringContext('storeId', initiatingActorScope.sId),
                             });
                         }
                     }
@@ -374,14 +416,16 @@ export function useChatHandlers({
                         mode: effectiveMode,
                         ...getBoundedHelpChatStringContext('query', content),
                         ...getBoundedHelpChatStringContext('activeSessionId', activeSessionId),
-                        ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-                        ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                        ...getBoundedHelpChatStringContext('tenantId', initiatingActorScope.tId),
+                        ...getBoundedHelpChatStringContext('storeId', initiatingActorScope.sId),
                     });
-                    dispatchChatState({
-                        type: 'SEARCH_ERROR',
-                        payload: `${HELP_CHAT_SEARCH_FAILED_MESSAGE} You can still find answers in our documentation.`
-                    });
-                    antMessage.error('Search failed. Please try again.');
+                    if (isCurrentActorScope(initiatingActorScope)) {
+                        dispatchChatState({
+                            type: 'SEARCH_ERROR',
+                            payload: `${HELP_CHAT_SEARCH_FAILED_MESSAGE} You can still find answers in our documentation.`
+                        });
+                        antMessage.error('Search failed. Please try again.');
+                    }
                 }
             }
         });
@@ -389,6 +433,11 @@ export function useChatHandlers({
 
     // Handler: Retry search
     const onRetry = async (content: string, image?: UserUploadedFileType, retryReason: 'error' | 'regenerate' = 'error', replacedMessageId?: string) => {
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        if (!initiatingActorScope) {
+            antMessage.error('Your Answerlattice workspace is unavailable.');
+            return;
+        }
         setSearchQuery('');
         dispatchChatState({ type: 'SEARCH_START', payload: { query: content } });
 
@@ -400,6 +449,9 @@ export function useChatHandlers({
 
             // Use performSearch via unified coreSearch pipeline
             const result = await performSearch(content, image, conversationHistory, retryMode);
+            if (!isCurrentActorScope(initiatingActorScope)) {
+                throw new Error('answerlattice_help_chat_actor_scope_changed');
+            }
 
             // Calculate retry attempt number
             const previousMessages = activeSession?.messages || [];
@@ -455,8 +507,15 @@ export function useChatHandlers({
                 if (activeSession.id) {
                     try {
                         const updateResult = replacedMessageId
-                            ? await replaceChatSessionMessageBranch(activeSession.id, replacedMessageId, aiMessage)
-                            : await appendChatSessionMessages(activeSession.id, [aiMessage]);
+                            ? await replaceChatSessionMessageBranch(
+                                activeSession.id,
+                                replacedMessageId,
+                                aiMessage,
+                                initiatingActorScope,
+                            )
+                            : await appendChatSessionMessages(activeSession.id, [aiMessage], {
+                                expectedActorScope: initiatingActorScope,
+                            });
                         assertChatSessionUpdateSucceeded(
                             updateResult,
                             activeSession.id,
@@ -475,6 +534,7 @@ export function useChatHandlers({
                 }
             }
 
+            if (!isCurrentActorScope(initiatingActorScope)) return;
             clearDraft(activeSessionId, resolveAnswerlatticeHelpChatDraftScope(loggedInSession));
 
             dispatchChatState({
@@ -489,14 +549,16 @@ export function useChatHandlers({
                 ...getBoundedHelpChatStringContext('query', content),
                 ...getBoundedHelpChatStringContext('activeSessionId', activeSession?.id || activeSessionId),
                 ...getBoundedHelpChatStringContext('replacedMessageId', replacedMessageId),
-                ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-                ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                ...getBoundedHelpChatStringContext('tenantId', initiatingActorScope.tId),
+                ...getBoundedHelpChatStringContext('storeId', initiatingActorScope.sId),
             });
-            dispatchChatState({
-                type: 'SEARCH_ERROR',
-                payload: `${HELP_CHAT_SEARCH_FAILED_MESSAGE} You can still find answers in our documentation.`
-            });
-            antMessage.error('Search failed. Please try again.');
+            if (isCurrentActorScope(initiatingActorScope)) {
+                dispatchChatState({
+                    type: 'SEARCH_ERROR',
+                    payload: `${HELP_CHAT_SEARCH_FAILED_MESSAGE} You can still find answers in our documentation.`
+                });
+                antMessage.error('Search failed. Please try again.');
+            }
         }
     };
 
@@ -529,8 +591,8 @@ export function useChatHandlers({
                     ...getBoundedHelpChatStringContext('messageId', messageId),
                     ...getBoundedHelpChatStringContext('activeSessionId', activeSession?.id || activeSessionId),
                     ...getBoundedHelpChatStringContext('copiedMessageText', textToCopy),
-                    ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-                    ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                    ...getBoundedHelpChatStringContext('tenantId', currentActorScope?.tId),
+                    ...getBoundedHelpChatStringContext('storeId', currentActorScope?.sId),
                 });
                 antMessage.error('Failed to copy');
             }
@@ -557,6 +619,11 @@ export function useChatHandlers({
 
     // Handler: Feedback Up
     const handleFeedbackUp = async (messageId: string) => {
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        if (!initiatingActorScope) {
+            antMessage.error('Your Answerlattice workspace is unavailable.');
+            return;
+        }
         // 🔒 Prevent concurrent feedback submissions
         if (feedbackInProgressRef.current.has(messageId)) {
             logHelpChatFailure('help_chat_feedback_duplicate_ignored', undefined, {
@@ -580,9 +647,9 @@ export function useChatHandlers({
                     sessionId: activeSession.id,
                     messageId: messageId,
                     isGood: true,
-                    tId: loggedInSession?.tId,
-                    sId: loggedInSession?.sId,
+                    expectedActorScope: initiatingActorScope,
                 });
+                if (!isCurrentActorScope(initiatingActorScope)) return;
 
                 // Update UI state
                 setMessageFeedback(prev => ({ ...prev, [messageId]: 'up' }));
@@ -606,10 +673,12 @@ export function useChatHandlers({
                     ...getBoundedHelpChatStringContext('messageId', messageId),
                     ...getBoundedHelpChatStringContext('activeSessionId', activeSession.id),
                     ...getBoundedHelpChatStringContext('searchHistoryId', message.searchHistoryId),
-                    ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-                    ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                    ...getBoundedHelpChatStringContext('tenantId', initiatingActorScope.tId),
+                    ...getBoundedHelpChatStringContext('storeId', initiatingActorScope.sId),
                 });
-                antMessage.error('Failed to submit feedback');
+                if (isCurrentActorScope(initiatingActorScope)) {
+                    antMessage.error('Failed to submit feedback');
+                }
             } finally {
                 feedbackInProgressRef.current.delete(messageId);
             }
@@ -625,6 +694,11 @@ export function useChatHandlers({
     // Handler: Submit Detailed Feedback
     const handleFeedbackSubmit = async (values: { reasonsToImprove: string[], comments: string }, feedbackMessageId: string | null) => {
         if (!feedbackMessageId || !activeSession?.id) return;
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        if (!initiatingActorScope) {
+            antMessage.error('Your Answerlattice workspace is unavailable.');
+            return;
+        }
 
         // 🔒 Prevent concurrent feedback submissions
         if (feedbackInProgressRef.current.has(feedbackMessageId)) {
@@ -662,9 +736,9 @@ export function useChatHandlers({
                     isGood: false,
                     reasonsToImprove: transformedReasons,
                     comments: values.comments || '',
-                    tId: loggedInSession?.tId,
-                    sId: loggedInSession?.sId,
+                    expectedActorScope: initiatingActorScope,
                 });
+                if (!isCurrentActorScope(initiatingActorScope)) return;
 
                 // Update UI state
                 setMessageFeedback(prev => ({ ...prev, [feedbackMessageId]: 'down' }));
@@ -688,12 +762,14 @@ export function useChatHandlers({
                     ...getBoundedHelpChatStringContext('messageId', feedbackMessageId),
                     ...getBoundedHelpChatStringContext('activeSessionId', activeSession.id),
                     ...getBoundedHelpChatStringContext('searchHistoryId', message.searchHistoryId),
-                    ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
-                    ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                    ...getBoundedHelpChatStringContext('tenantId', initiatingActorScope.tId),
+                    ...getBoundedHelpChatStringContext('storeId', initiatingActorScope.sId),
                     reasonCount: values.reasonsToImprove?.length || 0,
                     hasComments: Boolean(values.comments),
                 });
-                antMessage.error('Failed to submit feedback');
+                if (isCurrentActorScope(initiatingActorScope)) {
+                    antMessage.error('Failed to submit feedback');
+                }
             } finally {
                 feedbackInProgressRef.current.delete(feedbackMessageId);
             }
@@ -702,22 +778,38 @@ export function useChatHandlers({
 
     // Handler: Rename Session
     const handleRenameSession = async (sessionId: string, newTitle: string) => {
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        if (!initiatingActorScope) {
+            antMessage.error('Failed to rename chat');
+            return;
+        }
         setChatSessions(prev => prev.map(session =>
             session.id === sessionId ? { ...session, title: newTitle } : session
         ));
 
         try {
-            const updateResult = await updateChatSession(sessionId, { title: newTitle });
+            const updateResult = await updateChatSession(
+                sessionId,
+                { title: newTitle },
+                { tId: initiatingActorScope.tId, sId: initiatingActorScope.sId },
+                initiatingActorScope.uId,
+            );
             assertChatSessionUpdateSucceeded(
                 updateResult,
                 sessionId,
                 'help_chat_rename_session_update_rejected',
             );
-            antMessage.success('Chat renamed');
+            if (isCurrentActorScope(initiatingActorScope)) {
+                antMessage.success('Chat renamed');
+            }
         } catch (error) {
-            antMessage.error('Failed to rename chat');
-            const sessions = await getUserChatSessions(loggedInSession);
-            setChatSessions(sessions || []);
+            if (isCurrentActorScope(initiatingActorScope)) {
+                antMessage.error('Failed to rename chat');
+                const sessions = await getUserChatSessions(loggedInSession);
+                if (isCurrentActorScope(initiatingActorScope)) {
+                    setChatSessions(sessions || []);
+                }
+            }
         }
     };
 
@@ -729,6 +821,11 @@ export function useChatHandlers({
 
     // Handler: Delete Session
     const handleDeleteSession = async (sessionId: string) => {
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        if (!initiatingActorScope) {
+            antMessage.error('Failed to delete chat');
+            return;
+        }
         const wasActiveSession = sessionId === activeSessionId;
         const previousActiveSessionId = activeSessionId;
         const previousSearchQuery = searchQuery;
@@ -741,20 +838,26 @@ export function useChatHandlers({
         }
 
         try {
-            const deleteResult = await deleteChatSession(sessionId);
+            const deleteResult = await deleteChatSession(sessionId, initiatingActorScope);
             assertChatSessionDeleteSucceeded(
                 deleteResult,
                 sessionId,
                 'help_chat_session_delete_rejected',
             );
-            antMessage.success('Chat deleted');
+            if (isCurrentActorScope(initiatingActorScope)) {
+                antMessage.success('Chat deleted');
+            }
         } catch (error) {
-            antMessage.error('Failed to delete chat');
-            const sessions = await getUserChatSessions(loggedInSession);
-            setChatSessions(sessions || []);
-            if (wasActiveSession) {
-                setActiveSessionId(previousActiveSessionId);
-                setSearchQuery(previousSearchQuery);
+            if (isCurrentActorScope(initiatingActorScope)) {
+                antMessage.error('Failed to delete chat');
+                const sessions = await getUserChatSessions(loggedInSession);
+                if (isCurrentActorScope(initiatingActorScope)) {
+                    setChatSessions(sessions || []);
+                    if (wasActiveSession) {
+                        setActiveSessionId(previousActiveSessionId);
+                        setSearchQuery(previousSearchQuery);
+                    }
+                }
             }
         }
     };
@@ -801,13 +904,21 @@ export function useChatHandlers({
             return;
         }
 
+        const initiatingActorScope = getAnswerlatticeChatSessionActorScope(loggedInSession);
+        if (!initiatingActorScope) {
+            antMessage.error('Failed to clear data');
+            return;
+        }
+
         try {
             // Dynamic import: This code is removed from production bundle
             const { clearCurrentUserChatSessions } = await import('@database/devUtils');
             const result = await clearCurrentUserChatSessions(
                 chatSessionsRef.current.map((chatSession) => chatSession.id),
+                initiatingActorScope,
             );
 
+            if (!isCurrentActorScope(initiatingActorScope)) return;
             const deletedIds = new Set(result.deletedSessionIds);
             setChatSessions((currentSessions) => (
                 currentSessions.filter((chatSession) => !deletedIds.has(chatSession.id))
@@ -826,7 +937,9 @@ export function useChatHandlers({
                 antMessage.warning(`${successMessage} ${result.failedSessionIds.length} chats could not be deleted.`);
             }
         } catch (error) {
-            antMessage.error('Failed to clear data');
+            if (isCurrentActorScope(initiatingActorScope)) {
+                antMessage.error('Failed to clear data');
+            }
         }
     };
 

@@ -9,14 +9,19 @@ const HexColorSchema = z.string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .transform(value => value.toLowerCase());
 
+// Keep these policies expressible in Firestore Rules so an acknowledged direct
+// client write cannot persist a profile that the browser later rejects.
+const HttpsUrlPattern = /^https:\/\/(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:[/?][A-Za-z0-9._~!$&()*+,;=:@%/?-]*)?$/;
+const SupportEmailPattern = /^[A-Za-z0-9!#$%&*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+
 const HttpsUrlSchema = z.string()
     .trim()
     .max(500)
     .superRefine((value, context) => {
-        if (/\s/.test(value)) {
+        if (!HttpsUrlPattern.test(value)) {
             context.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: 'Use an HTTPS URL without whitespace.',
+                message: 'Use a valid HTTPS URL without credentials, fragments, ports, or whitespace.',
             });
             return;
         }
@@ -52,7 +57,7 @@ export const AnswerlatticeAdvancedBrandingSchema = z.object({
     headerBackground: HexColorSchema.optional(),
     headerTextColor: HexColorSchema.optional(),
     poweredByVisible: z.boolean(),
-    supportEmail: z.string().trim().max(160).email().optional(),
+    supportEmail: z.string().trim().max(160).regex(SupportEmailPattern).optional(),
     privacyPolicyUrl: HttpsUrlSchema.optional(),
     termsUrl: HttpsUrlSchema.optional(),
 }).strict();

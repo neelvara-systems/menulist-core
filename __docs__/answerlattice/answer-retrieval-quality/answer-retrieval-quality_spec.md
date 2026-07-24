@@ -30,7 +30,7 @@ The canonical answer evidence object uses:
 - optional private citation-to-source linkage;
 - no automatic conversion of a ticket, chat, or connected source into public truth.
 
-The public citation URL must be HTTP or HTTPS, contain no credentials or sensitive query keys, and must not target local, private, link-local, multicast, documentation, or reserved network ranges.
+The public citation URL must be HTTP or HTTPS, contain no credentials or sensitive query keys, and must not target local, private, link-local, multicast, documentation, or reserved network ranges. Sensitive query-key admission covers separated, camel-case, and compact credential names such as `access_token`, `accessToken`, `apiKey`, `clientSecret`, `refreshToken`, and `sig`.
 
 ## Confidence contract
 

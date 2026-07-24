@@ -7,6 +7,7 @@ import {
 import {
     normalizeHostedHelpConfig,
     normalizeHostedHelpDomainVerification,
+    parseHostedHelpConfigSaveInput,
 } from '@lib/answerlattice/hostedHelpConfig';
 import {
     buildHostedHelpArticlePath,
@@ -14,6 +15,7 @@ import {
     resolveHostedHelpPublicRoute,
     resolveHostedHelpRequestDomain,
 } from '@lib/answerlattice/hostedHelpRequest';
+import { resolveAnswerlatticeHostedHelpRegistryScope } from '@lib/answerlattice/hostedHelpServer';
 
 assert.equal(normalizeHostedHelpDomain('https://HELP.example.com/path'), 'help.example.com');
 assert.equal(normalizeHostedHelpDomain('help.example.com:443'), 'help.example.com');
@@ -33,6 +35,35 @@ assert.deepEqual(config.domains, ['docs.example.com', 'help.example.com']);
 assert.equal(config.primaryDomain, 'docs.example.com');
 assert.equal(config.enabled, true);
 assert.equal(normalizeHostedHelpConfig({ enabled: true, domains: [] }).enabled, false);
+assert.deepEqual(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', tId: 11, sId: 22 }), {
+    tenantId: 11,
+    storeId: 22,
+});
+assert.equal(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', productId: 'ML', tId: 11, sId: 22 }), null);
+assert.equal(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', tId: 11, tenantId: 12, sId: 22 }), null);
+assert.equal(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', tId: 11, sId: 22, storeId: 23 }), null);
+
+const saveConfig = parseHostedHelpConfigSaveInput({
+    enabled: true,
+    domains: ['docs.example.com'],
+    primaryDomain: 'docs.example.com',
+    title: 'Product Help',
+    description: 'Reviewed public product guidance.',
+    showFaqs: true,
+    showChangelog: true,
+    noIndex: false,
+});
+assert.equal(saveConfig.primaryDomain, 'docs.example.com');
+assert.throws(() => parseHostedHelpConfigSaveInput('invalid'));
+assert.throws(() => parseHostedHelpConfigSaveInput({ enabled: false }));
+assert.throws(() => parseHostedHelpConfigSaveInput({
+    ...saveConfig,
+    domains: ['https://docs.example.com/path'],
+}));
+assert.throws(() => parseHostedHelpConfigSaveInput({
+    ...saveConfig,
+    unexpected: true,
+}));
 
 const verification = normalizeHostedHelpDomainVerification({
     misconfigured: false,

@@ -1,6 +1,8 @@
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import { getUserChatSessions } from '@database/chatSessions';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
+import { getAnswerlatticeUserChatSessionsCacheKey } from '@lib/answerlattice/chatSessionContracts';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { ChatSession } from '@type/chatSession';
 import { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { message as antMessage } from 'antd';
@@ -16,9 +18,12 @@ export function useChatData({ open, loggedInSession }: UseChatDataProps) {
     const [categoriesData, setCategoriesData] = useState<KnowledgeBaseCategoriesType | null>(null);
     const { getCategoriesCached } = useKBCategoriesCache();
 
-    // Generate SWR cache key for chat sessions
-    const sessionsCacheKey = (open && loggedInSession?.tId && loggedInSession?.uId)
-        ? `user-chat-sessions-${loggedInSession.tId}-${loggedInSession.uId}`
+    const scope = resolveAnswerlatticeSessionScope(loggedInSession);
+    const userId = String(loggedInSession?.user?.id || loggedInSession?.uId || '').trim();
+    // Query identity and SWR identity must include the exact Answerlattice
+    // tenant, workspace, and actor dimensions.
+    const sessionsCacheKey = open
+        ? getAnswerlatticeUserChatSessionsCacheKey(scope, userId)
         : null;
 
     // Fetch chat sessions with SWR (automatic caching & deduplication)

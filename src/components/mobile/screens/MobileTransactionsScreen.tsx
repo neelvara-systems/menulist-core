@@ -3,6 +3,7 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, MENULIST_OWNER_AI_ACTIONS } from '@lib/ai/operationPresentation';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import {
     formatAiOperationHistoryLanguage,
     getAiOperationHistoryJsonObject,
@@ -109,10 +110,29 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     const pageRef = useRef(1);
     const formatter = useFormatter();
     const { data: session } = useSession();
+    const sessionScopeKey = [
+        session?.user?.id || '',
+        session?.tId ?? session?.user?.tenantId ?? '',
+        session?.sId ?? session?.user?.storeId ?? '',
+        session?.pId || session?.user?.pId || '',
+        session?.expires || '',
+    ].join(':');
     const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
+    const [transactionScopeKey, setTransactionScopeKey] = useState<string | null>(null);
+    const transactionScopeKeyRef = useRef<string | null>(null);
+    const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!requestGuardRef.current) {
+        requestGuardRef.current = createLatestRequestGuard();
+    }
+    const visibleTransactions = transactionScopeKey === sessionScopeKey ? transactions : [];
+    const visibleSelectedTransaction = transactionScopeKey === sessionScopeKey ? selectedTransaction : null;
 
     const fetchPage = useCallback(async (reset = false) => {
+        const requestGuard = requestGuardRef.current;
+        if (!requestGuard) return;
+        if (!reset && transactionScopeKeyRef.current !== sessionScopeKey) return;
+        const requestId = requestGuard.begin();
         try {
             if (reset) {
                 lastVisibleRef.current = null;
@@ -120,6 +140,9 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 setTransactions([]);
                 setHasMore(true);
                 setManualFilterContinuation(false);
+                setSelectedTransaction(null);
+                transactionScopeKeyRef.current = null;
+                setTransactionScopeKey(null);
             }
 
             const response = await getPaginatedAiOperations({
@@ -129,6 +152,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 pageNumber: pageRef.current,
                 pageSize: PAGE_SIZE,
             });
+            if (!requestGuard.isCurrent(requestId)) return;
 
             lastVisibleRef.current = response.lastVisibleDoc;
             if (response.data.length === 0) {
@@ -140,27 +164,40 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     pageRef.current += 1;
                     setHasMore(false);
                     setManualFilterContinuation(true);
+                    transactionScopeKeyRef.current = sessionScopeKey;
+                    setTransactionScopeKey(sessionScopeKey);
                     return;
                 }
                 setHasMore(false);
                 setManualFilterContinuation(false);
+                transactionScopeKeyRef.current = sessionScopeKey;
+                setTransactionScopeKey(sessionScopeKey);
                 return;
             }
 
             setHasMore(response.hasMore);
             setManualFilterContinuation(false);
             setTransactions((previous) => (reset || pageRef.current === 1 ? response.data : [...previous, ...response.data]));
+            transactionScopeKeyRef.current = sessionScopeKey;
+            setTransactionScopeKey(sessionScopeKey);
             pageRef.current += 1;
         } catch {
-            Toast.show({ content: t('failedToLoad'), duration: 2000 });
+            if (requestGuard.isCurrent(requestId)) {
+                Toast.show({ content: t('failedToLoad'), duration: 2000 });
+            }
         } finally {
-            setLoading(false);
+            if (requestGuard.isCurrent(requestId)) {
+                setLoading(false);
+            }
         }
-    }, [actionFilter, dateRange, t]);
+    }, [actionFilter, dateRange, sessionScopeKey, t]);
 
     useEffect(() => {
         setLoading(true);
         void fetchPage(true);
+        return () => {
+            requestGuardRef.current?.invalidate();
+        };
     }, [fetchPage]);
 
     const actionOptions = useMemo(() => (
@@ -172,11 +209,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     const hasActiveFilters = Boolean(actionFilter || dateRange);
     const loadedCreditsUsed = useMemo(() => (
-        transactions.reduce((total, tx) => total + Math.max(0, Number(tx.unitsConsumed || 0)), 0)
-    ), [transactions]);
+        visibleTransactions.reduce((total, tx) => total + Math.max(0, Number(tx.unitsConsumed || 0)), 0)
+    ), [visibleTransactions]);
     const loadedNoCreditActions = useMemo(() => (
-        transactions.filter((tx) => Number(tx.unitsConsumed || 0) <= 0).length
-    ), [transactions]);
+        visibleTransactions.filter((tx) => Number(tx.unitsConsumed || 0) <= 0).length
+    ), [visibleTransactions]);
 
     const getActionColor = (action: string) => {
         if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING) return token.colorPrimary;
@@ -349,11 +386,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     };
 
     const renderTransactionDetails = () => {
-        if (!selectedTransaction) return null;
-        const tx = selectedTransaction;
+        if (!visibleSelectedTransaction) return null;
+        const tx = visibleSelectedTransaction;
 
         return (
-            <Popup bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedTransaction(null)} visible={!!selectedTransaction}>
+            <Popup bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedTransaction(null)} visible={!!visibleSelectedTransaction}>
                 <NavBar backIcon={<LuX size={18} />} onBack={() => setSelectedTransaction(null)}>
                     {t('transactionDetails')}
                 </NavBar>
@@ -407,7 +444,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         <Button aria-label={t('filterByAction')} fill="none" onClick={openFilterSheet} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuFilter color={hasActiveFilters ? token.colorPrimary : token.colorTextSecondary} size={18} />
                         </Button>
-                        <Button aria-label={t('refresh')} fill="none" loading={loading && transactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                        <Button aria-label={t('refresh')} fill="none" loading={loading && visibleTransactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuRefreshCw color={token.colorTextSecondary} size={18} />
                         </Button>
                     </Flex>
@@ -430,11 +467,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     </Card>
                 ) : null}
 
-                {loading && transactions.length === 0 ? (
+                {loading && visibleTransactions.length === 0 ? (
                     <Flex align="center" justify="center" style={{ padding: 48 }}>
                         <DotLoading color="primary" />
                     </Flex>
-                ) : transactions.length === 0 ? (
+                ) : visibleTransactions.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
                             <LuReceipt color={token.colorTextTertiary} size={36} />
@@ -462,7 +499,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                             <Flex gap={8} vertical>
                                 <Flex justify="space-between">
                                     <Text type="secondary">{t('loaded')}</Text>
-                                    <Text strong>{formatNumber(transactions.length)}</Text>
+                                    <Text strong>{formatNumber(visibleTransactions.length)}</Text>
                                 </Flex>
                                 <Flex justify="space-between">
                                     <Text type="secondary">{t('creditsUsed')}</Text>
@@ -476,7 +513,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         </Card>
                         <Card>
                             <List>
-                                {transactions.map((tx) => (
+                                {visibleTransactions.map((tx) => (
                                     <List.Item
                                         arrow
                                         description={(

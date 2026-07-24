@@ -48,6 +48,7 @@
 | --------------------------- | -------------------------------- | --------------------- | -------------- | --------------------------------------------------- | -------------------------------- |
 | Create special menu project | `projects/{tId}/{sId}`           | Owner creates         | ~2/store/month | Full project doc (duplicated from base)             | `setDoc`                         |
 | Update summary              | `platformSummary/projects_{sId}` | On create             | ~2/store/month | `projects.{id}` with special menu fields            | `setDoc` merge                   |
+| Translate public project copy | project + `platformSummary/projects_{sId}` | Owner translates missing copy | Owner initiated | Localized name/description/special-menu display name | One transaction; project + summary |
 | Activate (project)          | `projects/{tId}/{sId}`           | Scheduler/DAL         | ~2/store/month | `_specialMenu.status`, `_specialMenu.activatedAt`   | `setDoc` merge                   |
 | Activate (store)            | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | `activeSpecialMenuId`                               | `setDoc` merge                   |
 | Activate (temp status)      | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | `tempStatus` object with `sourceProjectId`          | Same atomic store write          |
@@ -57,6 +58,9 @@
 | Edit special menu           | `projects/{tId}/{sId}`           | Owner edits in editor | ~4/store/month | Same as regular project edit                        | `setDoc` merge                   |
 | Connected screen touch      | `platformSummary/campaigns_{sId}`, `platformSummary/screen_{sId}` | Scheduler activation/deactivation/repair after public cache revalidation attempt | Only when a screen token exists | `screen.contentVersion`, `screen.lastContentChangeAt`, public-safe mirror fields | Existing Functions public-cache helper; requested touch still runs when cache configuration is missing |
 | Due marker update           | `platformSummary/projects_{sId}` | Create/edit/lifecycle/delete/Admin transition | Same transaction as the owning summary mutation | `specialMenuNextTransitionAt` ISO string or field delete | Merge |
+
+- Translated public copy is one atomic truth change. The project document and its summary projection are written inside the same Firestore transaction; the former two-step project/metadata sequence is retired.
+- Read identity matches cache identity. Special-menu SWR and mobile project loaders pass their captured tenant/store to the DAL, which rejects a changed active session before reading. Browser project selection is tenant/store partitioned.
 
 ---
 

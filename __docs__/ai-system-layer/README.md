@@ -72,10 +72,10 @@ June 28 hardening: frontend and Cloud Functions AI gateways classify rate limits
 | AI Feature              | SDK             | Model                                | Key Rotation | Retry           | Rate Limiting |
 | ----------------------- | --------------- | ------------------------------------ | ------------ | --------------- | ------------- |
 | Menu Extraction         | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway + CB | ✅ Upstash    |
-| Feedback Analysis       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
+| Feedback Analysis       | `@google/genai` | `gemini-2.5-flash`                   | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
 | Owner Dashboard Summary | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
-| KB Quality Analysis     | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
-| Weekly Narrative        | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
+| KB Quality Analysis     | `@google/genai` | `gemini-2.5-flash`                   | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
+| Weekly Narrative        | `@google/genai` | `gemini-2.5-flash`                   | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
 | KB Generation           | `@google/genai` | `gemini-2.5-pro`                     | ✅ Gateway   | ✅ Gateway      | ❌ None       |
 | Embeddings (CF)         | `@google/genai` | `gemini-embedding-2`                 | ✅ Gateway   | ✅ Gateway      | ❌ None       |
 | Help Center Search      | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |

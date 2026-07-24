@@ -26,7 +26,7 @@ import {
     Typography,
     theme,
 } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FEATURE_FLAGS } from '@config/features';
 import {
     LuClipboard,
@@ -73,8 +73,10 @@ import {
     AnswerlatticeHostedHelpConfig,
     type AnswerlatticeHostedHelpDomainVerification,
     DEFAULT_ANSWERLATTICE_HOSTED_HELP_CONFIG,
+    StrictHostedHelpConfigSaveSchema,
     normalizeHostedHelpConfig,
     normalizeHostedHelpDomains,
+    parseHostedHelpConfigSaveInput,
 } from '@lib/answerlattice/hostedHelpConfig';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -111,6 +113,7 @@ const ANSWERLATTICE_WIDGET_KEY_REVOKE_FAILED = 'Could not revoke widget key';
 const ANSWERLATTICE_HOSTED_HELP_SETTINGS_SAVE_FAILED = 'Could not save hosted help settings';
 const ANSWERLATTICE_HOSTED_HELP_DNS_CHECK_FAILED = 'Could not check hosted help DNS';
 const ANSWERLATTICE_WIDGET_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
+const WIDGET_KEY_PATTERN = /^al_[A-Za-z0-9_-]{20,128}$/;
 const ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
     cache: 'no-store',
     credentials: 'same-origin',
@@ -201,8 +204,69 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isFiniteNumber = (value: unknown): value is number => (
-    typeof value === 'number' && Number.isFinite(value)
+const isBoundedString = (value: unknown, maximum: number, minimum = 0): value is string => (
+    typeof value === 'string' && value.length >= minimum && value.length <= maximum
+);
+
+const isOptionalNullableBoundedString = (
+    value: unknown,
+    maximum: number,
+): value is string | null | undefined => (
+    value === undefined || value === null || isBoundedString(value, maximum)
+);
+
+const isOptionalBoundedString = (value: unknown, maximum: number): value is string | undefined => (
+    value === undefined || isBoundedString(value, maximum)
+);
+
+const isCanonicalIsoTimestamp = (value: unknown): value is string => {
+    if (!isBoundedString(value, 80, 1)) return false;
+    const millis = Date.parse(value);
+    return Number.isFinite(millis) && new Date(millis).toISOString() === value;
+};
+
+const isOptionalNullableCanonicalIsoTimestamp = (value: unknown): value is string | null | undefined => (
+    value === undefined || value === null || isCanonicalIsoTimestamp(value)
+);
+
+const isSerializedFirestoreTimestamp = (value: unknown): boolean => {
+    if (!isRecord(value)) return false;
+    const secondsValues = [value.seconds, value._seconds].filter(candidate => candidate !== undefined);
+    const nanosecondValues = [value.nanoseconds, value._nanoseconds].filter(candidate => candidate !== undefined);
+    if (
+        secondsValues.length === 0
+        || !secondsValues.every(candidate => candidate === secondsValues[0])
+        || !nanosecondValues.every(candidate => candidate === nanosecondValues[0])
+    ) return false;
+    const seconds = secondsValues[0];
+    const nanoseconds = nanosecondValues[0] ?? 0;
+    return isSafeIntegerInRange(seconds, 0, 253_402_300_799)
+        && isSafeIntegerInRange(nanoseconds, 0, 999_999_999);
+};
+
+const isAnswerlatticeWidgetRuntimeStatus = (value: unknown): value is AnswerlatticeWidgetRuntimeStatus => {
+    if (!isRecord(value)) return false;
+    return (value.lastSeenAt === undefined
+            || value.lastSeenAt === null
+            || isCanonicalIsoTimestamp(value.lastSeenAt)
+            || isSerializedFirestoreTimestamp(value.lastSeenAt))
+        && isOptionalNullableBoundedString(value.lastOrigin, 180)
+        && isOptionalNullableBoundedString(value.lastPath, 180)
+        && isOptionalNullableBoundedString(value.lastContextKey, 120)
+        && isOptionalNullableBoundedString(value.lastFeature, 120)
+        && isOptionalNullableBoundedString(value.lastPage, 120)
+        && (value.userAgentFamily === undefined
+            || value.userAgentFamily === null
+            || (typeof value.userAgentFamily === 'string'
+                && ['edge', 'chrome', 'firefox', 'safari', 'other'].includes(value.userAgentFamily)))
+        && (value.seenCount === undefined || isSafeIntegerInRange(value.seenCount, 0, 1_000_000_000));
+};
+
+const isSafeIntegerInRange = (value: unknown, minimum: number, maximum: number): value is number => (
+    typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value >= minimum
+    && value <= maximum
 );
 
 const isStringArray = (value: unknown): value is string[] => (
@@ -217,22 +281,19 @@ const isOptionalNullableString = (value: unknown): value is string | null | unde
     value === undefined || isNullableString(value)
 );
 
-const isOptionalBoolean = (value: unknown): value is boolean | undefined => (
-    value === undefined || typeof value === 'boolean'
-);
-
 const isWidgetKeySummary = (value: unknown): value is WidgetKeySummary => {
     if (!isRecord(value)) return false;
-    return typeof value.id === 'string'
-        && typeof value.name === 'string'
-        && typeof value.keyPrefix === 'string'
+    return typeof value.id === 'string' && value.id === value.id.trim() && value.id.length >= 1 && value.id.length <= 120
+        && typeof value.name === 'string' && value.name === value.name.trim() && value.name.length >= 1 && value.name.length <= 80
+        && typeof value.keyPrefix === 'string' && value.keyPrefix.length >= 1 && value.keyPrefix.length <= 12
         && isOptionalNullableString(value.keySuffix)
-        && typeof value.displayKey === 'string'
+        && (value.keySuffix === undefined || value.keySuffix === null || value.keySuffix.length <= 8)
+        && typeof value.displayKey === 'string' && value.displayKey.length >= 1 && value.displayKey.length <= 24
         && isOptionalNullableString(value.createdAt)
         && isOptionalNullableString(value.updatedAt)
         && typeof value.copyable === 'boolean'
         && typeof value.legacy === 'boolean'
-        && (value.status === 'active' || value.status === 'revoked')
+        && value.status === 'active'
         && typeof value.isActive === 'boolean';
 };
 
@@ -240,40 +301,53 @@ const isWidgetKeySummaryArray = (value: unknown): value is WidgetKeySummary[] =>
     Array.isArray(value) && value.every(isWidgetKeySummary)
 );
 
+const hasValidWidgetKeyState = (value: Record<string, unknown>): boolean => {
+    if (
+        !isWidgetKeySummaryArray(value.keys)
+        || !isNullableString(value.keyPrefix)
+        || typeof value.hasWidgetKey !== 'boolean'
+        || typeof value.encryptionConfigured !== 'boolean'
+        || !isSafeIntegerInRange(value.keyLimit, 1, 100)
+        || value.keys.length > value.keyLimit
+        || new Set(value.keys.map((key) => key.id)).size !== value.keys.length
+        || value.hasWidgetKey !== (value.keys.length > 0)
+    ) return false;
+
+    const activeKeys = value.keys.filter((key) => key.isActive);
+    return activeKeys.length === (value.keys.length > 0 ? 1 : 0)
+        && value.keyPrefix === (activeKeys[0]?.keyPrefix || null);
+};
+
 const isWidgetConfigResponse = (value: unknown): value is WidgetConfigResponse => {
     if (!isRecord(value)) return false;
     return isRecord(value.config)
         && isStringArray(value.allowedOrigins)
-        && isNullableString(value.keyPrefix)
-        && typeof value.hasWidgetKey === 'boolean'
-        && isWidgetKeySummaryArray(value.keys)
-        && isFiniteNumber(value.keyLimit)
-        && typeof value.encryptionConfigured === 'boolean'
-        && (value.runtimeStatus === undefined || value.runtimeStatus === null || isRecord(value.runtimeStatus));
+        && hasValidWidgetKeyState(value)
+        && (value.runtimeStatus === undefined || value.runtimeStatus === null || isAnswerlatticeWidgetRuntimeStatus(value.runtimeStatus));
 };
 
 const isHostedHelpDomainStatus = (value: unknown): value is HostedHelpDomainStatus => {
     if (!isRecord(value)) return false;
-    return typeof value.domain === 'string'
-        && (value.status === undefined || value.status === 'pending' || value.status === 'verified' || value.status === 'error')
-        && isOptionalBoolean(value.verified)
-        && isOptionalNullableString(value.verifiedAt)
-        && isOptionalNullableString(value.lastCheckedAt)
+    return isBoundedString(value.domain, 253, 4)
+        && (value.status === 'pending' || value.status === 'verified' || value.status === 'error')
+        && typeof value.verified === 'boolean'
+        && isOptionalNullableCanonicalIsoTimestamp(value.verifiedAt)
+        && isOptionalNullableCanonicalIsoTimestamp(value.lastCheckedAt)
         && (
             value.verification === undefined
             || value.verification === null
             || isHostedHelpDomainVerification(value.verification)
         )
-        && isOptionalNullableString(value.error);
+        && isOptionalNullableBoundedString(value.error, 120);
 };
 
 const isHostedHelpDnsRecord = (value: unknown) => (
     isRecord(value)
-    && typeof value.type === 'string'
-    && (value.domain === undefined || typeof value.domain === 'string')
-    && (value.name === undefined || typeof value.name === 'string')
-    && (value.value === undefined || typeof value.value === 'string')
-    && (value.reason === undefined || typeof value.reason === 'string')
+    && isBoundedString(value.type, 16, 1)
+    && isOptionalBoundedString(value.domain, 253)
+    && isOptionalBoundedString(value.name, 253)
+    && isOptionalBoundedString(value.value, 1_024)
+    && isOptionalBoundedString(value.reason, 240)
 );
 
 const isHostedHelpDomainVerification = (value: unknown): value is AnswerlatticeHostedHelpDomainVerification => (
@@ -287,43 +361,56 @@ const isHostedHelpDomainVerification = (value: unknown): value is AnswerlatticeH
     && value.configuredBy.every(isHostedHelpDnsRecord)
 );
 
-const isHostedHelpSettingsResponse = (value: unknown): value is HostedHelpSettingsResponse => (
-    isRecord(value)
-    && isRecord(value.config)
-    && Array.isArray(value.domainStatuses)
-    && value.domainStatuses.every(isHostedHelpDomainStatus)
-);
+const isHostedHelpSettingsResponse = (value: unknown): value is HostedHelpSettingsResponse => {
+    if (!isRecord(value) || !StrictHostedHelpConfigSaveSchema.safeParse(value.config).success) return false;
+    let config: AnswerlatticeHostedHelpConfig;
+    try {
+        config = parseHostedHelpConfigSaveInput(value.config);
+    } catch {
+        return false;
+    }
+    return Array.isArray(value.domainStatuses)
+        && value.domainStatuses.length <= 5
+        && value.domainStatuses.length === config.domains.length
+        && value.domainStatuses.every(isHostedHelpDomainStatus)
+        && new Set(value.domainStatuses.map(status => status.domain)).size === value.domainStatuses.length
+        && value.domainStatuses.every(status => config.domains.includes(status.domain));
+};
 
 const isWidgetActivityItem = (value: unknown): value is WidgetActivityItem => {
     if (!isRecord(value)) return false;
-    return typeof value.id === 'string'
-        && typeof value.query === 'string'
-        && (value.answerPreview === undefined || typeof value.answerPreview === 'string')
-        && isOptionalBoolean(value.canonical)
-        && isOptionalNullableString(value.confidence)
-        && (value.referenceCount === undefined || isFiniteNumber(value.referenceCount))
-        && (value.feedback === undefined || value.feedback === null || value.feedback === 'good' || value.feedback === 'bad')
-        && isOptionalNullableString(value.visitorId)
-        && isOptionalNullableString(value.visitorName)
-        && isOptionalNullableString(value.visitorEmail)
-        && isOptionalBoolean(value.visitorVerified)
-        && (value.evidenceLinks === undefined || (
-            Array.isArray(value.evidenceLinks)
-            && value.evidenceLinks.every(link => isRecord(link) && typeof link.url === 'string' && isOptionalNullableString(link.label))
-        ))
-        && isOptionalNullableString(value.widgetSessionId)
-        && isOptionalNullableString(value.requestOrigin)
-        && isOptionalNullableString(value.requestPath)
-        && isOptionalNullableString(value.contextKey)
-        && isOptionalNullableString(value.surfacePage)
-        && isOptionalNullableString(value.surfaceFeature)
-        && isOptionalNullableString(value.createdAt);
+    return isBoundedString(value.id, 1_500, 1)
+        && isBoundedString(value.query, 500)
+        && isBoundedString(value.answerPreview, 220)
+        && typeof value.canonical === 'boolean'
+        && (value.confidence === null || isBoundedString(value.confidence, 40))
+        && isSafeIntegerInRange(value.referenceCount, 0, 10_000)
+        && (value.feedback === null || value.feedback === 'good' || value.feedback === 'bad')
+        && (value.visitorId === null || isBoundedString(value.visitorId, 120))
+        && (value.visitorName === null || isBoundedString(value.visitorName, 160))
+        && (value.visitorEmail === null || isBoundedString(value.visitorEmail, 180))
+        && typeof value.visitorVerified === 'boolean'
+        && Array.isArray(value.evidenceLinks)
+            && value.evidenceLinks.length <= 3
+            && value.evidenceLinks.every(link => isRecord(link)
+                && isBoundedString(link.url, 1_000, 9)
+                && /^https:\/\//i.test(link.url)
+                && isOptionalNullableBoundedString(link.label, 80))
+        && (value.widgetSessionId === null || isBoundedString(value.widgetSessionId, 120))
+        && (value.requestOrigin === null || isBoundedString(value.requestOrigin, 180))
+        && (value.requestPath === null || isBoundedString(value.requestPath, 180))
+        && (value.contextKey === null || isBoundedString(value.contextKey, 140))
+        && (value.surfacePage === null || isBoundedString(value.surfacePage, 120))
+        && (value.surfaceFeature === null || isBoundedString(value.surfaceFeature, 120))
+        && (value.createdAt === null || isCanonicalIsoTimestamp(value.createdAt));
 };
 
 const isWidgetActivityResponse = (value: unknown): value is { items: WidgetActivityItem[] } => (
     isRecord(value)
     && Array.isArray(value.items)
+    && value.items.length <= 12
     && value.items.every(isWidgetActivityItem)
+    && new Set(value.items.map((item) => item.id)).size === value.items.length
 );
 
 type WidgetKeyBaseResponse = {
@@ -336,7 +423,7 @@ type WidgetKeyBaseResponse = {
 
 type WidgetKeyCreateResponse = WidgetKeyBaseResponse & {
     apiKey: string;
-    key: WidgetKeySummary | null;
+    key: WidgetKeySummary;
     copyable: boolean;
 };
 
@@ -344,21 +431,26 @@ type WidgetKeyMutationResponse = WidgetKeyBaseResponse & {
     success: true;
 };
 
-const isWidgetKeyBaseResponse = (value: unknown): value is WidgetKeyBaseResponse => (
-    isRecord(value)
-    && isWidgetKeySummaryArray(value.keys)
-    && isNullableString(value.keyPrefix)
-    && typeof value.hasWidgetKey === 'boolean'
-    && typeof value.encryptionConfigured === 'boolean'
-    && isFiniteNumber(value.keyLimit)
-);
+const isWidgetKeyBaseResponse = (value: unknown): value is WidgetKeyBaseResponse => {
+    return isRecord(value) && hasValidWidgetKeyState(value);
+};
 
 const isWidgetKeyCreateResponse = (value: unknown): value is WidgetKeyCreateResponse => {
     if (!isWidgetKeyBaseResponse(value) || !isRecord(value)) return false;
     const record = value as Record<string, unknown>;
-    return typeof record.apiKey === 'string'
-        && (record.key === null || isWidgetKeySummary(record.key))
-        && typeof record.copyable === 'boolean';
+    const createdKey = record.key;
+    if (
+        typeof record.apiKey !== 'string'
+        || !WIDGET_KEY_PATTERN.test(record.apiKey)
+        || !isWidgetKeySummary(createdKey)
+        || record.copyable !== false
+        || createdKey.keyPrefix !== record.apiKey.slice(0, 7)
+        || createdKey.keySuffix !== record.apiKey.slice(-4)
+    ) return false;
+    const listedKey = value.keys.find((key) => key.id === createdKey.id);
+    return Boolean(listedKey)
+        && listedKey?.keyPrefix === createdKey.keyPrefix
+        && listedKey?.keySuffix === createdKey.keySuffix;
 };
 
 const isWidgetKeyMutationResponse = (value: unknown): value is WidgetKeyMutationResponse => {
@@ -530,6 +622,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [generatingKey, setGeneratingKey] = useState(false);
+    const keyGenerationInFlightRef = useRef(false);
     const [config, setConfig] = useState<AnswerlatticeWidgetConfig>(DEFAULT_ANSWERLATTICE_WIDGET_CONFIG);
     const [origins, setOrigins] = useState<string[]>([]);
     const [newOrigin, setNewOrigin] = useState('');
@@ -581,10 +674,10 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             );
             setConfig(normalizeWidgetConfig(data.config));
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
-            setKeyPrefix(data.keyPrefix || null);
-            setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setKeyPrefix(data.keyPrefix);
+            setHasWidgetKey(data.hasWidgetKey);
             setWidgetKeys(data.keys);
-            setKeyLimit(Number(data.keyLimit || 10));
+            setKeyLimit(data.keyLimit);
             setRuntimeStatus(data.runtimeStatus || null);
 
             try {
@@ -668,10 +761,10 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             );
             setConfig(normalizeWidgetConfig(data.config));
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
-            setKeyPrefix(data.keyPrefix || null);
-            setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setKeyPrefix(data.keyPrefix);
+            setHasWidgetKey(data.hasWidgetKey);
             setWidgetKeys(data.keys);
-            setKeyLimit(Number(data.keyLimit || keyLimit));
+            setKeyLimit(data.keyLimit);
             if ('runtimeStatus' in data) {
                 setRuntimeStatus(data.runtimeStatus || null);
             }
@@ -682,9 +775,11 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         } finally {
             setSaving(false);
         }
-    }, [config, origins, keyLimit]);
+    }, [config, origins]);
 
     const handleGenerateKey = useCallback(async () => {
+        if (keyGenerationInFlightRef.current) return;
+        keyGenerationInFlightRef.current = true;
         setGeneratingKey(true);
         try {
             const res = await fetch('/api/answerlattice/widget-key', {
@@ -700,20 +795,19 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED,
             );
             setApiKey(data.apiKey);
-            if (data.key?.id) {
-                setRevealedKeys(prev => ({ ...prev, [data.key.id]: data.apiKey }));
-            }
-            setKeyPrefix(data.keyPrefix || data.key?.keyPrefix || data.apiKey.slice(0, 7));
-            setHasWidgetKey(Boolean(data.hasWidgetKey ?? true));
+            setRevealedKeys(prev => ({ ...prev, [data.key.id]: data.apiKey }));
+            setKeyPrefix(data.keyPrefix);
+            setHasWidgetKey(data.hasWidgetKey);
             setWidgetKeys(data.keys);
-            setKeyLimit(Number(data.keyLimit || keyLimit));
+            setKeyLimit(data.keyLimit);
             message.success('Widget key created');
         } catch {
             message.error(ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED);
         } finally {
+            keyGenerationInFlightRef.current = false;
             setGeneratingKey(false);
         }
-    }, [keyLimit, widgetKeys]);
+    }, [widgetKeys]);
 
     const handleCopyKey = useCallback(async (key: WidgetKeySummary) => {
         const revealedKey = revealedKeys[key.id];
@@ -743,8 +837,8 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 ANSWERLATTICE_WIDGET_KEY_RENAME_FAILED,
             );
             setWidgetKeys(data.keys);
-            setKeyPrefix(data.keyPrefix || keyPrefix);
-            setHasWidgetKey(Boolean(data.hasWidgetKey ?? hasWidgetKey));
+            setKeyPrefix(data.keyPrefix);
+            setHasWidgetKey(data.hasWidgetKey);
             setRenameKey(null);
             setRenameValue('');
             message.success('Widget key renamed');
@@ -753,7 +847,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         } finally {
             setRenamingKey(false);
         }
-    }, [hasWidgetKey, keyPrefix, renameKey, renameValue]);
+    }, [renameKey, renameValue]);
 
     const openRenameKey = useCallback((key: WidgetKeySummary) => {
         setRenameKey(key);
@@ -776,8 +870,8 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 ANSWERLATTICE_WIDGET_KEY_REVOKE_FAILED,
             );
             setWidgetKeys(data.keys);
-            setKeyPrefix(data.keyPrefix || null);
-            setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setKeyPrefix(data.keyPrefix);
+            setHasWidgetKey(data.hasWidgetKey);
             setRevealedKeys(prev => {
                 const next = { ...prev };
                 delete next[key.id];

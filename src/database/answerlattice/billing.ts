@@ -129,8 +129,11 @@ const fetchAnswerlatticeSubscriptionRaw = async (
     const fallbackSnapshot = await getDocs(query(
         getSubscriptionCollectionRef(),
         where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+        where('productId', '==', PRODUCT_IDS.ANSWERLATTICE),
         where('tenantId', '==', tenantId),
+        where('tId', '==', tenantId),
         where('storeId', '==', storeId),
+        where('sId', '==', storeId),
         limit(10),
     ));
     const subscriptions = fallbackSnapshot.docs
@@ -185,8 +188,11 @@ export const getAnswerlatticeBillingHistoryForStore = async (
             const historyQuery = query(
                 getPaymentTransactionCollectionRef(),
                 where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                where('productId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tenantId', '==', tenantScope.numericId),
+                where('tId', '==', tenantScope.numericId),
                 where('storeId', '==', storeScope.numericId),
+                where('sId', '==', storeScope.numericId),
                 where('event', 'in', ['subscription.charged', 'order.paid']),
                 orderBy('created_at', 'desc'),
                 limit(25),

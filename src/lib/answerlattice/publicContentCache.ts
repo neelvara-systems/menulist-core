@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePublicCacheTags } from '@lib/actions/revalidateAnswerlatticePublicCache';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { projectAnswerlatticePublicFaq } from '@lib/answerlattice/faqContent';
@@ -67,6 +68,7 @@ const filterPublicCategories = (data: KnowledgeBaseCategoriesType | null): Knowl
 const fetchPublishedFaqs = async (scope: Scope, maxResults: number): Promise<AnswerlatticePublicFaq[]> => {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
         .where('status', '==', ANSWERLATTICE_FAQ_STATUS.PUBLISHED)

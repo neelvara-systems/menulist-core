@@ -1,68 +1,57 @@
 # SignalDesk Control Room - Specification
 
-**Status:** Initial planning spec
-**Created:** June 23, 2026
+**Status:** Implemented source contract
+**Revalidated:** July 21, 2026
 
 ## Objective
 
-Give growth admins one summary-first surface to monitor SignalDesk safety, cost, quality, and operational load.
+Give authorized SignalDesk operators one bounded surface for observing safety,
+cost, queue, incident, and pause truth without turning monitoring into another
+growth-action dashboard.
 
-## Goals
+## Admitted Behavior
 
-1. Show channel health before sending volume increases.
-2. Expose source quality and rejection trends.
-3. Track AI eval quality, low-confidence rates, and override rates.
-4. Monitor approval queue, inbox backlog, outcomes, demand, and incidents.
-5. Provide admin kill switches for channel, source, AI, and global pause.
-6. Keep dashboards cheap by reading summary documents only.
-
-## Non-Goals
-
-- No autonomous campaign optimizer.
-- No public analytics surface.
-- No raw event-stream dashboard.
-- No bypass of approval, suppression, or source policy.
-- No owner/customer MenuList dashboard.
-
-## Dashboard Sections
-
-| Section | Shows |
+| Capability | Current behavior |
 | --- | --- |
-| System status | Global health, kill switches, open incidents. |
-| Channel health | Email/export readiness, bounce, complaint, unsubscribe, pause state. |
-| Source health | Source runs, rejected fields, expired rights, bad-data rate. |
-| AI quality | Eval pass rate, override rate, low-confidence rate, prompt version. |
-| Queue load | Approval backlog, inbox backlog, overdue work items. |
-| Cost | AI calls, Firestore reads/writes, provider costs where available. |
-| Outcomes | Activated outcomes, route-token health, attribution summaries. |
-| Demand | Warm signals, referrals, hook health. |
+| Operating summary | Shows channel/source/cost status, queue counts, outcomes, demand, targets, runtime and provider-send state. |
+| Pauses | Shows all valid active scopes and permits confirmed activation/clear when the user has the exact permission. |
+| Incidents | Counts and lists strict `open` plus `acknowledged` incidents. Resolved incidents are excluded. |
+| Cost | Shows today's strict AI/provider estimate and Firestore operation estimates. |
+| Control navigation | Links to settings, policies, sources, channels, AI, content, partners and audit. |
+| Holds | Shows non-approved provider accounts and budget posture already loaded for Controls. |
+| Mobile | Dashboard overview plus confirmed emergency global-pause activation only. |
 
-## Kill Switches
+## Kill-Switch Scopes
 
-| Switch | Scope |
-| --- | --- |
-| `global_pause` | Stops all non-read SignalDesk actions. |
-| `channel_pause` | Stops a specific channel rail. |
-| `source_pause` | Stops source imports/runs. |
-| `ai_pause` | Stops AI scoring/drafting/classification. |
-| `follow_up_pause` | Stops follow-up work creation. |
+`global-outbound`, `email`, `whatsapp`, `instagram`, `messenger`,
+`source-provider`, `ai-worker`, `campaign`, `content-distribution`,
+`trust-partner`, and `menu-list-bridge`.
+
+Relevant source, AI, outbound, campaign, content, partner and bridge paths re-read
+their governed pause documents before expensive or external work. A pause does
+not grant permission, clear suppression, change a source policy, or enable a
+provider.
 
 ## Requirements
 
-| ID | Requirement |
-| --- | --- |
-| CTRL-001 | Default dashboard reads summary collections only. |
-| CTRL-002 | Kill switches require admin role and audit event. |
-| CTRL-003 | Complaint thresholds must create or escalate incidents. |
-| CTRL-004 | Cost summaries must separate AI, Firestore, and channel costs. |
-| CTRL-005 | Stale summaries must show as stale, not healthy. |
-| CTRL-006 | Admins must be able to see why sending is paused. |
-| CTRL-007 | Incidents must have status, owner, severity, and resolution note. |
+1. Dedicated Controls routes and reads honor the master feature flag.
+2. Client reads remain strict, bounded, product-scoped DTOs.
+3. Active pause count is derived from the eleven canonical documents, not a
+   potentially stale aggregate counter.
+4. Unresolved incident count includes acknowledged work and fails visibly above
+   500 matching records; the rendered list remains capped at 50.
+5. Every successful pause transition writes switch, audit, claim, and daily-cost
+   truth atomically. Exact replay writes nothing.
+6. Desktop and mobile require explicit confirmation before activation.
+7. Controls must not expose dashboard research, lead, evidence, or draft actions.
+8. No raw event stream, private incident payload, secret, or contact PII reaches
+   the overview DTO.
 
-## Acceptance Criteria
+## Non-Goals
 
-- Admin can pause all sends from one global control.
-- Dashboard loads without scanning raw messages/events.
-- Complaint spike creates incident and pauses affected channel when threshold requires it.
-- Cost summary shows daily AI and Firestore cost posture.
-- Stale source or hook health is visible.
+- No autonomous optimizer or automatic threshold engine.
+- No generic incident acknowledge/resolve API.
+- No raw event drill-down on the Controls page.
+- No scheduled pause expiry.
+- No public or MenuList-owner analytics surface.
+- No provider send or publication authority.

@@ -1,12 +1,15 @@
-import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { doc, increment, serverTimestamp, writeBatch, type Transaction, type WriteBatch } from '@firebase/firestore';
+import { increment, runTransaction, serverTimestamp, type Transaction } from '@firebase/firestore';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { AnswerlatticeContextSourceKey } from '@type/answerlattice';
 import {
-    getAnswerlatticeBundleManifestDocId,
-    getAnswerlatticeSourceVersionsDocId,
-} from './compiledContext';
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+} from './invalidationControlPlane';
+import {
+    readAnswerlatticeClientInvalidationOwnership,
+    type AnswerlatticeClientInvalidationOwnership,
+} from './invalidationOwnershipClient';
 
 type SourceVersionBumpMetadata = {
     reason?: string;
@@ -27,28 +30,24 @@ const sanitizeMetadata = (metadata?: SourceVersionBumpMetadata) => ({
     ...(metadata?.sourceType ? { lastSourceType: String(metadata.sourceType).slice(0, 80) } : {}),
 });
 
-export const appendAnswerlatticeCompiledContextSourceChange = (
-    batch: WriteBatch | Transaction,
+export const appendAnswerlatticeCompiledContextSourceChange = async (
+    transaction: Transaction,
     source: AnswerlatticeContextSourceKey,
     tId: number,
     sId: number,
     metadata?: SourceVersionBumpMetadata,
+    currentOwnership?: AnswerlatticeClientInvalidationOwnership,
 ) => {
     const { tenantId, storeId } = assertScope(tId, sId);
+    const scope = { tId: tenantId, sId: storeId };
+    const ownership = currentOwnership
+        || await readAnswerlatticeClientInvalidationOwnership({ scope, transaction });
     const now = serverTimestamp();
-    const sourceRef = doc(
-        answerlatticeFirebaseClient,
-        DB_COLLECTIONS.PLATFORM_SUMMARY,
-        getAnswerlatticeSourceVersionsDocId(tenantId, storeId),
-    );
-    const manifestRef = doc(
-        answerlatticeFirebaseClient,
-        DB_COLLECTIONS.PLATFORM_SUMMARY,
-        getAnswerlatticeBundleManifestDocId(tenantId, storeId),
-    );
 
     const metadataFields = sanitizeMetadata(metadata);
     const sourceVersionUpdate = {
+        ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
+        ...ownership.sourceVersions,
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: tenantId,
@@ -58,6 +57,7 @@ export const appendAnswerlatticeCompiledContextSourceChange = (
         ...metadataFields,
     };
     const manifestUpdate = {
+        ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: tenantId,
@@ -67,13 +67,8 @@ export const appendAnswerlatticeCompiledContextSourceChange = (
         updatedAt: now,
         ...metadataFields,
     };
-    if ('commit' in batch) {
-        batch.set(sourceRef, sourceVersionUpdate, { merge: true });
-        batch.set(manifestRef, manifestUpdate, { merge: true });
-    } else {
-        batch.set(sourceRef, sourceVersionUpdate, { merge: true });
-        batch.set(manifestRef, manifestUpdate, { merge: true });
-    }
+    transaction.set(ownership.sourceVersionsRef, sourceVersionUpdate, { merge: true });
+    transaction.set(ownership.manifestRef, manifestUpdate, { merge: true });
 };
 
 export const markAnswerlatticeCompiledContextSourceChanged = async (
@@ -82,7 +77,7 @@ export const markAnswerlatticeCompiledContextSourceChanged = async (
     sId: number,
     metadata?: SourceVersionBumpMetadata,
 ) => {
-    const batch = writeBatch(answerlatticeFirebaseClient);
-    appendAnswerlatticeCompiledContextSourceChange(batch, source, tId, sId, metadata);
-    await batch.commit();
+    await runTransaction(answerlatticeFirebaseClient, async transaction => {
+        await appendAnswerlatticeCompiledContextSourceChange(transaction, source, tId, sId, metadata);
+    });
 };

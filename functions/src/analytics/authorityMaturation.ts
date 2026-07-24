@@ -16,25 +16,19 @@
  */
 
 import * as admin from 'firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldPath, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import {
+    parseOwnerControlUsageDocument,
+    type OwnerControlUsageDocument,
+} from '../sharedData/ownerControlUsageContract';
 import { analyticsLogger, getAnalyticsErrorContext } from './analyticsDiagnostics';
 
 // ================================================================
 // TYPES
 // ================================================================
 
-interface OwnerControlUsageDoc {
-    tId: string;
-    sId: string;
-    counts: Record<string, number>;
-    lastUsed: Record<string, Timestamp>;
-    monthlyUsage: {
-        [yearMonth: string]: Record<string, number>;
-    };
-    firstTrackedAt: Timestamp;
-    lastUpdatedAt: Timestamp;
-}
+type OwnerControlUsageDoc = OwnerControlUsageDocument<Timestamp>;
 
 type MaturationPhase = 'phase1_active' | 'phase2_passive' | 'phase3_dormant';
 
@@ -48,6 +42,8 @@ interface MaturationAnalysis {
     totalControlUsages: number;
     lastUsedAny: Date | null;
 }
+
+const OWNER_CONTROL_USAGE_PAGE_SIZE = 500;
 
 // ================================================================
 // ANALYSIS FUNCTIONS
@@ -162,6 +158,7 @@ function analyzeStore(doc: OwnerControlUsageDoc): MaturationAnalysis {
  */
 export async function processAuthorityMaturationForAllStores(): Promise<{
     processed: number;
+    invalidDocuments: number;
     phase1Count: number;
     phase2Count: number;
     phase3Count: number;
@@ -170,52 +167,81 @@ export async function processAuthorityMaturationForAllStores(): Promise<{
     analyticsLogger.info('[AuthorityMaturation] Starting nightly analysis');
 
     try {
-        // Fetch all owner control usage documents
-        const snapshot = await db.collection(DB_COLLECTIONS.OWNER_CONTROL_USAGE).get();
-
-        if (snapshot.empty) {
-            analyticsLogger.info('[AuthorityMaturation] No usage data found');
-            return { processed: 0, phase1Count: 0, phase2Count: 0, phase3Count: 0 };
-        }
-
+        let processed = 0;
+        let invalidDocuments = 0;
         let phase1Count = 0;
         let phase2Count = 0;
         let phase3Count = 0;
+        let activeTotalControlUsages = 0;
+        let activeMaxUsageRate = 0;
+        const activeTrends: Record<MaturationAnalysis['trend'], number> = {
+            increasing: 0,
+            stable: 0,
+            decreasing: 0,
+        };
+        let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
 
-        const analyses: MaturationAnalysis[] = [];
+        while (true) {
+            let query = db.collection(DB_COLLECTIONS.OWNER_CONTROL_USAGE)
+                .orderBy(FieldPath.documentId())
+                .limit(OWNER_CONTROL_USAGE_PAGE_SIZE);
+            if (cursor) query = query.startAfter(cursor);
 
-        for (const doc of snapshot.docs) {
-            const data = doc.data() as OwnerControlUsageDoc;
-            const analysis = analyzeStore(data);
-            analyses.push(analysis);
+            const snapshot = await query.get();
+            if (snapshot.empty) break;
 
-            // Count phases
-            if (analysis.phase === 'phase1_active') phase1Count++;
-            else if (analysis.phase === 'phase2_passive') phase2Count++;
-            else phase3Count++;
+            for (const documentSnapshot of snapshot.docs) {
+                const data = parseOwnerControlUsageDocument(
+                    documentSnapshot.data(),
+                    documentSnapshot.id,
+                    (value): value is Timestamp => value instanceof Timestamp,
+                    (value) => value.toMillis(),
+                );
+                if (!data) {
+                    invalidDocuments++;
+                    continue;
+                }
+
+                const analysis = analyzeStore(data);
+                processed++;
+                if (analysis.phase === 'phase1_active') {
+                    phase1Count++;
+                    activeTotalControlUsages += analysis.totalControlUsages;
+                    activeMaxUsageRate = Math.max(activeMaxUsageRate, analysis.usageRate);
+                    activeTrends[analysis.trend]++;
+                } else if (analysis.phase === 'phase2_passive') {
+                    phase2Count++;
+                } else {
+                    phase3Count++;
+                }
+            }
+
+            cursor = snapshot.docs[snapshot.docs.length - 1];
+            if (snapshot.size < OWNER_CONTROL_USAGE_PAGE_SIZE) break;
+        }
+
+        if (processed === 0 && invalidDocuments === 0) {
+            analyticsLogger.info('[AuthorityMaturation] No usage data found');
         }
 
         analyticsLogger.info('[AuthorityMaturation] Analysis complete', {
-            totalStores: analyses.length,
+            totalStores: processed,
+            invalidDocuments,
             phase1Count,
-            phase1Percentage: Number(((phase1Count / analyses.length) * 100).toFixed(1)),
+            phase1Percentage: processed > 0 ? Number(((phase1Count / processed) * 100).toFixed(1)) : 0,
             phase2Count,
-            phase2Percentage: Number(((phase2Count / analyses.length) * 100).toFixed(1)),
+            phase2Percentage: processed > 0 ? Number(((phase2Count / processed) * 100).toFixed(1)) : 0,
             phase3Count,
-            phase3Percentage: Number(((phase3Count / analyses.length) * 100).toFixed(1)),
+            phase3Percentage: processed > 0 ? Number(((phase3Count / processed) * 100).toFixed(1)) : 0,
         });
 
         // Log detailed insights for active phase 1 stores (for monitoring)
-        const activeStores = analyses.filter(a => a.phase === 'phase1_active');
-        if (activeStores.length > 0 && activeStores.length <= 10) {
+        if (phase1Count > 0 && phase1Count <= 10) {
             analyticsLogger.info('[AuthorityMaturation] Active high-usage stores found', {
-                count: activeStores.length,
-                totalControlUsages: activeStores.reduce((total, store) => total + store.totalControlUsages, 0),
-                maxUsageRate: Math.max(...activeStores.map(store => store.usageRate)),
-                trends: activeStores.reduce<Record<string, number>>((acc, store) => {
-                    acc[store.trend] = (acc[store.trend] || 0) + 1;
-                    return acc;
-                }, {}),
+                count: phase1Count,
+                totalControlUsages: activeTotalControlUsages,
+                maxUsageRate: activeMaxUsageRate,
+                trends: activeTrends,
             });
         }
 
@@ -224,17 +250,19 @@ export async function processAuthorityMaturationForAllStores(): Promise<{
         await db.collection(DB_COLLECTIONS.INSIGHTS).doc(summaryDocId).set({
             type: 'authority_maturation_summary',
             date: Timestamp.now(),
-            totalStores: analyses.length,
+            totalStores: processed,
+            invalidDocuments,
             phase1Count,
             phase2Count,
             phase3Count,
-            phase1Percentage: analyses.length > 0 ? (phase1Count / analyses.length) * 100 : 0,
-            phase2Percentage: analyses.length > 0 ? (phase2Count / analyses.length) * 100 : 0,
-            phase3Percentage: analyses.length > 0 ? (phase3Count / analyses.length) * 100 : 0,
-        }, { merge: true });
+            phase1Percentage: processed > 0 ? (phase1Count / processed) * 100 : 0,
+            phase2Percentage: processed > 0 ? (phase2Count / processed) * 100 : 0,
+            phase3Percentage: processed > 0 ? (phase3Count / processed) * 100 : 0,
+        });
 
         return {
-            processed: analyses.length,
+            processed,
+            invalidDocuments,
             phase1Count,
             phase2Count,
             phase3Count,

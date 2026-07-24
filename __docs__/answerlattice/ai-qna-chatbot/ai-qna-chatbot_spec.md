@@ -128,7 +128,7 @@ After the first Q&A exchange (exactly 2 messages), the input bar is replaced wit
 
 - **Key:** Hash of the scoped search cache key
 - **Scope:** Exact `pId + tId + sId`; mismatched stored scope is rejected
-- **Hit behavior:** Return cached vector (no Gemini embedding call)
+- **Hit behavior:** Return a valid fixed-dimension vector only when creation time exists, the 30-day window is fresh, and explicit expiry has not passed; otherwise miss and conditionally clean the exact snapshot
 - **Measurement:** Track actual scoped reuse and provider-call avoidance.
 
 ### 5.3 KB Categories Cache (Context-level)
@@ -268,7 +268,7 @@ The flag must remain off until the required index is deployed and representative
 ### Improvements Implemented (2026-03-04)
 
 1. ✅ **Conversation length limit:** `trimMessages()` caps at 50 messages per session. Keeps first message + most recent 49.
-2. ✅ **Embedding cache TTL:** 30-day expiry in `getCachedEmbedding()`. Stale entries return null (treated as cache miss, regenerated).
+2. ✅ **Embedding cache TTL:** `getCachedEmbedding()` enforces valid creation time, the 30-day age window, and explicit expiry without waiting for asynchronous TTL. Invalid/stale entries return null and are regenerated; cleanup cannot delete a concurrent replacement.
 3. ✅ **Error boundary:** `ChatErrorBoundary` wraps chat content. Catches render errors, shows friendly "Try Again" fallback instead of white screen.
 
 ### Skipped (Validated as Not Needed)

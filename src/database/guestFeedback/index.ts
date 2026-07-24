@@ -27,6 +27,7 @@ import {
     query,
     QueryConstraint,
     runTransaction,
+    serverTimestamp,
     startAfter,
     Timestamp,
     where
@@ -39,6 +40,11 @@ export type GuestFeedbackListResult = {
     items: GuestFeedback[];
     lastDocId: string | null;
     hasMore: boolean;
+};
+
+export type GuestFeedbackExpectedScope = {
+    storeId: number;
+    tenantId: number;
 };
 
 const normalizeOptionalString = (value: unknown, maxLength: number): string | null | undefined => {
@@ -112,8 +118,10 @@ export const normalizeGuestFeedbackRecord = (value: unknown, id: string): GuestF
 
 const isGuestFeedbackRecord = (result: unknown, expectedFeedbackId?: string): result is GuestFeedback => {
     if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
-    const id = expectedFeedbackId || (result as { id?: unknown }).id;
-    return typeof id === 'string' && normalizeGuestFeedbackRecord(result, id) !== null;
+    const resultId = (result as { id?: unknown }).id;
+    return typeof resultId === 'string'
+        && (expectedFeedbackId === undefined || resultId === expectedFeedbackId)
+        && normalizeGuestFeedbackRecord(result, resultId) !== null;
 };
 
 const normalizeFeedbackFilter = (filter: unknown): GuestFeedbackFilter | null => (
@@ -129,23 +137,64 @@ const resolveSessionScope = (session: unknown) => {
     return { tenantId: tenant.numericId, storeId: store.numericId, userId };
 };
 
-export const isGuestFeedbackListResult = (result: unknown): result is GuestFeedbackListResult => (
-    Boolean(result && typeof result === 'object')
-    && !Array.isArray(result)
-    && Array.isArray((result as GuestFeedbackListResult).items)
-    && (result as GuestFeedbackListResult).items.every((item) => isGuestFeedbackRecord(item))
-    && typeof (result as GuestFeedbackListResult).hasMore === 'boolean'
-    && (
-        (result as GuestFeedbackListResult).lastDocId === null
-        || typeof (result as GuestFeedbackListResult).lastDocId === 'string'
-    )
-);
+const assertExpectedFeedbackScope = (
+    scope: GuestFeedbackExpectedScope,
+    expectedScope?: GuestFeedbackExpectedScope,
+) => {
+    if (
+        expectedScope
+        && (
+            scope.tenantId !== expectedScope.tenantId
+            || scope.storeId !== expectedScope.storeId
+        )
+    ) {
+        throw new Error('Guest feedback session scope changed');
+    }
+};
+
+export const isGuestFeedbackListResult = (
+    result: unknown,
+    expectedScope?: GuestFeedbackExpectedScope,
+): result is GuestFeedbackListResult => {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+    const candidate = result as GuestFeedbackListResult;
+    if (
+        !Array.isArray(candidate.items)
+        || typeof candidate.hasMore !== 'boolean'
+        || (
+            candidate.lastDocId !== null
+            && (
+                typeof candidate.lastDocId !== 'string'
+                || !isValidFirestoreDocumentId(candidate.lastDocId)
+            )
+        )
+    ) return false;
+    const ids = new Set<string>();
+    for (const item of candidate.items) {
+        if (
+            !isGuestFeedbackRecord(item)
+            || ids.has(item.id)
+            || (
+                expectedScope
+                && (
+                    item.tId !== expectedScope.tenantId
+                    || item.sId !== expectedScope.storeId
+                )
+            )
+        ) return false;
+        ids.add(item.id);
+    }
+    return candidate.items.length === 0
+        ? candidate.lastDocId === null && candidate.hasMore === false
+        : candidate.lastDocId === candidate.items.at(-1)?.id;
+};
 
 export function assertFeedbackListLoadSucceeded(
     result: unknown,
     rejectionCode = 'feedback_list_load_rejected',
+    expectedScope?: GuestFeedbackExpectedScope,
 ): asserts result is GuestFeedbackListResult {
-    if (isGuestFeedbackListResult(result)) return;
+    if (isGuestFeedbackListResult(result, expectedScope)) return;
     throw new Error(rejectionCode);
 }
 
@@ -153,7 +202,7 @@ export function assertFeedbackCountLoadSucceeded(
     result: unknown,
     rejectionCode = 'feedback_count_load_rejected',
 ): asserts result is number {
-    if (typeof result === 'number' && Number.isFinite(result) && result >= 0) return;
+    if (typeof result === 'number' && Number.isSafeInteger(result) && result >= 0) return;
     throw new Error(rejectionCode);
 }
 
@@ -187,12 +236,14 @@ const getDocRef = (feedbackId: string) => {
 export const getFeedbackList = async (
     filter: GuestFeedbackFilter = 'all',
     pageSize: number = 50,
-    cursorId?: string
+    cursorId?: string,
+    expectedScope?: GuestFeedbackExpectedScope,
 ): Promise<GuestFeedbackListResult> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = resolveSessionScope(session);
+            assertExpectedFeedbackScope(scope, expectedScope);
             const normalizedFilter = normalizeFeedbackFilter(filter);
             if (!normalizedFilter) throw new Error('Invalid guest feedback filter');
             if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > FEEDBACK_PAGE_SIZE_MAX) {
@@ -242,7 +293,7 @@ export const getFeedbackList = async (
 
             return { items, lastDocId, hasMore };
         },
-        { filter, pageSize, cursorId },
+        { filter, pageSize, cursorId, expectedScope },
         'getFeedbackList'
     );
 };
@@ -253,11 +304,15 @@ export const getFeedbackList = async (
  *
  * @param feedbackId - Feedback document ID
  */
-export const getFeedbackById = async (feedbackId: string): Promise<GuestFeedback | null> => {
+export const getFeedbackById = async (
+    feedbackId: string,
+    expectedScope?: GuestFeedbackExpectedScope,
+): Promise<GuestFeedback | null> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = resolveSessionScope(session);
+            assertExpectedFeedbackScope(scope, expectedScope);
             if (!isValidFirestoreDocumentId(feedbackId)) return null;
             const docSnap = await getDoc(getDocRef(feedbackId));
 
@@ -280,7 +335,7 @@ export const getFeedbackById = async (feedbackId: string): Promise<GuestFeedback
 
             return data;
         },
-        feedbackId,
+        { feedbackId, expectedScope },
         'getFeedbackById'
     );
 };
@@ -296,12 +351,14 @@ export const getFeedbackById = async (feedbackId: string): Promise<GuestFeedback
 export const updateFeedbackStatus = async (
     feedbackId: string,
     status: 'new' | 'resolved',
-    ownerNote?: string
+    ownerNote?: string,
+    expectedScope?: GuestFeedbackExpectedScope,
 ): Promise<GuestFeedback | null> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = resolveSessionScope(session);
+            assertExpectedFeedbackScope(scope, expectedScope);
             if (!isValidFirestoreDocumentId(feedbackId) || (status !== 'new' && status !== 'resolved')) return null;
             const normalizedOwnerNote = normalizeOptionalString(ownerNote, 300);
             if (normalizedOwnerNote === null) throw new Error('Guest feedback owner note is invalid');
@@ -313,15 +370,18 @@ export const updateFeedbackStatus = async (
                 const updateData: Partial<GuestFeedback> = {
                     status,
                     needsAttention: existing.rating <= 3 && status === 'new',
-                    modifiedOn: Timestamp.now(),
                     modifiedBy: scope.userId,
                     ...(ownerNote !== undefined ? { ownerNote: normalizedOwnerNote || '' } : {}),
                 };
-                transaction.update(feedbackRef, updateData);
-                return { ...existing, ...updateData };
+                transaction.update(feedbackRef, {
+                    ...updateData,
+                    modifiedOn: serverTimestamp(),
+                });
+                const { modifiedOn: _previousModifiedOn, ...existingWithoutModifiedOn } = existing;
+                return { ...existingWithoutModifiedOn, ...updateData };
             });
         },
-        { feedbackId, status, ownerNote },
+        { feedbackId, status, ownerNote, expectedScope },
         'updateFeedbackStatus'
     );
 };
@@ -351,12 +411,14 @@ export function assertFeedbackStatusUpdateSucceeded(
  * @param filter - Filter type
  */
 export const getFeedbackCount = async (
-    filter: GuestFeedbackFilter = 'needs_attention'
+    filter: GuestFeedbackFilter = 'needs_attention',
+    expectedScope?: GuestFeedbackExpectedScope,
 ): Promise<number> => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
             const scope = resolveSessionScope(session);
+            assertExpectedFeedbackScope(scope, expectedScope);
             const normalizedFilter = normalizeFeedbackFilter(filter);
             if (!normalizedFilter) throw new Error('Invalid guest feedback filter');
             const constraints: QueryConstraint[] = [
@@ -374,7 +436,7 @@ export const getFeedbackCount = async (
             const snapshot = await getCountFromServer(q);
             return snapshot.data().count;
         },
-        filter,
+        { filter, expectedScope },
         'getFeedbackCount'
     );
 };

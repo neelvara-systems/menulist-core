@@ -116,7 +116,7 @@ Use external realtime/cache infrastructure only when:
 
 ## Implementation Notes
 
-- `src/app/api/answerlattice/widget-activity/route.ts` uses the indexed tenant/widget query first. If that fails, the fallback now remains tenant-scoped before filtering widget rows.
+- `src/app/api/answerlattice/widget-activity/route.ts` uses the indexed `AL` product/tenant/widget query first. If that fails, the fallback remains `AL` product/tenant scoped before independently rechecking and filtering widget rows.
 - `src/database/answerlattice/signalEvents.ts` clamps caller-provided window and result limits.
 - `src/database/answerlattice/auditLogs.ts` clamps audit loads to 200.
 - `src/database/answerlattice/supportBoard.ts` clamps board loads to the configured max and protects against invalid limits.

@@ -1,94 +1,85 @@
 # SignalDesk Target Registry - Specification
 
-**Status:** Initial planning spec
+**Status:** Runtime-backed specification
 **Created:** June 23, 2026
+**Last Updated:** July 21, 2026
 
-## Executive Summary
+## Purpose
 
-The Target Registry stores the internal acquisition objects SignalDesk needs before any AI scoring, draft, approval, send, inbox, or attribution flow.
+The Target Registry is SignalDesk's private, canonical set of candidate business/location records. It preserves source and identity lineage before scoring, evidence, drafting, approval, contact, reply, or outcome work.
 
-The registry answers:
+A target is a review object, not permission to contact.
 
-- Which business/location are we talking about?
-- Where did the candidate come from?
-- Which contacts or channel identities are known?
-- Is this target eligible, held, suppressed, or rejected?
-- What MenuList outcome happened later?
+## Current Scope
 
-## Goals
+- manual CSV import of 1-50 rows;
+- trusted provider import through an approved provider run;
+- source-policy field and use enforcement;
+- stable target identity and duplicate handling;
+- list-safe target summary plus private target detail;
+- contact identity and permission-evidence storage;
+- suppression-aware initial state;
+- source-run summary and lifecycle authority;
+- strict 30-row desktop paging;
+- stable IDs consumed by later SignalDesk modules.
 
-| Goal | Success signal |
+## Current Target State
+
+| Field | Values |
 | --- | --- |
-| Avoid flat lead rows | Target, source, contact, channel, conversation, and outcome are separate records. |
-| Preserve source context | Every target has provenance before action. |
-| Support dedupe | Duplicate businesses and contacts are merged or held. |
-| Keep contact data controlled | List views mask PII and reveal is audited. |
-| Feed future modules | AI, evidence, approval, inbox, and attribution can link to stable IDs. |
+| Status | `new`, `review`, `ready`, `held`, `rejected`, `contacted`, `replied`, `converted` |
+| Segment | `a`, `b`, `c`, `hold`, `reject` |
+| Suppression | `clear`, `suppressed`, `wrong-contact`, `complaint` |
+| Contactability | `ready`, `limited`, `missing`, `blocked` |
+| Source confidence | `high`, `medium`, `low`, `blocked` |
+| Next action | `review`, `enrich`, `score`, `evidence`, `draft`, `approve`, `export`, `contact`, `reply`, `outcome`, `hold`, `reject` |
 
-## In Scope
+Draft, approval, conversation, and outcome records remain separate objects; their existence updates target summary state without flattening those records into the registry.
 
-- target summaries and target details;
-- manual target creation;
-- CSV/manual import staging;
-- source candidate link;
-- contact identity;
-- channel identity;
-- target state machine;
-- duplicate detection hooks;
-- suppression status link;
-- basic outcome references.
+## Import Contract
 
-## Out Of Scope
+1. The import feature flag must be enabled.
+2. Caller must have `target.review`; mobile mutation is blocked.
+3. The request requires an actor-bound idempotency key, source name, active source policy, and 1-50 strict rows.
+4. Manual rows cannot claim provider record identity. Provider identity is accepted only from the trusted provider-run path.
+5. Source policy determines which fields, contact channels, evidence use, and import use are allowed.
+6. Any retained email, phone, WhatsApp, or Instagram identity requires a bounded permission-evidence reference.
+7. Exact duplicate rows collapse. Divergent rows with the same identity fail the complete import.
+8. Existing identity, summary, detail, contact, suppression, lifecycle, and source-policy authority are read before writes.
+9. Orphaned, foreign, malformed, rebound, expired, or ambiguous authority fails closed.
+10. One transaction commits the complete accepted import and its audit/accounting truth.
 
-- source-provider API runs;
-- source-rights approval policy;
-- AI scoring;
-- message drafting;
-- inbox UI;
-- MenuList outcome ingestion details.
+## Identity Rules
 
-## Core Objects
+- Manual imports use a normalized business identity derived from the admitted name/location/contact/website fields.
+- Provider imports prefer provider record ID, then provider record URL, then a provider-scoped business identity.
+- Two same-name provider records with different stable provider IDs remain different targets.
+- Re-importing the same stable provider record reuses the target.
+- A legacy identity is reused for provider data only when persisted provider provenance proves the same external record.
+- A contact identity cannot be rebound to another target or source policy.
+- Existing mature target lifecycle, score, and outcome fields cannot be regressed by re-import.
 
-| Object | Meaning |
-| --- | --- |
-| Target | Business/location candidate SignalDesk may review. |
-| Source candidate | Record of where target facts came from. |
-| Contact identity | Person or business contact point, masked by default. |
-| Channel identity | Email, phone, WhatsApp, Instagram, Messenger, or website identity. |
-| Conversation | Thread or operator notes linked to a target/channel. |
-| Outcome | MenuList result such as upload, preview, approval, publish, activation, paid plan. |
+## Desktop And Mobile
 
-## Target States
+Desktop Targets shows list-safe target summaries and loads the next 30 rows through a stable `updatedAt + targetId` cursor. The manual import form is hidden when imports are disabled.
 
-| State | Meaning |
-| --- | --- |
-| `new` | Imported or created, not reviewed. |
-| `review` | Needs human or AI review. |
-| `held` | Missing evidence, policy, or confidence. |
-| `ready` | Eligible for evidence/draft work. |
-| `drafted` | Draft exists. |
-| `approved` | Human approved action. |
-| `contacted` | Approved message/export happened. |
-| `replied` | Reply or operator note exists. |
-| `converted` | MenuList outcome exists. |
-| `rejected` | Not fit or not allowed. |
-| `suppressed` | Contact or target is blocked from outreach. |
+Mobile remains dashboard-only. It can observe aggregate operational state but cannot open Target Registry, import, score, reveal contact, or mutate target truth.
 
-## Requirements
+## Non-Goals
 
-| ID | Requirement | Priority |
-| --- | --- | --- |
-| SDR-R001 | Every target must have at least one source candidate reference. | P0 |
-| SDR-R002 | Target list rows must use masked contact fields only. | P0 |
-| SDR-R003 | Contact reveal requires role permission and audit. | P0 |
-| SDR-R004 | Suppressed identities must mark target/contact as blocked. | P0 |
-| SDR-R005 | Duplicate targets must merge or hold, not create parallel outreach. | P0 |
-| SDR-R006 | Target state transitions must be auditable. | P0 |
+- automatic contact consent inference;
+- public lead or contact APIs;
+- direct registry export/send;
+- raw contact fields in target list responses;
+- automatic duplicate merging across uncertain identities;
+- client Firestore writes;
+- provider calls when imports are disabled.
 
 ## Acceptance Criteria
 
-- A target cannot move to `ready` without source provenance.
-- A target cannot move to `drafted` if suppressed.
-- A contact value cannot be shown in a list row.
-- Duplicate imports do not create duplicate outreach opportunities.
-- Every target has a stable ID used by later modules.
+- Disabled imports perform no provider or Firestore work.
+- Duplicate or conflicting identity cannot create parallel outreach truth.
+- Suppressed contact evidence holds the target.
+- List responses never contain raw email, phone, Instagram, notes, or permission evidence.
+- Older targets remain reachable without full-collection scans.
+- All writes remain product-scoped, server-only, audited, and bounded.

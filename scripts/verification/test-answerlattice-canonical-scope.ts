@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
     CANONICAL_GOVERNED_FALLBACK_MESSAGES,
+    classifyCanonicalQueryIntent,
     evaluateCanonicalAnswerScope,
     isCanonicalGovernedFallbackReason,
 } from '../../src/lib/answerlattice/canonicalRetrieval';
@@ -63,20 +66,51 @@ assert.match(
     CANONICAL_GOVERNED_FALLBACK_MESSAGES.canonical_scope_not_covered,
     /current plan, role, or product state/,
 );
+assert.equal(classifyCanonicalQueryIntent('How do I configure billing?'), 'how_to');
+assert.equal(classifyCanonicalQueryIntent('Why did billing fail?'), 'why_error');
+assert.equal(classifyCanonicalQueryIntent('Tell me about billing'), 'general');
+const canonicalRetrievalSource = fs.readFileSync(
+    path.resolve(__dirname, '../../src/lib/answerlattice/canonicalRetrieval.ts'),
+    'utf8',
+);
+assert.ok(
+    canonicalRetrievalSource.includes("&& intent === 'how_to'"),
+    'procedure affinity must apply only to classified how-to requests',
+);
 
-const instantCacheKey = buildCacheKey(11, 22, 'entity_billing', 25, 'growth', 'owner', 'past_due');
+const instantCacheKey = buildCacheKey(
+    11,
+    22,
+    'entity_billing',
+    25,
+    'How do I retry billing?',
+    'context-token-billing-page',
+    'growth',
+    'owner',
+    'past_due',
+);
 assert.match(
     instantCacheKey,
-    /^canon:v4:11:22:e:[A-Za-z0-9_-]{22}:v25:p:[A-Za-z0-9_-]{22}:r:[A-Za-z0-9_-]{22}:s:[A-Za-z0-9_-]{22}$/,
-    'instant canonical cache keys must isolate applicability context and bypass legacy cache entries',
+    /^canon:v5:11:22:e:[A-Za-z0-9_-]{22}:v25:q:[A-Za-z0-9_-]{22}:c:[A-Za-z0-9_-]{22}:p:[A-Za-z0-9_-]{22}:r:[A-Za-z0-9_-]{22}:s:[A-Za-z0-9_-]{22}$/,
+    'instant canonical cache keys must isolate query and applicability context and bypass legacy cache entries',
 );
-['entity_billing', 'growth', 'owner', 'past_due'].forEach((rawSegment) => {
+['entity_billing', 'How do I retry billing?', 'context-token-billing-page', 'growth', 'owner', 'past_due'].forEach((rawSegment) => {
     assert.equal(
         instantCacheKey.includes(rawSegment),
         false,
         `instant canonical cache keys must not expose raw ${rawSegment} context`,
     );
 });
+assert.notEqual(
+    instantCacheKey,
+    buildCacheKey(11, 22, 'entity_billing', 25, 'Why did billing fail?', 'context-token-billing-page', 'growth', 'owner', 'past_due'),
+    'distinct questions for one entity must not share an instant answer cache entry',
+);
+assert.notEqual(
+    instantCacheKey,
+    buildCacheKey(11, 22, 'entity_billing', 25, 'How do I retry billing?', 'context-token-settings-page', 'growth', 'owner', 'past_due'),
+    'distinct product-surface context must not share an instant answer cache entry',
+);
 
 const workspace = { tenantId: 11, storeId: 22 };
 assert.equal(

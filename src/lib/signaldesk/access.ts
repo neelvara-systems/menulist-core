@@ -1,25 +1,17 @@
 import { SIGNALDESK_COLLECTIONS } from "@constant/signaldesk/database";
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
+import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { getCurrentUser } from "@lib/auth/currentPlatformUser";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
 import { signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
+import {
+    isSignalDeskHumanRole,
+    isSignalDeskPermission,
+    SIGNALDESK_ALL_PERMISSIONS,
+} from "@lib/signaldesk/accessContracts";
 import type { SignalDeskAccessContext, SignalDeskPermission, SignalDeskRole } from "@type/signaldesk";
 
-const ALL_PERMISSIONS: SignalDeskPermission[] = [
-    "signaldesk.view",
-    "signaldesk.configure",
-    "target.review",
-    "contact.reveal",
-    "draft.create",
-    "draft.approve",
-    "message.export",
-    "message.send",
-    "source.configure",
-    "channel.configure",
-    "policy.approve",
-    "kill-switch.activate",
-    "kill-switch.deactivate",
-    "audit.view",
-];
+const ALL_PERMISSIONS: SignalDeskPermission[] = [...SIGNALDESK_ALL_PERMISSIONS];
 
 const ROLE_PERMISSIONS: Record<SignalDeskRole, SignalDeskPermission[]> = {
     "founder-admin": ALL_PERMISSIONS,
@@ -48,22 +40,6 @@ const ROLE_PERMISSIONS: Record<SignalDeskRole, SignalDeskPermission[]> = {
     "readonly-analyst": ["signaldesk.view"],
     "system-worker": [],
 };
-
-const VALID_HUMAN_ROLES: readonly SignalDeskRole[] = [
-    "founder-admin",
-    "growth-manager",
-    "operator",
-    "compliance-reviewer",
-    "readonly-analyst",
-];
-
-const isSignalDeskHumanRole = (value: unknown): value is SignalDeskRole => (
-    typeof value === "string" && VALID_HUMAN_ROLES.some((role) => role === value)
-);
-
-const isSignalDeskPermission = (value: unknown): value is SignalDeskPermission => (
-    typeof value === "string" && ALL_PERMISSIONS.some((permission) => permission === value)
-);
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -177,9 +153,10 @@ export async function getSignalDeskAccessContext(session: unknown): Promise<Sign
     const identity = getSignalDeskSessionIdentity(session);
     if (!identity.userId && !identity.email) return null;
 
-    const sessionRecord = asRecord(session);
-    const user = asRecord(sessionRecord.user);
-    const isPlatformAdmin = user.platformRole === "PLATFORM";
+    const currentUser = await getCurrentUser(session);
+    if (!currentUser) return null;
+
+    const isPlatformAdmin = currentUser.userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     if (isPlatformAdmin) {
         return {
             active: true,

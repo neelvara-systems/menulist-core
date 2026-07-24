@@ -18,6 +18,8 @@ It is not an AI-written executive report, an email-delivery system, or proof tha
 - The Answerlattice master scheduler prepares the completed week on Sunday UTC from strict daily chat-analytics summaries.
 - A user with `canManageSupport` may run the bounded `Prepare latest week` compatibility route.
 - Comparison metrics remain `Not available` until both the current and previous seven-day windows contain seven admitted source days.
+- Even with complete windows, a missing conversation or feedback denominator remains `Not available`; feedback-share movement is expressed in percentage points.
+- Scheduled and manual preparation share one schema-v2 exact deterministic payload and cannot reintroduce legacy satisfaction fields.
 - Missing, invalid, future-dated, stale, and partial summaries are visible failure states.
 - Recommendations open only routes the current user is allowed to use.
 - Export repeats the same completeness boundary shown on screen.

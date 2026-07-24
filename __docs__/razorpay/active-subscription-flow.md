@@ -74,6 +74,8 @@
 
 **Two separate entry points load `activeSubscription`:**
 
+Both entry points are scope-transition safe. The shared provider owns a load by exact tenant+store and clears the previous subscription before a different scope can render; superseded responses are ignored. Desktop, mobile and Answerlattice Billing independently sequence-fence subscription and history reads, so a delayed outlet or workspace response cannot overwrite the currently selected scope. Mobile also captures the scope around payment/lifecycle callbacks and clears old billing state before switching stores. Session-provider state is reset when the exact product+user+tenant+store identity changes.
+
 | Surface                            | Where Loaded            | How                                                                                |
 | ---------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
 | **Main App** (dashboard)           | `SessionProvider`       | `getActiveSubscriptionForStore(tId, sId)` on session init → stored in context      |
@@ -330,9 +332,12 @@ Cancel, pause, resume, and upgrade browser calls require the existing route resp
 Recurring actions are additionally constrained by owner context:
 
 - The signed-in session store must be the directly billed subscription store. A desktop/mobile store switcher may display another store's state, but that switched view is read-only for recurring-provider mutations.
-- An inherited outlet hides recurring controls. It may purchase an enhancement pack into the shared HQ balance when the owner is signed in to that outlet. The pending top-up retains the requesting outlet scope, while the paid transaction audit uses the resolved HQ `billingStoreId`, matching the effective billing-history store shown on desktop and mobile.
+- An inherited outlet hides recurring controls. It may purchase an enhancement pack into the shared HQ balance when the owner is signed in to that outlet. The create-once pending top-up retains exact duplicate aliases for the requesting outlet and freezes the exact projected HQ `billingStoreId`; browser/webhook settlement must match that billing store to the transaction-current subscription before any credit write. The paid transaction audit therefore uses the effective billing-history store shown on desktop and mobile.
 - Manual reseller/prepaid rows (`manual_...`) hide Razorpay controls and are rejected by cancel, pause, resume, and replacement APIs before any provider call.
 - Missing or transient session scope shows no actionable recurring controls and fails closed server-side.
+- An explicit sister-product session never projects to MenuList billing authority. The shared server scope resolver, browser payment hook, and authenticated website pricing wrapper all require one exact MenuList product+user+tenant+store session key.
+- Website pricing tags subscription and tenant-name state to the current key, ignores superseded reads, and blocks purchase/management actions behind a neutral loading or retry state until current account truth is confirmed.
+- Anonymous-to-authenticated onboarding continuation uses a tab-scoped, versioned, two-hour purchase-intent envelope. Runtime validation rebuilds the selected plan from the canonical catalog and rejects stale, oversized, malformed, future or legacy raw browser state before account or provider work.
 
 **After every action:** `refetchActiveSubscription()` is called to reload from Firestore.
 
@@ -489,7 +494,8 @@ User triggers AI operation (e.g., image generation)
 
 | File                                                | Role                                                                                                              |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `src/database/subscriptions/index.ts`               | `getActiveSubscriptionForStore()`, `createInitialSubscription()`, `updateSubscription()`, `getSubscriptionById()` |
+| `src/database/subscriptions/index.ts`               | Read-only browser `getActiveSubscriptionForStore()` with exact dual-ML queries and outlet fallback |
+| `src/database/subscriptions/server.ts`              | Server-only create/update/direct-get/current-subscription operations with exact dual-ML admission |
 | `src/database/subscriptions/paymentTransactions.ts` | Read-only `getBillingHistoryForStore()`; server writes use `writeProductPaymentTransactionAudit()`              |
 
 ### Types
@@ -706,7 +712,7 @@ completed → (terminal)
 
 > **Route removal note (Jul 2026):** The deprecated Vercel fallback route at `/api/internal/reconcile-subscriptions` has been removed. The active Firebase Functions reconciler is the only supported reconciliation path and uses bounded diagnostics with subscription/provider IDs as presence-length metadata.
 
-The same scheduler owns `subscription_access_expiry` every 60 minutes. It queries at most five pages of 100 cancelled/paused rows whose `cycleEndDate` is due, transactionally rechecks scope/status/date, transitions valid rows to `expired`, and synchronizes the store and platform plan mirrors. A failed mirror sync leaves `billingEntitlementSyncPending: true`; the existing bounded pending-entitlement retry scan repairs it later. The query is backed by the `subscriptions(status ASC, cycleEndDate ASC)` composite index.
+The same scheduler owns `subscription_access_expiry` every 60 minutes. It queries at most five pages of 100 exact-dual-`ML` cancelled/paused rows whose `cycleEndDate` is due, transactionally rechecks product/scope/status/date, transitions valid rows to `expired`, and synchronizes the store and platform plan mirrors. A failed mirror sync leaves `billingEntitlementSyncPending: true`; the existing bounded product-scoped retry scan repairs it later. The query is backed by the `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)` composite index.
 
 Safety net for webhook failures. Queries all `active`/`past_due`/`paused` subscriptions from Firestore (Admin SDK), fetches each from Razorpay API, and syncs mismatches:
 

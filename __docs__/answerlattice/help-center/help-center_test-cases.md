@@ -26,6 +26,7 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | FAQ | Management flag is off | Maintained static MenuList FAQ copy is shown intentionally |
 | FAQ | Managed FAQ request fails | Failure is visible; Knowledge Base and ticket recovery actions remain |
 | Cache | Workspace A cache exists and workspace B becomes active | A data is ignored; B performs its authoritative read/listener |
+| Public content | Category/article/FAQ/changelog request starts in workspace A and session changes to B | Route rejects an A expectation under B before content reads, or the client rejects a non-A acknowledgement; no A/B response enters the wrong cache/UI |
 | Cache | Platform ticket cache exists and customer Help Center opens | Platform data is ignored because the audience key differs |
 | Cache | Two workspaces request categories/changelog concurrently | Each request uses its own in-flight promise and result |
 | Draft | User starts an unsent text question | Strict workspace/user-scoped envelope is stored, max 2,000 characters |

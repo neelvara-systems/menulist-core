@@ -1,8 +1,15 @@
 const MAX_PUBLIC_CITATIONS = 8;
 const MAX_TITLE_LENGTH = 240;
 const MAX_URL_LENGTH = 500;
-const SENSITIVE_QUERY_KEY_PATTERN = /(?:^|[_-])(auth|code|credential|key|secret|signature|token)(?:$|[_-])/i;
+const SENSITIVE_QUERY_KEY_SEGMENT_PATTERN = /(?:^|[_-])(auth|code|credential|key|secret|signature|sig|token)(?:$|[_-])/i;
+const SENSITIVE_QUERY_KEY_COMPACT_PATTERN = /^(?:(?:access|api|auth|client|private|refresh|session|signed)(?:code|credential|credentials|key|secret|signature|sig|token)|code|credential|credentials|key|secret|signature|sig|token)$/i;
 const IPV4_PATTERN = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+const isSensitiveQueryKey = (value: string): boolean => {
+    const segmented = value.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+    return SENSITIVE_QUERY_KEY_SEGMENT_PATTERN.test(segmented)
+        || SENSITIVE_QUERY_KEY_COMPACT_PATTERN.test(segmented.replace(/[^a-z0-9]/gi, ''));
+};
 
 const isBlockedHost = (hostname: string): boolean => {
     const normalized = hostname.toLowerCase().replace(/^\[(.*)\]$/, '$1');
@@ -70,7 +77,7 @@ const normalizeUrl = (value: unknown): string | null => {
             || parsed.username
             || parsed.password
             || isBlockedHost(parsed.hostname)
-            || Array.from(parsed.searchParams.keys()).some(key => SENSITIVE_QUERY_KEY_PATTERN.test(key))
+            || Array.from(parsed.searchParams.keys()).some(isSensitiveQueryKey)
         ) return null;
         return parsed.toString();
     } catch {

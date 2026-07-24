@@ -2,7 +2,7 @@
 
 **Status:** Implemented runtime contract; local emulator verified
 **Created:** June 23, 2026
-**Runtime reconciled:** July 15, 2026
+**Runtime reconciled:** July 22, 2026
 
 ## Runtime Modules
 
@@ -17,7 +17,7 @@ src/constants/signaldesk/integrations.ts
 ## Data Flow
 
 ```txt
-approved action
+current interested conversation or current exported/sent approval plus draft
   -> create actor-bound, idempotent scoped route token
   -> transaction verifies active retained target truth, source-policy/run lineage, current evidence, and owner-qualified conversation
   -> prospect uses MenuList-controlled route
@@ -45,7 +45,7 @@ Route tokens are:
 
 Only the one-time raw token is returned to the authorized caller. It is deterministically reproducible only from the server-held bridge secret plus the actor-bound operation key and validated authority fingerprint. Firestore stores its SHA-256 hash, versioned scope `menulist-activation-outcomes-v1`, source action, target, channel, source-policy/run lineage, owner-qualified timestamp, expiry, status, and revocation metadata. The configure-only `revoke-route-token` action is transactionally audited and idempotent.
 
-Token admission is also transactional. The bridge pause, target suppression and lifecycle, target source-policy/run lineage, source-policy status/retention/use authority, latest current evidence, and owner-qualified `interested` conversation state are read inside the same transaction that creates the route token, its immutable idempotency claim, audit event, and cost entry. Firestore retries that decision when any authority document changes, so stale pre-read eligibility cannot create an active token. An exact claim replay is checked first and returns the original token even if the target later enters retention cleanup or the route is revoked; a changed intent under the same actor/key fails closed.
+Token admission is also transactional. The bridge pause, target suppression and lifecycle, target source-policy/run lineage, source-policy status/retention/use authority, latest current evidence, and owner-qualified `interested` conversation state are read inside the same transaction that creates the route token, its immutable idempotency claim, audit event, and cost entry. When `actionId` is omitted, that exact conversation is the canonical source action. When `actionId` names the target's current approval, the transaction also requires a current exported/sent approval and matching current exported/sent draft for the same target and channel; CTA/template metadata is taken from that draft and caller mismatches fail closed. Arbitrary action, CTA, or template labels cannot become attribution authority. Firestore retries the decision when authority changes. An exact claim replay is checked first and returns the original token even if the target later enters retention cleanup or the route is revoked; changed intent under the same actor/key fails closed.
 
 ## Outcome Authority Contract
 
@@ -58,6 +58,7 @@ Token admission is also transactional. The bridge pause, target suppression and 
 - The summary UTC day and immutable event timestamp derive from the same transaction-attempt millisecond, including requests that begin at midnight rollover.
 - Each summary stores `latestOutcomeEventId`; every read validates and couples that event before projecting the public summary DTO. The linkage field itself is not exposed to clients.
 - Revenue qualification and activation-watch refresh read current target, policy, account/opportunity, and strict summary/event authority inside their settlement transaction. Their bounded four-page fill-through prevents malformed legacy rows at the head of a query from hiding older valid activation truth.
+- Dashboard activation-opportunity presentation also accepts the strict server-authored target projection (`latestVerifiedActivationAt`, evidence, integrity status, and at least two distinct surfaces) when an older activation is outside the bounded global workspace window. This fallback changes presentation only; targeted Revenue qualification/watch settlement continues to require coupled summary/event authority.
 - Exact accepted replays are resolved from the immutable claim and event before current lifecycle or route revocation checks. New events always use current authority.
 - A retention-completed route remains a strict revoked tombstone only when all scheduler lifecycle fields form the exact completed tuple. Its hash/claim can still prove an already accepted replay, while it cannot admit a new event.
 - Retained conversation summaries likewise accept only the exact completed lifecycle tuple plus a legal-review marker. Scheduler `conversation-record` and later post-retention rights/inbound reasons remain parseable, while lifecycle tokens and legal-review reasons are omitted from client DTOs.
@@ -79,6 +80,16 @@ SignalDesk cannot:
 - change billing,
 - write customer-facing public output.
 
+## Manual Handoff Before Producer Activation
+
+Today copies the existing founder-pilot URL:
+
+```txt
+/create-menu?utm_source=founder_pilot&utm_medium=manual_handoff&utm_campaign=bengaluru_pilot_2026
+```
+
+This browser-only action is not a substitute for the route-token bridge. It includes no per-target identifier, performs no SignalDesk action, does not mark contact or activation complete, and does not write MenuList truth. The signed route-token flow remains unavailable for production until the bridge secret and MenuList-owned emitter are deployed and certified.
+
 ## Failure Handling
 
 | Failure | Handling |
@@ -93,7 +104,8 @@ SignalDesk cannot:
 | Demand outcome names an absent or cross-target source event | Reject before outcome persistence. |
 | Persisted route/event/summary/claim/touch authority is malformed | Fail closed with a bounded retryable server response; do not expose internal shape details. |
 | Malformed recent summaries precede valid activation evidence | Skip malformed rows with bounded diagnostics and fill through at most four pages inside the revenue transaction. |
+| Global workspace window contains newer outcomes from other targets | Use the strict durable target activation projection for dashboard state; do not reopen or visually downgrade an already verified activation. |
 | Retention completes for a route or conversation | Preserve exact strict tombstone authority for audit/replay or post-retention inbound review; reject partial, malformed, or non-system lifecycle metadata. |
 | Unknown target | Reject before outcome writes. |
 | Firestore or rate-limit infrastructure unavailable | Return retryable 503 with `Retry-After`; do not acknowledge success. |
-| Suppressed target converts | Record outcome, but do not allow further outreach without admin review. |
+| Suppressed target produces an authentic outcome | Record the outcome without clearing suppression; new route issuance and further outreach remain blocked. |

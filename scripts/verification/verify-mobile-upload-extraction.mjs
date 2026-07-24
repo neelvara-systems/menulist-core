@@ -576,8 +576,8 @@ async function main() {
           return originalMatchMedia(query);
         };
         ${adminCreatedProjectId ? `
-        localStorage.setItem('mobileSelectedProjectId:${storeId}', ${JSON.stringify(adminCreatedProjectId)});
-        localStorage.setItem('mobileSelectedProjectId', ${JSON.stringify(adminCreatedProjectId)});
+        localStorage.setItem('mobileSelectedProjectId:${tenantId}:${storeId}', ${JSON.stringify(adminCreatedProjectId)});
+        sessionStorage.setItem('menulist_dashboard_project_id', ${JSON.stringify(adminCreatedProjectId)});
         ` : ''}
       `,
     }, sessionId);
@@ -596,7 +596,7 @@ async function main() {
       const initialDebug = await evaluate(client, sessionId, `(() => ({
         url: location.href,
         text: document.body?.innerText?.slice(0, 1800) || '',
-        selected: localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || '',
+        selected: localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id') || '',
       }))()`);
       throw new Error(`${error.message}. Initial debug: ${JSON.stringify(initialDebug)}`);
     }
@@ -663,7 +663,7 @@ async function main() {
       })()
     `, 20000);
     const previousProjectId = projectId || await evaluate(client, sessionId, `
-      localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || ''
+      localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id') || ''
     `);
     const focusedNameInput = projectId ? true : await evaluate(client, sessionId, `
       (() => {
@@ -717,14 +717,14 @@ async function main() {
     if (!projectId) try {
       await waitForExpression(client, sessionId, `
         (
-          (localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || '') !== ${JSON.stringify(previousProjectId)}
+          (localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id') || '') !== ${JSON.stringify(previousProjectId)}
         ) &&
         document.body.innerText.includes(${JSON.stringify(projectName)})
       `, 45000);
     } catch (error) {
       await captureScreenshot(client, sessionId, path.join(outputDir, 'mobile-upload-create-project-failed.png'));
       const createDebug = await evaluate(client, sessionId, `(() => ({
-        selected: localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || '',
+        selected: localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id') || '',
         text: document.body.innerText.slice(0, 1800),
         inputs: Array.from(document.querySelectorAll('input')).map((input, index) => ({
           index,
@@ -743,7 +743,7 @@ async function main() {
     await delay(2000);
 
     projectId = projectId || await evaluate(client, sessionId, `
-      localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || ''
+      localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id') || ''
     `);
     if (!projectId) throw new Error('Mobile project creation did not set a selected project id.');
     await captureScreenshot(client, sessionId, screenshots.created);
@@ -857,7 +857,7 @@ async function main() {
       const text = document.body.innerText;
       return {
         url: location.href,
-        selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId'),
+        selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id'),
         hasProcessingSheet: text.includes('Processing your menu'),
         hasQueuedText: text.includes('Queued'),
         hasSuccess: text.includes('Menu updated') || text.includes('View Updated Menu'),
@@ -877,7 +877,7 @@ async function main() {
       const text = document.body.innerText;
       return {
         url: location.href,
-        selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId'),
+        selectedProjectId: localStorage.getItem('mobileSelectedProjectId:${tenantId}:${storeId}') || sessionStorage.getItem('menulist_dashboard_project_id'),
         hasProcessingSheet: text.includes('Processing your menu'),
         hasQueuedText: text.includes('Queued'),
         hasSuccess: text.includes('Menu updated') || text.includes('View Updated Menu'),

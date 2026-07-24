@@ -1,40 +1,41 @@
 # SignalDesk Email Rail - Test Cases
 
-**Status:** Initial test matrix
-**Created:** June 23, 2026
+**Status:** Current regression matrix
+**Last Updated:** July 21, 2026
 
-## Send / Export Tests
+## Focused Gate
 
-| Test | Expected |
+```bash
+npm run test:signaldesk:email-rail-boundary
+```
+
+## Required Cases
+
+| Area | Expected |
 | --- | --- |
-| Export without approved draft | Blocked. |
-| Export suppressed contact | Blocked. |
-| Provider send without sender domain ready | Blocked. |
-| Provider send without unsubscribe | Blocked. |
-| Provider send exceeds daily cap | Blocked or queued. |
-| Draft changed after approval | Approval expired, send blocked. |
+| Cross-channel approval/draft | Export, sequencer, and direct email send fail before provider work. |
+| Current recipient revoked/replaced | Export, handoff, queue, and send fail; historical replay remains redacted. |
+| Sender changed after approval | New action fails with stale sender authority. |
+| CTA changed after approval | New action fails; completed historical replay reports current authority false. |
+| Concurrent export/handoff/queue/send | One deterministic effect; no duplicate provider call. |
+| Blocked handoff unchanged | Redacted/idempotent replay with no repeated audit or cost. |
+| Provider readiness changes | Same blocked handoff re-evaluates and queues in place. |
+| Provider success then persistence ambiguity | Claim becomes unresolved; retry does not call provider again. |
+| SMTP config | From-domain, Reply-To, port, TLS mode, physical address, unsubscribe URL, timeout, envelope, and acknowledgement validation fail closed. |
+| Shared provider/budget cap | Concurrent direct and sequence sends cannot exceed the same owned-email sender authority. |
+| Terminal-history pressure | Approved actions and queued/ready handoffs/steps remain visible in Channels. |
+| Permissions/mobile | Export, send, sender config, and all mobile mutations are disabled unless explicitly authorized. |
+| Webhook | Invalid signature is rejected; unsubscribe/bounce/complaint creates required suppression/incident/pause effects exactly once. |
+| Firestore | Clients can read only with SD platform authority and cannot write any Email Rail collection. |
 
-## Webhook Tests
+## Adjacent Gates
 
-| Test | Expected |
-| --- | --- |
-| Hard bounce received | Contact suppressed or held. |
-| Complaint received | Contact suppressed and incident/review created. |
-| Unsubscribe received | Suppression event created. |
-| Webhook signature invalid | Event rejected. |
-
-## Cost Tests
-
-| Test | Expected |
-| --- | --- |
-| Dashboard reads raw email events | Fails. |
-| Provider payload stored raw in Firestore | Fails. |
-| Daily summary updates | Dashboard reads summaries. |
-
-## Mobile Tests
-
-| Test | Expected |
-| --- | --- |
-| Mobile sends email | Not available. |
-| Mobile exports email | Not available. |
-| Mobile pauses email channel | Allowed with audit. |
+- `npm run verify:signaldesk`
+- `npm run test:signaldesk:outbound-contact-contracts`
+- `npm run test:signaldesk:workspace-contracts`
+- `npm run test:signaldesk:workspace-client-contracts`
+- `npm run test:signaldesk:action-client-contracts`
+- `npm run test:signaldesk:access-boundary`
+- `npm run test:signaldesk:source-data-lifecycle`
+- `npm run verify:dependency-freeze`
+- `npm run typecheck`

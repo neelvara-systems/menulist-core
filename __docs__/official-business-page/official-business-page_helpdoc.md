@@ -190,7 +190,7 @@ When someone opens your link, they see:
 - **Special note** if you add one
 - **Full weekly hours**, **cuisine types**, separate **payment options**, **dietary options**, and amenities
 - Links to your **Instagram**, **Facebook**, or **Website** (if added)
-- **"Info verified"** freshness signal
+- **"Updated today"** or an exact **"Updated [date]"** signal showing when the MenuList business record changed. This does not claim that every field was separately verified on that date.
 - **"Official Page · Powered by MenuList"** footer
 
 ---

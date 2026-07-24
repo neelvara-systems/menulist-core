@@ -21,7 +21,9 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
 import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
 import { invalidateOwnerBusinessAssistantContextPackets } from '../ownerBusinessAssistant/contextPacketCacheInvalidation';
+import { getExactMenuListSubscriptionScope } from './subscriptionScope';
 
+const MENULIST_PRODUCT_ID = 'ML' as const;
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,8 +187,9 @@ export async function syncStorePlanEntitlement(
     source: string,
 ): Promise<boolean> {
     const subscriptionId = normalizeSubscriptionDocumentId(sub.id);
-    const expectedTenantScope = normalizeScopeDocumentId(sub.tenantId ?? sub.tId);
-    const expectedStoreScope = normalizeScopeDocumentId(sub.storeId ?? sub.sId);
+    const expectedScope = getExactMenuListSubscriptionScope(sub);
+    const expectedTenantScope = normalizeScopeDocumentId(expectedScope?.tenantId);
+    const expectedStoreScope = normalizeScopeDocumentId(expectedScope?.storeId);
     if (
         !subscriptionId
         || !expectedTenantScope
@@ -196,9 +199,13 @@ export async function syncStorePlanEntitlement(
     const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const subscriptionRef = subscriptionsRef.doc(subscriptionId);
     const entitledSubscriptionsQuery = subscriptionsRef
+        .where('pId', '==', MENULIST_PRODUCT_ID)
+        .where('productId', '==', MENULIST_PRODUCT_ID)
         .where('status', 'in', [...PLAN_ENTITLED_SUBSCRIPTION_STATUSES])
         .where('storeId', '==', expectedStoreScope.numericId)
         .where('tenantId', '==', expectedTenantScope.numericId)
+        .where('sId', '==', expectedStoreScope.numericId)
+        .where('tId', '==', expectedTenantScope.numericId)
         .where('cycleEndDate', '>=', Timestamp.now())
         .orderBy('cycleEndDate', 'desc')
         .limit(10);
@@ -213,8 +220,9 @@ export async function syncStorePlanEntitlement(
             ...(subscriptionSnapshot.data() || {}),
             id: subscriptionSnapshot.id,
         } as Record<string, any>;
-        const currentTenantScope = normalizeScopeDocumentId(current.tenantId ?? current.tId);
-        const currentStoreScope = normalizeScopeDocumentId(current.storeId ?? current.sId);
+        const currentScope = getExactMenuListSubscriptionScope(current);
+        const currentTenantScope = normalizeScopeDocumentId(currentScope?.tenantId);
+        const currentStoreScope = normalizeScopeDocumentId(currentScope?.storeId);
         if (
             !currentTenantScope
             || !currentStoreScope
@@ -227,13 +235,15 @@ export async function syncStorePlanEntitlement(
                 ...(entitledSnapshot.data() || {}),
                 id: entitledSnapshot.id,
             } as Record<string, any>))
-            .filter((candidate) => (
-                hasCurrentSubscriptionPlanEntitlement(candidate)
-                && normalizeScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
-                    === expectedTenantScope.numericId
-                && normalizeScopeDocumentId(candidate.storeId ?? candidate.sId)?.numericId
-                    === expectedStoreScope.numericId
-            ))
+            .filter((candidate) => {
+                const candidateScope = getExactMenuListSubscriptionScope(candidate);
+                return Boolean(
+                    candidateScope
+                    && hasCurrentSubscriptionPlanEntitlement(candidate)
+                    && candidateScope.tenantId === expectedTenantScope.numericId
+                    && candidateScope.storeId === expectedStoreScope.numericId
+                );
+            })
             .sort((left, right) => (
                 getPlanEntitlementStatusPriority(right.status) - getPlanEntitlementStatusPriority(left.status)
                 || toTimestampMillis(right.cycleEndDate) - toTimestampMillis(left.cycleEndDate)
@@ -349,8 +359,8 @@ function getRazorpayManagedSubscriptionId(sub: Record<string, any>): string | nu
 }
 
 function getProviderEpochMillis(value: unknown): number | null {
-    const seconds = Number(value);
-    if (!Number.isSafeInteger(seconds) || seconds <= 0) return null;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) return null;
+    const seconds = value;
     const millis = seconds * 1000;
     return Number.isSafeInteger(millis) ? millis : null;
 }
@@ -364,14 +374,17 @@ function getProviderBillingPeriod(value: unknown): number | null {
 }
 
 function getNonNegativeSafeInteger(value: unknown): number | null {
-    const numericValue = Number(value);
-    return Number.isSafeInteger(numericValue) && numericValue >= 0 ? numericValue : null;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+        ? value
+        : null;
 }
 
 function getProviderSubscriptionQuantity(value: unknown): number | null {
-    const quantity = Number(value);
-    return Number.isSafeInteger(quantity) && quantity > 0 && quantity <= 10_000
-        ? quantity
+    return typeof value === 'number'
+        && Number.isSafeInteger(value)
+        && value > 0
+        && value <= 10_000
+        ? value
         : null;
 }
 
@@ -436,6 +449,8 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
 
     while (true) {
         let pageQuery = subscriptionsRef
+            .where('pId', '==', MENULIST_PRODUCT_ID)
+            .where('productId', '==', MENULIST_PRODUCT_ID)
             .where('status', 'in', ['active', 'past_due', 'paused'])
             .orderBy(FieldPath.documentId())
             .limit(pageSize);
@@ -460,11 +475,22 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
 
                 try {
                     if (!RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(docSnap.id)) return;
+                    if (!getExactMenuListSubscriptionScope(sub)) return;
                     providerSubId = getRazorpayManagedSubscriptionId(sub);
                     if (!providerSubId || providerSubId !== docSnap.id) return;
 
                 const razorpay = getRazorpayClient();
                 const rzpSub = await razorpay.subscriptions.fetch(providerSubId);
+                const hasInvalidProviderScalar = [
+                    [rzpSub.current_start, getProviderEpochMillis],
+                    [rzpSub.current_end, getProviderEpochMillis],
+                    [rzpSub.charge_at, getProviderEpochMillis],
+                    [rzpSub.paid_count, getNonNegativeSafeInteger],
+                    [rzpSub.quantity, getProviderSubscriptionQuantity],
+                ].some(([value, projector]) => value != null && projector(value) === null);
+                if (hasInvalidProviderScalar) {
+                    throw new Error('Razorpay subscription scalar is invalid.');
+                }
                 const application = await db.runTransaction(async (transaction) => {
                     const currentSnapshot = await transaction.get(docSnap.ref);
                     if (!currentSnapshot.exists) return null;
@@ -472,7 +498,10 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         ...(currentSnapshot.data() || {}),
                         id: currentSnapshot.id,
                     } as Record<string, any>;
-                    if (getRazorpayManagedSubscriptionId(current) !== providerSubId) return null;
+                    if (
+                        !getExactMenuListSubscriptionScope(current)
+                        || getRazorpayManagedSubscriptionId(current) !== providerSubId
+                    ) return null;
 
                     const updates: Record<string, any> = {};
                     const changes: Array<{ field: string; local: string; remote: string }> = [];
@@ -505,14 +534,14 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                     if (
                         rzpCycleStart !== null
                         && rzpCycleEnd !== null
-                        && rzpCycleEnd >= rzpCycleStart
+                        && rzpCycleEnd > rzpCycleStart
                         && rzpCycleStart > localCycleStart
                     ) {
                         updates.cycleStartDate = Timestamp.fromMillis(rzpCycleStart);
                         updates.cycleEndDate = Timestamp.fromMillis(rzpCycleEnd);
                         const billingPeriod = getProviderBillingPeriod(rzpSub.current_start);
                         const finalStatus = (updates.status || current.status) as PaymentStatus;
-                        if (billingPeriod !== null && finalStatus === 'active' && Number(current.creditsLastResetMonth) !== billingPeriod) {
+                        if (billingPeriod !== null && finalStatus === 'active' && current.creditsLastResetMonth !== billingPeriod) {
                             const allowance = getNonNegativeSafeInteger(current.monthlyCreditsAllowance);
                             if (allowance === null) throw new Error('Subscription monthly credit allowance is invalid.');
                             updates.monthlyCredits = allowance;

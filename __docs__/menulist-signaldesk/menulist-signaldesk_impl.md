@@ -2,7 +2,7 @@
 
 **Status:** First-build internal workflow, investment controls, governed source/research/content/partner rails, solo-founder Operating Layer, and bounded Revenue Operating Layer implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, calendar/proposal/payment providers, and deploy remain skipped or blocked
 **Created:** June 23, 2026
-**Last Updated:** July 11, 2026
+**Last Updated:** July 22, 2026
 **Runtime:** Product-isolated app shell, guarded APIs, first-build workflow service, provider/budget/model controls, governed source/research/content/partner rails, Revenue Operating Layer, run timelines, Firebase config/rules/indexes/storage rules, and functions skeleton created.
 **Implementation posture:** Product-isolated internal module inside this monorepo first; extraction-ready boundaries.
 
@@ -114,7 +114,7 @@ The parent and child records reuse `signaldeskAiWorkerRuns`:
 
 Default active routes use `gemini-2.5-flash-lite` for `score`, `evidence`, `draft`, `reply-classification`, and `quality-critic`, with `gemini-2.5-flash` escalation on the four business tasks. Exact legacy score/evidence defaults migrate once; later founder-modified routes are not overwritten by reseeding.
 
-Default convergence is create-only for valid current rows. One foundation transaction reads the current preview CTA plus 53 unique business defaults, creates only missing rows, and emits the seed audit, timeline, and daily-cost increment only when at least one business row is created or an exact legacy row is migrated. The provider registry contains 18 account/use records and 17 provider-scoped budgets because `owned-email` has separate disabled sender and approved internal-sequencer accounts under one conservative provider budget. Existing spend, caps, status, disable reasons, and ownership timestamps are preserved byte-for-byte after strict product/shape validation. Automatic replacement is limited to the exact historical score/evidence route, Mumbai first-pod, and active current-list Offer CTA shapes; any near-match or founder marker prevents migration. The default content source is separately create-only, is not created while distribution is paused, validates existing source provenance, and derives activation only from a strictly projected transaction-current founder-approved pod.
+Default convergence is create-only for valid current rows. One foundation transaction reads 55 documents: the current preview CTA, the current UTC daily-cost row, and 53 unique business defaults. It creates only missing rows and emits the seed audit, timeline, and exact daily-cost update only when at least one business row is created or an exact legacy row is migrated. The provider registry contains 18 account/use records and 17 provider-scoped budgets because `owned-email` has separate disabled sender and approved internal-sequencer accounts under one conservative provider budget. Existing spend, caps, status, disable reasons, and ownership timestamps are preserved byte-for-byte after strict product/shape validation. Automatic replacement is limited to the exact historical score/evidence route, Mumbai first-pod, and active current-list Offer CTA shapes; any near-match or founder marker prevents migration. The default content source is separately create-only, is not created while distribution is paused, validates existing source provenance, and derives activation only from a strictly projected transaction-current founder-approved pod.
 
 The synchronous executor uses three bounded workers. It preflights the aggregate daily/monthly Gemini budget and holds one six-minute global recovery lock so another batch cannot consume the same budget snapshot while the 300-second route has a one-minute shutdown margin. Every child retains its own provider/budget/source-policy checks, provider spend, operation ledger, model eval, decision snapshot, timeline, audit, and daily cost. The parent records only orchestration evidence and stable failure codes.
 
@@ -446,11 +446,11 @@ AI may not:
 
 ### Gated / Skipped Slices
 
-- assisted WhatsApp: implemented as gated handoff/provider-send plumbing
-- Instagram/Messenger inbound routing: implemented as gated webhook/handoff plumbing
+- assisted WhatsApp: channel-window and contact-authority plumbing exists, but current draft/approval creation is email-only; an email approval cannot be reused and no WhatsApp handoff/send is enabled
+- Instagram/Messenger routing: signed inbound webhook plumbing exists; Instagram contact/window plumbing is gated until an exact same-channel draft/approval exists, Messenger outbound remains unsupported, and cold DM automation is blocked
 - live source-provider import: implemented for Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker with provider source policy, max-result cap, provider budget, manual redirect handling, bounded provider JSON parsing, parse-failure diagnostics, and no raw provider payload storage
 - real AI provider assist: implemented through the shared Gemini retry gateway with a SignalDesk-only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` pool; no MenuList/Answerlattice credential fallback
-- trust partner rail: implemented for internal testing; real partner outreach/spend still requires active budget policy, founder approval, disclosure review, and manual partner execution
+- trust partner rail: Feature 17 locally source-complete with feature-gated route/read/action admission, least-privilege parallel reads, founder-only activation/spend, actor-bound retry transactions, pause enforcement, attributable live metrics, outcome-derived renewal, and exact cost accounting; real outreach/spend remains manual
 - Meta paid intent: skipped in this session
 - Firebase deploy: skipped in this session
 - experiments, cluster planner, and optimizer: not part of this implementation slice
@@ -512,11 +512,26 @@ The second implementation slice adds the remaining non-paid, non-deploy runtime 
 8. AI worker run, decision snapshot, AI operation ledger, audit, and cost summary writes for AI assist;
 9. signed webhook endpoint for email, WhatsApp, Instagram, Messenger, and Apify providers;
 10. webhook HMAC/shared-secret validation, public rate limiting, normalized event storage, channel/source health updates, and suppression updates where channel events apply;
-11. assisted channel handoff for approved drafts;
+11. assisted channel handoff only when the requested channel exactly matches the approved draft; current seeded draft creation is email-only;
 12. SMTP/Meta provider-send adapter behind the global provider-send flag, channel readiness checks, manual redirect handling for Meta API calls, bounded Meta response parsing, and `signaldesk_meta_response_parse_failed` diagnostics for malformed successful Meta JSON;
 13. phone, WhatsApp, and Instagram contact identity indexing when source policy allows contact use.
 
+## Feature 18 Operating Layer Cross-Check - July 21, 2026
+
+The completed source audit closed the remaining route, read-model, permission, and replay gaps without adding infrastructure:
+
+1. The parent Operating Layer flag now gates both direct pages, the Mission workspace section, every mutation, market-pod recommendation, and Research Agent execution.
+2. Research remains behind its additional child flag; disabled Research, Content, Partner, and Revenue layers contribute no records to Mission/dashboard read models or mission ranking.
+3. Independent Mission reads execute concurrently and remain bounded.
+4. Workspace controls use `target.review`, `signaldesk.configure`, `draft.create`, and `source.configure` instead of one broad edit state.
+5. Reply playbooks, source-quality snapshots, and market pods use strict canonical projectors; unsafe suppression routing and malformed stored state fail closed.
+6. Explicit source-quality policy/run references must exist and agree. Exact retries return stored truth without repeating entity, audit, timeline, or cost effects.
+7. Mobile remains Dashboard-only; no Mission or Opportunities mobile editor is advertised or exposed.
+8. No rule, index, Storage, Function, provider-send, public-output, or MenuList-truth change was required.
+
 ## Implemented Revenue Operating Layer
+
+**July 21 revalidation:** The page, API, and direct loader now enforce the feature flag; current target/source/contact/suppression authority is rechecked before commercial changes; manual wins are blocked; blocked accounts pause and ineligible open opportunities demote; exact successful retries do not repeat writes; founder approval gates approved envelopes; budget-policy detail is role-bounded; and Revenue remains desktop-only under the dashboard-only mobile contract. See [Revenue implementation](./signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_impl.md).
 
 The bounded commercial lifecycle now adds:
 
@@ -606,6 +621,20 @@ Source authority and import lineage now share one runtime contract instead of re
 20. Identity-index, contact-identity, and source-candidate readers accept only their documented persistence fields and return explicit allowlists. Unknown/private fields are stripped, while raw document identity must equal the Firestore path before any trim or normalization.
 
 This correction adds no outbound send, manual-contact settlement, webhook settlement, scheduler, public route, Firebase rule/index change, or MenuList truth write. Existing outcome behavior is unchanged; only the target lifecycle timestamp persistence format was repaired to match its existing Firestore contract.
+
+## July 22 Daily Activation Operator Loop
+
+The current runtime now makes Today the outcome-first daily surface without changing server authority:
+
+1. `dailyActivationDesk.ts` combines the existing ranked Daily Growth Mission with live bounded Dashboard summaries, removes resolved reply/approval and terminal-target work, deduplicates by target, and caps Today at five items.
+2. Direct score/evidence/draft work still uses the existing protected actions. Focus advances only after a durable action succeeds and the workspace refreshes. `Next` changes local focus only.
+3. Market Search is collapsed while current outcome work exists, reducing the incentive to add leads before finishing activations.
+4. The Opportunity Case drawer now shows a read-only target journey across evidence, contact, approval, MenuList setup outcomes, two-surface activation, and proof readiness using already-loaded summaries.
+5. Interested/activation-started cases can copy the existing anonymous founder-pilot MenuList setup URL. This performs no provider send, route-token mint, contact settlement, outcome write, or MenuList truth mutation.
+6. A durable target activation timestamp with evidence reference, approved integrity, and two distinct surfaces can open the existing Content Rail with a target-scoped proof-preparation hint. The browser then selects current permission/source authority and prefills review fields only; every asset/draft/review/schedule/publication action remains explicit.
+7. Today shows a seven-day route-to-activation snapshot derived only from existing outcome summaries. Only evidence-backed verified two-surface outcomes count as activation; its percentage links unique routed targets to those same targets' verified activation outcomes, while stalls require an elapsed durable activation deadline.
+
+The slice adds no collection, API route, server action, provider call, listener, scheduler, rule, index, Storage path, dependency, mobile mutation, or Firebase deploy requirement.
 
 ## Remaining Implementation Gates
 

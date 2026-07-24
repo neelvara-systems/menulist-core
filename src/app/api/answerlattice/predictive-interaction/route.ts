@@ -10,7 +10,6 @@ import {
     isAnswerlatticePredictiveTriggerWithinWindow,
 } from '@lib/answerlattice/predictiveSupportContracts';
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { emitSuggestionSignal } from '@lib/answerlattice/signalEmitter';
 import {
     ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER,
@@ -108,10 +107,10 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
-        const { storeData, storeId } = authResult;
-        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeData.sId ?? storeId);
-        if (tId === null || sId === null || String(sId) !== storeId) {
+        const { answerlatticeScope, storeData, storeId } = authResult;
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
+        if (!tId || !sId || String(sId) !== storeId) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
@@ -146,7 +145,7 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid predictive interaction' }, { status: 400 });
         }
 
-        const triggerIndex = await loadTriggerIndex(tId, sId);
+        const triggerIndex = await loadTriggerIndex(tId, sId, { bypassCache: true });
         const trigger = triggerIndex?.triggers?.[triggerId];
         if (
             !trigger

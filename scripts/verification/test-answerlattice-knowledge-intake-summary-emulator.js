@@ -106,10 +106,9 @@ async function run() {
         modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
     }));
 
-    await assert.rejects(
-        syncKnowledgeIntakeSummary(SCOPE.tId, SCOPE.sId),
-        /invalid identity or status/,
-    );
+    const foreignProductResult = await syncKnowledgeIntakeSummary(SCOPE.tId, SCOPE.sId);
+    assert.equal(foreignProductResult.jobsScanned, 2);
+    assert.equal(foreignProductResult.unchanged, true);
     assert.equal((await summaryRef.get()).data().summaryHash, stableHash);
 
     await jobs.doc('C1234567890123456789').delete();
@@ -117,10 +116,9 @@ async function run() {
         pId: ' al ',
         modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
     }));
-    await assert.rejects(
-        syncKnowledgeIntakeSummary(SCOPE.tId, SCOPE.sId),
-        /invalid identity or status/,
-    );
+    const malformedProductResult = await syncKnowledgeIntakeSummary(SCOPE.tId, SCOPE.sId);
+    assert.equal(malformedProductResult.jobsScanned, 2);
+    assert.equal(malformedProductResult.unchanged, true);
 
     await jobs.doc('D1234567890123456789').delete();
     const missingProductJob = makeJob('E1234567890123456789', {
@@ -128,10 +126,19 @@ async function run() {
     });
     delete missingProductJob.pId;
     await jobs.doc('E1234567890123456789').set(missingProductJob);
+    const missingProductResult = await syncKnowledgeIntakeSummary(SCOPE.tId, SCOPE.sId);
+    assert.equal(missingProductResult.jobsScanned, 2);
+    assert.equal(missingProductResult.unchanged, true);
+
+    await jobs.doc('F1234567890123456789').set(makeJob('F1234567890123456789', {
+        status: 'not-a-valid-status',
+        modifiedOn: Timestamp.fromMillis(1_700_000_200_000),
+    }));
     await assert.rejects(
         syncKnowledgeIntakeSummary(SCOPE.tId, SCOPE.sId),
         /invalid identity or status/,
     );
+    assert.equal((await summaryRef.get()).data().summaryHash, stableHash);
 
     process.stdout.write('Answerlattice Knowledge Intake summary emulator tests passed.\n');
 }

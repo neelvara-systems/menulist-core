@@ -1,11 +1,13 @@
 'use client';
 
 import type { AnswerlatticeAccessContext } from '@lib/answerlattice/accessControl';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 type AnswerlatticeAccessState = {
     access: AnswerlatticeAccessContext | null;
@@ -126,14 +128,29 @@ const readAnswerlatticeAccessResponse = async (response: Response): Promise<Answ
 };
 
 export function AnswerlatticeAccessProvider({ children }: { children: React.ReactNode }) {
-    const { status } = useSession();
+    const { data: session, status } = useSession();
     const pathname = usePathname();
+    const sessionScope = resolveAnswerlatticeSessionScope(session);
+    const sessionAccessIdentity = [
+        session?.user?.id || '',
+        sessionScope?.tenantId || '',
+        sessionScope?.storeId || '',
+        sessionScope?.role || '',
+        session?.expires || '',
+    ].join(':');
+    const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!requestGuardRef.current) {
+        requestGuardRef.current = createLatestRequestGuard();
+    }
     const [access, setAccess] = useState<AnswerlatticeAccessContext | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const loadAccess = useCallback(async () => {
+        const requestGuard = requestGuardRef.current;
+        if (!requestGuard) return;
+        const requestId = requestGuard.begin();
         if (status === 'loading') {
             setLoading(true);
             return;
@@ -154,10 +171,12 @@ export function AnswerlatticeAccessProvider({ children }: { children: React.Reac
                 method: 'GET',
             });
             const data = await readAnswerlatticeAccessResponse(response);
+            if (!requestGuard.isCurrent(requestId)) return;
             setAccess(data.access);
             setError(null);
             setErrorCode(null);
         } catch (loadError) {
+            if (!requestGuard.isCurrent(requestId)) return;
             const errorCode = isRecord(loadError) && typeof loadError.code === 'string'
                 ? loadError.code
                 : null;
@@ -165,12 +184,18 @@ export function AnswerlatticeAccessProvider({ children }: { children: React.Reac
             setError(ANSWERLATTICE_ACCESS_LOAD_FAILED);
             setErrorCode(errorCode);
         } finally {
-            setLoading(false);
+            if (requestGuard.isCurrent(requestId)) {
+                setLoading(false);
+            }
         }
-    }, [status]);
+    }, [sessionAccessIdentity, status]);
 
     useEffect(() => {
-        loadAccess();
+        void loadAccess();
+        const requestGuard = requestGuardRef.current;
+        return () => {
+            requestGuard?.invalidate();
+        };
     }, [loadAccess, pathname]);
 
     const value = useMemo<AnswerlatticeAccessState>(() => ({

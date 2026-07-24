@@ -1,6 +1,7 @@
 import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute } from '@constant/answerlattice/navigations';
 import { PRODUCT_IDS } from '@constant/product';
 import { EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY } from '@lib/answerlattice/activationAnswerTestSummary';
+import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import { normalizeWidgetAllowedOrigins } from '@lib/answerlattice/widgetConfig';
 import { buildAnswerlatticeWidgetKeySummaries, normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRuntimeStatus';
@@ -49,9 +50,8 @@ const normalizeBoundedString = (value: unknown, maxLength: number): string | nul
 };
 
 const normalizeNonNegativeSafeInteger = (value: unknown, max = 1_000_000): number => {
-    const normalized = Number(value);
-    return Number.isSafeInteger(normalized) && normalized >= 0 && normalized <= max
-        ? normalized
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max
+        ? value
         : 0;
 };
 
@@ -131,18 +131,27 @@ const buildLaunchProof = (items: AnswerlatticeLaunchProofItem[]): AnswerlatticeL
     };
 };
 
-const normalizeSubscription = (value: Record<string, any> | null | undefined): AnswerlatticeActivationSubscriptionSummary | null => {
-    if (!value || typeof value !== 'object') return null;
-    const subscriptionEndMillis = getTimestampMillis(value.subscriptionEndDate || value.cycleEndDate);
-    const amount = Number(value.amount);
+const normalizeSubscription = (
+    value: unknown,
+    scope: { tId: number; sId: number },
+): AnswerlatticeActivationSubscriptionSummary | null => {
+    if (!isAnswerlatticeSubscriptionInScope(value, scope)) return null;
+    const record = value as Record<string, unknown>;
+    const subscriptionEndMillis = getTimestampMillis(record.subscriptionEndDate || record.cycleEndDate);
+    const amount = record.amount;
 
     return {
-        id: normalizeBoundedString(value.id || value.providerSubscriptionId, 200),
-        planId: normalizeBoundedString(value.planId, 80),
-        planName: normalizeBoundedString(value.planName, 120),
-        status: normalizeBoundedString(value.status, 40),
-        currency: normalizeBoundedString(value.currency, 8),
-        amount: Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000_000 ? amount : null,
+        id: normalizeBoundedString(record.id || record.providerSubscriptionId, 200),
+        planId: normalizeBoundedString(record.planId, 80),
+        planName: normalizeBoundedString(record.planName, 120),
+        status: normalizeBoundedString(record.status, 40),
+        currency: normalizeBoundedString(record.currency, 8),
+        amount: typeof amount === 'number'
+            && Number.isSafeInteger(amount)
+            && amount >= 0
+            && amount <= 1_000_000_000
+            ? amount
+            : null,
         isBeta: false,
         subscriptionEndDate: subscriptionEndMillis > 0 ? new Date(subscriptionEndMillis).toISOString() : null,
     };
@@ -256,14 +265,15 @@ export function buildAnswerlatticeActivationSummary(params: {
     const nowMillis = typeof params.nowMillis === 'number' && Number.isFinite(params.nowMillis) && params.nowMillis >= 0
         ? params.nowMillis
         : Date.now();
-    const subscription = normalizeSubscription(storeData.answerlatticeSubscription || params.subscription);
+    const subscription = normalizeSubscription(storeData.answerlatticeSubscription, params)
+        || normalizeSubscription(params.subscription, params);
     const runtimeStatus = normalizeWidgetRuntimeStatusForActivation(storeData);
     const content = params.contextSummary || null;
     const widgetKeyState = normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi);
     const widgetKeySummaries = buildAnswerlatticeWidgetKeySummaries(widgetKeyState);
     const hasWidgetKey = widgetKeySummaries.length > 0;
     const allowedOrigins = normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins);
-    const subscriptionStatus = String(subscription?.status || '').toLowerCase();
+    const subscriptionStatus = subscription?.status || '';
     const licenseStatus: AnswerlatticeActivationStepStatus = subscriptionStatus === 'active'
         ? 'complete'
         : subscriptionStatus === 'pending'

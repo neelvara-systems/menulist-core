@@ -9,6 +9,8 @@
 - Sanitize malformed persisted URL, email, billing model, timezone, and support-day values.
 - Reject malformed browser response revisions and incomplete profile shapes.
 - Reject a persisted profile that cannot produce a complete valid response, including a missing product name.
+- Project malformed persisted name/URL/email/billing/time fields identically in app and Functions bundle runtimes.
+- Never copy an object-valued legacy name, credential/unsafe URL, malformed email, or undeclared store field into compiled public/private product objects.
 
 ## Route
 

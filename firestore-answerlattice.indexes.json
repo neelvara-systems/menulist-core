@@ -71,6 +71,46 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "createdOn", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "queryEmbeddings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationRateLimits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiSearchHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "cacheKey", "order": "ASCENDING" },
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
@@ -84,6 +124,17 @@
         { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "createdOn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiSearchHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "canonical", "order": "ASCENDING" },
         { "fieldPath": "createdOn", "order": "DESCENDING" }
       ]
     },
@@ -260,6 +311,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "tId",
           "order": "ASCENDING"
         },
@@ -380,6 +435,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "tId",
           "order": "ASCENDING"
         },
@@ -468,6 +527,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "tId",
           "order": "ASCENDING"
         },
@@ -482,54 +545,6 @@
       ]
     },
     {
-      "collectionGroup": "answerlattice_frictionDailyStats",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "date",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_mutationProposals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "impactTracked",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "implementedOn",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "answerlattice_signalEvents",
       "queryScope": "COLLECTION",
       "fields": [
@@ -608,45 +623,9 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "tId",
+          "fieldPath": "pId",
           "order": "ASCENDING"
         },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_signalEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_signalEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
         {
           "fieldPath": "tId",
           "order": "ASCENDING"
@@ -661,7 +640,7 @@
         },
         {
           "fieldPath": "timestamp",
-          "order": "ASCENDING"
+          "order": "DESCENDING"
         }
       ]
     },
@@ -670,81 +649,9 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "tId",
+          "fieldPath": "pId",
           "order": "ASCENDING"
         },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entities",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "type",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entities",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "slug",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_canonicalAnswers",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "scope.entityIds",
-          "arrayConfig": "CONTAINS"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_canonicalAnswers",
-      "queryScope": "COLLECTION",
-      "fields": [
         {
           "fieldPath": "tId",
           "order": "ASCENDING"
@@ -756,24 +663,6 @@
         {
           "fieldPath": "governance.driftFlag",
           "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_canonicalAnswers",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "scope.entityIds",
-          "arrayConfig": "CONTAINS"
         }
       ]
     },
@@ -800,231 +689,13 @@
       ]
     },
     {
-      "collectionGroup": "answerlattice_mutationProposals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_mutationProposals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_mutationProposals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "relatedEntityIds",
-          "arrayConfig": "CONTAINS"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_signalEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_signalEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_auditLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityType",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_auditLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_auditLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entityCandidates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "confidence",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entityCandidates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "confidence",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "answerlattice_entitySearchIndex",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "tId",
+          "fieldPath": "pId",
           "order": "ASCENDING"
         },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entitySearchIndex",
-      "queryScope": "COLLECTION",
-      "fields": [
         {
           "fieldPath": "tId",
           "order": "ASCENDING"
@@ -1032,186 +703,6 @@
         {
           "fieldPath": "sId",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "prefixTokens",
-          "arrayConfig": "CONTAINS"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entitySearchIndex",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "entityId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entityRelations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "fromEntityId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_entityRelations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "toEntityId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_integrationEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_integrationEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_integrationDeliveryLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "eventId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_integrationDeliveryLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "adapter",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_notificationLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "recipientEmail",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_predictiveTriggers",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_predictiveTriggers",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
         }
       ]
     },
@@ -1328,146 +819,6 @@
         {
           "fieldPath": "createdOn",
           "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_productSurfaces",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "active",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "priority",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_productSurfaces",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "key",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_faqs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sortOrder",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "modifiedOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_faqs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sortOrder",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "modifiedOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_faqs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "active",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sortOrder",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "modifiedOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_faqs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "articleId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "active",
-          "order": "ASCENDING"
         }
       ]
     },
@@ -1475,6 +826,10 @@
       "collectionGroup": "answerlattice_supportBoardCards",
       "queryScope": "COLLECTION",
       "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "tId",
           "order": "ASCENDING"
@@ -1493,6 +848,10 @@
       "collectionGroup": "answerlattice_supportBoardCards",
       "queryScope": "COLLECTION",
       "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "tId",
           "order": "ASCENDING"
@@ -1512,6 +871,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "tId",
           "order": "ASCENDING"
         },
@@ -1525,134 +888,6 @@
         },
         {
           "fieldPath": "modifiedOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_knowledgeIntakeJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "modifiedOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_knowledgeSources",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "jobId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_knowledgeSources",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "jobId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_intakeReviewItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "jobId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_intakeReviewItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "jobId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "answerlattice_intakeUsageLedger",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
           "order": "DESCENDING"
         }
       ]
@@ -1661,6 +896,14 @@
       "collectionGroup": "subscriptions",
       "queryScope": "COLLECTION",
       "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "status",
           "order": "ASCENDING"
@@ -1674,9 +917,29 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "cycleEndDate",
           "order": "DESCENDING"
         }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "storeId", "order": "ASCENDING" },
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" }
       ]
     },
     {
@@ -1685,6 +948,10 @@
       "fields": [
         {
           "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "productId",
           "order": "ASCENDING"
         },
         {
@@ -1697,6 +964,14 @@
         },
         {
           "fieldPath": "tenantId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
           "order": "ASCENDING"
         },
         {
@@ -1792,8 +1067,903 @@
       "collectionGroup": "ownerNotificationDeliveries",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
         { "fieldPath": "eventId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "slug",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entityRelations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fromEntityId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entityRelations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "toEntityId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entitySearchIndex",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "prefixTokens",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entitySearchIndex",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entityCandidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "confidence",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entityCandidates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "confidence",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_canonicalAnswers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_canonicalAnswers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scope.entityIds",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "impactTracked",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "implementedOn",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "relatedEntityIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_mutationProposals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "relatedEntityIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "mutationType",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_predictiveTriggers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_predictiveTriggers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_auditLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_faqs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sortOrder",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_faqs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sortOrder",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_faqs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sortOrder",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_faqs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "articleId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_productSurfaces",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "priority",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_productSurfaces",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "key",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_knowledgeIntakeJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_knowledgeSources",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "jobId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_knowledgeSources",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "jobId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_intakeReviewItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "jobId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_intakeReviewItems",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "jobId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_intakeUsageLedger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_aiCapacityReservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "recoveryAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "kb_generation_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "modifiedOn",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_notificationLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "recipientEmail",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_notificationLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],

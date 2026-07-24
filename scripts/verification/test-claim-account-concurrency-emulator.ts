@@ -44,7 +44,25 @@ const verifyOneReservationAndAtomicFinalize = async (): Promise<void> => {
     const token = 'claim_account_concurrency_token_0001';
     const userRef = await seedClaimUser('claim-account-concurrent', token);
     const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('claim-subscription');
-    await subscriptionRef.set({ storeId: 96102, tenantId: 96101, userId: 'before' });
+    await subscriptionRef.set({
+        pId: 'ML',
+        productId: 'ML',
+        sId: 96102,
+        storeId: 96102,
+        tId: 96101,
+        tenantId: 96101,
+        userId: 'before',
+    });
+    const conflictingSubscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('claim-subscription-conflicting');
+    await conflictingSubscriptionRef.set({
+        pId: 'ML',
+        productId: 'ML',
+        sId: 96102,
+        storeId: 96102,
+        tId: 99999,
+        tenantId: 96101,
+        userId: 'foreign-before',
+    });
 
     const attempts = [
         { mode: 'email-password' as const, operationId: 'claim-operation-email' },
@@ -84,11 +102,20 @@ const verifyOneReservationAndAtomicFinalize = async (): Promise<void> => {
         },
     });
 
-    const [userSnapshot, subscriptionSnapshot] = await Promise.all([userRef.get(), subscriptionRef.get()]);
+    const [userSnapshot, subscriptionSnapshot, conflictingSubscriptionSnapshot] = await Promise.all([
+        userRef.get(),
+        subscriptionRef.get(),
+        conflictingSubscriptionRef.get(),
+    ]);
     assert.equal(userSnapshot.data()?.claimToken, null);
     assert.equal(userSnapshot.data()?.claimOperation, undefined);
     assert.equal(subscriptionSnapshot.data()?.userId, userRef.id);
     assert.equal(subscriptionSnapshot.data()?.email, 'claimed@example.com');
+    assert.equal(
+        conflictingSubscriptionSnapshot.data()?.userId,
+        'foreign-before',
+        'account claim must not rewrite a subscription with conflicting scope aliases',
+    );
     assert.equal(await canDeleteCreatedClaimAuthUser(firestoreAdmin, userRef, 'claim-auth-uid'), false);
 };
 

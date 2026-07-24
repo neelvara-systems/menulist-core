@@ -109,6 +109,7 @@ const imageBatchRetentionBoundary = read('functions/src/schedulers/imageBatchRet
 const obpMediaReferences = read('src/lib/media/obpMediaReferences.ts');
 const obpPhotoStorage = read('src/database/stores/uploadOBPPhoto.ts');
 const desktopBusinessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+const storesDal = read('src/database/stores/index.tsx');
 const desktopOfficialPage = read('src/components/templates/main-app/projects/b2cView/index.tsx');
 const mobileOfficialPage = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
 const platformAssetDetails = read('src/components/templates/platform/assets/detailsModal.tsx');
@@ -122,6 +123,8 @@ const storageReplacementBoundary = read('src/lib/storage/replacementUploadBounda
 const ticketsDal = read('src/database/tickets/index.ts');
 const ticketAttachmentBoundary = read('src/lib/answerlattice/supportTicketAttachmentBoundary.ts');
 const storageRules = read('storage.rules');
+const databaseConstants = read('src/constants/database.ts');
+const storesManagementImpl = read('__docs__/stores-management/stores-management_impl.md');
 const tracker = read('__docs__/production-readiness/infrastructure-risk-tracker.md');
 const uploadImpl = read('__docs__/projects/upload-file-processing/upload-file-processing_impl.md');
 const extractionSecurityAudit = read('__docs__/projects/ai-data-extraction/security-surface-audit-mar13-2026.md');
@@ -601,6 +604,31 @@ assert(
 ].forEach((token) => {
   assert(changelog.includes(token), `changelog documents browser Storage mutation boundary token ${token}`);
 });
+
+assert(
+  !fs.existsSync(path.join(repoRoot, 'src/database/files/index.tsx')),
+  'Dead root files DAL cannot restore the obsolete tenant-unscoped logo upload path',
+);
+assert(
+  !databaseConstants.includes('FILES: "files"'),
+  'Database constants do not advertise a nonexistent root files collection',
+);
+[
+  "profile: 'businessLogo'",
+  'uploadPreparedMediaImage({',
+].forEach((token) => {
+  assert(storesDal.includes(token), `active store logo writer uses prepared-media token ${token}`);
+});
+[
+  'There is no root\nFirestore `files` collection',
+  'logos use the shared immutable prepared-media profile and store/tenant scope',
+].forEach((token) => {
+  assert(storesManagementImpl.includes(token), `stores implementation documents canonical logo path token ${token}`);
+});
+assert(
+  !storesManagementImpl.includes('path: `stores/logos/${data.storeId}`'),
+  'stores implementation does not document the obsolete logo Storage path',
+);
 
 assert(
   packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:admin-immutable-object-boundary && npm run test:note-attachment-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',

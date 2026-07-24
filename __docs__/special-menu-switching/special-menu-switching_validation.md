@@ -26,6 +26,9 @@
 | FR-14 | Edit scheduled special menu                       | Mobile Special Menus and alternate mobile/desktop project editors route metadata through `updateSpecialMenuProject()` | owner UI paths | ✅ |
 | FR-15 | Manual early deactivation                         | Shared lifecycle DAL + desktop/mobile End Now actions | hook/UI + lifecycle helper | ✅ |
 | FR-16 | Cache/screen invalidation after lifecycle change   | Client cache helper and Functions store revalidation run post-commit; scheduled path also requests initialized-screen touch | cache helpers | ✅ |
+| Tenant/store request ownership | List/detail/SWR reads and mobile action settlement use one captured exact scope; obsolete loads cannot replace current state | hook, DAL, provider, mobile screen | ✅ |
+| Atomic translated public truth | Project translation writes project name/description/display name and summary projection in one transaction | project DAL + mobile screen | ✅ |
+| Owner project selection partition | Browser selection key includes tenant and store; exact-scope reads reject legacy ambiguous keys | selection boundary test | ✅ |
 
 ---
 

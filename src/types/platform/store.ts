@@ -18,6 +18,14 @@ export type TimeSlotPreset = {
     color?: string; // Optional badge color for UI
 };
 
+export type TimeSlotPresetCascadePending = {
+    operationId: string;
+    createdAt: string;
+    mutation:
+        | { type: 'remove'; presetId: string }
+        | { type: 'update'; preset: TimeSlotPreset };
+};
+
 export type StoreTemporaryStatus = {
     type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
     message?: string;
@@ -210,6 +218,7 @@ export type StoreDataType = {
 
     // Time Slot Presets for category time-based visibility
     timeSlotPresets?: TimeSlotPreset[];
+    timeSlotPresetCascadePending?: TimeSlotPresetCascadePending;
 
     // ── URL ROUTING (Feature: URL Routing Architecture) ────────────
     // @see __docs__/url-routing-architecture/README.md ADR-1

@@ -52,6 +52,7 @@ const WIDGET_ESCALATION_FAILED_MESSAGE = 'Could not send this to support. Try ag
 const WIDGET_ESCALATION_EMAIL_MESSAGE = 'Enter a valid email so support can reply.';
 const WIDGET_LINK_OPEN_FAILED_MESSAGE = 'Could not open link. Try again.';
 const GUIDANCE_CONTRACT_VERSION = 'answerlattice.guidance.v1';
+const GUIDANCE_OUTCOME_MAX_ATTEMPTS = 2;
 const GUIDANCE_SEMANTIC_ID_PATTERN = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
 // Presentation vocabulary only. Host execution is deliberately unsupported.
 const GUIDANCE_ACTIONS = new Set([
@@ -502,8 +503,13 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
     if (locale) output.locale = locale;
     const version = sanitizeContextVersion(input.version);
     if (version) output.version = version;
-    if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
-        output.contextVersion = Math.floor(input.contextVersion);
+    if (
+        typeof input.contextVersion === 'number'
+        && Number.isInteger(input.contextVersion)
+        && input.contextVersion >= 1
+        && input.contextVersion <= 10
+    ) {
+        output.contextVersion = input.contextVersion;
     }
     if (Array.isArray(input.entityHints)) {
         output.entityHints = input.entityHints
@@ -644,6 +650,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeRequestRef = useRef(0);
+    const activeSearchControllerRef = useRef<AbortController | null>(null);
     const widgetSessionIdRef = useRef(createTimestampedRuntimeId('w', 8));
     const activeGuidanceRef = useRef<ActiveWidgetGuidance | null>(null);
     const guidanceOutcomeSentRef = useRef<Set<string>>(new Set());
@@ -653,6 +660,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     }, []);
 
     useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+    useEffect(() => () => {
+        activeRequestRef.current += 1;
+        activeSearchControllerRef.current?.abort();
+        activeSearchControllerRef.current = null;
+    }, []);
 
     const setCurrentGuidance = useCallback((guidance: ActiveWidgetGuidance | null) => {
         activeGuidanceRef.current = guidance;
@@ -690,42 +702,59 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         guidanceOutcomeSentRef.current.add(outcomeKey);
 
         const activeStep = guidance.procedure.steps[guidance.stepIndex];
+        const requestBody = JSON.stringify({
+            contractVersion: GUIDANCE_CONTRACT_VERSION,
+            requestId: createTimestampedRuntimeId('guidance', 12),
+            procedureSessionId: guidance.procedureSessionId,
+            searchHistoryId: guidance.searchHistoryId,
+            procedureSlug: guidance.procedure.procedureSlug,
+            outcome,
+            totalSteps: guidance.procedure.steps.length,
+            completedSteps,
+            ...(outcome !== 'completed' ? { blockedStepOrder: activeStep?.stepOrder } : {}),
+            targetId: activeStep?.target,
+            expectedEvent: activeStep?.expectedEvent,
+            widgetSessionId: widgetSessionIdRef.current,
+            contextKey: typeof productContext?.contextKey === 'string'
+                ? productContext.contextKey
+                : undefined,
+        });
         try {
-            const response = await fetch('/api/widget/guidance-outcome', {
-                method: 'POST',
-                cache: 'no-store',
-                credentials: 'same-origin',
-                redirect: 'manual',
-                referrerPolicy: 'no-referrer',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': apiKey,
-                    ...(runtimeAuthorizationToken
-                        ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
-                        : {}),
-                },
-                body: JSON.stringify({
-                    contractVersion: GUIDANCE_CONTRACT_VERSION,
-                    requestId: createTimestampedRuntimeId('guidance', 12),
-                    procedureSessionId: guidance.procedureSessionId,
-                    searchHistoryId: guidance.searchHistoryId,
-                    procedureSlug: guidance.procedure.procedureSlug,
-                    outcome,
-                    totalSteps: guidance.procedure.steps.length,
-                    completedSteps,
-                    ...(outcome !== 'completed' ? { blockedStepOrder: activeStep?.stepOrder } : {}),
-                    targetId: activeStep?.target,
-                    expectedEvent: activeStep?.expectedEvent,
-                    widgetSessionId: widgetSessionIdRef.current,
-                    contextKey: typeof productContext?.contextKey === 'string'
-                        ? productContext.contextKey
-                        : undefined,
-                }),
-            });
-            if (!response.ok) {
-                throw new Error(`answerlattice_guidance_outcome_${response.status}`);
+            let lastError: Error | null = null;
+            for (let attempt = 1; attempt <= GUIDANCE_OUTCOME_MAX_ATTEMPTS; attempt += 1) {
+                let response: Response;
+                try {
+                    response = await fetch('/api/widget/guidance-outcome', {
+                        method: 'POST',
+                        cache: 'no-store',
+                        credentials: 'same-origin',
+                        redirect: 'manual',
+                        referrerPolicy: 'no-referrer',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': apiKey,
+                            ...(runtimeAuthorizationToken
+                                ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
+                                : {}),
+                        },
+                        body: requestBody,
+                    });
+                } catch (requestError) {
+                    lastError = requestError instanceof Error
+                        ? requestError
+                        : new Error('answerlattice_guidance_outcome_network_failed');
+                    if (attempt === GUIDANCE_OUTCOME_MAX_ATTEMPTS) throw lastError;
+                    continue;
+                }
+                if (response.ok) return;
+                lastError = new Error(`answerlattice_guidance_outcome_${response.status}`);
+                if (response.status < 500 || attempt === GUIDANCE_OUTCOME_MAX_ATTEMPTS) {
+                    throw lastError;
+                }
             }
+            throw lastError || new Error('answerlattice_guidance_outcome_failed');
         } catch (outcomeError) {
+            guidanceOutcomeSentRef.current.delete(outcomeKey);
             logRuntimeFailure('answerlattice_widget_guidance_outcome_submit_failed', outcomeError, {
                 surface: 'widget_client',
                 outcome,
@@ -785,6 +814,8 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     const clearConversation = useCallback(() => {
         activeRequestRef.current += 1;
+        activeSearchControllerRef.current?.abort();
+        activeSearchControllerRef.current = null;
         clearGuidanceWithoutOutcome();
         setMessages([]);
         setQuery('');
@@ -986,7 +1017,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         options?: { appendUserMessage?: boolean },
     ) => {
         const q = (searchQuery || query).trim();
-        if (!q || loading) return;
+        if (!q || loading || activeSearchControllerRef.current) return;
+        const searchController = new AbortController();
+        activeSearchControllerRef.current = searchController;
         const shouldAppendUserMessage = options?.appendUserMessage !== false;
         const requestId = activeRequestRef.current + 1;
         activeRequestRef.current = requestId;
@@ -1059,6 +1092,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 credentials: 'same-origin',
                 redirect: 'manual',
                 referrerPolicy: 'no-referrer',
+                signal: searchController.signal,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
@@ -1116,6 +1150,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             setError(publicMessage);
         } finally {
             if (activeRequestRef.current === requestId) {
+                if (activeSearchControllerRef.current === searchController) {
+                    activeSearchControllerRef.current = null;
+                }
                 setLoading(false);
                 inputRef.current?.focus();
             }

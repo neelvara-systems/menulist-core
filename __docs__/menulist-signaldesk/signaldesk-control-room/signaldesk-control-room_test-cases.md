@@ -1,39 +1,43 @@
 # SignalDesk Control Room - Test Cases
 
-**Status:** Initial test matrix
-**Created:** June 23, 2026
+**Status:** Current executable matrix
+**Revalidated:** July 21, 2026
 
-## Functional Tests
+## Focused Commands
 
-| ID | Test | Expected |
-| --- | --- | --- |
-| CTRL-T001 | Dashboard loads | Reads control-room summaries, not raw event streams. |
-| CTRL-T002 | Admin activates global pause | Kill switch is active and audited. |
-| CTRL-T003 | Non-admin activates kill switch | Blocked. |
-| CTRL-T004 | Complaint threshold is crossed | Incident is created and affected channel pauses when configured. |
-| CTRL-T005 | Stale summary exists | Dashboard shows stale state, not healthy state. |
+```bash
+npm run test:signaldesk:kill-switch-boundary
+npm run verify:signaldesk
+npm run test:signaldesk:workspace-contracts
+npm run test:signaldesk:workspace-client-contracts
+npm run test:signaldesk:action-client-contracts
+npm run test:signaldesk:access-boundary
+npm run test:signaldesk:source-data-lifecycle
+npm run typecheck
+```
 
-## Cost Tests
+## Covered Behavior
 
-| ID | Test | Expected |
-| --- | --- | --- |
-| CTRL-T010 | Daily AI cost exceeds threshold | Cost incident is created. |
-| CTRL-T011 | Dashboard regression reads raw events | Test fails. |
-| CTRL-T012 | Incident list grows large | Pagination is required. |
+| Area | Required proof |
+| --- | --- |
+| Projection | Foreign, malformed, negative, mismatched and private fields do not project. |
+| Active scopes | All eleven canonical pauses are point-read; invalid rows are excluded and logged. |
+| Incidents | Open plus acknowledged count as unresolved; malformed rows are excluded; list caps at 50; more than 500 valid matches fails visibly. |
+| Idempotency | Exact and concurrent exact retries create one transition; changed facts conflict. |
+| Concurrency | Opposite valid transitions serialize without malformed state or lost audits. |
+| Existing authority | Foreign/malformed current pause truth cannot be overwritten. |
+| Recovery | Reactivation clears stale deactivation fields; clear retains actor/time evidence. |
+| Cost | One transition adds exactly four estimated writes; replay adds zero. |
+| UI | Exact incident count is shown; pause/recovery uses Ant confirmation; Controls contains no Dashboard research/lead mutations. |
+| Feature flag | Navigation, both page aliases and workspace read honor the flag while safety enforcement remains independent. |
+| Mobile | Only confirmed global activation is admitted; clear and scoped mutation are blocked/audited. |
+| Downstream | Source, AI, outbound, campaign, content, trust and bridge paths retain their relevant pause checks. |
 
-## Safety Tests
+Expected malformed-fixture diagnostics and the lifecycle lease-failure diagnostic
+are negative-test evidence when their suites exit successfully.
 
-| ID | Test | Expected |
-| --- | --- | --- |
-| CTRL-T020 | Sending while global pause active | Blocked. |
-| CTRL-T021 | Source import while source pause active | Blocked. |
-| CTRL-T022 | AI scoring while AI pause active | Blocked. |
-| CTRL-T023 | Clear kill switch without reason | Blocked. |
+## External Evidence Still Pending
 
-## Mobile Tests
-
-| ID | Test | Expected |
-| --- | --- | --- |
-| CTRL-T030 | Mobile system status | Shows state and active pauses. |
-| CTRL-T031 | Mobile emergency global pause | Admin confirmation, reason, and audit event required. |
-| CTRL-T032 | Mobile threshold edit | Not available. |
+- Authenticated hosted desktop Controls smoke.
+- Physical mobile emergency-confirmation smoke.
+- Real webhook incident and pause/recovery smoke with provider sending still off.

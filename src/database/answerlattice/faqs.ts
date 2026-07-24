@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import {
     arrayRemove,
     arrayUnion,
@@ -131,6 +132,7 @@ const buildFaqQuery = (
     maxResults = ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT,
 ) => {
     const filters: any[] = [
+        where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
         where('tId', '==', scope.tId),
         where('sId', '==', scope.sId),
     ];
@@ -172,6 +174,7 @@ export const getPublishedFaqsForSession = async (maxResults = ANSWERLATTICE_FAQ_
             const scope = await requireScope();
             const snapshot = await getDocs(query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
                 where('status', '==', ANSWERLATTICE_FAQ_STATUS.PUBLISHED),
@@ -196,6 +199,7 @@ export const getFaqsByArticleId = async (articleId: string, maxResults = ANSWERL
             const scope = await requireScope();
             const snapshot = await getDocs(query(
                 getCollectionRef(),
+                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
                 where('tId', '==', scope.tId),
                 where('sId', '==', scope.sId),
                 where('articleId', '==', normalizedArticleId),
@@ -303,7 +307,7 @@ export const saveFaq = async (input: unknown) => {
                             reviewRequestedOn: now,
                         } : {}),
                 };
-                appendAnswerlatticeCacheInvalidation(
+                await appendAnswerlatticeCacheInvalidation(
                     transaction,
                     ANSWERLATTICE_CACHE_SOURCES.KB,
                     scope.tId,
@@ -386,7 +390,7 @@ export const archiveFaq = async (faqId: string) => {
                         throw new Error('Linked article is outside this Answerlattice workspace.');
                     }
                 }
-                appendAnswerlatticeCacheInvalidation(
+                await appendAnswerlatticeCacheInvalidation(
                     transaction,
                     ANSWERLATTICE_CACHE_SOURCES.KB,
                     scope.tId,

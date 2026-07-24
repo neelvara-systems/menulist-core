@@ -48,6 +48,8 @@ The Customer App feature has two distinct components with different mobile requi
 
 **Result: MOBILE SUPPORTED → `MobileCustomerAppScreen` implements settings with bounded save diagnostics**
 
+`MobileCustomerAppScreen` remounts by exact tenant/store identity. Settings, localized short-name drafts, pending icon data and install-guide state cannot survive a store switch. Completed settings/business-copy/icon operations compare their captured tenant/store before any context merge or owner feedback, preventing an old-store save from becoming the current store's browser truth.
+
 ---
 
 ## Mobile Implementation Scope

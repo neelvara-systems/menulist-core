@@ -2,6 +2,7 @@
 
 **Status:** Active implementation contract
 **Created:** July 10, 2026
+**Last verified:** July 21, 2026
 
 ## Global References
 
@@ -18,6 +19,7 @@ Use existing SignalDesk and global security rules:
 - Qualification cannot override source expiry, blocked contact use, or suppression.
 - Public business/contact information is not treated as consent.
 - AI cannot qualify legal eligibility, approve an envelope, set price authority, or move an opportunity to won.
+- Manual opportunity mutation cannot set `won`; only a verified two-surface activation projection may do so.
 - Discounts above the offer's recorded authority require founder review.
 - Exception-only mode remains held until separately proven and enabled.
 - Operating envelopes expire and never silently renew or graduate.
@@ -32,6 +34,8 @@ Use existing SignalDesk and global security rules:
 - Interested-reply qualification runs only after suppression/contactability/source-policy checks and does not create new contact permission.
 - Outcome auto-sync updates SignalDesk-owned commercial projections only; a failed projection refresh cannot discard the durable outcome.
 - Runtime diagnostics record bounded state and never raw replies, target contact values, or MenuList customer truth.
+- Exact successful retries return the existing projected record without another audit, timeline, cost, approval-time, or summary write.
+- Duplicate offer terms and duplicate envelope policy/template/stop references are rejected at both API validation and server authority boundaries.
 
 ## Approval Evidence
 

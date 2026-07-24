@@ -150,6 +150,7 @@ async function gatherTicketResolutionClusters(
 
     const signalsSnap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('type', '==', 'ticket')
@@ -229,6 +230,7 @@ async function gatherTicketResolutionClusters(
 async function getExistingCanonicalAnswerIds(tId: number, sId: number, entityId: string): Promise<string[]> {
     const snap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('scope.entityIds', 'array-contains', entityId)
@@ -257,6 +259,7 @@ async function findExistingPendingProposal(
 }> {
     const snap = await db
         .collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+        .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('relatedEntityIds', 'array-contains', entityId)
@@ -348,6 +351,7 @@ async function getExistingAnswerTitles(tId: number, sId: number, entityId: strin
     const titles: string[] = [];
     try {
         const snap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('scope.entityIds', 'array-contains', entityId)

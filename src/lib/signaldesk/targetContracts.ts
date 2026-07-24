@@ -124,6 +124,42 @@ export const SignalDeskManualTargetImportSchema = SignalDeskTargetImportSchema.s
 export type SignalDeskTargetImportRow = z.infer<typeof SignalDeskTargetImportRowSchema>;
 export type SignalDeskTargetImportInput = z.infer<typeof SignalDeskTargetImportSchema>;
 
+export const SIGNALDESK_TARGET_PAGE_SIZE = 30;
+
+export type SignalDeskTargetCursor = {
+    targetId: string;
+    updatedAt: string;
+};
+
+const isCanonicalTargetId = (value: string) => /^[A-Za-z0-9_-]{3,160}$/.test(value);
+
+const isCanonicalIsoTimestamp = (value: string) => {
+    if (value.length > 64) return false;
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
+};
+
+export const parseSignalDeskTargetCursor = (
+    updatedAt: string | null,
+    targetId: string | null,
+): SignalDeskTargetCursor | null | undefined => {
+    if (updatedAt === null && targetId === null) return undefined;
+    if (
+        updatedAt === null
+        || targetId === null
+        || !isCanonicalIsoTimestamp(updatedAt)
+        || !isCanonicalTargetId(targetId)
+    ) return null;
+    return { targetId, updatedAt };
+};
+
+export const getSignalDeskTargetCursor = (
+    target: SignalDeskTargetSummary | undefined,
+): SignalDeskTargetCursor | null => {
+    if (!target?.updatedAt) return null;
+    return parseSignalDeskTargetCursor(target.updatedAt, target.targetId) || null;
+};
+
 const timestampToIso = (value: unknown): string | null => {
     if (typeof value !== "object" || value === null || !("toDate" in value) || typeof value.toDate !== "function") {
         return null;

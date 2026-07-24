@@ -35,7 +35,7 @@ Search cost depends on canonical/FAQ/RAG selection, cache state, image context, 
 
 ## Retention
 
-- `aiSearchHistory`: 90-day expiry/TTL plus bounded legacy cleanup.
+- `aiSearchHistory`: 90-day expiry/TTL plus bounded legacy cleanup constrained to exact `pId: AL` before cutoff and limit.
 - escalation ticket: existing support-ticket lifecycle; hard delete follows the ticket deletion path.
 - escalation signal: existing signal expiry/TTL contract.
 

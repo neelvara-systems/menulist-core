@@ -1,3 +1,5 @@
+import { DEFAULT_PRODUCT_ID } from '@constant/product';
+
 export type OnboardingProviderSubscription = {
     id: string;
     short_url?: unknown;
@@ -64,9 +66,14 @@ export function isMatchingPersistedOnboardingSubscription(params: {
     return exactProviderNote(record.id) === params.providerSubscriptionId
         && exactProviderNote(record.providerSubscriptionId) === params.providerSubscriptionId
         && exactProviderNote(record.paymentProvider) === 'razorpay'
-        && exactProviderNote(record.userId ?? record.uId) === params.userId
-        && exactProviderNote(record.tenantId ?? record.tId) === String(params.tenantId)
-        && exactProviderNote(record.storeId ?? record.sId) === String(params.storeId)
+        && record.pId === DEFAULT_PRODUCT_ID
+        && record.productId === DEFAULT_PRODUCT_ID
+        && record.userId === params.userId
+        && record.uId === params.userId
+        && record.tenantId === params.tenantId
+        && record.tId === params.tenantId
+        && record.storeId === params.storeId
+        && record.sId === params.storeId
         && exactProviderNote(record.planId) === params.planId;
 }
 

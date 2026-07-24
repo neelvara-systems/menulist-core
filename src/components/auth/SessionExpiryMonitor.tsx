@@ -6,6 +6,7 @@ import { useAppSelector } from '@hook/useAppSelector';
 import { logAuthFailure } from '@lib/auth/authDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { signOutSession } from '@lib/auth/client';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getDarkColorState, getDarkModeState, getLightColorState } from '@reduxSlices/clientThemeConfig';
 import { Button, ConfigProvider, Flex, Modal, theme, Typography } from 'antd';
@@ -216,8 +217,20 @@ export default function SessionExpiryMonitor() {
     const lightThemeColor = useAppSelector(getLightColorState);
     const hasShownModal = useRef(false);
     const wasAuthenticated = useRef(false);
-    const accessCheckInFlight = useRef(false);
+    const accessCheckInFlight = useRef<{ requestId: number; sessionIdentity: string } | null>(null);
     const accessEndedInFlight = useRef(false);
+    const accessStatusRequestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!accessStatusRequestGuardRef.current) {
+        accessStatusRequestGuardRef.current = createLatestRequestGuard();
+    }
+    const sessionAccessIdentity = [
+        session?.user?.id || '',
+        session?.tId ?? session?.user?.tenantId ?? '',
+        session?.sId ?? session?.user?.storeId ?? '',
+        session?.pId || session?.user?.pId || '',
+        session?.role || session?.user?.role || '',
+        session?.expires || '',
+    ].join(':');
 
     // Track authentication state
     useEffect(() => {
@@ -225,12 +238,14 @@ export default function SessionExpiryMonitor() {
             wasAuthenticated.current = true;
             hasShownModal.current = false;
             accessEndedInFlight.current = false;
+            setShowExpiryModal(false);
+            setAccessEndedReason(undefined);
             // Clear localStorage flag when authenticated
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('session_expired_shown');
             }
         }
-    }, [status]);
+    }, [sessionAccessIdentity, status]);
 
     // Check for session expiry
     useEffect(() => {
@@ -273,7 +288,8 @@ export default function SessionExpiryMonitor() {
         }
     }, [status, router]);
 
-    const endAccess = useCallback(async (reason?: string) => {
+    const endAccess = useCallback(async (requestId: number, reason?: string) => {
+        if (!accessStatusRequestGuardRef.current?.isCurrent(requestId)) return;
         if (accessEndedInFlight.current || hasShownModal.current) return;
 
         accessEndedInFlight.current = true;
@@ -294,25 +310,31 @@ export default function SessionExpiryMonitor() {
     }, []);
 
     const checkAccessStatus = useCallback(async () => {
-        if (status !== 'authenticated' || !session?.user || accessCheckInFlight.current || accessEndedInFlight.current) return;
+        if (status !== 'authenticated' || !session?.user || accessEndedInFlight.current) return;
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        if (accessCheckInFlight.current?.sessionIdentity === sessionAccessIdentity) return;
 
-        accessCheckInFlight.current = true;
+        const requestGuard = accessStatusRequestGuardRef.current;
+        if (!requestGuard) return;
+        const requestId = requestGuard.begin();
+        accessCheckInFlight.current = { requestId, sessionIdentity: sessionAccessIdentity };
         try {
             const response = await fetch('/api/auth/access-status', ACCESS_STATUS_REQUEST_POLICY);
+            if (!requestGuard.isCurrent(requestId)) return;
 
             if (isManualRedirectResponse(response)) {
                 logAuthFailure('auth_access_status_response_redirected', new Error('auth_access_status_response_redirected'), {
                     ...getAccessStatusResponseLogContext(response),
                 });
-                await endAccess('HTTP_401');
+                await endAccess(requestId, 'HTTP_401');
                 return;
             }
 
             const { payload, parseFailed } = await readAccessStatusResponseJson(response);
+            if (!requestGuard.isCurrent(requestId)) return;
 
             if (response.status === 401) {
-                await endAccess('HTTP_401');
+                await endAccess(requestId, 'HTTP_401');
                 return;
             }
 
@@ -330,19 +352,21 @@ export default function SessionExpiryMonitor() {
             const data = payload || {};
 
             if (data.valid === false) {
-                await endAccess(getAccessStatusReason(data.reason, `HTTP_${response.status}`));
+                await endAccess(requestId, getAccessStatusReason(data.reason, `HTTP_${response.status}`));
                 return;
             }
 
             if (response.status === 403 && data.message === ACCOUNT_ACCESS_ENDED_MESSAGE) {
-                await endAccess(getAccessStatusReason(data.reason, 'ACCOUNT_ACCESS_ENDED'));
+                await endAccess(requestId, getAccessStatusReason(data.reason, 'ACCOUNT_ACCESS_ENDED'));
             }
         } catch {
             // Ignore transient network failures. The next focus/interval check will retry.
         } finally {
-            accessCheckInFlight.current = false;
+            if (accessCheckInFlight.current?.requestId === requestId) {
+                accessCheckInFlight.current = null;
+            }
         }
-    }, [endAccess, session?.user, status]);
+    }, [endAccess, session?.user, sessionAccessIdentity, status]);
 
     useEffect(() => {
         if (status !== 'authenticated') return;
@@ -366,6 +390,8 @@ export default function SessionExpiryMonitor() {
         document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () => {
+            accessStatusRequestGuardRef.current?.invalidate();
+            accessCheckInFlight.current = null;
             window.clearTimeout(startupCheck);
             window.clearInterval(interval);
             window.removeEventListener('focus', onFocus);

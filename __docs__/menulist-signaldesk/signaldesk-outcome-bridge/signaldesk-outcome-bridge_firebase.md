@@ -2,14 +2,14 @@
 
 **Status:** Implemented persistence contract; local emulator verified
 **Created:** June 23, 2026
-**Runtime reconciled:** July 15, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Collections
 
 | Collection | Purpose | Read Pattern |
 | --- | --- | --- |
-| `signaldeskRouteTokens` | Scoped, expiring route references for approved actions. | Token lookup and admin review. |
-| `signaldeskOutcomeEvents` | Append-only events from routes, MenuList hooks, or operators. | Event stream by target/action. |
+| `signaldeskRouteTokens` | Scoped, expiring route references for qualified conversations or current exported/sent approvals. | Deterministic token lookup and bounded workspace review. |
+| `signaldeskOutcomeEvents` | Append-only events from signed routes, demand signals, or operators. | Server point reads and summary validation; the current workspace does not expose a raw event stream. |
 | `signaldeskAttributionTouches` | Normalized first/last/assisted touch records. | Reporting and detail view. |
 | `signaldeskOutcomeSummaries` | Derived target/campaign/source/channel outcome totals. | Dashboard reads. |
 | `signaldeskIdempotencyKeys` | Actor-bound route-token/outcome intent fingerprints and accepted entity links. | Server transaction point read only. |
@@ -39,12 +39,14 @@
 - Dashboards read `signaldeskOutcomeSummaries`, not raw events.
 - Every accepted summary read also point-reads `latestOutcomeEventId` and rejects a missing, malformed, foreign-product, or mismatched event before projecting the summary.
 - Workspace and revenue-consumer summary reads paginate through at most four bounded pages so malformed recent legacy rows cannot starve older valid truth; reaching the bound is logged. Revenue qualification and activation-watch reads remain inside their Firestore settlement transaction.
-- Token replay reads one actor-bound claim and one route record. New token issuance additionally reads bridge pause, target lifecycle, source policy, current evidence, and current owner-qualified conversation.
+- Token replay reads one actor-bound claim and one route record. New token issuance additionally reads bridge pause, target lifecycle, source policy, current evidence, and current owner-qualified conversation. An explicit approval source also reads the current approval and draft.
 - Every outcome requires an operation key. Outcome event, idempotency key, summary, target projection, direct attribution touch, route-use projection, audit, control summary, and cost estimate commit atomically.
 - Outcome summaries use a source-scoped deterministic ID; route-token, demand-signal, and manual outcomes never share one counter.
 - Summary day/ID and event/summary timestamps derive from one transaction-attempt instant, so UTC midnight cannot split the event from its daily aggregate.
 - Event, idempotency claim, and attribution touch are create-only. An existing summary is replaced with a fully validated coupled record rather than broadly merged.
-- One accepted signed target outcome adds one attribution-touch write and one route-use write. Exact retries add no outcome-side writes.
+- New route-token issuance writes route, idempotency claim, audit, and daily-cost summary: four writes. Exact replay writes nothing.
+- A new manual or demand outcome writes event, source-scoped summary, idempotency claim, attribution touch, target projection, audit, control summary, and daily-cost summary: eight writes. A signed route outcome also updates the route: nine writes. Exact replay writes nothing.
+- If the target already has a revenue account and the Revenue Operating Layer is enabled, outcome settlement then runs a separate activation-watch reconciliation: six writes normally or seven when it closes an opportunity. This follow-up is reported as `updated` or `pending`; it does not alter the accepted outcome transaction.
 - Token revocation uses one route write, one audit write, and one cost-summary write.
 - Manual reporting exports should use summaries unless raw evidence is explicitly needed.
 

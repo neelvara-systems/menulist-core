@@ -22,7 +22,8 @@ Actual operation cost must be measured from runtime accounting and Firebase bill
 - Cloud Functions use Admin SDK for writes.
 - Browser writes to coverage, friction, and trust summaries are denied.
 - Browser reads require Answerlattice tenant membership and readiness permission.
-- Client parsers independently reject wrong product, string/fractional scope, unsupported schema, incomplete window, and inconsistent counts.
+- Client parsers independently reject wrong product, string/fractional scope, unsupported schema, incomplete window, inconsistent counts/rates, malformed optional compatibility metrics, and wrong-typed top-entity fields.
+- Successful parsing returns an exact allowlisted coverage/trust DTO. Extra persisted root or nested fields are not forwarded to dashboard or activation consumers.
 
 ## Failure and Scale
 

@@ -56,6 +56,9 @@ assert(projectAnswerlatticePublicChangelogPage({ pId: 'AL', ...changelogScope, p
 
 const cache = read('src/lib/answerlattice/publicContentCache.ts');
 const client = read('src/lib/answerlattice/publicContentClient.ts');
+const route = read('src/app/api/answerlattice/public-content/route.ts');
+const categoryCache = read('src/hooks/useKBCategoriesCache.ts');
+const articleCache = read('src/hooks/useArticleCache.ts');
 const packageJson = JSON.parse(read('package.json'));
 assert(cache.includes('projectAnswerlatticePublicArticle(snapshot.data(), snapshot.id, scope)'), 'Admin article reads must use the exact public projection');
 assert(cache.includes('projectAnswerlatticePublicChangelogPage(doc.data(), doc.id, scope)'), 'Admin changelog reads must use the exact scoped public projection');
@@ -65,6 +68,15 @@ assert(!cache.includes('...snapshot.data()'), 'public-content cache must not spr
 assert(client.includes('normalizeAnswerlatticePublicArticle(data)'), 'browser article response must re-enter runtime validation');
 assert(client.includes('normalizeAnswerlatticePublicCategories(data)'), 'browser category response must re-enter runtime validation');
 assert(client.includes('normalizeAnswerlatticePublicChangelogPage(data)'), 'browser changelog response must re-enter runtime validation');
+assert(route.includes('parsed.data.expectedTenantId !== scope.tId'), 'public-content route must reject an initiating/current tenant mismatch');
+assert(route.includes('parsed.data.expectedStoreId !== scope.sId'), 'public-content route must reject an initiating/current workspace mismatch');
+assert(route.includes('NextResponse.json({ data, scope })'), 'public-content route must acknowledge the exact admitted workspace');
+assert(client.includes('value.scope.tId === expectedScope.tId'), 'public-content client must verify tenant acknowledgement');
+assert(client.includes('value.scope.sId === expectedScope.sId'), 'public-content client must verify workspace acknowledgement');
+assert(client.includes('expectedTenantId: expectedScope.tId'), 'public-content client must corroborate initiating tenant scope');
+assert(client.includes('expectedStoreId: expectedScope.sId'), 'public-content client must corroborate initiating workspace scope');
+assert(categoryCache.includes('currentScopeKeyRef.current !== scopeKey'), 'category cache must reject obsolete workspace settlement');
+assert(articleCache.includes('currentScopeKeyRef.current !== scopeKey'), 'article cache must reject obsolete workspace settlement');
 assert(packageJson.scripts['verify:answerlattice-public-content-boundary'] === 'node scripts/verification/verify-answerlattice-public-content-boundary.js', 'package must expose the public-content boundary verifier');
 
 process.stdout.write('Answerlattice public-content boundary verification passed.\n');

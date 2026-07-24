@@ -249,6 +249,11 @@ const verifyOwnerReferral = (): void => {
             === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/verify-owner-referral.ts',
         'package.json must expose verify:owner-referral',
     );
+    assert(
+        packageJson.scripts?.['test:owner-referral:emulator']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS')
+            && packageJson.scripts?.['test:owner-referral:emulator']?.includes('demo-owner-referral'),
+        'Owner referral emulator must clear ambient production credentials and use a demo project',
+    );
 
     [
         'OWNER_REFERRAL_REFERRER_CREDITS = 100',
@@ -356,8 +361,11 @@ const verifyOwnerReferral = (): void => {
         'setOwnerReferralAttributionInTransaction',
         'setOwnerReferralAttributionBeforeSubscription',
         'params.transaction.create(referralRef',
-        'const productId = subscription.productId ?? subscription.pId ?? DEFAULT_PRODUCT_ID;',
-        'if (productId !== DEFAULT_PRODUCT_ID) return false;',
+        ".where('pId', '==', DEFAULT_PRODUCT_ID)",
+        ".where('productId', '==', DEFAULT_PRODUCT_ID)",
+        ".where('tId', '==', scope.tenantId)",
+        ".where('sId', '==', scope.storeId)",
+        'if (!getMenuListSubscriptionEntitlementScope(subscription)) return false;',
         "status: 'same_scope'",
         "status: 'prior_paid'",
         'snapshot.size >= OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT',
@@ -411,6 +419,8 @@ const verifyOwnerReferral = (): void => {
         "error.message === 'owner_referral_wallet_credit_invalid'",
         "result === 'payment_pending'",
     ].forEach((token) => includes(emulatorTest, token, 'owner referral emulator regression coverage'));
+    includes(emulatorTest, "pId: 'ML'", 'owner referral rules fixture exact primary product alias');
+    includes(emulatorTest, "productId: 'ML'", 'owner referral rules fixture exact compatibility product alias');
 
     includes(verifySubscriptionRoute, 'applyProductSubscriptionPayment(productId, {', 'Verify route transactional payment application');
     includes(verifySubscriptionRoute, 'if (!paymentApplication.applied && !paymentApplication.duplicate)', 'Verify route accepts applied and replayed captured payments before repair');

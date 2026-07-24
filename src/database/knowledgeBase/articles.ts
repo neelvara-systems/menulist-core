@@ -420,7 +420,7 @@ export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => 
                     articleMeta,
                     placement.sectionId,
                 ));
-                appendAnswerlatticeCacheInvalidation(
+                await appendAnswerlatticeCacheInvalidation(
                     transaction,
                     ANSWERLATTICE_CACHE_SOURCES.KB,
                     targetScope.tId,
@@ -554,7 +554,7 @@ export const updateArticle = async (
                             throw new Error(`Linked FAQ ${linkedFaqIds[index]} is outside this article workspace.`);
                         }
                     });
-                    appendAnswerlatticeCacheInvalidation(
+                    await appendAnswerlatticeCacheInvalidation(
                         transaction,
                         ANSWERLATTICE_CACHE_SOURCES.KB,
                         targetScope.tId,
@@ -568,7 +568,7 @@ export const updateArticle = async (
                     });
                 }
                 if (!faqReviewData || !faqSnapshot) {
-                    appendAnswerlatticeCacheInvalidation(
+                    await appendAnswerlatticeCacheInvalidation(
                         transaction,
                         ANSWERLATTICE_CACHE_SOURCES.KB,
                         targetScope.tId,
@@ -745,7 +745,7 @@ export const deleteArticle = async (id: string) => {
                         throw new Error(`Linked FAQ ${linkedFaqIds[index]} is outside this article workspace.`);
                     }
                 });
-                appendAnswerlatticeCacheInvalidation(
+                await appendAnswerlatticeCacheInvalidation(
                     transaction,
                     ANSWERLATTICE_CACHE_SOURCES.KB,
                     targetScope.tId,
@@ -876,7 +876,7 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
                     );
                 });
                 nextCategories = assertKnowledgeBaseCategoriesMapBounds(nextCategories);
-                appendAnswerlatticeCacheInvalidation(
+                await appendAnswerlatticeCacheInvalidation(
                     transaction,
                     ANSWERLATTICE_CACHE_SOURCES.KB,
                     finalTargetScope.tId,

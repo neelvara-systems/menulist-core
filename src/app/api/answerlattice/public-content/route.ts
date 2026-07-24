@@ -24,6 +24,8 @@ const publicContentQuerySchema = z.object({
         .optional(),
     beforePageNumber: z.coerce.number().int().positive().optional(),
     maxResults: z.coerce.number().int().positive().max(80).optional(),
+    expectedTenantId: z.coerce.number().int().positive(),
+    expectedStoreId: z.coerce.number().int().positive(),
 }).strict();
 
 export const GET = withAuth(async (request: NextRequest, session) => {
@@ -36,18 +38,24 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return NextResponse.json({ error: 'Answerlattice workspace is not available' }, { status: 400 });
     }
+    if (
+        parsed.data.expectedTenantId !== scope.tId
+        || parsed.data.expectedStoreId !== scope.sId
+    ) {
+        return NextResponse.json({ error: 'Answerlattice workspace changed' }, { status: 409 });
+    }
 
     try {
         const { type, articleId, beforePageNumber, maxResults } = parsed.data;
 
         if (type === 'faqs') {
             const data = await getCachedPublishedFaqs(scope, maxResults);
-            return NextResponse.json({ data });
+            return NextResponse.json({ data, scope });
         }
 
         if (type === 'categories') {
             const data = await getCachedKnowledgeBaseCategories(scope);
-            return NextResponse.json({ data });
+            return NextResponse.json({ data, scope });
         }
 
         if (type === 'article') {
@@ -55,13 +63,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 return NextResponse.json({ error: 'Missing articleId' }, { status: 400 });
             }
             const data = await getCachedKnowledgeBaseArticle(scope, articleId);
-            return NextResponse.json({ data });
+            return NextResponse.json({ data, scope });
         }
 
         const data = beforePageNumber
             ? await getCachedOlderChangelogPage(scope, beforePageNumber)
             : await getCachedLatestChangelogPage(scope);
-        return NextResponse.json({ data });
+        return NextResponse.json({ data, scope });
     } catch (error) {
         logRuntimeFailure('answerlattice_public_content_cache_load_failed', error, {
             contentType: parsed.data.type,

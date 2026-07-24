@@ -35,6 +35,7 @@ export async function expireStaleAnswerlatticeGenerationJobs(
 ): Promise<KbGenerationWatchdogResult> {
     const cutoff = Timestamp.fromMillis(now.toMillis() - WATCHDOG_TIMEOUT_MS);
     const snapshot = await db.collection(DB_COLLECTIONS.KB_GENERATION_JOBS)
+        .where('pId', '==', PRODUCT_ID)
         .where('status', '==', PROCESSING_STATUS)
         .where('modifiedOn', '<', cutoff)
         .limit(WATCHDOG_SCAN_LIMIT)

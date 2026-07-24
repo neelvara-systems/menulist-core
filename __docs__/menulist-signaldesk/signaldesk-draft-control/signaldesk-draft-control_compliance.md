@@ -1,68 +1,45 @@
-# SignalDesk Draft Control - Compliance Policy
+# SignalDesk Draft Control - Compliance
 
-**Status:** Initial planning doc
-**Created:** June 23, 2026
+**Status:** Implemented internal control
+**Last Updated:** July 21, 2026
 
-## Core Rule
+## Authority Rule
 
-Drafts must be safe before they are persuasive.
+Public availability is not contact permission. Draft creation requires a
+current policy that separately permits contact, personalization, and email, plus
+an exact policy-bound contact identity and evidence packet.
 
-## Allowed Language
+## Copy Rule
 
-- "current menu"
-- "current service list"
-- "official customer link"
-- "review before publishing"
-- "one link for QR, WhatsApp, Google, and repeat customers"
-- "we can prepare a customer-ready version for review"
+The maintained template may describe a current-list gap and offer a private
+MenuList preview. It must not claim:
 
-## Blocked Language
+- guaranteed sales, revenue, ranking, growth, or results;
+- official WhatsApp, Google, Meta, Instagram, or platform partnership;
+- automatic Google updates or automatic public publishing;
+- observed customer loss or lost revenue without evidence;
+- scraping, owner/business verification, or prior publication that did not occur;
+- prices, menu facts, consent, ownership, or outcomes absent from approved truth.
 
-- "AI-powered"
-- "guaranteed sales"
-- "guaranteed ranking"
-- "official WhatsApp partner"
-- "automatic Google update"
-- "we scraped your business"
-- "customers are leaving"
-- "you are losing revenue"
-- "we verified your business"
-- "we already published your official page"
+The deterministic guard rejects the explicitly maintained prohibited phrases.
+Human approval remains mandatory and must judge context beyond literal matching.
 
-## Channel Rules
+## Channel Rule
 
-Email/export first:
+The current draft is email-only. WhatsApp, Instagram, and Messenger cannot reuse
+an email approval. Email provider execution remains gated by current sender,
+unsubscribe URL, physical address, suppression, complaint, pause, policy, and
+approval authority in the Email Rail.
 
-- unsubscribe required for commercial email;
-- physical address policy required;
-- sender identity required.
+## Data Minimization
 
-WhatsApp/Instagram later:
+Projected drafts expose message and non-secret authority IDs/fingerprints only.
+Recipient values and private contact authority remain server-side. Source
+payloads, operator notes, and unrelated MenuList owner/customer data are not
+copied into drafts.
 
-- no cold outbound;
-- inbound/consented/assisted only;
-- channel-specific templates and policy gates required.
+## Human Control
 
-## AI Draft Rules
-
-AI must:
-
-- use approved template;
-- cite allowed evidence only;
-- preserve human review;
-- mark uncertainty.
-
-AI must not:
-
-- invent facts;
-- infer consent;
-- choose final send channel;
-- override blocked source fields.
-
-## Open Questions
-
-| Question | Owner |
-| --- | --- |
-| Final founder voice style | Founder |
-| First approved email templates | Founder + Codex |
-| Physical address footer | Founder |
+Draft creation only opens a pending review. It cannot approve, export, record
+contact, send, publish, or mutate MenuList product truth. Mobile remains
+observe-only.

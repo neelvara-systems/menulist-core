@@ -122,10 +122,10 @@ export async function POST(request: NextRequest) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
-        const { storeData, storeId } = authResult;
-        const tId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-        const sId = normalizeAnswerlatticeScopeDocumentId(storeData.id ?? storeData.sId ?? storeId);
-        if (tId === null || sId === null || String(sId) !== storeId) {
+        const { answerlatticeScope, storeData, storeId } = authResult;
+        const tId = answerlatticeScope?.tenantId;
+        const sId = answerlatticeScope?.storeId;
+        if (!tId || !sId || String(sId) !== storeId) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 

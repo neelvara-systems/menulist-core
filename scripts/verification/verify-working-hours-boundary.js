@@ -54,7 +54,7 @@ function verifyFirestoreCostBoundary(firestoreIndexesJson) {
   );
 }
 
-function verifyStoreDal(storesDal) {
+function verifyStoreDal(storesDal, presetBoundary, cascadeReconciler) {
   [
     'export const updateStore = async (data: any) => {',
     'normalizeWorkingHoursUpdate',
@@ -65,24 +65,52 @@ function verifyStoreDal(storesDal) {
     "throw new Error(rejectionCode);",
     'export function assertTimeSlotPresetUpdateSucceeded',
     "throw new Error('time_slot_preset_update_rejected');",
-    'export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: TimeSlotPreset[]) => {',
+    'export const updateTimeSlotPresets = async (',
+    'cascadeMutation?: ProjectPresetReferenceMutation,',
     "await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');",
     'const normalizedPresets = normalizeTimeSlotPresets(timeSlotPresets);',
-    'await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets: normalizedPresets }, { merge: true });',
+    'const normalizedMutation = cascadeMutation === undefined',
+    'await runTransaction(firebaseClient, async (transaction) => {',
+    'if (currentSnapshot.data().timeSlotPresetCascadePending !== undefined) {',
+    "throw new Error('time_slot_preset_cascade_pending');",
+    'timeSlotPresetCascadePending: pendingCascade',
     'await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");',
-    'return { success: true, timeSlotPresets: normalizedPresets } satisfies TimeSlotPresetUpdateResult;',
+    '...(pendingCascade ? { pendingCascade } : {}),',
+    'export const completeTimeSlotPresetCascade = async (',
+    "await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');",
+    'if (!pending || pending.operationId !== normalizedOperationId) {',
+    "throw new Error('time_slot_preset_cascade_operation_conflict');",
+    'timeSlotPresetCascadePending: deleteField(),',
   ].forEach((token) => assertIncludes(storesDal, token, 'Store working-hours/time-slot DAL boundary'));
+
+  [
+    'export const normalizeProjectPresetReferenceMutation = (',
+    'export const normalizeTimeSlotPresetCascadePending = (',
+  ].forEach((token) => assertIncludes(presetBoundary, token, 'Time-slot durable cascade marker boundary'));
+
+  [
+    'export async function reconcileTimeSlotPresetCascade(',
+    'const pending = normalizeTimeSlotPresetCascadePending(rawPending);',
+    'assertProjectPresetCascadeSucceeded(',
+    'const completionResult = await completeTimeSlotPresetCascade(',
+    'assertTimeSlotPresetCascadeCompleted(completionResult);',
+  ].forEach((token) => assertIncludes(cascadeReconciler, token, 'Time-slot cascade reconciliation boundary'));
 }
 
 function verifyProjectCascade(projectsDal) {
   [
-    'export const removePresetFromAllCategories = async (presetId: string) => {',
+    'export const removePresetFromAllCategories = async (',
+    'expectedScope: { tenantId: number; storeId: number }',
+    'scope.tId !== expectedScope.tenantId',
+    'scope.sId !== expectedScope.storeId',
     'PROJECT_PRESET_CASCADE_PAGE_SIZE = 100',
     'const currentDoc = await transaction.get(projectDoc.ref);',
     'files: projection.files,',
     'await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);',
+    'mutation.type === "remove"',
+    '|| projectReferencesTimeSlotPreset(project, presetId)',
     'export function assertProjectPresetCascadeSucceeded(',
-    'export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {',
+    'export const updatePresetInAllCategories = async (',
     'const normalizedPreset = normalizeTimeSlotPreset(preset);',
     'return await applyPresetMutationToAllProjects(',
   ].forEach((token) => assertIncludes(projectsDal, token, 'Project time-slot cascade boundary'));
@@ -101,7 +129,15 @@ function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
     'const savedDetails = await updateStore(updatedChanges);',
     'assertStoreUpdateSucceeded(',
     "'desktop_business_settings_store_update_rejected'",
-    'setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: presets }))',
+    "key={`time-slot-presets:${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`}",
+    "String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')",
+    "String(previous?.storeId ?? '') === String(expectedStoreId ?? '')",
+    'function BusinessSettingsContent(',
+    '<BusinessSettingsContent key={scopeKey}',
+    'const settingsSaveInFlightRef = useRef(false);',
+    'const componentActiveRef = useRef(true);',
+    'activeBusinessSettingsScopeRef.current !== requestScopeKey',
+    'loading={isSettingsSaving}',
   ].forEach((token) => assertIncludes(businessSettings, token, 'Desktop working-hours save boundary'));
 
   assertOrder(
@@ -111,40 +147,53 @@ function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
       'updatedChanges.hoursLastUpdatedAt = new Date().toISOString();',
       'const savedDetails = await updateStore(updatedChanges);',
       'assertStoreUpdateSucceeded(',
+      'activeBusinessSettingsScopeRef.current === requestScopeKey',
     ],
     'Desktop working-hours acknowledgement order',
   );
 
   [
-    'const writeResult = await updateTimeSlotPresets(storeId, updatedPresets);',
+    'const writeResult = await updateTimeSlotPresets(storeId, updatedPresets, cascadeMutation);',
     'assertTimeSlotPresetUpdateSucceeded(writeResult);',
-    'const cascadeResult = await updatePresetInAllCategories(updatedPreset);',
+    'if (!writeResult.pendingCascade) {',
+    'await reconcileTimeSlotPresetCascade(expectedScope, writeResult.pendingCascade);',
     "'business_settings_time_slot_preset_cascade_update_rejected'",
-    'const cascadeResult = await removePresetFromAllCategories(presetId);',
     "'business_settings_time_slot_preset_cascade_delete_rejected'",
+    'business_settings_time_slot_preset_recovery_failed',
+    'recoveryAttemptedOperationRef.current = pendingCascade.operationId;',
     "'business_settings_time_slot_preset_save_failed'",
     "'business_settings_time_slot_preset_delete_failed'",
     "getBoundedBusinessSettingsStringContext('label', formData.label)",
+    'const actionInFlightRef = useRef(false);',
+    'const activeScopeRef = useRef(scopeKey);',
+    'const componentActiveRef = useRef(true);',
   ].forEach((token) => assertIncludes(timeSlotPresetsTab, token, 'Desktop time-slot preset boundary'));
 }
 
 function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore) {
   [
     'const hoursLastUpdatedAt = new Date().toISOString();',
-    'const workingHours: Record<string, string> = { ...(storeDetails.workingHours || {}) };',
-    'getStoreDeepDifference(workingHours, storeDetails.workingHours || {}, {',
-    'setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours }));',
-    'storeId: storeDetails.storeId,',
-    'tenantId: storeDetails.tenantId,',
+    'const previousWorkingHours = { ...(storeDetails.workingHours || {}) };',
+    'const workingHours: Record<string, string> = { ...previousWorkingHours };',
+    'getStoreDeepDifference(workingHours, previousWorkingHours, {',
+    "String(previous?.tenantId ?? '') === String(expectedTenantId)",
+    "String(previous?.storeId ?? '') === String(expectedStoreId)",
+    'storeId: expectedStoreId,',
+    'tenantId: expectedTenantId,',
     'workingHours,',
     'assertStoreUpdateSucceeded(',
     "'mobile_working_hours_store_update_rejected'",
     "'mobile_working_hours_save_failed'",
     'changedDayCount: DAYS.filter',
     'closedDayCount: DAYS.filter',
-    'hasPreviousWorkingHours: Boolean(storeDetails.workingHours)',
-    'workingHours: storeDetails.workingHours',
+    'hasPreviousWorkingHours: Object.keys(previousWorkingHours).length > 0',
+    'workingHours: previousWorkingHours',
     "Toast.show({ content: t('hoursSaved'), duration: 1000 });",
+    'function MobileWorkingHoursEditScreenContent(',
+    '<MobileWorkingHoursEditScreenContent key={scopeKey}',
+    'const actionInFlightRef = useRef(false);',
+    'const activeScopeRef = useRef(scopeKey);',
+    'const componentActiveRef = useRef(true);',
   ].forEach((token) => assertIncludes(mobileWorkingHours, token, 'Mobile full working-hours save boundary'));
   assertOrder(
     mobileWorkingHours,
@@ -154,11 +203,11 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
   assertNotIncludes(mobileWorkingHours, 'updateStore({ ...storeDetails', 'Mobile full working-hours save must not overwrite unrelated store truth');
 
   [
-    'const previousHours = storeDetails.workingHours || {};',
+    'const previousHours = { ...(storeDetails.workingHours || {}) };',
     'const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;',
-    'storeId: storeDetails.storeId,',
-    'tenantId: storeDetails.tenantId,',
-    'workingHours: { [todayKey]: nextRange },',
+    'storeId: expectedStoreId,',
+    'tenantId: expectedTenantId,',
+    'workingHours: { [expectedTodayKey]: nextRange },',
     'assertStoreUpdateSucceeded(',
     "'mobile_today_hours_store_update_rejected'",
     "'mobile_today_hours_update_failed'",
@@ -169,21 +218,36 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'getStoreDayKey(storeDetails?.timeZone, hoursNow)',
     'getStoreStatus(storeDetails?.workingHours, storeDetails?.timeZone, undefined, hoursNow)',
     'isValidClockRange(todayOpenTime, todayCloseTime)',
+    'function MobileHoursScreenContent(',
+    '<MobileHoursScreenContent key={scopeKey}',
+    'const hoursActionInFlightRef = useRef(false);',
+    'const activeScopeRef = useRef(scopeKey);',
+    'const componentActiveRef = useRef(true);',
+    "String(previous?.tenantId ?? '') === String(expectedTenantId)",
+    "String(previous?.storeId ?? '') === String(expectedStoreId)",
   ].forEach((token) => assertIncludes(mobileHours, token, 'Mobile Today quick-hours save boundary'));
   assertNotIncludes(mobileHours, 'updateStore({ ...storeDetails', 'Mobile Today quick-hours save must not overwrite unrelated store truth');
 
   [
-    'const writeResult = await updateTimeSlotPresets(storeDetails?.storeId, updated);',
+    'const writeResult = await updateTimeSlotPresets(',
     'assertTimeSlotPresetUpdateSucceeded(writeResult);',
-    'const cascadeResult = await updatePresetInAllCategories(updatedPreset);',
+    'await reconcileTimeSlotPresetCascade(',
+    'if (!writeResult.pendingCascade) {',
     "'mobile_time_slot_preset_cascade_update_rejected'",
-    'const cascadeResult = await removePresetFromAllCategories(preset.id);',
     "'mobile_time_slot_preset_cascade_delete_rejected'",
+    'mobile_time_slot_preset_recovery_failed',
+    'recoveryAttemptedOperationRef.current = pendingCascade.operationId;',
     "'mobile_time_slot_preset_save_failed'",
     "'mobile_time_slot_preset_delete_failed'",
     "getBoundedMobileOwnerStringContext('presetLabel', label)",
     'remainingPresetCount: Math.max(presets.length - 1, 0)',
-    'setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: updated }))',
+    "String(previous?.tenantId ?? '') === String(expectedTenantId)",
+    "String(previous?.storeId ?? '') === String(expectedStoreId)",
+    'function MobileTimeSlotsScreenContent(',
+    '<MobileTimeSlotsScreenContent key={scopeKey}',
+    'const actionInFlightRef = useRef(false);',
+    'const activeScopeRef = useRef(scopeKey);',
+    'const componentActiveRef = useRef(true);',
     'isValidClockRange(formStart, formEnd)',
   ].forEach((token) => assertIncludes(mobileTimeSlots, token, 'Mobile time-slot preset boundary'));
   assertNotIncludes(mobileTimeSlots, 'rangesOverlap(', 'Mobile time-slot presets must allow the same overlap contract as desktop');
@@ -421,6 +485,8 @@ function main() {
   const firestoreIndexes = read('firestore.indexes.json');
   const storesDal = read('src/database/stores/index.tsx');
   const projectsDal = read('src/database/projects/index.ts');
+  const presetBoundary = read('src/lib/menu/timeSlotPresetBoundary.ts');
+  const cascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const timeSlotPresetsTab = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
   const mobileWorkingHours = read('src/components/mobile/screens/MobileWorkingHoursEditScreen.tsx');
@@ -452,7 +518,7 @@ function main() {
 
   verifyPackageScript(packageJson);
   verifyFirestoreCostBoundary(firestoreIndexes);
-  verifyStoreDal(storesDal);
+  verifyStoreDal(storesDal, presetBoundary, cascadeReconciler);
   verifyProjectCascade(projectsDal);
   verifyDesktopSettings(businessSettings, timeSlotPresetsTab);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);

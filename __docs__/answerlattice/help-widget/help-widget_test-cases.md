@@ -23,11 +23,14 @@
 ## Key Lifecycle
 
 1. Generate a key and confirm the raw value is returned once with a private no-store response.
-2. Confirm only the hash and bounded summary are persisted.
-3. Rename by opaque key ID.
-4. Revoke and confirm the hash leaves active lookup while bounded revoked metadata remains.
-5. Confirm a lost key cannot be copied from the server.
-6. Confirm a revoked key fails public config admission after the bounded auth cache expires.
+2. Mutate the persisted store so `pId`/`productId`, `tId`/`tenantId`, or `sId`/`storeId`/`id` conflicts and confirm the active key is rejected before any widget route derives scope.
+3. Confirm only the hash and bounded summary are persisted.
+4. Rename by opaque key ID.
+5. Revoke and confirm the hash leaves active lookup while bounded revoked metadata remains.
+6. Confirm a lost key cannot be copied from the server.
+7. Confirm a revoked key fails public config admission after the bounded auth cache expires.
+8. Confirm runtime-token creation/verification rejects whitespace-mutated keys plus stringified tenant, store, clock, and TTL values.
+9. Confirm a managed record with unknown status, foreign product, wrong purpose, missing/unknown/duplicate scopes is rejected and cannot be resurrected through its mirrored top-level hash; confirm a true top-level-only legacy hash remains supported.
 
 ## Loader And Iframe
 
@@ -37,6 +40,8 @@
 4. Confirm iframe and runtime requests use no-referrer policy.
 5. Confirm `401`, `403`, and `404` config responses hide the launcher and public `show()` cannot reopen it.
 6. Confirm transient config failure uses bounded retry and does not bypass restricted-origin runtime authorization.
+7. Confirm config and predictive session-storage keys contain the complete widget credential and two credentials sharing a prefix cannot reuse state.
+8. Confirm oversized/malformed config responses, string/fractional versions or expiries, non-boolean capabilities, and capability/bundle disagreement fail before browser state/cache mutation.
 
 ## Access And Presentation
 
@@ -46,6 +51,12 @@
 4. Confirm branding output is limited to the public schema.
 5. Confirm management responses are private no-store.
 6. Confirm mobile key/origin/route controls meet the 44px touch contract.
+
+## Recent Widget Activity
+
+1. Confirm indexed and fallback activity queries constrain exact `pId: AL` before their limits; shared-Firebase rows from another product with colliding tenant/store IDs are never serialized.
+2. Confirm the fallback row guard independently requires exact Answerlattice product, tenant, store, and widget-origin truth.
+3. Confirm activity responses remain private/no-store and timestamp-invalid legacy rows become `null` or sort oldest.
 
 ## External Evidence Still Required
 

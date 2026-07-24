@@ -411,7 +411,7 @@ Once OBP is everywhere (Instagram bio, GBP, QR codes, packaging), replacing Menu
 | Information      | Scattered across tabs       | Clean single page              | OBP better                          |
 | Reviews          | Hosted                      | External reference             | OBP correct choice (no moderation)  |
 | Menu             | Inconsistent (PDFs, photos) | Native structured menu         | OBP much better                     |
-| Freshness        | Weak (often outdated)       | Strong ("Info verified today") | OBP differentiator                  |
+| Freshness        | Weak (often outdated)       | Truthful (`Updated today` or exact date) | OBP differentiator                  |
 | Speed            | Moderate (heavy JS)         | Very fast (<1.5s SSR)          | OBP advantage                       |
 | Schema           | Good                        | Good (+ AEO optimized)         | Comparable                          |
 

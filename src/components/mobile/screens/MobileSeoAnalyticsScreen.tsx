@@ -11,7 +11,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popover, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
@@ -97,7 +97,7 @@ function getDefaultCanonicalUrl(storeDetails: any): string {
     return storeDetails?.canonicalUrl || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain) || '';
 }
 
-export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
+function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
     const t = useTranslations('MobileSeoAnalytics');
     const tSeo = useTranslations('SEO');
     const tAnalytics = useTranslations('Analytics');
@@ -125,13 +125,17 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
     const [wizardStep, setWizardStep] = useState(0);
     const [guideTab, setGuideTab] = useState<'quick' | 'complete'>('quick');
+    const isMountedRef = useRef(true);
+    const saveInFlightRef = useRef(false);
+    const currentStoreDetailsRef = useRef(storeDetails);
+    currentStoreDetailsRef.current = storeDetails;
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const contentLanguage = selectedLanguage || getStorePreferredLanguage(storeDetails);
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const currentSeoDraft = localizedSeoDrafts[contentLanguage] || { keywords: '', metaDescription: '', metaTitle: '', tagline: '' };
 
     useEffect(() => {
-        if (!storeDetails) return;
+        if (!storeDetails || saveInFlightRef.current) return;
         const nextSelectedLanguage = getStorePreferredLanguage(storeDetails);
         const nextLocalizedDrafts = buildLocalizedSeoDrafts(storeDetails, getStoreManagedLanguages(storeDetails));
         setSelectedLanguage(nextSelectedLanguage);
@@ -152,42 +156,9 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setOriginalAnalyticsState(getAnalyticsDraft(storeDetails));
     }, [storeDetails]);
 
-    const saveField = async (field: string, value: any) => {
-        if (!storeDetails?.storeId) return;
-        try {
-            const update: any = { storeId: storeDetails.storeId };
-            if (field.startsWith('analytics.')) {
-                const analyticsKey = field.replace('analytics.', '');
-                update.analytics = { [analyticsKey]: value };
-            } else {
-                update[field] = value;
-            }
-            const writeResult = await updateStore(update);
-            assertStoreUpdateSucceeded(
-                writeResult,
-                storeDetails.storeId,
-                'mobile_seo_analytics_field_store_update_rejected',
-            );
-            setStoreDetails({
-                ...storeDetails,
-                ...update,
-                ...(update.analytics ? {
-                    analytics: { ...storeDetails.analytics, ...update.analytics },
-                } : {}),
-            });
-            Toast.show({ content: t('saved'), duration: 800 });
-        } catch (error) {
-            logMobileOwnerFailure('mobile_seo_analytics_field_save_failed', error, {
-                ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                ...getBoundedMobileOwnerStringContext('fieldName', field),
-                mode,
-                isAnalyticsField: field.startsWith('analytics.'),
-                hasSubmittedValue: value !== undefined && value !== null && String(value).length > 0,
-                submittedValueLength: value === undefined || value === null ? 0 : String(value).length,
-            });
-            Toast.show({ content: t('failedToSave'), duration: 1500 });
-        }
-    };
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const isSeoMode = mode === 'seo';
     const pageTitle = isSeoMode ? tSeo('title') : tAnalytics('title');
@@ -480,30 +451,49 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     };
 
     const saveAnalyticsSettings = async () => {
-        if (!storeDetails?.storeId || !isAnalyticsDirty) return;
+        if (!storeDetails?.storeId || !isAnalyticsDirty || saveInFlightRef.current) return;
+        const sourceStoreDetails = storeDetails;
+        const expectedStoreId = sourceStoreDetails.storeId;
+        const expectedTenantId = sourceStoreDetails.tenantId;
+        const previousAnalytics = sourceStoreDetails.analytics;
+        const submittedAnalyticsDraft = analyticsDraft;
+        saveInFlightRef.current = true;
 
         try {
             setIsAnalyticsSaving(true);
-            const analyticsBase: Record<string, any> = { ...(storeDetails.analytics || {}) };
+            const analyticsBase: Record<string, any> = { ...(previousAnalytics || {}) };
             delete analyticsBase.searchConsoleVerification;
             const nextAnalytics = {
                 ...analyticsBase,
                 ...analyticsDraft,
             };
             const update = {
-                analytics: getStoreDeepDifference(nextAnalytics, storeDetails.analytics || {}, {
+                analytics: getStoreDeepDifference(nextAnalytics, previousAnalytics || {}, {
                     detectRemovedRootKeys: true,
                 }),
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
             };
             const writeResult = await updateStore(update);
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_analytics_settings_store_update_rejected',
             );
-            setStoreDetails({ ...storeDetails, analytics: nextAnalytics });
-            setOriginalAnalyticsState(analyticsDraft);
+            if (!isMountedRef.current) return;
+            const currentStoreDetails = currentStoreDetailsRef.current;
+            const ownsCurrentAnalytics = currentStoreDetails?.storeId === expectedStoreId
+                && currentStoreDetails?.tenantId === expectedTenantId
+                && currentStoreDetails?.analytics === previousAnalytics;
+            setStoreDetails((currentDetails: typeof storeDetails) => (
+                currentDetails?.storeId === expectedStoreId
+                && currentDetails?.tenantId === expectedTenantId
+                && currentDetails?.analytics === previousAnalytics
+                    ? { ...currentDetails, analytics: nextAnalytics }
+                    : currentDetails
+            ));
+            if (ownsCurrentAnalytics) {
+                setOriginalAnalyticsState(submittedAnalyticsDraft);
+            }
             Toast.show({ content: t('saved'), duration: 800 });
         } catch (error) {
             logMobileOwnerFailure('mobile_analytics_settings_save_failed', error, {
@@ -513,15 +503,20 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 ...getBoundedMobileOwnerStringContext('googleSearchConsole', analyticsDraft.googleSearchConsole),
                 enabledTrackingCount: countEnabledAnalyticsTracking(analyticsDraft),
                 previousEnabledTrackingCount: originalAnalyticsState ? countEnabledAnalyticsTracking(originalAnalyticsState) : 0,
-                hasPreviousAnalytics: Boolean(storeDetails.analytics),
+                hasPreviousAnalytics: Boolean(previousAnalytics),
                 googleAnalyticsIdChanged: analyticsDraft.googleAnalyticsId !== originalAnalyticsState?.googleAnalyticsId,
                 facebookPixelIdChanged: analyticsDraft.facebookPixelId !== originalAnalyticsState?.facebookPixelId,
                 googleSearchConsoleChanged: analyticsDraft.googleSearchConsole !== originalAnalyticsState?.googleSearchConsole,
                 trackingPreferencesChanged: ANALYTICS_TRACKING_DRAFT_KEYS.some((key) => analyticsDraft[key] !== originalAnalyticsState?.[key]),
             });
-            Toast.show({ content: t('failedToSave'), duration: 1500 });
+            if (isMountedRef.current) {
+                Toast.show({ content: t('failedToSave'), duration: 1500 });
+            }
         } finally {
-            setIsAnalyticsSaving(false);
+            saveInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsAnalyticsSaving(false);
+            }
         }
     };
 
@@ -532,18 +527,24 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
     };
 
     const saveSeoSettings = async () => {
-        if (!storeDetails?.storeId || !isSeoDirty) return;
+        if (!storeDetails?.storeId || !isSeoDirty || saveInFlightRef.current) return;
+        const sourceStoreDetails = storeDetails;
+        const expectedStoreId = sourceStoreDetails.storeId;
+        const expectedTenantId = sourceStoreDetails.tenantId;
+        const submittedSeoDraft = seoDraft;
+        const submittedLocalizedSeoDrafts = localizedSeoDrafts;
+        saveInFlightRef.current = true;
         try {
             setIsSeoSaving(true);
             const update = {
                 businessCopyMeta: buildBusinessCopyManualOverrideMeta({
-                    existingMeta: storeDetails?.businessCopyMeta,
+                    existingMeta: sourceStoreDetails.businessCopyMeta,
                     fieldKeys: ['metaTitle', 'metaDescription', 'tagline', 'keywords'],
                 }),
                 canonicalUrl,
                 keywords: applyLocalizedKeywordDraftMap(
-                    storeDetails?.keywords,
-                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [
+                    sourceStoreDetails.keywords,
+                    Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]) => [
                         languageCode,
                         String(draft.keywords || '')
                             .split(',')
@@ -552,31 +553,45 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                     ])),
                 ),
                 metaDescription: applyLocalizedDraftMap(
-                    storeDetails?.metaDescription,
-                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaDescription])),
+                    sourceStoreDetails.metaDescription,
+                    Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaDescription])),
                 ),
                 metaTitle: applyLocalizedDraftMap(
-                    storeDetails?.metaTitle,
-                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaTitle])),
+                    sourceStoreDetails.metaTitle,
+                    Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.metaTitle])),
                 ),
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
                 tagline: applyLocalizedDraftMap(
-                    storeDetails?.tagline,
-                    Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.tagline])),
+                    sourceStoreDetails.tagline,
+                    Object.fromEntries(Object.entries(submittedLocalizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.tagline])),
                 ),
             };
             const writeResult = await updateStore({
-                ...getStoreDeepDifference(update, storeDetails),
-                storeId: storeDetails.storeId,
+                ...getStoreDeepDifference(update, sourceStoreDetails),
+                storeId: expectedStoreId,
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_seo_settings_store_update_rejected',
             );
-            setStoreDetails({ ...storeDetails, ...update });
-            setOriginalSeoState(seoDraft);
-            setOriginalLocalizedSeoDrafts(localizedSeoDrafts);
+            if (!isMountedRef.current) return;
+            const seoFields = ['businessCopyMeta', 'canonicalUrl', 'keywords', 'metaDescription', 'metaTitle', 'tagline'] as const;
+            const currentStoreDetails = currentStoreDetailsRef.current;
+            const ownsCurrentSeo = currentStoreDetails?.storeId === expectedStoreId
+                && currentStoreDetails?.tenantId === expectedTenantId
+                && seoFields.every((field) => currentStoreDetails[field] === sourceStoreDetails[field]);
+            setStoreDetails((currentDetails: typeof storeDetails) => (
+                currentDetails?.storeId === expectedStoreId
+                && currentDetails?.tenantId === expectedTenantId
+                && seoFields.every((field) => currentDetails[field] === sourceStoreDetails[field])
+                    ? { ...currentDetails, ...update }
+                    : currentDetails
+            ));
+            if (ownsCurrentSeo) {
+                setOriginalSeoState(submittedSeoDraft);
+                setOriginalLocalizedSeoDrafts(submittedLocalizedSeoDrafts);
+            }
             Toast.show({ content: t('saved'), duration: 800 });
         } catch (error) {
             logMobileOwnerFailure('mobile_seo_settings_save_failed', error, {
@@ -594,9 +609,14 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 selectedLanguageTaglineChanged: currentSeoDraft.tagline !== originalSeoState?.tagline,
                 selectedLanguageKeywordsChanged: currentSeoDraft.keywords !== originalSeoState?.keywords,
             });
-            Toast.show({ content: t('failedToSave'), duration: 1500 });
+            if (isMountedRef.current) {
+                Toast.show({ content: t('failedToSave'), duration: 1500 });
+            }
         } finally {
-            setIsSeoSaving(false);
+            saveInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsSeoSaving(false);
+            }
         }
     };
 
@@ -1050,6 +1070,13 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             ) : null}
         </Flex>
     );
+}
+
+export default function MobileSeoAnalyticsScreen(props: MobileSeoAnalyticsScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}::${props.mode || 'seo'}`;
+
+    return <MobileSeoAnalyticsScreenContent key={scopeKey} {...props} />;
 }
 
 function FieldGroup({

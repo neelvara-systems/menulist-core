@@ -20,7 +20,10 @@ import {
 } from '@lib/answerlattice/integrationConfigOwnership';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { AnswerlatticeWorkflowIntegrationTestResponseSchema } from '@lib/answerlattice/workflowIntegrationContracts';
+import {
+    AnswerlatticeWorkflowIntegrationTestResponseSchema,
+    projectAnswerlatticeWorkflowIntegrationStoredConfig,
+} from '@lib/answerlattice/workflowIntegrationContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -112,8 +115,9 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             });
             return integrationTestJsonResponse({ error: 'Integration settings require support review.' }, 409);
         }
-        const hasSlack = Boolean(config.slack?.enabled && config.slack?.webhookUrl);
-        const hasEmail = Boolean(config.email?.enabled && Array.isArray(config.email?.recipients) && config.email.recipients.length > 0);
+        const projectedConfig = projectAnswerlatticeWorkflowIntegrationStoredConfig(config);
+        const hasSlack = projectedConfig.slack.enabled;
+        const hasEmail = projectedConfig.email.enabled;
         if (!hasSlack && !hasEmail) {
             return integrationTestJsonResponse({ error: 'Enable Slack or email before sending a test.' }, 400);
         }

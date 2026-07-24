@@ -4,7 +4,7 @@ import MenuPageNew from "@template/main-app/projects/b2cView/menuPage/menuPageNe
 import OBPResolvedSurface from "@/app/client/obp/OBPResolvedSurface"
 import PreviewNavigationGuard from "@/components/shared/PreviewNavigationGuard"
 import { DeviceTypes, PageType } from "@template/main-app/projects/b2cView/types"
-import { Project } from "@template/main-app/projects/types"
+import { PrecomputedDecisionBlocks, Project } from "@template/main-app/projects/types"
 import { StoreDataType } from "@type/platform/store"
 
 interface MainContentRendererProps {
@@ -23,7 +23,7 @@ interface MainContentRendererProps {
   setActiveLanguage: (language: string) => void;
   fromPage: string;
   businessType?: string;
-  precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
+  precomputedBlocks?: PrecomputedDecisionBlocks | null;
   restoreStoredLanguage?: boolean;
   previewMode?: boolean;
 }

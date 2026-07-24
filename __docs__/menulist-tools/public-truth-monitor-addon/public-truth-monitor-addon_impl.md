@@ -13,6 +13,10 @@ It stores capped saved history from the existing V1 owner readiness report and r
 
 ## Runtime Shape
 
+### Exact paid-subscription entitlement
+
+Public Truth Monitor paid access uses the shared MenuList persisted-subscription entitlement projector before status or plan evaluation. Both product aliases must be exact `ML`, both numeric tenant/store alias pairs must agree, and the subscription tenant must equal the normalized current session tenant. Cross-tenant, Answerlattice, incomplete, conflicting, or coercible persisted subscription shapes fail closed without an extra Firestore read.
+
 Implemented:
 
 1. Entitlement reader for the paid add-on.

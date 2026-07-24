@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import {
     getAnswerlatticeHelpChatDraftKeys,
@@ -10,6 +12,7 @@ import {
 import { resolveAnswerlatticeWorkspaceCacheScopeKey } from '@lib/answerlattice/clientCacheScope';
 import { normalizeAnswerlatticePublicRelatedContent } from '@lib/answerlattice/productSurfaceContent';
 import { isHelpCenterSearchResponse } from '@lib/search/helpCenterSearchResponse';
+import { projectHelpCenterSearchResponse } from '@lib/search/helpCenterSearchResponse';
 
 const draftScope = resolveAnswerlatticeHelpChatDraftScope({
     productAccounts: {
@@ -103,6 +106,29 @@ assert.equal(isHelpCenterSearchResponse({
     ...validResponse,
     relatedContent: { ...relatedContent, key: '__proto__' },
 }), false);
+
+const projectedResponse = projectHelpCenterSearchResponse({
+    canonical: false,
+    craftedAnswer: 'Use the billing page.',
+    imageProcessed: false,
+    references: [{
+        id: 'article-1',
+        title: 'Billing help',
+        categoryId: 'category-1',
+        content: { type: 'doc', internalDraftNote: 'must not cross response boundary' },
+        tags: ['billing'],
+        similarityScore: 0.9,
+    }],
+    relatedContent,
+    suggestedQuestions: [],
+});
+assert.deepEqual(projectedResponse.references, [{
+    id: 'article-1',
+    title: 'Billing help',
+    categoryId: 'category-1',
+    similarityScore: 0.9,
+}]);
+assert.deepEqual(projectedResponse.relatedContent?.tickets, { total: 0, open: 0, recentDisplayIds: [] });
 assert.equal(isHelpCenterSearchResponse({
     ...validResponse,
     relatedContent: { ...relatedContent, articles: 'not-an-array' },
@@ -115,5 +141,61 @@ assert.equal(isHelpCenterSearchResponse({
     ...validResponse,
     references: [{ id: 'article-1', categoryId: 'category-1', token: 'secret' }],
 }), false);
+assert.equal(isHelpCenterSearchResponse({
+    ...validResponse,
+    internalDebug: { matchedEntityIds: ['private-entity'] },
+}), false);
+assert.equal(isHelpCenterSearchResponse({
+    ...validResponse,
+    escalation: {
+        suggested: true,
+        type: 'soft',
+        triggers: ['entity_resolution_failure'],
+        context: { query: 'private query' },
+    },
+}), false);
+
+const helpCenterSearchRoute = fs.readFileSync(
+    path.resolve(__dirname, '../../src/app/api/helpCenter/search-kb/route.ts'),
+    'utf8',
+);
+assert.ok(
+    helpCenterSearchRoute.includes('projectHelpCenterSearchResponse(result)'),
+    'Help Center search must project the complete response before it crosses the server/browser boundary',
+);
+assert.ok(
+    !helpCenterSearchRoute.includes('response.relatedContent = result.relatedContent'),
+    'Help Center search must not send internal ticket counts or recent ticket display IDs to the browser',
+);
+
+const messageReferences = fs.readFileSync(
+    path.resolve(__dirname, '../../src/components/templates/main-app/helpChat/MessageReferences.tsx'),
+    'utf8',
+);
+assert.ok(
+    !messageReferences.includes('if (reference.content) return reference;'),
+    'Help Chat must hydrate current article truth instead of trusting legacy embedded article snapshots',
+);
+assert.ok(
+    messageReferences.includes('const article = await getArticleById(reference.id);'),
+    'Help Chat reference previews must load the current scoped article on demand',
+);
+assert.ok(
+    messageReferences.includes('isExpanded && resolvedArticle'),
+    'Help Chat must render ArticleView only from a resolved current article',
+);
+
+const searchResultDisplay = fs.readFileSync(
+    path.resolve(__dirname, '../../src/components/organisms/AISearchModal/SearchResultDisplay.tsx'),
+    'utf8',
+);
+assert.ok(
+    searchResultDisplay.includes('const article = await getArticleById(articleId);'),
+    'AI Search reference previews must hydrate the current full article instead of treating compact cache references as full documents',
+);
+assert.ok(
+    searchResultDisplay.includes('isExpanded && resolvedArticle'),
+    'AI Search must not render an incomplete compact reference through ArticleView',
+);
 
 console.log('Help Center runtime boundary tests passed.');

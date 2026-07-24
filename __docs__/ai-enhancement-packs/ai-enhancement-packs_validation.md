@@ -96,7 +96,7 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | `consumeAICapacity()` created  | ✅     | `src/lib/ai/capacityCheck.ts:104-131`                         |
 | Monthly credits consumed first | ✅     | `src/lib/ai/capacityCheck.ts:118-126`                         |
 | TopUp credits consumed second  | ✅     | `src/lib/ai/capacityCheck.ts:122-124`                         |
-| Uses existing subscription DAL | ✅     | Imports `getActiveSubscriptionForStore`, `updateSubscription` |
+| Uses server subscription/accounting boundary | ✅ | Exact-dual-`ML` transaction-owned reservation and settlement in `src/lib/ai/capacityCheck.ts` |
 
 ### Task 2.3: Capacity Check Integration (Billable Routes)
 

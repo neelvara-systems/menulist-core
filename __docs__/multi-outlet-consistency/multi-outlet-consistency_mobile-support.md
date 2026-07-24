@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** July 16, 2026 (v16 - lifecycle authority and billing follow-up)
+**Last Updated:** July 23, 2026 (v17 - exact-scope mobile settlement)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -40,7 +40,9 @@
 - Mobile and desktop linked-outlet saves receive the same pending/count effect metadata; all public cache tags are attempted independently after project commit.
 - Uses same `/api/outlets/create`, `/api/auth/switch-store`, and `/api/outlets/policy` endpoints as desktop
 - Mobile and desktop expose store switching only when the user has `canSwitchStores` and more than one active mapped store. Mobile keeps the primary branch dropdown in More, below the signed-in profile card.
+- Mobile Billing clears subscription/history state before a store switch, sequence-fences both reads by exact user+tenant+store scope, and ignores payment/lifecycle completions after the owner changes store context.
 - Mobile Locations derives its `Current` and `View` labels from `activeStoreContext` (falling back to the login store), so switching to an outlet no longer leaves HQ incorrectly marked current. Selecting the already-current row is a no-op; returning to HQ refreshes HQ Firebase claims before clearing outlet context.
+- Mobile Locations remounts tenant-level drafts by exact tenant/store and serializes switch, create, rename, deactivate, and policy actions through one synchronous admission ref. Every material async stage rechecks the initiating scope; tenant/store functional settlement requires the same tenant and preserves concurrent current lists/siblings. Rename and policy acknowledgements additionally require the submitted name/slug or policy leaf still to own current state. Obsolete mounts suppress dialogs, sheets, local fields, toasts, active-store changes, and loading settlement.
 - Mobile Locations treats rejected `/api/auth/switch-store` responses as fixed-copy switch failures and logs bounded `mobile_location_store_switch_failed` diagnostics. Outlet creation logs rejected API responses and network/client exceptions through `mobile_location_create_failed`.
 - Desktop header, desktop Billing, desktop Locations, mobile More, mobile Billing, and mobile Locations switch-store callers share the auth account browser request policy: no-store cache, same-origin credentials, and manual redirects before the existing rejected-response handling and Firebase claim refresh.
 - Switch-store scope document ID boundary: mobile and desktop callers inherit the server route guard that normalizes session tenant/current-store IDs and requested target-store IDs before store-switch Firestore refs or success acknowledgement.

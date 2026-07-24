@@ -70,8 +70,8 @@ This appendix lists the source evidence used by [SMB data map](./smb-data-invent
 | Extraction learning reads recent extraction-correction MOL events and writes `platformSummary/extractionLearning`. | `functions/src/analytics/extractionLearning.ts:1-20`, `functions/src/analytics/extractionLearning.ts:62-174` |
 | Store truth confidence reads store summary and extraction learning and writes `platformSummary/storeTruthConfidence`. | `functions/src/analytics/storeTruthConfidence.ts:1-20`, `functions/src/analytics/storeTruthConfidence.ts:137-223` |
 | Staleness check reads store-truth confidence and writes lifecycle message logs/messages with expiry metadata when needed. | `functions/src/analytics/stalenessCheck.ts` |
-| Authority maturation reads `ownerControlUsage`, computes phases, and writes insight docs. | `functions/src/analytics/authorityMaturation.ts:1-14`, `functions/src/analytics/authorityMaturation.ts:173-221` |
-| Owner control usage logs debounced control counts/monthly usage/last-used timestamps to `ownerControlUsage/{tId}_{sId}`. | `src/database/ownerControlUsage/index.ts:61-72`, `src/database/ownerControlUsage/index.ts:124-216` |
+| Authority maturation pages `ownerControlUsage` at 500 rows, strictly projects each row, isolates malformed records, computes phases, and exact-replaces the daily insight doc. | `functions/src/analytics/authorityMaturation.ts`, `functions/src/sharedData/ownerControlUsageContract.ts` |
+| Owner control usage debounces per control, then transactionally creates or increments exact lifetime/current-UTC-month/last-used state under owner/manager rules at `ownerControlUsage/{tId}_{sId}`. | `src/database/ownerControlUsage/index.ts`, `src/lib/ownerControlUsage/writeOwnerControlUsage.ts`, `src/data/shared/ownerControlUsageContract.ts`, `firestore.rules` |
 | Function telemetry writes daily `systemTelemetry` function result summaries. | `functions/src/telemetry/logger.ts:31-42` |
 
 ## 6. Named features

@@ -22,14 +22,27 @@ const ANSWERLATTICE_PUBLIC_CONTENT_REQUEST_FAILED = 'Answerlattice public conten
 
 type PublicContentResponse<T> = {
     data: T;
+    scope: AnswerlatticePublicContentRequestScope;
+};
+
+export type AnswerlatticePublicContentRequestScope = {
+    tId: number;
+    sId: number;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isPublicContentResponse = <T,>(value: unknown): value is PublicContentResponse<T> => (
-    isRecord(value) && 'data' in value
+const isPublicContentResponse = <T,>(
+    value: unknown,
+    expectedScope: AnswerlatticePublicContentRequestScope,
+): value is PublicContentResponse<T> => (
+    isRecord(value)
+    && 'data' in value
+    && isRecord(value.scope)
+    && value.scope.tId === expectedScope.tId
+    && value.scope.sId === expectedScope.sId
 );
 
 const getPublicContentClientLogContext = (type: PublicContentType, response: Response) => ({
@@ -50,9 +63,14 @@ const buildUrl = (type: PublicContentType, params?: Record<string, string | numb
 
 async function fetchPublicContent<T>(
     type: PublicContentType,
+    expectedScope: AnswerlatticePublicContentRequestScope,
     params?: Record<string, string | number | null | undefined>,
 ): Promise<T> {
-    const response = await fetch(buildUrl(type, params), {
+    const response = await fetch(buildUrl(type, {
+        ...params,
+        expectedTenantId: expectedScope.tId,
+        expectedStoreId: expectedScope.sId,
+    }), {
         ...ANSWERLATTICE_PUBLIC_CONTENT_REQUEST_POLICY,
         method: 'GET',
     });
@@ -81,7 +99,7 @@ async function fetchPublicContent<T>(
         throw new Error(ANSWERLATTICE_PUBLIC_CONTENT_REQUEST_FAILED);
     }
 
-    if (!isPublicContentResponse<T>(payload)) {
+    if (!isPublicContentResponse<T>(payload, expectedScope)) {
         logRuntimeFailure(
             'answerlattice_public_content_client_response_invalid',
             undefined,
@@ -93,8 +111,11 @@ async function fetchPublicContent<T>(
     return payload.data as T;
 }
 
-export const fetchAnswerlatticePublicFaqs = async (maxResults?: number): Promise<AnswerlatticePublicFaq[]> => {
-    const data = await fetchPublicContent<unknown>('faqs', { maxResults });
+export const fetchAnswerlatticePublicFaqs = async (
+    expectedScope: AnswerlatticePublicContentRequestScope,
+    maxResults?: number,
+): Promise<AnswerlatticePublicFaq[]> => {
+    const data = await fetchPublicContent<unknown>('faqs', expectedScope, { maxResults });
     const faqs = normalizeAnswerlatticePublicFaqList(data);
     if (!faqs) {
         logRuntimeFailure('answerlattice_public_faq_client_payload_invalid', undefined, {
@@ -113,22 +134,28 @@ const rejectInvalidPublicPayload = (type: PublicContentType, data: unknown): nev
     throw new Error(ANSWERLATTICE_PUBLIC_CONTENT_REQUEST_FAILED);
 };
 
-export const fetchAnswerlatticePublicCategories = async (): Promise<KnowledgeBaseCategoriesType | null> => {
-    const data = await fetchPublicContent<unknown>('categories');
+export const fetchAnswerlatticePublicCategories = async (
+    expectedScope: AnswerlatticePublicContentRequestScope,
+): Promise<KnowledgeBaseCategoriesType | null> => {
+    const data = await fetchPublicContent<unknown>('categories', expectedScope);
     if (data === null) return null;
     return normalizeAnswerlatticePublicCategories(data) || rejectInvalidPublicPayload('categories', data);
 };
 
-export const fetchAnswerlatticePublicArticle = async (articleId: string): Promise<AnswerlatticePublicArticle | null> => {
-    const data = await fetchPublicContent<unknown>('article', { articleId });
+export const fetchAnswerlatticePublicArticle = async (
+    articleId: string,
+    expectedScope: AnswerlatticePublicContentRequestScope,
+): Promise<AnswerlatticePublicArticle | null> => {
+    const data = await fetchPublicContent<unknown>('article', expectedScope, { articleId });
     if (data === null) return null;
     return normalizeAnswerlatticePublicArticle(data) || rejectInvalidPublicPayload('article', data);
 };
 
 export const fetchAnswerlatticePublicChangelogPage = async (
+    expectedScope: AnswerlatticePublicContentRequestScope,
     options?: { beforePageNumber?: number },
 ): Promise<AnswerlatticePublicChangelogPage | null> => {
-    const data = await fetchPublicContent<unknown>('changelog', {
+    const data = await fetchPublicContent<unknown>('changelog', expectedScope, {
         beforePageNumber: options?.beforePageNumber,
     });
     if (data === null) return null;

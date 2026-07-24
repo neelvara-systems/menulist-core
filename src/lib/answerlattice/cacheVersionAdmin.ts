@@ -4,9 +4,13 @@ import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/ans
 
 import {
     AnswerlatticeCacheSource,
-    getAnswerlatticeCacheVersionDocId,
 } from './cacheVersionManifest';
-import { appendAnswerlatticeCompiledContextSourceChangeAdmin } from './compiledSourceVersionsAdmin';
+import {
+    getAnswerlatticeInvalidationCacheSources,
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+} from './invalidationOwnership';
 
 type CacheVersionBumpMetadata = {
     reason?: string;
@@ -39,13 +43,40 @@ export const bumpAnswerlatticeCacheVersionAdmin = async (
     if (metadata?.sourceId) data.lastSourceId = String(metadata.sourceId).slice(0, 160);
     if (metadata?.sourceType) data.lastSourceType = String(metadata.sourceType).slice(0, 80);
 
-    const batch = firestoreAdmin.batch();
-    batch.set(
-        firestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
-            .doc(getAnswerlatticeCacheVersionDocId(source, tenantId, storeId)),
-        data,
-        { merge: true },
-    );
-    appendAnswerlatticeCompiledContextSourceChangeAdmin(batch, source, tenantId, storeId, metadata);
-    await batch.commit();
+    const scope = { tId: tenantId, sId: storeId };
+    await firestoreAdmin.runTransaction(async transaction => {
+        const ownership = await readAnswerlatticeInvalidationOwnership({
+            cacheSources: getAnswerlatticeInvalidationCacheSources({
+                canonical: source === 'canonical',
+                kb: source === 'kb',
+            }),
+            db: firestoreAdmin,
+            scope,
+            transaction,
+        });
+        transaction.set(ownership.cacheVersionRefs[source]!, data, { merge: true });
+        transaction.set(ownership.sourceVersionsRef, {
+            ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
+            schemaVersion: 1,
+            pId: 'AL',
+            ...scope,
+            [source]: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+            ...(metadata?.reason ? { lastReason: String(metadata.reason).slice(0, 80) } : {}),
+            ...(metadata?.sourceId ? { lastSourceId: String(metadata.sourceId).slice(0, 160) } : {}),
+            ...(metadata?.sourceType ? { lastSourceType: String(metadata.sourceType).slice(0, 80) } : {}),
+        }, { merge: true });
+        transaction.set(ownership.manifestRef, {
+            ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
+            schemaVersion: 1,
+            pId: 'AL',
+            ...scope,
+            status: 'stale',
+            staleReason: metadata?.reason || `${source}_changed`,
+            updatedAt: FieldValue.serverTimestamp(),
+            ...(metadata?.reason ? { lastReason: String(metadata.reason).slice(0, 80) } : {}),
+            ...(metadata?.sourceId ? { lastSourceId: String(metadata.sourceId).slice(0, 160) } : {}),
+            ...(metadata?.sourceType ? { lastSourceType: String(metadata.sourceType).slice(0, 80) } : {}),
+        }, { merge: true });
+    });
 };

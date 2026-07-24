@@ -34,7 +34,7 @@ Scheduler writes every 30 minutes from the 30-minute `menulistMaintenanceSchedul
 - `founderOnboardingTransitions/{storeId}`: completes up to 50 missing `firstLiveAt` / `timeToLiveHours` records per run.
 - `systemAlerts`: bounded Founder Monitor exception alerts for failed payments, paid-not-live stores, stale/broken stores, and critical support tickets. Existing alert cooldown logic controls repeat alerts.
 
-Founder Monitor revenue document-ID admission is Firebase-cost neutral. `src/lib/ops/founderRevenueReadModel.ts` validates movement IDs with `src/lib/firebase/firestoreDocumentId.ts` and requires transition store IDs to be exact positive numeric MenuList store document IDs before the same guard, before `founderRevenueMovements/{movementId}` and `founderOnboardingTransitions/{storeId}` refs. Valid movement and store IDs keep the same writes; malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return before invalid refs. This adds no reads, writes, deletes, rules, indexes, Cloud Functions, provider calls, deploy action, or owner/platform setting.
+Founder Monitor revenue document-ID admission is Firebase-cost neutral. `src/lib/ops/founderRevenueReadModel.ts` validates movement IDs with `src/lib/firebase/firestoreDocumentId.ts` and requires transition store IDs to be exact positive numeric MenuList store document IDs before the same guard, before `founderRevenueMovements/{movementId}` and `founderOnboardingTransitions/{storeId}` refs. Valid movement and store IDs keep the same writes; malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return for optional callers and reject required financial callers before invalid refs. This adds no reads, writes, deletes, rules, indexes, Cloud Functions, provider calls, deploy action, or owner/platform setting.
 
 Scheduler reads for store coverage:
 
@@ -67,6 +67,14 @@ The current query shapes are:
 - `founderRevenueMovements.where('businessDayKey', '==', todayKey).limit(500)`
 - `founderOnboardingTransitions.limit(500)`
 
+Required Razorpay revenue projection does not add a Firestore operation. A successful movement retains the existing one transaction with one movement read and the same movement/summary/daily/optional transition writes; a duplicate retains the existing movement read and zero writes. The change is failure semantics: required provider-backed movements reject after a failed transaction so the signed webhook or authenticated idempotent API replay can retry instead of acknowledging missing derived truth. The maintained demo emulator clears inherited Google credentials and injects a transaction failure to prove this behavior.
+
+MenuList revenue identity is explicit: absent/other product IDs are ignored, and subscription lifecycle movements require exact dual `ML` identity plus agreeing numeric tenant/store aliases. Top-up webhook projection uses the already-settled subscription scope and immutable settlement amount; it does not add a provider call, Firestore read, write, index, or cache operation beyond the existing settlement and deterministic movement transaction.
+
+Required movement admission validates scalar runtime shape before Firestore: paise/prior-MRR values are exact nonnegative safe integers, subscription quantity is absent or an exact positive safe integer, computed MRR remains safe, and a supplied event time is valid. Malformed required values reject for retry instead of being rounded, coerced to zero, or moved to the current India-day document. These checks add no read, write, index, Storage or provider operation.
+
+Subscription-linked webhook revenue uses the exact product subscription as workspace authority and caches that exact read for later status/message work in the same request. Existing subscription lifecycle paths therefore add no duplicate read. A refund path that previously had no subscription consumer may add at most one exact subscription-document read to prove tenant/store attribution. Unknown non-top-up orders no longer write a movement or summary counter; maintained top-up `order.paid` keeps its existing snapshot/current-subscription reads and deterministic movement transaction.
+
 ## Security
 
 The API uses:
@@ -86,3 +94,7 @@ This feature changes Next.js app/API code and Firebase Cloud Function scheduler 
 ```bash
 firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
 ```
+
+## Billing source scope and cost (July 22, 2026)
+
+Exact projection adds no Firestore read/write/index/Storage/provider operation. Founder Monitor keeps the existing capped product query, filters ambiguous rows in memory and retains the raw-cap reconciliation-limited signal. The dry-run-by-default revenue backfill likewise rejects conflicting aliases before constructing or writing deterministic movement IDs.

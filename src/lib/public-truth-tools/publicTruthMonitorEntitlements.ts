@@ -4,11 +4,13 @@ import type { PublicTruthMonitorAccessMode, PublicTruthMonitorEntitlementResult 
 import type { StoreDataType } from "@type/platform/store";
 import type { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { hasValidSubscriptionAccess } from "@util/razorpay";
+import { isMenuListSubscriptionEntitledForTenant } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 
 export interface PublicTruthMonitorEntitlementInput {
     activeSubscription?: FirestoreSubscriptionDoc | null;
     storeDetails?: Partial<StoreDataType> | null;
     storeId?: string | number | null;
+    tenantId?: string | number | null;
 }
 
 const normalizeId = (value: unknown) => String(value ?? "").trim();
@@ -36,8 +38,11 @@ export function isPublicTruthMonitorEnabled(): boolean {
 
 function hasEligiblePlan(input: PublicTruthMonitorEntitlementInput): boolean {
     const subscription = input.activeSubscription || null;
+    const tenantId = input.tenantId ?? input.storeDetails?.tenantId;
     const activePlan = String(subscription?.planId || "").toLowerCase();
-    return hasValidSubscriptionAccess(subscription) && getPublicTruthMonitorPaidPlanIds().includes(activePlan);
+    return isMenuListSubscriptionEntitledForTenant(subscription, tenantId)
+        && hasValidSubscriptionAccess(subscription)
+        && getPublicTruthMonitorPaidPlanIds().includes(activePlan);
 }
 
 export function evaluatePublicTruthMonitorEntitlement(

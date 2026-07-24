@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic';
-import { DB_COLLECTIONS } from "@constant/database";
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     claimBillingCheckoutLease,
     completeBillingCheckoutLease,
+    markBillingCheckoutProviderCreateStarted,
     markBillingCheckoutProviderCreated,
     releaseBillingCheckoutLease,
+    renewBillingCheckoutProviderRecoveryLease,
     renewExpiredBillingCheckoutLease,
 } from '@lib/billing/billingCheckoutLease';
 import {
@@ -13,6 +14,7 @@ import {
     getBillingFirestoreAdminForProduct,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
 import {
     getBoundedRazorpaySecurityContext,
     getBoundedRazorpayStringContext,
@@ -21,7 +23,7 @@ import {
 import { normalizeBillingTopupDocumentId, normalizeBillingTopupScopeDocumentId } from "@lib/billing/topupDocumentIdBoundary";
 import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { projectRazorpayTopupCheckoutResponse } from '@lib/billing/paymentCheckoutBoundary';
-import { admin } from "@lib/firebase/firebaseAdmin";
+import { persistPendingProductTopupSnapshot } from '@lib/billing/topupSettlementServer';
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -60,9 +62,12 @@ function isMatchingCheckoutOrder(candidate: any, expected: {
         && String(candidate.currency || '').toUpperCase() === expected.currency.toUpperCase()
         && String(notes.checkoutAttemptId || '') === expected.attemptId
         && String(notes.billingStoreId || '') === String(expected.billingStoreId)
-        && String(notes.productId || notes.pId || '') === expected.productId
-        && String(notes.tenantId || notes.tId || '') === String(expected.tenantId)
-        && String(notes.storeId || notes.sId || '') === String(expected.storeId)
+        && String(notes.productId || '') === expected.productId
+        && String(notes.pId || '') === expected.productId
+        && String(notes.tenantId || '') === String(expected.tenantId)
+        && String(notes.tId || '') === String(expected.tenantId)
+        && String(notes.storeId || '') === String(expected.storeId)
+        && String(notes.sId || '') === String(expected.storeId)
         && String(notes.packId || '') === expected.packId;
 }
 
@@ -210,13 +215,14 @@ export const POST = withAuth(async (request, session) => {
                 { status: 404 }
             );
         }
-        const billingStoreId = Number(activeSubscription.storeId ?? activeSubscription.sId);
-        if (!Number.isSafeInteger(billingStoreId) || billingStoreId <= 0) {
+        const activeSubscriptionScope = getProductSubscriptionBillingScope(productId, activeSubscription);
+        if (!activeSubscriptionScope || activeSubscriptionScope.tenantId !== tenantId) {
             return NextResponse.json(
                 { error: 'The active billing subscription requires support.' },
                 { status: 409 },
             );
         }
+        const billingStoreId = activeSubscriptionScope.storeId;
 
         const { packId, currency } = validation.data;
         const priceKey = `price${currency.toUpperCase()}`;
@@ -277,20 +283,31 @@ export const POST = withAuth(async (request, session) => {
             }
             recoveredOrder = candidate;
         } else if (checkoutClaim.outcome === 'recover_attempt') {
+            const renewed = await renewExpiredBillingCheckoutLease(
+                checkoutLeaseIdentity,
+                checkoutClaim.attemptId,
+            );
+            if (!renewed.acquired || !renewed.attemptId) {
+                return NextResponse.json(
+                    { error: 'A billing checkout is already being prepared. Please wait and try again.' },
+                    { status: 409 },
+                );
+            }
+            checkoutAttemptId = renewed.attemptId;
+            receipt = getTopupCheckoutReceipt(checkoutAttemptId);
+        } else if (checkoutClaim.outcome === 'recover_provider') {
             recoveredOrder = await recoverCheckoutOrder(orderExpectation());
             if (!recoveredOrder) {
-                const renewed = await renewExpiredBillingCheckoutLease(
+                const renewed = await renewBillingCheckoutProviderRecoveryLease(
                     checkoutLeaseIdentity,
                     checkoutClaim.attemptId,
                 );
-                if (!renewed.acquired || !renewed.attemptId) {
+                if (!renewed) {
                     return NextResponse.json(
                         { error: 'A billing checkout is already being prepared. Please wait and try again.' },
                         { status: 409 },
                     );
                 }
-                checkoutAttemptId = renewed.attemptId;
-                receipt = getTopupCheckoutReceipt(checkoutAttemptId);
             }
         }
 
@@ -322,6 +339,10 @@ export const POST = withAuth(async (request, session) => {
         if (recoveredOrder) {
             razorpayOrder = recoveredOrder;
         } else {
+            if (!checkoutAttemptId || !(await markBillingCheckoutProviderCreateStarted({
+                attemptId: checkoutAttemptId,
+                identity: checkoutLeaseIdentity,
+            }))) throw new Error('billing_checkout_provider_order_start_claim_lost');
             providerOrderCreateAttempted = true;
             try {
                 razorpayOrder = await razorpayClient.orders.create(orderPayload);
@@ -343,28 +364,20 @@ export const POST = withAuth(async (request, session) => {
             throw new Error('razorpay_topup_order_id_invalid');
         }
 
-        await getBillingFirestoreAdminForProduct(productId).collection(DB_COLLECTIONS.TOPUPS).doc(topupDocumentId).set({
-            paymentProvider: 'razorpay',
-            providerOrderId: topupDocumentId,
-            creditsAdded: selectedPack.creditAmount,
+        await persistPendingProductTopupSnapshot({
             amount: price,
-            currency,
-            status: 'pending',
-            userId,
-            tenantId,
-            storeId,
-            productId,
-            pId: productId,
-            tId: tenantId,
-            sId: storeId,
-            uId: userId,
-            packId,
-            type: isAnswerlatticeBillingProduct(productId) ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
-            packName: selectedPack.name,
+            billingDb: getBillingFirestoreAdminForProduct(productId),
             billingStoreId,
-            createdOn: admin.firestore.FieldValue.serverTimestamp(),
-            updatedOn: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
+            creditsAdded: selectedPack.creditAmount,
+            currency,
+            order: razorpayOrder,
+            packId,
+            packName: selectedPack.name,
+            productId,
+            storeId,
+            tenantId,
+            userId,
+        });
         topupPersisted = true;
 
         await completeBillingCheckoutLease({

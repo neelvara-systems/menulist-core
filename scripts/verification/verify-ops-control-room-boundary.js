@@ -210,6 +210,16 @@ function verifyDesktopSurface(component) {
     "logOpsFailure('ops_control_room_safe_mode_toggle_failed'",
     "logOpsFailure('ops_control_room_mute_alerts_failed'",
     "logOpsFailure('ops_control_room_force_republish_failed'",
+    'const latestLoadRequestRef = useRef(0);',
+    'const safeModeInFlightRef = useRef(false);',
+    'const muteInFlightRef = useRef(false);',
+    'const republishInFlightRef = useRef(false);',
+    'latestLoadRequestRef.current !== requestId',
+    'if (safeModeInFlightRef.current) return;',
+    'if (muteInFlightRef.current) return;',
+    'if (!selectedStore || republishInFlightRef.current)',
+    'const republishStore = selectedStore;',
+    'if (!isMountedRef.current || !isPlatformRef.current) return;',
     'SAFE_MODE stops guarded AI generation and provider-upload paths.',
     'Ops state unavailable',
   ].forEach((token) => assertIncludes(component, token, 'Desktop Ops Control Room'));
@@ -221,6 +231,10 @@ function verifyDesktopSurface(component) {
     'error.message',
     "throw new Error('Request failed')",
   ].forEach((token) => assertNotIncludes(component, token, 'Desktop Ops Control Room boundary'));
+  [
+    'forceRepublishFn({ storeId: selectedStore.sId',
+    "getBoundedOpsStringContext('storeId', selectedStore.sId)",
+  ].forEach((token) => assertNotIncludes(component, token, 'Desktop Ops Control Room captured action scope'));
 }
 
 function verifyMobileSurface(screen, mobileShell, mobileMore) {
@@ -245,6 +259,16 @@ function verifyMobileSurface(screen, mobileShell, mobileMore) {
     "logOpsFailure('mobile_ops_safe_mode_toggle_failed'",
     "logOpsFailure('mobile_ops_mute_alerts_failed'",
     "logOpsFailure('mobile_ops_force_republish_failed'",
+    'const latestLoadRequestRef = useRef(0);',
+    'const safeModeInFlightRef = useRef(false);',
+    'const muteInFlightRef = useRef(false);',
+    'const republishInFlightRef = useRef(false);',
+    'latestLoadRequestRef.current !== requestId',
+    'if (safeModeInFlightRef.current) return;',
+    'if (muteInFlightRef.current) return;',
+    'if (!selectedStore || republishInFlightRef.current)',
+    'const republishStore = selectedStore;',
+    'if (!isMountedRef.current || !isPlatformRef.current) return;',
   ].forEach((token) => assertIncludes(screen, token, 'Mobile Ops Control Room'));
 
   [
@@ -269,12 +293,16 @@ function verifyMobileSurface(screen, mobileShell, mobileMore) {
     'error.message',
     "throw new Error('Request failed')",
   ].forEach((token) => assertNotIncludes(screen, token, 'Mobile Ops Control Room boundary'));
+  [
+    'forceRepublishFn({ storeId: selectedStore.sId',
+    "getBoundedOpsStringContext('selectedStoreId', selectedStore.sId)",
+  ].forEach((token) => assertNotIncludes(screen, token, 'Mobile Ops Control Room captured action scope'));
 }
 
 function verifyDocsAndPackage(packageJson, opsDoc, mobileDoc, auditDoc) {
   assertIncludes(
     packageJson,
-    '"verify:ops-control-room-boundary": "node scripts/verification/verify-ops-control-room-boundary.js"',
+    '"verify:ops-control-room-boundary": "node scripts/verification/verify-ops-control-room-boundary.js && npm run test:force-republish-lease"',
     'package.json ops control room verifier',
   );
 
@@ -285,7 +313,8 @@ function verifyDocsAndPackage(packageJson, opsDoc, mobileDoc, auditDoc) {
     'SAFE_MODE wording follows the actual boundary',
     'Desktop and mobile force-republish callable results require `success`, a bounded `projectCount` from 1 to 100',
     'Source gate: `npm run verify:ops-control-room-boundary`',
-    'It does not run Firestore reads/writes, callable invocations, provider calls, browser smoke, Firebase deploy, or Vercel deploy.',
+    'It runs a local Firestore emulator for lease concurrency, partitioning, expiry and revoked-role no-write behavior.',
+    'It does not invoke a deployed callable, provider, browser, Firebase deploy, or Vercel deploy.',
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops Control Room implementation docs'));
 
   [
@@ -293,7 +322,7 @@ function verifyDocsAndPackage(packageJson, opsDoc, mobileDoc, auditDoc) {
     '`/api/platform/current-access` boundary',
     'SAFE_MODE confirmation',
     'alert-mute action',
-    'force-republish confirmation pattern',
+    'captured force-republish scope',
     'Source gate: `npm run verify:ops-control-room-boundary`',
   ].forEach((token) => assertIncludes(mobileDoc, token, 'Ops Control Room mobile docs'));
 
@@ -320,6 +349,8 @@ function verifyOpsControlRoomBoundary() {
     currentAccessRoute: read('src/app/api/platform/current-access/route.ts'),
     currentAccessClient: read('src/lib/auth/currentPlatformAccessClient.ts'),
     platformRouteGuard: read('src/lib/auth/platformRouteGuard.ts'),
+    operationsFunction: read('functions/src/triggers/operations.ts'),
+    publishVerificationFunction: read('functions/src/monitoring/publishVerification.ts'),
   };
 
   [
@@ -333,6 +364,24 @@ function verifyOpsControlRoomBoundary() {
     "accessModel === 'current_persisted_platform_user'",
   ].forEach((token) => assertIncludes(files.currentAccessClient, token, 'Platform current-access client'));
   assertIncludes(files.platformRouteGuard, 'await getCurrentPlatformUser(session)', 'Platform route current authorization');
+  [
+    'acquireForceRepublishLease(',
+    'completeForceRepublishLease(',
+    'FORCE_REPUBLISH_LEASE_MS',
+    "state.status === 'running' && leaseExpiresAtMs > nowMs",
+    'transaction.get(tenantRef)',
+    'transaction.get(storeRef)',
+    'transaction.get(userRef)',
+    '{ requirePlatformAuthority: true }',
+  ].forEach((token) => assertIncludes(files.publishVerificationFunction, token, 'Force republish server lease'));
+  [
+    'acquireForceRepublishLease(',
+    'completeForceRepublishLease(republishLease)',
+    'OPERATIONS_FORCE_REPUBLISH_LEASE_FINALIZE_FAILED',
+    "'Force republish is already running for this store.'",
+    "leaseError.message === PUBLISH_VERIFICATION_SCOPE_INVALID",
+    "throw new HttpsError('permission-denied', 'You do not have access to this store.')",
+  ].forEach((token) => assertIncludes(files.operationsFunction, token, 'Force republish callable lease'));
 
   verifySafeModeRoute(files.safeModeRoute);
   verifyMuteAlertsRoute(files.muteAlertsRoute);

@@ -5,10 +5,16 @@ import {
     AnswerlatticeSupportSearchCapacityError,
     createAnswerlatticeSupportSearchAccounting,
 } from '../../src/lib/answerlattice/supportSearchAccounting';
+import {
+    checkAnswerlatticeAICapacity,
+    reserveAnswerlatticeAiOperationCapacity,
+} from '../../src/lib/answerlattice/aiAccounting';
 import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import type { CoreSearchResult } from '../../src/lib/search/types';
+import type { FirestoreSubscriptionDoc } from '../../src/types/razorpay';
 import { Timestamp } from 'firebase-admin/firestore';
+import { recoverAnswerlatticeAiCapacityReservations } from '../../functions-answerlattice/src/answerlattice/aiCapacityReservationRecovery';
 
 const scope = { tId: 91, sId: 901 };
 const subscriptionId = 'al-subscription-901';
@@ -86,6 +92,11 @@ async function run(): Promise<void> {
 
     const paid = createAccounting('provider_001');
     await paid.beforeAiProviderCall();
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits,
+        1,
+        'support-search credits must be reserved before provider work',
+    );
     await paid.settle(result(true), 120);
     await paid.settle(result(true), 120);
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 1);
@@ -97,16 +108,14 @@ async function run(): Promise<void> {
     await seedSubscription(1);
     const first = createAccounting('concurrent_001');
     const second = createAccounting('concurrent_002');
-    await Promise.all([first.beforeAiProviderCall(), second.beforeAiProviderCall()]);
-    const settlements = await Promise.allSettled([
-        first.settle(result(true), 120),
-        second.settle(result(true), 120),
-    ]);
-    assert.equal(settlements.filter(entry => entry.status === 'fulfilled').length, 1);
-    const rejected = settlements.find(entry => entry.status === 'rejected');
+    const gates = await Promise.allSettled([first.beforeAiProviderCall(), second.beforeAiProviderCall()]);
+    assert.equal(gates.filter(entry => entry.status === 'fulfilled').length, 1);
+    const rejected = gates.find(entry => entry.status === 'rejected');
     assert.ok(rejected && rejected.status === 'rejected' && rejected.reason instanceof AnswerlatticeSupportSearchCapacityError);
+    const admittedAccounting = gates[0].status === 'fulfilled' ? first : second;
+    await admittedAccounting.settle(result(true), 120);
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 0);
-    assert.equal(await operationCount(), 2, 'only the settled concurrent request may create a new operation row');
+    assert.equal(await operationCount(), 2, 'only the pre-provider-reserved concurrent request may create an operation row');
 
     await seedSubscription(1, PRODUCT_IDS.MENULIST);
     const crossProduct = createAccounting('wrong_product_001');
@@ -124,6 +133,210 @@ async function run(): Promise<void> {
         AnswerlatticeSupportSearchCapacityError,
         'a pending subscription must fail before provider use',
     );
+
+    await seedSubscription(1);
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ monthlyCredits: '1' }, { merge: true });
+    const numericStringBalance = createAccounting('numeric_string_balance_001');
+    await assert.rejects(
+        () => numericStringBalance.beforeAiProviderCall(),
+        /credit balance is invalid/,
+        'numeric-string subscription balances must not authorize Answerlattice provider work',
+    );
+
+    await seedSubscription(1);
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ topUpCredits: 0.5 }, { merge: true });
+    const fractionalBalance = createAccounting('fractional_balance_001');
+    await assert.rejects(
+        () => fractionalBalance.beforeAiProviderCall(),
+        /credit balance is invalid/,
+        'fractional subscription balances must not authorize Answerlattice provider work',
+    );
+
+    await seedSubscription(1);
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ status: ' ACTIVE ' }, { merge: true });
+    const coercibleStatus = createAccounting('coercible_status_001');
+    await assert.rejects(
+        () => coercibleStatus.beforeAiProviderCall(),
+        AnswerlatticeSupportSearchCapacityError,
+        'coercible subscription states must not authorize Answerlattice provider work',
+    );
+
+    await seedSubscription(1);
+    const staleCapacitySnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
+    const staleCapacitySubscription = {
+        ...(staleCapacitySnapshot.data() as FirestoreSubscriptionDoc),
+        id: staleCapacitySnapshot.id,
+        creditsLastResetMonth: 200001,
+    };
+    await staleCapacitySnapshot.ref.set({
+        tId: 92,
+        tenantId: 92,
+        monthlyCredits: 0,
+        monthlyCreditsAllowance: 5,
+        creditsLastResetMonth: 200001,
+    }, { merge: true });
+    const staleCapacity = await checkAnswerlatticeAICapacity(
+        scope,
+        'answerlattice_support_search',
+        1,
+        staleCapacitySubscription,
+    );
+    assert.equal(staleCapacity.allowed, false, 'current subscription scope must be revalidated before provider admission');
+    assert.equal(
+        (await staleCapacitySnapshot.ref.get()).data()?.monthlyCredits,
+        0,
+        'a stale preloaded subscription must not reset credits after current scope changed',
+    );
+
+    await seedSubscription(2);
+    const staleReservationSnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
+    const staleReservationSubscription = {
+        ...(staleReservationSnapshot.data() as FirestoreSubscriptionDoc),
+        id: staleReservationSnapshot.id,
+    };
+    const staleScopeReservation = await reserveAnswerlatticeAiOperationCapacity({
+        action: 'answerlattice_support_search',
+        idempotencyKey: 'support-search:help_center:stale_scope_reservation_001',
+        scope,
+        subscription: staleReservationSubscription,
+        unitsToReserve: 1,
+    });
+    const staleScopePointerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_CAPACITY_RESERVATIONS)
+        .doc(staleScopeReservation.operationId);
+    const recoveryAtBeforeScopeChange = (await staleScopePointerRef.get()).data()?.recoveryAt.toMillis();
+    await staleReservationSnapshot.ref.set({ status: 'pending' }, { merge: true });
+    await assert.rejects(
+        () => reserveAnswerlatticeAiOperationCapacity({
+            action: 'answerlattice_support_search',
+            idempotencyKey: 'support-search:help_center:stale_scope_reservation_001',
+            scope,
+            subscription: staleReservationSubscription,
+            unitsToReserve: 1,
+        }),
+        /active Answerlattice subscription is required/,
+        'a stale subscription object must not renew a reservation after current status changed',
+    );
+    assert.equal(
+        (await staleScopePointerRef.get()).data()?.recoveryAt.toMillis(),
+        recoveryAtBeforeScopeChange,
+        'rejected stale reservation retries must not extend recovery time',
+    );
+    await Promise.all([
+        staleScopePointerRef.delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+            .doc(String(scope.tId)).collection(String(scope.sId)).doc(staleScopeReservation.operationId).delete(),
+    ]);
+
+    await seedSubscription(1);
+    await assert.rejects(
+        () => checkAnswerlatticeAICapacity(scope, 'answerlattice_support_search', '1' as unknown as number),
+        /capacity quantity is invalid/,
+        'numeric-string operation quantities must not be accepted as Answerlattice credit units',
+    );
+
+    await seedSubscription(2);
+    const operationIdsBeforeReplayTest = new Set((await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+        .doc(String(scope.tId))
+        .collection(String(scope.sId))
+        .get()).docs.map(document => document.id));
+    const replayScalar = createAccounting('replay_scalar_001');
+    await replayScalar.beforeAiProviderCall();
+    await replayScalar.settle(result(true), 120);
+    const replayOperationSnapshot = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+        .doc(String(scope.tId))
+        .collection(String(scope.sId))
+        .get();
+    const replayOperation = replayOperationSnapshot.docs.find(document => !operationIdsBeforeReplayTest.has(document.id));
+    assert.ok(replayOperation, 'the replay scalar test must create one operation record');
+    const validReplayData = replayOperation.data();
+    await replayOperation.ref.set({ unitsConsumed: '1' }, { merge: true });
+    await assert.rejects(
+        () => replayScalar.settle(result(true), 120),
+        /reservation (identity|evidence) is invalid/,
+        'numeric-string operation units must not satisfy Answerlattice idempotent replay',
+    );
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 1);
+
+    await replayOperation.ref.set({
+        unitsConsumed: validReplayData.unitsConsumed,
+        creditConsumption: {
+            ...validReplayData.creditConsumption,
+            monthlyCreditsAfter: '1',
+        },
+    }, { merge: true });
+    await assert.rejects(
+        () => replayScalar.settle(result(true), 120),
+        /reservation evidence is invalid/,
+        'numeric-string balance evidence must not satisfy Answerlattice idempotent replay',
+    );
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 1);
+
+    await seedSubscription(1);
+    const providerNotUsed = createAccounting('provider_not_used_001');
+    await providerNotUsed.beforeAiProviderCall();
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 0);
+    await providerNotUsed.settle(result(false), 20);
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits,
+        1,
+        'a reserved request that never uses the provider must refund its credit',
+    );
+
+    await seedSubscription(1);
+    const failedRequest = createAccounting('failed_request_001');
+    await failedRequest.beforeAiProviderCall();
+    await failedRequest.abort('request_failed');
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits,
+        1,
+        'a failed request must refund its pre-provider reservation',
+    );
+
+    await seedSubscription(1);
+    const staleReservation = createAccounting('stale_reservation_001');
+    await staleReservation.beforeAiProviderCall();
+    const recoveryPointers = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_CAPACITY_RESERVATIONS).get();
+    assert.equal(recoveryPointers.size, 1, 'a live reservation must have one root recovery pointer');
+    const stalePointer = recoveryPointers.docs[0];
+    const staleOperationId = stalePointer.data().operationId;
+    const staleOperationRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+        .doc(String(scope.tId)).collection(String(scope.sId)).doc(staleOperationId);
+    await Promise.all([
+        stalePointer.ref.set({ recoveryAt: Timestamp.fromMillis(Date.now() - 1) }, { merge: true }),
+        staleOperationRef.set({ reservationRecoveryAt: Timestamp.fromMillis(Date.now() - 1) }, { merge: true }),
+    ]);
+    const recovered = await recoverAnswerlatticeAiCapacityReservations({ db, failFast: true, now: Timestamp.now() });
+    assert.deepEqual(recovered, { errors: 0, refunded: 1, scanned: 1 });
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 1);
+    assert.equal((await stalePointer.ref.get()).exists, false, 'successful stale recovery must delete its root pointer');
+    assert.equal((await staleOperationRef.get()).data()?.accountingStatus, 'refunded');
+
+    await seedSubscription(1);
+    const malformedRecovery = createAccounting('malformed_recovery_001');
+    await malformedRecovery.beforeAiProviderCall();
+    const malformedPointerSnapshot = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_CAPACITY_RESERVATIONS).get();
+    assert.equal(malformedPointerSnapshot.size, 1);
+    const malformedPointer = malformedPointerSnapshot.docs[0];
+    const malformedOperationRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
+        .doc(String(scope.tId)).collection(String(scope.sId)).doc(malformedPointer.data().operationId);
+    const malformedOperation = (await malformedOperationRef.get()).data() || {};
+    await Promise.all([
+        malformedPointer.ref.set({ recoveryAt: Timestamp.fromMillis(Date.now() - 1) }, { merge: true }),
+        malformedOperationRef.set({
+            creditConsumption: {
+                ...malformedOperation.creditConsumption,
+                monthlyCreditsDebited: '1',
+            },
+        }, { merge: true }),
+    ]);
+    const malformedRecoveryResult = await recoverAnswerlatticeAiCapacityReservations({ db, now: Timestamp.now() });
+    assert.deepEqual(malformedRecoveryResult, { errors: 1, refunded: 0, scanned: 1 });
+    assert.equal(
+        (await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits,
+        0,
+        'malformed recovery evidence must not mint support credits',
+    );
+    assert.equal((await malformedPointer.ref.get()).exists, true, 'malformed recovery must remain visible for repair');
 
     process.stdout.write('Answerlattice support-search accounting emulator tests passed.\n');
 }

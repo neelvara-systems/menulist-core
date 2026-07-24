@@ -1,9 +1,9 @@
 # Platform Pull API — Implementation
 
-**Status:** ✅ IMPLEMENTED (v1.13 — authentication, rate, response identity, and credential-contract docs hardened Jul 13, 2026)
+**Status:** ✅ IMPLEMENTED (v1.15 — exact tenant/store key-management settlement hardened Jul 23, 2026)
 **Date:** February 22, 2026  
 **Feature Flag:** `ENABLE_PUBLIC_API`
-**Last Source Gate Update:** July 13, 2026
+**Last Source Gate Update:** July 23, 2026
 
 ---
 
@@ -13,9 +13,9 @@ This implementation doc is source-gated by `npm run verify:platform-pull-api-bou
 
 Current source contract:
 
-- `POST /api/store/public-api-key` is dynamic, authenticated with `withAuth()`, feature-gated by `ENABLE_PUBLIC_API`, scoped to the session store, permission-gated by `MANAGE_INTEGRATIONS`, fail-closed rate-limited by a hashed store segment, and capped at a strict 1KB JSON body before validation. Tenant/store lifecycle, ownership, current store-role permission, and the key write are re-read/applied in one Firestore transaction, so a concurrent block, delete, ownership change, or role-definition change cannot race the mutation.
-- Key generation creates an `ml_` key and stores only the non-secret credential projection: `publicApi.apiKeyHash`, `keyPrefix`, `createdAt`, `productId: ML`, `purpose: menulist_public_api`, and `scopes: [public:read]`. It returns the raw key once with `private, no-store` and logs bounded diagnostics. Revoke transactionally deletes `publicApi` and also returns `private, no-store`.
-- Business Settings Integrations tab exposes generate/regenerate/copy/revoke controls. The raw key is shown only once after generation; after that the UI displays only the stored prefix.
+- `POST /api/store/public-api-key` is dynamic, authenticated with `withAuth()`, feature-gated by `ENABLE_PUBLIC_API`, scoped to the session store, permission-gated by `MANAGE_INTEGRATIONS`, fail-closed rate-limited by a hashed store segment, and capped at a strict 1KB JSON body before validation. The request includes the exact tenant/store selected when the owner initiated it; both identifiers must normalize and equal the authenticated session before Firestore work. Tenant/store lifecycle, ownership, current store-role permission, and the key write are then re-read/applied in one Firestore transaction, so a concurrent block, delete, ownership change, role-definition change, or browser store switch cannot redirect the mutation.
+- Key generation creates an `ml_` key and stores only the non-secret credential projection: `publicApi.apiKeyHash`, `keyPrefix`, `createdAt`, `productId: ML`, `purpose: menulist_public_api`, and `scopes: [public:read]`. It returns the raw key once with exact tenant/store acknowledgement plus `private, no-store` and logs bounded diagnostics. Revoke transactionally deletes `publicApi` and returns the same exact-scope acknowledgement with `private, no-store`.
+- Business Settings Integrations tab exposes generate/regenerate/copy/revoke controls. It remounts by exact tenant/store, accepts a response only when its echoed scope matches the initiating scope, and suppresses state, secret, toast, and loading settlement after a store switch or unmount. Functional store-context merges recheck both identifiers. The raw key is shown only once after generation; after that the UI displays only the stored prefix.
 - `/api/public/v1/business` and `/api/public/v1/menu` normalize the bounded key shape and accept only `ml_` credentials. Requests pass a fail-closed hashed-IP pre-auth ceiling and the fail-closed 60/minute hashed-key ceiling before lookup. While raw-key legacy compatibility remains enabled, current-hash and raw-key queries both run with a two-document cap and their document paths are combined: exactly one distinct store may match. The routes re-run key and target eligibility on every request, require normalized credential store IDs and exact positive numeric MenuList target IDs before response construction, return private success cache plus `Vary: X-API-Key`, return private/no-store errors, and log only bounded diagnostics.
 - Conditional ETags hash stable public truth through `src/lib/publicApi/responseIdentity.ts`. Top-level request-time `generatedAt` and POS payload `timestamp` remain in 200 response bodies but are excluded from identity, so unchanged polls can actually return 304 while any business/menu content change still changes the ETag.
 - The menu endpoint selects the public project from normalized `platformSummary/projects_{storeId}` truth, treats the summary map key and full Firestore document ID as authoritative over embedded `projectId`, and reads only normalized `projects/{tId}/{sId}/{projectId}` refs. Persisted menu versions must be nonnegative safe integers; malformed project/store values fall through to the next valid source and then version 1.
@@ -23,6 +23,7 @@ Current source contract:
 - MenuList product and identity admission lives in `src/lib/publicApi/menuListScope.ts`. Missing `pId`/`productId`, `sId`, or embedded tenant/store aliases remain compatible with legacy MenuList records. When present, product aliases must both be exact `ML`; tenant aliases must resolve to one exact positive numeric document ID; and store/tenant embedded aliases must agree with the authoritative Firestore path. Key mutation rechecks those invariants transactionally, and pull reads recheck them before output.
 - New MenuList keys record `productId: ML`, `purpose: menulist_public_api`, and `scopes: [public:read]`. Legacy credentials without those fields remain accepted, while explicit other-product/purpose credentials and explicit scopes that omit `public:read` are rejected before any store payload is built.
 - Business response projection uses `src/lib/publicApi/businessProjection.ts`: only known business-attribute keys with boolean values leave the route, and temporary status must have a known public type, parseable future ISO expiry, and bounded string message. Persisted `createdBy` and arbitrary attribute/status fields never enter the DTO.
+- The maintained [Business Truth Contract](../canonical-truth-infrastructure/canonical-truth-infrastructure_business-truth-contract.md) freezes the current canonical-source/projection relationship. Focused fixtures preserve linked outlet identity, variant IDs/prices, item allergen and dietary values, public decision-fact values without internal provenance leakage, stable item URLs, and request-time-independent ETag identity. This does not add or change an API field.
 
 Historical sections below remain context, but this source gate is the current acceptance boundary.
 
@@ -90,12 +91,12 @@ Current MenuList generation writes the hash, prefix, timestamp, `productId: 'ML'
 4. Key prefix `ml_abc1...` stored for identification in admin UI
 5. Validation: normalize bounded key shape → `SHA-256(key)` → Firestore lookup by `apiKeyHash`
 6. Backward compat: while raw `apiKey` fields remain supported, hash and raw representations are queried together and may resolve to only one distinct store document. A transitional document containing both is valid; cross-store collisions fail closed.
-7. Key generate/revoke is authenticated, feature-flagged, store-session scoped, permission-gated by `MANAGE_INTEGRATIONS`, fail-closed rate-limited, and capped at a strict 1KB JSON body. The route transaction re-reads the tenant, store, lifecycle, ownership, and current store role before writing `stores/{storeId}.publicApi`. Session tenant/store IDs pass through the shared Firestore document-ID guard before refs.
+7. Key generate/revoke is authenticated, feature-flagged, store-session scoped, permission-gated by `MANAGE_INTEGRATIONS`, fail-closed rate-limited, and capped at a strict 1KB JSON body. Request tenant/store IDs pass the same document-ID normalization and must exactly match the authenticated session before database work. The route transaction re-reads the tenant, store, lifecycle, ownership, and current store role before writing `stores/{storeId}.publicApi`; successful responses echo the exact admitted scope so the initiating UI can reject stale settlement.
 8. Public v1 menu/business first use `hashPublicRateLimitValue(getClientIp(request))` for a 240/minute pre-auth ceiling, then `hashApiKey(apiKey).slice(0, 16)` for the 60/minute credential ceiling. Both fail closed when the limiter provider is unavailable; raw keys and IPs never enter limiter keys.
 9. Key-management rate-limit keys use `hashPublicRateLimitValue(storeId)` as the provider key segment, and generate/revoke diagnostics use bounded store/tenant/user presence-length metadata only.
 10. A valid MenuList key must also resolve to an eligible public target before data is returned: the store cannot be inactive, deleted, or platform-blocked, and the tenant document must exist and not be platform-blocked. Rejected blocked targets return the same `INVALID_API_KEY` shape to avoid disclosing account state to external callers.
 11. MenuList pull endpoints do not opt into the shared validation cache. Every `/api/public/v1/business` and `/api/public/v1/menu` request rechecks the API key lookup and store/tenant eligibility so revocation, inactive/deleted state, and platform blocks are not hidden by process-local cache TTL.
-12. Business Settings Integrations tab is the desktop owner UI for the key lifecycle. It uses the shared authenticated browser request policy, caps route responses at 8KB, and keeps fixed local failure copy.
+12. Business Settings Integrations tab is the desktop owner UI for the key lifecycle. It uses the shared authenticated browser request policy, caps route responses at 8KB, keeps fixed local failure copy, blocks same-mount duplicate actions, and binds every request/response/context merge to the exact selected tenant/store.
 13. Credential lookup returns only normalized store document IDs and rejects duplicate query matches. MenuList pull routes additionally require exact positive numeric tenant/store IDs before emitting public response IDs or building POS-sync menu payloads; malformed, reserved, whitespace-mutated, path-shaped, nonnumeric, or ambiguous targets return `INVALID_API_KEY`.
 
 ---
@@ -160,4 +161,4 @@ Every successful request logs a fixed `public_api_request`-style diagnostic with
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 22, 2026

@@ -518,7 +518,7 @@ function AddPhotoRow({ accept, description, disabled, label, onSelectFile }: Add
     );
 }
 
-export default function MobileOfficialPageScreen({
+function MobileOfficialPageScreenContent({
     embedded = false,
     embeddedPhotoDeleteResetToken,
     embeddedProjectsList,
@@ -563,6 +563,8 @@ export default function MobileOfficialPageScreen({
     const lastEmbeddedPhotoDeleteResetTokenRef = useRef(embeddedPhotoDeleteResetToken);
     const photoDeleteQueueRef = useRef<string[]>([]);
     const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
+    const componentActiveRef = useRef(true);
+    const presenceSaveInFlightRef = useRef(false);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
@@ -707,11 +709,22 @@ export default function MobileOfficialPageScreen({
     }, []);
 
     useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
         photoDeleteQueueRef.current = photoDeleteQueue;
     }, [photoDeleteQueue]);
 
     useEffect(() => () => {
-        if (embedded || photoDeleteQueueRef.current.length === 0) return;
+        if (
+            embedded
+            || presenceSaveInFlightRef.current
+            || photoDeleteQueueRef.current.length === 0
+        ) return;
         void deleteOBPPhotos(
             photoDeleteQueueRef.current,
             collectObpMediaReferences(persistedPublicPresenceRef.current),
@@ -719,49 +732,65 @@ export default function MobileOfficialPageScreen({
     }, [embedded]);
 
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
-        if (!storeDetails?.storeId) return;
+        if (
+            !storeDetails?.storeId
+            || !storeDetails?.tenantId
+            || presenceSaveInFlightRef.current
+        ) return;
+        const expectedStoreId = storeDetails.storeId;
+        const expectedTenantId = storeDetails.tenantId;
         const publicPresenceDraft = buildPublicPresenceDraft(storeDetails, nextPresence, localizedDrafts);
         const normalizedLinks = normalizeOwnerPublicPresenceLinks(publicPresenceDraft);
         if (normalizedLinks.invalidKeys.length > 0) {
             Toast.show({ content: 'Enter valid HTTPS public-page links before saving.', duration: 1800 });
             return;
         }
+        presenceSaveInFlightRef.current = true;
         setIsSaving(true);
         const nextPublicPresence = normalizedLinks.presence;
+        const previousBusinessCopyMeta = storeDetails.businessCopyMeta;
+        const previousPublicPresence = storeDetails.publicPresence;
+        const submittedLocalizedDrafts = localizedDrafts;
+        const submittedPhotoDeleteQueue = [...photoDeleteQueue];
         const payload = {
             businessCopyMeta: buildBusinessCopyManualOverrideMeta({
                 existingMeta: storeDetails?.businessCopyMeta,
                 fieldKeys: ['descriptor', 'knownFor', 'specialNote'],
             }),
-            storeId: storeDetails.storeId,
+            storeId: expectedStoreId,
             publicPresence: nextPublicPresence,
         };
 
-        setStoreDetails((previous: any) => ({
-            ...previous,
-            businessCopyMeta: payload.businessCopyMeta,
-            publicPresence: payload.publicPresence,
-        }));
+        setStoreDetails((previous: any) => (
+            previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
+                ? {
+                    ...previous,
+                    businessCopyMeta: payload.businessCopyMeta,
+                    publicPresence: payload.publicPresence,
+                }
+                : previous
+        ));
 
         try {
             const writeResult = await updateStore({
                 ...getStoreDeepDifference(payload, storeDetails),
-                storeId: storeDetails.storeId,
+                storeId: expectedStoreId,
             });
             assertStoreUpdateSucceeded(
                 writeResult,
-                storeDetails.storeId,
+                expectedStoreId,
                 'mobile_official_page_store_update_rejected',
             );
             const failedPhotoDeletes = await deleteOBPPhotos(
-                photoDeleteQueue,
+                submittedPhotoDeleteQueue,
                 collectObpMediaReferences(nextPublicPresence),
             );
             persistedPublicPresenceRef.current = nextPublicPresence;
+            if (!componentActiveRef.current) return;
             photoDeleteQueueRef.current = failedPhotoDeletes;
             setPhotoDeleteQueue(failedPhotoDeletes);
             setOriginalFormData(nextPresence);
-            setOriginalLocalizedDrafts(localizedDrafts);
+            setOriginalLocalizedDrafts(submittedLocalizedDrafts);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch (error) {
             logMobileOwnerFailure('mobile_official_page_save_failed', error, {
@@ -772,14 +801,30 @@ export default function MobileOfficialPageScreen({
                 hasBusinessCover: Boolean(nextPublicPresence.businessCover),
                 hasSpecialNote: Boolean(nextPublicPresence.specialNote),
             });
-            setStoreDetails((previous: any) => ({
-                ...previous,
-                businessCopyMeta: storeDetails.businessCopyMeta,
-                publicPresence: storeDetails.publicPresence,
-            }));
-            Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
+            setStoreDetails((previous: any) => (
+                previous?.storeId === expectedStoreId
+                && previous?.tenantId === expectedTenantId
+                && previous?.businessCopyMeta === payload.businessCopyMeta
+                && previous?.publicPresence === payload.publicPresence
+                    ? {
+                        ...previous,
+                        businessCopyMeta: previousBusinessCopyMeta,
+                        publicPresence: previousPublicPresence,
+                    }
+                    : previous
+            ));
+            if (!componentActiveRef.current) {
+                await deleteOBPPhotos(
+                    submittedPhotoDeleteQueue,
+                    collectObpMediaReferences(previousPublicPresence),
+                );
+            }
+            if (componentActiveRef.current) {
+                Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
+            }
         } finally {
-            setIsSaving(false);
+            presenceSaveInFlightRef.current = false;
+            if (componentActiveRef.current) setIsSaving(false);
         }
     }, [localizedDrafts, photoDeleteQueue, setStoreDetails, storeDetails, tMobile]);
 
@@ -795,6 +840,7 @@ export default function MobileOfficialPageScreen({
         },
         successMessage = t('businessCoverUploaded'),
     ) => {
+        if (!componentActiveRef.current) return false;
         if (!session?.tId || !session?.sId) {
             Toast.show({ content: t('sessionUnavailable'), duration: 1500 });
             return false;
@@ -811,6 +857,10 @@ export default function MobileOfficialPageScreen({
         setIsCoverUploading(true);
         try {
             const url = await uploadOBPCover(prepared.blob, { tId: session.tId, sId: session.sId }, prepared);
+            if (!componentActiveRef.current) {
+                await deleteOBPPhotos([url]);
+                return false;
+            }
             queuePhotoDelete(url);
             if (formData.businessCover && formData.businessCover !== url) {
                 queuePhotoDelete(formData.businessCover);
@@ -832,15 +882,17 @@ export default function MobileOfficialPageScreen({
                 hasExistingCover: Boolean(formData.businessCover),
                 hasSourceDataUrl: Boolean(prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl),
             });
-            setCoverDraft((previous) => previous ? {
-                ...previous,
-                prepared,
-                previewDataUrl: prepared.dataUrl,
-                uploadFailed: true,
-            } : previous);
-            Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
+            if (componentActiveRef.current) {
+                setCoverDraft((previous) => previous ? {
+                    ...previous,
+                    prepared,
+                    previewDataUrl: prepared.dataUrl,
+                    uploadFailed: true,
+                } : previous);
+                Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
+            }
         } finally {
-            setIsCoverUploading(false);
+            if (componentActiveRef.current) setIsCoverUploading(false);
         }
 
         return false;
@@ -858,7 +910,9 @@ export default function MobileOfficialPageScreen({
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 ...getBoundedMobileOwnerStringContext('fileName', file.name),
             });
-            Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
+            if (componentActiveRef.current) {
+                Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
+            }
         }
 
         return false;
@@ -878,7 +932,9 @@ export default function MobileOfficialPageScreen({
             });
 
             if (!candidate?.dataUrl) {
-                Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
+                if (componentActiveRef.current) {
+                    Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
+                }
                 return;
             }
 
@@ -896,9 +952,11 @@ export default function MobileOfficialPageScreen({
                 hasBusinessCategory: Boolean(storeDetails?.businessCategory),
                 hasBusinessType: Boolean(storeDetails?.businessType),
             });
-            Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
+            if (componentActiveRef.current) {
+                Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
+            }
         } finally {
-            setIsCoverGenerating(false);
+            if (componentActiveRef.current) setIsCoverGenerating(false);
         }
     };
 
@@ -929,6 +987,7 @@ export default function MobileOfficialPageScreen({
             sourceDataUrl?: string;
         },
     ) => {
+        if (!componentActiveRef.current) return false;
         if (!session?.tId || !session?.sId) {
             Toast.show({ content: t('sessionUnavailable'), duration: 1500 });
             return false;
@@ -948,6 +1007,10 @@ export default function MobileOfficialPageScreen({
         setUploadingIndex(index);
         try {
             const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
+            if (!componentActiveRef.current) {
+                await deleteOBPPhotos([url]);
+                return false;
+            }
             queuePhotoDelete(url);
             const nextPhotos = [...formData.photos];
             if (nextPhotos[index] && nextPhotos[index] !== url) {
@@ -974,18 +1037,20 @@ export default function MobileOfficialPageScreen({
                 existingPhotoCount: formData.photos.filter(Boolean).length,
                 hasSourceDataUrl: Boolean(prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl),
             });
-            setPhotoDrafts((previous) => ({
-                ...previous,
-                [index]: {
-                    ...previous[index],
-                    prepared,
-                    previewDataUrl: prepared.dataUrl,
-                    uploadFailed: true,
-                },
-            }));
-            Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
+            if (componentActiveRef.current) {
+                setPhotoDrafts((previous) => ({
+                    ...previous,
+                    [index]: {
+                        ...previous[index],
+                        prepared,
+                        previewDataUrl: prepared.dataUrl,
+                        uploadFailed: true,
+                    },
+                }));
+                Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
+            }
         } finally {
-            setUploadingIndex(null);
+            if (componentActiveRef.current) setUploadingIndex(null);
         }
 
         return false;
@@ -1004,7 +1069,9 @@ export default function MobileOfficialPageScreen({
                 ...getBoundedMobileOwnerStringContext('fileName', file.name),
                 photoIndex: index,
             });
-            Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
+            if (componentActiveRef.current) {
+                Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
+            }
         }
 
         return false;
@@ -2089,6 +2156,14 @@ export default function MobileOfficialPageScreen({
             />
         </Flex>
     );
+}
+
+export default function MobileOfficialPageScreen(props: MobileOfficialPageScreenProps) {
+    const { storeDetails: contextStoreDetails } = useContext(PlatformGlobalDataContext);
+    const storeDetails = props.embeddedStoreDetails || contextStoreDetails;
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileOfficialPageScreenContent key={scopeKey} {...props} />;
 }
 
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {

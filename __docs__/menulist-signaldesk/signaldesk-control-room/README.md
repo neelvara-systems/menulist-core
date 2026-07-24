@@ -1,39 +1,46 @@
-# SignalDesk Control Room - Feature Doc Set
+# SignalDesk Control Room
 
-**Status:** Initial feature doc set
-**Created:** June 23, 2026
+**Status:** Feature 15 locally source-complete
+**Revalidated:** July 21, 2026
 **Parent:** [MenuList SignalDesk](../README.md)
-**Audience:** Internal growth admins and future implementers
 
 ## Purpose
 
-SignalDesk Control Room is the internal safety, cost, queue, and health dashboard for the private growth system.
+Control Room is SignalDesk's private, summary-first safety surface. It shows the
+current operating summary, exact active pauses, unresolved incidents, today's
+recorded cost estimates, queue pressure, bounded run timelines, provider/budget
+holds, and links to the advanced control surfaces.
 
-It keeps the team aware of channel health, sender reputation risk, source quality, AI evals, suppression health, approval backlog, inbox load, outcome movement, demand signals, cost, incidents, and kill-switch state.
+It does not run research, score leads, create evidence or drafts, resolve every
+incident generically, send messages, publish content, mutate MenuList truth, or
+enable provider sending.
 
-## Source Specs
+## Current Contract
 
-- Spec 23: compliance and health checks
-- Spec 24: channel health and cost
-- Spec 27: evals and quality
-- Spec 29: source health
-- Foundation docs: roles, audit, kill switches
+- `ENABLE_MENULIST_SIGNALDESK_CONTROL_ROOM` gates the dedicated Controls routes,
+  workspace read, and navigation item.
+- Kill-switch enforcement and the emergency global-pause endpoint remain safety
+  infrastructure even if the dedicated page is hidden.
+- Eleven deterministic scope documents hold current pause state.
+- Pause activation/clear requires the matching permission, a bounded reason,
+  explicit UI confirmation, rate limiting, and actor-bound idempotency.
+- Mobile is dashboard-only and may activate only `global-outbound`; it cannot
+  clear or change scoped pauses.
+- Open and acknowledged incidents are both unresolved. The UI lists at most 50
+  and shows the exact unresolved count up to the fail-closed 500-row ceiling.
+- Control and cost timestamps are visible. Individual producers own their health
+  statuses; no unsupported universal freshness timer is inferred.
 
-## Document Map
+## Documents
 
-| Document | Purpose |
-| --- | --- |
-| [Specification](./signaldesk-control-room_spec.md) | Dashboard scope, controls, and acceptance criteria. |
-| [Implementation](./signaldesk-control-room_impl.md) | Summary-first architecture and dashboard modules. |
-| [Firebase](./signaldesk-control-room_firebase.md) | Summary, incident, kill-switch, eval, and cost collections. |
-| [Compliance](./signaldesk-control-room_compliance.md) | Incident handling, safety controls, and audit rules. |
-| [Mobile Support](./signaldesk-control-room_mobile-support.md) | Emergency mobile visibility and kill-switch constraints. |
-| [Test Cases](./signaldesk-control-room_test-cases.md) | Health, kill-switch, cost, incident, and mobile tests. |
+- [Specification](./signaldesk-control-room_spec.md)
+- [Implementation](./signaldesk-control-room_impl.md)
+- [Firebase](./signaldesk-control-room_firebase.md)
+- [Compliance](./signaldesk-control-room_compliance.md)
+- [Mobile support](./signaldesk-control-room_mobile-support.md)
+- [Test cases](./signaldesk-control-room_test-cases.md)
 
-## Boundary
+## External Gates
 
-The control room is an internal operating surface. It does not optimize campaigns automatically, does not override compliance rules, and does not send messages.
-
-## Build Gate
-
-Do not implement high-volume sending or source automation until control-room summaries, incident handling, and kill switches are implemented.
+Provider sending remains disabled. Hosted authentication, mobile-device pause
+confirmation, and real incident/provider smoke remain release-environment work.

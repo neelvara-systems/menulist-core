@@ -66,8 +66,7 @@ const timestampToMillis = (value: any): number | null => {
 
 const isCurrentVerifiedPaidSubscription = (subscription: Record<string, any> | null | undefined): boolean => {
     if (!subscription) return false;
-    const productId = subscription.productId ?? subscription.pId ?? DEFAULT_PRODUCT_ID;
-    if (productId !== DEFAULT_PRODUCT_ID) return false;
+    if (subscription.pId !== DEFAULT_PRODUCT_ID || subscription.productId !== DEFAULT_PRODUCT_ID) return false;
     if (!['active', 'past_due', 'cancelled', 'paused'].includes(String(subscription.status || ''))) return false;
 
     const paidThrough = timestampToMillis(subscription.cycleEndDate ?? subscription.validUntil);

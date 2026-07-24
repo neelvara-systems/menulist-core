@@ -1,75 +1,57 @@
-# SignalDesk Inbox - Implementation Plan
+# SignalDesk Inbox - Implementation
 
-**Status:** Initial implementation blueprint
-**Created:** June 23, 2026
+**Status:** Current code truth
+**Last reviewed:** July 21, 2026
 
-## Suggested Future Modules
+## Entry Points
 
-```txt
-signaldesk/
-  inbox/
-    inboxTypes.ts
-    replyClassifier.ts
-    inboxDal.ts
-    inboxSelectors.ts
-    suppressionBridge.ts
-    inboxWorkItems.ts
-    InboxList.tsx
-    ConversationDetail.tsx
-    ReplyClassificationPanel.tsx
+| Surface | Implementation |
+| --- | --- |
+| Desktop Inbox | `src/components/signaldesk/SignalDeskWorkspace.tsx` |
+| Manual action API | `src/app/api/signaldesk/actions/route.ts` action `capture-reply` |
+| Provider webhook API | `src/app/api/signaldesk/webhooks/[provider]/route.ts` |
+| Manual transaction | `captureSignalDeskReplyServer()` in `src/lib/signaldesk/workflowServer.ts` |
+| Signed webhook transaction | `processSignalDeskProviderWebhook()` in `src/lib/signaldesk/webhookServer.ts` |
+| Shared reply contract | `src/lib/signaldesk/webhookContracts.ts` |
+| Strict workspace projection | `src/lib/signaldesk/workspaceContracts.ts` |
+
+## Manual Flow
+
+```text
+desktop target + channel + reply
+  -> Zod action envelope
+  -> auth, rate limit, target.review, desktop-only gate
+  -> actor/key idempotency claim + current conversation read
+  -> shared deterministic classification
+  -> normalized message + classification
+  -> conversation + target transition
+  -> optional suppression + incident + kill switch
+  -> transition-aware queue summary + audit + cost summary
+  -> optional interested-reply revenue qualification
 ```
 
-Names are planning placeholders. Match the eventual runtime repo layout when implementation starts.
+Exact replay returns the durable claim. Changed facts under the same key fail. The UI retains the key after an ambiguous failure and clears it only after success.
 
-## Data Flow
+## Provider Flow
 
-```txt
-channel event or manual note
-  -> normalize message event
-  -> append message
-  -> update conversation summary
-  -> classify reply if inbound
-  -> create inbox work item
-  -> apply suppression when required
-  -> update control-room summaries
-```
+Provider routes accept `email`, `whatsapp`, `instagram`, `messenger`, and `apify`. Inbound message processing applies only to messaging providers. Verification and normalization occur before the Firestore transaction. Stored contact or delivery authority must resolve the target; conflicting caller/provider facts fail closed.
 
-## State Model
+The provider event ID is provider-scoped and deterministic. Exact repeats return duplicate truth. Changed facts under the same event identity return conflict. Out-of-order events retain message/classification evidence with `isOutOfOrder` but do not rewrite current state.
 
-| State | Meaning |
-| --- | --- |
-| `open` | Conversation has unresolved operator work. |
-| `waiting_on_operator` | Needs manual classification or decision. |
-| `suppressed` | Contact/channel/target is blocked from future outreach. |
-| `waiting_on_prospect` | Approved reply/follow-up was sent and no response yet. |
-| `routed_to_outcome` | Prospect moved into MenuList outcome bridge. |
-| `closed` | No more SignalDesk action is expected. |
+## Read Model
 
-## Implementation Order
+`readConversationSummaryList()` performs two bounded reads in parallel:
 
-1. Define conversation, message, classification, and work-item types.
-2. Implement append-only message event ingestion.
-3. Implement summary updater for cheap list reads.
-4. Implement deterministic suppression bridge.
-5. Add classifier suggestion path.
-6. Add operator override path.
-7. Add inbox list and detail views.
-8. Add control-room summary updates.
+1. safety states `complaint`, `privacy_request`, and `legal_request`, limited to 30;
+2. ordinary actionable states `interested` and `needs_review`, limited to 30;
+3. newest summaries by `updatedAt`, limited to 30.
 
-## Integration Points
+Results are strictly projected, priority-sorted, and deduplicated. No message-body query occurs during an Inbox load.
 
-| Feature | Integration |
-| --- | --- |
-| Approval queue | Approved outbound actions create conversation context. |
-| Email rail | Email sends, bounces, complaints, and replies append events. |
-| Draft control | Suggested replies must use approved templates only. |
-| Outcome bridge | Interested conversations can create route tokens or outcome work items. |
-| Control room | Complaint, backlog, classifier, and suppression metrics feed summaries. |
+## Safety and Revenue
 
-## Guardrails
+Safety state is sticky against later non-safety manual or provider input. Only an authoritative future suppression-resolution design may reopen it. Revenue qualification runs only when the resulting current state is `interested`, never when a complaint/DNC/privacy/legal state remains authoritative.
 
-- Classifier suggestions never send a message.
-- Suppression writes are synchronous with unsafe classifications.
-- Conversation detail fetch is explicit and paginated.
-- Raw provider webhook payloads are not stored as-is.
-- Operator override requires reason and audit event.
+## Current UI Limit
+
+The desktop panel shows summary rows and supports manual contact/reply capture. It does not expose full message history, classifier override, assignment, or reply composition/sending. Documentation and support material must not claim those controls exist.

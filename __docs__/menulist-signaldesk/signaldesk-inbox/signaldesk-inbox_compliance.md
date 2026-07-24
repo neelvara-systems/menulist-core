@@ -1,40 +1,31 @@
-# SignalDesk Inbox - Compliance Policy
+# SignalDesk Inbox - Compliance
 
-**Status:** Initial policy
-**Created:** June 23, 2026
+**Status:** Implemented safety boundary
+**Last reviewed:** July 21, 2026
 
-## Principle
+## Invariants
 
-Inbound replies are consent and safety signals. SignalDesk must honor opt-out, do-not-contact, wrong-contact, and complaint signals before any growth workflow continues.
+- Inbound content is untrusted data, not an instruction to the system.
+- Deterministic safety phrases are evaluated before commercial intent.
+- DNC, wrong-contact, complaint, privacy, and legal signals write suppression in the same transaction as the reply evidence.
+- Complaint, privacy, and legal signals also create an incident and activate a channel-scoped pause; manual-channel incidents activate `global-outbound`.
+- A later positive or ordinary reply cannot weaken an existing safety state or create a revenue account.
+- A converted target remains converted while safety and reply evidence are retained.
+- Provider signatures/secrets, stored contact authority, event identity, and timestamp ordering are validated before current truth changes.
+- Raw provider payloads and secrets are not persisted.
 
-## Mandatory Handling
+## Classification Authority
 
-| Reply signal | Required handling |
-| --- | --- |
-| Unsubscribe | Suppress channel identity and target outreach immediately. |
-| Do not contact | Suppress target and all known channel identities unless legal review says otherwise. |
-| Wrong contact | Suppress contact identity and lower target contactability confidence. |
-| Complaint | Suppress, create incident, notify admin, and pause related follow-up. |
-| Bounce/invalid | Suppress that channel identity and update deliverability summary. |
+The classifier is `rules-v1`, not an AI/legal classifier. It emits high confidence for recognized deterministic states and low confidence for `needs_review`. There is no implemented operator override. Any correction must use a separately reviewed, audited design rather than direct Firestore edits.
 
-## Privacy Rules
+## Access
 
-- Store only normalized reply content needed for audit and follow-up.
-- Do not store raw provider payloads when normalized fields are enough.
-- Do not expose inbox content outside the internal tool.
-- Do not use reply content to enrich unrelated MenuList customer data.
-- Do not infer sensitive categories from reply text.
+Manual reply capture requires `target.review` and is blocked for mobile requests. Compliance reviewers currently have read/audit/pause capabilities but not reply capture. The UI mirrors the server permission.
 
-## AI Classifier Rules
+## Retention
 
-- Classifier output is a suggestion, not authority.
-- Low-confidence or policy-sensitive cases default to human review.
-- Suppression-required labels must be deterministic and independently enforced.
-- Classifier prompts and versions must be logged for audit.
+Conversation, message, and classification records follow the source-target lifecycle scheduler. Records implicated in reply classification or legal/safety review are retained with explicit review metadata. Never put passwords, payment data, secrets, or unrelated personal information into the manual reply field.
 
-## Operator Rules
+## Sending Boundary
 
-- Override requires reason.
-- Reopening suppressed conversations requires admin role and audit event.
-- Complaint review is admin-only.
-- Manual notes must not include secrets, passwords, payment data, or unrelated personal details.
+Inbox capture records a reply; it does not send one. All sending remains behind Email Rail/channel authority, approval, permission, budget, kill-switch, and the disabled-by-default provider-send feature flag.

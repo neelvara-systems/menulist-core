@@ -58,6 +58,8 @@ The public language parameter parse fallback lives in `src/lib/localization/publ
 
 Owner-side domain setup browser calls use `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts` for desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings `/api/domain` and `/api/subdomain/check` calls. The shared policy pins no-store cache, same-origin credentials, and manual redirect handling before the existing bounded response parsers and acknowledgement checks run.
 
+The active desktop and mobile Domain Settings surfaces are keyed by exact tenant/store identity. A store switch destroys prior subdomain/custom-domain drafts and provider/DNS status before the new store renders. Status and availability reads use latest-request ownership, mutation completions require the originating component scope to remain current, and every parent/context merge rechecks both expected tenant and store. An already-authorized old-store server operation may finish, but its response cannot replace the current store model or show stale routing truth.
+
 ---
 
 ## Database Schema

@@ -931,3 +931,7 @@ When reseller onboards a client, the system must return a usable owner access pa
 
 **DOCUMENT STATUS:** ✅ IMPLEMENTED  
 **Last Updated:** July 16, 2026 (v1.9 - atomic billing, renewal parity, and current-subscription client reads)
+
+## Exact manual-subscription mutation scope (July 22, 2026)
+
+Renewal and add-location capacity select manual subscriptions with exact dual `ML` product aliases plus both tenant/store alias pairs. The selected row is projected before the route uses reseller, tier, status or expiry facts, and the Firestore transaction reprojects current ownership against the requested workspace before changing prepaid expiry, quantity, credits, operation ledgers or reseller counters. Conflicting or incomplete rows return as unavailable and receive no mutation.

@@ -158,6 +158,8 @@ The main dashboard passes cost metrics from the deduped snapshot, so normal moni
 
 July 16 item-29 follow-up: every exported direct extraction monitor read and the shared dashboard snapshot uses `/api/platform/current-access` before browser Firestore work. Dashboard/job/health/quality/cost source failure throws after bounded diagnostics instead of returning an all-zero object. Desktop SWR and MobileShell show unavailable or explicitly stale state.
 
+July 23 mobile settlement hardening: `MobileExtractionMonitorScreen` assigns every initial, filter, and manual-refresh load a monotonically increasing request ID. A filter selection invalidates the previous request before changing the active filter; platform-access loss and unmount invalidate all outstanding work. Snapshot, error toast, and loading settlement require both component liveness and latest-request ownership, so an older `all` result cannot replace a newer filtered result and a retired screen cannot emit feedback.
+
 ### 6. Quality Metrics (`QualityMetrics.tsx`)
 
 Stat cards + simple indicators:

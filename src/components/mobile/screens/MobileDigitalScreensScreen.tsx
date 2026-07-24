@@ -320,15 +320,15 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     const handleOverrideToggle = async (enabled: boolean) => {
         try {
-            void trackOwnerControlUsage('screenOverride', {
-                previousValue: ownerOverride,
-                newValue: enabled,
-            });
             const updateResult = await updateScreenSettings({ ownerOverrideEnabled: enabled });
             assertDigitalScreenMutationSucceeded(
                 updateResult,
                 'mobile_digital_screen_override_update_rejected',
             );
+            void trackOwnerControlUsage('screenOverride', {
+                previousValue: ownerOverride,
+                newValue: enabled,
+            });
             setOwnerOverride(enabled);
             Toast.show({ content: enabled ? t('uploadsPrioritized') : t('systemContentRestored'), duration: 1500 });
         } catch (error) {

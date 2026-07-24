@@ -25,6 +25,8 @@ import {
     ANSWERLATTICE_WORKFLOW_INTEGRATION_EVENT_TYPES,
     AnswerlatticeWorkflowIntegrationEventTypeSchema,
     AnswerlatticeWorkflowIntegrationsResponseSchema,
+    normalizeAnswerlatticeSlackWebhookUrl,
+    projectAnswerlatticeWorkflowIntegrationStoredConfig,
     type AnswerlatticeWorkflowIntegrationEventType,
 } from '@lib/answerlattice/workflowIntegrationContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -43,20 +45,8 @@ const SlackWebhookSchema = z.preprocess(
     (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
     z.string()
         .trim()
-        .url()
         .max(500)
-        .refine((value) => {
-            try {
-                const url = new URL(value);
-                return url.protocol === 'https:'
-                    && url.hostname === 'hooks.slack.com'
-                    && url.pathname.startsWith('/services/')
-                    && !url.search
-                    && !url.hash;
-            } catch {
-                return false;
-            }
-        }, 'Slack webhook must be a hooks.slack.com HTTPS URL')
+        .refine((value) => Boolean(normalizeAnswerlatticeSlackWebhookUrl(value)), 'Slack webhook must be a hooks.slack.com HTTPS URL')
         .optional(),
 );
 
@@ -134,15 +124,6 @@ const claimScopedSummaryData = async (
     return data;
 });
 
-const normalizeFilters = (value: unknown): AnswerlatticeWorkflowIntegrationEventType[] => {
-    if (!Array.isArray(value)) return [];
-    const allowed = new Set<string>(INTEGRATION_EVENT_TYPES);
-    return Array.from(new Set(value.filter((item): item is AnswerlatticeWorkflowIntegrationEventType => (
-        typeof item === 'string' && allowed.has(item)
-    ))))
-        .slice(0, INTEGRATION_EVENT_TYPES.length);
-};
-
 const normalizeRecipientList = (value: unknown): string[] => {
     if (!Array.isArray(value)) return [];
     return Array.from(new Set(
@@ -195,17 +176,7 @@ const buildSafeHealth = (data: Record<string, any> = {}) => {
 
 const buildSafeResponse = (data: Record<string, any> = {}, health: Record<string, any> = {}) => (
     AnswerlatticeWorkflowIntegrationsResponseSchema.parse({
-        slack: {
-            enabled: Boolean(data.slack?.enabled && data.slack?.webhookUrl),
-            webhookConfigured: Boolean(data.slack?.webhookUrl),
-            channel: typeof data.slack?.channel === 'string' ? data.slack.channel.slice(0, 80) : '',
-            eventFilters: normalizeFilters(data.slack?.eventFilters),
-        },
-        email: {
-            enabled: Boolean(data.email?.enabled && normalizeRecipientList(data.email?.recipients).length > 0),
-            recipients: normalizeRecipientList(data.email?.recipients),
-            eventFilters: normalizeFilters(data.email?.eventFilters),
-        },
+        ...projectAnswerlatticeWorkflowIntegrationStoredConfig(data),
         eventTypes: INTEGRATION_EVENT_TYPES,
         defaultEventFilters: DEFAULT_EVENT_FILTERS,
         health: buildSafeHealth(health),
@@ -302,7 +273,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             const currentSnapshot = await transaction.get(docRef);
             const { data: existing } = readScopedSummaryData(currentSnapshot, scope);
             const existingSlack = isRecord(existing.slack) ? existing.slack : {};
-            const existingSlackWebhook = typeof existingSlack.webhookUrl === 'string' ? existingSlack.webhookUrl : '';
+            const existingSlackWebhook = normalizeAnswerlatticeSlackWebhookUrl(existingSlack.webhookUrl) || '';
             const nextSlackWebhook = parsed.slack.clearWebhook ? '' : (parsed.slack.webhookUrl || existingSlackWebhook);
 
             if (parsed.slack.enabled && !nextSlackWebhook) {

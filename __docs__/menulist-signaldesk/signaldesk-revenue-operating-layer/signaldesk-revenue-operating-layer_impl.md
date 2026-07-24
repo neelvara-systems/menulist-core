@@ -2,6 +2,7 @@
 
 **Status:** Runtime implemented and locally verified
 **Created:** July 10, 2026
+**Last verified:** July 21, 2026
 
 ## Feature Flag
 
@@ -50,13 +51,13 @@ signaldeskRevenueControlSummaries
 | Action | Permission | Behavior |
 | --- | --- | --- |
 | `qualify-revenue-account` | `target.review` | Deterministically creates/updates an account and creates an opportunity only when qualification passes. |
-| `upsert-commercial-opportunity` | `target.review` | Transactionally updates stage, status, offer-derived currency, value, probability, next action, SLA, reasons, founder attention, and compact forecast deltas. |
+| `upsert-commercial-opportunity` | `target.review` | Transactionally revalidates current target/source/contact authority and updates non-won stage, status, offer-derived currency, value, probability, next action, SLA, reasons, founder attention, and compact forecast deltas. |
 | `upsert-commercial-offer` | `signaldesk.configure` | Founder-admin control creates an immutable deterministic offer version with price and discount authority. |
 | `upsert-operating-envelope` | `signaldesk.configure` plus founder-role server check | Requires an active pod, validates compatible referenced controls, preserves immutable versions/approval history, and stores only held/shadow/approval-only policy. |
 | `refresh-activation-watch` | `target.review` | Transactionally derives activation from SignalDesk outcomes and closes the linked opportunity on two-surface activation. |
 | `review-market-pod` | `signaldesk.configure` + founder role | Records explicit approve/hold/reject evidence; recommendation and research paths cannot activate pods. |
 
-All actions reuse the protected SignalDesk action API, Zod validation, existing SignalDesk access checks, rate limiting, bounded body parsing, audit, and generic error handling.
+All actions reuse the protected SignalDesk action API, Zod validation, existing SignalDesk access checks, rate limiting, bounded body parsing, audit, and generic error handling. Exact successful replays are no-ops after validation. Duplicate commercial terms/references fail before persistence.
 
 Existing protected actions also complete the event-driven loop:
 
@@ -88,7 +89,7 @@ Market-pod recommendation and research writes preserve founder-reviewed scope an
 
 The Bengaluru first-pod seed is create-only except for one exact legacy migration from the old unapproved held Mumbai default. Once a pod is founder-controlled or no longer matches that legacy shape, later default-seed runs do not rewrite its status, budget, approver, location, or scope.
 
-Mobile renders the same screen read-only. The existing server mobile gate blocks every mutation.
+Mobile does not load the Revenue section. SignalDesk's mobile workspace contract is dashboard-only, and the server returns `403` for a mobile Revenue request. Revenue remains a desktop commercial-governance surface rather than a second mobile DAL or UI.
 
 ## Summary Writes
 
@@ -96,11 +97,12 @@ Each account/opportunity/watch mutation transactionally updates a compact `signa
 
 ## Execution Boundary
 
-No scheduler, provider call, send, social publish, proposal provider, calendar provider, payment provider, or MenuList truth write is introduced. Seven-day stall state uses indexed earliest/latest target-summary reads plus a terminal activation lookup, and event-driven projection updates reuse existing server actions. This establishes the governed commercial state needed before connectors can be justified by operating evidence.
+No scheduler, provider call, send, social publish, proposal provider, calendar provider, payment provider, or MenuList truth write is introduced. Seven-day stall state uses the target's canonical owner-qualified time, latest bounded outcome context, and a terminal activation lookup; event-driven projection updates reuse existing server actions. Dashboard activation presentation falls back to the strict server-authored target activation projection when the global outcome window is saturated, while targeted settlement continues to require coupled summary/event authority. This establishes the governed commercial state needed before connectors can be justified by operating evidence.
 
 ## Local Verification
 
 - `npm run verify:signaldesk` passes the route, action, collection, boundary, UI, rules/index, docs, and E2E-fixture assertions.
-- `npm run test:signaldesk:e2e:local` passes the deterministic commercial lifecycle in the Firestore emulator.
+- `SIGNALDESK_E2E_FOCUS=revenue npm run test:signaldesk:e2e:local` passes the isolated Revenue lifecycle, exact-replay, authority-withdrawal, and activation tests.
+- The current complete aggregate run clears business assertions but can stop late with the documented Firestore emulator-only `Transaction is invalid or closed` lock behavior. Affected focused stages pass independently; production validation and concurrency assertions remain unchanged.
 - `npm run test:signaldesk:rules` passes public/member/admin Firestore and Storage semantics, including client-write denial for every revenue collection.
-- `npx tsc --noEmit --pretty false` passes.
+- `npm run typecheck` passes.

@@ -27,10 +27,14 @@
 6. URL fragments are removed before storage or display.
 7. Unsafe legacy invoice URLs are omitted from billing history.
 8. Exact agreeing `pId/productId`, `tId/tenantId`, and `sId/storeId` aliases resolve to one authoritative Answerlattice billing scope.
-9. Missing product identity, coercible string scope, or conflicting tenant/store aliases fail scope resolution.
-10. Direct subscription reads and payment, lifecycle, and webhook transactions reject malformed persisted Answerlattice identity.
-11. A rejected active-subscription read reaches a blocking Billing retry state; plan mutation remains disabled and false empty-account checkout is not shown.
-12. Emulator commands clear inherited Application Default Credentials so local proof cannot be redirected to a stale service-account file.
+9. If workspace B becomes current before workspace A's subscription or history read completes, A's result is discarded and B never renders A's billing state.
+10. If the workspace changes while a support-credit checkout callback is pending, the callback does not patch the newly selected workspace's local balance.
+11. Missing product identity, coercible string scope, or conflicting tenant/store aliases fail scope resolution.
+12. Direct subscription reads and payment, lifecycle, and webhook transactions reject malformed persisted Answerlattice identity.
+13. A rejected active-subscription read reaches a blocking Billing retry state; plan mutation remains disabled and false empty-account checkout is not shown.
+14. Answerlattice onboarding refuses provisional user/store/tenant state whose `pId` and `productId` are incomplete or conflicting, does not reclaim an existing conflicting subscription, and does not cancel it during compensation.
+15. Activation, license, paid-intake, client, and server fallback queries constrain both product aliases and both tenant/store alias pairs before any bounded limit; an exact row remains discoverable beside a conflicting row.
+15. Emulator commands clear inherited Application Default Credentials so local proof cannot be redirected to a stale service-account file.
 
 ## Rule Cases
 
@@ -40,6 +44,12 @@
 4. Tenant browser writes to subscriptions and payment transactions are denied.
 5. Answerlattice tenant reads of `topups` are denied.
 6. Shared rules retain existing same-scope MenuList subscription, transaction, and top-up reads.
+7. Dedicated and shared rules allow the six-field exact Answerlattice subscription query for an authorized billing role and return no conflicting-alias row.
+8. Support-search provider admission rejects numeric-string/fractional subscription credits and coercible active status before provider work.
+9. A replay with string units or malformed before/debit/after credit evidence rejects and leaves the subscription balance unchanged.
+10. With one remaining credit, two concurrent pre-provider gates admit exactly one request; the rejected request performs no provider work and creates no reservation.
+11. Provider-free and failed reserved requests refund once. An expired exact pointer is recovered by the scheduler, while malformed evidence restores nothing and remains visible for repair.
+12. A stale preloaded subscription cannot reset credits after transaction-current product/workspace identity changes, and an existing reservation cannot renew after the current subscription becomes inactive.
 
 ## Provider And Hosted QA Cases
 
@@ -53,6 +63,7 @@ These are not replaced by source tests:
 6. Verify invoice links open only on the expected hosted provider domain.
 7. Verify billing and transaction screens at desktop and narrow mobile width.
 8. Confirm provider Dashboard, local subscription, store summary, and compact payment history agree.
+9. Start Transactions reads in workspace A, switch to workspace B before either response settles, and confirm no A billing/support-credit row, cursor, selection, loading state, or error replaces B state.
 
 Official provider references checked on 2026-07-19:
 

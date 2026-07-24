@@ -20,7 +20,7 @@ The canonical evidence object is bounded to 20 source IDs and 8 public citations
 - Knowledge Intake writes private source IDs into the existing mutation proposal transaction.
 - Search history and chat sessions add small bounded fields to their existing writes.
 - Answer Tests reuse evidence from already-resolved canonical or runtime results.
-- Redis `canon:v4` writes the same canonical cache entry with hashed raw applicability key segments, bounded citations, evaluated confidence, and runtime payload validation.
+- Redis `canon:v5` writes a canonical cache entry with hashed query, complete context and applicability key segments, bounded citations, evaluated confidence, and runtime payload validation. Graph-aware selection stays on live retrieval until graph state is versioned.
 
 ## Cost posture
 
@@ -28,7 +28,7 @@ There is no new listener, collection fanout, scheduled task, provider call, Stor
 
 ## Rules, indexes, and deployment
 
-No Firestore rule, Firestore index, Storage rule, or Answerlattice Cloud Function changed. Browser clients still cannot write canonical truth directly; governance remains server-owned. No Firebase deployment is required for this audit item.
+No Firestore rule, Firestore index, or Storage rule changed. Browser clients still cannot write canonical truth directly; governance remains server-owned. The dedicated Functions public-citation projector used by context-bundle repair changed, so the maintained `answerlattice-qa` Functions target must be deployed after the existing Firebase CLI authentication/project-access blocker is removed. Local source/build proof does not establish that deployment.
 
 ## Retention and deletion
 

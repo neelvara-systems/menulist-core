@@ -21,7 +21,9 @@ Repeated canonical-answer requests should avoid unnecessary repeated work when a
 
 ## Cache key
 
-`canon:v4:{tId}:{sId}:e:{entityHash}:v{answerVersion}:p:{planHash}:r:{roleHash}:s:{stateHash}`
+`canon:v5:{tId}:{sId}:e:{entityHash}:v{answerVersion}:q:{queryHash}:c:{contextHash}:p:{planHash}:r:{roleHash}:s:{stateHash}`
+
+The query hash is derived from normalized text. The context hash covers the complete bounded retrieval context, including product-surface identity and server-resolved entity hints. Graph-aware retrieval bypasses Redis until graph state has an authoritative cache-version dimension.
 
 Raw entity, plan, role, and state values are not part of the key. Hashing is an exposure/collision-hardening measure, not an authorization boundary; tenant/workspace and live canonical validation remain mandatory.
 

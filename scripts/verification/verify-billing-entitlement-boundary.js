@@ -60,11 +60,24 @@ function verifyBillingEntitlementBoundary() {
   const createTopupOrder = read('src/app/api/razorpay/create-topup-order/route.ts');
   const billingCheckoutLease = read('src/lib/billing/billingCheckoutLease.ts');
   const billingCheckoutConcurrencyTest = read('scripts/verification/test-billing-checkout-concurrency-emulator.ts');
+  const billingProviderPlanRegistryTest = read('scripts/verification/test-billing-provider-plan-registry-emulator.ts');
+  const razorpayWebhookLease = read('src/lib/billing/razorpayWebhookLease.ts');
+  const razorpayWebhookLeaseTest = read('scripts/verification/test-razorpay-webhook-lease-emulator.ts');
+  const maintenanceTaskLeaseTest = read('scripts/verification/test-maintenance-task-lease.ts');
   const billingCoordinationRulesTest = read('scripts/verification/test-billing-coordination-rules.ts');
+  const answerlatticeBillingRulesTest = read('scripts/verification/test-answerlattice-billing-rules.ts');
   const subscriptionStatusHistory = read('src/lib/billing/subscriptionStatusHistory.ts');
   const razorpayPlanHandler = read('src/lib/razorpay/plan-handler.ts');
   const reconciliationFunction = read('functions/src/billing/reconcileSubscriptions.ts');
+  const functionsSubscriptionScope = read('functions/src/billing/subscriptionScope.ts');
+  const functionsSubscriptionScopeTest = read('scripts/verification/test-functions-subscription-scope.ts');
   const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
+  const messagingEngine = read('functions/src/messaging/messagingEngine.ts');
+  const founderMonitorSnapshot = read('functions/src/schedulers/founderMonitorSnapshot.ts');
+  const aiCapacityRecovery = read('functions/src/schedulers/aiCapacityReservationRecovery.ts');
+  const aiCreditScalarContract = read('src/data/shared/aiCreditScalarContract.ts');
+  const functionsAiCreditScalarContract = read('functions/src/sharedData/aiCreditScalarContract.ts');
+  const aiCapacityReservationTest = read('scripts/verification/test-ai-capacity-reservation-emulator.ts');
   const firestoreRules = read('firestore.rules');
   const answerlatticeFirestoreRules = read('firestore-answerlattice.rules');
   const verifyTopup = read('src/app/api/razorpay/verify-topup/route.ts');
@@ -72,10 +85,15 @@ function verifyBillingEntitlementBoundary() {
   const paymentCheckoutBoundary = read('src/lib/billing/paymentCheckoutBoundary.ts');
   const checkoutUrlBoundary = read('src/lib/razorpay/checkoutUrl.ts');
   const productBillingServer = read('src/lib/billing/productBillingServer.ts');
+  const productSubscriptionScopeBoundary = read('src/lib/billing/productSubscriptionScopeBoundary.ts');
+  const productSubscriptionScopeEmulator = read('scripts/verification/test-product-subscription-scope-emulator.ts');
+  const sessionProviderScopeBoundary = read('src/lib/multiOutlet/sessionProviderScopeBoundary.ts');
   const billingPeriod = read('src/lib/billing/billingPeriod.ts');
   const topupSettlement = read('src/lib/billing/topupSettlement.ts');
   const topupSettlementServer = read('src/lib/billing/topupSettlementServer.ts');
   const subscriptionReplacementFinalization = read('src/lib/billing/subscriptionReplacementFinalization.ts');
+  const subscriptionReplacementEvidence = read('src/lib/billing/subscriptionReplacementEvidence.ts');
+  const checkoutProviderSubscriptionRecovery = read('src/lib/billing/checkoutProviderSubscriptionRecovery.ts');
   const subscriptionUpgradeSettlement = read('src/lib/billing/subscriptionUpgradeSettlement.ts');
   const rateLimitConfigs = read('src/lib/rateLimit/configs.ts');
   const subscriptionDocumentIdBoundary = read('src/lib/billing/subscriptionDocumentIdBoundary.ts');
@@ -86,7 +104,13 @@ function verifyBillingEntitlementBoundary() {
   const subscriptionClient = read('src/database/subscriptions/index.ts');
   const capacityCheck = read('src/lib/ai/capacityCheck.ts');
   const answerlatticeAiAccounting = read('src/lib/answerlattice/aiAccounting.ts');
+  const answerlatticeSupportSearchAccountingTest = read('scripts/verification/test-answerlattice-support-search-accounting-emulator.ts');
+  const answerlatticeAiCapacityRecovery = read('functions-answerlattice/src/answerlattice/aiCapacityReservationRecovery.ts');
+  const answerlatticeMasterScheduler = read('functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts');
+  const answerlatticeAiCreditScalarContract = read('functions-answerlattice/src/sharedData/aiCreditScalarContract.ts');
   const answerlatticeIntakeUsageLedger = read('src/lib/answerlattice/intakeUsageLedger.ts');
+  const answerlatticeKnowledgeIntakeApi = read('src/lib/answerlattice/knowledgeIntakeApi.ts');
+  const answerlatticeActivationSummary = read('src/app/api/answerlattice/activation/summary/route.ts');
   const answerlatticeIntakeUsageSettlement = read('src/lib/answerlattice/intakeUsageSettlement.ts');
   const answerlatticeBillingDocumentIdBoundary = read('src/lib/answerlattice/billingDocumentIdBoundary.ts');
   const answerlatticeBillingScopeBoundary = read('src/lib/answerlattice/billingScopeBoundary.ts');
@@ -97,9 +121,16 @@ function verifyBillingEntitlementBoundary() {
   const paymentHook = read('src/hooks/usePaymentHandler.ts');
   const answerlatticeBilling = read('src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx');
   const desktopBilling = read('src/components/templates/main-app/billing/index.tsx');
+  const websitePricingWrapper = read('src/components/website/pricing/PricingWrapper.tsx');
+  const websitePricingPage = read('src/components/website/pricing-pages/index.tsx');
+  const purchaseIntentBoundary = read('src/lib/billing/purchaseIntentBoundary.ts');
+  const purchaseIntentBoundaryTest = read('scripts/verification/test-purchase-intent-boundary.ts');
   const desktopSubscriptionCard = read('src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx');
   const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.tsx');
   const paymentTransactionsDal = read('src/database/subscriptions/paymentTransactions.ts');
+  const billingRecordProductIdentity = read('src/lib/billing/billingRecordProductIdentity.ts');
+  const billingRecordProductIdentityBackfill = read('scripts/backfill-billing-record-product-identity.ts');
+  const billingRecordProductIdentityTest = read('scripts/verification/test-billing-record-product-identity.ts');
   const billingHistoryFormatter = read('src/lib/billing/billingHistoryFormatter.ts');
   const websiteSubscriptionManagement = read('src/components/website/pricing-pages/SubscriptionManagement.tsx');
   const razorpaySandboxReadiness = read('scripts/verification/verify-razorpay-sandbox-readiness.mjs');
@@ -137,6 +168,14 @@ function verifyBillingEntitlementBoundary() {
   assert(
     packageJson.scripts?.['test:answerlattice-billing:shared-rules']?.includes('firestore.rules'),
     'package.json must expose shared-mode Answerlattice billing rules coverage',
+  );
+  assert(
+    packageJson.scripts?.['test:billing-record-product-identity']?.includes('test-billing-record-product-identity.ts'),
+    'package.json must expose billing record identity compatibility coverage',
+  );
+  assert(
+    packageJson.scripts?.['backfill:billing-record-product-identity']?.includes('backfill-billing-record-product-identity.ts'),
+    'package.json must expose the guarded billing record identity backfill',
   );
   [
     'projectRazorpaySubscriptionCheckoutResponse',
@@ -196,12 +235,19 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(answerlatticeFirestoreRules, token, 'Dedicated Answerlattice billing rules'));
   [
     'function canReadProductBillingResource()',
+    'function canReadProductPaymentTransaction()',
+    'function hasExactMenuListBillingIdentity(data)',
+    "data.keys().hasAll(['pId', 'productId'])",
     'function isAnswerlatticeBillingScopeMember(data)',
     'allow read: if canReadProductBillingResource();',
     'hasExactAnswerlatticeBillingIdentity(resource.data)',
-    "!hasAnyAnswerlatticeBillingIdentity(resource.data)",
+    'hasExactMenuListBillingIdentity(resource.data)',
     "hasAnswerlatticePermission('canManageBilling')",
   ].forEach((token) => assertIncludes(firestoreRules, token, 'Shared product billing rules'));
+  assertNotIncludes(firestoreRules, 'function hasAnyAnswerlatticeBillingIdentity(data)', 'Shared billing rules must not classify every non-AL product as MenuList');
+  assertIncludes(firestoreRules, '|| (hasExactMenuListBillingIdentity(resource.data)', 'Shared top-up reads require exact MenuList product identity');
+  assertIncludes(firestoreRules, 'hasExactMenuListBillingIdentity(resource.data)\n                && isMenuListBillingScopeMember(resource.data)', 'Shared top-up reads require agreeing MenuList tenant/store aliases');
+  assertIncludes(answerlatticeFirestoreRules, "data.keys().hasAll(['pId', 'productId'])", 'Dedicated Answerlattice billing exact product aliases');
   assert(
     !fs.existsSync(path.join(ROOT, 'src/database/topups/index.ts')),
     'Client top-up mutation DAL must stay absent; provider order creation and settlement are server-owned',
@@ -213,6 +259,8 @@ function verifyBillingEntitlementBoundary() {
     'const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);',
     'const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);',
     'if (!tenantScope || !storeScope) return [];',
+    'where("pId", "==", PRODUCT_IDS.MENULIST)',
+    'where("productId", "==", PRODUCT_IDS.MENULIST)',
     'where("tenantId", "==", tenantScope.numericId)',
     'where("storeId", "==", storeScope.numericId)',
     'limit(50)',
@@ -224,17 +272,64 @@ function verifyBillingEntitlementBoundary() {
     'Number(tenantId)',
     'Number(storeId)',
   ].forEach((token) => assertNotIncludes(paymentTransactionsDal, token, 'Billing ledger browser write boundary'));
+  [
+    'where("pId", "==", PRODUCT_IDS.MENULIST)',
+    'where("productId", "==", PRODUCT_IDS.MENULIST)',
+  ].forEach((token) => assertIncludes(subscriptionClient, token, 'MenuList browser subscription exact product query'));
+  [
+    'createInitialSubscription',
+    'updateSubscription',
+    'getSubscriptionById',
+    'requestBodyComposer',
+    'setDoc(',
+  ].forEach((token) => assertNotIncludes(subscriptionClient, token, 'MenuList browser subscription read-only boundary'));
+  [
+    '.where("pId", "==", DEFAULT_PRODUCT_ID)',
+    '.where("productId", "==", DEFAULT_PRODUCT_ID)',
+  ].forEach((token) => assertIncludes(subscriptionServer, token, 'MenuList server subscription exact product query'));
   assertIncludes(desktopBilling, 'getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId)', 'Desktop billing history must preserve raw signed scope for exact DAL admission');
   assertIncludes(mobileBilling, 'getBillingHistoryForStore(session?.user?.tenantId, historyStoreId)', 'Mobile billing history must preserve raw signed scope for exact DAL admission');
   assertNotIncludes(desktopBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Desktop billing history must not coerce nullable session scope');
   assertNotIncludes(mobileBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Mobile billing history must not coerce nullable session scope');
   [
     "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
+    "where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)",
     "where('tenantId', '==', tenantId)",
     "where('storeId', '==', storeId)",
     "where('tenantId', '==', tenantScope.numericId)",
     "where('storeId', '==', storeScope.numericId)",
   ].forEach((token) => assertIncludes(answerlatticeBillingClient, token, 'Answerlattice billing client exact product/workspace query scope'));
+  [
+    "where('pId', '==', 'AL')",
+    "where('productId', '==', 'AL')",
+    "where('pId', '==', 'ML')",
+    "where('productId', '==', 'ML')",
+    "await assertFails(getDocs(query(",
+    "payment_conflicting_1",
+  ].forEach((token) => assertIncludes(answerlatticeBillingRulesTest, token, 'Billing product-alias rules regression'));
+  [
+    'skip_unclassified_product',
+    'skip_conflicting_or_other_product',
+    'skip_invalid_scope',
+    "aliases.some((value) => value !== PRODUCT_IDS.MENULIST)",
+    "pId: PRODUCT_IDS.MENULIST",
+    "productId: PRODUCT_IDS.MENULIST",
+  ].forEach((token) => assertIncludes(billingRecordProductIdentity, token, 'Billing record identity compatibility classifier'));
+  [
+    "new Set(['menulist', 'menulist-qa'])",
+    'DB_COLLECTIONS.SUBSCRIPTIONS',
+    'DB_COLLECTIONS.PAYMENT_TRANSACTIONS',
+    "getArg('--collection')",
+    "getArg('--confirm-project') !== projectId",
+    "!hasFlag('--all-billing-records')",
+    'FieldPath.documentId()',
+    'productIdentityBackfilledAt: FieldValue.serverTimestamp()',
+  ].forEach((token) => assertIncludes(billingRecordProductIdentityBackfill, token, 'Billing record identity migration guard'));
+  [
+    "{ status: 'skip_unclassified_product' }",
+    "{ status: 'skip_conflicting_or_other_product' }",
+    "{ status: 'skip_invalid_scope' }",
+  ].forEach((token) => assertIncludes(billingRecordProductIdentityTest, token, 'Billing record identity migration regression'));
   [
     'const toMilliseconds = (value: unknown): number | null => {',
     "typeof record.toMillis === 'function'",
@@ -303,12 +398,19 @@ function verifyBillingEntitlementBoundary() {
 
   [
     'claimBillingCheckoutLease',
+    'markBillingCheckoutProviderCreateStarted',
     'renewExpiredBillingCheckoutLease',
+    'renewBillingCheckoutProviderRecoveryLease',
     'markBillingCheckoutProviderCreated',
     'completeBillingCheckoutLease',
     'releaseBillingCheckoutLease',
     "status === 'provider_created'",
     "status === 'completed'",
+    "existing.status === 'provider_creating'",
+    "outcome: 'recover_provider' as const",
+    "context.kind !== 'topup'",
+    'canReleasePreProvider',
+    'canReleaseCompensatedProvider',
     'BILLING_CHECKOUT_COMPLETED_REPLAY_MS',
     'BILLING_CHECKOUT_PROCESSING_LEASE_MS',
   ].forEach((token) => assertIncludes(billingCheckoutLease, token, 'Server billing checkout concurrency boundary'));
@@ -331,6 +433,8 @@ function verifyBillingEntitlementBoundary() {
   [
     'exactly one concurrent checkout lease claim must win',
     'renewExpiredBillingCheckoutLease',
+    'renewBillingCheckoutProviderRecoveryLease',
+    'markBillingCheckoutProviderCreateStarted',
     'markBillingCheckoutProviderCreated',
     'completeBillingCheckoutLease',
     'postReplayClaim',
@@ -346,15 +450,42 @@ function verifyBillingEntitlementBoundary() {
   [
     'claimBillingCheckoutLease(checkoutLeaseIdentity)',
     'recoverCheckoutProviderSubscription',
+    "checkoutClaim.outcome === 'recover_provider'",
+    'markBillingCheckoutProviderCreateStarted',
+    'The provider is still resolving this checkout.',
+    'providerSubscriptionCheckpointLost',
+    'providerEntityId: subscriptionForLog.id',
     'checkoutAttemptId',
+    'checkoutAttemptStartedAtMillis',
+    'startedAtMillis: checkoutAttemptStartedAtMillis ?? Date.now()',
     'markBillingCheckoutProviderCreated',
     'completeBillingCheckoutLease',
     'releaseBillingCheckoutLease',
   ].forEach((token) => assertIncludes(createSubscription, token, 'Subscription checkout recovery boundary'));
   [
+    'normalizeBillingSubscriptionDocumentId(candidate?.id)',
+    'RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(candidateId)',
+    "candidate.status !== 'created'",
+    'candidate.plan_id !== expected.providerPlanId',
+    'notes.checkoutAttemptId !== expected.attemptId',
+    'notes.productId !== expected.productId',
+    'notes.planId !== expected.planId',
+    'matchesCanonicalScopeNote(notes.tenantId, expected.tenantId)',
+    'matchesCanonicalScopeNote(notes.storeId, expected.storeId)',
+    'matchesCanonicalQuantity(notes.quantity, expected.quantity, true)',
+    'matchesCanonicalQuantity(candidate.quantity, expected.quantity, false)',
+  ].forEach((token) => assertIncludes(checkoutProviderSubscriptionRecovery, token, 'Subscription checkout provider-recovery identity boundary'));
+  assertIncludes(createSubscription, 'isMatchingCheckoutProviderSubscription(candidate, params)', 'Subscription checkout recovery must use exact provider identity admission');
+  assertNotIncludes(createSubscription, 'Number(notes.quantity || candidate.quantity || 1)', 'Subscription checkout recovery must not coerce conflicting quantity evidence');
+  assertNotIncludes(createSubscription, "String(notes.checkoutAttemptId || '')", 'Subscription checkout recovery must not coerce attempt identity');
+  assertNotIncludes(createSubscription, "String(notes.tenantId || '')", 'Subscription checkout recovery must not coerce tenant scope');
+  [
     'claimBillingCheckoutLease(checkoutLeaseIdentity)',
     'getTopupCheckoutReceipt',
     'recoverCheckoutOrder',
+    "checkoutClaim.outcome === 'recover_provider'",
+    'renewBillingCheckoutProviderRecoveryLease',
+    'markBillingCheckoutProviderCreateStarted',
     'receipt,',
     'markBillingCheckoutProviderCreated',
     'completeBillingCheckoutLease',
@@ -367,11 +498,32 @@ function verifyBillingEntitlementBoundary() {
   [
     'BILLING_PROVIDER_PLANS',
     'RAZORPAY_PLAN_REGISTRY_LEASE_MS',
+    'RAZORPAY_PLAN_REGISTRY_STATE_VERSION',
+    'claimProviderPlanRegistry',
+    'markProviderPlanCreateStarted',
+    "outcome: 'recover_provider'",
     'findProviderPlan',
     'waitForProviderPlanRegistry',
     "status: 'processing'",
+    "status: 'provider_creating'",
     "status: 'ready'",
   ].forEach((token) => assertIncludes(razorpayPlanHandler, token, 'Razorpay provider plan concurrency registry'));
+  assert(
+    packageJson.scripts?.['test:billing-provider-plan-registry:emulator']?.includes('test-billing-provider-plan-registry-emulator.ts'),
+    'package.json must expose provider-plan registry emulator coverage',
+  );
+  assert(
+    packageJson.scripts?.['test:billing-provider-plan-registry:emulator']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'),
+    'provider-plan registry emulator must clear inherited ADC',
+  );
+  [
+    'one provider-plan registry claim must win',
+    "outcome: 'recover_provider'",
+    'must-not-replace-provider-attempt',
+    'an expired pre-provider owner cannot start after replacement',
+    'legacy-replacement-must-not-win',
+    'the first ready provider identity remains authoritative',
+  ].forEach((token) => assertIncludes(billingProviderPlanRegistryTest, token, 'Provider-plan registry emulator'));
   [
     'BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT = 100',
     'appendBoundedBillingStatusHistory',
@@ -386,10 +538,46 @@ function verifyBillingEntitlementBoundary() {
     'cycleCompleted',
   ].forEach((token) => assertIncludes(reconciliationFunction, token, 'Bounded subscription reconciliation'));
   [
+    ".where('pId', '==', MENULIST_PRODUCT_ID)",
+    ".where('productId', '==', MENULIST_PRODUCT_ID)",
+    'getExactMenuListSubscriptionScope(current)',
+  ].forEach((token) => assertIncludes(reconciliationFunction, token, 'MenuList reconciliation exact product boundary'));
+  [
+    "typeof value !== 'number'",
+    'getProviderEpochMillis(rzpSub.current_start)',
+    'getProviderSubscriptionQuantity(rzpSub.quantity)',
+    'const hasInvalidProviderScalar = [',
+    "throw new Error('Razorpay subscription scalar is invalid.');",
+  ].forEach((token) => assertIncludes(reconciliationFunction, token, 'MenuList reconciliation exact provider scalar boundary'));
+  assertNotIncludes(reconciliationFunction, 'const seconds = Number(value);', 'Functions reconciliation must not coerce provider timestamps');
+  assertNotIncludes(reconciliationFunction, 'const quantity = Number(value);', 'Functions reconciliation must not coerce provider quantity');
+  assertNotIncludes(reconciliationFunction, 'Number(current.creditsLastResetMonth)', 'Functions reconciliation must not coerce the persisted credit-reset period');
+  [
+    ".where('pId', '==', MENULIST_PRODUCT_ID)",
+    ".where('productId', '==', MENULIST_PRODUCT_ID)",
+  ].forEach((token) => assertIncludes(messagingEngine, token, 'MenuList lifecycle messaging exact product boundary'));
+  [
+    ".where('pId', '==', 'ML')",
+    ".where('productId', '==', 'ML')",
+    ".orderBy('modifiedOn', 'desc')",
+  ].forEach((token) => assertIncludes(founderMonitorSnapshot, token, 'Founder Monitor MenuList subscription boundary'));
+  [
+    'getExactMenuListSubscriptionScope(subscription)',
+    'String(subscriptionScope.tenantId) !== params.tId',
+    'String(subscriptionScope.storeId) !== billingStoreId',
+  ].forEach((token) => assertIncludes(aiCapacityRecovery, token, 'AI reservation recovery product boundary'));
+  [
     "name: 'billing_health_snapshot'",
     "doc('billing')",
+    "doc('billing').set(state)",
+    'replaceBillingHealthState({',
     'expiredProcessingCheckoutCount',
+    'expiredProcessingProviderPlanCount',
+    'ambiguousProviderCheckoutCount',
+    'ambiguousProviderPlanCount',
     'orphanedProviderCheckoutCount',
+    ".where('status', '==', 'provider_creating')",
+    ".where('leaseExpiresAt', '<=', now)",
     'failedWebhookEventCount',
     'staleWebhookClaimCount',
     'webhookRetentionCutoff',
@@ -401,6 +589,11 @@ function verifyBillingEntitlementBoundary() {
     "title: 'Billing Recovery Attention'",
     'await createAlert({',
   ].forEach((token) => assertIncludes(maintenanceScheduler, token, 'Billing health summary task'));
+  [
+    'replaceBillingHealthStateForTest',
+    "stalePrivateField: 'must-be-pruned'",
+    "assert.deepEqual(Object.keys(billingHealth).sort()",
+  ].forEach((token) => assertIncludes(maintenanceTaskLeaseTest, token, 'Exact billing health state emulator'));
   [
     'match /billingCheckoutLeases/{leaseId}',
     'match /billingProviderPlans/{registryId}',
@@ -423,7 +616,7 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(razorpayImplDoc, token, 'Razorpay paid-cycle entitlement implementation docs'));
   [
     'The same scheduler owns `subscription_access_expiry` every 60 minutes.',
-    '`subscriptions(status ASC, cycleEndDate ASC)` composite index',
+    '`subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)` composite index',
     'the hourly leased expiry task changes the row to `expired`',
   ].forEach((token) => assertIncludes(activeSubscriptionFlowDoc, token, 'Razorpay active-subscription paid-cycle flow docs'));
   [
@@ -441,7 +634,7 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(razorpayImplDoc, token, 'Razorpay scale-hardening implementation docs'));
   [
     'July 14 Scale-Hardening Cost Delta',
-    'At most 605 observation/retention reads + 1 health write + up to 200 old webhook deletes',
+    'At most 908 observation/retention reads + 1 exact health replacement + up to 200 old webhook deletes',
     'billingCheckoutLeases(status, expiresAt)',
   ].forEach((token) => assertIncludes(razorpayFirebaseDoc, token, 'Razorpay scale-hardening Firebase docs'));
   verifyProtectedPaymentRoute(verifyTopup, 'verify-topup route boundary', '/api/razorpay/verify-topup');
@@ -552,10 +745,14 @@ function verifyBillingEntitlementBoundary() {
     'getDirectActiveProductSubscriptionForStore(productId, tenantId, storeId)',
     "providerPendingSubscription.status === 'created'",
     'founderMonitorReplacementForSubscriptionId: replacementForSubscriptionId',
+    'resolveSubscriptionReplacementEvidence(pending)',
+    'const pendingQuantity = pending.quantity == null ? 1 : pending.quantity;',
     'await razorpayClient.subscriptions.cancel(razorpaySubscription.id)',
   ].forEach((token) => assertIncludes(createSubscription, token, 'create-subscription credit/identity boundary'));
   assertNotIncludes(createSubscription, 'body.name', 'create-subscription session identity boundary');
   assertNotIncludes(createSubscription, 'body.email', 'create-subscription session identity boundary');
+  assertNotIncludes(createSubscription, 'Number(pending.quantity || 1)', 'create-subscription pending intent must not coerce quantity');
+  assertNotIncludes(createSubscription, "String(pending.founderMonitorReplacementForSubscriptionId || '')", 'create-subscription pending intent must not coerce replacement identity');
   assertOrder(createSubscription, 'checkRateLimit({', 'getOrCreateRazorpayPlan({', 'create-subscription rate-limit/provider order');
   assertOrder(createSubscription, 'getOrCreateRazorpayPlan({', 'razorpayClient.subscriptions.create(RazorpayCreateObj)', 'create-subscription provider order');
   assertOrder(createSubscription, 'razorpayClient.subscriptions.create(RazorpayCreateObj)', 'createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload)', 'create-subscription provider-before-write order');
@@ -569,17 +766,23 @@ function verifyBillingEntitlementBoundary() {
     "payment.status !== 'captured' || paymentSubscriptionId !== razorpay_subscription_id",
     'subscriptionMatchesScope',
     'resolveProviderBillingProductId(',
-    'getProviderCycleBillingPeriodKey(providerSubscription.current_start)',
+    'resolveRazorpaySubscriptionState(providerSubscription, internalSub.quantity)',
+    'getProviderCycleBillingPeriodKey(providerState?.currentStartSeconds)',
+    'quantity: providerState.quantity',
     'applyProductSubscriptionPayment(productId, {',
     'paymentHistoryId: razorpay_payment_id',
     'safeSyncProductSubscriptionEntitlementFromSubscription(',
     'finalizeProductSubscriptionReplacement({',
+    'resolveSubscriptionReplacementEvidence(',
   ].forEach((token) => assertIncludes(verifySubscription, token, 'verify-subscription payment truth boundary'));
   assertOrder(verifySubscription, 'verifyRazorpaySubscriptionSignature(razorpay_payment_id, razorpay_subscription_id, razorpay_signature)', 'razorpayClient.payments.fetch(razorpay_payment_id)', 'verify-subscription signature-before-provider order');
   assertOrder(verifySubscription, "payment.status !== 'captured' || paymentSubscriptionId !== razorpay_subscription_id", 'applyProductSubscriptionPayment(productId, {', 'verify-subscription payment-truth-before-write order');
   assertOrder(verifySubscription, 'applyProductSubscriptionPayment(productId, {', 'safeSyncProductSubscriptionEntitlementFromSubscription(', 'verify-subscription transaction-before-entitlement order');
   assertNotIncludes(verifySubscription, 'monthlyCredits: creditsForPlan', 'verify-subscription replay must not reset credits outside the transaction');
   assertNotIncludes(verifySubscription, 'updateProductSubscription(productId, razorpay_subscription_id, updatePayload)', 'verify-subscription must not bypass payment idempotency transaction');
+  assertNotIncludes(verifySubscription, 'Number(providerSubscription.quantity', 'verify-subscription must not coerce provider quantity');
+  assertNotIncludes(verifySubscription, 'providerSubscription.current_start * 1000', 'verify-subscription must not coerce provider cycle time');
+  assertNotIncludes(verifySubscription, 'const replacementMrrPaise = Number(', 'verify-subscription must not coerce replacement MRR evidence');
 
   [
     'applyProductSubscriptionUpgradeCarryForward(productId, {',
@@ -591,11 +794,15 @@ function verifyBillingEntitlementBoundary() {
     'upgradeApplication.oldSubscription',
     'upgradeApplication.newSubscription',
     'safeSyncProductSubscriptionEntitlementFromSubscription(',
+    'resolveSubscriptionReplacementEvidence(newInternalSub)',
+    "replacementEvidence.outcome !== 'replacement'",
+    "newInternalSub.status !== 'active'",
   ].forEach((token) => assertIncludes(upgradeSubscription, token, 'upgrade-subscription carry-forward boundary'));
   assertNotIncludes(upgradeSubscription, 'const { nSi, oSi, rc }', 'upgrade-subscription must not trust browser remaining credits');
   assertNotIncludes(upgradeSubscription, 'updateProductSubscription(productId, internalSub.id', 'upgrade-subscription must not expire the old subscription outside the carry-forward transaction');
   assertNotIncludes(upgradeSubscription, 'updateProductSubscription(productId, newInternalSub.id', 'upgrade-subscription must not write replacement credits outside the carry-forward transaction');
   assertOrder(upgradeSubscription, 'razorpayClient.subscriptions.cancel(oldProviderSubscriptionId)', 'const upgradeApplication = await applyProductSubscriptionUpgradeCarryForward(productId, {', 'upgrade-subscription provider-before-transaction order');
+  assertOrder(upgradeSubscription, "newInternalSub.status !== 'active'", 'razorpayClient.subscriptions.fetch(oldProviderSubscriptionId)', 'upgrade-subscription active replacement check before provider mutation');
 
   [
     'getRazorpayManagedSubscriptionId(oldSubscription)',
@@ -604,8 +811,15 @@ function verifyBillingEntitlementBoundary() {
     'applyProductSubscriptionUpgradeCarryForward(productId, {',
     'application.oldSubscription',
     'application.newSubscription',
+    'resolveSubscriptionReplacementEvidence(newSubscription)',
   ].forEach((token) => assertIncludes(subscriptionReplacementFinalization, token, 'subscription replacement finalization boundary'));
   assertOrder(subscriptionReplacementFinalization, 'razorpayClient.subscriptions.cancel(providerSubscriptionId)', 'applyProductSubscriptionUpgradeCarryForward(productId, {', 'subscription replacement provider-before-transaction order');
+  [
+    'normalizeBillingSubscriptionDocumentId(rawSubscriptionId)',
+    "typeof rawPreviousMrrPaise !== 'number'",
+    'projection.subscriptionId !== first.subscriptionId',
+    'projection.previousMrrPaise !== first.previousMrrPaise',
+  ].forEach((token) => assertIncludes(subscriptionReplacementEvidence, token, 'subscription replacement evidence boundary'));
 
   [
     'settleProductTopupFromProvider({',
@@ -644,16 +858,17 @@ function verifyBillingEntitlementBoundary() {
     'const storeId = storeScope.numericId;',
     'const topupDocumentId = normalizeBillingTopupDocumentId(razorpayOrder.id);',
     'if (!topupDocumentId) {',
-    ".collection(DB_COLLECTIONS.TOPUPS).doc(topupDocumentId).set({",
-    'providerOrderId: topupDocumentId,',
-    "status: 'pending'",
+    'persistPendingProductTopupSnapshot({',
+    'billingDb: getBillingFirestoreAdminForProduct(productId)',
+    'billingStoreId,',
   ].forEach((token) => assertIncludes(createTopupOrder, token, 'create-topup active-subscription boundary'));
   assertOrder(createTopupOrder, 'const tenantScope = normalizeBillingTopupScopeDocumentId(scope.tenantId);', 'verifyTenantAccess(session, tenantId, storeId, request)', 'create-topup scope document ID admission before access check');
   assertOrder(createTopupOrder, 'const storeScope = normalizeBillingTopupScopeDocumentId(scope.storeId);', "getRateLimitForFeature('PAYMENT_TOPUP')", 'create-topup scope document ID admission before rate limit/provider work');
   assertOrder(createTopupOrder, 'getActiveProductSubscriptionForStore(', 'razorpayClient.orders.create(orderPayload)', 'create-topup must verify active subscription before provider order');
   assertOrder(createTopupOrder, 'razorpayClient.orders.create(orderPayload)', 'const topupDocumentId = normalizeBillingTopupDocumentId(razorpayOrder.id);', 'create-topup provider-before-topup-doc-normalization order');
-  assertOrder(createTopupOrder, 'const topupDocumentId = normalizeBillingTopupDocumentId(razorpayOrder.id);', ".collection(DB_COLLECTIONS.TOPUPS).doc(topupDocumentId).set({", 'create-topup normalized provider order before pending-write order');
+  assertOrder(createTopupOrder, 'const topupDocumentId = normalizeBillingTopupDocumentId(razorpayOrder.id);', 'persistPendingProductTopupSnapshot({', 'create-topup normalized provider order before pending-write order');
   assertNotIncludes(createTopupOrder, '.doc(razorpayOrder.id)', 'create-topup must not build raw top-up refs');
+  assertNotIncludes(createTopupOrder, '.set({\n            paymentProvider:', 'create-topup must not merge-overwrite immutable pending top-up identity');
 
   [
     'const verifyRazorpayOrderSignature = (',
@@ -680,6 +895,8 @@ function verifyBillingEntitlementBoundary() {
     'resolveProviderBillingProductId(',
     'resolveVerifiedTopupSettlement({',
     'resolveCurrentTopupSubscriptionSettlement({',
+    'getProductSubscriptionBillingScope(productId, internalSub)',
+    'storedSettlement.billingStoreId !== subscriptionStoreId',
     'topupSnapshot: existingTopup',
     'topupSnapshot: topupData',
     'payment: capturedPayment',
@@ -703,20 +920,88 @@ function verifyBillingEntitlementBoundary() {
     "checkPublicRateLimit(request, 'WEBHOOK')",
     'readBoundedTextBody(',
     'validateRazorpayWebhookSignature(requestBody, signature, secret)',
-    'claimWebhookEventForProcessing(event, requestBody)',
+    'resolveRazorpayWebhookProductDeclaration(eventPayload)',
+    'resolveRazorpayWebhookSubscriptionId(eventPayload)',
+    'resolveRazorpayWebhookSubscriptionProduct({',
+    'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([',
+    "throw new Error('Razorpay webhook subscription product is unresolved.');",
+    "new Error('razorpay_webhook_product_resolution_failed')",
+    "return NextResponse.json({ error: 'Invalid product identity.' }, { status: 400 });",
+    'claimRazorpayWebhookEvent({',
     'writeProductPaymentTransactionAudit(eventProductId, auditSummary, webhookClaim.eventKey)',
+    'const isSettledTopupEvent =',
+    'if (!isSettledTopupEvent)',
+    'await writeProductPaymentTransactionAudit(eventProductId, {',
+    'amount: topupApplication.settlement.amount,',
     'applyProductSubscriptionPayment(eventProductId, {',
     'applyProductSubscriptionWebhookEvent(eventProductId, {',
-    'getProviderCycleBillingPeriodKey(subscriptionEntity.current_start)',
+    'const eventSubscriptionId = eventProductResolution.subscriptionId;',
+    'resolveRazorpaySubscriptionState(subscriptionEntity, internalSub.quantity)',
+    'getProviderCycleBillingPeriodKey(providerState.currentStartSeconds)',
+    'resolveRazorpaySubscriptionQuantity(updatedSubEntity.quantity)',
     'safeSyncProductSubscriptionEntitlementFromSubscription(eventProductId, subscription, source)',
-    "markWebhookEvent(webhookClaim.eventKey, 'processed'",
+    'completeRazorpayWebhookEvent({',
+    "if (webhookClaim.outcome === 'processing')",
+    'return retryableWebhookResponse();',
+    "documentId: getWebhookAlertDocumentId('payment-failure', webhookClaim.eventKey)",
   ].forEach((token) => assertIncludes(webhook, token, 'Razorpay webhook boundary'));
   assertOrder(webhook, 'rejectInvalidOrOversizedDeclaredBody(', "checkPublicRateLimit(request, 'WEBHOOK')", 'webhook declared-size-before-rate-limit order');
   assertOrder(webhook, "checkPublicRateLimit(request, 'WEBHOOK')", 'readBoundedTextBody(', 'webhook rate-limit-before-body-read order');
   assertOrder(webhook, 'readBoundedTextBody(', 'validateRazorpayWebhookSignature(requestBody, signature, secret)', 'webhook bounded-body-before-signature order');
-  assertOrder(webhook, 'validateRazorpayWebhookSignature(requestBody, signature, secret)', 'claimWebhookEventForProcessing(event, requestBody)', 'webhook signature-before-idempotency order');
+  assertOrder(webhook, 'eventProductResolution = await resolveWebhookEventProduct(event);', 'claimRazorpayWebhookEvent({', 'webhook product resolution before product-local persistence');
+  assertOrder(webhook, 'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([', "throw new Error('Razorpay webhook subscription product is unresolved.');", 'missing subscription ownership must remain retryable');
+  assertOrder(webhook, 'resolveRazorpayWebhookSubscriptionId(eventPayload)', 'const [menuListSubscription, answerlatticeSubscription] = await Promise.all([', 'exact subscription identity before ownership reads');
+  assertOrder(webhook, 'const subscriptionReads = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();', 'subscriptionReads.set(', 'resolved subscription must seed the request-local cache');
+  assertOrder(webhook, 'validateRazorpayWebhookSignature(requestBody, signature, secret)', 'claimRazorpayWebhookEvent({', 'webhook signature-before-idempotency order');
+  assertNotIncludes(webhook, '.catch(() => null)', 'Webhook product lookup failures must remain retryable rather than defaulting to MenuList');
+  assertNotIncludes(webhook, 'paymentEntity?.subscription_id || event.payload?.subscription?.entity?.id', 'Webhook processing must use the canonical exact subscription identity');
+  assertNotIncludes(webhook, 'const quantity = Number(updatedSubEntity.quantity);', 'Webhook quantity updates must not coerce provider values');
+  assertNotIncludes(webhook, 'subscriptionEntity.current_start * 1000', 'Webhook activation must use exact projected provider cycle time');
+  assertNotIncludes(webhook, 'const replacementMrrPaise = Number(', 'Webhook replacement MRR evidence must not be coerced');
+  assertNotIncludes(webhook, 'updatedSubEntity.updated_at * 1000', 'Webhook quantity MRR must not coerce provider event time');
+  assertNotIncludes(webhook, 'cancelledSubEntity.ended_at * 1000', 'Webhook cancellation must not coerce provider event time');
+  assertOrder(webhook, 'const topupApplication = await settleProductTopupFromProvider', 'await writeProductPaymentTransactionAudit(eventProductId, {', 'top-up audit must follow immutable settlement');
   assertNotIncludes(webhook, 'statuses: [', 'webhook status history must be transaction-owned');
   assertNotIncludes(webhook, 'updateSubscriptionForProduct(', 'webhook status events must not bypass event transaction');
+
+  [
+    "| { eventKey: string; outcome: 'processed' | 'processing' }",
+    "if (current?.status === 'processed')",
+    "return { eventKey, outcome: 'processing' as const }",
+    "current?.status !== 'processing'",
+    'current.attemptId !== params.attemptId',
+    "if (current?.status === 'processed') return 'already_processed';",
+    "return 'ownership_lost';",
+    'transaction.set(eventRef, {',
+  ].forEach((token) => assertIncludes(razorpayWebhookLease, token, 'Razorpay webhook lease boundary'));
+  [
+    'one webhook attempt must own concurrent processing',
+    'an older failed attempt cannot finish a newer retry',
+    'expired owner cannot downgrade replacement work',
+    'successful retry must prune stale failure fields',
+    'terminal state must not retain a lease',
+  ].forEach((token) => assertIncludes(razorpayWebhookLeaseTest, token, 'Razorpay webhook lease emulator'));
+  [
+    "import { FieldValue } from 'firebase-admin/firestore';",
+    'if (value instanceof FieldValue) return value;',
+    'await db.runTransaction(async (transaction) => {',
+    "throw new Error('Billing audit document identity conflict.');",
+    "throw new Error('Billing audit product identity is invalid.');",
+    "throw new Error('Billing audit scope identity is invalid.');",
+    'data: Record<string, unknown>',
+    'const hasScope = [data.tenantId, data.tId, data.storeId, data.sId]',
+    'const scope = hasScope ? getProductSubscriptionBillingScope(productId, data) : null;',
+    'const immutableFields = [',
+    'existingHasScope !== hasScope',
+    'createdOn: isTimestampLike(existing?.createdOn) ? existing.createdOn : now,',
+  ].forEach((token) => assertIncludes(productBillingServer, token, 'Razorpay payment audit timestamp/identity boundary'));
+  assertNotIncludes(productBillingServer, 'const tenantId = Number(data?.tenantId ?? data?.tId);', 'Payment audit scope must not be numerically coerced');
+  [
+    'webhook audit replay must preserve createdOn',
+    'webhook audit replay must not replace immutable workspace scope',
+    'event-key collision must not replace audit identity',
+  ].forEach((token) => assertIncludes(razorpayWebhookLeaseTest, token, 'Razorpay webhook payment-audit emulator'));
+  assertIncludes(packageJson.scripts['test:razorpay-webhook-lease:emulator'], 'test-razorpay-webhook-lease-emulator.ts', 'Razorpay webhook lease package gate');
 
   [
     'safeSyncStorePlanEntitlementFromSubscription(subscription, source)',
@@ -755,7 +1040,8 @@ function verifyBillingEntitlementBoundary() {
     'return db.runTransaction(async (transaction) => {',
     'if (billingHistory.includes(paymentHistoryId)) {',
     'const shouldResetCredits = billingHistory.length === 0',
-    '|| Number(current.creditsLastResetMonth) !== params.billingPeriod;',
+    '|| current.creditsLastResetMonth !== params.billingPeriod;',
+    "throw new Error('Subscription monthly credit allowance is invalid.');",
     'topUpCredits: _ignoredTopUpCredits',
     'transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });',
     'db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).doc(normalizedAuditDocumentId)',
@@ -779,6 +1065,8 @@ function verifyBillingEntitlementBoundary() {
     '!gracePeriod.hasKnownGracePeriod || gracePeriod.remainingDays > 0',
     "safeSyncProductSubscriptionEntitlementFromSubscription(\n        productId,\n        result.subscription,\n        'server:grace-period-auto-expire',",
   ].forEach((token) => assertIncludes(productBillingServer, token, 'product billing server boundary'));
+  assertNotIncludes(productBillingServer, 'Number(current.creditsLastResetMonth)', 'Product subscription payment must not coerce the persisted credit-reset period');
+  assertNotIncludes(productBillingServer, 'Number(safeUpdate.monthlyCreditsAllowance', 'Product subscription payment must not coerce the monthly allowance');
   [
     'const tenantScope = normalizeBillingSubscriptionScopeDocumentId(session?.user?.tenantId);',
     'const storeScope = normalizeBillingSubscriptionScopeDocumentId(session?.user?.storeId);',
@@ -802,8 +1090,8 @@ function verifyBillingEntitlementBoundary() {
 
   [
     'export const getAnswerlatticeBillingRecordScope = (',
-    'productValues.length > 0',
-    'productValues.every((value) => value === PRODUCT_IDS.ANSWERLATTICE)',
+    'record.pId === PRODUCT_IDS.ANSWERLATTICE',
+    'record.productId === PRODUCT_IDS.ANSWERLATTICE',
     "const tId = getExactNumericScope(record, ['tId', 'tenantId']);",
     "const sId = getExactNumericScope(record, ['sId', 'storeId']);",
   ].forEach((token) => assertIncludes(answerlatticeBillingScopeBoundary, token, 'Answerlattice persisted billing identity boundary'));
@@ -824,29 +1112,52 @@ function verifyBillingEntitlementBoundary() {
   assertNotIncludes(answerlatticeBillingClient, 'Number(item.storeId ?? item.sId)', 'Answerlattice billing history must not coerce persisted store ownership');
   [
     'isAnswerlatticeStoreInScope(',
-    'getAnswerlatticeBillingRecordScope,',
-    '&& !getAnswerlatticeBillingRecordScope(subscription)',
-    '&& !getAnswerlatticeBillingRecordScope(current)',
+    '!getProductSubscriptionBillingScope(productId, subscription)',
+    '!getProductSubscriptionBillingScope(productId, current)',
     'isAnswerlatticeSubscriptionInScope(subscriptionData, {',
     'isAnswerlatticeSubscriptionInScope(currentData, {',
     'pId: PRODUCT_IDS.ANSWERLATTICE,',
     'tId: currentTenantScope.numericId,',
     'sId: currentStoreScope.numericId,',
+    ".where('tId', '==', tenantScope.numericId)",
+    ".where('sId', '==', storeScope.numericId)",
   ].forEach((token) => assertIncludes(productBillingServer, token, 'Answerlattice product billing persisted ownership boundary'));
   assertNotIncludes(productBillingServer, "String(subscription.pId ?? subscription.productId ?? '').trim().toUpperCase()", 'Answerlattice product billing must not normalize persisted product ownership');
   assert(
     answerlatticeIndexes.indexes.some((index) => index.collectionGroup === 'payment_transactions'
+      && index.fields?.some((field) => field.fieldPath === 'pId')
+      && index.fields?.some((field) => field.fieldPath === 'productId')
       && index.fields?.some((field) => field.fieldPath === 'event')
       && index.fields?.some((field) => field.fieldPath === 'created_at' && field.order === 'DESCENDING')),
     'Answerlattice indexes must support ordered paid billing history',
   );
   assert(
+    menuListIndexes.indexes.some((index) => index.collectionGroup === 'payment_transactions'
+      && index.fields?.some((field) => field.fieldPath === 'pId')
+      && index.fields?.some((field) => field.fieldPath === 'productId')
+      && index.fields?.some((field) => field.fieldPath === 'event')
+      && index.fields?.some((field) => field.fieldPath === 'created_at' && field.order === 'DESCENDING')),
+    'MenuList indexes must support exact-product ordered paid billing history',
+  );
+  assert(
     answerlatticeIndexes.indexes.some((index) => index.collectionGroup === 'subscriptions'
+      && index.fields?.some((field) => field.fieldPath === 'pId')
+      && index.fields?.some((field) => field.fieldPath === 'productId')
       && index.fields?.some((field) => field.fieldPath === 'status')
       && index.fields?.some((field) => field.fieldPath === 'storeId')
       && index.fields?.some((field) => field.fieldPath === 'tenantId')
       && index.fields?.some((field) => field.fieldPath === 'cycleEndDate' && field.order === 'DESCENDING')),
     'Answerlattice indexes must support authoritative active-subscription entitlement selection',
+  );
+  assert(
+    menuListIndexes.indexes.some((index) => index.collectionGroup === 'subscriptions'
+      && index.fields?.some((field) => field.fieldPath === 'pId')
+      && index.fields?.some((field) => field.fieldPath === 'productId')
+      && index.fields?.some((field) => field.fieldPath === 'status')
+      && index.fields?.some((field) => field.fieldPath === 'storeId')
+      && index.fields?.some((field) => field.fieldPath === 'tenantId')
+      && index.fields?.some((field) => field.fieldPath === 'cycleEndDate' && field.order === 'DESCENDING')),
+    'MenuList indexes must support exact-product latest-cycle subscription selection',
   );
   assert(
     menuListIndexes.indexes.some((index) => index.collectionGroup === 'subscriptions'
@@ -861,6 +1172,12 @@ function verifyBillingEntitlementBoundary() {
       && index.fields?.some((field) => field.fieldPath === 'status')
       && index.fields?.some((field) => field.fieldPath === 'expiresAt')),
     'MenuList indexes must support status-scoped checkout recovery health queries',
+  );
+  assert(
+    menuListIndexes.indexes.some((index) => index.collectionGroup === 'billingProviderPlans'
+      && index.fields?.some((field) => field.fieldPath === 'status')
+      && index.fields?.some((field) => field.fieldPath === 'leaseExpiresAt')),
+    'MenuList indexes must support status-scoped provider-plan recovery health queries',
   );
   assert(
     menuListIndexes.indexes.some((index) => index.collectionGroup === 'razorpayWebhookEvents'
@@ -880,15 +1197,33 @@ function verifyBillingEntitlementBoundary() {
     'export function resolveCurrentTopupSubscriptionSettlement(',
     "resolveExactIdentityAliases(subscription, ['tenantId', 'tId'], params.expectedTenantId)",
     "resolveExactIdentityAliases(subscription, ['storeId', 'sId'], params.expectedStoreId)",
-    'productAliases.some((value)',
+    'subscription.pId !== params.expectedProductId',
+    'subscription.productId !== params.expectedProductId',
     'asExactNonNegativeSafeInteger(subscription.topUpCredits ?? 0)',
     'export function resolveVerifiedTopupSettlement(',
     'providerOrderId !== params.expectedOrderId',
-    'productId !== params.expectedProductId',
-    'notes.billingStoreId ?? notes.storeId ?? notes.sId',
+    'topup.pId !== params.expectedProductId',
+    'topup.productId !== params.expectedProductId',
+    "resolveNormalizedProviderIdentityAliases(notes, ['tenantId', 'tId'], params.expectedTenantId)",
+    "resolveNormalizedProviderIdentityAliases(notes, ['storeId', 'sId'], params.expectedStoreId)",
+    'asPositiveSafeInteger(notes.billingStoreId) !== billingStoreId',
     'asPositiveSafeInteger(payment.amount) !== amount',
     "status === 'paid' && storedPaymentId !== params.expectedPaymentId",
   ].forEach((token) => assertIncludes(topupSettlement, token, 'top-up immutable settlement boundary'));
+  assertNotIncludes(topupSettlement, 'allowMissingProductId', 'top-up settlement must not infer legacy product identity');
+  assertNotIncludes(topupSettlement, 'topup.productId ?? topup.pId', 'top-up settlement must not collapse conflicting product aliases');
+  assertNotIncludes(topupSettlement, 'topup.tenantId ?? topup.tId', 'top-up settlement must not collapse conflicting tenant aliases');
+  assertNotIncludes(topupSettlement, 'topup.storeId ?? topup.sId', 'top-up settlement must not collapse conflicting store aliases');
+  [
+    'export async function persistPendingProductTopupSnapshot(',
+    'tx.create(topupRef, candidate)',
+    "return 'replayed' as const",
+    "throw new Error('Pending top-up order identity conflict.')",
+    'getProductSubscriptionBillingScope(productId, subscription)',
+    'initialSettlement.billingStoreId !== subscriptionScope.storeId',
+    'existingSettlement.billingStoreId !== currentSubscription.storeId',
+    'Number.isSafeInteger(newBalance)',
+  ].forEach((token) => assertIncludes(topupSettlementServer, token, 'top-up create/replay and webhook settlement scope boundary'));
 
   [
     'export function resolveSubscriptionUpgradeCreditTransfer(',
@@ -917,13 +1252,18 @@ function verifyBillingEntitlementBoundary() {
     'const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);',
     'const expectedTenantScope = normalizeBillingSubscriptionScopeDocumentId(subscription.tenantId);',
     'const expectedStoreScope = normalizeBillingSubscriptionScopeDocumentId(subscription.storeId);',
+    'getMenuListSubscriptionEntitlementScope',
     'transaction.get(subscriptionRef)',
     'transaction.get(entitledSubscriptionsQuery)',
     ".where('status', 'in', [...PLAN_ENTITLED_SUBSCRIPTION_STATUSES])",
+    ".where('tId', '==', expectedTenantScope.numericId)",
+    ".where('sId', '==', expectedStoreScope.numericId)",
     ".where('cycleEndDate', '>=', admin.firestore.Timestamp.now())",
     ".orderBy('cycleEndDate', 'desc')",
-    'currentTenantScope.numericId !== expectedTenantScope.numericId',
-    'currentStoreScope.numericId !== expectedStoreScope.numericId',
+    'const currentScope = getMenuListSubscriptionEntitlementScope(current);',
+    'currentScope.tenantId !== expectedTenantScope.numericId',
+    'currentScope.storeId !== expectedStoreScope.numericId',
+    'const candidateScope = getMenuListSubscriptionEntitlementScope(candidate);',
     "transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary'),",
     'transaction.set(subscriptionRef, {',
     'billingSubscriptionId: activeSubscriptionIdValue',
@@ -937,10 +1277,30 @@ function verifyBillingEntitlementBoundary() {
     'billing_store_plan_entitlement_sync_failed',
   ].forEach((token) => assertIncludes(entitlementSync, token, 'MenuList entitlement sync boundary'));
   assertNotIncludes(entitlementSync, '.doc(subscription.id)', 'MenuList entitlement sync must not build raw subscription refs');
+  assertNotIncludes(entitlementSync, 'current.tenantId ?? current.tId', 'MenuList entitlement sync must not accept conflicting current tenant aliases');
+  assertNotIncludes(entitlementSync, 'current.storeId ?? current.sId', 'MenuList entitlement sync must not accept conflicting current store aliases');
+  assert(
+    menuListIndexes.indexes.some((index) => index.collectionGroup === 'subscriptions'
+      && index.queryScope === 'COLLECTION'
+      && ['pId', 'productId', 'tenantId', 'storeId', 'tId', 'sId'].every((fieldPath) => (
+        index.fields?.some((field) => field.fieldPath === fieldPath && field.order === 'ASCENDING')
+      ))),
+    'MenuList indexes must support exact duplicate-alias subscription fallback queries',
+  );
+  assert(
+    answerlatticeIndexes.indexes.some((index) => index.collectionGroup === 'subscriptions'
+      && index.queryScope === 'COLLECTION'
+      && ['pId', 'productId', 'tenantId', 'storeId', 'tId', 'sId'].every((fieldPath) => (
+        index.fields?.some((field) => field.fieldPath === fieldPath && field.order === 'ASCENDING')
+      ))),
+    'Answerlattice indexes must support exact duplicate-alias subscription fallback queries',
+  );
 
   [
     "name: 'subscription_access_expiry'",
     'async function runSubscriptionAccessExpiry()',
+    ".where('pId', '==', MENULIST_PRODUCT_ID)",
+    ".where('productId', '==', MENULIST_PRODUCT_ID)",
     ".where('status', 'in', expiryStatuses)",
     ".where('cycleEndDate', '<=', now)",
     ".orderBy('cycleEndDate', 'asc')",
@@ -952,11 +1312,10 @@ function verifyBillingEntitlementBoundary() {
   assert(
     menuListIndexes.indexes.some((index) => index.collectionGroup === 'subscriptions'
       && index.queryScope === 'COLLECTION'
-      && index.fields?.length === 2
-      && index.fields[0]?.fieldPath === 'status'
-      && index.fields[0]?.order === 'ASCENDING'
-      && index.fields[1]?.fieldPath === 'cycleEndDate'
-      && index.fields[1]?.order === 'ASCENDING'),
+      && index.fields?.some((field) => field.fieldPath === 'pId')
+      && index.fields?.some((field) => field.fieldPath === 'productId')
+      && index.fields?.some((field) => field.fieldPath === 'status' && field.order === 'ASCENDING')
+      && index.fields?.some((field) => field.fieldPath === 'cycleEndDate' && field.order === 'ASCENDING')),
     'MenuList indexes must support bounded paid-cycle subscription expiry',
   );
 
@@ -968,7 +1327,8 @@ function verifyBillingEntitlementBoundary() {
     'return getSubscriptionsCollectionRefServer().doc(normalizedDocId);',
     'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(id);',
     'if (!normalizedSubscriptionId) return null;',
-    'return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };',
+    'if (!getMenuListSubscriptionEntitlementScope(data)) return null;',
+    'const scope = getMenuListSubscriptionEntitlementScope(subscription);',
     'const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);',
     'const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);',
     'if (!tenantScope || !storeScope) return null;',
@@ -1001,30 +1361,24 @@ function verifyBillingEntitlementBoundary() {
   assertIncludes(read('__docs__/changelog.md'), 'Billing Strict Provider Document ID Boundaries', 'Lowercase changelog must record strict billing provider document ID boundaries');
 
   [
-    'normalizeBillingSubscriptionDocumentId',
     'normalizeBillingSubscriptionScopeDocumentId',
-    'const getDocRef = (docId: string) => {',
-    'const normalizedDocId = normalizeBillingSubscriptionDocumentId(docId);',
-    'if (!normalizedDocId) throw new Error("Invalid billing subscription id.");',
-    'return doc(getCollectionRef(), normalizedDocId);',
-    'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(id);',
-    'if (!normalizedSubscriptionId) return null;',
-    'return { ...docSnap.data(), id: docSnap.id };',
     'const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);',
     'const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);',
     'const requestKey = `${tenantScope.documentId}:${storeScope.documentId}`;',
     'orderBy("cycleEndDate", "desc")',
     'const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, tenantScope.documentId);',
-  ].forEach((token) => assertIncludes(subscriptionClient, token, 'MenuList client subscription DAL document ID boundary'));
+  ].forEach((token) => assertIncludes(subscriptionClient, token, 'MenuList client subscription DAL scope/read boundary'));
   assertNotIncludes(subscriptionClient, 'doc(getCollectionRef(), docId)', 'MenuList client subscription DAL must not build raw subscription refs');
   assertNotIncludes(subscriptionClient, 'return { ...docSnap.data(), id };', 'MenuList client subscription DAL must return the normalized Firestore doc ID');
   assertNotIncludes(subscriptionClient, 'return { id: docSnap.id, ...docSnap.data() }', 'MenuList client subscription DAL must not allow embedded IDs to override Firestore IDs');
 
   [
     "import { normalizeBillingSubscriptionDocumentId } from \"@lib/billing/subscriptionDocumentIdBoundary\";",
+    "import { getMenuListSubscriptionEntitlementScope } from \"@lib/billing/menuListSubscriptionEntitlementBoundary\";",
     'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);',
-    'const initialAllowance = Number(subscription.monthlyCreditsAllowance);',
-    'if (!normalizedSubscriptionId || !Number.isFinite(initialAllowance) || initialAllowance <= 0) {',
+    'const expectedScope = getMenuListSubscriptionEntitlementScope(subscription);',
+    'const initialAllowance = getPositiveCreditInteger(subscription.monthlyCreditsAllowance);',
+    'if (!normalizedSubscriptionId || !expectedScope || initialAllowance === null) {',
     '.doc(normalizedSubscriptionId);',
     'id: subscriptionSnap.id,',
     'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);',
@@ -1034,7 +1388,42 @@ function verifyBillingEntitlementBoundary() {
     "throw new Error('Not enough billing credits for this operation.');",
     '...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {})',
   ].forEach((token) => assertIncludes(capacityCheck, token, 'MenuList AI capacity subscription document ID boundary'));
+  assertIncludes(capacityCheck, 'const currentScope = getMenuListSubscriptionEntitlementScope(current);', 'MenuList AI capacity transaction exact subscription scope boundary');
+  assertIncludes(capacityCheck, 'getExactAccountingScopeAlias', 'MenuList AI operation duplicate-scope boundary');
+  assertNotIncludes(capacityCheck, 'current.tenantId ?? current.tId', 'MenuList AI capacity must not collapse conflicting current tenant aliases');
+  assertNotIncludes(capacityCheck, 'current.storeId ?? current.sId', 'MenuList AI capacity must not collapse conflicting current store aliases');
   assertNotIncludes(capacityCheck, '.doc(subscription.id)', 'MenuList AI capacity must not build raw subscription refs');
+  assert(
+    aiCreditScalarContract === functionsAiCreditScalarContract,
+    'MenuList AI credit scalar contract must remain byte-identical across app and Functions runtimes',
+  );
+  assertIncludes(capacityCheck, 'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)', 'MenuList AI capacity exact monthly-credit scalar boundary');
+  assertIncludes(capacityCheck, 'getPositiveCreditInteger(operation.accountingUnits)', 'MenuList AI durable refund exact unit scalar boundary');
+  assertIncludes(capacityCheck, 'getCreditBillingPeriodKey(rawReservedBillingPeriod)', 'MenuList AI refund exact billing-period scalar boundary');
+  assertNotIncludes(capacityCheck, 'Number(existing.accountingUnits)', 'MenuList AI replay must not coerce accounting units');
+  assertNotIncludes(capacityCheck, 'Number(existing.accountingCharged', 'MenuList AI refund must not coerce charged credit evidence');
+  assertIncludes(aiCapacityRecovery, 'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)', 'MenuList AI recovery exact current-balance scalar boundary');
+  assertIncludes(aiCapacityRecovery, 'getCreditBillingPeriodKey(rawReservedBillingPeriod)', 'MenuList AI recovery exact billing-period scalar boundary');
+  assertNotIncludes(aiCapacityRecovery, 'Number(operation.accountingCharged', 'MenuList AI recovery must not coerce charged credit evidence');
+  assertIncludes(aiCapacityReservationTest, 'same-scope other-product subscriptions must not fund MenuList AI operations', 'AI capacity cross-product regression');
+  assertIncludes(aiCapacityReservationTest, 'transaction-current conflicting subscription aliases must block finalization', 'AI capacity transaction-current alias conflict regression');
+  assertIncludes(aiCapacityReservationTest, 'conflicting operation scope aliases must not be accepted as reservation replay', 'AI capacity operation alias conflict regression');
+  assertIncludes(aiCapacityReservationTest, 'numeric-string subscription balances must not authorize paid AI work', 'AI capacity numeric-string balance regression');
+  assertIncludes(aiCapacityReservationTest, 'numeric-string accounting units must not satisfy idempotent reservation replay', 'AI capacity numeric-string replay regression');
+  assertIncludes(aiCapacityReservationTest, 'numeric-string charged-credit evidence must not mint a refund', 'AI capacity numeric-string refund regression');
+  assertIncludes(aiCapacityReservationTest, 'numeric-string recovery evidence must not mint credits', 'AI capacity recovery numeric-string regression');
+  assert(
+    packageJson.scripts?.['test:ai-capacity-reservation:emulator']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'),
+    'AI capacity emulator must clear inherited ADC',
+  );
+  assert(
+    packageJson.scripts?.['test:image-batch-item-concurrency:emulator']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'),
+    'Image-batch capacity emulator must clear inherited ADC',
+  );
+  assert(
+    packageJson.scripts?.['test:claim-account-concurrency:emulator']?.includes('env -u GOOGLE_APPLICATION_CREDENTIALS'),
+    'Claim-account subscription emulator must clear inherited ADC',
+  );
 
   [
     "import { getBillingPeriodKey } from '@lib/billing/billingPeriod';",
@@ -1048,6 +1437,38 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(answerlatticeAiAccounting, token, 'Answerlattice AI credit period/shape boundary'));
   assertNotIncludes(answerlatticeAiAccounting, 'const getBillingPeriodKey =', 'Answerlattice AI accounting must use shared billing-period truth');
   assertNotIncludes(answerlatticeAiAccounting, '.doc(String(scope.tId))', 'Answerlattice AI accounting must not build raw tenant refs');
+  assertIncludes(answerlatticeAiAccounting, 'const initialCredits = getExactSubscriptionCredits(subscription);', 'Answerlattice AI accounting validates monthly refresh credit scalars');
+  assertIncludes(answerlatticeAiAccounting, 'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)', 'Answerlattice AI accounting exact monthly-credit scalar boundary');
+  assertIncludes(answerlatticeAiAccounting, 'getNonNegativeCreditInteger(subscription.topUpCredits ?? 0)', 'Answerlattice AI accounting exact top-up scalar boundary');
+  assertIncludes(answerlatticeAiAccounting, 'getNonNegativeCreditInteger(subscription.monthlyCreditsAllowance ?? 0)', 'Answerlattice AI accounting exact allowance scalar boundary');
+  assertIncludes(answerlatticeAiAccounting, 'const storedUnitsConsumed = getPositiveCreditInteger(existing.unitsConsumed);', 'Answerlattice AI accounting exact replay unit boundary');
+  assertIncludes(answerlatticeAiAccounting, 'const storedBalance = getStoredIdempotentBalance(existing.creditConsumption, unitsConsumed);', 'Answerlattice AI accounting validates replay balance evidence');
+  assertNotIncludes(answerlatticeAiAccounting, 'Number(current.monthlyCredits || 0)', 'Answerlattice AI accounting must not coerce current monthly credits');
+  assertNotIncludes(answerlatticeAiAccounting, 'Number(current.topUpCredits || 0)', 'Answerlattice AI accounting must not coerce current top-up credits');
+  assertNotIncludes(answerlatticeAiAccounting, 'Number(existing.unitsConsumed', 'Answerlattice AI accounting must not coerce replay units');
+  assertNotIncludes(productBillingServer, 'Number.isFinite(Number(data.monthlyCredits))', 'Answerlattice subscription loading must preserve malformed monthly credits for rejection');
+  assertNotIncludes(productBillingServer, 'Number.isFinite(Number(data.topUpCredits))', 'Answerlattice subscription loading must preserve malformed top-up credits for rejection');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'numeric-string subscription balances must not authorize Answerlattice provider work', 'Answerlattice numeric-string credit regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'fractional subscription balances must not authorize Answerlattice provider work', 'Answerlattice fractional credit regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'numeric-string operation units must not satisfy Answerlattice idempotent replay', 'Answerlattice replay unit regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'numeric-string balance evidence must not satisfy Answerlattice idempotent replay', 'Answerlattice replay balance regression');
+  assertIncludes(answerlatticeAiAccounting, 'reserveAnswerlatticeAiOperationCapacity', 'Answerlattice support AI pre-provider reservation boundary');
+  assertIncludes(answerlatticeAiAccounting, 'ANSWERLATTICE_AI_CAPACITY_RESERVATIONS', 'Answerlattice support AI durable recovery pointer');
+  assertIncludes(answerlatticeAiAccounting, "accountingStatus: 'reserved'", 'Answerlattice support AI reservation state');
+  assertIncludes(answerlatticeAiAccounting, "accountingStatus: 'succeeded'", 'Answerlattice support AI settlement state');
+  assertIncludes(answerlatticeAiAccounting, "accountingStatus: 'refunded'", 'Answerlattice support AI refund state');
+  assert(answerlatticeAiCreditScalarContract === aiCreditScalarContract, 'Answerlattice Functions AI credit scalar contract must remain byte-identical to the app contract');
+  assertIncludes(answerlatticeAiCapacityRecovery, "refundReason: 'stale_support_search_reservation_recovered'", 'Answerlattice stale reservation recovery');
+  assertIncludes(answerlatticeAiCapacityRecovery, 'getReservationEvidence(operation, unitsReserved)', 'Answerlattice recovery exact debit evidence');
+  assertIncludes(answerlatticeMasterScheduler, "name: 'ai_capacity_reservation_recovery'", 'Answerlattice recovery runs inside the existing master scheduler');
+  assertIncludes(answerlatticeMasterScheduler, 'if (result.errors > 0)', 'Answerlattice recovery failures must fail the scheduler task');
+  assertIncludes(answerlatticeMasterScheduler, 'ANSWERLATTICE_AI_CAPACITY_RESERVATION_RECOVERY_INCOMPLETE', 'Answerlattice recovery fixed failure code');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'support-search credits must be reserved before provider work', 'Answerlattice pre-provider reservation regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'only the pre-provider-reserved concurrent request may create an operation row', 'Answerlattice concurrent provider admission regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'a stale preloaded subscription must not reset credits after current scope changed', 'Answerlattice monthly-reset current-scope regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'a stale subscription object must not renew a reservation after current status changed', 'Answerlattice reservation-renewal current-status regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'a failed request must refund its pre-provider reservation', 'Answerlattice request-failure refund regression');
+  assertIncludes(answerlatticeSupportSearchAccountingTest, 'malformed recovery evidence must not mint support credits', 'Answerlattice malformed recovery regression');
   assertNotIncludes(answerlatticeAiAccounting, '.collection(String(scope.sId))', 'Answerlattice AI accounting must not build raw store refs');
 
   [
@@ -1062,6 +1483,20 @@ function verifyBillingEntitlementBoundary() {
     'isAnswerlatticeIntakeLedgerInScope(',
     'resolveAnswerlatticeIntakeRefundAllocation({',
   ].forEach((token) => assertIncludes(answerlatticeIntakeUsageLedger, token, 'Answerlattice intake credit period/shape boundary'));
+  [answerlatticeActivationSummary, answerlatticeIntakeUsageLedger, answerlatticeKnowledgeIntakeApi]
+    .forEach((source) => {
+      [
+        ".where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
+        ".where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)",
+        ".where('tenantId', '==',",
+        ".where('storeId', '==',",
+        ".where('tId', '==',",
+        ".where('sId', '==',",
+      ].forEach((token) => assertIncludes(source, token, 'Answerlattice bounded subscription fallback exact query scope'));
+    });
+  assertIncludes(answerlatticeKnowledgeIntakeApi, 'isAnswerlatticeStoreInScope(storeData, { tenantId: tId, storeId: sId }, storeSnap.id)', 'Answerlattice intake license exact store ownership');
+  assertNotIncludes(answerlatticeKnowledgeIntakeApi, 'storeData.tenantId ?? storeData.tId', 'Answerlattice intake license must not accept conflicting store tenant aliases');
+  assertNotIncludes(answerlatticeKnowledgeIntakeApi, 'storeData.pId ?? storeData.productId', 'Answerlattice intake license must not accept conflicting store product aliases');
   assertNotIncludes(answerlatticeIntakeUsageLedger, 'const getBillingPeriodKey =', 'Answerlattice intake ledger must use shared billing-period truth');
   [
     'export function isAnswerlatticeIntakeLedgerInScope(',
@@ -1075,7 +1510,8 @@ function verifyBillingEntitlementBoundary() {
   [
     "import { normalizeBillingSubscriptionDocumentId } from \"@lib/billing/subscriptionDocumentIdBoundary\";",
     'const subscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);',
-    '!subscriptionId\n            || !Number.isSafeInteger(subscriptionTenantId)',
+    'const internalSubscriptionScope = getProductSubscriptionBillingScope(productId, internalSub);',
+    'storedSettlement.billingStoreId !== subscriptionStoreId',
     'const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);',
   ].forEach((token) => assertIncludes(verifyTopup, token, 'verify-topup subscription document ID boundary'));
   assertNotIncludes(verifyTopup, '.doc(internalSub.id)', 'verify-topup must not build raw subscription refs');
@@ -1095,6 +1531,106 @@ function verifyBillingEntitlementBoundary() {
     'readPaymentVerificationResponse<PaymentSubscriptionVerifyResponse>',
     'readPaymentVerificationResponse<PaymentTopupVerifyResponse>',
   ].forEach((token) => assertIncludes(paymentHook, token, 'browser payment hook boundary'));
+  [
+    'Boolean(resolveAnswerlatticeSessionScope(session))',
+    'getMenuListSessionProviderScopeKey(session)',
+    'normalizeBillingSubscriptionScopeDocumentId(session?.user?.tenantId)',
+    'normalizeBillingSubscriptionScopeDocumentId(session?.user?.storeId)',
+  ].forEach((token) => assertIncludes(paymentHook, token, 'browser payment exact session-scope gate'));
+  assertNotIncludes(paymentHook, "session?.user?.productId === PRODUCT_IDS.ANSWERLATTICE", 'browser payment weak Answerlattice product-only scope gate');
+  assertIncludes(productBillingServer, 'if (!getMenuListSessionProviderScopeKey(session)) return null;', 'server MenuList billing exact product/session scope gate');
+  assertIncludes(sessionProviderScopeBoundary, 'identity?.productId === DEFAULT_PRODUCT_ID', 'shared exact MenuList session scope projector');
+  [
+    'getAnswerlatticeBillingRecordScope(subscription)',
+    'getMenuListSubscriptionEntitlementScope(subscription)',
+    'if (isProductBillingDisabled(productId)) return null;',
+  ].forEach((token) => assertIncludes(productSubscriptionScopeBoundary, token, 'shared transaction-current product subscription scope boundary'));
+  [
+    "value.pId !== MENULIST_PRODUCT_ID",
+    'value.productId !== MENULIST_PRODUCT_ID',
+    'Number.isSafeInteger(value)',
+    'tId !== tenantId',
+    'sId !== storeId',
+  ].forEach((token) => assertIncludes(functionsSubscriptionScope, token, 'Functions exact MenuList subscription scope boundary'));
+  [
+    'getExactMenuListSubscriptionScope(exact)',
+    "productId: 'AL'",
+    'tId: 999',
+    'sId: 999',
+    "tenantId: '101'",
+  ].forEach((token) => assertIncludes(functionsSubscriptionScopeTest, token, 'Functions subscription scope regression'));
+  [
+    'getExactMenuListSubscriptionScope(sub)',
+    'getExactMenuListSubscriptionScope(current)',
+    'getExactMenuListSubscriptionScope(candidate)',
+    ".where('tId', '==', expectedTenantScope.numericId)",
+    ".where('sId', '==', expectedStoreScope.numericId)",
+  ].forEach((token) => assertIncludes(reconciliationFunction, token, 'Functions reconciliation exact subscription scope'));
+  [
+    'getExactMenuListSubscriptionScope(sub)',
+    'storeId: String(scope.storeId)',
+    'tenantId: String(scope.tenantId)',
+  ].forEach((token) => assertIncludes(messagingEngine, token, 'Functions lifecycle messaging exact subscription scope'));
+  assertIncludes(maintenanceScheduler, 'getExactMenuListSubscriptionScope(current)', 'Functions paid-cycle/manual expiry transaction-current exact scope');
+  assertIncludes(maintenanceScheduler, 'getExactMenuListSubscriptionScope(subscription)', 'Functions pending entitlement repair exact scope');
+  assertIncludes(founderMonitorSnapshot, 'getExactMenuListSubscriptionScope(data)', 'Founder Monitor exact subscription projection');
+  assertIncludes(aiCapacityRecovery, 'getExactMenuListSubscriptionScope(subscription)', 'AI reservation recovery exact subscription scope');
+  assertIncludes(productBillingServer, 'if (!getProductSubscriptionBillingScope(productId, subscription)) return null;', 'direct product subscription exact scope admission');
+  assert(
+    (productBillingServer.match(/if \(!getProductSubscriptionBillingScope\(productId, current\)\)/g) || []).length >= 4,
+    'payment, webhook, lifecycle and grace-expiry transactions must revalidate exact product subscription scope',
+  );
+  assertIncludes(productBillingServer, 'const oldScope = getProductSubscriptionBillingScope(productId, oldSubscription);', 'upgrade old subscription exact scope admission');
+  assertIncludes(productBillingServer, 'const newScope = getProductSubscriptionBillingScope(productId, newSubscription);', 'upgrade new subscription exact scope admission');
+  assertIncludes(productBillingServer, '.create(productDocPayload(productId, data, { isNew: true }));', 'product subscription initial persistence must be create-only');
+  assertIncludes(productBillingServer, "throw new Error('Subscription does not match the requested product and scope.');", 'direct product subscription update transaction-current scope guard');
+  assertIncludes(subscriptionServer, '.create(\n        composeInitialSubscriptionPayloadServer(data),', 'MenuList initial subscription persistence must be create-only');
+  assertIncludes(subscriptionServer, "throw new Error('MenuList subscription does not match the requested product and scope.');", 'direct MenuList subscription update transaction-current scope guard');
+  assertIncludes(subscriptionServer, "throw new Error('MenuList subscription tenant/store identity is invalid.');", 'MenuList subscription write duplicate-scope admission');
+  assertNotIncludes(productBillingServer, 'isAnswerlatticeBillingProduct(productId)\n            && !getAnswerlatticeBillingRecordScope(current)', 'one-product-only transaction scope gate');
+  [
+    "applyProductSubscriptionStatusTransition(PRODUCT_IDS.MENULIST",
+    "applyProductSubscriptionPayment(PRODUCT_IDS.MENULIST",
+    "applyProductSubscriptionWebhookEvent(PRODUCT_IDS.MENULIST",
+    "applyProductSubscriptionUpgradeCarryForward(PRODUCT_IDS.MENULIST",
+    'createProductInitialSubscription(',
+    'updateProductSubscription(PRODUCT_IDS.MENULIST',
+    "(await readSubscription('sub_ForeignProduct123')).productId, 'AL'",
+  ].forEach((token) => assertIncludes(productSubscriptionScopeEmulator, token, 'product subscription transaction emulator'));
+  assert(
+    packageJson.scripts?.['test:product-subscription-scope:emulator']?.includes('scripts/verification/test-product-subscription-scope-emulator.ts'),
+    'package.json must expose the product subscription scope emulator',
+  );
+  assert(
+    packageJson.scripts?.['test:product-subscription-scope:emulator']?.includes('ANSWERLATTICE_FIREBASE_MODE=shared'),
+    'product subscription scope emulator must exercise both billing products in one isolated demo project',
+  );
+  [
+    ".where('tenantId', '==', Number(tenantId))",
+    ".where('storeId', '==', Number(storeId))",
+    ".where('tId', '==', Number(tenantId))",
+    ".where('sId', '==', Number(storeId))",
+    'const pendingScope = getProductSubscriptionBillingScope(productId, pending);',
+  ].forEach((token) => assertIncludes(createSubscription, token, 'pending checkout exact duplicate-scope admission'));
+  [
+    'where("tenantId", "==", tenantScope.numericId)',
+    'where("tId", "==", tenantScope.numericId)',
+    'where("storeId", "==", storeScope.numericId)',
+    'where("sId", "==", storeScope.numericId)',
+    'projectExactSubscriptionForScope(',
+  ].forEach((token) => assertIncludes(subscriptionClient, token, 'browser MenuList exact duplicate-scope query/projection'));
+  [
+    'where("tId", "==", tenantScope.numericId)',
+    'where("sId", "==", storeScope.numericId)',
+  ].forEach((token) => assertIncludes(paymentTransactionsDal, token, 'browser MenuList payment-history duplicate-scope query'));
+  [
+    "where('tId', '==', tenantScope.numericId)",
+    "where('sId', '==', storeScope.numericId)",
+  ].forEach((token) => assertIncludes(answerlatticeBillingClient, token, 'browser Answerlattice billing duplicate-scope query'));
+  assertIncludes(firestoreRules, "data.keys().hasAll(['tId', 'tenantId', 'sId', 'storeId'])", 'shared billing rule duplicate-scope presence');
+  assertIncludes(firestoreRules, 'data.tId == data.tenantId', 'shared billing rule tenant-alias agreement');
+  assertIncludes(firestoreRules, 'data.sId == data.storeId', 'shared billing rule store-alias agreement');
+  assertIncludes(answerlatticeFirestoreRules, 'isExactAnswerlatticeBillingScopeMember(resource.data)', 'dedicated Answerlattice billing exact duplicate-scope rule');
 
   [
     'const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase } = usePaymentHandler(dispatch);',
@@ -1103,6 +1639,61 @@ function verifyBillingEntitlementBoundary() {
     'await handleTopupPurchase(pack',
     "activeSubscription?.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling",
   ].forEach((token) => assertIncludes(desktopBilling, token, 'desktop billing payment hook parity'));
+  [
+    'const billingScopeKeyRef = useRef<string | null>(billingScopeKey);',
+    'subscriptionRequestSequenceRef.current !== requestSequence',
+    'billingHistoryRequestSequenceRef.current !== requestSequence',
+    'setActiveSubscription(null);',
+    'setBillingHistory([]);',
+  ].forEach((token) => assertIncludes(desktopBilling, token, 'desktop billing latest-scope state boundary'));
+
+  [
+    'const billingScopeKeyRef = useRef<string | null>(billingScopeKey);',
+    'activeSubscriptionScopeKey === billingScopeKey',
+    'billingHistoryScopeKey === billingScopeKey',
+    'subscriptionRequestSequenceRef.current !== requestSequence',
+    'billingHistoryRequestSequenceRef.current !== requestSequence',
+    'billingScopeKeyRef.current !== purchaseScopeKey',
+  ].forEach((token) => assertIncludes(answerlatticeBilling, token, 'Answerlattice billing latest-workspace state boundary'));
+
+  [
+    'getMenuListSessionProviderScopeKey(session)',
+    'normalizeBillingSubscriptionScopeDocumentId(session?.user?.tenantId)',
+    'normalizeBillingSubscriptionScopeDocumentId(session?.user?.storeId)',
+    'subscriptionRequestSequenceRef.current !== requestSequence',
+    'currentScopeKeyRef.current !== requestScopeKey',
+    'loadedScopeKey === currentScopeKey',
+    'subscriptionLoadErrorScopeKey === currentScopeKey',
+    'Checking current billing details...',
+    'Subscription changes are unavailable until the current account is confirmed.',
+  ].forEach((token) => assertIncludes(websitePricingWrapper, token, 'website pricing exact-current subscription boundary'));
+  assertNotIncludes(websitePricingWrapper, 'status === \'authenticated\' && session?.user && !activeSubscription', 'website pricing stale non-null subscription fetch suppression');
+  assertNotIncludes(websitePricingWrapper, '(tenantId || tenantId === 0)', 'website pricing zero tenant scope admission');
+
+  [
+    'OnboardingSubscriptionSchema.safeParse',
+    'getB2BPlansList() : getB2CPlansList()',
+    'candidate.planId === parsed.data.planId',
+    'candidate.billingInterval === parsed.data.interval',
+    'candidate.type === parsed.data.userType',
+    'PURCHASE_INTENT_MAX_AGE_MS',
+    'envelope.version !== PURCHASE_INTENT_STORAGE_VERSION',
+    'return normalizePurchaseIntent(envelope.intent);',
+  ].forEach((token) => assertIncludes(purchaseIntentBoundary, token, 'stored website purchase-intent runtime boundary'));
+  [
+    'parseStoredPurchaseIntent(purchaseIntentString)',
+    'serializePurchaseIntent(purchaseIntent)',
+    'sessionStorage.getItem(PURCHASE_INTENT_STORAGE_KEY)',
+    'sessionStorage.setItem(PURCHASE_INTENT_STORAGE_KEY, serializedPurchaseIntent)',
+    'localStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY)',
+  ].forEach((token) => assertIncludes(websitePricingPage, token, 'website purchase-intent scoped persistence'));
+  assertNotIncludes(websitePricingPage, 'JSON.parse(purchaseIntentString) as PurchaseIntent', 'website purchase-intent unchecked cast');
+  assertNotIncludes(paymentHook, "localStorage.getItem('purchaseIntent')", 'payment hook unvalidated storage authority');
+  assertIncludes(purchaseIntentBoundaryTest, "legacy unversioned localStorage state must not resume", 'purchase-intent stale legacy regression');
+  assert(
+    packageJson.scripts?.['test:purchase-intent-boundary']?.includes('scripts/verification/test-purchase-intent-boundary.ts'),
+    'package.json must expose the purchase-intent runtime boundary test',
+  );
 
   [
     'const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);',
@@ -1114,6 +1705,15 @@ function verifyBillingEntitlementBoundary() {
     'otherReason: cancellationReason === CANCELLATION_REASON.OTHER',
     "sub.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling",
   ].forEach((token) => assertIncludes(mobileBilling, token, 'mobile billing payment hook parity'));
+  [
+    'const billingScopeKeyRef = useRef<string | null>(billingScopeKey);',
+    'subscriptionRequestSequenceRef.current !== requestSequence',
+    'billingHistoryRequestSequenceRef.current !== requestSequence',
+    'billingScopeKeyRef.current !== mutationScopeKey',
+    'setActiveSubscription(null);',
+    'setBillingHistory([]);',
+    'setShowHistory(false);',
+  ].forEach((token) => assertIncludes(mobileBilling, token, 'mobile billing latest-scope state boundary'));
 
   [
     'const toValidDate = (value: unknown): Date | null => {',

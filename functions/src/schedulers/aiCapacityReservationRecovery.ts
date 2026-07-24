@@ -1,6 +1,11 @@
 import type { Timestamp } from 'firebase-admin/firestore';
 import { normalizeSubscriptionDocumentId } from '../billing/reconcileSubscriptions';
+import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
 import { DB_COLLECTIONS } from '../constants/database';
+import {
+    getCreditBillingPeriodKey,
+    getNonNegativeCreditInteger,
+} from '../sharedData/aiCreditScalarContract';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AI_CAPACITY_REFUND_RETENTION_MS = 14 * DAY_MS;
@@ -95,38 +100,51 @@ export async function recoverAiCapacityReservationsInCollectionRef(params: {
                 const subscriptionSnap = await transaction.get(subscriptionRef);
                 if (!subscriptionSnap.exists) throw new Error('AI capacity reservation subscription is unavailable.');
                 const subscription = subscriptionSnap.data() || {};
+                const subscriptionScope = getExactMenuListSubscriptionScope(subscription);
                 const billingStoreId = String(operation.accountingBillingStoreId || operation.sId || '');
-                if (String(subscription.tenantId ?? subscription.tId) !== params.tId
+                if (!subscriptionScope
+                    || String(subscriptionScope.tenantId) !== params.tId
                     || !billingStoreId
-                    || String(subscription.storeId ?? subscription.sId) !== billingStoreId) {
+                    || String(subscriptionScope.storeId) !== billingStoreId) {
                     throw new Error('AI capacity reservation subscription scope mismatch.');
                 }
 
-                const currentMonthlyCredits = Number(subscription.monthlyCredits ?? 0);
-                const currentTopUpCredits = Number(subscription.topUpCredits ?? 0);
-                const chargedMonthlyCredits = Number(operation.accountingChargedMonthlyCredits ?? 0);
-                const chargedTopUpCredits = Number(operation.accountingChargedTopUpCredits ?? 0);
-                const monthlyCreditCeiling = Number(operation.accountingMonthlyCreditCeiling ?? subscription.monthlyCreditsAllowance ?? 0);
+                const currentMonthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
+                const currentTopUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
+                const chargedMonthlyCredits = getNonNegativeCreditInteger(operation.accountingChargedMonthlyCredits ?? 0);
+                const chargedTopUpCredits = getNonNegativeCreditInteger(operation.accountingChargedTopUpCredits ?? 0);
+                const monthlyCreditCeiling = getNonNegativeCreditInteger(
+                    operation.accountingMonthlyCreditCeiling ?? subscription.monthlyCreditsAllowance ?? 0,
+                );
                 if (
-                    !Number.isFinite(currentMonthlyCredits) || currentMonthlyCredits < 0
-                    || !Number.isFinite(currentTopUpCredits) || currentTopUpCredits < 0
-                    || !Number.isFinite(chargedMonthlyCredits) || chargedMonthlyCredits < 0
-                    || !Number.isFinite(chargedTopUpCredits) || chargedTopUpCredits < 0
-                    || !Number.isFinite(monthlyCreditCeiling) || monthlyCreditCeiling < 0
+                    currentMonthlyCredits === null
+                    || currentTopUpCredits === null
+                    || chargedMonthlyCredits === null
+                    || chargedTopUpCredits === null
+                    || monthlyCreditCeiling === null
                 ) {
                     throw new Error('AI capacity reservation refund credit evidence is invalid.');
                 }
 
                 const currentBillingPeriod = getReservationBillingPeriodKey(subscription.cycleStartDate, params.now.toDate());
-                const reservedBillingPeriod = Number(operation.accountingReservationBillingPeriod);
+                const rawReservedBillingPeriod = operation.accountingReservationBillingPeriod;
+                const reservedBillingPeriod = rawReservedBillingPeriod === null
+                    ? null
+                    : getCreditBillingPeriodKey(rawReservedBillingPeriod);
+                if (rawReservedBillingPeriod !== null && reservedBillingPeriod === null) {
+                    throw new Error('AI capacity reservation refund billing period is invalid.');
+                }
                 const sameBillingPeriod = currentBillingPeriod === null
-                    ? operation.accountingReservationBillingPeriod === null
+                    ? rawReservedBillingPeriod === null
                     : currentBillingPeriod === reservedBillingPeriod;
                 const refundedMonthlyCredits = sameBillingPeriod
                     ? Math.min(chargedMonthlyCredits, Math.max(0, monthlyCreditCeiling - currentMonthlyCredits))
                     : 0;
                 const nextMonthlyCredits = currentMonthlyCredits + refundedMonthlyCredits;
                 const nextTopUpCredits = currentTopUpCredits + chargedTopUpCredits;
+                if (!Number.isSafeInteger(nextMonthlyCredits) || !Number.isSafeInteger(nextTopUpCredits)) {
+                    throw new Error('AI capacity reservation refund credit balance overflowed.');
+                }
 
                 transaction.set(subscriptionRef, {
                     monthlyCredits: nextMonthlyCredits,

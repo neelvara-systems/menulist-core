@@ -1,9 +1,9 @@
 # SignalDesk Foundation - Documentation Hub
 
 **Feature:** SignalDesk Foundation
-**Status:** Initial doc set
+**Status:** Runtime-backed and feature-audited
 **Created:** June 23, 2026
-**Last Updated:** June 25, 2026
+**Last Updated:** July 21, 2026
 **Parent project:** [MenuList SignalDesk](../README.md)
 
 ---
@@ -43,3 +43,6 @@ The corrected review says the first build must start with team auth, roles, and 
 | --- | --- | --- |
 | 0.1 | 2026-06-23 | Created first per-feature SignalDesk doc set. |
 | 0.2 | 2026-06-25 | Documented implemented Settings-based team member add/update/deactivate flow and audited role assignment. |
+| 0.3 | 2026-07-21 | Reconciled current-user/session admission, transactional member identity, human-role enforcement, Firebase costs, mobile parity, and emulator evidence. |
+| 0.4 | 2026-07-21 | Reconciled durable audit/privacy boundaries and added stable, bounded older-history pagination with emulator evidence. |
+| 0.5 | 2026-07-21 | Reconciled all eleven kill-switch scopes, stable audit classification, clean reactivation state, and the mobile global-emergency-only boundary. |

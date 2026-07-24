@@ -24,13 +24,25 @@ assert(searchRoute.includes('normalizeAnswerlatticePublicCitationUrl(ref.url)'),
 assert(!searchRoute.includes('url: ref.url'), 'widget references must not expose raw source URLs');
 assert(searchRoute.includes('fallbackSuggested:'), 'widget search must expose a bounded fallback suggestion');
 assert(searchRoute.includes('imageProcessed: result.imageProcessed'), 'widget search must report whether the submitted image was used');
+assert(searchRoute.includes('verifiedVisitor\n                        ? body.context\n                        : stripUnverifiedSensitiveContext(body.context)'), 'unsigned or rejected visitor context must not supply sensitive plan, role, or locale claims');
+assert(!searchRoute.includes('verifiedContextRejected\n                        ? stripUnverifiedSensitiveContext(body.context)'), 'sensitive context filtering must not depend on an invalid token being present');
 assert(searchRoute.includes('articles: (result.relatedContent.articles || []).slice(0, 5).map'), 'related content must be explicitly projected');
 assert(!searchRoute.includes('articles: result.relatedContent.articles || []'), 'related content must not expose the full stored object');
+assert(searchRoute.includes('const publicGraphExpansion = normalizeWidgetGraphExpansion(result.graphExpansion)'), 'widget graph data must pass through an explicit public projection');
+assert(searchRoute.includes('if (publicGraphExpansion) response.graphExpansion = publicGraphExpansion'), 'empty public graph projections must be omitted rather than serialized as null');
+assert(searchRoute.includes('? { interactionType, explanation }'), 'widget graph interaction output must contain only bounded public fields');
+assert(!searchRoute.includes('interactionDetected: result.graphExpansion.interactionDetected || null'), 'widget graph output must not expose internal interaction rule IDs');
+assert(!searchRoute.includes('relatedSuggestions: result.graphExpansion.relatedSuggestions || []'), 'widget graph output must not expose internal related entity IDs');
+assert(searchRoute.indexOf('isAnswerlatticeWidgetRuntimeRequestAuthorized({') < searchRoute.indexOf('const rateLimitResult = await checkRateLimit({'), 'tenant/key search budget must be charged only after credential and runtime-origin authorization');
 
 assert(feedbackRoute.includes("let authoritativeOutcome: 'resolved' | 'not_resolved' | null = null"), 'widget feedback must return the stored outcome on replay');
 assert(feedbackRoute.includes('resolutionOutcome: authoritativeOutcome'), 'new widget feedback must persist an explicit authoritative outcome');
 assert(feedbackRoute.includes('created: feedbackCreated'), 'widget feedback must disclose whether the mutation was new or replayed');
 assert(feedbackRoute.includes('isAnswerlatticeSearchHistoryAvailableForInteraction(current)'), 'widget feedback must reject expired retained search history');
+assert(feedbackRoute.includes("authoritativeOutcome === 'not_resolved'"), 'negative feedback replay must recover its idempotent signal side effect');
+assert(feedbackRoute.includes('if (!signalEmitted)'), 'negative feedback must treat a missing durable signal as partial failure');
+assert(feedbackRoute.includes("{ error: 'Feedback signal could not be saved' }, { status: 503 }"), 'negative feedback signal failure must remain retryable');
+assert(!feedbackRoute.includes('if (feedbackCreated && !isGood && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION)'), 'signal recovery must not be restricted to the first feedback write');
 
 assert(escalationRoute.includes("hasPublicApiCredentialScope(credential, 'widget:feedback')"), 'widget escalation must reuse the bounded feedback credential scope');
 assert(escalationRoute.includes('isAnswerlatticeWidgetRuntimeRequestAuthorized'), 'widget escalation must enforce host/runtime-token authorization');
@@ -54,6 +66,11 @@ assert(widgetClient.includes('onClick={() => handleSearch(article.title)}'), 're
 assert(widgetClient.includes('onClick={() => handleSearch(faq.question)}'), 'related FAQs must become actionable follow-up questions');
 assert(widgetClient.includes('onClick={() => handleSearch(entry.title)}'), 'related changelogs must become actionable follow-up questions');
 assert(widgetClient.includes('Support request #{msg.escalationTicketDisplayId} was created.'), 'widget must show a bounded ticket acknowledgement');
+assert(widgetClient.includes('const activeSearchControllerRef = useRef<AbortController | null>(null)'), 'widget search must keep a synchronous in-flight request boundary');
+assert(widgetClient.includes('if (!q || loading || activeSearchControllerRef.current) return'), 'widget search must reject duplicate admission before React state settles');
+assert(widgetClient.includes('activeSearchControllerRef.current = searchController'), 'widget search must claim the synchronous request boundary before fetch');
+assert(widgetClient.includes('signal: searchController.signal'), 'widget search must make the active request cancellable');
+assert(widgetClient.includes('activeSearchControllerRef.current?.abort()'), 'widget clear/unmount must cancel active search work');
 
 assert(historyType.includes('escalationTicketId?: string'), 'search history type must expose ticket linkage');
 assert(historyType.includes("escalationStatus?: 'ticket_created'"), 'search history type must expose bounded escalation status');

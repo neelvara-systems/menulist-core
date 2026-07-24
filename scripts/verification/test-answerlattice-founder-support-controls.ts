@@ -4,6 +4,7 @@ import {
     generateAnswerlatticeVerifiedContextKey,
     normalizeAnswerlatticeEvidenceHosts,
     normalizeAnswerlatticeEvidenceLinks,
+    normalizeVerifiedContextKeyRecord,
     verifyAnswerlatticeVisitorToken,
 } from '../../src/lib/answerlattice/verifiedWidgetContextServer';
 import {
@@ -62,6 +63,10 @@ const createToken = ({
 
 const nowSeconds = 1_800_000_000;
 const generated = generateAnswerlatticeVerifiedContextKey();
+assert.deepEqual(normalizeVerifiedContextKeyRecord(generated.record), generated.record);
+assert.equal(normalizeVerifiedContextKeyRecord({ ...generated.record, createdAt: 'not-a-date' }), null);
+assert.equal(normalizeVerifiedContextKeyRecord({ ...generated.record, rotatedAt: '2026-01-01' }), null);
+assert.equal(normalizeVerifiedContextKeyRecord({ ...generated.record, publicKeySpki: 'not-base64' }), null);
 const validToken = createToken({
     privateKeyPkcs8: generated.privateKeyPkcs8,
     keyId: generated.record.keyId,
@@ -84,7 +89,7 @@ const validToken = createToken({
 const verified = verifyAnswerlatticeVisitorToken(validToken, generated.record, nowSeconds * 1000);
 assert.ok(verified, 'valid signed visitor token should verify');
 assert.deepEqual(verified, {
-    id: 'customer_123',
+    id: 'Customer_123',
     name: 'Example Customer',
     email: 'customer@example.com',
     plan: 'growth',
@@ -95,6 +100,68 @@ assert.deepEqual(verified, {
 });
 assert.equal('tId' in verified, false, 'tenant claims must never enter verified visitor output');
 assert.equal('sId' in verified, false, 'store claims must never enter verified visitor output');
+
+const stringTimeToken = createToken({
+    privateKeyPkcs8: generated.privateKeyPkcs8,
+    keyId: generated.record.keyId,
+    payload: {
+        aud: 'answerlattice-widget',
+        iat: String(nowSeconds),
+        exp: String(nowSeconds + 300),
+        sub: 'customer_123',
+    },
+});
+assert.equal(verifyAnswerlatticeVisitorToken(stringTimeToken, generated.record, nowSeconds * 1000), null);
+
+const numericSubjectToken = createToken({
+    privateKeyPkcs8: generated.privateKeyPkcs8,
+    keyId: generated.record.keyId,
+    payload: {
+        aud: 'answerlattice-widget',
+        iat: nowSeconds,
+        exp: nowSeconds + 300,
+        sub: 123,
+    },
+});
+assert.equal(verifyAnswerlatticeVisitorToken(numericSubjectToken, generated.record, nowSeconds * 1000), null);
+assert.equal(
+    verifyAnswerlatticeVisitorToken(validToken, generated.record, String(nowSeconds * 1000) as unknown as number),
+    null,
+);
+
+const caseSensitiveSubjectToken = createToken({
+    privateKeyPkcs8: generated.privateKeyPkcs8,
+    keyId: generated.record.keyId,
+    payload: {
+        aud: 'answerlattice-widget',
+        iat: nowSeconds,
+        exp: nowSeconds + 300,
+        sub: 'Customer_ABC',
+    },
+});
+assert.equal(
+    verifyAnswerlatticeVisitorToken(caseSensitiveSubjectToken, generated.record, nowSeconds * 1000)?.id,
+    'Customer_ABC',
+    'verified visitor subjects must preserve their exact case-sensitive identity',
+);
+
+for (const invalidSubject of [` ${'a'.repeat(10)}`, `${'a'.repeat(10)} `, 'a'.repeat(121), 'customer\u0000id']) {
+    const invalidSubjectToken = createToken({
+        privateKeyPkcs8: generated.privateKeyPkcs8,
+        keyId: generated.record.keyId,
+        payload: {
+            aud: 'answerlattice-widget',
+            iat: nowSeconds,
+            exp: nowSeconds + 300,
+            sub: invalidSubject,
+        },
+    });
+    assert.equal(
+        verifyAnswerlatticeVisitorToken(invalidSubjectToken, generated.record, nowSeconds * 1000),
+        null,
+        'verified visitor subjects must reject values that would be trimmed, truncated, or contain controls',
+    );
+}
 
 const expiredToken = createToken({
     privateKeyPkcs8: generated.privateKeyPkcs8,
@@ -844,6 +911,12 @@ const buildActivationStore = (lastSeenAt: string) => ({
     primarySurfaces: ['billing'],
     answerlatticeSubscription: {
         id: 'sub_123',
+        pId: 'AL',
+        productId: 'AL',
+        tId: 11,
+        sId: 22,
+        tenantId: 11,
+        storeId: 22,
         planId: 'answerlattice_starter',
         planName: 'Starter',
         status: 'active',

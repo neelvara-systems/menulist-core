@@ -691,3 +691,7 @@ Code implementation is complete when:
 - the feature remains disabled outside the approved pilot.
 
 Pilot release additionally requires finance/legal/team approval, approved pilot stores, sandbox payment evidence, production-host browser/device QA, and both feature flags enabled only for that cohort.
+
+## Exact prior-payment evidence scope (July 22, 2026)
+
+Pre-subscription referral attribution treats prior payment as evidence only when the history row has exact dual `ML` product aliases and present, agreeing numeric tenant/store aliases for the referred business. The bounded query constrains all aliases and the evidence projector fails closed. A conflicting row cannot block attribution or later influence reward settlement merely because its primary fields match.

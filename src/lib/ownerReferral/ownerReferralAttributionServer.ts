@@ -20,6 +20,7 @@ import {
 } from './ownerReferralTokenServer';
 import { isOwnerReferralPilotStoreAllowed } from './ownerReferralFeature';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import type {
     OwnerReferralDocument,
     OwnerReferralResolvedToken,
@@ -112,8 +113,12 @@ export const resolveOwnerReferralCookieForAttribution = async (
 const getOwnerReferralSubscriptionHistoryQuery = (scope: OwnerReferralScope) => (
     firestoreAdmin
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', DEFAULT_PRODUCT_ID)
+        .where('productId', '==', DEFAULT_PRODUCT_ID)
         .where('tenantId', '==', scope.tenantId)
         .where('storeId', '==', scope.storeId)
+        .where('tId', '==', scope.tenantId)
+        .where('sId', '==', scope.storeId)
         .limit(OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT)
 );
 
@@ -121,8 +126,7 @@ const hasSuccessfulMenuListSubscriptionPayment = (
     snapshot: FirebaseFirestore.QuerySnapshot,
 ): boolean => snapshot.size >= OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT || snapshot.docs.some((document) => {
     const subscription = document.data() || {};
-    const productId = subscription.productId ?? subscription.pId ?? DEFAULT_PRODUCT_ID;
-    if (productId !== DEFAULT_PRODUCT_ID) return false;
+    if (!getMenuListSubscriptionEntitlementScope(subscription)) return false;
     return Number(subscription.totalPaymentsMadeCount || 0) > 0
         || subscription.manualPaymentConfirmed === true
         || (Array.isArray(subscription.billingHistory) && subscription.billingHistory.length > 0);

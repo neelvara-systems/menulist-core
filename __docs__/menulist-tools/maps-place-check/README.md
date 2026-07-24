@@ -1,8 +1,8 @@
 # Maps Place Check - Documentation Hub
 
 > **Feature:** MenuList Maps Place Check
-> **Status:** Guarded backend and owner-confirmation contract complete; provider activation pending
-> **Last Updated:** July 19, 2026
+> **Status:** Guarded backend and owner-confirmation contract complete; provider and collision-policy activation gates pending
+> **Last Updated:** July 22, 2026
 
 ## Quick Navigation
 
@@ -58,10 +58,16 @@ Existing owner Google Maps-link save
 
 Explicit grounded-candidate confirmation
   -> accepts the Place ID and Maps URI only from one grounding source
+  -> requires the same disabled feature flag as the provider check
   -> checks the current tenant, active owner store, deletion, and block state
   -> writes only the internal Google Maps binding
   -> remains excluded from public output and Platform Pull
 ```
+
+Provider smoke alone does not release confirmation UI. The current embedded
+binding has no server-authoritative cross-store provider-ID uniqueness claim, so
+an approved fail-closed and reversible collision policy is also required before
+activation. Removal remains available while disabled.
 
 ## Related Docs
 

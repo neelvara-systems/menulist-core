@@ -7,7 +7,9 @@ export const ANSWERLATTICE_WIDGET_KEY_LIMIT = 10;
 export const ANSWERLATTICE_WIDGET_KEY_RECORD_LIMIT = 30;
 
 const DEFAULT_KEY_NAME = 'Widget key';
+const UNKNOWN_LEGACY_CREATED_AT = '1970-01-01T00:00:00.000Z';
 const KEY_HASH_PATTERN = /^[a-f0-9]{64}$/;
+const WIDGET_SCOPE_SET = new Set<string>(ANSWERLATTICE_WIDGET_SCOPES);
 
 export type AnswerlatticeWidgetKeyStatus = 'active' | 'revoked';
 
@@ -65,6 +67,19 @@ const normalizeKeyHash = (value: unknown): string | null => {
     return KEY_HASH_PATTERN.test(hash) ? hash : null;
 };
 
+const normalizeWidgetKeyScopes = (
+    value: unknown,
+    allowMissing: boolean,
+): string[] | null => {
+    if (value === undefined && allowMissing) return [...ANSWERLATTICE_WIDGET_SCOPES];
+    if (!Array.isArray(value) || value.length === 0) return null;
+    if (value.some((scope) => typeof scope !== 'string' || !WIDGET_SCOPE_SET.has(scope))) {
+        return null;
+    }
+    const scopes = Array.from(new Set(value as string[]));
+    return scopes.length === value.length ? scopes : null;
+};
+
 export const normalizeAnswerlatticeWidgetKeyName = (value: unknown): string => {
     const normalized = safeString(value).replace(/\s+/g, ' ').slice(0, 80);
     return normalized || DEFAULT_KEY_NAME;
@@ -74,7 +89,20 @@ const normalizeRecord = (
     keyHash: string,
     rawRecord: Record<string, any>,
     fallback: Record<string, any> = {},
-): AnswerlatticeWidgetKeyRecord => {
+    allowLegacyDefaults = false,
+): AnswerlatticeWidgetKeyRecord | null => {
+    if (
+        (!allowLegacyDefaults && rawRecord.status !== 'active' && rawRecord.status !== 'revoked')
+        || (rawRecord.productId !== undefined && rawRecord.productId !== PRODUCT_IDS.ANSWERLATTICE)
+        || (rawRecord.purpose !== undefined && rawRecord.purpose !== 'answerlattice_widget')
+    ) return null;
+    if (!allowLegacyDefaults && (
+        rawRecord.productId !== PRODUCT_IDS.ANSWERLATTICE
+        || rawRecord.purpose !== 'answerlattice_widget'
+    )) return null;
+    const scopes = normalizeWidgetKeyScopes(rawRecord.scopes, allowLegacyDefaults);
+    if (!scopes) return null;
+
     const keyPrefix = safeString(rawRecord.keyPrefix, 12) || safeString(fallback.keyPrefix, 12) || 'al_****';
     const keySuffix = safeString(rawRecord.keySuffix, 8) || safeString(fallback.keySuffix, 8) || null;
 
@@ -88,12 +116,8 @@ const normalizeRecord = (
         status: rawRecord.status === 'revoked' ? 'revoked' : 'active',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         purpose: 'answerlattice_widget',
-        scopes: Array.isArray(rawRecord.scopes) && rawRecord.scopes.length
-            ? Array.from(new Set(rawRecord.scopes
-                .filter((scope: unknown): scope is string => typeof scope === 'string')
-                .filter(scope => ANSWERLATTICE_WIDGET_SCOPES.includes(scope as any))))
-            : [...ANSWERLATTICE_WIDGET_SCOPES],
-        createdAt: safeString(rawRecord.createdAt, 40) || safeString(fallback.createdAt, 40) || new Date().toISOString(),
+        scopes,
+        createdAt: safeString(rawRecord.createdAt, 40) || safeString(fallback.createdAt, 40) || UNKNOWN_LEGACY_CREATED_AT,
         updatedAt: safeString(rawRecord.updatedAt, 40) || null,
         revokedAt: safeString(rawRecord.revokedAt, 40) || null,
         legacy: Boolean(rawRecord.legacy || fallback.legacy),
@@ -104,6 +128,8 @@ export const normalizeAnswerlatticeWidgetApiState = (rawState: unknown): Answerl
     const source = rawState && typeof rawState === 'object' ? rawState as Record<string, any> : {};
     const keysByHash: Record<string, AnswerlatticeWidgetKeyRecord> = {};
     const keyHashes: string[] = [];
+    const keyHashByRecordId = new Map<string, string>();
+    const duplicateRecordIds = new Set<string>();
     const sourceKeyHashes = Array.isArray(source.keyHashes)
         ? source.keyHashes
             .map(normalizeKeyHash)
@@ -130,13 +156,25 @@ export const normalizeAnswerlatticeWidgetApiState = (rawState: unknown): Answerl
             const hash = normalizeKeyHash(keyHash);
             if (!hash || !record || typeof record !== 'object') return;
             const normalized = normalizeRecord(hash, record as Record<string, any>, source);
+            if (!normalized) return;
+            if (duplicateRecordIds.has(normalized.id)) return;
+            const existingHash = keyHashByRecordId.get(normalized.id);
+            if (existingHash) {
+                delete keysByHash[existingHash];
+                const existingActiveIndex = keyHashes.indexOf(existingHash);
+                if (existingActiveIndex >= 0) keyHashes.splice(existingActiveIndex, 1);
+                keyHashByRecordId.delete(normalized.id);
+                duplicateRecordIds.add(normalized.id);
+                return;
+            }
+            keyHashByRecordId.set(normalized.id, hash);
             keysByHash[hash] = normalized;
             if (!hasManagedKeyHashes && normalized.status === 'active') keyHashes.push(hash);
             });
     }
 
     const legacyHash = normalizeKeyHash(source.apiKeyHash);
-    if (legacyHash && !keysByHash[legacyHash]) {
+    if (legacyHash && !hasManagedKeyHashes && !keysByHash[legacyHash]) {
         const legacyRecord = normalizeRecord(legacyHash, {
             id: safeString(source.id, 120) || `legacy_${legacyHash.slice(0, 12)}`,
             name: source.name || 'Default widget key',
@@ -147,10 +185,12 @@ export const normalizeAnswerlatticeWidgetApiState = (rawState: unknown): Answerl
             purpose: source.purpose,
             scopes: source.scopes,
             legacy: true,
-        }, source);
-        keysByHash[legacyHash] = legacyRecord;
-        if (!hasManagedKeyHashes || sourceKeyHashes.includes(legacyHash)) {
-            keyHashes.push(legacyHash);
+        }, source, true);
+        if (legacyRecord) {
+            keysByHash[legacyHash] = legacyRecord;
+            if (!hasManagedKeyHashes || sourceKeyHashes.includes(legacyHash)) {
+                keyHashes.push(legacyHash);
+            }
         }
     }
 

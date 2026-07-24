@@ -81,7 +81,7 @@ Nightly sync does not:
 
 Deduplication uses deterministic source keys. Existing resolved cards are not reopened by the scheduler.
 
-The three main source scans use cap-plus-one reads to detect a saturated window. Optional breakdown generation does the same for its bounded card scan. `sourceWindowsSaturated` and `breakdownFresh` prevent bounded analysis from being represented as exhaustive.
+The three main source scans use cap-plus-one reads to detect a saturated window. Search history, signal events, drifted canonical answers, release-impact inputs, live aggregate counts, the client board list, and the optional bounded card breakdown constrain exact `pId: AL` before tenant/workspace and their remaining filters. Direct entity lookups validate the stored product and exact scope. Deterministic card and summary IDs fail closed if an existing document carries another product or scope, so colliding numeric scopes cannot enter, starve, or be overwritten by Support Board preparation. `sourceWindowsSaturated` and `breakdownFresh` prevent bounded analysis from being represented as exhaustive.
 
 Failure output returned to the scheduler is an object-shaped bounded diagnostic with a fixed error code, source error name/code/status, and scope booleans. Do not return raw exception messages or scoped identifiers from `SupportBoardSyncResult.errors`.
 

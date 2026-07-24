@@ -8,7 +8,11 @@ import {
     parseAnswerlatticeWorkspaceProfile,
     parseAnswerlatticeWorkspaceProfileResponse,
     parseAnswerlatticeWorkspaceProfileSave,
+    projectAnswerlatticeCompiledWorkspaceProduct as projectRootCompiledWorkspaceProduct,
 } from '../../src/lib/answerlattice/workspaceProfileContracts';
+import {
+    projectAnswerlatticeCompiledWorkspaceProduct as projectFunctionCompiledWorkspaceProduct,
+} from '../../functions-answerlattice/src/answerlattice/workspaceProfileBoundary';
 
 const validProfile = {
     productName: 'Example SaaS',
@@ -111,6 +115,49 @@ assert.deepEqual(sanitizedPersisted, {
     timeZone: 'UTC',
     businessDayEndTime: '00:00',
 });
+
+const malformedCompiledSource = {
+    productName: { private: true },
+    name: '  Legacy Product  ',
+    companyName: 'Ignored Company',
+    productUrl: 'javascript:alert(1)',
+    supportEmail: ['private@example.com'],
+    billingModel: 'enterprise',
+    timeZone: 'Not/A_Timezone',
+    businessDayEndTime: '99:99',
+    privateRoot: 'must-not-leak',
+};
+const expectedCompiledProjection = {
+    name: 'Legacy Product',
+    url: null,
+    supportEmail: null,
+    billingModel: 'subscription' as const,
+    timeZone: 'UTC',
+    businessDayEndTime: '00:00',
+};
+assert.deepEqual(
+    projectRootCompiledWorkspaceProduct(malformedCompiledSource),
+    expectedCompiledProjection,
+);
+assert.deepEqual(
+    projectFunctionCompiledWorkspaceProduct(malformedCompiledSource),
+    expectedCompiledProjection,
+);
+assert.deepEqual(
+    projectRootCompiledWorkspaceProduct(validProfile),
+    {
+        name: 'Example SaaS',
+        url: 'https://app.example.com',
+        supportEmail: 'support@example.com',
+        billingModel: 'subscription',
+        timeZone: 'Asia/Kolkata',
+        businessDayEndTime: '23:30',
+    },
+);
+assert.deepEqual(
+    projectFunctionCompiledWorkspaceProduct(validProfile),
+    projectRootCompiledWorkspaceProduct(validProfile),
+);
 
 assert.deepEqual(
     parseAnswerlatticeWorkspaceProfileResponse({

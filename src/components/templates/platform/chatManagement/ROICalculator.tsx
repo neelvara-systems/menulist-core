@@ -3,16 +3,21 @@
 /**
  * ROI Calculator Component
  * 
- * Displays business value metrics from chat analytics:
- * - Cost savings vs manual support
- * - Time savings
- * - Revenue protection
- * - ROI and payback period
+ * Displays an assumption-labelled planning estimate from observed chat analytics.
  * 
  * Completely standalone - no impact on existing chat management features
  */
 
 import { useAppDispatch } from '@hook/useAppDispatch';
+import {
+    getAnswerlatticeChatWorkspaceScopeKey,
+} from '@lib/answerlattice/chatAnalyticsContracts';
+import {
+    parseAnswerlatticeRoiMetricsApiResponse,
+    type AnswerlatticeRoiData as ROIData,
+    type AnswerlatticeRoiMetricsApiResponse as RoiMetricsApiResponse,
+} from '@lib/answerlattice/roiMetricsContracts';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     copyAnswerlatticeSupportTextToClipboard,
     hasAnswerlatticeSupportClipboardWrite,
@@ -24,7 +29,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Card, Col, Divider, Flex, Input, message, Modal, Row, Select, Spin, Statistic, theme, Typography } from 'antd';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     LuChevronDown,
     LuChevronUp,
@@ -34,7 +39,6 @@ import {
     LuRefreshCw,
     LuSettings,
     LuShare2,
-    LuTarget,
     LuTrendingUp
 } from 'react-icons/lu';
 
@@ -49,95 +53,16 @@ const ROI_METRICS_FAILED_MESSAGE = 'Failed to calculate ROI metrics. Please try 
 const PLATFORM_ROI_SHARE_COPY_CLIPBOARD_UNAVAILABLE = 'platform_roi_share_copy_clipboard_unavailable';
 const PLATFORM_ROI_SHARE_COPY_FALLBACK_FAILED = 'platform_roi_share_copy_fallback_failed';
 
-interface ROIMetrics {
-    totalHoursSaved: number;
-    monthlyHoursSaved: number;
-    totalCostSaved: number;
-    monthlyCostSaved: number;
-    conversationsHandled: number;
-    automationRate: number;
-    satisfiedCustomers: number;
-    estimatedRevenueProtected: number;
-    platformCost: number;
-    netSavings: number;
-    roi: number;
-    paybackPeriod: number | null;
-}
-
-interface ROIData {
-    metrics: ROIMetrics;
-    analyticsData: unknown;
-    params: {
-        avgSupportAgentHourlyCost: number;
-        avgCustomerLifetimeValue: number;
-        platformMonthlyCost: number;
-    };
-    dateRange: {
-        start: string;
-        end: string;
-        days: number;
-    };
-}
-
-type RoiMetricsApiResponse = {
-    success: true;
-    data: ROIData;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-);
-
-const isFiniteNumber = (value: unknown): value is number => (
-    typeof value === 'number' && Number.isFinite(value)
-);
-
-const isRoiMetrics = (value: unknown): value is ROIMetrics => {
-    if (!isRecord(value)) return false;
-
-    return (
-        isFiniteNumber(value.totalHoursSaved)
-        && isFiniteNumber(value.monthlyHoursSaved)
-        && isFiniteNumber(value.totalCostSaved)
-        && isFiniteNumber(value.monthlyCostSaved)
-        && isFiniteNumber(value.conversationsHandled)
-        && isFiniteNumber(value.automationRate)
-        && isFiniteNumber(value.satisfiedCustomers)
-        && isFiniteNumber(value.estimatedRevenueProtected)
-        && isFiniteNumber(value.platformCost)
-        && isFiniteNumber(value.netSavings)
-        && isFiniteNumber(value.roi)
-        && (value.paybackPeriod === null || isFiniteNumber(value.paybackPeriod))
-    );
-};
-
-const isRoiData = (value: unknown): value is ROIData => (
-    isRecord(value)
-    && isRoiMetrics(value.metrics)
-    && isRecord(value.analyticsData)
-    && isRecord(value.params)
-    && isFiniteNumber(value.params.avgSupportAgentHourlyCost)
-    && isFiniteNumber(value.params.avgCustomerLifetimeValue)
-    && isFiniteNumber(value.params.platformMonthlyCost)
-    && isRecord(value.dateRange)
-    && typeof value.dateRange.start === 'string'
-    && typeof value.dateRange.end === 'string'
-    && isFiniteNumber(value.dateRange.days)
-);
-
-const isRoiMetricsApiResponse = (value: unknown): value is RoiMetricsApiResponse => (
-    isRecord(value)
-    && value.success === true
-    && isRoiData(value.data)
-);
-
 const getRoiMetricsResponseLogContext = (response: Response) => ({
     ...getBoundedRuntimeStringContext('endpoint', '/api/analytics/roi-metrics'),
     responseOk: response.ok,
     responseStatus: response.status,
 });
 
-const readRoiMetricsResponse = async (response: Response): Promise<RoiMetricsApiResponse> => {
+const readRoiMetricsResponse = async (
+    response: Response,
+    expectedScope: { tId: number; sId: number },
+): Promise<RoiMetricsApiResponse> => {
     let payload: unknown = null;
     try {
         payload = await readJsonResponseWithLimit<unknown>(response, ROI_METRICS_RESPONSE_JSON_MAX_BYTES);
@@ -159,7 +84,8 @@ const readRoiMetricsResponse = async (response: Response): Promise<RoiMetricsApi
         throw new Error(ROI_METRICS_FAILED_MESSAGE);
     }
 
-    if (!isRoiMetricsApiResponse(payload)) {
+    const parsed = parseAnswerlatticeRoiMetricsApiResponse(payload, expectedScope);
+    if (!parsed) {
         logRuntimeFailure(
             'platform_roi_metrics_response_invalid',
             undefined,
@@ -168,7 +94,7 @@ const readRoiMetricsResponse = async (response: Response): Promise<RoiMetricsApi
         throw new Error(ROI_METRICS_FAILED_MESSAGE);
     }
 
-    return payload;
+    return parsed;
 };
 
 const copyRoiShareTextToClipboard = async (shareText: string) => {
@@ -180,6 +106,11 @@ const copyRoiShareTextToClipboard = async (shareText: string) => {
 
 export default function ROICalculator() {
     const { data: session } = useSession();
+    const resolvedScope = resolveAnswerlatticeSessionScope(session);
+    const workspaceScope = resolvedScope
+        ? { tId: resolvedScope.tenantId, sId: resolvedScope.storeId }
+        : null;
+    const scopeKey = getAnswerlatticeChatWorkspaceScopeKey(workspaceScope);
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
 
@@ -192,42 +123,86 @@ export default function ROICalculator() {
 
     // Advanced parameters (user-configurable)
     const [hourlyCost, setHourlyCost] = useState(25);
-    const [customerLTV, setCustomerLTV] = useState(500);
+    const [minutesSaved, setMinutesSaved] = useState(8);
     const [platformCost, setPlatformCost] = useState(99);
+    const mountedRef = useRef(false);
+    const scopeKeyRef = useRef(scopeKey);
+    scopeKeyRef.current = scopeKey;
+    const requestOwnerRef = useRef(0);
+    const inFlightScopeRef = useRef<string | null>(null);
+    const parameterRef = useRef({ dateRange, hourlyCost, minutesSaved, platformCost });
+    parameterRef.current = { dateRange, hourlyCost, minutesSaved, platformCost };
 
     // Fetch ROI data
-    const fetchROIData = async () => {
+    const fetchROIData = useCallback(async () => {
+        if (!workspaceScope || !scopeKey || inFlightScopeRef.current === scopeKey) return;
+        const requestOwner = ++requestOwnerRef.current;
+        const expectedScope = workspaceScope;
+        const expectedScopeKey = scopeKey;
+        const loaderId = `roi-calculator:${requestOwner}`;
+        const requestedParameters = parameterRef.current;
+        inFlightScopeRef.current = expectedScopeKey;
         try {
-            dispatch(startLoader('roi-calculator'));
+            dispatch(startLoader(loaderId));
+            setRoiData(null);
             setLoading(true);
 
             const params = new URLSearchParams({
-                days: dateRange.toString(),
-                hourlyCost: hourlyCost.toString(),
-                clv: customerLTV.toString(),
-                platformCost: platformCost.toString(),
+                days: requestedParameters.dateRange.toString(),
+                hourlyCost: requestedParameters.hourlyCost.toString(),
+                minutesSaved: requestedParameters.minutesSaved.toString(),
+                platformCost: requestedParameters.platformCost.toString(),
             });
 
             const response = await fetch(`/api/analytics/roi-metrics?${params}`, ROI_METRICS_REQUEST_POLICY);
 
-            const result = await readRoiMetricsResponse(response);
+            const result = await readRoiMetricsResponse(response, expectedScope);
+            if (
+                !mountedRef.current
+                || requestOwnerRef.current !== requestOwner
+                || scopeKeyRef.current !== expectedScopeKey
+            ) return;
             setRoiData(result.data);
 
         } catch (error) {
-            logRuntimeFailure('platform_roi_metrics_load_failed', error);
-            message.error(ROI_METRICS_FAILED_MESSAGE);
+            if (
+                mountedRef.current
+                && requestOwnerRef.current === requestOwner
+                && scopeKeyRef.current === expectedScopeKey
+            ) {
+                setRoiData(null);
+                logRuntimeFailure('platform_roi_metrics_load_failed', error);
+                message.error(ROI_METRICS_FAILED_MESSAGE);
+            }
         } finally {
-            setLoading(false);
-            dispatch(stopLoader('roi-calculator'));
+            dispatch(stopLoader(loaderId));
+            if (
+                requestOwnerRef.current === requestOwner
+                && inFlightScopeRef.current === expectedScopeKey
+            ) {
+                inFlightScopeRef.current = null;
+            }
+            if (
+                mountedRef.current
+                && requestOwnerRef.current === requestOwner
+                && scopeKeyRef.current === expectedScopeKey
+            ) {
+                setLoading(false);
+            }
         }
-    };
+    }, [dispatch, scopeKey, workspaceScope?.sId, workspaceScope?.tId]);
 
     // Initial load
     useEffect(() => {
-        if (session) {
-            fetchROIData();
-        }
-    }, [session, dateRange]);
+        mountedRef.current = true;
+        setRoiData(null);
+        if (scopeKey) void fetchROIData();
+        else setLoading(false);
+        return () => {
+            mountedRef.current = false;
+            requestOwnerRef.current += 1;
+        };
+    }, [dateRange, fetchROIData, scopeKey]);
 
     // Refresh on parameter change
     const handleRefresh = () => {
@@ -242,7 +217,8 @@ export default function ROICalculator() {
             metrics: roiData.metrics,
             dateRange: roiData.dateRange,
             generatedAt: new Date().toISOString(),
-            platform: 'MenuListAI Chat Analytics',
+            model: 'Illustrative planning estimate',
+            platform: 'Answerlattice Conversation Analytics',
         };
 
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -267,12 +243,12 @@ export default function ROICalculator() {
 
         const shareText = `📊 ROI Report (${roiData.dateRange.days} days)
 
-💰 Net Savings: $${roiData.metrics.netSavings.toLocaleString()}
-📈 ROI: ${roiData.metrics.roi}%
-⏰ Time Saved: ${roiData.metrics.totalHoursSaved} hours
-🤖 Conversations: ${roiData.metrics.conversationsHandled}
+💰 Estimated net savings: $${roiData.metrics.estimatedNetSavings.toLocaleString()}
+📈 Estimated ROI: ${roiData.metrics.estimatedRoi}%
+⏰ Estimated time saved: ${roiData.metrics.estimatedTotalHoursSaved} hours
+💬 Conversations observed: ${roiData.metrics.conversationsObserved}
 
-Generated by MenuListAI Chat Analytics`;
+Illustrative scenario generated by Answerlattice Conversation Analytics`;
 
         try {
             await copyRoiShareTextToClipboard(shareText);
@@ -283,18 +259,12 @@ Generated by MenuListAI Chat Analytics`;
                 days: roiData.dateRange.days,
                 hasClipboardWrite: hasAnswerlatticeSupportClipboardWrite(),
                 hasCopyFallback: hasAnswerlatticeSupportCopyFallback(),
-                netSavings: roiData.metrics.netSavings,
+                estimatedNetSavings: roiData.metrics.estimatedNetSavings,
                 shareTextLength: shareText.length,
             });
             message.error('Failed to copy share text');
         }
     };
-
-    // Format currency
-    const formatCurrency = (value: number) => `$${Math.round(value).toLocaleString()}`;
-
-    // Format percentage
-    const formatPercentage = (value: number) => `${value}%`;
 
     // Format payback period
     const formatPayback = (months: number | null) => {
@@ -327,7 +297,7 @@ Generated by MenuListAI Chat Analytics`;
                             📊 ROI Calculator
                         </Title>
                         <Text type="secondary">
-                            Business value from your AI chat analytics
+                            Illustrative value scenario from observed conversation analytics
                         </Text>
                     </Col>
                     <Col>
@@ -402,12 +372,13 @@ Generated by MenuListAI Chat Analytics`;
                                     />
                                 </Col>
                                 <Col xs={24} md={8}>
-                                    <Text strong>Customer Lifetime Value ($):</Text>
+                                    <Text strong>Assumed Minutes Saved/Conversation:</Text>
                                     <Input
                                         type="number"
-                                        value={customerLTV}
-                                        onChange={(e) => setCustomerLTV(Number(e.target.value))}
-                                        prefix={<LuDollarSign />}
+                                        min={0}
+                                        max={480}
+                                        value={minutesSaved}
+                                        onChange={(e) => setMinutesSaved(Number(e.target.value))}
                                         style={{ marginTop: '8px' }}
                                     />
                                 </Col>
@@ -445,13 +416,13 @@ Generated by MenuListAI Chat Analytics`;
                             }}
                         >
                             <Statistic
-                                title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>💰 Cost Saved</Text>}
-                                value={metrics.totalCostSaved}
+                                title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>💰 Estimated Cost Saved</Text>}
+                                value={metrics.estimatedTotalCostSaved}
                                 prefix="$"
                                 valueStyle={{ color: 'white', fontSize: '32px', fontWeight: 'bold' }}
                             />
                             <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
-                                ${metrics.monthlyCostSaved.toLocaleString()}/month average
+                                ${metrics.estimatedMonthlyCostSaved.toLocaleString()}/month estimate
                             </Text>
                         </Card>
                     </motion.div>
@@ -473,13 +444,13 @@ Generated by MenuListAI Chat Analytics`;
                             }}
                         >
                             <Statistic
-                                title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>⏰ Time Saved</Text>}
-                                value={metrics.totalHoursSaved}
+                                title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>⏰ Estimated Time Saved</Text>}
+                                value={metrics.estimatedTotalHoursSaved}
                                 suffix="hrs"
                                 valueStyle={{ color: 'white', fontSize: '32px', fontWeight: 'bold' }}
                             />
                             <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
-                                {metrics.monthlyHoursSaved} hrs/month average
+                                {metrics.estimatedMonthlyHoursSaved} hrs/month estimate
                             </Text>
                         </Card>
                     </motion.div>
@@ -502,11 +473,11 @@ Generated by MenuListAI Chat Analytics`;
                         >
                             <Statistic
                                 title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>🤖 Conversations</Text>}
-                                value={metrics.conversationsHandled}
+                                value={metrics.conversationsObserved}
                                 valueStyle={{ color: 'white', fontSize: '32px', fontWeight: 'bold' }}
                             />
                             <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
-                                Handled automatically
+                                Observed in this date range
                             </Text>
                         </Card>
                     </motion.div>
@@ -528,19 +499,19 @@ Generated by MenuListAI Chat Analytics`;
                             }}
                         >
                             <Statistic
-                                title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>📈 ROI</Text>}
-                                value={metrics.roi}
+                                title={<Text style={{ color: 'rgba(255,255,255,0.9)' }}>📈 Estimated ROI</Text>}
+                                value={metrics.estimatedRoi}
                                 suffix="%"
                                 valueStyle={{ color: 'white', fontSize: '32px', fontWeight: 'bold' }}
                             />
                             <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
-                                Return on investment
+                                Scenario, not measured attribution
                             </Text>
                         </Card>
                     </motion.div>
                 </Col>
 
-                {/* Satisfied Customers */}
+                {/* Positive feedback */}
                 <Col xs={24} sm={12} lg={6}>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -549,19 +520,19 @@ Generated by MenuListAI Chat Analytics`;
                     >
                         <Card hoverable style={{ height: '100%' }}>
                             <Statistic
-                                title="😊 Happy Customers"
-                                value={metrics.satisfiedCustomers}
+                                title="😊 Positive Feedback"
+                                value={metrics.positiveFeedbackSignals}
                                 valueStyle={{ color: '#52c41a' }}
                                 prefix={<LuHeart style={{ color: '#52c41a' }} />}
                             />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Positive feedback received
+                                Observed feedback signals
                             </Text>
                         </Card>
                     </motion.div>
                 </Col>
 
-                {/* Revenue Protected */}
+                {/* Conversation mode mix */}
                 <Col xs={24} sm={12} lg={6}>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -570,19 +541,18 @@ Generated by MenuListAI Chat Analytics`;
                     >
                         <Card hoverable style={{ height: '100%' }}>
                             <Statistic
-                                title="💵 Revenue Protected"
-                                value={metrics.estimatedRevenueProtected}
-                                prefix="$"
+                                title="Q&A Conversations"
+                                value={metrics.qnaConversations}
                                 valueStyle={{ color: '#1890ff' }}
                             />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Estimated churn reduction
+                                Observed Q&A mode sessions
                             </Text>
                         </Card>
                     </motion.div>
                 </Col>
 
-                {/* Automation Rate */}
+                {/* Assistant conversations */}
                 <Col xs={24} sm={12} lg={6}>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -591,14 +561,12 @@ Generated by MenuListAI Chat Analytics`;
                     >
                         <Card hoverable style={{ height: '100%' }}>
                             <Statistic
-                                title="🎯 Automation Rate"
-                                value={metrics.automationRate}
-                                suffix="%"
+                                title="Assistant Conversations"
+                                value={metrics.assistantConversations}
                                 valueStyle={{ color: '#722ed1' }}
-                                prefix={<LuTarget style={{ color: '#722ed1' }} />}
                             />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Successfully resolved
+                                Observed assistant mode sessions
                             </Text>
                         </Card>
                     </motion.div>
@@ -615,11 +583,11 @@ Generated by MenuListAI Chat Analytics`;
                             <div>
                                 <Text type="secondary" style={{ fontSize: '14px' }}>⚡ Payback Period</Text>
                                 <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#faad14', marginTop: '8px' }}>
-                                    {formatPayback(metrics.paybackPeriod)}
+                                    {formatPayback(metrics.estimatedPaybackPeriod)}
                                 </div>
                             </div>
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Time to break even
+                                Estimated time to break even
                             </Text>
                         </Card>
                     </motion.div>
@@ -637,34 +605,36 @@ Generated by MenuListAI Chat Analytics`;
                     title={
                         <span>
                             <LuTrendingUp style={{ marginRight: '8px' }} />
-                            Executive Summary
+                            Scenario Summary
                         </span>
                     }
                     style={{ backgroundColor: token.colorBgContainer }}
                 >
                     <Paragraph>
-                        Over the last <strong>{roiData.dateRange.days} days</strong>, your AI chat system has:
+                        Over the last <strong>{roiData.dateRange.days} days</strong>, Answerlattice observed:
                     </Paragraph>
                     <ul style={{ fontSize: '16px', lineHeight: '2' }}>
                         <li>
-                            Saved <strong>${metrics.totalCostSaved.toLocaleString()}</strong> in support costs
+                            <strong>{metrics.conversationsObserved} conversations</strong> in this workspace
                         </li>
                         <li>
-                            Freed up <strong>{metrics.totalHoursSaved} hours</strong> of staff time
+                            <strong>{metrics.positiveFeedbackSignals} positive</strong> and <strong>{metrics.negativeFeedbackSignals} negative</strong> feedback signals
                         </li>
                         <li>
-                            Handled <strong>{metrics.conversationsHandled} conversations</strong> automatically
+                            An estimated <strong>{metrics.estimatedTotalHoursSaved} hours</strong> saved under the selected time assumption
                         </li>
                         <li>
-                            Protected an estimated <strong>${metrics.estimatedRevenueProtected.toLocaleString()}</strong> in revenue
+                            An estimated <strong>${metrics.estimatedTotalCostSaved.toLocaleString()}</strong> in support-time value
                         </li>
                         <li>
-                            Achieved a <strong>{metrics.roi}% ROI</strong> with a payback period of <strong>{formatPayback(metrics.paybackPeriod)}</strong>
+                            An estimated <strong>{metrics.estimatedRoi}% ROI</strong> with a payback period of <strong>{formatPayback(metrics.estimatedPaybackPeriod)}</strong>
                         </li>
                     </ul>
                     <Paragraph type="secondary" style={{ marginTop: '16px', fontSize: '12px' }}>
-                        * Calculations based on average support agent hourly cost of ${roiData.params.avgSupportAgentHourlyCost}/hr,
-                        customer lifetime value of ${roiData.params.avgCustomerLifetimeValue}, and platform cost of ${roiData.params.platformMonthlyCost}/month.
+                        * Illustrative planning model based on ${roiData.params.avgSupportAgentHourlyCost}/hr,
+                        {` ${roiData.params.assumedMinutesSavedPerConversation} assumed minutes saved per conversation, and `}
+                        ${roiData.params.platformMonthlyCost}/month platform cost. It does not measure resolution,
+                        deflection, retention, revenue protection, or headcount replacement.
                     </Paragraph>
                 </Card>
             </motion.div>
@@ -696,12 +666,12 @@ Generated by MenuListAI Chat Analytics`;
                 }}>
                     {`📊 ROI Report (${roiData.dateRange.days} days)
 
-💰 Net Savings: $${metrics.netSavings.toLocaleString()}
-📈 ROI: ${metrics.roi}%
-⏰ Time Saved: ${metrics.totalHoursSaved} hours
-🤖 Conversations: ${metrics.conversationsHandled}
+💰 Estimated net savings: $${metrics.estimatedNetSavings.toLocaleString()}
+📈 Estimated ROI: ${metrics.estimatedRoi}%
+⏰ Estimated time saved: ${metrics.estimatedTotalHoursSaved} hours
+💬 Conversations observed: ${metrics.conversationsObserved}
 
-Generated by MenuListAI Chat Analytics`}
+Illustrative scenario generated by Answerlattice Conversation Analytics`}
                 </pre>
             </Modal>
         </div>

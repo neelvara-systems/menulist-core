@@ -2,7 +2,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { normalizeHostedHelpDomain } from '@constant/answerlattice/hostedHelp';
 import { PRODUCT_IDS } from '@constant/product';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from '@lib/answerlattice/sessionScope';
 import {
     type AnswerlatticeHostedHelpConfig,
     type AnswerlatticeHostedHelpDomainVerification,
@@ -35,6 +38,23 @@ export type AnswerlatticeHostedHelpRegistryStatus = {
     domainProvisioningError?: string | null;
     domainVercelAddedAt?: string | null;
 };
+
+export function resolveAnswerlatticeHostedHelpRegistryScope(value: unknown): {
+    tenantId: number;
+    storeId: number;
+} | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    const productIds = [record.pId, record.productId].filter(candidate => candidate !== undefined);
+    if (
+        productIds.length === 0
+        || !productIds.every(candidate => candidate === PRODUCT_IDS.ANSWERLATTICE)
+    ) return null;
+
+    const tenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([record.tId, record.tenantId]);
+    const storeId = normalizeConsistentAnswerlatticeScopeDocumentIds([record.sId, record.storeId]);
+    return tenantId && storeId ? { tenantId, storeId } : null;
+}
 
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
@@ -70,7 +90,11 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
     if (!snapshot.exists) return null;
 
     const data = snapshot.data() || {};
-    if (String(data.pId || '') !== PRODUCT_IDS.ANSWERLATTICE) {
+    const productIds = [data.pId, data.productId].filter(candidate => candidate !== undefined);
+    if (
+        productIds.length === 0
+        || !productIds.every(candidate => candidate === PRODUCT_IDS.ANSWERLATTICE)
+    ) {
         logRuntimeFailure('answerlattice_hosted_help_registry_product_invalid', new Error('Hosted help registry doc has invalid product scope'), {
             ...getBoundedRuntimeStringContext('domain', normalizedDomain),
         });
@@ -78,21 +102,20 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
     }
 
     const config = normalizeHostedHelpConfig(data.config);
-    const tId = normalizeAnswerlatticeScopeDocumentId(data.tId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(data.sId);
-    if (!tId || !sId) {
+    const scope = resolveAnswerlatticeHostedHelpRegistryScope(data);
+    if (!scope || data.domain !== normalizedDomain) {
         logRuntimeFailure('answerlattice_hosted_help_registry_scope_invalid', new Error('Hosted help registry doc has invalid scope'), {
             ...getBoundedRuntimeStringContext('domain', normalizedDomain),
         });
         return null;
     }
 
-    if (data.enabled === false || !config.enabled) return null;
+    if (data.enabled !== true || !config.enabled || !config.domains.includes(normalizedDomain)) return null;
 
     return {
         domain: normalizedDomain,
-        tId,
-        sId,
+        tId: scope.tenantId,
+        sId: scope.storeId,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         enabled: true,
         config,

@@ -5,6 +5,7 @@ import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from 
 import {
     claimBillingCheckoutLease,
     completeBillingCheckoutLease,
+    markBillingCheckoutProviderCreateStarted,
     markBillingCheckoutProviderCreated,
     releaseBillingCheckoutLease,
     renewExpiredBillingCheckoutLease,
@@ -16,6 +17,9 @@ import {
     getProductSubscriptionById,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
+import { isMatchingCheckoutProviderSubscription } from '@lib/billing/checkoutProviderSubscriptionRecovery';
+import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
 import {
     getBillingPlansForProduct,
     isAnswerlatticeBillingProduct,
@@ -82,27 +86,6 @@ const createSubscriptionLogSummary = (input: {
     ...getBoundedRazorpayStringContext('userType', input.userType),
 });
 
-function isMatchingCheckoutProviderSubscription(candidate: any, expected: {
-    attemptId: string;
-    planId: string;
-    providerPlanId: string;
-    productId: string;
-    quantity: number;
-    storeId: string | number;
-    tenantId: string | number;
-}): boolean {
-    const notes = candidate?.notes || {};
-    return typeof candidate?.id === 'string'
-        && candidate.status === 'created'
-        && candidate.plan_id === expected.providerPlanId
-        && String(notes.checkoutAttemptId || '') === expected.attemptId
-        && String(notes.productId || '') === expected.productId
-        && String(notes.tenantId || '') === String(expected.tenantId)
-        && String(notes.storeId || '') === String(expected.storeId)
-        && String(notes.planId || '') === expected.planId
-        && Number(notes.quantity || candidate.quantity || 1) === expected.quantity;
-}
-
 async function recoverCheckoutProviderSubscription(params: {
     attemptId: string;
     planId: string;
@@ -138,10 +121,12 @@ export const POST = withAuth(async (request, session) => {
     let providerSubscriptionCreated = false;
     let providerSubscriptionCompensated = false;
     let providerSubscriptionCreateAttempted = false;
+    let providerSubscriptionCheckpointLost = false;
     let subscriptionPersisted = false;
     let clearReferralCookieOnResponse = false;
     let checkoutLeaseIdentity: Parameters<typeof claimBillingCheckoutLease>[0] | null = null;
     let checkoutAttemptId: string | null = null;
+    let checkoutAttemptStartedAtMillis: number | null = null;
 
     try {
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
@@ -332,19 +317,41 @@ export const POST = withAuth(async (request, session) => {
 
         const billingDb = getBillingFirestoreAdminForProduct(productId);
         const pendingSubscriptions = await billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('pId', '==', productId)
+            .where('productId', '==', productId)
             .where('status', '==', 'pending')
             .where('tenantId', '==', Number(tenantId))
             .where('storeId', '==', Number(storeId))
+            .where('tId', '==', Number(tenantId))
+            .where('sId', '==', Number(storeId))
             .limit(10)
             .get();
         for (const pendingDoc of pendingSubscriptions.docs) {
             const pending = { ...pendingDoc.data(), id: pendingDoc.id } as FirestoreSubscriptionDoc;
+            const pendingScope = getProductSubscriptionBillingScope(productId, pending);
+            if (
+                !pendingScope
+                || pendingScope.tenantId !== Number(tenantId)
+                || pendingScope.storeId !== Number(storeId)
+            ) {
+                continue;
+            }
+            const pendingReplacementEvidence = resolveSubscriptionReplacementEvidence(pending);
+            const expectedReplacementMrrPaise = replacementSubscription
+                ? getFounderSubscriptionMrrPaise(replacementSubscription)
+                : null;
+            const sameReplacementIntent = replacementForSubscriptionId
+                ? pendingReplacementEvidence.outcome === 'replacement'
+                    && pendingReplacementEvidence.subscriptionId === replacementForSubscriptionId
+                    && pendingReplacementEvidence.previousMrrPaise === expectedReplacementMrrPaise
+                : pendingReplacementEvidence.outcome === 'none';
+            const pendingQuantity = pending.quantity == null ? 1 : pending.quantity;
             const sameIntent = (
                 pending.planId === planId
                 && pending.planType === interval
                 && pending.currency === currency
-                && Number(pending.quantity || 1) === quantity
-                && String(pending.founderMonitorReplacementForSubscriptionId || '') === String(replacementForSubscriptionId || '')
+                && pendingQuantity === quantity
+                && sameReplacementIntent
             );
             if (!sameIntent) {
                 return NextResponse.json(
@@ -413,6 +420,7 @@ export const POST = withAuth(async (request, session) => {
             );
         }
         checkoutAttemptId = checkoutClaim.attemptId;
+        checkoutAttemptStartedAtMillis = checkoutClaim.startedAtMillis;
 
         // 4. Orchestration Logic
         // Step A: Get Provider Plan
@@ -442,6 +450,23 @@ export const POST = withAuth(async (request, session) => {
             })) throw new Error('billing_checkout_provider_subscription_mismatch');
             recoveredProviderSubscription = candidate;
         } else if (checkoutClaim.outcome === 'recover_attempt') {
+            const renewed = await renewExpiredBillingCheckoutLease(
+                checkoutLeaseIdentity,
+                checkoutClaim.attemptId,
+            );
+            if (
+                !renewed.acquired
+                || !renewed.attemptId
+                || typeof renewed.startedAtMillis !== 'number'
+            ) {
+                return NextResponse.json(
+                    { error: 'A billing checkout is already being prepared. Please wait and try again.' },
+                    { status: 409 },
+                );
+            }
+            checkoutAttemptId = renewed.attemptId;
+            checkoutAttemptStartedAtMillis = renewed.startedAtMillis;
+        } else if (checkoutClaim.outcome === 'recover_provider') {
             recoveredProviderSubscription = await recoverCheckoutProviderSubscription({
                 attemptId: checkoutClaim.attemptId,
                 planId,
@@ -453,17 +478,10 @@ export const POST = withAuth(async (request, session) => {
                 tenantId,
             });
             if (!recoveredProviderSubscription) {
-                const renewed = await renewExpiredBillingCheckoutLease(
-                    checkoutLeaseIdentity,
-                    checkoutClaim.attemptId,
+                return NextResponse.json(
+                    { error: 'The provider is still resolving this checkout. Please wait and try again.' },
+                    { status: 409 },
                 );
-                if (!renewed.acquired || !renewed.attemptId) {
-                    return NextResponse.json(
-                        { error: 'A billing checkout is already being prepared. Please wait and try again.' },
-                        { status: 409 },
-                    );
-                }
-                checkoutAttemptId = renewed.attemptId;
             }
         }
 
@@ -510,6 +528,10 @@ export const POST = withAuth(async (request, session) => {
         if (recoveredProviderSubscription) {
             razorpaySubscription = recoveredProviderSubscription;
         } else {
+            if (!checkoutAttemptId || !checkoutLeaseIdentity || !(await markBillingCheckoutProviderCreateStarted({
+                attemptId: checkoutAttemptId,
+                identity: checkoutLeaseIdentity,
+            }))) throw new Error('billing_checkout_provider_subscription_start_claim_lost');
             providerSubscriptionCreateAttempted = true;
             try {
                 razorpaySubscription = await razorpayClient.subscriptions.create(RazorpayCreateObj);
@@ -520,7 +542,7 @@ export const POST = withAuth(async (request, session) => {
                     providerPlanId: razorpayPlanId,
                     productId,
                     quantity,
-                    startedAtMillis: Date.now(),
+                    startedAtMillis: checkoutAttemptStartedAtMillis ?? Date.now(),
                     storeId,
                     tenantId,
                 });
@@ -535,6 +557,24 @@ export const POST = withAuth(async (request, session) => {
             identity: checkoutLeaseIdentity,
             providerEntityId: razorpaySubscription.id,
         }))) {
+            providerSubscriptionCheckpointLost = true;
+            if (!recoveredProviderSubscription && typeof razorpaySubscription?.id === 'string') {
+                try {
+                    await razorpayClient.subscriptions.cancel(razorpaySubscription.id);
+                    providerSubscriptionCompensated = true;
+                } catch (compensationError) {
+                    logger.error(
+                        'Subscription checkout fence compensation failed',
+                        new Error('razorpay_create_subscription_fence_compensation_failed'),
+                        getRazorpayFailureLogData('razorpay_create_subscription_fence_compensation_failed', compensationError, {
+                            ...getRazorpaySubscriptionMutationLogContext(razorpaySubscription),
+                            ...getBoundedRazorpayStringContext('productId', productId),
+                            ...getBoundedRazorpayStringContext('tenantId', tenantId),
+                            ...getBoundedRazorpayStringContext('storeId', storeId),
+                        }),
+                    );
+                }
+            }
             throw new Error('billing_checkout_provider_subscription_claim_lost');
         }
         await writeLogEntry({
@@ -676,6 +716,7 @@ export const POST = withAuth(async (request, session) => {
         if (
             checkoutLeaseIdentity
             && checkoutAttemptId
+            && !providerSubscriptionCheckpointLost
             && (
                 (!providerSubscriptionCreated && !providerSubscriptionCreateAttempted)
                 || providerSubscriptionCompensated
@@ -684,6 +725,9 @@ export const POST = withAuth(async (request, session) => {
             await releaseBillingCheckoutLease({
                 attemptId: checkoutAttemptId,
                 identity: checkoutLeaseIdentity,
+                ...(providerSubscriptionCompensated && typeof subscriptionForLog?.id === 'string'
+                    ? { providerEntityId: subscriptionForLog.id }
+                    : {}),
             }).catch(() => false);
         }
         const failureData = getRazorpayFailureLogData('razorpay_create_subscription_failed', error, {

@@ -17,6 +17,8 @@
 
 Billable AI route accounting is centralized in `src/lib/ai/accounting.ts` and `src/lib/ai/capacityCheck.ts`. Paid routes reserve exact positive-integer units transactionally before provider work, using the final operation ID as the idempotency key. The operation stays in the selected outlet ledger while `accountingBillingStoreId` records the effective subscription store that was debited; this is required when an outlet inherits its HQ subscription. Successful provider calls settle that hidden reservation through `finalizeAiOperationAccounting()`; terminal provider or route failure refunds the exact recurring/top-up buckets once against that same effective subscription. A paid non-idempotent finalization without a reservation fails closed instead of returning usable output for free. Zero-unit platform-absorbed actions remain unreserved.
 
+Every subscription admission and transaction re-read must pass `getMenuListSubscriptionEntitlementScope()`: both product aliases must be exact `ML`, both tenant/store alias pairs must be present positive safe integers, and duplicate aliases must agree. Lazy reset, reservation, finalization, refund, legacy consumption, idempotent replay and exhausted-credit messaging never use a primary/fallback alias as authority. Historical operation shells may contain one scope alias; if both compact and legacy aliases exist they must agree before replay or settlement.
+
 Browser/client access to full `menulistAiOperations/{tId}/{sId}` documents is disabled for owners. The old `addAiOperation()` client helper now throws immediately, Firestore rules deny all client writes, and direct full-document client reads are platform-only. Desktop and mobile owner transaction screens read through `GET /api/ai-operations`, which requires current persisted `canAccessBilling` permission and returns an owner-visible allowlisted activity shape. Platform-role API responses use a separate bounded accounting allowlist; raw provider/generation payloads, tenant/store/user IDs, and full transaction JSON do not cross this browser route.
 
 `AI_UNIT_COSTS` and `GEMINI_COST_USD` are now fail-closed. Every `AI_ACTIONS_TYPES` value must have an explicit unit-cost and real-cost entry; unknown AI actions throw instead of silently defaulting to a free operation. This protects future AI features from accidentally bypassing credits or internal margin tracking.
@@ -273,7 +275,7 @@ July 12 billing-integrity note: description and translation actions are not trus
 
 **Layer 1 — Webhook (monthly plans):** `subscription.charged` event in `api/razorpay/webhook/route.ts` resets credits when Razorpay charges the next cycle.
 
-**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). `reserveAiCapacity()` re-reads the subscription in its transaction, applies a due reset, validates period/balance and overdraft against transaction-current truth, debits exact units, and writes the hidden shell before provider work. Anchor day is capped to days-in-month for month-end edge cases. Malformed periods or balances fail closed rather than writing `NaN` or inventing a reset.
+**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). `reserveAiCapacity()` re-reads the subscription in its transaction, reprojects exact product plus agreeing tenant/store aliases, applies a due reset, validates period/balance and overdraft against transaction-current truth, debits exact units, and writes the hidden shell before provider work. Anchor day is capped to days-in-month for month-end edge cases. Malformed periods, balances or subscription identity fail closed rather than writing `NaN`, inventing a reset or selecting one conflicting alias.
 
 Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts` before lazy reset and consumption. Malformed subscription IDs cannot reach Firestore refs; paid consumption fails closed through the shared AI accounting finalizer.
 
@@ -659,7 +661,7 @@ The browser DAL remains for paginated transaction-history reads. `addAiOperation
 >
 > **Full multi-outlet scenarios:** See spec doc → "Multi-Outlet Pack Logic (Detailed)"
 
-**No new DAL file needed.** Use existing `getActiveSubscriptionForStore()` and `updateSubscription()` from `src/database/subscriptions/index.ts`.
+**Implemented boundary:** capacity reads and mutations use the server-only subscription DAL and the transaction-owned accounting helpers in `src/lib/ai/capacityCheck.ts`. Browser subscription code is read-only. Every current subscription must carry both exact `ML` aliases before credits can be reserved, consumed, refunded, or recovered.
 
 **Capacity model (using existing fields):**
 
@@ -675,56 +677,15 @@ Available capacity = subscription.monthlyCredits + subscription.topUpCredits
 
 **Helper function** (add to `src/lib/ai/capacityCheck.ts` — NEW file):
 
-```typescript
-import {
-  getActiveSubscriptionForStore,
-  updateSubscription,
-} from "@database/subscriptions";
-import { isFreeTierAction, getUnitCost } from "@constant/AI/unitCosts";
-import { FirestoreSubscriptionDoc } from "@type/razorpay";
-
-/**
- * Consume AI capacity from a store's subscription.
- * Decrements monthlyCredits first, then topUpCredits.
- * Uses atomic-safe pattern: read → check → write.
- *
- * IMPORTANT: Called AFTER successful Gemini API call, not before.
- * The pre-check is done by checkAICapacity() before the call.
- */
-export async function consumeAICapacity(
-  subscription: FirestoreSubscriptionDoc,
-  unitsToConsume: number,
-): Promise<void> {
-  const monthlyRemaining = subscription.monthlyCredits || 0;
-  const topUpRemaining = subscription.topUpCredits || 0;
-
-  let newMonthly = monthlyRemaining;
-  let newTopUp = topUpRemaining;
-
-  if (monthlyRemaining >= unitsToConsume) {
-    // Fully covered by monthly credits
-    newMonthly = monthlyRemaining - unitsToConsume;
-  } else {
-    // Use all remaining monthly, rest from topUp
-    const remainder = unitsToConsume - monthlyRemaining;
-    newMonthly = 0;
-    newTopUp = Math.max(0, topUpRemaining - remainder);
-  }
-
-  await updateSubscription(subscription.id, {
-    monthlyCredits: newMonthly,
-    topUpCredits: newTopUp,
-  });
-}
-```
+The maintained implementation transactionally reserves capacity before provider work, then settles or refunds the same durable operation. The transaction re-reads the exact subscription, validates exact product and tenant/store ownership, and debits monthly credits before top-up credits. It does not rely on a stale caller-provided subscription balance or a browser merge write.
 
 **Validation:**
 
-- [ ] Uses existing `updateSubscription()` DAL (no new Firestore write patterns)
-- [ ] Decrements monthlyCredits first, then topUpCredits
-- [ ] No new fields on subscription document
-- [ ] No new collections or documents
-- [ ] Per-store scoped (subscription is per-store)
+- [x] Uses the server-only, transaction-owned capacity boundary
+- [x] Requires exact dual-`ML` subscription identity and tenant/store scope
+- [x] Decrements monthly credits first, then top-up credits
+- [x] Uses durable operation reservation/settlement for replay and recovery
+- [x] Per-store scoped (subscription is per-store)
 
 ---
 
@@ -1344,6 +1305,13 @@ The runtime credit contract is:
 8. Campaign caption generation is included as `AI_ACTIONS_TYPES.CAMPAIGN_CAPTION` with a 1-unit cost and the same reservation/accounting path.
 9. Batch image generation worker calls are guarded by the Cloud Tasks project header before they run provider work. Their deterministic operation ID retains a durable reservation only while staged work remains retryable; terminal/max-attempt acknowledgement recovers an unsettled reservation.
 10. Batch image trigger admission fails closed with `503` and `Retry-After` when its rate-limit provider or strict helper fails; this happens before request-body parsing, permission/capacity reads, or Cloud Tasks fanout. Caller quota exhaustion remains `429`.
+11. Every persisted credit scalar used for admission, replay, debit, settlement, refund, or stale-reservation recovery must be an exact JavaScript safe integer in its permitted range. Numeric strings, fractions, non-finite values, unsafe totals, and invalid billing-period keys fail closed; app and Functions use the byte-identical contract in `src/data/shared/aiCreditScalarContract.ts` and `functions/src/sharedData/aiCreditScalarContract.ts`.
+12. The shared finalizer applies that exact contract to caller units and historical/free operation replay before returning balances. Browser `remainingBalance` synchronization also accepts only exact numeric values, revalidates direct custom-event payloads, and updates state only when the active subscription is exact dual-`ML` truth for the returned billing store.
+13. Operation-log projection never converts provider/caller scalar types. Token counts, unit counts, per-credit constants, paise costs, margins, total credits, and total charge pass explicit integer/finite/range admission before persistence; string counts are omitted from compact response summaries rather than rendered as numeric facts.
+14. Operation-log persistence accepts only an omitted product (the backward-compatible MenuList default), exact `ML`, or exact `AL`. Tenant/store path segments must be canonical paired nonnegative safe integers; only MenuList may use the paired platform `0/0` scope. Answerlattice requires positive workspace scope and its configured Admin datastore. An unavailable Answerlattice runtime, unsupported explicit product, partial scope, leading-zero/whitespace ID, or mixed platform/tenant pair fails before any write instead of falling back into the MenuList ledger.
+15. Session-backed operation writes resolve all supplied top-level, nested-user, and explicit operation product/tenant/store/user aliases as one agreement set. Numeric/string canonical scope representations may agree, but conflicting aliases, malformed IDs, mismatched actors, partial workspace identity, or product disagreement reject the operation log before path selection. Explicit operation input cannot override a conflicting authenticated session.
+16. Accounting-only `clientResponse` summaries use an exact registry of legitimate MenuList and Answerlattice summary kinds. Every kind has an exact scalar/nested-key contract; unknown markers, extra keys, numeric strings, invalid booleans/ratings, oversized labels, and nested payload additions fall back to generic shape/count metadata without copying the submitted object. Answer-test accounting records only provider-operation count, not the operation-name array.
+17. The operation document itself is a closed projection: `AiOperationLogInput` has no open string index and `buildAiOperationLog()` never spreads caller input. Only declared identity, accounting, bounded string/ID, exact byte/duration, token-source, compact response and provider-usage fields survive. Request-derived business type, review length/rating, design source hash, generation config, item summaries, raw provider fields and any future accidental extras are omitted. The server always owns `createdOn`; detailed retention must be a positive safe integer no greater than ten years.
 
 ---
 

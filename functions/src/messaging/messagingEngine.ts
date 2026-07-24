@@ -27,6 +27,7 @@ import {
   normalizeOwnerNotificationReferenceId,
 } from '../sharedData/ownerNotificationDeliveryBoundary';
 import { sendEmailViaSMTP } from './providers/resend';
+import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
 import { resolveTemplate } from './templates';
 import {
   EVENT_PRIORITY,
@@ -35,6 +36,7 @@ import {
   SendMessagePayload,
 } from './types';
 
+const MENULIST_PRODUCT_ID = 'ML' as const;
 const logger = functions.logger;
 const MESSAGING_FLAG_CHECK_FAILED = 'MESSAGING_FLAG_CHECK_FAILED';
 const MESSAGING_IDEMPOTENCY_CHECK_FAILED = 'MESSAGING_IDEMPOTENCY_CHECK_FAILED';
@@ -480,6 +482,8 @@ export async function checkRenewalReminders(): Promise<void> {
     for (let page = 0; page < maxPages; page += 1) {
       let query = db
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', MENULIST_PRODUCT_ID)
+        .where('productId', '==', MENULIST_PRODUCT_ID)
         .where('status', '==', 'active')
         .where('renewsOn', '>=', Timestamp.fromDate(threeDaysFromNow))
         .where('renewsOn', '<', Timestamp.fromDate(fourDaysFromNow))
@@ -488,15 +492,16 @@ export async function checkRenewalReminders(): Promise<void> {
       if (cursor) query = query.startAfter(cursor);
       const snapshot = await query.get();
       if (snapshot.empty) break;
-      found += snapshot.size;
-
       for (const doc of snapshot.docs) {
         const sub = doc.data();
+        const scope = getExactMenuListSubscriptionScope(sub);
+        if (!scope) continue;
+        found += 1;
         const renewalMillis = getMessagingTimestampMillis(sub.renewsOn);
         try {
           await sendLifecycleMessage({
-            storeId: String(sub.storeId),
-            tenantId: String(sub.tenantId),
+            storeId: String(scope.storeId),
+            tenantId: String(scope.tenantId),
             eventType: 'RENEWAL_REMINDER',
             referenceId: `renewal-${doc.id}-${now.toISOString().split('T')[0]}`,
             metadata: {
@@ -546,6 +551,8 @@ export async function checkSuspensionWarnings(): Promise<void> {
     for (let page = 0; page < maxPages; page += 1) {
       let query = db
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', MENULIST_PRODUCT_ID)
+        .where('productId', '==', MENULIST_PRODUCT_ID)
         .where('status', '==', 'past_due')
         .where('pastDueSinceAt', '<=', Timestamp.fromDate(sevenDaysAgo))
         .orderBy('pastDueSinceAt', 'asc')
@@ -553,10 +560,11 @@ export async function checkSuspensionWarnings(): Promise<void> {
       if (cursor) query = query.startAfter(cursor);
       const snapshot = await query.get();
       if (snapshot.empty) break;
-      found += snapshot.size;
-
       for (const doc of snapshot.docs) {
         const sub = doc.data();
+        const scope = getExactMenuListSubscriptionScope(sub);
+        if (!scope) continue;
+        found += 1;
         const pastDueMillis = getMessagingTimestampMillis(sub.pastDueSinceAt);
         const daysOverdue = pastDueMillis === null
           ? 7
@@ -564,8 +572,8 @@ export async function checkSuspensionWarnings(): Promise<void> {
 
         try {
           await sendLifecycleMessage({
-            storeId: String(sub.storeId),
-            tenantId: String(sub.tenantId),
+            storeId: String(scope.storeId),
+            tenantId: String(scope.tenantId),
             eventType: 'SUSPENSION_WARNING',
             referenceId: `suspension-${doc.id}-${now.toISOString().split('T')[0]}`,
             metadata: {

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { executeAnswerlatticeChangelogAction } from '../../src/lib/answerlattice/changelogServer';
 import type { AnswerlatticeAccessContext } from '../../src/lib/answerlattice/accessControl';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { isAnswerlatticeContextBundleManifestForScope } from '../../src/lib/answerlattice/compiledContext';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const access: AnswerlatticeAccessContext = {
@@ -47,11 +48,30 @@ async function run(): Promise<void> {
         createdOn: releasedAt, createdBy: 'Owner', modifiedOn: releasedAt, modifiedBy: 'Owner',
     });
 
+    const sourceVersionsRef = db.collection('platformSummary').doc('sourceVersions_1_101');
+    await sourceVersionsRef.set({ pId: 'ML', tId: 1, sId: 101, marker: 'foreign-source' });
+    await assert.rejects(executeAnswerlatticeChangelogAction({
+        action: 'create', requestId: 'create_request_1', entry: entry('First release'),
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
+    assert.equal((await sourceVersionsRef.get()).data()?.marker, 'foreign-source');
+    assert.equal(
+        (await db.collection('answerlattice_changelogEntryIndex').get()).empty,
+        true,
+        'ownership conflict must roll back the changelog mutation',
+    );
+    await sourceVersionsRef.delete();
+
     const created = await executeAnswerlatticeChangelogAction({
         action: 'create', requestId: 'create_request_1', entry: entry('First release'),
     }, access);
     assert.equal(created.action, 'create');
     assert.equal(created.replayed, false);
+    const initialManifest = (await db.collection('platformSummary').doc('bundleManifest_1_101').get()).data();
+    assert.equal(
+        isAnswerlatticeContextBundleManifestForScope(initialManifest, 1, 101),
+        true,
+        'first changelog invalidation must create a complete valid compiled-context manifest',
+    );
     const replay = await executeAnswerlatticeChangelogAction({
         action: 'create', requestId: 'create_request_1', entry: entry('First release'),
     }, access);

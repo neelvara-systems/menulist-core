@@ -16,6 +16,12 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
 import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptionReplacementFinalization';
+import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
+import {
+    requireRazorpayRevenueAmountPaise,
+    resolveRazorpayRevenueOccurredAtMillis,
+    resolveRazorpaySubscriptionState,
+} from '@lib/billing/razorpayRevenueProjectionBoundary';
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -332,10 +338,17 @@ export const POST = withAuth(async (request, session) => {
 
         const priceKey = `price${payment.currency.toUpperCase()}`;
         const creditsForPlan = planDetails[priceKey]?.monthlyCredits || 0;
-        const paymentAmount = Number(payment.amount || 0);
+        const paymentAmount = requireRazorpayRevenueAmountPaise(payment.amount);
+        const paymentOccurredAt = resolveRazorpayRevenueOccurredAtMillis(payment.created_at);
+        const providerState = resolveRazorpaySubscriptionState(providerSubscription, internalSub.quantity);
+        const billingInterval = providerSubscription.notes?.interval;
 
-        const billingPeriod = getProviderCycleBillingPeriodKey(providerSubscription.current_start);
-        if (billingPeriod === null) {
+        const billingPeriod = getProviderCycleBillingPeriodKey(providerState?.currentStartSeconds);
+        if (
+            !providerState
+            || billingPeriod === null
+            || (billingInterval !== 'MONTH' && billingInterval !== 'YEAR')
+        ) {
             logger.error('Invalid provider billing cycle', undefined, {
                 ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
                 ...getBoundedRazorpayStringContext('userId', userId),
@@ -359,15 +372,19 @@ export const POST = withAuth(async (request, session) => {
             monthlyCreditsAllowance: creditsForPlan,
 
             // Set billing cycle dates from the definitive source (Razorpay API)
-            cycleStartDate: Timestamp.fromMillis(providerSubscription.current_start * 1000),
-            cycleEndDate: Timestamp.fromMillis(providerSubscription.current_end * 1000),
-            renewsOn: Timestamp.fromMillis(providerSubscription.charge_at * 1000),
-            subscriptionEndDate: getSubscriptionEndDate(providerSubscription),
-            subscriptionStartDate: Timestamp.fromMillis(providerSubscription.start_at * 1000),
-            totalPaymentsNeededCount: providerSubscription.total_count,
-            totalPaymentsMadeCount: providerSubscription.paid_count,
+            cycleStartDate: Timestamp.fromMillis(providerState.currentStartMillis),
+            cycleEndDate: Timestamp.fromMillis(providerState.currentEndMillis),
+            renewsOn: Timestamp.fromMillis(providerState.chargeAtMillis),
+            subscriptionEndDate: getSubscriptionEndDate({
+                interval: billingInterval,
+                startAtMillis: providerState.startAtMillis,
+                totalCount: providerState.totalCount,
+            }),
+            subscriptionStartDate: Timestamp.fromMillis(providerState.startAtMillis),
+            totalPaymentsNeededCount: providerState.totalCount,
+            totalPaymentsMadeCount: providerState.paidCount,
             pastDueSinceAt: null,
-            quantity: Number(providerSubscription.quantity || internalSub.quantity || 1),
+            quantity: providerState.quantity,
             // Store payment method
             paymentMethod: {
                 type: payment.method,
@@ -409,16 +426,19 @@ export const POST = withAuth(async (request, session) => {
         if (!paymentApplication.applied && !paymentApplication.duplicate) {
             return NextResponse.json({ error: 'Subscription cannot be activated in its current state.' }, { status: 409 });
         }
-        const replacementSubscriptionId = String(
-            paymentApplication.previousSubscription.founderMonitorReplacementForSubscriptionId
-            || internalSub.founderMonitorReplacementForSubscriptionId
-            || '',
-        ).trim();
-        const replacementMrrPaise = Number(
-            paymentApplication.previousSubscription.founderMonitorReplacementMrrPaise
-            || internalSub.founderMonitorReplacementMrrPaise
-            || 0,
+        const replacementEvidence = resolveSubscriptionReplacementEvidence(
+            paymentApplication.previousSubscription,
+            internalSub,
         );
+        if (replacementEvidence.outcome === 'invalid') {
+            throw new Error('Subscription replacement evidence is invalid.');
+        }
+        const replacementSubscriptionId = replacementEvidence.outcome === 'replacement'
+            ? replacementEvidence.subscriptionId
+            : null;
+        const replacementMrrPaise = replacementEvidence.outcome === 'replacement'
+            ? replacementEvidence.previousMrrPaise
+            : 0;
         let activatedSubscription = paymentApplication.subscription;
         if (replacementSubscriptionId) {
             const replacementApplication = await finalizeProductSubscriptionReplacement({
@@ -443,7 +463,7 @@ export const POST = withAuth(async (request, session) => {
             await safelyRecordOwnerReferralPaymentAndRepair({
                 paidScope: { tenantId: Number(tenantId), storeId: Number(storeId) },
                 evidence: {
-                    paidAt: new Date(Number(payment.created_at || Math.floor(Date.now() / 1000)) * 1000),
+                    paidAt: new Date(paymentOccurredAt ?? Date.now()),
                     paymentEvidenceId: String(payment.id || razorpay_payment_id),
                     source: 'api:verify-subscription',
                     subscriptionId: razorpay_subscription_id,
@@ -451,35 +471,38 @@ export const POST = withAuth(async (request, session) => {
             });
         }
         await recordFounderRevenueMovement({
-            amountPaise: Number.isFinite(paymentAmount) ? paymentAmount : 0,
+            amountPaise: paymentAmount,
             currency: payment.currency || 'INR',
             description: 'Razorpay subscription payment verified.',
             eventName: 'subscription.verified',
             id: `cash:${razorpay_payment_id}`,
             kind: 'cash_collected',
-            occurredAt: payment.created_at ? payment.created_at * 1000 : Date.now(),
+            occurredAt: paymentOccurredAt,
             paymentId: razorpay_payment_id,
             productId,
+            requireDurableWrite: true,
             source: 'api:verify-subscription',
             storeId: internalSub.storeId,
             subscriptionId: razorpay_subscription_id,
             tenantId: internalSub.tenantId,
         });
-        if (paymentApplication.applied && replacementSubscriptionId && replacementMrrPaise > 0) {
+        if (replacementSubscriptionId && replacementMrrPaise > 0) {
             await recordFounderSubscriptionMrrChange({
                 eventKey: `${replacementSubscriptionId}:${razorpay_subscription_id}`,
                 previousMrrPaise: replacementMrrPaise,
                 productId,
+                requireDurableWrite: true,
                 source: 'api:verify-subscription:replacement',
                 subscription: activatedSubscription,
-                occurredAt: providerSubscription.current_start ? providerSubscription.current_start * 1000 : Date.now(),
+                occurredAt: providerState.currentStartMillis,
             });
-        } else if (paymentApplication.applied) {
+        } else {
             await recordFounderSubscriptionNewMrr({
                 productId,
+                requireDurableWrite: true,
                 source: 'api:verify-subscription',
                 subscription: activatedSubscription,
-                occurredAt: providerSubscription.current_start ? providerSubscription.current_start * 1000 : Date.now(),
+                occurredAt: providerState.currentStartMillis,
             });
         }
 
@@ -495,12 +518,10 @@ export const POST = withAuth(async (request, session) => {
                     recipientEmail: internalSub.email || session.user.email || '',
                     storeName: internalSub.name || '',
                     metadata: {
-                        amount: payment.amount ? (Number(payment.amount) / 100) : 0,
+                        amount: paymentAmount / 100,
                         currency: payment.currency?.toUpperCase() || 'INR',
                         planName: planDetails.name || 'Subscription',
-                        nextBillingAt: providerSubscription.charge_at
-                            ? new Date(providerSubscription.charge_at * 1000).toISOString()
-                            : null,
+                        nextBillingAt: new Date(providerState.chargeAtMillis).toISOString(),
                     },
                 }).catch((notificationError) => {
                     logRazorpayNonBlockingFailure('razorpay_verify_subscription_lifecycle_message_failed', notificationError, {

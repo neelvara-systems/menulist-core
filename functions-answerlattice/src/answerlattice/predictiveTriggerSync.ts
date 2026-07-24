@@ -17,8 +17,9 @@ import { createHash } from 'crypto';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
-import { markCompiledContextSourceChanged } from './compiledContextVersions';
+import { appendCompiledContextSourceChange } from './compiledContextVersions';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import { normalizeFrictionInsightSourceSnapshot } from './frictionInsight';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -33,7 +34,15 @@ const MAX_ENTITY_IDS_PER_ANSWER_LOOKUP = 30;
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_EFFECTIVENESS_FAILED';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT';
 const ANSWERLATTICE_PRODUCT_ID = 'AL';
+const PREDICTIVE_TRIGGER_CONTEXT_INVALIDATION_VERSION = 1;
+
+function assertPredictiveTriggerScope(tId: number, sId: number): void {
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
+        throw new Error(ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT);
+    }
+}
 
 function isOwnedOrLegacyPredictiveDocument(value: any, tId: number, sId: number): boolean {
     return value
@@ -42,19 +51,42 @@ function isOwnedOrLegacyPredictiveDocument(value: any, tId: number, sId: number)
         && (value.pId === undefined || value.pId === ANSWERLATTICE_PRODUCT_ID);
 }
 
+function getSafePredictiveTriggerErrorField(source: Record<string, unknown>, field: string): unknown {
+    try {
+        return source[field];
+    } catch {
+        return undefined;
+    }
+}
+
+function normalizePredictiveTriggerDiagnosticText(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+    return normalized ? normalized.slice(0, 80) : null;
+}
+
 function getPredictiveTriggerSourceErrorContext(error: unknown): {
     sourceErrorName: string | null;
     sourceErrorCode: string | number | null;
     sourceStatusCode: number | null;
 } {
     const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
-    const sourceStatusCode = typeof source.status === 'number'
-        ? source.status
-        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+    const rawStatus = getSafePredictiveTriggerErrorField(source, 'status');
+    const rawStatusCode = getSafePredictiveTriggerErrorField(source, 'statusCode');
+    const statusCandidate = typeof rawStatus === 'number' ? rawStatus : rawStatusCode;
+    const sourceStatusCode = typeof statusCandidate === 'number'
+        && Number.isSafeInteger(statusCandidate)
+        && statusCandidate >= 100
+        && statusCandidate <= 599
+        ? statusCandidate
+        : null;
+    const rawCode = getSafePredictiveTriggerErrorField(source, 'code');
 
     return {
-        sourceErrorName: typeof source.name === 'string' ? source.name : null,
-        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceErrorName: normalizePredictiveTriggerDiagnosticText(getSafePredictiveTriggerErrorField(source, 'name')),
+        sourceErrorCode: typeof rawCode === 'number' && Number.isSafeInteger(rawCode)
+            ? rawCode
+            : normalizePredictiveTriggerDiagnosticText(rawCode),
         sourceStatusCode,
     };
 }
@@ -64,9 +96,28 @@ function getPredictiveTriggerScopeContext(tId?: number, sId?: number): {
     hasStoreScope: boolean;
 } {
     return {
-        hasTenantScope: Number.isFinite(tId),
-        hasStoreScope: Number.isFinite(sId),
+        hasTenantScope: typeof tId === 'number' && Number.isSafeInteger(tId) && tId > 0,
+        hasStoreScope: typeof sId === 'number' && Number.isSafeInteger(sId) && sId > 0,
     };
+}
+
+function normalizePredictiveTriggerDocumentId(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized
+        && normalized !== '.'
+        && normalized !== '..'
+        && !normalized.includes('/')
+        && Buffer.byteLength(normalized, 'utf8') <= 1_500
+        ? normalized
+        : null;
+}
+
+function getAutoSuggestionDocumentId(tId: number, sId: number, entityId: string): string {
+    return `friction_auto_${createHash('sha256')
+        .update(`${ANSWERLATTICE_PRODUCT_ID}:${tId}:${sId}:${entityId}`)
+        .digest('hex')
+        .slice(0, 40)}`;
 }
 
 function stableStringify(value: any): string {
@@ -258,6 +309,7 @@ async function loadAnswerSummariesByEntity(
 
         const snap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('status', '==', 'active')
@@ -267,9 +319,11 @@ async function loadAnswerSummariesByEntity(
 
         snap.docs.forEach(doc => {
             if (seenAnswerIds.has(doc.id)) return;
-            seenAnswerIds.add(doc.id);
-
             const answer: any = { ...doc.data(), id: doc.id };
+            if (answer.pId !== ANSWERLATTICE_PRODUCT_ID || answer.tId !== tId || answer.sId !== sId) {
+                throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_ANSWER_SCOPE_INVALID');
+            }
+            seenAnswerIds.add(doc.id);
             const answerEntityIds: string[] = Array.isArray(answer.scope?.entityIds) ? answer.scope.entityIds : [];
             answerEntityIds.forEach(rawEntityId => {
                 const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);
@@ -296,10 +350,18 @@ export interface PredictiveTriggerSyncResult {
 // 16a — AUTO-GENERATE SUGGESTED TRIGGERS FROM FRICTION
 // ═══════════════════════════════════════════════════════════════
 
-async function autoGenerateSuggestions(tId: number, sId: number): Promise<number> {
+export async function autoGenerateSuggestions(
+    tId: number,
+    sId: number,
+    now: Date = new Date(),
+): Promise<number> {
     let generated = 0;
 
     try {
+        assertPredictiveTriggerScope(tId, sId);
+        if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error(ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT);
+        const evaluatedAt = Timestamp.fromDate(now);
+
         // Load friction snapshot
         const frictionDoc = await db
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -308,15 +370,16 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
 
         if (!frictionDoc.exists) return 0;
 
-        const snapshot = frictionDoc.data();
-        if (!snapshot || snapshot.pId !== ANSWERLATTICE_PRODUCT_ID || snapshot.tId !== tId || snapshot.sId !== sId) return 0;
-        const topEntities = snapshot?.topFrictionEntities || [];
+        const snapshot = normalizeFrictionInsightSourceSnapshot(frictionDoc.data(), tId, sId);
+        if (!snapshot) throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_FRICTION_SOURCE_INVALID');
+        const topEntities = snapshot.topEntities;
 
         if (topEntities.length === 0) return 0;
 
         // Load existing triggers to check coverage
         const existingSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .limit(MAX_TRIGGERS_PER_TENANT + 1)
@@ -340,40 +403,56 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
                 || existingSnap.size + generated >= MAX_TRIGGERS_PER_TENANT
             ) break;
             const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(entity.entityId);
-            if (!entityId || !entity.entityName) continue;
-            if (entity.last7d?.frictionScore < MIN_FRICTION_SCORE_FOR_SUGGESTION) continue;
+            if (!entityId || !entity.name) continue;
+            if (entity.weightedLoad7d < MIN_FRICTION_SCORE_FOR_SUGGESTION) continue;
             if (coveredEntityIds.has(entityId)) continue;
 
-            const now = Timestamp.now();
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS).add({
-                pId: ANSWERLATTICE_PRODUCT_ID,
-                tId,
-                sId,
-                name: `Help for ${entity.entityName}`,
-                description: `Auto-suggested from friction data (score: ${entity.last7d.frictionScore})`,
-                kind: 'predictive_help',
-                conditions: {
-                    // Page left undefined — founder must set the page
-                },
-                action: {
-                    type: 'help_card',
-                    entityId,
-                },
-                priority: Math.min(Math.round((entity.last7d?.frictionScore || 0) * 10), 100),
-                cooldownHours: 24,
-                status: 'suggested',
-                source: 'friction_auto',
-                frictionSource: {
-                    entityId,
-                    entityName: entity.entityName,
-                    frictionScore: entity.last7d?.frictionScore || 0,
-                    signalCount: entity.last7d?.queryCount || 0,
-                },
-                createdOn: now,
-                modifiedOn: now,
+            const suggestionRef = db
+                .collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS)
+                .doc(getAutoSuggestionDocumentId(tId, sId, entityId));
+            const created = await db.runTransaction(async (transaction) => {
+                const current = await transaction.get(suggestionRef);
+                if (current.exists) {
+                    const existing = current.data();
+                    const existingEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(existing?.action?.entityId);
+                    if (!isOwnedOrLegacyPredictiveDocument(existing, tId, sId) || existingEntityId !== entityId) {
+                        throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_ID_COLLISION');
+                    }
+                    return false;
+                }
+
+                transaction.create(suggestionRef, {
+                    pId: ANSWERLATTICE_PRODUCT_ID,
+                    tId,
+                    sId,
+                    name: `Help for ${entity.name}`.slice(0, 100),
+                    description: `Auto-suggested from friction data (score: ${entity.weightedLoad7d})`.slice(0, 300),
+                    kind: 'predictive_help',
+                    conditions: {},
+                    action: {
+                        type: 'help_card',
+                        entityId,
+                    },
+                    priority: Math.min(Math.round(entity.weightedLoad7d * 10), 100),
+                    cooldownHours: 24,
+                    status: 'suggested',
+                    source: 'friction_auto',
+                    frictionSource: {
+                        entityId,
+                        entityName: entity.name,
+                        frictionScore: entity.weightedLoad7d,
+                        signalCount: entity.evidence7d,
+                    },
+                    createdOn: evaluatedAt,
+                    modifiedOn: evaluatedAt,
+                });
+                return true;
             });
 
-            generated++;
+            if (created) {
+                generated++;
+                coveredEntityIds.add(entityId);
+            }
         }
     } catch (error) {
         logger.error('[Predictive Trigger Sync] Auto-generation failed', {
@@ -381,6 +460,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
             ...getPredictiveTriggerScopeContext(tId, sId),
             ...getPredictiveTriggerSourceErrorContext(error),
         });
+        throw error;
     }
 
     return generated;
@@ -390,10 +470,18 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
 // 16b — REBUILD PLATFORM SUMMARY CACHE
 // ═══════════════════════════════════════════════════════════════
 
-async function rebuildTriggerCache(tId: number, sId: number): Promise<{ count: number; rebuilt: boolean }> {
+export async function rebuildTriggerCache(
+    tId: number,
+    sId: number,
+    now: Date = new Date(),
+): Promise<{ count: number; rebuilt: boolean }> {
     try {
+        assertPredictiveTriggerScope(tId, sId);
+        if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error(ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT);
+        const evaluatedAt = Timestamp.fromDate(now);
         const snap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .limit(MAX_TRIGGERS_PER_TENANT + 1)
@@ -443,50 +531,90 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<{ count: n
                     procedure: trigger.action?.type === 'workflow_guide' ? answer?.content?.procedure : undefined,
                 } : undefined,
             });
-            if (projected) triggers[trigger.id] = projected;
+            if (!projected) throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_SOURCE_INVALID');
+            triggers[trigger.id] = projected;
         });
 
         const triggerCount = Object.keys(triggers).length;
-        const now = Date.now();
         const activeTriggerCount = Object.values(triggers).filter(trigger => {
             if (trigger.status !== 'active') return false;
             if (trigger.kind !== 'known_issue') return true;
             const startsAt = getTimestampMillis(trigger.knownIssue?.startsAt);
             const rawEndsAt = trigger.knownIssue?.endsAt;
             const endsAt = getTimestampMillis(rawEndsAt);
-            return (startsAt === null || startsAt <= now) && (endsAt === null || endsAt > now);
+            return (startsAt === null || startsAt <= now.getTime()) && (endsAt === null || endsAt > now.getTime());
         }).length;
         const sourceHash = hashPayload({ triggerCount, activeTriggerCount, triggers });
         const docRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`predictiveTriggers_${tId}_${sId}`);
         const existingSnap = await docRef.get();
-        if (existingSnap.exists && existingSnap.data()?.sourceHash === sourceHash) {
+        const existing = existingSnap.data();
+        const existingPayloadHash = existing
+            ? hashPayload({
+                triggerCount: existing.triggerCount,
+                activeTriggerCount: existing.activeTriggerCount,
+                triggers: existing.triggers,
+            })
+            : null;
+        if (
+            existingSnap.exists
+            && existing?.pId === ANSWERLATTICE_PRODUCT_ID
+            && existing?.tId === tId
+            && existing?.sId === sId
+            && existing?.sourceHash === sourceHash
+            && existingPayloadHash === sourceHash
+            && existing?.contextInvalidationVersion === PREDICTIVE_TRIGGER_CONTEXT_INVALIDATION_VERSION
+        ) {
             return { count: triggerCount, rebuilt: false };
         }
 
-        await docRef.set({
-            pId: ANSWERLATTICE_PRODUCT_ID,
-            tId,
-            sId,
-            lastUpdated: Timestamp.now(),
-            version: Date.now(),
-            triggerCount,
-            activeTriggerCount,
-            sourceHash,
-            triggers,
-        });
-        await markCompiledContextSourceChanged(db, 'predictiveTriggers', tId, sId, {
-            reason: 'predictive_trigger_summary_rebuilt',
-            sourceType: 'platformSummary/predictiveTriggers',
+        const rebuilt = await db.runTransaction(async transaction => {
+            const currentSnapshot = await transaction.get(docRef);
+            const current = currentSnapshot.data();
+            const currentPayloadHash = current
+                ? hashPayload({
+                    triggerCount: current.triggerCount,
+                    activeTriggerCount: current.activeTriggerCount,
+                    triggers: current.triggers,
+                })
+                : null;
+            if (
+                currentSnapshot.exists
+                && current?.pId === ANSWERLATTICE_PRODUCT_ID
+                && current?.tId === tId
+                && current?.sId === sId
+                && current?.sourceHash === sourceHash
+                && currentPayloadHash === sourceHash
+                && current?.contextInvalidationVersion === PREDICTIVE_TRIGGER_CONTEXT_INVALIDATION_VERSION
+            ) {
+                return false;
+            }
+            await appendCompiledContextSourceChange(transaction, db, 'predictiveTriggers', tId, sId, {
+                reason: 'predictive_trigger_summary_rebuilt',
+                sourceType: 'platformSummary/predictiveTriggers',
+            });
+            transaction.set(docRef, {
+                pId: ANSWERLATTICE_PRODUCT_ID,
+                tId,
+                sId,
+                lastUpdated: evaluatedAt,
+                version: now.getTime(),
+                triggerCount,
+                activeTriggerCount,
+                sourceHash,
+                contextInvalidationVersion: PREDICTIVE_TRIGGER_CONTEXT_INVALIDATION_VERSION,
+                triggers,
+            });
+            return true;
         });
 
-        return { count: triggerCount, rebuilt: true };
+        return { count: triggerCount, rebuilt };
     } catch (error) {
         logger.error('[Predictive Trigger Sync] Cache rebuild failed', {
             failureCode: ANSWERLATTICE_PREDICTIVE_TRIGGER_CACHE_REBUILD_FAILED,
             ...getPredictiveTriggerScopeContext(tId, sId),
             ...getPredictiveTriggerSourceErrorContext(error),
         });
-        return { count: 0, rebuilt: false };
+        throw error;
     }
 }
 
@@ -494,41 +622,67 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<{ count: n
 // 16c — ADVISORY EFFECTIVENESS SCORING
 // ═══════════════════════════════════════════════════════════════
 
-async function updateEffectiveness(tId: number, sId: number): Promise<number> {
+export async function updateEffectiveness(
+    tId: number,
+    sId: number,
+    now: Date = new Date(),
+): Promise<number> {
     let updated = 0;
 
     try {
+        assertPredictiveTriggerScope(tId, sId);
+        if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error(ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT);
+        const evaluatedAt = Timestamp.fromDate(now);
         // Load active triggers
         const triggerSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('status', '==', 'active')
-            .limit(MAX_TRIGGERS_PER_TENANT)
+            .limit(MAX_TRIGGERS_PER_TENANT + 1)
             .get();
 
         if (triggerSnap.empty) return 0;
+        if (triggerSnap.size > MAX_TRIGGERS_PER_TENANT) {
+            throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_LIMIT_EXCEEDED');
+        }
 
         // Load suggestion signals from last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const cutoff = Timestamp.fromDate(thirtyDaysAgo);
+        const cutoff = Timestamp.fromMillis(now.getTime() - (30 * 24 * 60 * 60 * 1000));
 
         const signalSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS)
+            .where('pId', '==', ANSWERLATTICE_PRODUCT_ID)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('type', 'in', ['suggestion_shown', 'suggestion_clicked', 'suggestion_dismissed'])
             .where('timestamp', '>=', cutoff)
-            .limit(MAX_TRIGGER_SIGNALS_PER_RUN)
+            .orderBy('timestamp', 'desc')
+            .limit(MAX_TRIGGER_SIGNALS_PER_RUN + 1)
             .get();
+        if (signalSnap.size > MAX_TRIGGER_SIGNALS_PER_RUN) {
+            throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_SIGNAL_WINDOW_INCOMPLETE');
+        }
 
         // Aggregate signals by triggerId
         const triggerSignals = new Map<string, { shown: number; clicked: number; dismissed: number }>();
 
         signalSnap.docs.forEach(d => {
             const data = d.data();
-            const triggerId = data.metadata?.triggerId;
+            const signalTimestamp = getTimestampMillis(data.timestamp);
+            if (
+                data.pId !== ANSWERLATTICE_PRODUCT_ID
+                || data.tId !== tId
+                || data.sId !== sId
+                || !['suggestion_shown', 'suggestion_clicked', 'suggestion_dismissed'].includes(data.type)
+                || signalTimestamp === null
+                || signalTimestamp < cutoff.toMillis()
+                || signalTimestamp > now.getTime()
+            ) {
+                throw new Error('ANSWERLATTICE_PREDICTIVE_TRIGGER_SIGNAL_SOURCE_INVALID');
+            }
+            const triggerId = normalizePredictiveTriggerDocumentId(data.metadata?.triggerId);
             if (!triggerId) return;
 
             if (!triggerSignals.has(triggerId)) {
@@ -549,17 +703,16 @@ async function updateEffectiveness(tId: number, sId: number): Promise<number> {
             if (!isOwnedOrLegacyPredictiveDocument(trigger, tId, sId)) continue;
             if (trigger.kind === 'known_issue' || trigger.action?.type === 'known_issue') continue;
             const triggerId = triggerDoc.id;
-            const signals = triggerSignals.get(triggerId);
-
-            if (!signals || signals.shown === 0) continue;
-
-            const score = (signals.clicked - signals.dismissed) / signals.shown;
+            const signals = triggerSignals.get(triggerId) || { shown: 0, clicked: 0, dismissed: 0 };
+            const clicks = Math.min(signals.clicked, signals.shown);
+            const dismissals = Math.min(signals.dismissed, signals.shown);
+            const score = signals.shown > 0 ? (clicks - dismissals) / signals.shown : 0;
             const effectiveness = {
                 impressions: signals.shown,
-                clicks: signals.clicked,
-                dismissals: signals.dismissed,
+                clicks,
+                dismissals,
                 score: Math.round(score * 1000) / 1000,
-                lastEvaluated: Timestamp.now(),
+                lastEvaluated: evaluatedAt,
             };
 
             // Public interaction evidence is advisory. It must never change
@@ -567,7 +720,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<number> {
             batch.update(triggerDoc.ref, {
                 pId: ANSWERLATTICE_PRODUCT_ID,
                 effectiveness,
-                modifiedOn: Timestamp.now(),
+                modifiedOn: evaluatedAt,
             });
 
             updated++;
@@ -586,6 +739,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<number> {
             ...getPredictiveTriggerScopeContext(tId, sId),
             ...getPredictiveTriggerSourceErrorContext(error),
         });
+        throw error;
     }
 
     return updated;
@@ -597,8 +751,13 @@ async function updateEffectiveness(tId: number, sId: number): Promise<number> {
 
 export async function runPredictiveTriggerSync(
     tId: number,
-    sId: number
+    sId: number,
+    now: Date = new Date(),
 ): Promise<PredictiveTriggerSyncResult> {
+    assertPredictiveTriggerScope(tId, sId);
+    if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
+        throw new Error(ANSWERLATTICE_PREDICTIVE_TRIGGER_INVALID_INPUT);
+    }
     if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) {
         return {
             suggestionsGenerated: 0,
@@ -607,15 +766,14 @@ export async function runPredictiveTriggerSync(
             effectivenessUpdated: 0,
         };
     }
-
     // 16a: Auto-generate suggestions from friction
-    const suggestionsGenerated = await autoGenerateSuggestions(tId, sId);
+    const suggestionsGenerated = await autoGenerateSuggestions(tId, sId, now);
 
     // 16c: Update effectiveness scores (before cache rebuild so cache is fresh)
-    const effectivenessUpdated = await updateEffectiveness(tId, sId);
+    const effectivenessUpdated = await updateEffectiveness(tId, sId, now);
 
     // 16b: Rebuild cache (after auto-gen + effectiveness updates)
-    const cacheResult = await rebuildTriggerCache(tId, sId);
+    const cacheResult = await rebuildTriggerCache(tId, sId, now);
 
     return {
         suggestionsGenerated,

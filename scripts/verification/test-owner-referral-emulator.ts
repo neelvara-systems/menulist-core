@@ -238,8 +238,11 @@ const verifySaturatedHistoryFailsClosed = async (): Promise<void> => {
         firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
             .doc(`owner_referral_test_history_saturation_${index}`)
             .set({
+                pId: DEFAULT_PRODUCT_ID,
                 productId: DEFAULT_PRODUCT_ID,
+                tId: referredScope.tenantId,
                 tenantId: referredScope.tenantId,
+                sId: referredScope.storeId,
                 storeId: referredScope.storeId,
                 status: 'expired',
                 totalPaymentsMadeCount: 0,
@@ -378,6 +381,34 @@ const verifyPriorPaymentCannotBind = async (): Promise<void> => {
     assert(!referral.exists, 'Prior-payment rejection must not create a referral record');
 };
 
+const verifyConflictingPaymentHistoryCannotBlockAttribution = async (): Promise<void> => {
+    const referredScope = { tenantId: 8731, storeId: 8831 };
+    const referrerScope = { tenantId: 8732, storeId: 8832 };
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('owner_referral_test_conflicting_paid').set({
+        ...makePaidSubscription({ ...referredScope, topUpCredits: 0 }),
+        tId: 99999,
+    });
+
+    const result = await setOwnerReferralAttributionBeforeSubscription({
+        referredBusinessName: 'Conflict Isolated Business',
+        referredScope,
+        resolvedToken: {
+            payload: {
+                version: 2,
+                referrerTenantId: referrerScope.tenantId,
+                referrerStoreId: referrerScope.storeId,
+                issuedAt: Math.floor(Date.now() / 1000),
+                expiresAt: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60),
+                tokenId: 'conflicting_payment_history_test_token',
+            },
+            referrerBusinessName: 'Referrer Business',
+        },
+        onboardingSource: 'EMULATOR_TEST',
+    });
+
+    assert(result.status === 'bound', 'Conflicting subscription aliases must not count as prior paid history');
+};
+
 const verifyRules = async (): Promise<void> => {
     const rules = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
     const testEnvironment = await initializeTestEnvironment({
@@ -405,7 +436,11 @@ const verifyRules = async (): Promise<void> => {
         await testEnvironment.withSecurityRulesDisabled(async (context) => {
             await setDoc(doc(context.firestore(), DB_COLLECTIONS.PAYMENT_TRANSACTIONS, ledgerId), {
                 event: OWNER_REFERRAL_LEDGER_EVENT,
+                pId: 'ML',
+                productId: 'ML',
+                tId: 8101,
                 tenantId: 8101,
+                sId: 8201,
                 storeId: 8201,
                 transactionType: 'reward_credit',
                 credits: 100,
@@ -433,6 +468,7 @@ const run = async (): Promise<void> => {
     await verifyAtomicSettlementAndReplay();
     await verifyPendingRepairAndNoCap();
     await verifyPriorPaymentCannotBind();
+    await verifyConflictingPaymentHistoryCannotBlockAttribution();
     await verifySaturatedHistoryFailsClosed();
     await verifyMalformedWalletBalanceFailsClosed();
     await verifyBlockedStoreCannotSettle();

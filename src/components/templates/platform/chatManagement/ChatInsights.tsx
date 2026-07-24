@@ -16,10 +16,9 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { getAIIntelligence, getDashboardData, type AIIntelligenceData, type DashboardData, type DateRange } from '@lib/analytics/dal';
 import { getLastAnalyticsUpdate } from '@database/chatAnalytics';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Alert, Button, Col, Divider, Row, Space, Spin, Typography } from 'antd';
-import { Suspense, lazy, useContext, useState } from 'react';
-import { LuAlertCircle, LuAlertTriangle, LuCheckCircle, LuRefreshCw } from 'react-icons/lu';
+import { Alert, Button, Col, Divider, Row, Space, Typography } from 'antd';
+import { Suspense, lazy, useState } from 'react';
+import { LuAlertTriangle, LuCheckCircle, LuRefreshCw } from 'react-icons/lu';
 import ChatAnalyticsProvider, { useAnalytics, useAsyncAction } from 'src/contexts/AnalyticsContext';
 import useSWR from 'swr';
 import {
@@ -35,7 +34,6 @@ import {
 // Lazy load heavy sections for better performance
 const TopicsGapsSection = lazy(() => import('../../../analytics/TopicsGapsSection'));
 const FeedbackInsightsSection = lazy(() => import('../../../analytics/FeedbackInsightsSection'));
-const SystemHealthSection = lazy(() => import('../../../analytics/SystemHealthSection'));
 
 const { Title, Text } = Typography;
 
@@ -53,7 +51,6 @@ const getDefaultAnalyticsDateRange = (): DateRange => {
 
 function InsightsContent() {
   const session = useClientAuthSession();
-  const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
   const { state, markRefreshed } = useAnalytics();
   const executeWithState = useAsyncAction();
 
@@ -111,10 +108,6 @@ function InsightsContent() {
   );
 
   // Transform data for UI components
-  const feedbackResponseRate = dashboardData?.summary.totalChats
-    ? Math.round(Math.min(100, Math.max(0, (dashboardData.feedback.total / dashboardData.summary.totalChats) * 100)))
-    : 0;
-
   const summaryMetrics: MetricCardProps[] = dashboardData ? [
     {
       title: 'Total Chats',
@@ -128,13 +121,13 @@ function InsightsContent() {
       icon: <MessageOutlined />,
     },
     {
-      title: 'Satisfaction Rate',
+      title: 'Positive Feedback Share',
       value: dashboardData.summary.satisfactionRate,
       suffix: '%',
       trend: {
         value: dashboardData.summary.trends.satisfactionChange,
         isPositive: dashboardData.summary.trends.satisfactionChange > 0,
-        label: 'vs last period'
+        label: 'of recorded feedback'
       },
       icon: <HeartOutlined />,
     },
@@ -152,7 +145,7 @@ function InsightsContent() {
     },
   ] : [];
 
-  const satisfactionStats: StatCardProps[] = dashboardData ? [
+  const feedbackStats: StatCardProps[] = dashboardData ? [
     {
       title: 'Positive Feedback',
       value: dashboardData.feedback.positive,
@@ -167,13 +160,6 @@ function InsightsContent() {
       showProgress: true,
       status: 'exception',
     },
-    {
-      title: 'Response Rate',
-      value: feedbackResponseRate,
-      suffix: '%',
-      status: 'success',
-      tooltip: 'Share of chats with feedback.',
-    },
   ] : [];
 
   // Loading state
@@ -187,17 +173,11 @@ function InsightsContent() {
   // This reflects manual backfills as well as scheduled aggregations
   const lastRun = lastUpdateTimestamp;
   
-  // Fallback to store metadata for processing status (only Cloud Function updates this)
-  const analyticsMetadata = storeDetails?.chatAnalytics;
-  const status = analyticsMetadata?.lastStatus;
-
   const hoursSinceLastRun = lastRun
     ? Math.floor((Date.now() - lastRun.getTime()) / 3600000)
     : null;
 
   const isStale = hoursSinceLastRun === null || hoursSinceLastRun > 26;
-  const isProcessing = status === 'IN_PROGRESS';
-  const hasFailed = status === 'FAILED';
 
   // ================================================================
   // EVENT HANDLERS
@@ -258,18 +238,6 @@ function InsightsContent() {
 
         {/* Data Freshness Banner */}
         {(() => {
-          if (isProcessing) {
-            return (
-              <Alert
-                type="info"
-                message="Updating analytics data..."
-                description="This will take 1-2 minutes. Dashboard will refresh automatically when complete."
-                showIcon
-                icon={<Spin size="small" />}
-              />
-            );
-          }
-
           if (dashboardData?.summary.isPartial) {
             return (
               <Alert
@@ -278,28 +246,6 @@ function InsightsContent() {
                 description="This workspace exceeded the bounded daily analytics window. Counts shown here exclude records beyond the safety limit."
                 showIcon
                 icon={<LuAlertTriangle />}
-              />
-            );
-          }
-
-          if (hasFailed) {
-            return (
-              <Alert
-                type="error"
-                message="Data update failed"
-                description="Refresh this view. If the failure remains, check the analytics job logs."
-                showIcon
-                icon={<LuAlertCircle />}
-                action={
-                  <Button
-                    size="small"
-                    danger
-                    onClick={handleRefresh}
-                    icon={<LuRefreshCw />}
-                  >
-                    Refresh view
-                  </Button>
-                }
               />
             );
           }
@@ -379,25 +325,14 @@ function InsightsContent() {
         {/* Feedback Insights - Lazy Loaded */}
         <Suspense fallback={<LoadingSkeleton type="section" />}>
           <FeedbackInsightsSection
-            title="Feedback & Satisfaction"
-            satisfactionStats={satisfactionStats}
+            title="Recorded Feedback"
+            feedbackStats={feedbackStats}
             feedbackData={dashboardData?.feedback.recent || []}
             loading={isLoading}
             onRefresh={handleRefresh}
           />
         </Suspense>
 
-        <Divider style={{ margin: '12px 0' }} />
-
-        {/* System Health - Lazy Loaded */}
-        <Suspense fallback={<LoadingSkeleton type="section" />}>
-          <SystemHealthSection
-            title="System Health"
-            metrics={dashboardData?.health || []}
-            loading={isLoading}
-            onRefresh={handleRefresh}
-          />
-        </Suspense>
       </Space>
     </div>
   );

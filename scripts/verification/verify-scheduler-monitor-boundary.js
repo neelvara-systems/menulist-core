@@ -77,6 +77,19 @@ function verifyStoreSummaryHook(hook) {
     'usePlatformStoreSummaryOptions(enabled = true)',
     "doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary')",
     'buildPlatformStoreSummaryOptions(summary)',
+    'let latestPlatformStoreSummaryRequestId = 0;',
+    'const accessIdentityRef = useRef<string | null>(null);',
+    'const [admittedAccessIdentity, setAdmittedAccessIdentity] = useState<string | null>(null);',
+    'const hasCurrentAccessAdmission = Boolean(',
+    '&& admittedAccessIdentity === requestAccessIdentity',
+    'if (!force && platformStoreSummaryLoadedAt) {',
+    'await assertCurrentPlatformAccess();',
+    'setAdmittedAccessIdentity(requestAccessIdentity);',
+    'stores: hasCurrentAccessAdmission ? platformStoreSummaryOptions : []',
+    "const platformRole = session?.platformRole || session?.user.platformRole;",
+    "const sessionUserId = session?.uId || session?.user.id;",
+    'accessIdentityRef.current !== requestAccessIdentity',
+    'latestPlatformStoreSummaryRequestId !== requestId',
     'value: store.sId',
     'selectedStore',
     'selectedStoreId',
@@ -115,14 +128,20 @@ function verifyDesktopMonitor(component) {
     'formatStoredSchedulerError(err.error) || \'failed\'',
     'Details: {flattenDetails(err.details)}',
     "httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 })",
-    'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'triggerFn({ tId: recoveryStore.tId, sId: recoveryStore.sId })',
     'normalizeSchedulerRecoveryResponse(result?.data)',
     'normalizeSchedulerRecoveryRunLogId(',
     'Scheduler state unavailable',
     "logOpsFailure('ops_scheduler_manual_recovery_failed'",
-    "getBoundedOpsStringContext('storeId', selectedStore.sId)",
-    "getBoundedOpsStringContext('tenantId', selectedStore.tId)",
+    "getBoundedOpsStringContext('storeId', recoveryStore.sId)",
+    "getBoundedOpsStringContext('tenantId', recoveryStore.tId)",
     "getBoundedOpsStringContext('runLogId', runLogId)",
+    'const latestLoadRequestRef = useRef(0);',
+    'const recoveryInFlightRef = useRef(false);',
+    'latestLoadRequestRef.current !== requestId',
+    'if (!selectedStore || recoveryInFlightRef.current)',
+    'recoveryInFlightRef.current = true;',
+    'onCancel: () => {',
     'Select a store from storesSummary. Recovery runs for all active projects under that store; no project ID is needed.',
     'Runs hourly — processes stores at their local 2:30 AM (timezone-aware)',
   ].forEach((token) => assertIncludes(component, token, 'Desktop Scheduler Monitor'));
@@ -131,7 +150,7 @@ function verifyDesktopMonitor(component) {
     'if (!selectedStore) {',
     'Modal.confirm({',
     "httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 })",
-    'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'triggerFn({ tId: recoveryStore.tId, sId: recoveryStore.sId })',
     'normalizeSchedulerRecoveryResponse(result?.data)',
     'normalizeSchedulerRecoveryRunLogId(',
     "logOpsFailure('ops_scheduler_manual_recovery_failed'",
@@ -165,14 +184,19 @@ function verifyMobileMonitor(screen) {
     'formatTaskError(task.error) || flattenDetails(task.details)',
     "Dialog.confirm({",
     "httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 })",
-    'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'triggerFn({ tId: recoveryStore.tId, sId: recoveryStore.sId })',
     'normalizeSchedulerRecoveryResponse(result?.data)',
     'normalizeSchedulerRecoveryRunLogId(',
     'Scheduler state unavailable',
     "logOpsFailure('mobile_scheduler_recovery_trigger_failed'",
-    "getBoundedOpsStringContext('selectedStoreId', selectedStore.sId)",
-    "getBoundedOpsStringContext('selectedTenantId', selectedStore.tId)",
+    "getBoundedOpsStringContext('selectedStoreId', recoveryStore.sId)",
+    "getBoundedOpsStringContext('selectedTenantId', recoveryStore.tId)",
     "getBoundedOpsStringContext('runLogId', runLogId)",
+    'const latestLoadRequestRef = useRef(0);',
+    'const recoveryInFlightRef = useRef(false);',
+    'latestLoadRequestRef.current !== requestId',
+    'if (!selectedStore || recoveryInFlightRef.current)',
+    'recoveryInFlightRef.current = true;',
     'Select a store from storesSummary. Recovery runs all active projects under that store.',
     'Nightly jobs, settlement state, and recovery controls.',
   ].forEach((token) => assertIncludes(screen, token, 'Mobile Scheduler Monitor'));
@@ -181,7 +205,7 @@ function verifyMobileMonitor(screen) {
     'if (!selectedStore) {',
     'Dialog.confirm({',
     "httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 })",
-    'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'triggerFn({ tId: recoveryStore.tId, sId: recoveryStore.sId })',
     'normalizeSchedulerRecoveryResponse(result?.data)',
     'normalizeSchedulerRecoveryRunLogId(',
     "logOpsFailure('mobile_scheduler_recovery_trigger_failed'",
@@ -246,7 +270,7 @@ function verifyTypes(types) {
 function verifyDocsAndPackage(packageJson, opsDoc, readme, mobileDoc, auditDoc) {
   assertIncludes(
     packageJson,
-    '"verify:scheduler-monitor-boundary": "node scripts/verification/verify-scheduler-monitor-boundary.js"',
+    '"verify:scheduler-monitor-boundary": "node scripts/verification/verify-scheduler-monitor-boundary.js && npm run test:store-nightly-scheduler-lease"',
     'package.json scheduler monitor verifier',
   );
 
@@ -295,6 +319,9 @@ function verifySchedulerMonitorBoundary() {
     mobileDoc: read('__docs__/ops-control-room/ops-control-room_mobile-support.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
     recoveryResponse: read('src/lib/ops/schedulerRecoveryResponse.ts'),
+    schedulerFunction: read('functions/src/decisionBlocksScoring.ts'),
+    sessionProvider: read('src/providers/sessionProvider.tsx'),
+    sessionScopeBoundary: read('src/lib/multiOutlet/sessionProviderScopeBoundary.ts'),
   };
 
   [
@@ -304,6 +331,37 @@ function verifySchedulerMonitorBoundary() {
     'value.totalStores !== 1',
     'isValidFirestoreDocumentId(value)',
   ].forEach((token) => assertIncludes(files.recoveryResponse, token, 'Scheduler recovery response boundary'));
+
+  [
+    'acquireStoreNightlySchedulerLease(',
+    'completeStoreNightlySchedulerLease(',
+    'STORE_NIGHTLY_SCHEDULER_LEASE_MS',
+    "status === 'running' && leaseExpiresAtMs > nowMs",
+    "'A nightly recovery is already running for this store.'",
+    'recoveryLeaseStatus = \'completed\';',
+    'completeStoreNightlySchedulerLease(recoveryLease, recoveryLeaseStatus)',
+    'SCHEDULER_STORE_LEASE_FINALIZE_FAILED',
+    '`scheduled_store_${runStartTime}_${tId}_${sId}`',
+    '`scheduled_store_${runStartTime}_${tId}_${sId}`,\n                new Date(),',
+    'skip_concurrent_store_scheduler',
+    'storeSchedulerLeaseStatus = \'completed\';',
+    'completeStoreNightlySchedulerLease(',
+    'storeSchedulerLeaseStatus,',
+  ].forEach((token) => assertIncludes(files.schedulerFunction, token, 'Manual store recovery server lease'));
+  assertNotIncludes(
+    files.schedulerFunction,
+    '`scheduled_store_${runStartTime}_${tId}_${sId}`,\n                new Date(runStartTime),',
+    'Scheduled store lease must not inherit the whole-run start time',
+  );
+  [
+    "JSON.stringify([identity.productId, identity.userId, 'platform', identity.platformRole])",
+    "return platformRole ? { productId, userId, tenantId: null, storeId: null, platformRole } : null;",
+  ].forEach((token) => assertIncludes(files.sessionScopeBoundary, token, 'Storeless platform provider identity'));
+  [
+    'platformStoreSummaryOptions: providerStateMatchesCurrentSession ? platformStoreSummaryOptions : []',
+    'platformStoreSummaryLoadedAt: providerStateMatchesCurrentSession ? platformStoreSummaryLoadedAt : null',
+    'platformStoreSummaryLoading: providerStateMatchesCurrentSession ? platformStoreSummaryLoading : false',
+  ].forEach((token) => assertIncludes(files.sessionProvider, token, 'Platform store summary transition mask'));
 
   verifySchedulerDal(files.dal);
   verifyStoreSummaryHook(files.hook);

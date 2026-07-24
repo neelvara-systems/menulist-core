@@ -389,6 +389,10 @@ requireToken(projectDal, 'type: validatedPayload.mimeType,', 'project DAL canoni
   "await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');",
   'const normalizedPresets = normalizeTimeSlotPresets(timeSlotPresets);',
   'timeSlotPresets: normalizedPresets',
+  'timeSlotPresetCascadePending: pendingCascade',
+  "throw new Error('time_slot_preset_cascade_pending');",
+  'export const completeTimeSlotPresetCascade = async (',
+  'timeSlotPresetCascadePending: deleteField(),',
 ].forEach((token) => requireToken(storeDal, token, 'store time-slot preset persistence'));
 
 [
@@ -403,6 +407,12 @@ requireToken(projectDal, 'type: validatedPayload.mimeType,', 'project DAL canoni
   "cache: 'no-store'",
   "redirect: 'manual'",
 ].forEach((token) => requireToken(publicClientCache, token, 'public client cache'));
+
+[
+  'mutation.type === "remove"',
+  '|| projectReferencesTimeSlotPreset(project, presetId)',
+  'await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);',
+].forEach((token) => requireToken(projectDal, token, 'retry-safe preset cascade cache recovery'));
 forbidToken(publicClientCache, 'const pendingRevalidations = new Map<string, Promise<void>>();', 'public client cache');
 
 [

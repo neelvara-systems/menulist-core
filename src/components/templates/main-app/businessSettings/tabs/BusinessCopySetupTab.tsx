@@ -12,7 +12,7 @@ import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiC
 import { formatDateTime } from '@util/dateTime';
 import { Alert, Button, Card, Divider, Flex, Form, List, Tag, Typography, message, theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 
@@ -47,6 +47,10 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
     const businessAttributes = Form.useWatch('businessAttributes');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isGeneratingTranslations, setIsGeneratingTranslations] = useState(false);
+    const businessCopyActionInFlightRef = useRef(false);
+    const businessCopyScopeKey = `${String(storeDetails?.tenantId ?? '')}::${String(storeDetails?.storeId ?? '')}`;
+    const activeBusinessCopyScopeRef = useRef(businessCopyScopeKey);
+    const componentActiveRef = useRef(true);
     const contentLanguage = getStoreSourceLanguage();
     const sourceLanguage = GlobalLanguagesList.find((language) => language.code === contentLanguage);
     const coverage = useMemo(
@@ -60,16 +64,28 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
     const businessCopyMeta = storeDetails?.businessCopyMeta;
     const formatAuditTime = (value?: string) => value ? formatDateTime(value, 'datetime', formatter) : '';
 
+    activeBusinessCopyScopeRef.current = businessCopyScopeKey;
+    useEffect(() => {
+        componentActiveRef.current = true;
+        return () => {
+            componentActiveRef.current = false;
+        };
+    }, []);
+
     const handleGenerate = async () => {
         if (!businessName?.trim()) {
             message.error(t('businessCopyMissingName'));
             return;
         }
 
+        const requestScopeKey = businessCopyScopeKey;
+        if (businessCopyActionInFlightRef.current) return;
+        businessCopyActionInFlightRef.current = true;
         try {
             setIsGenerating(true);
 
             const projectContext = await getDefaultProjectAiContext(storeDetails);
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             const socialValues = [
                 ...Object.values(socialMedia || {}),
@@ -125,6 +141,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                     tenantName: tenantName || storeDetails?.tenantName || '',
                 },
             });
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             if (!generated) {
                 message.error(t('businessCopyFailed'));
@@ -132,6 +149,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
             }
 
             const applyResult = await onApplyGeneratedCopy(generated, projectContext?.projectId);
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
             form.setFieldsValue({
                 __localizedPublicPresenceDrafts: {
                     ...(form.getFieldValue('__localizedPublicPresenceDrafts') || {}),
@@ -173,19 +191,29 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 hasBusinessCategory: Boolean(businessCategory),
                 hasBusinessType: Boolean(businessType),
             });
-            message.error(error instanceof AICapacityError
-                ? BUSINESS_COPY_CAPACITY_MESSAGE
-                : t('businessCopyFailed'));
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                message.error(error instanceof AICapacityError
+                    ? BUSINESS_COPY_CAPACITY_MESSAGE
+                    : t('businessCopyFailed'));
+            }
         } finally {
-            setIsGenerating(false);
+            businessCopyActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                setIsGenerating(false);
+            }
         }
     };
 
     const handleGenerateMissingTranslations = async () => {
+        const requestScopeKey = businessCopyScopeKey;
+        if (businessCopyActionInFlightRef.current) return;
+        businessCopyActionInFlightRef.current = true;
         try {
             setIsGeneratingTranslations(true);
             const projectContext = await getDefaultProjectAiContext(storeDetails);
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
             const generated = await onGenerateMissingTranslations?.(projectContext?.projectId);
+            if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
             if (!generated) {
                 message.info(t('businessCopyCoverageGenerateNoMissing'));
                 return;
@@ -199,11 +227,16 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 coverageMissingFieldCount: coverage.missingFieldCount,
                 repairableGapCount: coverage.repairableGapCount,
             });
-            message.error(error instanceof AICapacityError
-                ? BUSINESS_COPY_CAPACITY_MESSAGE
-                : t('businessCopyCoverageGenerateFailed'));
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                message.error(error instanceof AICapacityError
+                    ? BUSINESS_COPY_CAPACITY_MESSAGE
+                    : t('businessCopyCoverageGenerateFailed'));
+            }
         } finally {
-            setIsGeneratingTranslations(false);
+            businessCopyActionInFlightRef.current = false;
+            if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
+                setIsGeneratingTranslations(false);
+            }
         }
     };
 
@@ -304,6 +337,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                     {coverage.repairableGapCount > 0 ? (
                         <Button
                             block
+                            disabled={isGenerating}
                             loading={isGeneratingTranslations}
                             onClick={() => void handleGenerateMissingTranslations()}
                         >
@@ -332,9 +366,10 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
 
             {showFullGenerationCta ? (
                 <>
-                    <Button
-                        block
-                        icon={<LuSparkles />}
+                <Button
+                    block
+                    disabled={isGeneratingTranslations}
+                    icon={<LuSparkles />}
                         loading={isGenerating}
                         onClick={() => void handleGenerate()}
                         type="primary"

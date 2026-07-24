@@ -6,6 +6,7 @@ import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog
 import { helpCenterTabRouting } from '@constant/navigations';
 import { loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { useChangelogCache } from '@hook/useChangelogCache';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getTextFromTiptapJson } from '@lib/tiptap';
@@ -73,6 +74,7 @@ function DisplayChangelog({
     useInternalFallback?: boolean;
 }) {
     const { getItem } = useChangelogCache();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const [changelogPage, setChangelogPage] = useState<AnswerlatticeReadableChangelogPage | null>(null);
     const [entries, setEntries] = useState<AnswerlatticeReadableChangelogEntry[]>([]);
     const [hasMore, setHasMore] = useState(true);
@@ -190,7 +192,9 @@ function DisplayChangelog({
         try {
             const olderPage = loadOlderPage
                 ? await loadOlderPage(changelogPage.pageNumber)
-                : await loadOlderChangelogPage(changelogPage.pageNumber);
+                : requestScope
+                    ? await loadOlderChangelogPage(changelogPage.pageNumber, requestScope)
+                    : null;
             if (olderPage) {
                 setChangelogPage(olderPage as ChangelogPage);
                 setEntries(prev => [...prev, ...olderPage.entries]);

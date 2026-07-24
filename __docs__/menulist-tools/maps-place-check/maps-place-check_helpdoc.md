@@ -15,4 +15,6 @@ MenuList can check whether a business appears to match a public Google Maps plac
 
 ## Review Rule
 
-If MenuList finds a difference, the owner or admin must confirm before any MenuList business detail changes.
+If MenuList finds a difference, the owner or admin must confirm before any
+MenuList business detail changes. Confirmation UI is not released while the
+provider and duplicate-location safety gates remain pending.

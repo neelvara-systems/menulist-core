@@ -4,12 +4,17 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
+import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import {
     getAnswerlatticeSecurityLogContext,
     getBoundedAnswerlatticeStringContext,
 } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    isAnswerlatticeStoreInScope,
+    normalizeAnswerlatticeScopeDocumentId,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -270,9 +275,7 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     }
 
     const storeData = storeSnap.data() || {};
-    const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
-    const storeProductId = storeData.pId ?? storeData.productId;
-    if (storeTenantId !== tId || storeProductId !== PRODUCT_IDS.ANSWERLATTICE) {
+    if (!isAnswerlatticeStoreInScope(storeData, { tenantId: tId, storeId: sId }, storeSnap.id)) {
         return { allowed: false, status: 403, message: 'Answerlattice workspace is not available.' };
     }
 
@@ -285,13 +288,8 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
         const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSummarySubscriptionId).get();
         if (subscriptionSnap.exists) {
             const subscription = subscriptionSnap.data() || {};
-            const subscriptionTenantId = normalizeAnswerlatticeScopeDocumentId(subscription.tId ?? subscription.tenantId);
-            const subscriptionStoreId = normalizeAnswerlatticeScopeDocumentId(subscription.sId ?? subscription.storeId);
-            const subscriptionProductId = subscription.pId ?? subscription.productId;
             if (
-                subscriptionProductId === PRODUCT_IDS.ANSWERLATTICE
-                && subscriptionTenantId === tId
-                && subscriptionStoreId === sId
+                isAnswerlatticeSubscriptionInScope(subscription, { tId, sId })
                 && hasActiveSubscriptionWindow(subscription)
             ) {
                 return { allowed: true };
@@ -300,16 +298,18 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     }
 
     const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tenantId', '==', Number(tId))
         .where('storeId', '==', Number(sId))
+        .where('tId', '==', Number(tId))
+        .where('sId', '==', Number(sId))
         .limit(5)
         .get();
     const activeSubscription = subscriptionSnap.docs
         .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
         .find((subscription: Record<string, any>) => (
-            (subscription.pId ?? subscription.productId) === PRODUCT_IDS.ANSWERLATTICE
-            && normalizeAnswerlatticeScopeDocumentId(subscription.tId ?? subscription.tenantId) === tId
-            && normalizeAnswerlatticeScopeDocumentId(subscription.sId ?? subscription.storeId) === sId
+            isAnswerlatticeSubscriptionInScope(subscription, { tId, sId })
             && hasActiveSubscriptionWindow(subscription)
         ));
     if (activeSubscription) {

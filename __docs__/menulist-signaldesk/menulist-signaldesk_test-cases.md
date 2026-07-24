@@ -155,6 +155,27 @@
 | Mobile research run | Blocked by mobile read-only runtime policy. |
 | Mobile lead-batch actions | Dashboard/Mission lead-batch actions are disabled by UI and still blocked by server-side mobile policy. |
 
+## Daily Activation Operator Loop Tests
+
+| Test | Expected |
+| --- | --- |
+| Mission and activation opportunity reference the same target | Today queue contains one target task, not duplicate work. |
+| Reply or approval is already resolved in the loaded summaries | Stale mission item is omitted. |
+| Mission action references a terminal current opportunity | Stale mission work is omitted. |
+| More than five eligible actions exist | Queue remains capped at five. |
+| Executable action fails or is rejected by the server | Focus does not advance and the existing error remains visible. |
+| Operator presses **Next** | Only local focus changes; no action, audit event, or Firebase write is claimed. |
+| Operator lacks authority for a direct action | Existing review destination opens; client does not bypass the server guard. |
+| Operator copies MenuList setup link | Anonymous founder-pilot URL is copied with no target ID, route token, contact detail, provider send, or database write. |
+| Operator opens Target Journey | Existing opportunity/outcome/permission summaries render read-only stages without extra reads. |
+| Durable verified two-surface activation has current proof authority | Content Rail opens with a bounded proof prefill; source/asset creation still requires explicit action. |
+| Activation lacks timestamp, evidence reference, approved integrity, or two distinct surfaces | Proof preparation remains unavailable before permission/source review. |
+| Proof permission or source is missing | Preparation remains held and explains the missing prerequisite. |
+| Weekly snapshot renders | Seven-day route, upload, preview, publish, and verified activation counts derive from existing loaded summaries; unverified activation rows are excluded, the routed cohort links unique target IDs, and stalls require an elapsed durable deadline. |
+| Mobile opens SignalDesk dashboard | Queue, weekly snapshot, and journey remain observable; setup-copy and proof-preparation mutations are unavailable. |
+
+Run the focused pure/runtime contract with `npm run test:signaldesk:daily-activation-desk`. The aggregate `npm run verify:signaldesk` includes this test.
+
 ## Mobile Tests
 
 | Test | Expected |

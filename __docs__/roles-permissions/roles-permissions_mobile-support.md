@@ -65,6 +65,7 @@
 - `/users`, `/users/list`, and `/users/permissions` enter `MobileShell` More sub-screens on mobile.
 - Mobile Staff opens only when `userPermissions?.canManageUsers === true`; mobile Roles opens only when `userPermissions?.canAssignRoles === true`.
 - Mobile Staff and Roles continue to call the shared staff client instead of adding direct Firestore reads or mobile-only API contracts.
+- Mobile Roles remounts editor/detail state by exact tenant/store, admits one save/delete mutation synchronously, captures the source IDs for the shared client call, and settles returned roles only when the same current tenant/store still owns the captured roles leaf. A delayed response cannot replace another selected store or newer same-store role truth; obsolete mounts suppress dialog, toast, selection, and loading settlement.
 
 ## Key Files
 
@@ -81,5 +82,13 @@
 ## RBAC Enforcement (Inherited)
 
 Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store lifecycle checks, `canManageUsers`, `canAssignRoles`, role validation, current-store scoped staff payloads for non-master managers, owner-target protection, and last-owner protection. Mobile also hides unavailable bottom tabs and More sub-screens before navigation; direct hash/sub-screen access falls back to More with a short unavailable message. Removing a staff member from the current store removes them from the current-store mobile list even if the account remains assigned to another location.
+
+`MobileUsersScreen` remounts by exact tenant/store and masks the shared staff list until
+the current scoped request succeeds. List requests use latest-request ownership, and
+create/update/role/remove/reset/sign-out actions share synchronous admission, capture
+their initiating scope, and settle only while the same mounted scope and source user
+still own the target. This also prevents a one-time Staff ID/passcode from appearing
+after a store switch. The shared context stores the runtime-validated public-safe
+`StaffUserSummary[]`, not the broader authenticated account shape.
 
 `MobileUsersScreen` cannot reset the currently signed-in account through the staff-owner flow; self password/passcode change stays under **More → Profile → Account access**. Hosted iOS/Android browser and installed-PWA evidence remains an owner/release task and is not implied by local source parity.

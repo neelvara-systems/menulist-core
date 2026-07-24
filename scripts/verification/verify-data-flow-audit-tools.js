@@ -43,6 +43,36 @@ assert.match(manifestGenerator, /assertNoDuplicateJsonObjectKeys\(source, 'Audit
 assert.match(manifestGenerator, /if \(!isMissingFileError\(error\)\) throw error;/, 'coverage manifest generator must ignore only files that vanish during inventory');
 assert.match(manifestGenerator, /vanishedDuringInventory/, 'coverage manifest generator must report live-inventory races');
 assert.match(manifestGenerator, /\['\.next-audit-build', 'generated Next\.js audit build output; next\.config\.js and source inputs remain in scope'\]/, 'coverage manifest generator must exclude generated Next.js audit build output');
+assert.match(
+    collectionGenerator,
+    /if \(\/\^\\s\*match\\s\+\\\/\/\.test\(line\)\)/,
+    'collection catalog generator must restrict rule parsing to actual match declarations',
+);
+assert.match(
+    collectionGenerator,
+    /line\.matchAll\(\/\\\/\(\[A-Za-z\]\[A-Za-z0-9_-\]\*\)\\\/\\\{\[\^}\/\]\+\\\}\/g\)/,
+    'collection catalog generator must inspect every nested literal/wildcard rule segment',
+);
+assert.match(
+    collectionGenerator,
+    /assertNoDuplicateJsonObjectKeys\(source, 'Firestore collection review state'\)/,
+    'collection catalog generator must reject duplicate collection review-state keys',
+);
+assert.match(
+    collectionGenerator,
+    /parseConstantObject\('functions\/src\/constants\/database\.ts', 'DB_COLLECTIONS'/,
+    'collection catalog generator must scope Functions constants to the collection object',
+);
+assert.match(
+    collectionGenerator,
+    /parseConstantObject\('src\/constants\/signaldesk\/database\.ts', 'SIGNALDESK_COLLECTIONS'/,
+    'collection catalog generator must inventory product-local SignalDesk constants',
+);
+assert.match(
+    collectionGenerator,
+    /review\?\.reviewStatus \?\? 'inventory-only'/,
+    'collection catalog generator must preserve reviewed collection status',
+);
 assert.match(jsonObjectKeyIntegrity, /duplicate object key/, 'JSON integrity helper must expose a fixed duplicate-key failure');
 const duplicateKeyTest = spawnSync(process.execPath, [
     '--input-type=module',
@@ -75,5 +105,41 @@ const collectionCsv = readFileSync(
 );
 assert(collectionCsv.startsWith('"collection_name","product_authority"'), 'collection catalog must retain its canonical CSV header');
 assert(collectionCsv.trim().split('\n').length > 1, 'collection catalog must contain at least one collection row');
+for (const documentId of ['schedulerLock', 'storesSummary', 'summary']) {
+    assert(
+        !collectionCsv.split('\n').some((line) => line.startsWith(`"${documentId}",`)),
+        `collection catalog must not report document ID ${documentId} as a collection`,
+    );
+}
+const campaignCueWorkspaceRow = collectionCsv
+    .split('\n')
+    .find((line) => line.startsWith('"campaigncueWorkspaces",'));
+assert(campaignCueWorkspaceRow, 'collection catalog must contain CampaignCue workspace declarations');
+assert(
+    campaignCueWorkspaceRow.includes('"CampaignCue"')
+        && !campaignCueWorkspaceRow.includes('MenuList/shared'),
+    'collection catalog must preserve CampaignCue product authority for source and verifier evidence',
+);
+const posDeliveryLogsRow = collectionCsv
+    .split('\n')
+    .find((row) => row.startsWith('"posDeliveryLogs",'));
+assert(posDeliveryLogsRow, 'collection catalog must contain posDeliveryLogs');
+assert(
+    posDeliveryLogsRow.includes('rule path observed;'),
+    'collection catalog must recognize nested posDeliveryLogs Firestore rules',
+);
+assert(
+    posDeliveryLogsRow.includes('"reviewed"'),
+    'collection catalog must preserve reviewed posDeliveryLogs state',
+);
+const ownerControlUsageRow = collectionCsv
+    .split('\n')
+    .find((row) => row.startsWith('"ownerControlUsage",'));
+assert(ownerControlUsageRow, 'collection catalog must contain ownerControlUsage');
+assert(
+    ownerControlUsageRow.includes('"reviewed"')
+        && ownerControlUsageRow.includes('AUDIT-OWNER-CONTROL-WRITE-INTEGRITY-001'),
+    'collection catalog must preserve owner-control review and finding evidence',
+);
 
 console.log('Data-flow audit tooling verification passed.');

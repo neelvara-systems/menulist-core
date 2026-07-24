@@ -91,7 +91,7 @@ const OwnerDashboard: React.FC = () => {
 
     // Project selection state — seed with fallback so dashboard can start fetching immediately
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-        return getStoredOwnerProjectId(storeDetails?.storeId);
+        return getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId);
     });
     const [showHistorical, setShowHistorical] = useState(false);
 
@@ -115,22 +115,22 @@ const OwnerDashboard: React.FC = () => {
 
     const handleProjectChange = useCallback((projectId: string, _projectName: string) => {
         setSelectedProjectId(projectId);
-        setStoredOwnerProjectId(projectId, storeDetails?.storeId);
-    }, [storeDetails?.storeId]);
+        setStoredOwnerProjectId(projectId, storeDetails?.storeId, storeDetails?.tenantId);
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     const handleProjectSelectorReady = useCallback(() => {
         // no-op — we no longer block on selector ready
     }, []);
 
     useEffect(() => {
-        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId));
-    }, [storeDetails?.storeId]);
+        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId));
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     useEffect(() => {
         if (selectedProjectId) {
-            setStoredOwnerProjectId(selectedProjectId, storeDetails?.storeId);
+            setStoredOwnerProjectId(selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId);
         }
-    }, [selectedProjectId, storeDetails?.storeId]);
+    }, [selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const {
         data,

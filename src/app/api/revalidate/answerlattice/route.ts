@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
-const segmentSchema = z.enum(['all', 'kb', 'faqs', 'changelog', 'context']);
+const segmentSchema = z.enum(['all', 'kb', 'faqs', 'changelog', 'context', 'predictive']);
 const revalidateRequestSchema = z.object({
     segments: z.array(segmentSchema).min(1).max(5).optional(),
     tId: z.union([z.string(), z.number()]).optional(),

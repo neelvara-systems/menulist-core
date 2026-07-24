@@ -9,7 +9,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { StoreRoleDataType } from '@type/platform/roles';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { LuCheck, LuPencil, LuPlus, LuShield, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Dialog, Empty, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -18,7 +18,7 @@ interface MobileRolesScreenProps {
     onBack: () => void;
 }
 
-export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
+function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
     const t = useTranslations('MobileRoles');
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails, userPermissions } = useContext(PlatformGlobalDataContext);
@@ -26,6 +26,8 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
     const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<StoreRoleDataType | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const isMountedRef = useRef(true);
+    const roleMutationInFlightRef = useRef(false);
 
     const roles = storeDetails?.roles || [];
     const canAssignRoles = userPermissions?.canAssignRoles === true;
@@ -62,56 +64,116 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             Toast.show({ content: t('roleNameRequired'), duration: 1500 });
             return;
         }
+        if (
+            !canAssignRoles
+            || !storeDetails?.tenantId
+            || !storeDetails?.storeId
+            || roleMutationInFlightRef.current
+        ) {
+            return;
+        }
 
+        const sourceStoreDetails = storeDetails;
+        const sourceRoles = roles;
+        const expectedTenantId = sourceStoreDetails.tenantId;
+        const expectedStoreId = sourceStoreDetails.storeId;
+        const submittedRole = editingRole;
+        roleMutationInFlightRef.current = true;
         setIsSaving(true);
         try {
             const response = await saveRoleDefinition({
                 role: {
-                    active: editingRole.active !== false,
-                    description: editingRole.description || '',
-                    id: roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? editingRole.id : undefined,
-                    name: editingRole.name,
-                    permissions: editingRole.permissions || RolesPermissionInitialData,
+                    active: submittedRole.active !== false,
+                    description: submittedRole.description || '',
+                    id: sourceRoles.some((role: StoreRoleDataType) => role.id === submittedRole.id) ? submittedRole.id : undefined,
+                    name: submittedRole.name,
+                    permissions: submittedRole.permissions || RolesPermissionInitialData,
                 },
-                storeId: storeDetails?.storeId,
-                tenantId: storeDetails?.tenantId,
+                storeId: expectedStoreId,
+                tenantId: expectedTenantId,
             });
-            setStoreDetails({ ...storeDetails, roles: response.roles });
+            if (!isMountedRef.current) return;
+            setStoreDetails((currentStoreDetails: typeof storeDetails) => (
+                currentStoreDetails?.tenantId === expectedTenantId
+                && currentStoreDetails?.storeId === expectedStoreId
+                && currentStoreDetails?.roles === sourceStoreDetails.roles
+                    ? { ...currentStoreDetails, roles: response.roles }
+                    : currentStoreDetails
+            ));
             setIsEditSheetOpen(false);
             setEditingRole(null);
-            if (selectedRole?.id === editingRole.id) setSelectedRole(response.role || editingRole);
+            if (selectedRole?.id === submittedRole.id) setSelectedRole(response.role || submittedRole);
             Toast.show({ content: t('roleSaved'), duration: 1000 });
         } catch (err) {
-            logStaffClientFailure('mobile_staff_role_save_failed', err, buildMobileRoleLogContext('save_role', editingRole));
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
+            logStaffClientFailure('mobile_staff_role_save_failed', err, buildMobileRoleLogContext('save_role', submittedRole));
+            if (isMountedRef.current) {
+                Toast.show({ content: t('failedToSave'), duration: 2000 });
+            }
         } finally {
-            setIsSaving(false);
+            roleMutationInFlightRef.current = false;
+            if (isMountedRef.current) {
+                setIsSaving(false);
+            }
         }
     };
 
     const handleDeleteRole = (role: StoreRoleDataType) => {
+        const sourceStoreDetails = storeDetails;
+        const sourceRoles = roles;
+        const expectedTenantId = sourceStoreDetails?.tenantId;
+        const expectedStoreId = sourceStoreDetails?.storeId;
         Dialog.confirm({
             title: t('deleteRole'),
             content: t('deleteRoleConfirm', { name: role.name }),
             confirmText: t('delete'),
             cancelText: t('cancel'),
             onConfirm: async () => {
+                if (
+                    !canAssignRoles
+                    || !expectedTenantId
+                    || !expectedStoreId
+                    || roleMutationInFlightRef.current
+                ) {
+                    return;
+                }
+                roleMutationInFlightRef.current = true;
+                if (isMountedRef.current) {
+                    setIsSaving(true);
+                }
                 try {
                     const response = await deleteRoleDefinition({
                         roleId: role.id,
-                        storeId: storeDetails?.storeId,
-                        tenantId: storeDetails?.tenantId,
+                        storeId: expectedStoreId,
+                        tenantId: expectedTenantId,
                     });
-                    setStoreDetails({ ...storeDetails, roles: response.roles });
+                    if (!isMountedRef.current) return;
+                    setStoreDetails((currentStoreDetails: typeof storeDetails) => (
+                        currentStoreDetails?.tenantId === expectedTenantId
+                        && currentStoreDetails?.storeId === expectedStoreId
+                        && currentStoreDetails?.roles === sourceRoles
+                            ? { ...currentStoreDetails, roles: response.roles }
+                            : currentStoreDetails
+                    ));
                     if (selectedRole?.id === role.id) setSelectedRole(null);
                     Toast.show({ content: t('roleDeleted'), duration: 1000 });
                 } catch (err) {
                     logStaffClientFailure('mobile_staff_role_delete_failed', err, buildMobileRoleLogContext('delete_role', role));
-                    Toast.show({ content: t('failedToDelete'), duration: 2000 });
+                    if (isMountedRef.current) {
+                        Toast.show({ content: t('failedToDelete'), duration: 2000 });
+                    }
+                } finally {
+                    roleMutationInFlightRef.current = false;
+                    if (isMountedRef.current) {
+                        setIsSaving(false);
+                    }
                 }
             },
         });
     };
+
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
 
     const togglePermission = (permKey: string) => {
         if (!editingRole) return;
@@ -368,4 +430,11 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             {editRoleSheet}
         </Flex>
     );
+}
+
+export default function MobileRolesScreen(props: MobileRolesScreenProps) {
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const scopeKey = `${storeDetails?.tenantId || 'no-tenant'}::${storeDetails?.storeId || 'no-store'}`;
+
+    return <MobileRolesScreenContent key={scopeKey} {...props} />;
 }

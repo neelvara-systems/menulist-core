@@ -88,6 +88,12 @@ export type AnswerlatticeWidgetConfig = z.infer<typeof AnswerlatticeWidgetConfig
 
 export const DEFAULT_ANSWERLATTICE_WIDGET_CONFIG: AnswerlatticeWidgetConfig = AnswerlatticeWidgetConfigSchema.parse({});
 
+export function normalizeAnswerlatticeWidgetConfigVersion(value: unknown): number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+        ? value
+        : 0;
+}
+
 const StrictWidgetBlockedRoutesSaveSchema = z.array(
     z.string().trim().min(1).max(500),
 ).max(MAX_WIDGET_BLOCKED_ROUTES).superRefine((values, context) => {

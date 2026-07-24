@@ -145,7 +145,7 @@ Do not add a new analytics warehouse inside Firestore. If long-term search analy
 
 ### P0.5 Delete stale `queryEmbeddings` instead of only skipping them
 
-Query embeddings now get `expiresAt`, a TTL field override, stale-read best-effort delete, and scheduler cleanup using `createdAt < cutoff`.
+Query embeddings get `expiresAt`, a TTL field override, runtime creation/expiry admission, snapshot-preconditioned stale/invalid best-effort delete, and exact-product scheduler cleanup using `createdAt < cutoff`. Runtime rejection does not depend on asynchronous TTL completion, and an older read cannot delete a concurrently replaced cache row.
 
 ### P0.6 Add compiled context bundle version cleanup
 

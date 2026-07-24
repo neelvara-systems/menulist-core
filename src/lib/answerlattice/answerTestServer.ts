@@ -696,7 +696,7 @@ const accountProviderBackedTest = async (
             clientResponse: {
                 responseSummaryKind: 'answerlattice_answer_test',
                 answerSource: resolved.source,
-                providerOperations: resolved.aiProviderOperations || [],
+                providerOperationCount: resolved.aiProviderOperations?.length || 0,
             },
             model: 'coreSearch',
             processingTime: durationMs,

@@ -1,35 +1,29 @@
-# SignalDesk Evidence Packets - Mobile Support Assessment
+# SignalDesk Evidence Packets - Mobile Support
 
-**Status:** Initial assessment
-**Created:** June 23, 2026
-**Mobile relevance decision:** No for evidence review.
+**Status:** Observe-only by design
+**Last Updated:** July 21, 2026
 
-## Admission Test
+SignalDesk mobile mode is intentionally read-only except for the separately
+governed global outbound emergency pause. Evidence work requires careful source
+review and stays on desktop.
 
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Fail | Evidence review is not urgent mobile work. |
-| Speed | Fail | Requires careful source context. |
-| Touch | Fail | Evidence/rejected-fact review is dense. |
-| Value | Partial | Founder may view evidence queue count only. |
+## Mobile Behavior
 
-## Mobile Allowed
+| Capability | Mobile |
+| --- | --- |
+| See high-level target/workspace state | Allowed through protected workspace summaries. |
+| Create or regenerate evidence | Blocked by action classification and disabled UI. |
+| Read private evidence detail | Not exposed. |
+| Edit facts or allowed use | Not implemented on any surface. |
+| Advance to draft/approval | Blocked. |
+| Trigger provider or external action | Blocked. |
 
-- evidence review count;
-- expired evidence count;
-- blocked evidence count;
-- pause target/source from incident summary.
+The same protected API/session resolver applies to desktop and mobile. Hiding or
+disabling the control is not the security boundary; the action route rejects the
+mobile mutation.
 
-## Mobile Blocked
+## Release Check
 
-- view full evidence packet;
-- approve evidence;
-- edit evidence;
-- mark facts outbound-safe;
-- create decision snapshot.
-
-## Acceptance Criteria
-
-- Mobile cannot approve evidence.
-- Mobile cannot view raw evidence with PII.
-- Mobile can see evidence queue counts.
+Authenticated physical-device QA remains release-controlled. It must confirm no
+Evidence action can be invoked from mobile and no full evidence detail or raw
+source/contact value appears in the mobile response or UI.

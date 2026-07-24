@@ -29,12 +29,29 @@ import {
     classifyAnswerlatticeFrictionLevel,
     detectAnswerlatticeFrictionTrend,
     getAnswerlatticeUtcFrictionWindows,
+    isAnswerlatticeDateKey,
 } from '../sharedData/answerlatticeSupportMetrics';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 
 const ANSWERLATTICE_FRICTION_AGGREGATION_FAILED = 'ANSWERLATTICE_FRICTION_AGGREGATION_FAILED';
 const ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED = 'ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED';
+const ANSWERLATTICE_FRICTION_INVALID_INPUT = 'ANSWERLATTICE_FRICTION_INVALID_INPUT';
+const MAX_FRICTION_METRIC = 1_000_000;
+
+function getSafeFrictionErrorField(source: Record<string, unknown>, field: string): unknown {
+    try {
+        return source[field];
+    } catch {
+        return undefined;
+    }
+}
+
+function normalizeFrictionDiagnosticText(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+    return normalized ? normalized.slice(0, 80) : null;
+}
 
 function getFrictionAggregationSourceErrorContext(error: unknown): {
     sourceErrorName: string | null;
@@ -42,13 +59,22 @@ function getFrictionAggregationSourceErrorContext(error: unknown): {
     sourceStatusCode: number | null;
 } {
     const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
-    const sourceStatusCode = typeof source.status === 'number'
-        ? source.status
-        : (typeof source.statusCode === 'number' ? source.statusCode : null);
+    const rawStatus = getSafeFrictionErrorField(source, 'status');
+    const rawStatusCode = getSafeFrictionErrorField(source, 'statusCode');
+    const statusCandidate = typeof rawStatus === 'number' ? rawStatus : rawStatusCode;
+    const sourceStatusCode = typeof statusCandidate === 'number'
+        && Number.isSafeInteger(statusCandidate)
+        && statusCandidate >= 100
+        && statusCandidate <= 599
+        ? statusCandidate
+        : null;
+    const rawCode = getSafeFrictionErrorField(source, 'code');
 
     return {
-        sourceErrorName: typeof source.name === 'string' ? source.name : null,
-        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
+        sourceErrorName: normalizeFrictionDiagnosticText(getSafeFrictionErrorField(source, 'name')),
+        sourceErrorCode: typeof rawCode === 'number' && Number.isSafeInteger(rawCode)
+            ? rawCode
+            : normalizeFrictionDiagnosticText(rawCode),
         sourceStatusCode,
     };
 }
@@ -58,9 +84,28 @@ function getFrictionAggregationScopeContext(tId?: number, sId?: number): {
     hasStoreScope: boolean;
 } {
     return {
-        hasTenantScope: Number.isFinite(tId),
-        hasStoreScope: Number.isFinite(sId),
+        hasTenantScope: typeof tId === 'number' && Number.isSafeInteger(tId) && tId > 0,
+        hasStoreScope: typeof sId === 'number' && Number.isSafeInteger(sId) && sId > 0,
     };
+}
+
+function hasExactFrictionScope(tId: number, sId: number): boolean {
+    return Number.isSafeInteger(tId) && tId > 0 && Number.isSafeInteger(sId) && sId > 0;
+}
+
+function normalizeFrictionText(value: unknown, maxLength: number): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+    return normalized ? normalized.slice(0, maxLength) : null;
+}
+
+function normalizeFrictionCount(value: unknown): number | null {
+    return typeof value === 'number'
+        && Number.isSafeInteger(value)
+        && value >= 0
+        && value <= MAX_FRICTION_METRIC
+        ? value
+        : null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -89,6 +134,64 @@ interface EntityDailyStat {
     escalationCount: number;
     lowConfidenceCount: number;
     frictionScore: number;
+}
+
+export interface NormalizedFrictionDailyStat extends EntityDailyStat {
+    legacy: boolean;
+}
+
+export function normalizeFrictionDailyStat(
+    value: unknown,
+    tId: number,
+    sId: number,
+): NormalizedFrictionDailyStat | null {
+    if (!hasExactFrictionScope(tId, sId) || !value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const record = value as Record<string, unknown>;
+    if (record.pId !== 'AL' || record.tId !== tId || record.sId !== sId) return null;
+    const schemaVersion = record.schemaVersion;
+    const legacy = schemaVersion !== ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION;
+    if (
+        legacy
+        && schemaVersion !== undefined
+        && (!Number.isSafeInteger(schemaVersion) || typeof schemaVersion !== 'number' || schemaVersion < 1 || schemaVersion >= ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION)
+    ) return null;
+
+    const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(record.entityId);
+    const entityName = normalizeFrictionText(record.entityName, 300);
+    const entityType = normalizeFrictionText(record.entityType, 80);
+    const date = isAnswerlatticeDateKey(record.date) ? record.date : null;
+    const queryCount = normalizeFrictionCount(record.queryCount);
+    const ticketCount = normalizeFrictionCount(record.ticketCount);
+    const chatNegativeCount = normalizeFrictionCount(record.chatNegativeCount);
+    const escalationCount = normalizeFrictionCount(record.escalationCount);
+    const lowConfidenceCount = normalizeFrictionCount(record.lowConfidenceCount);
+    if (
+        !entityId
+        || !entityName
+        || !entityType
+        || !date
+        || queryCount === null
+        || ticketCount === null
+        || chatNegativeCount === null
+        || escalationCount === null
+        || lowConfidenceCount === null
+        || ticketCount + chatNegativeCount + escalationCount > queryCount
+        || lowConfidenceCount > queryCount
+    ) return null;
+
+    return {
+        entityId,
+        entityName,
+        entityType,
+        date,
+        queryCount,
+        ticketCount,
+        chatNegativeCount,
+        escalationCount,
+        lowConfidenceCount,
+        frictionScore: calculateAnswerlatticeFrictionLoad(queryCount, escalationCount, lowConfidenceCount),
+        legacy,
+    };
 }
 
 interface FrictionEntitySummary {
@@ -141,6 +244,7 @@ export async function aggregateFrictionStats(
     tId: number,
     sId: number,
     readObserver?: AnswerlatticeSchedulerReadObserver,
+    now: Date = new Date(),
 ): Promise<FrictionAggregationResult> {
     const result: FrictionAggregationResult = {
         entitiesProcessed: 0,
@@ -154,8 +258,10 @@ export async function aggregateFrictionStats(
     };
 
     if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE) return result;
+    if (!hasExactFrictionScope(tId, sId) || !(now instanceof Date) || !Number.isFinite(now.getTime())) {
+        throw new Error(ANSWERLATTICE_FRICTION_INVALID_INPUT);
+    }
 
-    const now = new Date();
     const windows = getAnswerlatticeUtcFrictionWindows(now);
     const today = windows.today;
     const dayStartTimestamp = Timestamp.fromMillis(windows.dayStartMs);
@@ -217,6 +323,7 @@ export async function aggregateFrictionStats(
 
         const missesSnap = await db
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('canonical', '==', false)
@@ -240,11 +347,16 @@ export async function aggregateFrictionStats(
             const data = doc.data();
             if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) continue;
             const matchedEntityIds = Array.isArray(data.matchedEntityIds) ? data.matchedEntityIds : [];
+            if (matchedEntityIds.length > 50) {
+                throw new Error('Canonical-miss entity evidence exceeded the supported boundary.');
+            }
+            const normalizedMatchedEntityIds = new Set<string>();
             for (const rawEntityId of matchedEntityIds) {
                 const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);
-                if (entityId) {
-                    entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
-                }
+                if (entityId) normalizedMatchedEntityIds.add(entityId);
+            }
+            for (const entityId of normalizedMatchedEntityIds) {
+                entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
             }
         }
 
@@ -270,7 +382,14 @@ export async function aggregateFrictionStats(
                 if (!doc.exists) continue;
                 const data = doc.data();
                 if (data?.pId !== 'AL' || data?.tId !== tId || data?.sId !== sId || data?.status !== 'active') continue;
-                entityNameMap.set(doc.id, { name: data.name || doc.id, type: data.type || 'feature' });
+                const name = data.name === undefined
+                    ? normalizeFrictionText(doc.id, 300)
+                    : normalizeFrictionText(data.name, 300);
+                const type = data.type === undefined
+                    ? 'feature'
+                    : normalizeFrictionText(data.type, 80);
+                if (!name || !type) throw new Error('Friction entity metadata was malformed.');
+                entityNameMap.set(doc.id, { name, type });
             }
         }
 
@@ -323,7 +442,7 @@ export async function aggregateFrictionStats(
                     schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
                     ...stat,
                     createdOn: Timestamp.now(),
-                }, { merge: true });
+                });
             }
             await writeBatch.commit();
             result.dailyStatsWritten += chunk.length;
@@ -334,6 +453,7 @@ export async function aggregateFrictionStats(
         // ─── Step 4: Compute 7d snapshot with trends ───
         const historicalSnap = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('date', '>=', windows.previousStart)
@@ -362,38 +482,38 @@ export async function aggregateFrictionStats(
             firstSeenDate: string;
         }>();
 
+        const seenDailyStats = new Set<string>();
         for (const doc of historicalSnap.docs) {
-            const data = doc.data();
-            if (data.tId !== tId || data.sId !== sId || (data.pId !== undefined && data.pId !== 'AL')) {
-                throw new Error('Friction history contained an invalid Answerlattice scope.');
+            const stat = normalizeFrictionDailyStat(doc.data(), tId, sId);
+            if (!stat) throw new Error('Friction history contained an invalid Answerlattice row.');
+            const dailyIdentity = `${stat.entityId}:${stat.date}`;
+            if (seenDailyStats.has(dailyIdentity)) {
+                throw new Error('Friction history contained duplicate entity/day truth.');
             }
-            if (data.pId !== 'AL' || data.schemaVersion !== ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION) {
-                result.legacyDailyStatCount++;
-            }
-            const eid = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
-            if (!eid) continue;
+            seenDailyStats.add(dailyIdentity);
+            if (stat.legacy) result.legacyDailyStatCount++;
 
-            const agg = entityAgg.get(eid) || {
-                entityName: data.entityName || eid,
-                entityType: data.entityType || 'feature',
+            const agg = entityAgg.get(stat.entityId) || {
+                entityName: stat.entityName,
+                entityType: stat.entityType,
                 last7d: { queryCount: 0, escalationCount: 0, lowConfidenceCount: 0, frictionScore: 0 },
                 previous7d: { queryCount: 0, frictionScore: 0 },
-                firstSeenDate: data.date,
+                firstSeenDate: stat.date,
             };
 
-            if (data.date >= windows.currentStart && data.date <= windows.currentEnd) {
-                agg.last7d.queryCount += data.queryCount || 0;
-                agg.last7d.escalationCount += data.escalationCount || 0;
-                agg.last7d.lowConfidenceCount += data.lowConfidenceCount || 0;
-                agg.last7d.frictionScore += data.frictionScore || 0;
+            if (stat.date >= windows.currentStart && stat.date <= windows.currentEnd) {
+                agg.last7d.queryCount += stat.queryCount;
+                agg.last7d.escalationCount += stat.escalationCount;
+                agg.last7d.lowConfidenceCount += stat.lowConfidenceCount;
+                agg.last7d.frictionScore += stat.frictionScore;
             } else {
-                agg.previous7d.queryCount += data.queryCount || 0;
-                agg.previous7d.frictionScore += data.frictionScore || 0;
+                agg.previous7d.queryCount += stat.queryCount;
+                agg.previous7d.frictionScore += stat.frictionScore;
             }
 
-            if (data.date < agg.firstSeenDate) agg.firstSeenDate = data.date;
+            if (stat.date < agg.firstSeenDate) agg.firstSeenDate = stat.date;
 
-            entityAgg.set(eid, agg);
+            entityAgg.set(stat.entityId, agg);
         }
 
         // Build top friction entities (sorted by last7d frictionScore)
@@ -464,7 +584,7 @@ export async function aggregateFrictionStats(
             totalEscalations7d,
             unmappedEvidenceCount: result.unmappedEvidenceCount,
             legacyDailyStatCount: result.legacyDailyStatCount,
-        }, { merge: true });
+        });
 
         result.snapshotWritten = true;
         result.topEntityCount = topEntities.length;
@@ -487,21 +607,41 @@ export async function aggregateFrictionStats(
 // DAILY STATS CLEANUP (90-day retention)
 // ═══════════════════════════════════════════════════════════════
 
-export async function cleanupExpiredFrictionStats(tId: number, sId: number, retentionDays: number = 90, batchLimit: number = 100): Promise<{ cleaned: number }> {
+export async function cleanupExpiredFrictionStats(
+    tId: number,
+    sId: number,
+    retentionDays: number = 90,
+    batchLimit: number = 100,
+    now: Date = new Date(),
+): Promise<{ cleaned: number }> {
     const result = { cleaned: 0 };
 
     if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE) return result;
 
     try {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+        if (
+            !hasExactFrictionScope(tId, sId)
+            || !Number.isSafeInteger(retentionDays)
+            || retentionDays < 1
+            || retentionDays > 3_650
+            || !Number.isSafeInteger(batchLimit)
+            || batchLimit < 1
+            || batchLimit > 500
+            || !(now instanceof Date)
+            || !Number.isFinite(now.getTime())
+        ) throw new Error(ANSWERLATTICE_FRICTION_INVALID_INPUT);
+
+        const cutoffDate = new Date(now.getTime());
+        cutoffDate.setUTCDate(cutoffDate.getUTCDate() - retentionDays);
         const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
         const snapshot = await db
             .collection(DB_COLLECTIONS.ANSWERLATTICE_FRICTION_DAILY_STATS)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('date', '<', cutoffStr)
+            .orderBy('date', 'asc')
             .limit(batchLimit)
             .get();
 
@@ -509,18 +649,23 @@ export async function cleanupExpiredFrictionStats(tId: number, sId: number, rete
 
         const batch = db.batch();
         for (const doc of snapshot.docs) {
+            const data = doc.data();
+            if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId || !isAnswerlatticeDateKey(data.date) || data.date >= cutoffStr) {
+                throw new Error('Friction cleanup query returned invalid scope/date truth.');
+            }
             batch.delete(doc.ref);
-            result.cleaned++;
         }
         await batch.commit();
+        result.cleaned = snapshot.size;
     } catch (error) {
         logger.error('[Answerlattice Friction] Stats cleanup failed', {
             failureCode: ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED,
             ...getFrictionAggregationScopeContext(tId, sId),
-            retentionDays,
-            batchLimit,
+            validRetentionDays: Number.isSafeInteger(retentionDays) && retentionDays >= 1 && retentionDays <= 3_650,
+            validBatchLimit: Number.isSafeInteger(batchLimit) && batchLimit >= 1 && batchLimit <= 500,
             ...getFrictionAggregationSourceErrorContext(error),
         });
+        throw new Error(ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED);
     }
 
     return result;

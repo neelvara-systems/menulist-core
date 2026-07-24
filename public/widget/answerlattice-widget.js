@@ -67,8 +67,11 @@
 
     if (!script) { console.warn('[AnswerLattice] Widget script tag not found.'); return; }
 
-    var apiKey = script.getAttribute('data-answerlattice-key') || script.getAttribute('data-api-key');
-    if (!apiKey) { console.warn('[AnswerLattice] Missing data-answerlattice-key attribute.'); return; }
+    var apiKey = script.getAttribute('data-answerlattice-key') || script.getAttribute('data-api-key') || '';
+    if (apiKey !== apiKey.trim() || !/^al_[A-Za-z0-9_-]{20,128}$/.test(apiKey)) {
+        console.warn('[AnswerLattice] Invalid data-answerlattice-key attribute.');
+        return;
+    }
 
     // ===== CONFIG =====
     var defaultConfig = {
@@ -114,7 +117,7 @@
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
     var maxVisitorPayloadBytes = 1024;
-    var remoteConfigCacheTtlMs = 60000;
+    var remoteConfigResponseMaxBytes = 64 * 1024;
     var sensitiveContextPattern = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
 
     // Size presets
@@ -141,8 +144,8 @@
     var pendingSuggestionInteractionId = null;
     var pendingSuggestionClicked = false;
     var predictiveRequestTimer = null;
-    var predictiveSuggestionCache = {};
-    var predictiveSuggestionCacheTtlMs = 60000;
+    var predictiveRequestGeneration = 0;
+    var predictiveRequestInFlightKey = null;
     var contextBundleConfig = null;
     var eventListeners = {};
     var visitorContext = null;
@@ -315,7 +318,7 @@
 
     function sanitizeBundleConfig(value) {
         if (!value || typeof value !== 'object') return null;
-        if (value.status !== 'ready' || !Number.isFinite(Number(value.bundleVersion))) return null;
+        if (value.status !== 'ready' || !Number.isSafeInteger(value.bundleVersion) || value.bundleVersion <= 0) return null;
         var files = value.files && typeof value.files === 'object' ? value.files : {};
         var safeFiles = {};
         ['widgetBootstrap', 'contextIndex', 'docsNav', 'canonicalLite'].forEach(function (key) {
@@ -325,7 +328,7 @@
         });
         return {
             status: 'ready',
-            bundleVersion: Number(value.bundleVersion),
+            bundleVersion: value.bundleVersion,
             generatedAt: typeof value.generatedAt === 'string' ? value.generatedAt : null,
             basePath: typeof value.basePath === 'string' && value.basePath.indexOf('/api/answerlattice/bundles/public/') === 0 ? value.basePath : null,
             files: safeFiles,
@@ -360,7 +363,10 @@
         poweredByVisible = merged.poweredByVisible;
         blockedRoutes = normalizeBlockedRoutes(merged.blockedRoutes);
         var nextPredictiveEnabled = Boolean(merged.predictiveEnabled);
-        if (predictiveEnabled && !nextPredictiveEnabled) clearPendingSuggestion(true);
+        if (predictiveEnabled && !nextPredictiveEnabled) {
+            cancelPredictiveRequest();
+            clearPendingSuggestion(true);
+        }
         predictiveEnabled = nextPredictiveEnabled;
         guidedResolutionEnabled = Boolean(merged.guidedResolutionEnabled);
         s = sizes[size] || sizes.medium;
@@ -512,7 +518,7 @@
 
     function getPredictiveSessionId() {
         if (predictiveSessionId) return predictiveSessionId;
-        var storageKey = 'answerlattice-predictive-session:' + apiKey.slice(0, 14);
+        var storageKey = 'answerlattice-predictive-session:' + apiKey;
         try {
             var stored = window.sessionStorage && window.sessionStorage.getItem(storageKey);
             if (typeof stored === 'string' && /^[A-Za-z0-9_.:-]{8,120}$/.test(stored)) {
@@ -631,12 +637,7 @@
     }
 
     function readPredictiveResponse(response) {
-        var contentLength = Number(response.headers && response.headers.get('content-length') || 0);
-        if (Number.isFinite(contentLength) && contentLength > 32768) return Promise.resolve(null);
-        return response.text().then(function (body) {
-            if (!body || body.length > 32768) return null;
-            try { return JSON.parse(body); } catch (_) { return null; }
-        });
+        return readJsonResponseWithLimit(response, 32768);
     }
 
     function readInitialContextFromAttributes() {
@@ -1190,11 +1191,19 @@
         });
     }
 
+    function cancelPredictiveRequest() {
+        predictiveRequestGeneration += 1;
+        if (predictiveRequestTimer) {
+            window.clearTimeout(predictiveRequestTimer);
+            predictiveRequestTimer = null;
+        }
+        predictiveRequestInFlightKey = null;
+    }
+
     function clearPendingSuggestion(reportDismissed) {
         if (reportDismissed && pendingSuggestion && !pendingSuggestionClicked) {
             reportPredictiveInteraction('suggestion_dismissed');
         }
-        if (pendingSuggestionContextKey) delete predictiveSuggestionCache[pendingSuggestionContextKey];
         pendingSuggestion = null;
         pendingSuggestionContext = null;
         pendingSuggestionContextKey = null;
@@ -1213,10 +1222,6 @@
         pendingSuggestionContextKey = contextKey;
         pendingSuggestionInteractionId = createPredictiveRuntimeId('api');
         pendingSuggestionClicked = false;
-        predictiveSuggestionCache[contextKey] = {
-            expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
-            suggestion: normalized,
-        };
         if (launcher && !isOpen) {
             launcher.setAttribute('aria-label', 'Open help suggestion');
             launcher.setAttribute('title', normalized.title || 'Help suggestion');
@@ -1255,6 +1260,7 @@
             closeWidget();
         }
         if (runtimeDenied || forceHidden || isCurrentRouteBlocked()) {
+            cancelPredictiveRequest();
             clearGuidance();
             clearPendingSuggestion(true);
         }
@@ -1271,6 +1277,7 @@
 
     function hideWidget() {
         forceHidden = true;
+        cancelPredictiveRequest();
         clearPendingSuggestion(true);
         closeWidget();
         if (container) {
@@ -1319,6 +1326,7 @@
         setContext: function (ctx) {
             var sanitizedContext = sanitizeContextPayload(ctx);
             if (activeGuidance) resetGuidanceFromHost('context_changed');
+            cancelPredictiveRequest();
             clearPendingSuggestion(true);
             productContext = sanitizedContext;
             emitEvent('context', { context: sanitizedContext });
@@ -1409,13 +1417,14 @@
             userRole: ctx.userRole || '',
             entityHints: Array.isArray(ctx.entityHints) ? ctx.entityHints : [],
         });
-        var cachedSuggestion = predictiveSuggestionCache[contextKey];
-        if (cachedSuggestion && cachedSuggestion.expiresAt > Date.now()) {
-            if (cachedSuggestion.suggestion) installPredictiveSuggestion(cachedSuggestion.suggestion, ctx, contextKey);
-            return;
-        }
+        if (predictiveRequestInFlightKey === contextKey) return;
+        predictiveRequestGeneration += 1;
+        var requestGeneration = predictiveRequestGeneration;
 
         predictiveRequestTimer = window.setTimeout(function () {
+            predictiveRequestTimer = null;
+            if (requestGeneration !== predictiveRequestGeneration) return;
+            predictiveRequestInFlightKey = contextKey;
             var predictivePayload = {
                 page: predictivePage,
                 userId: getPredictiveSessionId(),
@@ -1440,30 +1449,25 @@
                 },
                 body: JSON.stringify(predictivePayload),
             }).then(function (response) {
-                if (response.status !== 200) {
-                    predictiveSuggestionCache[contextKey] = {
-                        expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
-                        suggestion: null,
-                    };
-                    return null;
-                }
+                if (requestGeneration !== predictiveRequestGeneration) return null;
+                if (response.status !== 200) return null;
                 return readPredictiveResponse(response);
             }).then(function (data) {
+                if (requestGeneration !== predictiveRequestGeneration) return;
                 if (!data || !data.suggestion) return;
-                if (!installPredictiveSuggestion(data.suggestion, ctx, contextKey)) {
-                    predictiveSuggestionCache[contextKey] = {
-                        expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
-                        suggestion: null,
-                    };
-                }
+                installPredictiveSuggestion(data.suggestion, ctx, contextKey);
             }).catch(function () {
                 // Predictive help is optional and must never affect the host app.
+            }).then(function () {
+                if (predictiveRequestInFlightKey === contextKey) {
+                    predictiveRequestInFlightKey = null;
+                }
             });
         }, 250);
     }
 
     function getRemoteConfigCacheKey() {
-        return 'answerlattice-widget-config:' + apiKey.slice(0, 14) + ':' + widgetHost;
+        return 'answerlattice-widget-config:' + apiKey + ':' + widgetHost;
     }
 
     function sanitizeRuntimeAuthorization(value) {
@@ -1471,10 +1475,10 @@
         if (!value.required) {
             return { required: false, token: null, expiresAt: 0 };
         }
-        var token = typeof value.token === 'string' ? value.token.trim() : '';
-        var expiresAt = Number(value.expiresAt || 0);
+        var token = typeof value.token === 'string' ? value.token : '';
+        var expiresAt = value.expiresAt;
         if (token.length < 40 || token.length > 2048) return null;
-        if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() + 5000) return null;
+        if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now() + 5000) return null;
         return { required: true, token: token, expiresAt: expiresAt };
     }
 
@@ -1506,7 +1510,7 @@
         runtimeAuthorizationRequired = authorization.required;
         runtimeAuthorizationToken = authorization.token;
         runtimeAuthorizationExpiresAt = authorization.expiresAt;
-        if (tokenChanged) predictiveSuggestionCache = {};
+        if (tokenChanged) cancelPredictiveRequest();
         remoteConfigRetryCount = 0;
         scheduleRuntimeAuthorizationRefresh();
         sendSecurityContextToIframe();
@@ -1522,7 +1526,7 @@
             var raw = window.sessionStorage.getItem(getRemoteConfigCacheKey());
             if (!raw) return null;
             var cached = JSON.parse(raw);
-            if (!cached || cached.expiresAt <= Date.now()) {
+            if (!cached || !Number.isSafeInteger(cached.expiresAt) || cached.expiresAt <= Date.now()) {
                 window.sessionStorage.removeItem(getRemoteConfigCacheKey());
                 return null;
             }
@@ -1540,13 +1544,66 @@
     function writeCachedRemoteConfig(config, ttlSeconds, bundle, runtimeAuthorization) {
         try {
             if (!window.sessionStorage) return;
+            var normalizedTtlSeconds = Number.isSafeInteger(ttlSeconds)
+                ? Math.max(10, Math.min(300, ttlSeconds))
+                : 60;
             window.sessionStorage.setItem(getRemoteConfigCacheKey(), JSON.stringify({
                 config: config,
                 bundle: sanitizeBundleConfig(bundle),
                 runtimeAuthorization: runtimeAuthorization,
-                expiresAt: Date.now() + Math.max(10, Math.min(300, ttlSeconds || 60)) * 1000,
+                expiresAt: Date.now() + normalizedTtlSeconds * 1000,
             }));
         } catch (_) {}
+    }
+
+    function readJsonResponseWithLimit(response, maxBytes) {
+        var rawContentLength = response.headers && response.headers.get('content-length');
+        if (rawContentLength && (!/^\d+$/.test(rawContentLength) || Number(rawContentLength) > maxBytes)) {
+            return Promise.resolve(null);
+        }
+        if (!response.body || typeof response.body.getReader !== 'function' || typeof window.TextDecoder !== 'function') {
+            return Promise.resolve(null);
+        }
+        var reader = response.body.getReader();
+        var chunks = [];
+        var totalBytes = 0;
+        function finish() {
+            var bytes = new Uint8Array(totalBytes);
+            var offset = 0;
+            chunks.forEach(function (chunk) {
+                bytes.set(chunk, offset);
+                offset += chunk.byteLength;
+            });
+            try {
+                var body = new window.TextDecoder('utf-8', { fatal: true }).decode(bytes);
+                return body ? JSON.parse(body) : null;
+            } catch (_) {
+                return null;
+            }
+        }
+        function readNext() {
+            return reader.read().then(function (result) {
+                if (result.done) {
+                    reader.releaseLock();
+                    return finish();
+                }
+                if (result.value && result.value.byteLength) {
+                    totalBytes += result.value.byteLength;
+                    if (totalBytes > maxBytes) {
+                        return reader.cancel().catch(function () {}).then(function () {
+                            reader.releaseLock();
+                            return null;
+                        });
+                    }
+                    chunks.push(result.value);
+                }
+                return readNext();
+            });
+        }
+        return readNext().catch(function () {
+            try { reader.releaseLock(); } catch (_) {}
+            return null;
+        });
     }
 
     function buildRemoteConfigUrl() {
@@ -1586,23 +1643,45 @@
                 return { terminal: true };
             }
             if (response.status !== 200) return null;
-            return response.json();
+            return readJsonResponseWithLimit(response, remoteConfigResponseMaxBytes);
         }).then(function (data) {
             if (data && data.terminal) {
                 denyWidgetRuntime();
                 return;
             }
-            if (!data || !data.config || !applyRuntimeAuthorization(data.runtimeAuthorization)) {
+            var runtimeAuthorization = data && sanitizeRuntimeAuthorization(data.runtimeAuthorization);
+            if (
+                !data
+                || data.schemaVersion !== 'answerlattice.widget.v1'
+                || !Number.isSafeInteger(data.cacheTtlSeconds)
+                || !Number.isSafeInteger(data.configVersion)
+                || data.configVersion < 0
+                || !data.config
+                || !data.capabilities
+                || typeof data.capabilities.predictiveSupport !== 'boolean'
+                || typeof data.capabilities.contextBundles !== 'boolean'
+                || typeof data.capabilities.guidedResolution !== 'boolean'
+                || !runtimeAuthorization
+            ) {
                 scheduleRemoteConfigRetry();
                 return;
             }
             var remoteConfig = sanitizeRemoteConfig(data.config);
-            remoteConfig.predictiveEnabled = Boolean(data.capabilities && data.capabilities.predictiveSupport);
-            remoteConfig.guidedResolutionEnabled = Boolean(data.capabilities && data.capabilities.guidedResolution);
-            contextBundleConfig = sanitizeBundleConfig(data.bundles);
+            remoteConfig.predictiveEnabled = data.capabilities.predictiveSupport;
+            remoteConfig.guidedResolutionEnabled = data.capabilities.guidedResolution;
+            var nextBundleConfig = sanitizeBundleConfig(data.bundles);
+            if (data.capabilities.contextBundles !== Boolean(nextBundleConfig)) {
+                scheduleRemoteConfigRetry();
+                return;
+            }
+            if (!applyRuntimeAuthorization(runtimeAuthorization)) {
+                scheduleRemoteConfigRetry();
+                return;
+            }
+            contextBundleConfig = nextBundleConfig;
             writeCachedRemoteConfig(
                 remoteConfig,
-                data.cacheTtlSeconds || remoteConfigCacheTtlMs / 1000,
+                data.cacheTtlSeconds,
                 contextBundleConfig,
                 data.runtimeAuthorization,
             );

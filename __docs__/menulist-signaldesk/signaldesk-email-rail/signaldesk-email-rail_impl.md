@@ -1,118 +1,70 @@
-# SignalDesk Email Rail - Implementation Plan
+# SignalDesk Email Rail - Implementation
 
-**Status:** Export rail plus owned sequencer queue implemented; provider send gated
-**Created:** June 23, 2026
-**Runtime:** SignalDesk app/API workflow service contains the current export, handoff, owned queue, and gated send implementation.
+**Status:** Implemented locally
+**Last Updated:** July 21, 2026
 
-## Runtime File Layout
+## Runtime
 
-```txt
-src/lib/signaldesk/workflowServer.ts
-src/lib/signaldesk/providerAdapters.ts
-src/app/api/signaldesk/actions/route.ts
-src/components/signaldesk/SignalDeskWorkspace.tsx
-src/constants/signaldesk/database.ts
-src/types/signaldesk/index.ts
-firestore-signaldesk.rules
-firestore-signaldesk.indexes.json
-```
+| Boundary | Current implementation |
+| --- | --- |
+| API | `src/app/api/signaldesk/actions/route.ts` validates action payloads and maps export/send/configure permissions. |
+| Workflow | `src/lib/signaldesk/workflowServer.ts` owns current-authority reads and atomic state changes. |
+| Provider | `src/lib/signaldesk/providerAdapters.ts` validates SMTP configuration, appends compliance footer, uses bounded timeouts, and validates acknowledgement. |
+| Contact | `src/lib/signaldesk/outboundContactContracts.ts` binds recipient to source run, source policy, permission evidence, expiry, and target. |
+| UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` exposes desktop controls under matching permissions and an observe-only mobile state. |
+| Inbound | `src/app/api/signaldesk/webhooks/[provider]/route.ts` and `src/lib/signaldesk/webhookServer.ts` validate and normalize signed provider events. |
 
-## Sender Domain Contract
+## State Paths
 
-```ts
-type SignalDeskSenderDomain = {
-  senderDomainId: string;
-  domain: string;
-  status: "draft" | "verifying" | "ready" | "paused" | "blocked";
-  spfStatus: "missing" | "pending" | "pass" | "fail";
-  dkimStatus: "missing" | "pending" | "pass" | "fail";
-  dmarcStatus: "missing" | "pending" | "pass" | "fail";
-  unsubscribeStatus: "missing" | "ready";
-  bounceWebhookStatus: "missing" | "ready" | "failing";
-  complaintWebhookStatus: "missing" | "ready" | "failing";
-  dailyCap: number;
-  updatedAt: string;
-};
-```
+### Manual export
 
-## Email Action Contract
+`approved email -> current authority -> deterministic message export -> conversation exported -> approval/draft exported`
 
-```ts
-type SignalDeskEmailAction = {
-  emailActionId: string;
-  targetId: string;
-  draftId: string;
-  approvalId: string;
-  senderDomainId?: string;
-  mode: "export" | "provider-send";
-  status: "queued" | "exported" | "sent" | "blocked" | "failed";
-  suppressionCheckedAt: string;
-  unsubscribeIncluded: boolean;
-  attributionRef: string;
-  createdAt: string;
-};
-```
+The response includes export metadata and approved content for the authorized
+operator. Exact replay returns a redacted historical acknowledgement.
 
-## Owned Sequencer Contract
+### Assisted handoff
 
-```ts
-type SignalDeskOwnedEmailSequence = {
-  sequencerHandoffId: string;
-  provider: "owned-email";
-  approvalId: string;
-  targetId: string;
-  senderDomainId: string;
-  status: "blocked" | "queued" | "sent" | "failed";
-  currentStep: number;
-  stepCount: number;
-  nextSendAt?: string;
-};
-```
+`approved channel draft -> current authority -> deterministic message export -> masked recipient preview`
 
-```ts
-type SignalDeskOwnedEmailStep = {
-  sequenceStepId: string;
-  sequencerHandoffId: string;
-  stepNumber: number;
-  status: "ready" | "sent" | "blocked" | "failed";
-  subject: string;
-  bodyPreview: string;
-  scheduledAt: string;
-};
-```
+Email uses sender authority. WhatsApp and Instagram additionally require a
+current channel window. Messenger is blocked because recipient authority is not
+safe for assisted handoff.
 
-## Send/Export Guard Sequence
+### Owned queue and send
 
-1. Approved draft exists.
-2. Draft unchanged since approval.
-3. Suppression clear.
-4. Evidence still active.
-5. Email channel not paused.
-6. Sender domain ready if provider send.
-7. Unsubscribe exists.
-8. Daily cap not exceeded.
-9. Audit and decision snapshot written.
+`approved email -> provider/account/env checks -> handoff queued -> one ready step -> gated SMTP send`
 
-## Implemented First Build
+Queue creation uses a deterministic provider/approval document. A blocked row
+replays unchanged, but is re-evaluated when provider readiness changes. Live send
+uses a separate pre-provider claim and records `unresolved` after any ambiguous
+provider or persistence outcome.
 
-The current first build includes:
+## Sender Contract
 
-- export-only email action;
-- assisted email/channel handoff;
-- `owned-email` sequencer queue for one approved email step;
-- sender-domain ready/hold controls;
-- queue and step summaries on the Channels screen;
-- `send-owned-sequence-step` API action behind provider-send and email readiness gates.
+The real sender summary contains status, domain, provider, authentication state,
+volume-ramp state, bounce rate, complaint rate, unsubscribe readiness, brand
+risk, and update time. It does not store the obsolete per-protocol SPF/DKIM/DMARC
+fields described by the initial planning document.
 
-Actual SMTP send remains disabled while `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND` is false.
+A ready sender is bound into the draft by ID and a SHA-256 fingerprint. Any
+sender-state change invalidates downstream current authority and requires a new
+draft/approval before new execution.
 
-## Future Upgrade Criteria
+## Workspace Reachability
 
-Only add multi-step automation, mailbox rotation, or Smartlead API sync after:
+Channels performs bounded prioritized reads:
 
-- sender domain is ready;
-- unsubscribe endpoint exists;
-- bounce/complaint webhook exists;
-- low-volume manual pilot validates copy quality;
-- reply and suppression handling is stable;
-- sender health summaries stay within acceptable thresholds.
+- up to 30 approved actions plus recent approval history;
+- up to 30 queued/ready handoffs plus recent handoff history;
+- up to 30 ready/queued steps plus recent step history.
+
+All rows pass the strict workspace projector. Automatic single-field `status`
+indexes support the priority queries.
+
+## Runtime Flags
+
+- `ENABLE_MENULIST_SIGNALDESK_EMAIL_RAIL`: feature surface.
+- `ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS`: assisted handoff.
+- `ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER`: owned queue creation.
+- `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND`: actual provider execution; currently `false`.

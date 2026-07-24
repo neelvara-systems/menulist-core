@@ -8,7 +8,6 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { addAuditLog } from '@database/answerlattice/auditLogs';
 import {
     activateTrigger,
     addPredictiveTrigger,
@@ -20,8 +19,13 @@ import {
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
 import { AnswerlatticePredictiveTrigger } from '@type/answerlattice';
 import { message } from 'antd';
-import { Timestamp } from 'firebase/firestore';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    AnswerlatticePredictiveTriggersLoadState,
+    EMPTY_ANSWERLATTICE_PREDICTIVE_TRIGGERS_STATE,
+    getAnswerlatticePredictiveTriggersScopeKey,
+    projectPredictiveTriggersStateForScope,
+} from './predictiveTriggersScopeState';
 
 const ANSWERLATTICE_PREDICTIVE_TRIGGERS_LOAD_FAILED = 'Could not load triggers';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_CREATE_FAILED = 'Could not create trigger';
@@ -29,6 +33,11 @@ const ANSWERLATTICE_PREDICTIVE_TRIGGER_UPDATE_FAILED = 'Could not update trigger
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_ACTIVATE_FAILED = 'Could not activate trigger';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_DISABLE_FAILED = 'Could not disable trigger';
 const ANSWERLATTICE_PREDICTIVE_TRIGGER_DELETE_FAILED = 'Could not delete trigger';
+const ANSWERLATTICE_PREDICTIVE_TRIGGER_SUMMARY_PENDING = 'Trigger saved. Public help is still updating.';
+
+const warnIfPredictiveTriggerSummaryPending = (summarySynchronized: boolean) => {
+    if (!summarySynchronized) message.warning(ANSWERLATTICE_PREDICTIVE_TRIGGER_SUMMARY_PENDING);
+};
 
 interface UsePredictiveTriggersReturn {
     triggers: AnswerlatticePredictiveTrigger[];
@@ -43,47 +52,51 @@ interface UsePredictiveTriggersReturn {
 }
 
 export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTriggersReturn {
-    const [triggers, setTriggers] = useState<AnswerlatticePredictiveTrigger[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [state, setState] = useState<AnswerlatticePredictiveTriggersLoadState>(
+        EMPTY_ANSWERLATTICE_PREDICTIVE_TRIGGERS_STATE,
+    );
+    const requestIdRef = useRef(0);
 
     const refresh = useCallback(async () => {
-        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT || !tId || !sId) return;
+        const scopeKey = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT
+            ? getAnswerlatticePredictiveTriggersScopeKey(tId, sId)
+            : null;
+        const requestId = ++requestIdRef.current;
+        if (!scopeKey) {
+            setState(EMPTY_ANSWERLATTICE_PREDICTIVE_TRIGGERS_STATE);
+            return;
+        }
 
-        setLoading(true);
-        setError(null);
+        setState({ scopeKey, triggers: [], loading: true, error: null });
         try {
             const result = await getPredictiveTriggers(tId, sId);
-            setTriggers(result || []);
+            if (requestId !== requestIdRef.current) return;
+            setState({ scopeKey, triggers: result || [], loading: false, error: null });
         } catch {
-            setError(ANSWERLATTICE_PREDICTIVE_TRIGGERS_LOAD_FAILED);
-        } finally {
-            setLoading(false);
+            if (requestId !== requestIdRef.current) return;
+            setState({
+                scopeKey,
+                triggers: [],
+                loading: false,
+                error: ANSWERLATTICE_PREDICTIVE_TRIGGERS_LOAD_FAILED,
+            });
         }
     }, [tId, sId]);
 
     useEffect(() => {
-        refresh();
+        void refresh();
+        return () => { requestIdRef.current++; };
     }, [refresh]);
 
     const create = useCallback(async (data: Omit<AnswerlatticePredictiveTrigger, 'id'>): Promise<AnswerlatticePredictiveTrigger | null> => {
         try {
-            const result = await addPredictiveTrigger(data);
-            if (result) {
-                await addAuditLog({
-                    tId, sId,
-                    action: 'predictive_trigger_created',
-                    entityType: 'predictiveTrigger',
-                    entityId: result.id,
-                    previousState: undefined,
-                    newState: { name: data.name, page: data.conditions?.page, source: data.source },
-                    performedBy: 'admin',
-                    timestamp: Timestamp.now(),
-                });
+            const outcome = await addPredictiveTrigger(data, { tId, sId });
+            if (outcome) {
                 message.success(`Trigger "${data.name}" created`);
+                warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);
                 await refresh();
             }
-            return result;
+            return outcome?.value ?? null;
         } catch {
             message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_CREATE_FAILED);
             return null;
@@ -95,18 +108,9 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             const triggerId = normalizeAnswerlatticePredictiveTriggerId(data.id);
             if (!triggerId) throw new Error('Invalid predictive trigger id');
 
-            await updatePredictiveTrigger({ ...data, id: triggerId });
-            await addAuditLog({
-                tId, sId,
-                action: 'predictive_trigger_updated',
-                entityType: 'predictiveTrigger',
-                entityId: triggerId,
-                previousState: undefined,
-                newState: { fields: Object.keys(data).filter(k => k !== 'id') },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
+            const outcome = await updatePredictiveTrigger({ ...data, id: triggerId }, { tId, sId });
             message.success('Trigger updated');
+            warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);
             await refresh();
             return true;
         } catch {
@@ -120,18 +124,9 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
             if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
 
-            await activateTrigger(normalizedTriggerId);
-            await addAuditLog({
-                tId, sId,
-                action: 'predictive_trigger_activated',
-                entityType: 'predictiveTrigger',
-                entityId: normalizedTriggerId,
-                previousState: undefined,
-                newState: { status: 'active' },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
+            const outcome = await activateTrigger(normalizedTriggerId, { tId, sId });
             message.success('Trigger activated');
+            warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);
             await refresh();
             return true;
         } catch {
@@ -145,18 +140,9 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
             if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
 
-            await disableTrigger(normalizedTriggerId);
-            await addAuditLog({
-                tId, sId,
-                action: 'predictive_trigger_disabled',
-                entityType: 'predictiveTrigger',
-                entityId: normalizedTriggerId,
-                previousState: undefined,
-                newState: { status: 'disabled' },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
+            const outcome = await disableTrigger(normalizedTriggerId, { tId, sId });
             message.success('Trigger disabled');
+            warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);
             await refresh();
         } catch {
             message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_DISABLE_FAILED);
@@ -168,23 +154,18 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
             if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
 
-            await deletePredictiveTrigger(normalizedTriggerId);
-            await addAuditLog({
-                tId, sId,
-                action: 'predictive_trigger_deleted',
-                entityType: 'predictiveTrigger',
-                entityId: normalizedTriggerId,
-                previousState: undefined,
-                newState: { deleted: true },
-                performedBy: 'admin',
-                timestamp: Timestamp.now(),
-            });
+            const outcome = await deletePredictiveTrigger(normalizedTriggerId, { tId, sId });
             message.success('Trigger deleted');
+            warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);
             await refresh();
         } catch {
             message.error(ANSWERLATTICE_PREDICTIVE_TRIGGER_DELETE_FAILED);
         }
     }, [tId, sId, refresh]);
 
-    return { triggers, loading, error, create, update, activate, disable, remove, refresh };
+    const visibleState = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT
+        ? projectPredictiveTriggersStateForScope(state, tId, sId)
+        : { triggers: [], loading: false, error: null };
+
+    return { ...visibleState, create, update, activate, disable, remove, refresh };
 }

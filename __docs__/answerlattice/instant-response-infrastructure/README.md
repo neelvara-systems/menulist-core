@@ -10,7 +10,9 @@ The instant cache stores only resolved, active, reviewer-cleared canonical answe
 
 ## Current contract
 
-- Namespace: `canon:v4`.
+- Namespace: `canon:v5`.
+- Identity: hashed normalized query + complete product context + entity/version/applicability scope.
+- Graph-aware canonical selection uses live retrieval until graph state has an authoritative cache version.
 - Tenant/workspace remain explicit in the key; entity, plan, role, and state segments are SHA-256-derived so raw context does not appear in Redis keys.
 - Payloads are validated after Redis read. Invalid data is rejected and deleted best effort with bounded diagnostics.
 - Only active answers without drift or required review are written.

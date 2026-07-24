@@ -7,9 +7,9 @@
 | Question admission | Public API, widget, and authenticated Help Center routes enforce their existing auth, rate-limit, origin, body-size, and scope contracts. |
 | Canonical retrieval | `canonicalRetrieval.ts` resolves exact-scoped entities, versions, plan, role, state, governance state, evidence, and confidence. |
 | Fallback control | `searchCore.ts` stops on governed review/scope/unavailable outcomes and uses FAQ/RAG only for ordinary canonical misses. |
-| Public projection | `publicAnswerContracts.ts` strips private evidence and validates citation URLs, fallback reasons, and clarification fields. |
+| Public projection | `publicAnswerContracts.ts` strips private evidence and validates citation URLs, fallback reasons, and clarification fields. The dedicated Functions mirror applies the same separated/camel/compact sensitive-query-key policy before immutable public bundle creation. |
 | Persistence | Search history and chat sessions retain only public citation projections and bounded clarification metadata. |
-| Fast path | Redis instant cache uses `canon:v4`, hashes raw applicability key segments, validates untrusted payloads, and stores evaluated confidence plus public citations. |
+| Fast path | Redis instant cache uses `canon:v5`, hashes normalized query, complete context and raw applicability key segments, validates untrusted payloads, and stores evaluated confidence plus public citations. Graph-aware selection bypasses Redis until graph state has an authoritative version. |
 | Review | Canonical editor and mutation review expose reviewer-controlled public links while showing only private evidence counts. |
 | Evaluation | Answer Tests compare canonical source IDs and approved citation IDs without an AI judge. |
 
@@ -44,7 +44,7 @@ Customer-facing paths receive only `{ id, title, url }`:
 
 ## Cache coherence
 
-The Redis namespace is `canon:v4`. It supersedes `canon:v3` by hashing raw entity/plan/role/state key segments and validating cached payload IDs, answer version, timestamp, procedure, source versions, citations, and UTF-8 bytes before delivery. Entries retain evaluated `high`, `medium`, or `low` confidence and approved citations. Existing source-version and live canonical freshness checks remain authoritative.
+The Redis namespace is `canon:v5`. It supersedes `canon:v4` by adding hashed normalized-query and complete-context identities to the hashed entity/plan/role/state segments, preventing distinct questions or product surfaces from sharing one answer entry. Cached payload IDs, answer version, timestamp, procedure, source versions, citations, and UTF-8 bytes are validated before delivery. Entries retain evaluated `high`, `medium`, or `low` confidence and approved citations. Existing source-version and live canonical freshness checks remain authoritative. When Knowledge Graph exploitation is enabled, search bypasses this cache because graph state does not yet have an independent authoritative cache version.
 
 ## Failure behavior
 
@@ -53,9 +53,9 @@ The Redis namespace is `canon:v4`. It supersedes `canon:v3` by hashing raw entit
 | Missing required plan/role/state | Structured clarification plus safe fallback |
 | Scope mismatch | Safe abstention; no generic answer substitution |
 | Drift or review required | Governed fallback and review signal path |
-| Unsafe public citation | Rejected at governance/storage parse or omitted at public projection |
+| Unsafe public citation | Rejected at governance/storage parse or omitted at public projection, including camel-case and compact secret query keys |
 | Cache unavailable or stale | Live retrieval continues with bounded diagnostics |
 | Canonical retrieval unavailable | Explicit safe fallback; no RAG override |
 | No canonical match | Existing FAQ then bounded RAG path may continue |
 
-No new route, collection, dependency, provider, scheduler, or Cloud Function was introduced.
+No new route, collection, dependency, provider, or scheduler was introduced. The existing dedicated context-bundle Function boundary changed and requires the maintained Answerlattice QA Functions deployment after Firebase access is restored.

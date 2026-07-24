@@ -21,7 +21,8 @@ The compatibility `resolution` field means no escalation, and the compatibility 
 ## Client Flow
 
 - `src/database/answerlattice/trustMetrics.ts` performs one Firestore read.
-- `parseAnswerlatticeTrustMetrics` validates schema, product, exact scope, complete window, timestamps, counts, percentages, and array bounds.
+- `parseAnswerlatticeTrustMetrics` validates schema, product, exact scope, complete window, timestamps, count/rate equations, compatibility fields, source-total coherence, top-entity scalar types/order, and array bounds.
+- Coverage and trust parsers construct exact allowlisted DTOs instead of returning the stored document. Undeclared legacy/private fields never enter owner or activation state.
 - `FounderTrustDashboard.tsx` shows explicit evidence metrics and stale/unavailable states.
 - `activationSummary.ts` carries the explicit component metrics; it no longer computes `trustScore`.
 

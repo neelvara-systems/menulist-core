@@ -1,4 +1,5 @@
 import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
+import type { AnswerlatticeChatSessionActorScope } from '@lib/answerlattice/chatSessionContracts';
 import {
     HELP_CENTER_SEARCH_REQUEST_POLICY,
     readHelpCenterSearchResponse,
@@ -52,8 +53,7 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
         })
     });
 
-    // Return backend response as-is
-    // Backend already includes full KnowledgeBaseArticleType objects with all necessary fields
+    // Return the exact response DTO after bounded runtime validation.
     return await readHelpCenterSearchResponse(response, 'help_chat') as SearchAPIResponseType;
 }
 
@@ -68,8 +68,7 @@ export async function submitSearchFeedback({
     isGood,
     reasonsToImprove,
     comments,
-    tId,
-    sId
+    expectedActorScope,
 }: {
     searchHistoryId: string;
     sessionId: string;      // Chat session ID
@@ -77,8 +76,7 @@ export async function submitSearchFeedback({
     isGood: boolean;
     reasonsToImprove?: Array<{ value: string; label: string; }>;
     comments?: string;
-    tId?: number;
-    sId?: number;
+    expectedActorScope: AnswerlatticeChatSessionActorScope;
 }) {
     const chatSessionsDal: typeof import('@database/chatSessions') = await import('@database/chatSessions');
     const assertChatMessageFeedbackUpdateSucceeded: typeof chatSessionsDal.assertChatMessageFeedbackUpdateSucceeded =
@@ -97,6 +95,7 @@ export async function submitSearchFeedback({
         messageId,
         searchHistoryId,
         feedbackData,
+        expectedActorScope,
     );
     assertChatMessageFeedbackUpdateSucceeded(
         messageFeedbackUpdateResult,
@@ -109,8 +108,8 @@ export async function submitSearchFeedback({
     if (!isGood) {
         emitAnswerlatticeSignal({
             type: ANSWERLATTICE_SIGNAL_TYPE.CHAT_NEGATIVE,
-            tId,
-            sId,
+            tId: expectedActorScope.tId,
+            sId: expectedActorScope.sId,
             metadata: {
                 searchHistoryId,
                 sessionId,

@@ -54,6 +54,8 @@ If an outlet inherits the HQ subscription, the UI states that billing changes ap
 
 AI responses also identify the effective `billingStoreId`. The session provider applies a returned balance only when that ID matches the active subscription, preventing a late response from one outlet/store from overwriting another store's Billing state. The selected outlet still owns the Transactions history row even when its charge comes from an inherited HQ subscription.
 
+`MobileTransactionsScreen` separately binds its history state to exact signed user, tenant, store, product, and session identity. A store/session switch hides the former rows and selected detail synchronously; a monotonic request guard rejects late reset or continuation responses before list/cursor/summary state can advance. This changes browser settlement only and adds no API or Firestore operation.
+
 ## May 20, 2026 Verification Update
 
 Mobile Billing and Transactions use the same runtime contracts as desktop:

@@ -86,8 +86,8 @@ const buildWeeklyDigestExport = (digest: AnswerlatticeWeeklySummary): string => 
     ...digest.recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`),
     '',
     'Weekly comparison',
-    `Conversation volume: ${digest.sourceCompleteness.comparisonComplete ? formatSignedPercentage(digest.keyMetrics.volumeChange) : 'Not available'}`,
-    `Recorded feedback: ${digest.sourceCompleteness.comparisonComplete ? formatSignedPercentage(digest.keyMetrics.satisfactionChange) : 'Not available'}`,
+    `Conversation volume: ${digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.volumeChangePercent !== null ? formatSignedPercentage(digest.keyMetrics.volumeChangePercent) : 'Not available'}`,
+    `Positive feedback share: ${digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? `${digest.keyMetrics.positiveFeedbackSharePointChange > 0 ? '+' : ''}${digest.keyMetrics.positiveFeedbackSharePointChange.toFixed(1)} percentage points` : 'Not available'}`,
     `Top repeated question: ${digest.keyMetrics.topCategory}`,
     `Current source days: ${digest.sourceCompleteness.currentDays ?? 'Not recorded'}/7`,
     `Comparison source days: ${digest.sourceCompleteness.previousDays ?? 'Not recorded'}/7`,
@@ -306,12 +306,13 @@ export default function AnswerlatticeWeeklyDigest() {
                         <Statistic
                             title="Conversation volume"
                             value={digest.sourceCompleteness.comparisonComplete
-                                ? digest.keyMetrics.volumeChange
+                                && digest.keyMetrics.volumeChangePercent !== null
+                                ? digest.keyMetrics.volumeChangePercent
                                 : 'Not available'}
-                            precision={digest.sourceCompleteness.comparisonComplete ? 1 : undefined}
-                            suffix={digest.sourceCompleteness.comparisonComplete ? '%' : undefined}
-                            prefix={digest.sourceCompleteness.comparisonComplete
-                                ? digest.keyMetrics.volumeChange >= 0
+                            precision={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.volumeChangePercent !== null ? 1 : undefined}
+                            suffix={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.volumeChangePercent !== null ? '%' : undefined}
+                            prefix={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.volumeChangePercent !== null
+                                ? digest.keyMetrics.volumeChangePercent >= 0
                                     ? <LuArrowUpRight />
                                     : <LuArrowDownRight />
                                 : undefined}
@@ -322,17 +323,18 @@ export default function AnswerlatticeWeeklyDigest() {
                 <Col xs={24} md={8}>
                     <Card style={{ height: '100%' }}>
                         <Statistic
-                            title="Recorded feedback change"
+                            title="Positive feedback share change"
                             value={digest.sourceCompleteness.comparisonComplete
-                                ? digest.keyMetrics.satisfactionChange
+                                && digest.keyMetrics.positiveFeedbackSharePointChange !== null
+                                ? digest.keyMetrics.positiveFeedbackSharePointChange
                                 : 'Not available'}
-                            precision={digest.sourceCompleteness.comparisonComplete ? 1 : undefined}
-                            suffix={digest.sourceCompleteness.comparisonComplete ? '%' : undefined}
-                            prefix={digest.sourceCompleteness.comparisonComplete ? <LuGauge /> : undefined}
-                            valueStyle={digest.sourceCompleteness.comparisonComplete ? {
-                                color: digest.keyMetrics.satisfactionChange > 0
+                            precision={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? 1 : undefined}
+                            suffix={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? 'pp' : undefined}
+                            prefix={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? <LuGauge /> : undefined}
+                            valueStyle={digest.sourceCompleteness.comparisonComplete && digest.keyMetrics.positiveFeedbackSharePointChange !== null ? {
+                                color: digest.keyMetrics.positiveFeedbackSharePointChange > 0
                                     ? '#389e0d'
-                                    : digest.keyMetrics.satisfactionChange < 0
+                                    : digest.keyMetrics.positiveFeedbackSharePointChange < 0
                                         ? '#cf1322'
                                         : undefined,
                             } : undefined}

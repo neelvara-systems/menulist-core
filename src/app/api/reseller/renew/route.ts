@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { calculateOfflineAmount, getResellerTierById, RESELLER_CAPS, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { DB_COLLECTIONS } from "@constant/database";
+import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import {
     getResellerOfflineCapFromError,
     getResellerProfile,
@@ -10,6 +11,7 @@ import {
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { appendBoundedBillingStatusHistory } from '@lib/billing/subscriptionStatusHistory';
+import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
@@ -109,8 +111,12 @@ export const POST = withAuth(async (request, session) => {
         // Find existing subscription for this store using Admin SDK.
         const subsSnapshot = await firestoreAdmin
             .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('pId', '==', DEFAULT_PRODUCT_ID)
+            .where('productId', '==', DEFAULT_PRODUCT_ID)
             .where('storeId', '==', storeId)
             .where('tenantId', '==', tenantId)
+            .where('sId', '==', storeId)
+            .where('tId', '==', tenantId)
             .where('billingMode', '==', 'manual')
             .limit(1)
             .get();
@@ -121,6 +127,10 @@ export const POST = withAuth(async (request, session) => {
 
         const existingSub = subsSnapshot.docs[0];
         const existingSubData = existingSub.data();
+        const existingScope = getMenuListSubscriptionEntitlementScope(existingSubData);
+        if (!existingScope || existingScope.tenantId !== tenantId || existingScope.storeId !== storeId) {
+            return NextResponse.json({ error: "No manual subscription found for this store." }, { status: 404 });
+        }
 
         // Verify this reseller owns this subscription
         if (existingSubData.resellerId !== resellerId && !isPlatformUser) {
@@ -176,8 +186,12 @@ export const POST = withAuth(async (request, session) => {
             if (!subscriptionSnap.exists) throw new Error('Manual subscription disappeared during renewal.');
 
             const currentSubscription = subscriptionSnap.data() || {};
+            const currentScope = getMenuListSubscriptionEntitlementScope(currentSubscription);
             if (
-                currentSubscription.billingMode !== 'manual'
+                !currentScope
+                || currentScope.tenantId !== tenantId
+                || currentScope.storeId !== storeId
+                || currentSubscription.billingMode !== 'manual'
                 || !['active', 'expired'].includes(String(currentSubscription.status || ''))
                 || (currentSubscription.resellerPricingTier && currentSubscription.resellerPricingTier !== pricingTier)
                 || (currentSubscription.resellerId !== resellerId && !isPlatformUser)

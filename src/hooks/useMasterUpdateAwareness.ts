@@ -37,6 +37,7 @@ import {
     extractCategoriesFromProject,
     extractItemsFromProject,
 } from "@lib/multiOutlet/masterUpdateDiff";
+import { parseMasterOperationalState } from "@lib/multiOutlet/masterOperationalState";
 import {
     createAcknowledgeEvent,
     logMultiOutletEvent,
@@ -45,7 +46,6 @@ import { getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/mul
 import { parseProjectId, populateMasterCache } from "@lib/multiOutlet/resolveProject";
 import type { Project } from "@template/main-app/projects/types/project.types";
 import type {
-    MasterOperationalState,
     MasterSnapshot,
     MasterUpdateDiff,
 } from "@type/multiOutlet.types";
@@ -117,18 +117,39 @@ export function useMasterUpdateAwareness(
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const masterProjectRef = useRef<Project | null>(null);
     const latestVersionRef = useRef<number>(0);
+    const outletProjectRef = useRef<Project | null>(outletProject);
+    const awarenessRequestSequenceRef = useRef(0);
     // Ref for acknowledged version — updated after acknowledge() so the
     // onSnapshot listener always compares against the latest baseline,
     // even before SWR re-fetches the outlet project with the new snapshot.
     const acknowledgedVersionRef = useRef<number>(0);
 
+    // The signal listener is intentionally keyed only by project identity so a
+    // normal SWR refresh does not tear down and recreate the Firestore socket.
+    // Keep the current project data in a ref so listener callbacks and delayed
+    // diff work never retain an old snapshot or old outlet overrides.
+    outletProjectRef.current = outletProject;
+
     // ── FETCH MASTER + COMPUTE DIFF ───────────────────────────────
 
     const computeAndShowDiff = useCallback(async () => {
+        const requestedOutletProject = outletProjectRef.current;
+
         // Gate: Must be an outlet project with masterProjectId
-        if (!outletProject?.masterProjectId || !outletProject?.projectId) {
+        if (
+            !requestedOutletProject?.masterProjectId
+            || !requestedOutletProject.projectId
+        ) {
             return;
         }
+
+        const requestSequence = ++awarenessRequestSequenceRef.current;
+        const isCurrentRequest = () => {
+            const currentOutletProject = outletProjectRef.current;
+            return awarenessRequestSequenceRef.current === requestSequence
+                && currentOutletProject?.projectId === requestedOutletProject.projectId
+                && currentOutletProject.masterProjectId === requestedOutletProject.masterProjectId;
+        };
 
         setIsChecking(true);
         setError(null);
@@ -136,21 +157,23 @@ export function useMasterUpdateAwareness(
         try {
             // 1. Fetch current master project
             const { tId, sId: masterStoreId } = parseProjectId(
-                outletProject.masterProjectId,
+                requestedOutletProject.masterProjectId,
             );
 
             const masterProject = await getProjectDataByStore(
                 tId,
                 masterStoreId,
-                outletProject.masterProjectId,
+                requestedOutletProject.masterProjectId,
             );
+
+            if (!isCurrentRequest()) return;
 
             masterProjectRef.current = masterProject;
 
             // Share fetched master with resolver cache so Editor's
             // resolveProjectForRender reuses it (0 extra Firestore reads)
-            if (masterProject && outletProject.masterProjectId) {
-                populateMasterCache(outletProject.masterProjectId, masterProject);
+            if (masterProject) {
+                populateMasterCache(requestedOutletProject.masterProjectId, masterProject);
             }
 
             if (!masterProject?.files?.length) {
@@ -161,7 +184,10 @@ export function useMasterUpdateAwareness(
             }
 
             // 2. Get outlet's stored snapshot
-            const snapshot = outletProject.masterSnapshot as
+            const currentOutletProject = outletProjectRef.current;
+            if (!currentOutletProject || !isCurrentRequest()) return;
+
+            const snapshot = currentOutletProject.masterSnapshot as
                 | MasterSnapshot
                 | undefined;
 
@@ -183,9 +209,11 @@ export function useMasterUpdateAwareness(
                 snapshot.categories,
                 currentItems,
                 currentCategories,
-                outletProject.overrides,
+                currentOutletProject.overrides,
                 masterModifiedOn,
             );
+
+            if (!isCurrentRequest()) return;
 
             // 4. Update state
             if (computedDiff.hasChanges) {
@@ -198,8 +226,12 @@ export function useMasterUpdateAwareness(
                 setShowBanner(false);
             }
         } catch (err) {
+            if (!isCurrentRequest()) return;
             logMultiOutletFailure('master_update_awareness_check_failed', err, {
-                ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
+                ...getMultiOutletProjectLogContext(
+                    requestedOutletProject.projectId,
+                    requestedOutletProject.masterProjectId,
+                ),
                 acknowledgedVersion: acknowledgedVersionRef.current,
                 latestVersion: latestVersionRef.current,
             });
@@ -207,9 +239,9 @@ export function useMasterUpdateAwareness(
             // Fail open — don't show banner on error
             setShowBanner(false);
         } finally {
-            setIsChecking(false);
+            if (isCurrentRequest()) setIsChecking(false);
         }
-    }, [outletProject]);
+    }, []);
 
     // ── ACKNOWLEDGE CHANGES ───────────────────────────────────────
 
@@ -307,6 +339,19 @@ export function useMasterUpdateAwareness(
 
     // ── LIFECYCLE: onSnapshot LISTENER ────────────────────────────
 
+    // A same-project refresh can advance the locally acknowledged snapshot
+    // without changing listener identity. Synchronize that baseline without
+    // reconnecting the socket, and clear a now-obsolete pending notification.
+    const persistedOperationalVersion = outletProject?.masterSnapshot?.operationalVersion ?? 0;
+    useEffect(() => {
+        acknowledgedVersionRef.current = persistedOperationalVersion;
+        if (latestVersionRef.current <= persistedOperationalVersion) {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+            setShowBanner(false);
+            setDiff(null);
+        }
+    }, [persistedOperationalVersion]);
+
     useEffect(() => {
         // Gate: Feature flags
         if (
@@ -318,6 +363,9 @@ export function useMasterUpdateAwareness(
 
         // Gate: Must be an outlet project with masterProjectId
         if (!outletProject?.masterProjectId || !outletProject?.projectId) {
+            awarenessRequestSequenceRef.current += 1;
+            masterProjectRef.current = null;
+            latestVersionRef.current = 0;
             setShowBanner(false);
             setDiff(null);
             return;
@@ -325,8 +373,16 @@ export function useMasterUpdateAwareness(
 
         const snapshot = outletProject.masterSnapshot as MasterSnapshot | undefined;
         const acknowledgedVersion = snapshot?.operationalVersion ?? 0;
-        // Sync ref with latest snapshot version (covers SWR re-fetch + initial mount)
+        // Reset all project-specific state before attaching the new listener.
+        // This prevents a previous outlet's banner or fetched master from being
+        // actionable during the first snapshot round trip for the new outlet.
+        awarenessRequestSequenceRef.current += 1;
+        masterProjectRef.current = null;
+        latestVersionRef.current = acknowledgedVersion;
         acknowledgedVersionRef.current = acknowledgedVersion;
+        setShowBanner(false);
+        setDiff(null);
+        setError(null);
 
         // Attach listener to signal doc
         const signalDocRef = doc(
@@ -354,7 +410,21 @@ export function useMasterUpdateAwareness(
                         return;
                     }
 
-                    const signalData = docSnap.data() as MasterOperationalState;
+                    const signalData = parseMasterOperationalState(docSnap.data());
+                    if (!signalData) {
+                        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+                        logMultiOutletFailure(
+                            'master_update_awareness_signal_invalid',
+                            new Error('Invalid master operational state'),
+                            getMultiOutletProjectLogContext(
+                                outletProject.projectId,
+                                outletProject.masterProjectId,
+                            ),
+                        );
+                        setShowBanner(false);
+                        setDiff(null);
+                        return;
+                    }
                     const incomingVersion = signalData.operationalVersion;
                     latestVersionRef.current = incomingVersion;
 
@@ -411,12 +481,12 @@ export function useMasterUpdateAwareness(
 
         // Cleanup: detach listener + remove visibility handler
         return () => {
+            awarenessRequestSequenceRef.current += 1;
             if (unsubscribe) unsubscribe();
             if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [outletProject?.projectId, outletProject?.masterProjectId]);
+    }, [computeAndShowDiff, outletProject?.projectId, outletProject?.masterProjectId]);
 
     // Derive history state from outlet project's persisted snapshot
     const persistedSnapshot = outletProject?.masterSnapshot as MasterSnapshot | undefined;

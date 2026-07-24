@@ -229,6 +229,12 @@ Completed first-extraction project jobs include `result.summary` with category/i
 
 When extracted profile defaults replace a generic project name or description during save, `functions/src/logic/saveFilesToProject.ts` mirrors those same fields into the existing `platformSummary/projects_{storeId}` entry in the same transaction. Public menu route selection and OBP project summaries read that summary document, so the project document and public summary stay aligned after the worker-level public cache refresh.
 
+The same project-save transaction treats its current project snapshot as the final persistence authority. It rejects a project marked `deleted` and rejects any present `projectId`, `tId`/`tenantId`, or `sId`/`storeId` value that conflicts with the canonical `projects/{tId}/{sId}/{projectId}` path before files, languages, project defaults, or summary truth are mutated. Legacy project rows may omit those redundant identity fields, but a present conflicting field fails closed. This prevents a worker that finishes after project deletion, or a drifted project document at the expected path, from appending extracted menu data.
+
+File `uid` is the durable idempotency key joining extraction-job input, per-file redistribution, replay detection, and saved project files. The shared byte-mirrored integrity contract requires every incoming UID to be a nonempty string of at most 120 characters with no leading or trailing whitespace. The worker enforces that boundary before claiming/processing the job, and project persistence repeats it before replay selection. The protected owner route already uses the same shape; the repeated worker/save checks cover legacy or other server-authored jobs because Admin SDK writes bypass Firestore rules.
+
+Project language persistence does not trust the compile-time `string[]` assertion on legacy Firestore data. `saveFilesToProject()` normalizes both existing and newly detected codes through the same bounded ISO-style language/locale shape, lowercases and deduplicates valid values, removes malformed legacy entries, keeps canonical English first, and derives `defaultLanguage` only from the admitted set. A subsequent valid extraction therefore converges legacy mixed-type or whitespace-mutated language arrays instead of writing them back into authoritative project truth.
+
 ## Function Diagnostics
 
 `functions/src/logic/processMenuImages.ts` does not log, persist, or return raw extraction exception messages. Upload, retry, batch, AI operation write, failure transaction, and request failure paths use stable `MENU_IMAGE_*` failure codes with source error name/code/status metadata only.
@@ -267,6 +273,9 @@ The browser comparison boundary validates extraction relations and one-to-one pe
 - link import and messaging onboarding use shared routing builders
 - worker uses shared limits, validates source files, repeats Storage/DNS source-fetch checks, enforces response-size caps before Gemini upload, updates public drafts, and keeps cache revalidation
 - worker writes timing telemetry and result summaries before any delayed project-job payload pruning
+- project save rechecks transaction-current deletion and persisted project/tenant/store identity before any extraction write
+- worker and project save independently reject malformed incoming file identity keys before provider or persistence effects
+- project save canonicalizes legacy and detected language codes before persisted language/default derivation
 - worker and project-save diagnostics avoid raw IDs, extracted payloads, project write payloads, project paths, language arrays, and raw exception text
 - the direct extraction helper records bounded failure telemetry and avoids raw provider/runtime exception text
 - Firestore rules keep browser job creation blocked

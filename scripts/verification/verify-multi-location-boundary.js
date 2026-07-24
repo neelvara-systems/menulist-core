@@ -708,7 +708,7 @@ function verifyClientBoundaries(files) {
     'isOutletRenameResponse(data)',
     'isOutletPaymentRequiredResponse(data)',
     'isOutletCreateResponse(data)',
-    'updateOutletPolicy(policyStoreId, changedPolicy)',
+    'updateOutletPolicy(expectedPolicyStoreId, submittedPolicy)',
     'mobile_location_deactivate_response_invalid',
     'const activeStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);',
     'if (Number(storeId) === activeStoreId) return;',
@@ -718,7 +718,27 @@ function verifyClientBoundaries(files) {
     'mobile_location_create_response_invalid',
     'onOpenBilling',
     'style={{ minHeight: 44 }}',
+    'return <MobileLocationsScreenContent key={scopeKey} {...props} />;',
+    'locationActionInFlightRef.current',
+    'isExpectedLocationScope(expectedTenantId, expectedStoreId)',
+    "String(previous.tenantId ?? '') === String(expectedTenantId)",
+    "String(previous?.storeId ?? '') === String(expectedStoreId)",
+    'currentLocationScopeRef.current.activeStoreContext',
+    'store.name === submittedTarget.name',
+    'store.outletSlug === submittedTarget.outletSlug',
+    'previous.outletPolicy === sourcePolicy',
+    'store.storeDetails?.outletPolicy === sourcePolicy',
   ].forEach((token) => assertIncludes(mobileLocations, token, 'Mobile Locations boundary'));
+  assertNotIncludes(
+    mobileLocations,
+    'setTenantDetails({ ...tenantDetails, storesList: updatedStoresList })',
+    'Mobile Locations captured tenant-list replacement',
+  );
+  assertNotIncludes(
+    mobileLocations,
+    'setStoreDetails({\n                    ...storeDetails,',
+    'Mobile Locations captured store replacement',
+  );
 
   [
     "'/locations': { tab: 'more', todayScreen: 'main', moreScreen: 'locations' }",
@@ -1253,6 +1273,7 @@ function verifyMultiLocationBoundary() {
     onboardingCompensationMapping: read('src/lib/onboarding/compensatedStoreMappings.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
     masterUpdateDiff: read('src/lib/multiOutlet/masterUpdateDiff.ts'),
+    masterOperationalState: read('src/lib/multiOutlet/masterOperationalState.ts'),
     awarenessHook: read('src/hooks/useMasterUpdateAwareness.ts'),
     desktopLocations: read('src/app/(main)/locations/page.tsx'),
     addOutletModal: read('src/components/organisms/AddOutletModal/index.tsx'),
@@ -1263,6 +1284,40 @@ function verifyMultiLocationBoundary() {
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
     publicMenu: read('src/app/client/[[...slug]]/page.tsx'),
   };
+
+  [
+    'parseMasterOperationalState',
+    "keys.length !== 2",
+    'Number.isSafeInteger(value.operationalVersion)',
+    'value.lastUpdatedAt instanceof Timestamp',
+  ].forEach((token) => assertIncludes(files.masterOperationalState, token, 'Master operational state runtime boundary'));
+  [
+    'isValidMasterOperationalStateCreate()',
+    'isValidMasterOperationalStateUpdate()',
+    'projectDocIdMatchesCurrentTenantStore(docId)',
+    "request.resource.data.keys().hasOnly(['operationalVersion', 'lastUpdatedAt'])",
+    'request.resource.data.operationalVersion == resource.data.operationalVersion + 1',
+    'request.resource.data.lastUpdatedAt == request.time',
+  ].forEach((token) => assertIncludes(firestoreRules, token, 'Master operational state rule boundary'));
+  [
+    'parseMasterOperationalState(docSnap.data())',
+    'master_update_awareness_signal_invalid',
+    'const outletProjectRef = useRef<Project | null>(outletProject);',
+    'const awarenessRequestSequenceRef = useRef(0);',
+    'const requestedOutletProject = outletProjectRef.current;',
+    'const requestSequence = ++awarenessRequestSequenceRef.current;',
+    'const currentOutletProject = outletProjectRef.current;',
+    'if (!isCurrentRequest()) return;',
+    'const persistedOperationalVersion = outletProject?.masterSnapshot?.operationalVersion ?? 0;',
+    'acknowledgedVersionRef.current = persistedOperationalVersion;',
+    'masterProjectRef.current = null;',
+    'latestVersionRef.current = acknowledgedVersion;',
+  ].forEach((token) => assertIncludes(files.awarenessHook, token, 'Master operational state listener boundary'));
+  assertNotIncludes(
+    files.awarenessHook,
+    'eslint-disable-next-line react-hooks/exhaustive-deps',
+    'Master operational state listener stale-closure suppression',
+  );
 
   [
     'function getProviderSubscriptionQuantity(value: unknown): number | null',

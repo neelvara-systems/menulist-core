@@ -35,15 +35,15 @@ import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from
 // TYPES
 // ================================================================
 
-interface ItemDriftAccumulator {
+export interface ItemDriftAccumulator {
     priceChangeCount: number;
     availabilityToggleCount: number;
     lastPriceChange: Timestamp | null;
     lastAvailabilityChange: Timestamp | null;
 }
 
-type ProjectDriftAccumulators = Map<string, ItemDriftAccumulator>;
-type StoreDriftAccumulators = Map<string, ProjectDriftAccumulators>;
+export type ProjectDriftAccumulators = Map<string, ItemDriftAccumulator>;
+export type StoreDriftAccumulators = Map<string, ProjectDriftAccumulators>;
 
 interface DerivedItemMetrics {
     itemId: string;
@@ -104,8 +104,8 @@ const METRICS_WRITE_BATCH_SIZE = 400;
 /**
  * Get date string N days ago
  */
-function getDateNDaysAgo(days: number): string {
-    const date = new Date();
+function getDateNDaysAgo(days: number, now = new Date()): string {
+    const date = new Date(now.getTime());
     date.setDate(date.getDate() - days);
     return date.toISOString().split('T')[0];
 }
@@ -179,12 +179,13 @@ const applyDriftContribution = (
  * Read each store's rolling MOL window once and partition contributions by the
  * document-path project IDs that are active in that store.
  */
-async function readStoreDriftAccumulators(
+export async function readStoreDriftAccumulators(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
     activeProjectIds: ReadonlySet<string>,
     windowStartTimestamp: Timestamp,
+    windowEndTimestamp: Timestamp,
 ): Promise<{ changesByProject: StoreDriftAccumulators; reads: number }> {
     let reads = 0;
     let documentsScanned = 0;
@@ -200,6 +201,7 @@ async function readStoreDriftAccumulators(
         }
         let changeQuery = changeLogsRef
             .where('timestamp', '>=', windowStartTimestamp)
+            .where('timestamp', '<=', windowEndTimestamp)
             .orderBy('timestamp', 'asc')
             .orderBy(FieldPath.documentId(), 'asc')
             .limit(CHANGE_LOG_PAGE_SIZE);
@@ -237,7 +239,7 @@ async function readStoreDriftAccumulators(
 /**
  * Persist one project's in-memory counters in bounded Firestore batches.
  */
-async function writeProjectDriftMetrics(
+export async function writeProjectDriftMetrics(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
@@ -312,7 +314,10 @@ async function writeProjectDriftMetrics(
             windowEnd,
         };
 
-        batch.set(metricsRef.doc(itemId), metrics, { merge: true });
+        // This is the complete rolling-window projection for one item. Exact
+        // replacement prevents unknown legacy fields or removed derived fields
+        // from surviving after the authoritative source window is recomputed.
+        batch.set(metricsRef.doc(itemId), metrics);
         writesInBatch++;
         writes++;
         if (writesInBatch === METRICS_WRITE_BATCH_SIZE) {
@@ -362,6 +367,11 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
             storeCount: storeIds.length,
         });
 
+        const windowEndTimestamp = Timestamp.now();
+        const windowEndDate = windowEndTimestamp.toDate();
+        const windowEnd = windowEndDate.toISOString().split('T')[0];
+        const windowStart = getDateNDaysAgo(ROLLING_WINDOW_DAYS, windowEndDate);
+
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
             const tId = storeInfo.tId;
@@ -394,14 +404,13 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
                 if (activeProjectIds.size === 0) continue;
 
                 result.storesProcessed++;
-                const windowEnd = new Date().toISOString().split('T')[0];
-                const windowStart = getDateNDaysAgo(ROLLING_WINDOW_DAYS);
                 const storeDrift = await readStoreDriftAccumulators(
                     db,
                     tId,
                     sId,
                     activeProjectIds,
                     Timestamp.fromDate(new Date(windowStart)),
+                    windowEndTimestamp,
                 );
                 result.readsCount += storeDrift.reads;
 

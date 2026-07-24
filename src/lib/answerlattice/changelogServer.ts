@@ -13,7 +13,13 @@ import {
     type AnswerlatticeChangelogAction,
     type AnswerlatticeChangelogEntryInput,
 } from './changelogContracts';
-import { getAnswerlatticeBundleManifestDocId, getAnswerlatticeSourceVersionsDocId } from './compiledContext';
+import {
+    AnswerlatticeInvalidationOwnershipError,
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+    readAnswerlatticeInvalidationOwnership,
+    type AnswerlatticeInvalidationOwnership,
+} from './invalidationOwnership';
 import {
     AnswerlatticeStoredReleaseSchema,
     getAnswerlatticeTimestampMillis,
@@ -49,6 +55,7 @@ export class AnswerlatticeChangelogError extends Error {
     constructor(public readonly status: number, public readonly publicMessage: string) {
         super(publicMessage);
         this.name = 'AnswerlatticeChangelogError';
+        Object.setPrototypeOf(this, AnswerlatticeChangelogError.prototype);
     }
 }
 
@@ -164,10 +171,11 @@ const assertPublishedReleaseLink = async (
 const markContextStale = (
     transaction: FirebaseFirestore.Transaction,
     access: AnswerlatticeAccessContext,
+    ownership: AnswerlatticeInvalidationOwnership,
     action: 'create' | 'update' | 'delete',
     entryId: string,
 ) => {
-    const db = getDb();
+    const scope = { tId: access.scope.tenantId, sId: access.scope.storeId };
     const now = FieldValue.serverTimestamp();
     const common = {
         schemaVersion: 1,
@@ -180,15 +188,42 @@ const markContextStale = (
         lastSourceType: CHANGELOG,
     };
     transaction.set(
-        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(access.scope.tenantId, access.scope.storeId)),
-        { ...common, releases: FieldValue.increment(1) },
+        ownership.sourceVersionsRef,
+        {
+            ...(!ownership.sourceVersionsExists ? getAnswerlatticeMissingSourceVersionsBase(scope) : {}),
+            ...common,
+            releases: FieldValue.increment(1),
+        },
         { merge: true },
     );
     transaction.set(
-        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(access.scope.tenantId, access.scope.storeId)),
-        { ...common, status: 'stale', staleReason: `changelog_${action}` },
+        ownership.manifestRef,
+        {
+            ...(!ownership.manifestExists ? getAnswerlatticeMissingBundleManifestBase(scope) : {}),
+            ...common,
+            status: 'stale',
+            staleReason: `changelog_${action}`,
+        },
         { merge: true },
     );
+};
+
+const readContextInvalidationOwnership = async (
+    transaction: FirebaseFirestore.Transaction,
+    access: AnswerlatticeAccessContext,
+) => {
+    try {
+        return await readAnswerlatticeInvalidationOwnership({
+            db: getDb(),
+            scope: { tId: access.scope.tenantId, sId: access.scope.storeId },
+            transaction,
+        });
+    } catch (error) {
+        if (error instanceof AnswerlatticeInvalidationOwnershipError) {
+            throw new AnswerlatticeChangelogError(409, 'Changelog invalidation state is invalid for this workspace.');
+        }
+        throw error;
+    }
 };
 
 async function createEntry(
@@ -268,6 +303,7 @@ async function createEntry(
             }
         }
 
+        const invalidationOwnership = await readContextInvalidationOwnership(transaction, access);
         if (latestDocument && pageRef.path === latestDocument.ref.path) transaction.update(pageRef, pageData);
         else transaction.create(pageRef, pageData);
         transaction.create(indexRef, {
@@ -282,7 +318,7 @@ async function createEntry(
             createdOn: FieldValue.serverTimestamp(),
             modifiedOn: FieldValue.serverTimestamp(),
         });
-        markContextStale(transaction, access, 'create', entryId);
+        markContextStale(transaction, access, invalidationOwnership, 'create', entryId);
         result = { success: true, action: 'create', entryId, pageId, replayed: false, removedFileUrls: [] };
     });
 
@@ -330,6 +366,7 @@ async function updateEntry(
         const nextUrls = new Set(action.entry.files.map((file) => file.url));
         const removedFileUrls = Array.from(previousUrls).filter((url): url is string => typeof url === 'string' && !nextUrls.has(url));
 
+        const invalidationOwnership = await readContextInvalidationOwnership(transaction, access);
         transaction.update(pageRef, {
             entries,
             approxSizeBytes: serializedPageBytes(candidate),
@@ -341,7 +378,7 @@ async function updateEntry(
             lastFingerprint: fingerprint,
             modifiedOn: FieldValue.serverTimestamp(),
         });
-        markContextStale(transaction, access, 'update', action.entryId);
+        markContextStale(transaction, access, invalidationOwnership, 'update', action.entryId);
         result = { success: true, action: 'update', entryId: action.entryId, pageId: index.pageId, replayed: false, removedFileUrls };
     });
 
@@ -388,6 +425,7 @@ async function deleteEntry(
             .filter((url: unknown): url is string => typeof url === 'string')
             .slice(0, 4);
 
+        const invalidationOwnership = await readContextInvalidationOwnership(transaction, access);
         transaction.update(pageRef, {
             entries,
             entryIds,
@@ -403,7 +441,7 @@ async function deleteEntry(
             expiresAt: Timestamp.fromMillis(Date.now() + INDEX_TOMBSTONE_RETENTION_MS),
             modifiedOn: FieldValue.serverTimestamp(),
         });
-        markContextStale(transaction, access, 'delete', action.entryId);
+        markContextStale(transaction, access, invalidationOwnership, 'delete', action.entryId);
         result = { success: true, action: 'delete', entryId: action.entryId, pageId: index.pageId, replayed: false, removedFileUrls };
     });
 

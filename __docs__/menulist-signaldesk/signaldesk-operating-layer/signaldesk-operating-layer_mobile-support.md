@@ -1,40 +1,31 @@
 # SignalDesk Operating Layer - Mobile Support
 
-**Status:** Desktop-first internal tool
+**Status:** Dashboard-only mobile visibility; mutation surfaces are desktop-only
 **Created:** June 24, 2026
-**Last Updated:** July 16, 2026
+**Last Updated:** July 21, 2026
 
-## Decision
+## Current Contract
 
-Mobile support is partial.
+SignalDesk mobile is a compact read-only Dashboard. The Mission, Opportunities, Research Agent, experiment, offer, reply-playbook, source-quality, and market-pod workspaces are not mobile screens.
 
-The Mission screen may be read on mobile for emergency visibility, but creation, editing, and review actions remain desktop-first for the first build.
+The server also enforces mobile read-only admission, so hiding desktop controls is not the security boundary.
 
-## Feature Admission Test
+## Mobile Available
 
-| Gate | Result | Reason |
-| --- | --- | --- |
-| Frequency | Partial | Founder may check daily, but not constantly. |
-| Speed | Partial | Reviewing mission actions can be fast; creating experiments and policies is not. |
-| Touch | Partial | Reading is thumb-safe; editing structured cards is not. |
-| Value | Partial | Emergency pause/visibility has value away from desk. |
+- Compact Dashboard summaries admitted by enabled feature flags.
+- Current status, risk, and founder-attention information already included by the dashboard contract.
+- Existing emergency Control Room visibility where separately supported.
 
-## Mobile Allowance
+## Mobile Unavailable
 
-- View mission summary.
-- View recent research table output.
-- View blocked/risk actions.
-- View an existing experiment's readback plan and founder decision.
-- Keep the selected-card inspector available while experiment create, readback-edit, result-summary, and decision controls remain disabled.
-- Use existing emergency kill switches through Control Room.
+- Opening a Mission or Opportunities editor.
+- Preparing or reviewing a mission.
+- Running provider research or changing source configuration.
+- Creating/reviewing experiments.
+- Editing offers or reply playbooks.
+- Creating source-quality snapshots or market-pod recommendations.
+- Sending, exporting, publishing, approving spend, or changing provider controls.
 
-## Mobile Blocked
+## Future Admission
 
-- Create experiment card.
-- Edit comparison windows, primary metric, confounders, or next-readback time.
-- Record an experiment result summary or submit repeat, narrow, hold, stop, or complete.
-- Run Research Agent Table prompts or source-provider research.
-- Edit offer/CTA.
-- Edit reply playbook.
-- Review sender/source/provider gates.
-- Send/export/publish.
+A dedicated mobile Operating Layer should be considered only if observed use proves a frequent, time-sensitive founder decision that cannot be handled by the compact dashboard or desktop workspace. It must reuse the existing DAL, permissions, flags, and server read-only enforcement rather than creating a separate data path.

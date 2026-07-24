@@ -55,6 +55,34 @@ try {
         token: authorization.token,
         nowMs: fixedNow + 30_000,
     }), null, 'authorization must be bound to the workspace');
+    assert.equal(verifyAnswerlatticeWidgetRuntimeAuthorization({
+        ...scope,
+        tId: String(scope.tId) as unknown as number,
+        token: authorization.token,
+        nowMs: fixedNow + 30_000,
+    }), null, 'coercible tenant scope must fail closed');
+    assert.equal(verifyAnswerlatticeWidgetRuntimeAuthorization({
+        ...scope,
+        token: authorization.token,
+        nowMs: String(fixedNow + 30_000) as unknown as number,
+    }), null, 'coercible verification time must fail closed');
+    assert.throws(() => createAnswerlatticeWidgetRuntimeAuthorization({
+        ...scope,
+        origin: 'https://app.example.com',
+        nowMs: fixedNow,
+        ttlSeconds: '120' as unknown as number,
+    }), /ANSWERLATTICE_WIDGET_RUNTIME_TIME_INVALID/, 'coercible token TTL must be rejected');
+    assert.throws(() => createAnswerlatticeWidgetRuntimeAuthorization({
+        ...scope,
+        origin: 'https://app.example.com',
+        nowMs: 0,
+    }), /ANSWERLATTICE_WIDGET_RUNTIME_TIME_INVALID/, 'nonpositive token time must be rejected');
+    assert.throws(() => createAnswerlatticeWidgetRuntimeAuthorization({
+        ...scope,
+        apiKey: ` ${scope.apiKey}`,
+        origin: 'https://app.example.com',
+        nowMs: fixedNow,
+    }), /ANSWERLATTICE_WIDGET_RUNTIME_SCOPE_INVALID/, 'whitespace-mutated widget keys must be rejected');
 
     const tokenParts = authorization.token.split('.');
     const tamperedToken = `${tokenParts[0].slice(0, -1)}A.${tokenParts[1]}`;
@@ -110,4 +138,3 @@ try {
     if (originalSecret === undefined) delete process.env.ANSWERLATTICE_WIDGET_RUNTIME_SECRET;
     else process.env.ANSWERLATTICE_WIDGET_RUNTIME_SECRET = originalSecret;
 }
-

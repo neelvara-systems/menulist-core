@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {
     ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT,
+    getAnswerlatticeChatSessionActorScope,
+    getAnswerlatticeUserChatSessionsCacheKey,
     normalizeAnswerlatticeChatMessagesForStorage,
     normalizeAnswerlatticeInternalNote,
     parseAnswerlatticeChatSessionDocument,
@@ -26,6 +28,48 @@ const validDocument = {
     mode: 'qna',
     messages: [message('message-1')],
 };
+
+const initiatingSession = {
+    user: {
+        id: 'owner-1',
+        productAccounts: {
+            AL: { tenantId: 71, storeId: 701 },
+        },
+    },
+};
+assert.deepEqual(
+    getAnswerlatticeChatSessionActorScope(initiatingSession),
+    { tId: 71, sId: 701, uId: 'owner-1' },
+);
+assert.deepEqual(
+    getAnswerlatticeChatSessionActorScope({
+        ...initiatingSession,
+        user: {
+            ...initiatingSession.user,
+            productAccounts: { AL: { tenantId: 71, storeId: 702 } },
+        },
+    }),
+    { tId: 71, sId: 702, uId: 'owner-1' },
+);
+assert.equal(getAnswerlatticeChatSessionActorScope({
+    user: {
+        productAccounts: { AL: { tenantId: 71, storeId: 701 } },
+    },
+}), null);
+
+assert.deepEqual(
+    getAnswerlatticeUserChatSessionsCacheKey(
+        { tenantId: 71, storeId: 701 },
+        ' owner-1 ',
+    ),
+    ['answerlattice-user-chat-sessions', 71, 701, 'owner-1'],
+);
+assert.notDeepEqual(
+    getAnswerlatticeUserChatSessionsCacheKey({ tenantId: 71, storeId: 701 }, 'owner-1'),
+    getAnswerlatticeUserChatSessionsCacheKey({ tenantId: 71, storeId: 702 }, 'owner-1'),
+);
+assert.equal(getAnswerlatticeUserChatSessionsCacheKey(null, 'owner-1'), null);
+assert.equal(getAnswerlatticeUserChatSessionsCacheKey({ tenantId: 71, storeId: 701 }, ''), null);
 
 const parsed = parseAnswerlatticeChatSessionDocument({
     id: 'session-1',

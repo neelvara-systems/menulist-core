@@ -191,9 +191,8 @@ Owners interact with the support search through the search modal or Help Chat pa
 **Components:**
 
 - **Daily Chat Aggregation** — Nightly CF aggregates chat sessions into daily analytics docs
-- **Feedback Intelligence** — AI analyzes negative feedback for themes and patterns
-- **KB Quality** — AI scores article quality, identifies articles needing updates
-- **Weekly Narrative** — AI generates weekly performance summary (Sundays 2 AM UTC)
+- **Deterministic Chat Intelligence** — dedicated Answerlattice nightly aggregation derives bounded feedback and weekly support signals in the Answerlattice project
+- **Dormant compatibility workers** — retained MenuList Feedback Intelligence, KB Quality, and Weekly Narrative Gemini files are not scheduled or exported and are not current Help Center behavior
 
 ### 3.9 Content Feedback
 

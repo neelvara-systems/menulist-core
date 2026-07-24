@@ -163,6 +163,8 @@ interface DecisionTelemetry {
 
 - ✅ `authorityMaturation.ts` - Phase 1/2/3 analysis
 - ✅ Runs nightly in `decisionBlocksScoring.ts`
+- ✅ `ownerControlUsage/{tId}_{sId}` is the current aggregate authority: an exact owner/manager-only client state machine with transactional first-write/update, UTC monthly counters and shared app/Functions runtime validation
+- ✅ The daily task reads the aggregate in 500-document pages, skips and counts malformed legacy/Admin rows, and exact-replaces `insights/authority_maturation_YYYY-MM-DD`
 - ⚠️ Gap: Results stored in `insights` but not formal telemetry
 
 ### Firestore Schema

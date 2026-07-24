@@ -1,50 +1,43 @@
-# SignalDesk Demand Signals - Firebase Plan
+# SignalDesk Demand Signals - Firebase
 
-**Status:** Initial Firebase design
+**Status:** Implemented app-server persistence contract
 **Created:** June 23, 2026
+**Runtime reconciled:** July 21, 2026
 
 ## Collections
 
-| Collection | Purpose | Read Pattern |
+| Collection | Purpose | Client read pattern |
 | --- | --- | --- |
-| `signaldeskDemandSignals` | Compact append-only demand events. | Bounded detail/debug reads. |
-| `signaldeskDemandSignalSummaries` | Derived counts by surface, market, target, source, and day. | Dashboard/default reads. |
-| `signaldeskSurfaceHookEvents` | Hook health and rejected payload events. | Control-room diagnostics. |
-| `signaldeskReferralSignals` | Operator/partner referral records. | Review queue reads. |
-| `signaldeskViralRouteAttributions` | Route/share signal attribution references. | Outcome detail and reporting. |
+| `signaldeskDemandSignals` | Immutable operator-capture events. | None; server authority and outcome-source validation only. |
+| `signaldeskDemandSignalSummaries` | Daily source/surface/target-or-general counters. | Strict bounded workspace summary reads. |
+| `signaldeskIdempotencyKeys` | Actor/key capture claims. | None; transaction point reads only. |
+| `signaldeskAuditEvents` | Stable capture classification. | Authorized Audit workspace. |
+| `signaldeskControlRoomSummaries` | Aggregate demand count. | Existing overview read. |
+| `signaldeskCostDailySummaries` | Firestore write estimate. | Existing overview/cost read. |
 
-## Required Fields
+There are no `signaldeskSurfaceHookEvents`, `signaldeskReferralSignals`, or `signaldeskViralRouteAttributions` collections.
 
-| Object | Required fields |
+## Exact Records
+
+| Record | Required authority |
 | --- | --- |
-| Demand signal | `signalId`, `signalType`, `surface`, `scope`, `targetId`, `routeTokenId`, `sourcePolicyId`, `occurredAt`, `createdAt` |
-| Summary | `summaryId`, `scope`, `signalType`, `bucket`, `counts`, `lastSignalAt`, `updatedAt` |
-| Referral | `referralId`, `referrerType`, `targetHint`, `status`, `operatorId`, `evidenceNote`, `createdAt` |
-| Hook event | `hookEventId`, `surface`, `status`, `reason`, `createdAt` |
+| Event | `demandSignalId`, `pId=SD`, signal type, source surface, nullable paired target ID/name, `createdAt`, `createdBy` |
+| Summary | document-matching `demandSignalId`, `pId=SD`, count, UTC day, signal type, source surface, nullable paired target ID/name, `updatedAt` |
+| Claim | actor, event entity ID, `operation=demand_signal_capture`, `pId=SD`, request fingerprint, timestamp |
 
-## Indexes
+## Cost
 
-| Query | Index |
-| --- | --- |
-| Demand by target | `targetId`, `occurredAt desc` |
-| Demand summary | `scope`, `signalType`, `bucket desc` |
-| Referral review queue | `status`, `createdAt desc` |
-| Hook diagnostics | `surface`, `status`, `createdAt desc` |
-| Route attribution | `routeTokenId`, `createdAt desc` |
+A new operator capture writes exactly six records in one transaction: event, summary, claim, audit, control summary, and daily cost summary. Exact replay reads claim, event, and original event-day summary and writes zero.
 
-## Cost Rules
+Content-performance and trust-partner workflows use their own transactions. With owner-quality demand and the feature enabled, each adds two demand effects: one summary and one control count. Their daily cost estimates include those two effects. No additional read, listener, Function, index, Storage object, or provider call was added.
 
-- Dashboards read summaries only.
-- Public-surface hooks write compact payloads only.
-- Reject invalid payloads before expensive enrichment.
-- Aggregate scan/link activity by bucket where possible.
-- Do not read MenuList customer/session data into SignalDesk.
+## Indexes And Scale
+
+- Workspace summary ordering uses the automatic single-field `updatedAt` index.
+- Deterministic event, summary, and claim records use point reads.
+- The summary workspace read is capped and fill-through bounded; no raw event scan is used.
+- Current manual/internal volume does not justify a queue or sharded counter.
 
 ## Retention
 
-| Data | Default |
-| --- | --- |
-| Anonymous aggregate signals | Retain as aggregate summaries; raw compact events can be shorter-lived. |
-| Business-facing claim/referral signals | Retain while target/opportunity is active. |
-| Hook diagnostics | Retain short term for debugging and audit. |
-| Route attributions | Retain with outcome bridge policy. |
+No dedicated Demand Signals cleanup task exists today. Raw capture volume is operator-bounded because no public hook is wired. Before any public/high-volume producer is approved, retention for raw events and claims must be decided and added to the consolidated SignalDesk lifecycle scheduler; summaries may remain longer for aggregate learning.

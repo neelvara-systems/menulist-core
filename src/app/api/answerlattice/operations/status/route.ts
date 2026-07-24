@@ -11,6 +11,7 @@ import {
     normalizeAnswerlatticeTimeZone,
 } from '@lib/answerlattice/schedulerSettings';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { normalizeAnswerlatticeOperationsMetric } from '@lib/answerlattice/activationDashboardResponseClient';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -62,13 +63,14 @@ const ownerSafeError = (value: any): string | null => {
     return message ? 'Daily governance failed. Check platform logs.' : null;
 };
 
-const ownerSafeWorkspaceDetails = (value: any): Record<string, any> => {
+const ownerSafeWorkspaceDetails = (value: unknown) => {
     const details = value && typeof value === 'object' ? value : {};
+    const record = details as Record<string, unknown>;
     return {
-        nightlyStatus: typeof details.nightlyStatus === 'string' ? details.nightlyStatus : null,
-        tenantStatus: typeof details.tenantStatus === 'string' ? details.tenantStatus : null,
-        taskCount: Number.isFinite(Number(details.taskCount)) ? Number(details.taskCount) : 0,
-        errorCount: Number.isFinite(Number(details.errorCount)) ? Number(details.errorCount) : 0,
+        nightlyStatus: typeof record.nightlyStatus === 'string' ? record.nightlyStatus.slice(0, 80) : null,
+        tenantStatus: typeof record.tenantStatus === 'string' ? record.tenantStatus.slice(0, 80) : null,
+        taskCount: normalizeAnswerlatticeOperationsMetric(record.taskCount, 1_000_000),
+        errorCount: normalizeAnswerlatticeOperationsMetric(record.errorCount, 1_000_000),
     };
 };
 
@@ -151,7 +153,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 trigger: data.trigger || null,
                 startedAt: toIso(data.startedAt),
                 completedAt: toIso(data.completedAt),
-                durationMs: Number(data.durationMs || 0),
+                durationMs: normalizeAnswerlatticeOperationsMetric(data.durationMs),
                 tenantStatus: normalizeStatus(tenantRun.status),
                 taskCount: Array.isArray(tenantRun.tasks) ? tenantRun.tasks.length : 0,
                 errorCount: Array.isArray(tenantRun.errors) ? tenantRun.errors.length : 0,
@@ -170,7 +172,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                         lastRunId: governanceTask.lastRunId || null,
                         lastAttemptAt: toIso(governanceTask.lastAttemptAt),
                         lastFinishedAt: toIso(governanceTask.lastFinishedAt),
-                        lastDurationMs: Number(governanceTask.lastDurationMs || 0),
+                        lastDurationMs: normalizeAnswerlatticeOperationsMetric(governanceTask.lastDurationMs),
                         lastActivity: governanceTask.lastActivity === true,
                         lastError: ownerSafeError(governanceTask.lastError),
                         lastDetails: {},

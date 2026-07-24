@@ -107,12 +107,6 @@ export default function DigitalScreenSettings() {
 
     const handleOverrideToggle = async (enabled: boolean) => {
         try {
-            // Track screen override toggle (Authority Maturation Doctrine)
-            void trackOwnerControlUsage('screenOverride', {
-                previousValue: settings?.ownerOverrideEnabled || false,
-                newValue: enabled,
-            });
-
             // Use DAL directly (follows existing pattern)
             const updateResult = await updateScreenSettings({ ownerOverrideEnabled: enabled });
             assertDigitalScreenMutationSucceeded(
@@ -120,6 +114,12 @@ export default function DigitalScreenSettings() {
                 'desktop_digital_screen_override_update_rejected',
             );
 
+            // Count only a confirmed control mutation. A rejected settings
+            // write is not owner-control usage and must not mature authority.
+            void trackOwnerControlUsage('screenOverride', {
+                previousValue: settings?.ownerOverrideEnabled || false,
+                newValue: enabled,
+            });
             setSettings(prev => prev ? { ...prev, ownerOverrideEnabled: enabled } : null);
             message.success(enabled ? 'Only custom slides is on' : 'Menu highlights restored');
         } catch (err) {

@@ -23,6 +23,11 @@
 | WD-019 | Malformed browser row | Fixed load error; no stored text renders. |
 | WD-020 | Manual prepare requested repeatedly | Workspace limiter returns bounded retry behavior. |
 | WD-021 | Mobile width | Controls stack, content wraps, and actions remain usable. |
+| WD-022 | Scheduled then manual write over identical complete source | Source hash and payload agree; the second writer performs no write. |
+| WD-023 | Previous conversation or feedback denominator is absent | The corresponding comparison is `null` and renders `Not available`, not zero. |
+| WD-024 | Legacy weekly metric names | Parser maps them into the precise current DTO until regeneration. |
+| WD-025 | Existing insight contains retired merged fields | Schema-v2 replacement removes them. |
+| WD-026 | Positive-feedback share changes from 50% to 80% | UI/export report `+30.0` percentage points, not `+60%` satisfaction. |
 
 ## Focused Commands
 
