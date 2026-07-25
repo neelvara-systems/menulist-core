@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { admin, db } from "../../functions-signaldesk/src/firebaseAdmin";
+import { db, Timestamp } from "../../functions-signaldesk/src/firebaseAdmin";
 import {
   recordSignalDeskProofPermissionLifecycleFailure,
   runSignalDeskProofPermissionLifecycle,
@@ -13,7 +13,6 @@ import {
   runSignalDeskMaintenanceScheduler,
 } from "../../functions-signaldesk/src/schedulers/signaldeskMaintenanceScheduler";
 
-const Timestamp = admin.firestore.Timestamp;
 const COLLECTIONS = {
   assets: "signaldeskContentAssets",
   audits: "signaldeskAuditEvents",

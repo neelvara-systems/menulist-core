@@ -14,7 +14,7 @@ const loadFreshBootstrapState = () => {
   });
   require("tsconfig-paths/register");
 
-  const firebaseAdmin = require("firebase-admin");
+  const firebaseAdmin = require("firebase-admin/app");
   const firebaseApp = require("firebase/app");
   const preinitializeAdminProject = process.env[`${TEST_PREFIX}PREINITIALIZE_ADMIN_PROJECT`];
   const preinitializeAdminBucket = process.env[`${TEST_PREFIX}PREINITIALIZE_ADMIN_BUCKET`];
@@ -70,7 +70,7 @@ const loadFreshBootstrapState = () => {
     adminAppProjectId: adminBootstrap.signaldeskAdminApp?.options.projectId || null,
     adminAppStorageBucket: adminBootstrap.signaldeskAdminApp?.options.storageBucket || null,
     adminFirestoreInitialized: Boolean(adminBootstrap.signaldeskFirestoreAdmin),
-    allAdminApps: firebaseAdmin.apps.map((app) => ({
+    allAdminApps: firebaseAdmin.getApps().map((app) => ({
       name: app?.name || null,
       projectId: app?.options.projectId || null,
       storageBucket: app?.options.storageBucket || null,

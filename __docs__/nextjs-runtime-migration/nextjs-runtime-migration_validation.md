@@ -4,7 +4,7 @@
 **Validated:** July 25, 2026
 **Runtime:** Node 22.23.1 / Next.js 16.2.11 / React 19.2.8
 **Worktree base:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
-**Deployment:** Not performed
+**Deployment:** Staging attempt at `efc9456` failed during Turbopack compilation from Vercel container OOM; corrected source is locally validated and not yet redeployed
 
 ## Result
 
@@ -48,12 +48,16 @@ No install used `--force`, `--legacy-peer-deps`, or a peer override. `next-pwa` 
 | Proxy convention | Build output reports `Proxy (Middleware)` |
 | TypeScript inside both builds | Passed |
 | Clean-lockfile rebuild | `npm ci` followed by Turbopack build passed, 439/439 |
+| Cold Vercel-equivalent build after OOM correction | Passed with a 4096 MiB V8 ceiling, 439/439 pages |
+| Whole-repository filesystem trace warnings | Reduced from four to zero |
+| Exact `build:vercel` peak resident memory | Reduced from 7,292,469,248 to 6,735,249,408 bytes (557,219,840 bytes reclaimed) |
 
 Expected non-blocking warnings:
 
 - Existing Sass `@import` deprecations remain. They are styling-modernization debt, not a Next 16 regression.
-- Turbopack warns that dynamic local service-account path joins can trace broad filesystem patterns. Runtime validation remains guarded and no credential file is embedded into the browser graph.
 - Local build workers report missing optional Gemini key slots where the local environment intentionally does not supply them.
+
+The Vercel failure was a total-container OOM, not a TypeScript, lint, or Next compilation diagnostic. The standard build had an 8 GiB machine while `build:vercel` allowed V8 to reserve 6144 MiB alongside Turbopack's native Rust allocations. The corrected command limits V8 to 4096 MiB, disables server source maps explicitly, and marks runtime-only MyCodex/credential filesystem paths with `turbopackIgnore`. Explicit MyCodex Markdown output tracing remains, so required documents still ship without making Turbopack traverse unrelated repository assets.
 
 ## Served-runtime HTTP matrix
 

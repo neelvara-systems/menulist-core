@@ -144,6 +144,7 @@ const nextConfig = {
         // Optimize for memory usage in builds
         // optimizeCss: true, // Disabled — causes silent page drops on Vercel OOM builds
         optimizePackageImports: ['antd', 'antd-mobile', 'react-icons'],
+        serverSourceMaps: false,
     },
     typescript: {
         // Vercel runs `npm run build:verify` before `next build` when this

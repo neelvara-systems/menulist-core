@@ -93,8 +93,8 @@ function getSignalDeskFileCredential(): SignalDeskAdminCredentialDescriptor | nu
     try {
         const resolvedPath = path.isAbsolute(credentialPath)
             ? credentialPath
-            : path.join(process.cwd(), credentialPath);
-        const parsed: unknown = JSON.parse(fs.readFileSync(resolvedPath, "utf8"));
+            : path.join(/* turbopackIgnore: true */ process.cwd(), credentialPath);
+        const parsed: unknown = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ resolvedPath, "utf8"));
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
             throw new Error("SignalDesk service-account file must contain an object.");
         }

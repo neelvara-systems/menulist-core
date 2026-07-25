@@ -48,6 +48,7 @@ All declarations remain exact and are guarded by `npm run verify:dependency-free
 - Added explicit Turbopack SVGR handling for existing SVG-as-component imports.
 - Retained `config.cache = false` for the diagnostic Webpack path because persistent Webpack caching reproducibly exceeded the available heap for this repository graph.
 - Default `npm run build` uses Turbopack. `npm run build:webpack` is the full parity path.
+- Vercel Turbopack builds cap V8 at 4096 MiB inside the standard 8 GiB container, keep browser/server source maps disabled, and exclude runtime-only credential/MyCodex filesystem expressions from automatic Turbopack tracing. Required MyCodex Markdown remains explicitly included through `outputFileTracingIncludes`.
 
 ### Server and browser module boundary
 

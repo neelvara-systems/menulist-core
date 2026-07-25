@@ -59,6 +59,15 @@ const PACKAGE_PAIRS = [
       typescript: '5.9.3',
     },
   },
+  {
+    label: 'SignalDesk Functions package',
+    dir: 'functions-signaldesk',
+    expectedCoreVersions: {
+      'firebase-admin': '13.10.0',
+      'firebase-functions': '6.6.0',
+      typescript: '5.9.3',
+    },
+  },
 ];
 
 function readJson(relPath) {

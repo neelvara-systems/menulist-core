@@ -5,6 +5,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const MENULIST_FUNCTIONS_DIR = path.join(ROOT, 'functions');
 const ANSWERLATTICE_FUNCTIONS_DIR = path.join(ROOT, 'functions-answerlattice');
+const SIGNALDESK_FUNCTIONS_DIR = path.join(ROOT, 'functions-signaldesk');
 
 const ROOT_ALLOWED_HIGH_PACKAGES = new Map([
   ['postcss', 'next'],
@@ -39,6 +40,10 @@ const REQUIRED_DIRECT_VERSIONS = {
     'firebase-admin': '13.10.0',
     'firebase-functions': '6.6.0',
     nodemailer: '9.0.3',
+  },
+  signaldeskFunctions: {
+    'firebase-admin': '13.10.0',
+    'firebase-functions': '6.6.0',
   },
 };
 
@@ -120,6 +125,7 @@ function verifyFirebaseAdminModularBoundary() {
     path.join(ROOT, 'src'),
     path.join(MENULIST_FUNCTIONS_DIR, 'src'),
     path.join(ANSWERLATTICE_FUNCTIONS_DIR, 'src'),
+    path.join(SIGNALDESK_FUNCTIONS_DIR, 'src'),
   ];
   const offenders = sourceDirectories.flatMap((directory) => walkSourceFiles(directory))
     .filter((filePath) => rootNamespaceImport.test(fs.readFileSync(filePath, 'utf8')))
@@ -252,10 +258,16 @@ verifyDirectVersions(
   REQUIRED_DIRECT_VERSIONS.answerlatticeFunctions,
   'Answerlattice Functions runtime',
 );
+verifyDirectVersions(
+  SIGNALDESK_FUNCTIONS_DIR,
+  REQUIRED_DIRECT_VERSIONS.signaldeskFunctions,
+  'SignalDesk Functions runtime',
+);
 verifyRootMailRuntime();
 verifyRootDependencyOverrides();
 verifyFunctionsDependencyBoundary(MENULIST_FUNCTIONS_DIR, 'MenuList Functions');
 verifyFunctionsDependencyBoundary(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions');
+verifyFunctionsDependencyBoundary(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions');
 verifyFirebaseAdminModularBoundary();
 verifyRootAudit(runAudit(ROOT, 'Root full'), 'Root full');
 verifyRootAudit(runAudit(ROOT, 'Root production', { omitDev: true }), 'Root production');
@@ -274,6 +286,14 @@ verifyFunctionsAudit(
 verifyFunctionsAudit(
   runAudit(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions production', { omitDev: true }),
   'Answerlattice Functions production',
+);
+verifyFunctionsAudit(
+  runAudit(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions full'),
+  'SignalDesk Functions full',
+);
+verifyFunctionsAudit(
+  runAudit(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions production', { omitDev: true }),
+  'SignalDesk Functions production',
 );
 
 console.log('Repository dependency security audit verification passed');

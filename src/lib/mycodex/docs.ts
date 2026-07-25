@@ -50,7 +50,7 @@ export async function getMyCodexDocsTree(
     relativePath = '',
 ): Promise<MyCodexDocNode[]> {
     try {
-        const items = await fs.readdir(dirPath, { withFileTypes: true });
+        const items = await fs.readdir(/* turbopackIgnore: true */ dirPath, { withFileTypes: true });
         const nodes: MyCodexDocNode[] = [];
 
         for (const item of items) {
@@ -58,7 +58,7 @@ export async function getMyCodexDocsTree(
                 continue;
             }
 
-            const fullPath = path.join(dirPath, item.name);
+            const fullPath = path.join(/* turbopackIgnore: true */ dirPath, item.name);
             const rel = relativePath ? `${relativePath}/${item.name}` : item.name;
 
             if (item.isDirectory()) {
@@ -95,22 +95,22 @@ export async function getMyCodexDocsTree(
 }
 
 async function getReadableMarkdownFile(targetPath: string, docsDir: string): Promise<string | null> {
-    const resolvedPath = path.resolve(targetPath);
+    const resolvedPath = path.resolve(/* turbopackIgnore: true */ targetPath);
 
     if (!isInsideDocsDir(docsDir, resolvedPath)) {
         return null;
     }
 
     try {
-        const stat = await fs.stat(resolvedPath);
+        const stat = await fs.stat(/* turbopackIgnore: true */ resolvedPath);
         if (stat.isFile() && resolvedPath.endsWith('.md')) {
             return resolvedPath;
         }
 
         if (stat.isDirectory()) {
             const candidates = [
-                path.join(resolvedPath, 'README.md'),
-                path.join(resolvedPath, 'index.md'),
+                path.join(/* turbopackIgnore: true */ resolvedPath, 'README.md'),
+                path.join(/* turbopackIgnore: true */ resolvedPath, 'index.md'),
             ];
 
             for (const candidate of candidates) {
@@ -126,19 +126,19 @@ async function getReadableMarkdownFile(targetPath: string, docsDir: string): Pro
 }
 
 async function getDirectoryIndexMarkdown(directoryPath: string, docsDir: string, slug: string[]): Promise<string | null> {
-    const resolvedPath = path.resolve(directoryPath);
+    const resolvedPath = path.resolve(/* turbopackIgnore: true */ directoryPath);
 
     if (!isInsideDocsDir(docsDir, resolvedPath)) {
         return null;
     }
 
     try {
-        const stat = await fs.stat(resolvedPath);
+        const stat = await fs.stat(/* turbopackIgnore: true */ resolvedPath);
         if (!stat.isDirectory()) {
             return null;
         }
 
-        const items = await fs.readdir(resolvedPath, { withFileTypes: true });
+        const items = await fs.readdir(/* turbopackIgnore: true */ resolvedPath, { withFileTypes: true });
         const visibleItems = items
             .filter(item => (
                 isVisibleDocsEntry(item.name)
@@ -202,19 +202,19 @@ export async function resolveMyCodexDocument(slug: string[]): Promise<ResolvedMy
 
     try {
         if (slug.length === 0) {
-            const rootIndex = path.join(docsDir, 'index.md');
+            const rootIndex = path.join(/* turbopackIgnore: true */ docsDir, 'index.md');
             resolvedFilePath = await getReadableMarkdownFile(rootIndex, docsDir);
             markdown = resolvedFilePath
-                ? await fs.readFile(resolvedFilePath, 'utf8')
+                ? await fs.readFile(/* turbopackIgnore: true */ resolvedFilePath, 'utf8')
                 : '# Document Not Found\n\nWe could not find the documentation index.';
         } else {
-            const baseTarget = path.join(docsDir, ...slug);
+            const baseTarget = path.join(/* turbopackIgnore: true */ docsDir, ...slug);
 
             resolvedFilePath = await getReadableMarkdownFile(`${baseTarget}.md`, docsDir)
                 || await getReadableMarkdownFile(baseTarget, docsDir);
 
             if (resolvedFilePath) {
-                markdown = await fs.readFile(resolvedFilePath, 'utf8');
+                markdown = await fs.readFile(/* turbopackIgnore: true */ resolvedFilePath, 'utf8');
             } else {
                 markdown = await getDirectoryIndexMarkdown(baseTarget, docsDir, slug)
                     || `# Document Not Found\n\nWe could not find the requested document at **${slug.join('/')}**.\n\nPlease check the navigation tree in the sidebar to browse available documentation.`;

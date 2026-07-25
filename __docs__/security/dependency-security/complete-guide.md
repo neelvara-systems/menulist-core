@@ -2,7 +2,7 @@
 
 **Status:** Enforced  
 **Last verified:** July 25, 2026  
-**Scope:** Root Next.js app, MenuList Functions, and Answerlattice Functions
+**Scope:** Root Next.js app plus MenuList, Answerlattice, and SignalDesk Functions
 
 ## Authority
 
@@ -27,24 +27,25 @@ Current exposure is bounded because first-party builds compile repository-contro
 
 ## Current Functions disposition
 
-Both independent Cloud Functions package roots are clean:
+All three independent Cloud Functions package roots are clean:
 
 | Package root | Full audit | Production audit | Clean install |
 |---|---:|---:|---:|
 | `functions/` | 0 vulnerabilities | 0 vulnerabilities | 507 packages audited |
 | `functions-answerlattice/` | 0 vulnerabilities | 0 vulnerabilities | 253 packages audited |
+| `functions-signaldesk/` | 0 vulnerabilities | 0 vulnerabilities | 250 packages audited |
 
-Both `npm ls --all` trees have zero invalid, missing, or extraneous packages. These results were reproduced with Node 22.23.1 after deleting each installed tree through `npm ci`.
+All three `npm ls --all` trees have zero invalid, missing, or extraneous packages. These results were reproduced with Node 22.23.1 after deleting each installed tree through `npm ci`.
 
 ## Remediations completed
 
 - Fabric moved from 5.3.0 to 7.4.0, removing the critical native `canvas` / `tar` / `node-pre-gyp` chain. The shared editor explicitly preserves left/top origins, Promise image/clone behavior, collection-owned stacking, coordinate-safe group/ungroup, filters, export, and async disposal.
 - Firebase Admin moved from 12.7.0 to 14.2.0. Root namespace imports were replaced by `src/lib/firebase/firebaseAdminCompat.ts`, which exposes the narrow legacy-shaped surface through supported modular v14 entry points.
 - `uuid@11.1.1` is a root security override for ExcelJS, Gaxios, and Teeny Request. ExcelJS buffer round-trip, CommonJS `v4`, UUID buffer output, and Firebase modular imports are regression-checked.
-- MenuList Functions moved to Sentry 10.68.0, Firebase Admin 13.10.0, Nodemailer 9.0.3, and Razorpay 2.9.8. Answerlattice Functions moved to Firebase Admin 13.10.0, Firebase Functions 6.6.0, and Nodemailer 9.0.3.
-- Functions stay on Firebase Admin 13.10.0 because it removes the vulnerable UUID dependency while remaining inside the stable Firebase Functions 6.6 peer contract. Firebase Admin 14 requires Firebase Functions 7.3, which was still a release candidate on July 24, 2026. Both Functions initializers already use modular Admin entry points so a future stable paired upgrade will not require another namespace migration.
-- Both Functions roots override transitive UUID to 11.1.1. The unused `firebase-functions-test` dependency was removed because no test imports it and its current release carries the vulnerable `ts-deepmerge` chain.
-- Existing emulator compatibility is preserved through narrow modular `Timestamp`, `FieldValue`, and app-deletion adapters. Representative MenuList special-menu and Answerlattice Knowledge Intake summary emulator tests pass.
+- MenuList Functions moved to Sentry 10.68.0, Firebase Admin 13.10.0, Nodemailer 9.0.3, and Razorpay 2.9.8. Answerlattice Functions moved to Firebase Admin 13.10.0, Firebase Functions 6.6.0, and Nodemailer 9.0.3. SignalDesk Functions moved to Firebase Admin 13.10.0 and Firebase Functions 6.6.0.
+- Functions stay on Firebase Admin 13.10.0 because it removes the vulnerable UUID dependency while remaining inside the stable Firebase Functions 6.6 peer contract. Firebase Admin 14 requires Firebase Functions 7.3, which was still a release candidate on July 24, 2026. All three Functions initializers already use modular Admin entry points so a future stable paired upgrade will not require another namespace migration.
+- All three Functions roots override transitive UUID to 11.1.1. The unused `firebase-functions-test` dependency was removed because no test imports it and its current release carries the vulnerable `ts-deepmerge` chain.
+- Existing emulator compatibility is preserved through narrow modular `Timestamp`, `FieldValue`, and app-deletion adapters. Representative MenuList special-menu, Answerlattice Knowledge Intake summary, and SignalDesk proof-permission/source-data lifecycle emulator tests pass.
 - The MenuList Functions lint command now uses flat-config-compatible `eslint .`; the deployment preflight again passes lint and strict build under Node 22.
 - Next's optional Sharp is overridden to 0.35.3 and must be exercised through real Next image optimization during final runtime validation.
 - Safe non-breaking audit updates moved YAML, WebSocket, minimatch, brace expansion, immutable, and diff to patched resolved versions.
@@ -69,6 +70,8 @@ npm --prefix functions ci
 npm --prefix functions run build
 npm --prefix functions-answerlattice ci
 npm --prefix functions-answerlattice run build
+npm --prefix functions-signaldesk ci
+npm --prefix functions-signaldesk run build
 ```
 
 For dependency migrations, also run the directly affected feature verifiers and both production builders. The Fabric migration requires `npm run verify:creative-editor-smoke` and CampaignCue runtime verification. Firebase Admin migration requires the shared product/server verifiers plus actual production-build module evaluation.
@@ -80,8 +83,8 @@ Stop and investigate if any of these occurs:
 - critical count is non-zero;
 - a high or moderate package is not `postcss` or `next`;
 - the accepted Next/PostCSS family grows above one high and one moderate entry;
-- a direct `firebase-admin` root namespace import appears in the root app or either Functions source tree;
-- either Functions full or production audit becomes non-zero;
+- a direct `firebase-admin` root namespace import appears in the root app or any Functions source tree;
+- any Functions full or production audit becomes non-zero;
 - Fabric native canvas/tar packages reappear;
 - a UUID override or the root Sharp override is removed;
 - npm proposes a framework downgrade, canary, `--force`, or peer bypass;

@@ -9,7 +9,7 @@ Use when a Vercel build fails. Follow these steps in order based on the error ty
 ## Step 1: Identify the Error Phase
 
 Read the build log and identify which phase failed:
-- **"Creating an optimized production build"** → Webpack compilation (OOM or module errors)
+- **"Creating an optimized production build"** → Bundler compilation (Turbopack by default on Next 16; Webpack only with `--webpack`)
 - **"Linting and checking validity of types"** → TypeScript errors
 - **"Collecting page data"** → SSR/SSG runtime errors (Firebase init, missing env vars)
 - **"Generating static pages"** → Page-level runtime errors
@@ -19,13 +19,17 @@ Read the build log and identify which phase failed:
 
 If build is killed with SIGKILL or times out at 45 minutes:
 
-1. Verify `config.cache = false` on Vercel builds in next.config.js
-2. Verify `webpackBuildWorker: true` in experimental
-3. Verify `serverSourceMaps: false` in experimental
-4. Verify `outputFileTracingExcludes` covers heavy node_modules
-5. Check for `@ant-design/plots` or D3 components missing `"use client"`
-6. Check for heavy libs (jspdf, exceljs, fabric) with static imports — convert to dynamic
-7. Verify `vercel.json` removes unused SWC binary
+1. Confirm the active bundler from the log before applying bundler-specific controls.
+2. Read the Vercel build-system report. Treat SIGKILL plus an OOM event as total-container exhaustion, not automatically a V8 heap error.
+3. On the standard 8 GiB Vercel machine, keep the Turbopack V8 ceiling at 4096 MiB so native compiler and platform processes retain headroom.
+4. Fix every Turbopack `matches ... files` or `unexpected file in NFT list` warning. Runtime-only dynamic filesystem paths need `/* turbopackIgnore: true */` at the path expression/read, plus explicit `outputFileTracingIncludes` for assets that must ship.
+5. Verify `serverSourceMaps: false` and `productionBrowserSourceMaps: false`.
+6. Verify `outputFileTracingExcludes` covers heavy unrelated assets and native build packages.
+7. Check for `@ant-design/plots` or D3 components missing `"use client"`.
+8. Check for heavy libraries (`jspdf`, `exceljs`, `fabric`) with avoidable static imports; preserve server/client contracts when converting to dynamic imports.
+9. For an actual Webpack build only, verify `config.cache = false`, consider `webpackBuildWorker: true`, and test `webpackMemoryOptimizations`; these controls do not fix a Turbopack compilation.
+10. Verify `vercel.json` removes the unused SWC binary and enable `VERCEL_BUILD_SYSTEM_REPORT=1` while measuring.
+11. Reproduce from a clean output directory with the exact Vercel build command and record peak RSS before claiming closure.
 
 ## Step 3: Module Not Found Fix
 

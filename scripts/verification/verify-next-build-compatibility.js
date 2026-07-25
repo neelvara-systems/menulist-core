@@ -24,6 +24,12 @@ function assertIncludes(haystack, needle, message) {
 const nextConfig = read('next.config.js');
 const packageJson = JSON.parse(read('package.json'));
 const proxy = read('src/proxy.ts');
+const myCodexDocs = read('src/lib/mycodex/docs.ts');
+const runtimeCredentialReaders = [
+  'src/lib/firebase/answerlatticeFirebaseAdmin.ts',
+  'src/lib/firebase/campaigncueFirebaseAdmin.ts',
+  'src/lib/firebase/signaldeskFirebaseAdmin.ts',
+];
 const dynamicHeaderPages = [
   'src/app/(campaigncue)/campaigncue/app/page.tsx',
   'src/app/sites/campaigncue/page.tsx',
@@ -69,6 +75,39 @@ assert(
   packageJson.scripts?.['build:webpack']?.includes('next build --webpack'),
   'A full Webpack parity build must remain available.',
 );
+assert(
+  packageJson.scripts?.['build:vercel']?.includes('--max-old-space-size=4096')
+    && !packageJson.scripts['build:vercel'].includes('--max-old-space-size=6144'),
+  'The Vercel Turbopack build must leave native compiler headroom inside the 8 GiB build container.',
+);
+assertIncludes(
+  nextConfig,
+  'serverSourceMaps: false',
+  'Production server source maps must remain disabled to bound build memory.',
+);
+assertIncludes(
+  myCodexDocs,
+  'path.resolve(/* turbopackIgnore: true */ targetPath)',
+  'MyCodex runtime document resolution must not make Turbopack trace the whole repository.',
+);
+assertIncludes(
+  myCodexDocs,
+  'fs.readdir(/* turbopackIgnore: true */ dirPath',
+  'MyCodex runtime document traversal must rely on explicit output tracing includes.',
+);
+for (const relPath of runtimeCredentialReaders) {
+  const source = read(relPath);
+  assertIncludes(
+    source,
+    'path.join(/* turbopackIgnore: true */ process.cwd(), credentialPath)',
+    `${relPath} runtime credential path must not create a whole-repository Turbopack trace`,
+  );
+  assertIncludes(
+    source,
+    'fs.readFileSync(/* turbopackIgnore: true */ resolvedPath',
+    `${relPath} runtime credential read must remain excluded from build-time asset discovery`,
+  );
+}
 assertIncludes(proxy, 'export async function proxy(', 'Next 16 proxy convention');
 assert(!exists('src/middleware.ts'), 'The deprecated middleware convention must remain removed.');
 

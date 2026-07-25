@@ -13,7 +13,7 @@
     "build:webpack": "NODE_OPTIONS='--max-old-space-size=10240' NODE_ENV=production next build --webpack",
     "build:prod": "NODE_OPTIONS='--max-old-space-size=6144' NODE_ENV=production next build",
     "build:verify": "npm run typecheck && npm run lint",
-    "build:vercel": "rm -rf node_modules/@next/swc-linux-x64-musl && npm run build:verify && NEXT_SKIP_NEXT_BUILD_CHECKS=1 NODE_OPTIONS='--max-old-space-size=6144' next build",
+    "build:vercel": "rm -rf node_modules/@next/swc-linux-x64-musl && npm run build:verify && NEXT_SKIP_NEXT_BUILD_CHECKS=1 NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:analyze": "ANALYZE=true NODE_OPTIONS='--max-old-space-size=6144' npm run build",
     "start": "next start",
     "lint": "eslint src --max-warnings=0",

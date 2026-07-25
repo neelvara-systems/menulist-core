@@ -74,8 +74,8 @@ function getCampaignCueFileCredential(): admin.credential.Credential | null {
     try {
         const resolvedPath = path.isAbsolute(credentialPath)
             ? credentialPath
-            : path.join(process.cwd(), credentialPath);
-        const raw = JSON.parse(fs.readFileSync(resolvedPath, "utf8"));
+            : path.join(/* turbopackIgnore: true */ process.cwd(), credentialPath);
+        const raw = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ resolvedPath, "utf8"));
         const projectId = raw.project_id || getCampaignCueProjectId();
         const privateKey = raw.private_key;
         const clientEmail = raw.client_email;

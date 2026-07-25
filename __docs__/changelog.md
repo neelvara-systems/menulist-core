@@ -1,5 +1,19 @@
 # MenuList — Changelog
 
+## July 25, 2026 - Vercel Turbopack OOM Closure
+
+- **The staging failure was container memory exhaustion** - typecheck and lint passed, then Vercel killed Turbopack during optimized compilation after the 6 GiB V8 allowance plus native compiler memory exhausted the 8 GiB machine.
+- **The Vercel command now leaves native headroom** - `build:vercel` caps V8 at 4096 MiB and Next explicitly disables server source maps.
+- **Runtime filesystem access no longer expands the build graph** - Answerlattice, CampaignCue, SignalDesk credential readers and MyCodex document traversal use supported Turbopack ignore boundaries; required MyCodex Markdown remains explicitly traced.
+- **Cold-build evidence is green** - all 439 pages generate, whole-repository trace warnings fall from four to zero, and exact `build:vercel` peak RSS falls by 557,219,840 bytes, from 7,292,469,248 to 6,735,249,408. TypeScript, lint, Firebase project boundaries, and maintained Next migration/build verifiers pass.
+
+## July 25, 2026 - SignalDesk Functions Dependency Security Closure
+
+- **SignalDesk now matches the maintained Functions runtime** - its independent package pins Node 22, Firebase Admin 13.10.0, Firebase Functions 6.6.0, and TypeScript 5.9.3 through modular Admin entry points.
+- **The vulnerable transitive chain is removed** - the unused `firebase-functions-test` dependency is gone, UUID is held at 11.1.1, and patched `fast-xml-parser`, `protobufjs`, and `body-parser` resolutions produce zero full and production audit findings.
+- **Future drift fails automatically** - dependency freeze, modular-import, direct-version, removed-test-dependency, and zero-audit gates now include `functions-signaldesk/` alongside MenuList and Answerlattice.
+- **Runtime compatibility is proven** - clean Node 22 install, peer tree, Functions build, 3,879 SignalDesk checks, project-boundary tests, proof-permission/source-data lifecycle emulators, root TypeScript, lint, documentation checks, and the Next production build pass. The QA Functions deploy remains blocked before upload only by missing Firebase CLI authentication.
+
 ## July 24, 2026 - Answerlattice Changelog Read Cache Isolation
 
 - **The internal changelog cache now binds its real reader** - latest and older page DAL calls receive the initiating Answerlattice tenant/workspace and reject a later active scope before Firestore reads.

@@ -13,7 +13,7 @@
 - Verified MenuList handoff copies only the existing anonymous founder-pilot URL, does not mint a route token, and does not send or write outcome/MenuList truth.
 - Verified activation-proof preparation first requires durable activation time, evidence reference, approved integrity, and two distinct target surfaces, then uses the existing Content response and permission/source authority to prefill review fields only. Missing authority remains blocked.
 - Verified the seven-day snapshot counts only existing route/upload/preview/publish outcomes and evidence-backed verified two-surface outcomes, links its cohort percentage by unique target ID, and derives stalls only from elapsed durable activation deadlines.
-- `npm run verify:signaldesk` passes 3,876 aggregate checks and includes the focused daily-activation test.
+- `npm run verify:signaldesk` passes 3,879 aggregate checks and includes the focused daily-activation test.
 - Workspace/client, action/client, and outcome contract suites pass.
 - Focused Operating Layer and outcome/proof/content Firestore E2E suites pass serially. Their bounded malformed/overflow diagnostics are expected negative-case evidence.
 - Exact root TypeScript, focused ESLint, dependency freeze, documentation npm-command references, documentation links, and diff whitespace checks pass. Documentation has zero broken links; the 62 naming warnings remain unrelated video artifacts.
@@ -45,10 +45,12 @@ The final cross-feature pass found and corrected two aggregate-only issues:
 
 | Gate | Current result |
 | --- | --- |
-| `npm run verify:signaldesk` | PASS - 3,876 checks. |
+| `npm run verify:signaldesk` | PASS - 3,879 checks. |
 | Focused Revenue, happy-path, webhook/DNC, outcome/proof/content, and manual-contact Firestore E2E | PASS. |
 | Root TypeScript and focused SignalDesk ESLint | PASS. |
 | SignalDesk Functions TypeScript build | PASS. The package has no separate lint script. |
+| SignalDesk Functions dependency security | PASS on July 25, 2026 - Firebase Admin 13.10.0, Firebase Functions 6.6.0, TypeScript 5.9.3, modular Admin imports, clean peer tree, and zero full/production audit findings under Node 22.23.1. |
+| SignalDesk Functions QA deploy | BLOCKED EXTERNALLY on July 25, 2026 before upload - `firebase deploy --only functions:signaldesk --project menulist-signaldesk-qa --config firebase-signaldesk.json --non-interactive` returned `Failed to authenticate, have you run firebase login?`. |
 | Access boundary, workspace/client contracts, and Firestore/Storage semantic rules | PASS. Expected `PERMISSION_DENIED` lines are negative-case evidence. |
 | Dependency freeze, documentation links, and diff integrity | PASS. Documentation has zero broken links; the 62 naming warnings are unrelated video artifacts. |
 | Complete aggregate Firestore E2E | The current logic cleared every business assertion reached. Two fresh runs stopped in different late stages with the emulator-only bare error `Transaction is invalid or closed`; the same webhook/DNC and manual-contact stages passed independently. Retries stopped under the repeated-error rule, and concurrency assertions were not weakened or serialized. |

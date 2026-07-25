@@ -2370,6 +2370,9 @@ function verifyFirebaseIsolation() {
   assertIncludes(firebaseConstants, "normalizeSignalDeskStorageBucket", "SignalDesk Firebase constants normalize storage-bucket identity");
   assertIncludes(functionsFirebaseAdmin, "resolveSignalDeskFunctionsProjectId", "SignalDesk Functions resolve an explicit approved project");
   assertIncludes(functionsFirebaseAdmin, "SIGNALDESK_FUNCTIONS_EXISTING_APP_PROJECT_MISMATCH", "SignalDesk Functions reject stale default app authority");
+  assertIncludes(functionsFirebaseAdmin, 'from "firebase-admin/app"', "SignalDesk Functions use the modular Firebase Admin app entry point");
+  assertIncludes(functionsFirebaseAdmin, 'from "firebase-admin/firestore"', "SignalDesk Functions use the modular Firebase Admin Firestore entry point");
+  assertNotIncludes(functionsFirebaseAdmin, 'from "firebase-admin"', "SignalDesk Functions do not use the legacy Firebase Admin root namespace");
   assertIncludes(functionsProjectBoundary, 'SIGNALDESK_FUNCTIONS_QA_PROJECT_ID = "menulist-signaldesk-qa"', "SignalDesk Functions allow the QA project");
   assertIncludes(functionsProjectBoundary, 'SIGNALDESK_FUNCTIONS_PRODUCTION_PROJECT_ID = "menulist-signaldesk"', "SignalDesk Functions allow the production project");
   assertIncludes(functionsProjectBoundary, 'SIGNALDESK_FUNCTIONS_PROJECT_ID_NOT_ALLOWED', "SignalDesk Functions reject foreign projects");

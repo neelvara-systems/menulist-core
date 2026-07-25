@@ -26,10 +26,12 @@ Firebase client (v11.7.3)
 Firebase Admin root app (v14.2.0, modular entry points through the repo compatibility boundary)
 MenuList Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
 Answerlattice Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
+SignalDesk Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
 Google GenAI SDK (@google/genai v0.12.0)
 
 Build Tools:
 Node.js (v22; .nvmrc v22.23.1)
+Vercel Next/Turbopack builds: 4096 MiB V8 ceiling inside the standard 8 GiB container; browser/server source maps disabled; runtime-only filesystem paths require guarded Turbopack ignore plus explicit output tracing
 SASS (v1.101.7)
 ESLint (v9.39.5)
 

@@ -19,6 +19,13 @@
 
 ## Active Items
 
+### Vercel Turbopack Build Memory — July 25, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified Vercel OOM correction in the next staging push and rerun the staging deployment with `VERCEL_BUILD_SYSTEM_REPORT=1`; retain the successful build report and smoke the MenuList, Answerlattice, CampaignCue, SignalDesk, and MyCodex entry routes | Local cold-build evidence proves 439/439 pages and materially lower peak RSS, but only Vercel can confirm the corrected graph stays below its platform overhead on the standard 8 GiB machine. Codex did not push or redeploy. | P0 (before staging sign-off) | ⬜ |
+| 2 | If the corrected cold Vercel build still records an OOM, enable an Elastic/Enhanced build machine for the project before changing application behavior or weakening type/lint gates | The remaining fallback is build capacity, not a product-runtime migration; Vercel documents 16 GiB enhanced/elastic capacity for memory-intensive builds. | P0 only if OOM repeats | ⬜ |
+
 ### Business Truth Contract And Maps Activation Gates — July 22, 2026
 
 Complete these in order. Do not expose grounded Place-ID confirmation UI merely
@@ -435,5 +442,5 @@ _Move items here when done. Keep as history._
 
 ---
 
-_Last Updated: July 16, 2026_
-_Updated By: Codex (Digital Screens end-to-end hardening and ordered token-removal rollout)_
+_Last Updated: July 25, 2026_
+_Updated By: Codex (Vercel Turbopack OOM correction and staging verification boundary)_

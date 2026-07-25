@@ -2,7 +2,11 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { admin, db } from "../../functions-signaldesk/src/firebaseAdmin";
+import {
+  db,
+  FieldValue,
+  Timestamp,
+} from "../../functions-signaldesk/src/firebaseAdmin";
 import {
   recordSignalDeskSourceDataLifecycleFailure,
   runSignalDeskSourceDataLifecycle,
@@ -12,7 +16,6 @@ import {
 } from "../../functions-signaldesk/src/schedulers/sourceDataLifecycle";
 import { runSignalDeskMaintenanceScheduler } from "../../functions-signaldesk/src/schedulers/signaldeskMaintenanceScheduler";
 
-const Timestamp = admin.firestore.Timestamp;
 const BASE_NOW = new Date("2026-07-15T10:15:00.000Z");
 const COLLECTIONS = {
   aiRuns: "signaldeskAiWorkerRuns",
@@ -637,10 +640,10 @@ const testPolicyPageMalformedSummaryAndDetailIsolation = async (): Promise<void>
     targetId: foreignDetailTargetId,
   });
   await db.collection(COLLECTIONS.targets).doc(missingRunTargetId).set({
-    sourceRunId: admin.firestore.FieldValue.delete(),
+    sourceRunId: FieldValue.delete(),
   }, { merge: true });
   await db.collection(COLLECTIONS.targetDetails).doc(legacyDetailTargetId).set({
-    pId: admin.firestore.FieldValue.delete(),
+    pId: FieldValue.delete(),
   }, { merge: true });
   await db.collection(COLLECTIONS.targetDetails).doc(mismatchedRunTargetId).set({
     sourceRunId: "run_older_same_policy",
