@@ -5,6 +5,7 @@ import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { parseSummaryProjects, withAuthoritativeSummaryProjectId } from "@lib/firestore/parseSummaryProjects";
 import type { OwnerPublicTruthProjectSummary } from "@lib/public-truth-tools/ownerPublicTruthReadiness";
+import { isCurrentPublicTruthMonitorStoreScope } from "@lib/public-truth-tools/publicTruthMonitorServerScope";
 import type { PublicTruthMonitorSummaryDocument } from "@type/publicTruthMonitor";
 
 const sanitizeForAdminFirestore = (value: any): any => {
@@ -19,6 +20,13 @@ const sanitizeForAdminFirestore = (value: any): any => {
         } : { handled: false },
     });
 };
+
+export class PublicTruthMonitorScopeChangedError extends Error {
+    constructor() {
+        super("public_truth_monitor_scope_changed");
+        this.name = "PublicTruthMonitorScopeChangedError";
+    }
+}
 
 function legacyProjectBelongsToSession(params: {
     projectData: any;
@@ -139,36 +147,100 @@ export async function readPublicTruthMonitorProjectDataServer(params: {
     }) ? projectData : null;
 }
 
-export async function readPublicTruthMonitorSummaryServer(
-    storeId: string | number,
-): Promise<PublicTruthMonitorSummaryDocument | null> {
-    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(storeId);
-    if (!storeDocumentId) return null;
-
-    const snap = await firestoreAdmin
-        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId))
-        .get();
-    return snap.exists ? snap.data() as PublicTruthMonitorSummaryDocument : null;
-}
-
-export async function updatePublicTruthMonitorSummaryServer(params: {
+export async function readAuthorizedPublicTruthMonitorSummaryServer(params: {
+    authorizeStore: (storeData: FirebaseFirestore.DocumentData) => boolean;
     storeId: string | number;
-    buildSummary: (
-        current: PublicTruthMonitorSummaryDocument | null,
-    ) => PublicTruthMonitorSummaryDocument;
-}): Promise<PublicTruthMonitorSummaryDocument> {
+    tenantId: string | number;
+}): Promise<{
+    storeData: FirebaseFirestore.DocumentData;
+    summary: PublicTruthMonitorSummaryDocument | null;
+}> {
     const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.storeId);
-    if (!storeDocumentId) throw new Error("Invalid Public Truth Monitor store ID");
+    const tenantDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.tenantId);
+    if (!storeDocumentId || !tenantDocumentId) throw new PublicTruthMonitorScopeChangedError();
 
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
+    const tenantRef = firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);
     const summaryRef = firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId));
 
     return firestoreAdmin.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(summaryRef);
-        const current = snapshot.exists
-            ? snapshot.data() as PublicTruthMonitorSummaryDocument
+        const [storeSnapshot, tenantSnapshot, summarySnapshot] = await Promise.all([
+            transaction.get(storeRef),
+            transaction.get(tenantRef),
+            transaction.get(summaryRef),
+        ]);
+        const storeData = storeSnapshot.data();
+        if (
+            !isCurrentPublicTruthMonitorStoreScope({
+                storeData,
+                tenantData: tenantSnapshot.data(),
+                tenantDocumentId,
+            })
+            || !params.authorizeStore(storeData!)
+        ) {
+            throw new PublicTruthMonitorScopeChangedError();
+        }
+        return {
+            storeData: storeData!,
+            summary: summarySnapshot.exists
+                ? summarySnapshot.data() as PublicTruthMonitorSummaryDocument
+                : null,
+        };
+    });
+}
+
+export async function updatePublicTruthMonitorSummaryServer(params: {
+    authorizeSubscription: (
+        subscriptionData: FirebaseFirestore.DocumentData,
+        storeData: FirebaseFirestore.DocumentData,
+    ) => boolean;
+    authorizeStore: (storeData: FirebaseFirestore.DocumentData) => boolean;
+    storeId: string | number;
+    subscriptionId: string;
+    tenantId: string | number;
+    buildSummary: (
+        current: PublicTruthMonitorSummaryDocument | null,
+    ) => PublicTruthMonitorSummaryDocument;
+}): Promise<PublicTruthMonitorSummaryDocument> {
+    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.storeId);
+    const subscriptionDocumentId = normalizePublicTruthMonitorDocumentId(params.subscriptionId);
+    const tenantDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.tenantId);
+    if (!storeDocumentId || !subscriptionDocumentId || !tenantDocumentId) {
+        throw new PublicTruthMonitorScopeChangedError();
+    }
+
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
+    const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionDocumentId);
+    const tenantRef = firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);
+    const summaryRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId));
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const [storeSnapshot, subscriptionSnapshot, tenantSnapshot, summarySnapshot] = await Promise.all([
+            transaction.get(storeRef),
+            transaction.get(subscriptionRef),
+            transaction.get(tenantRef),
+            transaction.get(summaryRef),
+        ]);
+        const storeData = storeSnapshot.data();
+        const subscriptionData = subscriptionSnapshot.data();
+        if (
+            !isCurrentPublicTruthMonitorStoreScope({
+                storeData,
+                tenantData: tenantSnapshot.data(),
+                tenantDocumentId,
+            })
+            || !params.authorizeStore(storeData!)
+            || !subscriptionData
+            || !params.authorizeSubscription(subscriptionData, storeData!)
+        ) {
+            throw new PublicTruthMonitorScopeChangedError();
+        }
+        const current = summarySnapshot.exists
+            ? summarySnapshot.data() as PublicTruthMonitorSummaryDocument
             : null;
         const summary = params.buildSummary(current);
 

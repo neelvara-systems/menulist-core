@@ -1,7 +1,7 @@
 # Temporary Status Layer - Firebase and Scale
 
 **Status:** Source-gated cost evidence; not deployment approval
-**Last reviewed:** July 17, 2026
+**Last reviewed:** July 25, 2026
 
 ## Source Gate
 
@@ -26,14 +26,14 @@ interface StoreTemporaryStatus {
 }
 ```
 
-The owner route validates session tenant/store IDs through the shared Firestore document-ID guard, normalizes the optional actor, runs a fail-closed hashed limiter, admits a 4KB bounded JSON request, and only then performs the existing permission check and mutation.
+The owner route validates compact/nested session tenant/store aliases through the shared exact permission-scope guard, normalizes the optional actor, runs a fail-closed hashed limiter, and admits a 4KB bounded JSON request. One transaction then reads the current store and tenant, validates active/unblocked ownership plus current persisted permission, and writes the status only from that transaction-current authority.
 
 ## Operation Budget
 
 | Path | Firestore work |
 | --- | --- |
-| Manual set | One existing store-document update after admission. |
-| Manual clear | One existing store-document update deleting the field. |
+| Manual set | Two transaction reads (current store + tenant) and one existing store-document update after admission. |
+| Manual clear | Two transaction reads (current store + tenant) and one existing store-document update deleting the field. |
 | Public rendering | No Temporary Status-only read; status is projected from the store data already loaded by that surface. |
 | Public pull API | No extra Temporary Status read beyond the route's canonical store read. |
 | Expiry | Zero write/delete; public pull API returns `null` for expired temporary statuses and browser/public projections omit them. |
@@ -58,4 +58,4 @@ The only growth dimension is the existing store count; there is no per-status hi
 
 ## Infrastructure Boundary
 
-This pass changes the Firestore index configuration and docs only. It does not modify Firestore rules, Storage rules, Firebase Functions source, collections, provider calls, or runtime mutation behavior. The scoped index deployment is required before the cost reduction is live; write/read/cache observation remains pending release evidence.
+The transaction-current authority correction changes app-side mutation behavior and adds one tenant read while replacing the former standalone permission-store read with the transaction store read. It does not modify Firestore rules, indexes, Storage rules, Firebase Functions source, collections, provider calls, cache effects, or the persisted status shape. No Firebase infrastructure deployment applies; app release and authenticated concurrency smoke remain pending.

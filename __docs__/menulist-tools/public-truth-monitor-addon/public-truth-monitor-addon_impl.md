@@ -76,7 +76,7 @@ maximum 6 reports per store by default
 ## Runtime Rules
 
 - Read owner truth through authenticated server helpers.
-- Verify tenant/store access before any owner data read.
+- Verify tenant/store access before any owner data read, then re-check persisted tenant/store lifecycle, ownership, and permission in the transaction that reads or writes the saved summary.
 - Require the existing Business Health `VIEW_ANALYTICS` store permission before summary reads or refresh writes.
 - Keep history in one capped summary document.
 - Read the current summary and write the merged capped history in one Firestore transaction; do not use a detached read followed by a last-writer-wins set.
@@ -89,7 +89,9 @@ maximum 6 reports per store by default
 
 Public Truth Monitor project and scope ID boundary: manual refresh requests validate raw `selectedProjectId` with the shared Firestore document-ID guard before the requested project can be selected from the store's project summary. The server project picker also requires selected and persisted summary project IDs to match their trimmed Firestore document ID exactly, and `readPublicTruthMonitorProjectDataServer()` applies the same raw-value guard before scoped or legacy project reads. Server helpers still validate session-derived store/tenant scope IDs before `stores/{sId}`, `platformSummary/publicTruthMonitor_{sId}`, `platformSummary/projects_{sId}`, and `projects/{tId}/{sId}/{projectId}` refs. Malformed project or scope IDs and whitespace-mutated selected project IDs fail before Firestore access; invalid summary writes throw before building a Firestore ref.
 
-Public Truth Monitor concurrency boundary: `updatePublicTruthMonitorSummaryServer(...)` reads `platformSummary/publicTruthMonitor_{storeId}` through `transaction.get(...)`, passes that current value into `buildPublicTruthMonitorSummary(...)`, and writes the merged capped summary through `transaction.set(...)`. Firestore may retry the callback under contention; the callback is deterministic and performs no external side effect.
+Public Truth Monitor session scope boundary: `getPublicTruthMonitorSessionScope(...)` uses the shared store-permission resolver. Every supplied compact and nested tenant/store alias must normalize to the same positive canonical ID. A contradictory, whitespace-mutated, leading-zero, unsafe, zero, or missing alias set fails before protected Firestore work.
+
+Public Truth Monitor transaction-current authority boundary: summary reads use `readAuthorizedPublicTruthMonitorSummaryServer(...)`; summary writes use `updatePublicTruthMonitorSummaryServer(...)`. Both transactions read current `stores/{storeId}`, `tenants/{tenantId}`, and `platformSummary/publicTruthMonitor_{storeId}`. Store ownership, store/tenant active/deleted/platform-block state, and current `VIEW_ANALYTICS` permission must still pass in that transaction. Refresh also retains the exact admitted subscription document ID and re-reads that document in the final transaction; current product, tenant, status, billing window, and supported-plan entitlement must still pass. The updater then passes the current summary into `buildPublicTruthMonitorSummary(...)` and writes the merged capped summary through `transaction.set(...)`. Firestore may retry the callback under contention; successful callbacks perform no external side effect.
 
 ## Remaining Runtime Boundary
 

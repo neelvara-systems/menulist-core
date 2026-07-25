@@ -8,6 +8,7 @@ import {
 import { parsePosDeliveryHistoryEntry } from '../../src/lib/posSync/deliveryHistory';
 import { buildMenuSnapshot } from '../../src/lib/posSync/payloadFormatter';
 import { createPosSyncPinnedLookup } from '../../src/lib/posSync/pinnedWebhookRequest';
+import { isPosSyncSecretScopeCurrent } from '../../src/lib/posSync/secretScope';
 import {
     isBlockedPosSyncNetworkTarget,
     validatePosSyncWebhookUrl,
@@ -44,6 +45,27 @@ assert.equal(isBlockedPosSyncNetworkTarget('2002::1'), true);
 assert.equal(isBlockedPosSyncNetworkTarget('3fff::1'), true);
 assert.equal(isBlockedPosSyncNetworkTarget('8.8.8.8'), false);
 assert.equal(isBlockedPosSyncNetworkTarget('2606:4700:4700::1111'), false);
+
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tenantId: 7 },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), true);
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tenantId: 8 },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), false);
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tenantId: 7 },
+    tenant: { blocked: true },
+    tenantDocumentId: '7',
+}), false);
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { deleted: true, tenantId: 7 },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), false);
 
 const pinnedLookup = createPosSyncPinnedLookup('hooks.vendor.com', [
     { address: '8.8.8.8', family: 4 },

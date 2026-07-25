@@ -19,11 +19,11 @@
 
 ## Active Items
 
-### Vercel Turbopack Build Memory — July 25, 2026
+### Vercel Turbopack Build Memory And Runtime Trace — July 25, 2026
 
 | # | Task | Why | Priority | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Include the verified Vercel OOM correction in the next staging push and rerun the staging deployment with `VERCEL_BUILD_SYSTEM_REPORT=1`; retain the successful build report and smoke the MenuList, Answerlattice, CampaignCue, SignalDesk, and MyCodex entry routes | Local cold-build evidence proves 439/439 pages and materially lower peak RSS, but only Vercel can confirm the corrected graph stays below its platform overhead on the standard 8 GiB machine. Codex did not push or redeploy. | P0 (before staging sign-off) | ⬜ |
+| 1 | Push the runtime-trace correction after `887f76ad`, redeploy staging with `VERCEL_BUILD_SYSTEM_REPORT=1`, then confirm `menulist.online`, `/signin`, `/privacy-policy`, and the MenuList, Answerlattice, CampaignCue, SignalDesk, and MyCodex entry routes return their intended pages | `887f76ad` built but its deployed Next routes return 500 because `@swc/helpers` was excluded from the packaged route. The corrected exact build and isolated deployment-bundle gate pass locally, but the broken deployment remains live until this source is redeployed. Codex did not push or redeploy. | P0 (restore staging now) | ⬜ |
 | 2 | If the corrected cold Vercel build still records an OOM, enable an Elastic/Enhanced build machine for the project before changing application behavior or weakening type/lint gates | The remaining fallback is build capacity, not a product-runtime migration; Vercel documents 16 GiB enhanced/elastic capacity for memory-intensive builds. | P0 only if OOM repeats | ⬜ |
 
 ### Business Truth Contract And Maps Activation Gates — July 22, 2026

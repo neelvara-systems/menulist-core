@@ -35,6 +35,7 @@ function assertOrder(content, first, second, label) {
 function verifyPackageScript() {
   const packageJson = JSON.parse(read('package.json'));
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'node scripts/verification/verify-digital-screens-boundary.js', 'Digital Screens package verifier script');
+  assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:screen-seen-scope', 'Digital Screens current seen-scope behavior gate');
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:digital-screens:lifecycle', 'Digital Screens package verifier lifecycle gate');
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:digital-screens:rules', 'Digital Screens package verifier rules gate');
   assertIncludes(packageJson.scripts['test:digital-screens:rules'] || '', 'test-digital-screens-rules.ts', 'Digital Screens Firestore rules package script');
@@ -50,7 +51,7 @@ function verifyPublicScreenRoute() {
   assertIncludes(page, "tags: ['screen-data']", 'Digital Screens public route screen cache tag');
   assertIncludes(page, 'getScreenDataByTokenServer', 'Digital Screens public route token resolver');
   assertIncludes(page, 'getUsableScreenMenuProjection', 'Digital Screens public route projection guard');
-  assertIncludes(page, 'projectedMenuItems || await getCachedMenuItems', 'Digital Screens public route project fallback');
+  assertIncludes(page, 'projectedMenuItems || (await getCachedMenuItems', 'Digital Screens public route project fallback');
   assertIncludes(page, 'if (!isValidScreenToken(token))', 'Digital Screens public route token format guard');
   assertIncludes(page, 'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED)', 'Digital Screens public route feature kill switch');
   assertIncludes(page, 'if (mode === "menu_board")', 'Digital Screens public route menu board branch');
@@ -148,6 +149,7 @@ function verifyDisplayClients() {
 
 function verifySeenSignalRoute() {
   const route = read('src/app/api/screen/seen/route.ts');
+  const scope = read('src/lib/screen/screenSeenScope.ts');
 
   assertIncludes(route, "export const dynamic = 'force-dynamic';", 'Digital Screens seen route dynamic boundary');
   assertIncludes(route, 'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED)', 'Digital Screens seen route feature kill switch');
@@ -162,12 +164,24 @@ function verifySeenSignalRoute() {
   assertIncludes(route, 'key: `screen-seen:token:${storeHashSegment}:${screenTokenHash}`', 'Digital Screens seen route token limiter key');
   assertIncludes(route, 'limit: 1', 'Digital Screens seen route one-per-window token limiter');
   assertIncludes(route, 'window: TOKEN_RATE_LIMIT_WINDOW_SECONDS', 'Digital Screens seen route token limiter window');
-  assertIncludes(route, 'screen?.screenToken !== token || screen?.enabled !== true', 'Digital Screens seen route direct token binding');
-  assertIncludes(route, 'getEligiblePublicScreenStore(normalizedStoreId)', 'Digital Screens seen route direct public store gate');
-  assertIncludes(route, 'CAMPAIGNS_SUMMARY_ID_PATTERN', 'Digital Screens seen route legacy summary id guard');
-  assertIncludes(route, 'getEligiblePublicScreenStore(legacyStoreId)', 'Digital Screens seen route legacy public store gate');
+  assertIncludes(route, 'const rateLimitedSeenResponse = () => NextResponse.json(', 'Digital Screens seen route non-success limiter response');
+  assertIncludes(route, "status: 429", 'Digital Screens seen route limiter HTTP status');
+  assertIncludes(route, "headers: { 'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS) }", 'Digital Screens seen route retry-after contract');
+  assert(/if \(!ipRateLimit\.allowed\) \{\s+return rateLimitedSeenResponse\(\);\s+\}/.test(route), 'Digital Screens seen route IP limiter must not acknowledge persistence');
+  assert(/if \(!tokenRateLimit\.allowed\) \{\s+return rateLimitedSeenResponse\(\);\s+\}/.test(route), 'Digital Screens seen route token limiter must not acknowledge persistence');
+  assertIncludes(route, 'firestoreAdmin.runTransaction', 'Digital Screens seen route authority transaction');
+  assertIncludes(route, 'transaction.get(params.screenRef)', 'Digital Screens seen route current screen read');
+  assertIncludes(route, 'transaction.get(storeRef)', 'Digital Screens seen route current store read');
+  assertIncludes(route, 'transaction.get(tenantRef)', 'Digital Screens seen route current tenant read');
+  assertIncludes(route, 'screen?.screenToken !== params.token', 'Digital Screens seen route current token binding');
+  assertIncludes(route, 'screen?.enabled !== true', 'Digital Screens seen route current enabled-state gate');
+  assertIncludes(route, 'isCurrentScreenSeenPublicScope', 'Digital Screens seen route current public-scope gate');
+  assertIncludes(route, "summaryRef.where('screen.screenToken', '==', token).limit(2).get()", 'Digital Screens seen route duplicate-token detection');
+  assertIncludes(route, 'resolveUniqueLegacyScreenSeenStoreId(', 'Digital Screens seen route unique legacy candidate gate');
+  assertIncludes(route, 'storeId: targetStoreId', 'Digital Screens seen route direct and legacy transaction scope');
   assertIncludes(route, 'lastSeenDate === todayDate', 'Digital Screens seen route daily write guard');
-  assertIncludes(route, "'screen.screenLastSeenAt': FieldValue.serverTimestamp()", 'Digital Screens seen route liveness write');
+  assertIncludes(route, 'transaction.update(params.screenRef', 'Digital Screens seen route transaction-bound liveness write');
+  assertIncludes(route, "'screen.screenLastSeenAt': FieldValue.serverTimestamp()", 'Digital Screens seen route server timestamp');
   assertIncludes(route, "logScreenDisplayFailure('screen_seen_route_failed'", 'Digital Screens seen route bounded unexpected failure log');
   assertIncludes(route, "return NextResponse.json({ error: 'Temporarily unavailable' }, { status: 503 });", 'Digital Screens seen route retryable unexpected failure');
   assertNotIncludes(route, "return NextResponse.json({ ok: true, error: 'logged' });", 'Digital Screens seen route must not cache failed writes as daily success');
@@ -178,6 +192,10 @@ function verifySeenSignalRoute() {
   assertOrder(route, 'readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES', 'SCREEN_TOKEN_PATTERN.test(token)', 'Digital Screens seen route bounded parse before token validation');
   assertOrder(route, 'SCREEN_TOKEN_PATTERN.test(token)', 'hashPublicRateLimitValue(token)', 'Digital Screens seen route token validation before token hash limiter');
   assertOrder(route, 'hashPublicRateLimitValue(token)', 'firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)', 'Digital Screens seen route limiter before Firestore lookup');
+  assertOrder(route, 'transaction.get(params.screenRef)', 'transaction.get(tenantRef)', 'Digital Screens seen route screen/store authority before tenant authority');
+  assertOrder(route, 'transaction.get(tenantRef)', 'transaction.update(params.screenRef', 'Digital Screens seen route all authority reads before liveness write');
+  assertIncludes(scope, 'if (summaryDocumentIds.length !== 1) return null;', 'Digital Screens legacy seen candidate uniqueness');
+  assertIncludes(scope, 'CAMPAIGNS_SUMMARY_ID_PATTERN', 'Digital Screens legacy seen candidate summary-id guard');
 }
 
 function verifyInvalidationAndOwnerSettings() {

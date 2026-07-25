@@ -5,6 +5,7 @@ import { rebuildProductSurfaceContentSummaryWithDiagnostics } from "@database/an
 import { FEATURE_FLAGS } from "@config/features";
 import { assertKnowledgeBaseArticleWriteSucceeded, getArticleById, updateArticle } from "@database/knowledgeBase/articles";
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
 import {
     deleteKnowledgeBaseReviewArticle,
@@ -37,6 +38,7 @@ interface ReviewModalProps {
 
 function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationRequired }: ReviewModalProps) {
     const dispatch = useAppDispatch();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const [categoriesData, setCategoriesData] = useState<KnowledgeBaseCategoriesType | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<KnowledgeBaseCategory | null>(null);
     const [selectedSection, setSelectedSection] = useState<KnowledgeBaseSection | null>(null);
@@ -220,7 +222,8 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
             title: 'Are you sure you want to approve and publish this job?',
             content: 'This action will make all reviewed articles live. This cannot be undone.',
             onOk: async () => {
-                if (!job) return;
+                const operationScope = requestScope;
+                if (!job || !operationScope) return;
                 dispatch(startLoader('Publishing job...'));
                 try {
                     const finalCategories: IngestionJobCategoriesMap | undefined = categoriesData?.categories || job.categories;
@@ -232,6 +235,7 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     let summaryRefreshSucceeded = true;
                     if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                         summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                            expectedScope: operationScope,
                             failureCode: 'answerlattice_kb_generation_summary_refresh_after_publish_failed',
                             context: {
                                 ...getBoundedAnswerlatticeStringContext('jobId', job.id),

@@ -4,7 +4,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
+import {
+    requireAnyStorePermissionForStoreData,
+    resolveStorePermissionSessionScope,
+} from '@lib/permissions/server';
 import { normalizePosSyncNumericDocumentId } from '@lib/posSync/posSyncDocumentId';
 import {
     getNextPosSyncSecretVersion,
@@ -12,6 +15,7 @@ import {
     normalizePosSyncSecretVersion,
     resolvePosSyncSecretInTransaction,
 } from '@lib/posSync/serverSecretStore';
+import { isPosSyncSecretScopeCurrent } from '@lib/posSync/secretScope';
 import { generateWebhookSecret } from '@lib/posSync/signature';
 import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -58,7 +62,13 @@ async function readOrMutateSecret(params: {
     tenantScope: { documentId: string; numericId: number };
 }) {
     const { action, request, session, storeScope, tenantScope } = params;
-    if (!verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)) {
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (
+        !sessionScope
+        || sessionScope.tenantScope.numericId !== tenantScope.numericId
+        || sessionScope.storeScope.numericId !== storeScope.numericId
+        || !verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)
+    ) {
         return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
     }
 
@@ -87,18 +97,29 @@ async function readOrMutateSecret(params: {
 
     const db = admin.firestore();
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
+    const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
     const secretRef = getPosSyncSecretRef(db, tenantScope.documentId, storeScope.documentId);
     const actorId = String(session?.uId || session?.user?.id || session?.user?.email || 'unknown');
     const actorEmail = String(session?.user?.email || '');
     const nowIso = new Date().toISOString();
 
     const result = await db.runTransaction(async (transaction) => {
-        const [storeSnapshot, secretSnapshot] = await Promise.all([
+        const [storeSnapshot, tenantSnapshot, secretSnapshot] = await Promise.all([
             transaction.get(storeRef),
+            transaction.get(tenantRef),
             transaction.get(secretRef),
         ]);
         const storeData = storeSnapshot.data();
-        if (!storeSnapshot.exists) {
+        const tenantData = tenantSnapshot.data();
+        if (
+            !storeSnapshot.exists
+            || !tenantSnapshot.exists
+            || !isPosSyncSecretScopeCurrent({
+                store: storeData,
+                tenant: tenantData,
+                tenantDocumentId: tenantScope.documentId,
+            })
+        ) {
             return { permissionError: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
         }
 

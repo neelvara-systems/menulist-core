@@ -6,7 +6,7 @@ import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/u
 import { useChangelogCache } from '@hook/useChangelogCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Divider, Flex, Grid, Layout, Modal, Steps, Typography, message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { LuBookOpen, LuDot, LuEye, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import InfiniteScroll from 'react-infinite-scroll-component';
@@ -30,10 +30,13 @@ function ChangelogTemplate() {
     const [previewingEntry, setPreviewingEntry] = useState<ChangelogEntry | null>(null);
     const [isPreviewModalVisible, setIsPreviewModalVisible] = useState(false);
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
-    const [entries, setEntries] = useState<any[]>([]);
+    const [entries, setEntries] = useState<ChangelogEntry[]>([]);
     const [hasMore, setHasMore] = useState(true);
     const { clearCache: clearChangelogCache, getItem: getCachedChangelog } = useChangelogCache();
     const requestScope = useAnswerlatticePublicContentRequestScope();
+    const requestScopeKey = requestScope ? `${requestScope.tId}:${requestScope.sId}` : null;
+    const currentScopeKeyRef = useRef(requestScopeKey);
+    currentScopeKeyRef.current = requestScopeKey;
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
@@ -49,18 +52,26 @@ function ChangelogTemplate() {
         router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }, [pathname, router, searchParams]);
 
-    const sortEntries = (entriesToSort: any[]) => {
-        return entriesToSort.sort((a, b) => {
-            const dateA = a.releasedOn?.toDate ? a.releasedOn.toDate() : new Date(a.releasedOn);
-            const dateB = b.releasedOn?.toDate ? b.releasedOn.toDate() : new Date(b.releasedOn);
+    const sortEntries = (entriesToSort: ChangelogEntry[]) => {
+        return [...entriesToSort].sort((a, b) => {
+            const dateA = a.releasedOn.toDate();
+            const dateB = b.releasedOn.toDate();
             return dateB.getTime() - dateA.getTime();
         });
     };
 
     const fetchLatestPage = useCallback(async (forceRefresh = false) => {
+        const expectedScopeKey = requestScopeKey;
+        if (!expectedScopeKey) {
+            setChangelogPage(null);
+            setEntries([]);
+            setHasMore(false);
+            return;
+        }
         dispatch(startLoader('Fetching Changelog'));
         try {
             const data = await getCachedChangelog({ forceRefresh });
+            if (currentScopeKeyRef.current !== expectedScopeKey) return;
             if (data) {
                 setChangelogPage(data);
                 setEntries(sortEntries(data.entries || []));
@@ -74,7 +85,17 @@ function ChangelogTemplate() {
         } finally {
             dispatch(stopLoader('Fetching Changelog'));
         }
-    }, [dispatch, getCachedChangelog]);
+    }, [dispatch, getCachedChangelog, requestScopeKey]);
+
+    useEffect(() => {
+        setChangelogPage(null);
+        setEntries([]);
+        setHasMore(Boolean(requestScopeKey));
+        setEditingEntry(null);
+        setPreviewingEntry(null);
+        setIsModalVisible(false);
+        setIsPreviewModalVisible(false);
+    }, [requestScopeKey]);
 
     useEffect(() => {
         fetchLatestPage();
@@ -82,13 +103,17 @@ function ChangelogTemplate() {
 
     const loadMore = async () => {
         if (!changelogPage || !requestScope) return;
+        const expectedScope = requestScope;
+        const expectedScopeKey = requestScopeKey;
+        if (!expectedScopeKey) return;
 
         dispatch(startLoader('Loading More...'));
         try {
             const olderPage: ChangelogPage | null = await loadOlderChangelogPage(
                 changelogPage.pageNumber,
-                requestScope,
+                expectedScope,
             );
+            if (currentScopeKeyRef.current !== expectedScopeKey) return;
             if (olderPage) {
                 setChangelogPage(olderPage as ChangelogPage);
                 setEntries(prev => sortEntries([...prev, ...olderPage.entries]));
@@ -128,13 +153,21 @@ function ChangelogTemplate() {
             okType: 'danger',
             cancelText: 'No, Cancel',
             onOk: async () => {
+                const expectedScope = requestScope;
+                const expectedScopeKey = requestScopeKey;
+                if (!expectedScope || !expectedScopeKey) {
+                    message.error('Answerlattice workspace scope is required.');
+                    return;
+                }
                 dispatch(startLoader('Deleting Entry...'));
                 try {
-                    await deleteChangelogEntry(entryId);
+                    await deleteChangelogEntry(entryId, expectedScope);
+                    if (currentScopeKeyRef.current !== expectedScopeKey) return;
                     setEntries(prev => prev.filter(entry => entry.id !== entryId));
                     clearChangelogCache();
                     message.success('Entry deleted successfully!');
                 } catch (error) {
+                    if (currentScopeKeyRef.current !== expectedScopeKey) return;
                     message.error('Failed to delete entry.');
                 } finally {
                     dispatch(stopLoader('Deleting Entry...'));

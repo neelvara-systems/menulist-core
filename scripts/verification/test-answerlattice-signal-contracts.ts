@@ -64,15 +64,17 @@ for (const value of ['1', '01', '1e0', 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 
     assert.equal(normalizeExactAnswerlatticeSignalScopeId(value), null);
 }
 
-const emitter = fs.readFileSync(path.join(ROOT, 'src/lib/answerlattice/signalEmitter.ts'), 'utf8');
+const clientEmitter = fs.readFileSync(path.join(ROOT, 'src/lib/answerlattice/signalEmitter.ts'), 'utf8');
+const serverEmitter = fs.readFileSync(path.join(ROOT, 'src/lib/answerlattice/signalEmitterServer.ts'), 'utf8');
 const nightly = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/answerlatticeNightly.ts'), 'utf8');
 const supportBoardSync = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/supportBoardSync.ts'), 'utf8');
 const resolutionExtractor = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/resolutionExtractor.ts'), 'utf8');
 const draftGenerator = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/draftGenerator.ts'), 'utf8');
 const publicSignalRoute = fs.readFileSync(path.join(ROOT, 'src/app/api/answerlattice/public/v1/signals/route.ts'), 'utf8');
 const signalDal = fs.readFileSync(path.join(ROOT, 'src/database/answerlattice/signalEvents.ts'), 'utf8');
-assert.ok(emitter.includes('buildAnswerlatticeSignalDocumentId'));
-assert.ok(emitter.includes('buildAnswerlatticeSignalMemoryDedupKey'));
+assert.ok(serverEmitter.includes('buildAnswerlatticeSignalDocumentId'));
+assert.ok(serverEmitter.includes('await collectionRef.doc(docId).create(payload)'));
+assert.ok(clientEmitter.includes('buildAnswerlatticeSignalMemoryDedupKey'));
 const driftSignalQuery = nightly.slice(
     nightly.indexOf('const signalsQuery = db'),
     nightly.indexOf('const [answersSnap, entitiesSnap, signalsSnap]'),
@@ -120,13 +122,15 @@ const draftSignals = draftGenerator.slice(
     draftGenerator.indexOf('async function getExistingAnswerSummaries('),
 );
 assert.ok(draftSignals.includes(".where('pId', '==', 'AL')"));
-assert.ok(emitter.includes('dedupKey: persistentDedupKey'));
-assert.ok(emitter.includes('answerlattice_signal_replay_conflict'));
-assert.ok(emitter.includes('AnswerlatticeSignalReplayConflictError'));
-assert.ok(emitter.includes('resolutionEventId'));
+assert.ok(clientEmitter.includes('dedupKey: signal.persistentDedupKey'));
+assert.ok(serverEmitter.includes('dedupKey: cleanSignalText(params.persistentDedupKey, 260)'));
+assert.ok(clientEmitter.includes('answerlattice_signal_replay_conflict'));
+assert.ok(clientEmitter.includes('AnswerlatticeSignalReplayConflictError'));
+assert.ok(serverEmitter.includes('AnswerlatticeSignalReplayConflictError'));
+assert.ok(clientEmitter.includes('resolutionEventId'));
 assert.ok(signalDal.includes('answerlattice_signal_replay_conflict'));
 assert.ok(signalDal.includes('buildAnswerlatticeSignalPayloadFingerprint'));
-assert.ok(emitter.includes('Promise<boolean>'));
+assert.ok(clientEmitter.includes('Promise<boolean>'));
 assert.ok(publicSignalRoute.includes("request.headers.get('idempotency-key')"));
 assert.ok(publicSignalRoute.includes('IDEMPOTENCY_KEY_CONFLICT'));
 assert.ok(publicSignalRoute.includes('IDEMPOTENCY_REPLAY_CONFLICT'));
@@ -136,7 +140,7 @@ assert.ok(signalDal.includes("where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)"));
 assert.ok(signalDal.includes('MAX_BATCH_SIGNAL_ENTITIES = 300'));
 assert.ok(signalDal.includes('const existingSnapshot = await getDoc(signalRef)'));
 assert.ok(signalDal.includes("getAnswerlatticeRetentionExpiryMillis('signalEvents')"));
-assert.ok(emitter.includes("getAnswerlatticeRetentionExpiryMillis('signalEvents', now.getTime())"));
+assert.ok(serverEmitter.includes("getAnswerlatticeRetentionExpiryMillis('signalEvents', now.getTime())"));
 assert.equal(
     fs.readFileSync(path.join(ROOT, 'src/data/shared/answerlatticeRetention.ts'), 'utf8'),
     fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/sharedData/answerlatticeRetention.ts'), 'utf8'),

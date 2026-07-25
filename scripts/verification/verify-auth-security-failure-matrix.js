@@ -2511,13 +2511,18 @@ assertIncludes(aiPackStatusRoute, '[PERMISSIONS.ACCESS_BILLING]', 'AI pack statu
 assertOrder(
     aiPackStatusRoute,
     [
-        'if (!tenantId || !storeId) {',
+        'const scope = resolveStorePermissionSessionScope(session);',
+        'if (!scope) {',
         'const permissionError = await requireAnyStorePermission(',
         'if (permissionError) return permissionError;',
         'const capacityCheck = await checkAICapacity(',
     ],
     'AI pack status route must check billing permission before capacity reads',
 );
+assertIncludes(aiPackStatusRoute, 'scope.tenantScope.numericId', 'AI pack status must use exact admitted tenant scope');
+assertIncludes(aiPackStatusRoute, 'scope.storeScope.numericId', 'AI pack status must use exact admitted store scope');
+assert(!aiPackStatusRoute.includes('Number(tenantId)'), 'AI pack status must not loose-coerce tenant scope');
+assert(!aiPackStatusRoute.includes('Number(storeId)'), 'AI pack status must not loose-coerce store scope');
 const weeklyNarrativeLocalRoute = read('src/app/api/analytics/weekly-narrative/generate-local/route.ts');
 assertIncludes(weeklyNarrativeLocalRoute, 'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT', 'Weekly narrative refresh must require support management.');
 assertIncludes(weeklyNarrativeLocalRoute, "generationMode: 'deterministic'", 'Weekly narrative refresh must remain deterministic.');

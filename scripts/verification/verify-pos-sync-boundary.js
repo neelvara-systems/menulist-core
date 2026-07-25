@@ -467,10 +467,16 @@ function verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRule
     "export const POST = withAuth(async (request: NextRequest, session) => {",
     "action: z.enum(['ensure', 'rotate'])",
     'verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)',
+    'const sessionScope = resolveStorePermissionSessionScope(session);',
+    'sessionScope.tenantScope.numericId !== tenantScope.numericId',
+    'sessionScope.storeScope.numericId !== storeScope.numericId',
     'failClosedOnProviderError: true',
     'requireAnyStorePermissionForStoreData(',
     '[PERMISSIONS.MANAGE_INTEGRATIONS]',
     'getPosSyncSecretRef(db, tenantScope.documentId, storeScope.documentId)',
+    'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);',
+    'transaction.get(tenantRef)',
+    'isPosSyncSecretScopeCurrent({',
     'resolvePosSyncSecretInTransaction({',
     "migrate: action !== 'rotate'",
     "'posSync.webhookSecret': admin.firestore.FieldValue.delete()",
@@ -663,6 +669,7 @@ function verifyPosSyncBoundary() {
   const testResponse = read('src/lib/posSync/testResponse.ts');
   const secretResponse = read('src/lib/posSync/secretResponse.ts');
   const secretStore = read('src/lib/posSync/serverSecretStore.ts');
+  const secretScope = read('src/lib/posSync/secretScope.ts');
   const secretRoute = read('src/app/api/pos-sync/secret/route.ts');
   const firestoreRules = read('firestore.rules');
   const databaseConstants = read('src/constants/database.ts');
@@ -694,6 +701,13 @@ function verifyPosSyncBoundary() {
   verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor);
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
   verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
+  [
+    'normalizePosSyncNumericDocumentId(store.tenantId ?? store.tId)',
+    'persistedTenant?.documentId === params.tenantDocumentId',
+    '!isUnavailable(store)',
+    '!isUnavailable(tenant)',
+    'isPlatformEntityBlocked(entity)',
+  ].forEach((token) => assertIncludes(secretScope, token, 'POS secret transaction-current tenant/store scope'));
   [
     'parsePosDeliveryHistoryEntry',
     'storedDeliveryId !== documentId',

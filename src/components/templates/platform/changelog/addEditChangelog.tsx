@@ -8,8 +8,8 @@ import { getEntities } from '@database/answerlattice/entities';
 import { activateRelease, addRelease } from '@database/answerlattice/releases';
 import { getProductSurfacesForSession, rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
 import { addChangelogEntry, updateChangelogEntry } from '@database/changelog';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
 import { createRuntimeId } from '@lib/runtime/randomId';
@@ -38,7 +38,10 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     const [form] = Form.useForm();
     const timePickerFormat = getClockTimeInputFormat();
     const dispatch = useAppDispatch();
-    const session = useClientAuthSession();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
+    const requestScopeKey = requestScope ? `${requestScope.tId}:${requestScope.sId}` : null;
+    const currentScopeKeyRef = useRef(requestScopeKey);
+    currentScopeKeyRef.current = requestScopeKey;
     const [isSaving, setIsSaving] = useState(false);
     const [attachments, setAttachments] = useState<any[]>([]);
     const isFormActive = useRef(false);
@@ -78,13 +81,16 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     useEffect(() => {
         isFormActive.current = open;
         saveRequestSeedRef.current = open ? createRuntimeId('changelog_editor') : '';
+        return () => {
+            isFormActive.current = false;
+        };
     }, [initialData?.id, open]);
 
     useEffect(() => {
         if (!open) return;
         let mounted = true;
-        const tId = Number(session?.tId || 0);
-        const sId = Number(session?.sId || 0);
+        const tId = Number(requestScope?.tId || 0);
+        const sId = Number(requestScope?.sId || 0);
         Promise.all([
             FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES
                 ? getProductSurfacesForSession()
@@ -108,7 +114,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 logAnswerlatticeFailure('answerlattice_changelog_surface_options_load_failed', error);
             });
         return () => { mounted = false; };
-    }, [open, session?.sId, session?.tId]);
+    }, [open, requestScope?.sId, requestScope?.tId]);
 
     const handleAddYoutubeLink = () => {
         const trimmedLink = youtubeLink.trim();
@@ -187,6 +193,12 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     }, [initialData, form, open]);
 
     const handleSave = async (values: any) => {
+        const operationScope = requestScope;
+        const operationScopeKey = requestScopeKey;
+        if (!operationScope || !operationScopeKey) {
+            message.error('Answerlattice workspace scope is required.');
+            return;
+        }
         const { title, description, tags, releaseDate, releaseTime, published, version, contextKeys, entityChanges } = values;
         const normalizedVersion = version ? normalizeAnswerlatticeVersionLabel(version) : null;
         if (version && !normalizedVersion) {
@@ -233,10 +245,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             let savedEntryId = initialData?.id || '';
             let persistedPayload = entryPayload;
             const requiresReleaseLink = Boolean(entryPayload.published && normalizedVersion);
-            const releaseScope = {
-                tId: Number(session?.tId || 0),
-                sId: Number(session?.sId || 0),
-            };
+            const releaseScope = operationScope;
             if (requiresReleaseLink && (!releaseScope.tId || !releaseScope.sId)) {
                 throw new Error('Answerlattice workspace scope is required for release publication');
             }
@@ -244,8 +253,8 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             if (requiresReleaseLink && !entryPayload.releaseId) {
                 stagedEntryPayload = { ...entryPayload, published: false, releaseId: null };
                 const stagedResult = initialData
-                    ? await updateChangelogEntry(initialData.id, { ...stagedEntryPayload, requestId: `${requestSeed}:stage` })
-                    : await addChangelogEntry({ ...stagedEntryPayload, requestId: `${requestSeed}:stage` });
+                    ? await updateChangelogEntry(initialData.id, { ...stagedEntryPayload, requestId: `${requestSeed}:stage` }, operationScope)
+                    : await addChangelogEntry({ ...stagedEntryPayload, requestId: `${requestSeed}:stage` }, operationScope);
                 savedEntryId = initialData?.id || stagedResult?.entryId || '';
                 stagedEntryId = savedEntryId;
                 if (!savedEntryId) throw new Error('Changelog draft did not return an entry ID');
@@ -259,21 +268,22 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                     entityChanges: entryPayload.entityChanges,
                     status: 'pending',
                     requestId: releaseRequestId,
-                });
+                }, operationScope);
                 if (release?.action !== 'create') throw new Error('Release registration failed');
                 if (release.status !== 'active') {
-                    await activateRelease(release.releaseId, `${releaseRequestId}:activate`);
+                    await activateRelease(release.releaseId, `${releaseRequestId}:activate`, operationScope);
                 }
                 persistedPayload = { ...entryPayload, releaseId: release.releaseId };
-                await updateChangelogEntry(savedEntryId, { ...persistedPayload, requestId: `${requestSeed}:publish` });
+                await updateChangelogEntry(savedEntryId, { ...persistedPayload, requestId: `${requestSeed}:publish` }, operationScope);
             } else {
                 const result = initialData
-                    ? await updateChangelogEntry(initialData.id, { ...entryPayload, requestId: `${requestSeed}:save` })
-                    : await addChangelogEntry({ ...entryPayload, requestId: `${requestSeed}:save` });
+                    ? await updateChangelogEntry(initialData.id, { ...entryPayload, requestId: `${requestSeed}:save` }, operationScope)
+                    : await addChangelogEntry({ ...entryPayload, requestId: `${requestSeed}:save` }, operationScope);
                 savedEntryId = initialData?.id || result?.entryId || '';
                 if (!savedEntryId) throw new Error('Changelog save did not return an entry ID');
             }
 
+            if (currentScopeKeyRef.current !== operationScopeKey || !isFormActive.current) return;
             if (initialData) {
                 onSave({
                     ...initialData,
@@ -288,6 +298,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             let summaryRefreshSucceeded = true;
             if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                 summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                    expectedScope: operationScope,
                     failureCode: initialData
                         ? 'answerlattice_changelog_summary_refresh_after_update_failed'
                         : 'answerlattice_changelog_summary_refresh_after_create_failed',
@@ -313,9 +324,11 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 ...getBoundedAnswerlatticeStringContext('changelogEntryId', stagedEntryId || initialData?.id),
                 ...getBoundedAnswerlatticeStringContext('changelogVersion', normalizedVersion?.label),
             });
+            if (currentScopeKeyRef.current !== operationScopeKey || !isFormActive.current) return;
             if (stagedEntryId && stagedEntryPayload) {
                 if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                     await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                        expectedScope: operationScope,
                         failureCode: 'answerlattice_changelog_summary_refresh_after_release_failure_failed',
                         context: {
                             ...getBoundedAnswerlatticeStringContext('changelogEntryId', stagedEntryId),
@@ -352,11 +365,15 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
         <Drawer
             title={<Title level={4}>{initialData ? 'Edit Changelog Entry' : 'Add New Changelog Entry'}</Title>}
             width={720}
-            onClose={onClose}
+            onClose={() => {
+                if (!isSaving) onClose();
+            }}
             open={open}
+            closable={!isSaving}
+            maskClosable={!isSaving}
             footer={
                 <Flex justify='flex-end' gap={16} style={{ width: '100%' }}>
-                    <Button onClick={onClose} style={{ minHeight: 44 }}>Cancel</Button>
+                    <Button onClick={onClose} disabled={isSaving} style={{ minHeight: 44 }}>Cancel</Button>
                     <Button onClick={() => form.submit()} type="primary" loading={isSaving} style={{ minHeight: 44 }}>Save</Button>
                 </Flex>
             }

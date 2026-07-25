@@ -1,6 +1,6 @@
 # Answerlattice MCP - Test Cases
 
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-25
 
 ## Local Source and Contract Tests
 
@@ -23,6 +23,7 @@
 | Bundle changed after session | Structured `CONTEXT_CHANGED` | Runtime truth verifier; hosted fixture pending |
 | Oversized tool result | Valid `RESULT_TOO_LARGE`, no truncated JSON | Runtime truth verifier |
 | Missing-context report | Existing governed signal emitter only | Runtime truth verifier |
+| Session/tool contract import | Passes in plain Node/ts-node without eagerly resolving the server-only signal persistence graph | `npm run verify:answerlattice-mcp`; runtime truth verifier |
 
 ## Required Hosted Compatibility Tests
 

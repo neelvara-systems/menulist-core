@@ -23,25 +23,28 @@ const entry = {
     entityChanges: ['billing'],
     releaseId: 'release-1',
 };
+const scope = { tId: 1, sId: 101 };
 
-const create = parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', entry });
+const create = parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', scope, entry });
 assert.equal(create?.action, 'create');
-assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', entry: { ...entry, unknown: true } }), null);
-assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', entry: { ...entry, entityChanges: [] } }), null);
-assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', entry: { ...entry, releaseId: null } }), null);
-assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', entry: { ...entry, published: false, releaseId: null } })?.action, 'create');
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', entry }), null, 'initiating scope is required');
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', scope: { tId: 0, sId: 101 }, entry }), null);
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', scope, entry: { ...entry, unknown: true } }), null);
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', scope, entry: { ...entry, entityChanges: [] } }), null);
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', scope, entry: { ...entry, releaseId: null } }), null);
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'create', requestId: 'change_request_1', scope, entry: { ...entry, published: false, releaseId: null } })?.action, 'create');
 assert.equal(isAnswerlatticeChangelogEntryPublished(entry), true);
 assert.equal(isAnswerlatticeChangelogEntryPublished({ ...entry, published: false }), false);
 assert.equal(isAnswerlatticeChangelogEntryPublished({ ...entry, releaseId: null }), false);
 assert.equal(parseAnswerlatticeChangelogAction({
-    action: 'create', requestId: 'change_request_1', entry: {
+    action: 'create', requestId: 'change_request_1', scope, entry: {
         ...entry,
         files: Array.from({ length: ANSWERLATTICE_CHANGELOG_MAX_FILES + 1 }, (_, index) => ({
             name: `${index}.png`, size: 100, type: 'image/png', url: `https://example.com/${index}.png`, uid: `file-${index}`,
         })),
     },
 }), null);
-assert.equal(parseAnswerlatticeChangelogAction({ action: 'delete', requestId: 'delete_request_1', entryId: 'unsafe/path' }), null);
+assert.equal(parseAnswerlatticeChangelogAction({ action: 'delete', requestId: 'delete_request_1', scope, entryId: 'unsafe/path' }), null);
 
 const now = Timestamp.now();
 const page = normalizeAnswerlatticeStoredChangelogPage({
@@ -64,7 +67,10 @@ const legacyUnlinkedPage = normalizeAnswerlatticeStoredChangelogPage({
 assert.equal(legacyUnlinkedPage?.entries[0]?.published, false, 'legacy versioned entries without release linkage must reopen as drafts');
 assert.equal(normalizeAnswerlatticeStoredChangelogPage({ ...page, pId: 'ML' }, 'page_000001', { tId: 1, sId: 101 }), null);
 assert.equal(AnswerlatticeChangelogActionResultSchema.safeParse({
-    success: true, action: 'create', entryId: 'entry-1', pageId: 'page_000001', replayed: false, removedFileUrls: [],
+    success: true, action: 'create', entryId: 'entry-1', pageId: 'page_000001', replayed: false, removedFileUrls: [], scope,
 }).success, true);
+assert.equal(AnswerlatticeChangelogActionResultSchema.safeParse({
+    success: true, action: 'create', entryId: 'entry-1', pageId: 'page_000001', replayed: false, removedFileUrls: [],
+}).success, false, 'mutation responses must acknowledge their exact workspace');
 
 process.stdout.write('Answerlattice changelog contract tests passed.\n');

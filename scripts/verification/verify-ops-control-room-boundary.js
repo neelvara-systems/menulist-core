@@ -355,6 +355,7 @@ function verifyOpsControlRoomBoundary() {
 
   [
     'failClosedOnProviderError: true',
+    "const operatorId = resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-session';",
     'const currentPlatformUser = await getCurrentPlatformUser(session);',
     "accessModel: 'current_persisted_platform_user'",
   ].forEach((token) => assertIncludes(files.currentAccessRoute, token, 'Platform current-access route'));

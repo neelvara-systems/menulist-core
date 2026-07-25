@@ -1,7 +1,7 @@
 # Temporary Status Layer - Validation
 
 **Result:** Local source complete
-**Date:** July 16, 2026
+**Date:** July 25, 2026
 **Feature flag:** default `true`
 
 ## Current Source Boundary
@@ -30,6 +30,7 @@ The verifier covers `src/app/client/obp/OBPResolvedSurface.tsx`, menu and feedba
 | Legacy `{ success: true }` response | Accepted as committed success with `effectsPending: false`. |
 | Committed write + failed refresh effect | Success retained, owner warned, bounded diagnostic emitted. |
 | Special Menu deactivate/cancel | Only owned Special Menu status is cleared. |
+| Store/tenant deactivated, deleted, blocked, reassigned, or permission-revoked before commit | Transaction rejects before the status write and no post-commit effect runs. |
 
 Deterministic coverage lives in `scripts/verification/test-temporary-status-boundary.ts`. Public browser projection tests also assert that expired state is omitted.
 
@@ -38,9 +39,9 @@ Deterministic coverage lives in `scripts/verification/test-temporary-status-boun
 - Strict session document-ID normalization before route-local material.
 - Hashed limiter key and fail-closed limiter-provider behavior.
 - 4KB request cap and Zod validation before permission-backed mutation.
-- Current persisted store permission before write.
+- Transaction-current store and tenant state plus current persisted store permission before write.
 - 8KB owner response cap and fixed failure copy.
-- One existing store-document write per valid manual set/clear; no status-only read, history collection, listener, queue, or cleanup worker.
+- Two transaction reads and one existing store-document write per valid manual set/clear; no history collection, listener, queue, or cleanup worker.
 - Existing public cache, Digital Screens, and Owner Business Assistant effects remain post-commit.
 
 ## Local Gate Set

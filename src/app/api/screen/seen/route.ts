@@ -16,11 +16,15 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
-import { getPublicStoreById } from "@lib/firestore/clientStoreLookup";
 import { logger } from "@lib/monitoring/logger";
+import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/scopeDocumentId";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
+import {
+    isCurrentScreenSeenPublicScope,
+    resolveUniqueLegacyScreenSeenStoreId,
+} from "@lib/screen/screenSeenScope";
 import { readBoundedJsonBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
@@ -30,14 +34,23 @@ const TOKEN_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 const SCREEN_TOKEN_PATTERN = /^[a-z0-9_-]{6,24}$/i;
 const STORE_ID_PATTERN = /^\d+$/;
 const SCREEN_SEEN_MAX_BODY_BYTES = 1024;
-const CAMPAIGNS_SUMMARY_ID_PATTERN = /^campaigns_(\d+)$/;
 
 const cachedSeenResponse = () => NextResponse.json({ ok: true, cached: true });
+const rateLimitedSeenResponse = () => NextResponse.json(
+    { error: 'Temporarily unavailable' },
+    {
+        status: 429,
+        headers: { 'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS) },
+    },
+);
 
 const getUtcDateKey = (value: unknown): string | null => {
+    const timestampLike = value && typeof value === 'object' && 'toDate' in value
+        ? value as { toDate?: unknown }
+        : null;
     const date =
-        value && typeof (value as any).toDate === 'function'
-            ? (value as any).toDate()
+        timestampLike && typeof timestampLike.toDate === 'function'
+            ? timestampLike.toDate()
             : value instanceof Date
                 ? value
                 : typeof value === 'string' || typeof value === 'number'
@@ -48,9 +61,56 @@ const getUtcDateKey = (value: unknown): string | null => {
     return date.toISOString().slice(0, 10);
 };
 
-const getEligiblePublicScreenStore = async (storeId: string) => {
-    if (!STORE_ID_PATTERN.test(storeId)) return null;
-    return getPublicStoreById(storeId);
+type ScreenSeenCommitResult = 'already_seen' | 'ineligible' | 'recorded';
+
+const commitCurrentScreenSeen = async (params: {
+    screenRef: FirebaseFirestore.DocumentReference;
+    storeId: string;
+    token: string;
+}): Promise<ScreenSeenCommitResult> => {
+    const storeScope = normalizeStorePermissionScopeDocumentId(params.storeId);
+    if (!storeScope) return 'ineligible';
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const [screenSnapshot, storeSnapshot] = await Promise.all([
+            transaction.get(params.screenRef),
+            transaction.get(storeRef),
+        ]);
+        const screen = screenSnapshot.data()?.screen;
+        const storeData = storeSnapshot.data();
+        const tenantScope = normalizeStorePermissionScopeDocumentId(
+            storeData?.tenantId ?? storeData?.tId,
+        );
+        if (
+            !screenSnapshot.exists
+            || screen?.screenToken !== params.token
+            || screen?.enabled !== true
+            || !tenantScope
+        ) {
+            return 'ineligible';
+        }
+
+        const tenantRef = firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
+        const tenantSnapshot = await transaction.get(tenantRef);
+        if (!isCurrentScreenSeenPublicScope({
+            storeData,
+            storeDocumentId: storeScope.documentId,
+            tenantData: tenantSnapshot.data(),
+            tenantDocumentId: tenantScope.documentId,
+        })) {
+            return 'ineligible';
+        }
+
+        const lastSeenDate = getUtcDateKey(screen.screenLastSeenAt);
+        const todayDate = new Date().toISOString().slice(0, 10);
+        if (lastSeenDate === todayDate) return 'already_seen';
+
+        transaction.update(params.screenRef, {
+            'screen.screenLastSeenAt': FieldValue.serverTimestamp(),
+        });
+        return 'recorded';
+    });
 };
 
 export async function POST(request: NextRequest) {
@@ -76,7 +136,7 @@ export async function POST(request: NextRequest) {
             ...ipRateConfig,
         });
         if (!ipRateLimit.allowed) {
-            return cachedSeenResponse();
+            return rateLimitedSeenResponse();
         }
 
         const bodyResult = await readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES, {
@@ -125,72 +185,44 @@ export async function POST(request: NextRequest) {
             window: TOKEN_RATE_LIMIT_WINDOW_SECONDS,
         });
         if (!tokenRateLimit.allowed) {
-            return cachedSeenResponse();
+            return rateLimitedSeenResponse();
         }
 
         const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY);
-        let docRef;
+        let docRef: FirebaseFirestore.DocumentReference;
+        let targetStoreId: string;
 
         if (normalizedStoreId) {
-            // OPTIMIZATION: Direct doc lookup instead of query (no index scan)
-            const directRef = summaryRef.doc(`campaigns_${normalizedStoreId}`);
-            const docSnap = await directRef.get();
-            const screen = docSnap.data()?.screen;
-
-            // Security: verify token matches to prevent spoofing
-            if (!docSnap.exists || screen?.screenToken !== token || screen?.enabled !== true) {
-                return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
-            }
-
-            const store = await getEligiblePublicScreenStore(normalizedStoreId);
-            if (!store) {
-                return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
-            }
-
-            const lastSeenDate = getUtcDateKey(screen?.screenLastSeenAt);
-            const todayDate = new Date().toISOString().slice(0, 10);
-            if (lastSeenDate === todayDate) {
-                return cachedSeenResponse();
-            }
-
-            docRef = directRef;
+            docRef = summaryRef.doc(`campaigns_${normalizedStoreId}`);
+            targetStoreId = normalizedStoreId;
         } else {
             // Fallback: query by token (backwards compatibility)
-            const snapshot = await summaryRef.where('screen.screenToken', '==', token).limit(1).get();
-            if (snapshot.empty) {
+            const snapshot = await summaryRef.where('screen.screenToken', '==', token).limit(2).get();
+            const legacyStoreId = resolveUniqueLegacyScreenSeenStoreId(
+                snapshot.docs.map((candidate) => candidate.id),
+            );
+            if (!legacyStoreId) {
                 return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
             }
 
             const docSnap = snapshot.docs[0];
-            const docIdMatch = docSnap.id.match(CAMPAIGNS_SUMMARY_ID_PATTERN);
-            const legacyStoreId = docIdMatch?.[1] || '';
-            const screen = docSnap.data()?.screen;
-            if (!legacyStoreId || screen?.enabled !== true) {
-                return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
-            }
-
-            const store = await getEligiblePublicScreenStore(legacyStoreId);
-            if (!store) {
-                return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
-            }
-
-            const lastSeenDate = getUtcDateKey(screen?.screenLastSeenAt);
-            const todayDate = new Date().toISOString().slice(0, 10);
-            if (lastSeenDate === todayDate) {
-                return cachedSeenResponse();
-            }
-
             docRef = docSnap.ref;
+            targetStoreId = legacyStoreId;
         }
 
-        // Update screenLastSeenAt (one write)
-        await docRef.update({
-            'screen.screenLastSeenAt': FieldValue.serverTimestamp()
+        const commitResult = await commitCurrentScreenSeen({
+            screenRef: docRef,
+            storeId: targetStoreId,
+            token,
         });
+        if (commitResult === 'ineligible') {
+            return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
+        }
+        if (commitResult === 'already_seen') return cachedSeenResponse();
 
         logger.info('[Screen Seen] Daily signal recorded', {
             directStoreLookup: Boolean(normalizedStoreId),
-            ...getBoundedScreenStringContext('storeId', normalizedStoreId),
+            ...getBoundedScreenStringContext('storeId', targetStoreId),
         });
 
         return NextResponse.json({ ok: true });

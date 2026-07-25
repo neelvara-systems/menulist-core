@@ -222,12 +222,18 @@ assertIncludes(recipientResolver, ['options.onRead?.()'], 'owner recipient parti
 assertIncludes(currentPlatformUser, [
   'hasValidUnblockedLifecycleState',
   '!hasValidUnblockedLifecycleState(userData)',
+  'export const resolveCurrentSessionUserDocumentId = (session: unknown): string | null => {',
+  'normalized.every((documentId) => documentId === first)',
+  'const sessionUserId = resolveCurrentSessionUserDocumentId(session);',
+  'const userDocumentId = resolveCurrentSessionUserDocumentId(sessionRecord);',
 ], 'current platform malformed lifecycle fail-closed boundary');
 assertIncludes(currentPlatformUserTest, [
   "authDisabled: 'true'",
   "deleted: 'true'",
   "blocked: 'true'",
   "blockDetails: { blocked: 'true' }",
+  "user: { ...session.user, id: 'platform-user-2' }",
+  'contradictory root and nested user aliases must fail closed',
 ], 'current platform malformed lifecycle regression coverage');
 for (const [label, source] of [
   ['MenuList indexes', firestoreIndexes],

@@ -968,7 +968,7 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(clientScreenInvalidation, '} while (entry.rerunRequested);', 'Browser screen invalidation trailing touch loop');
   assertIncludes(clientScreenInvalidation, 'if (pendingScreenTouches.get(normalizedStoreId) === entry)', 'Browser screen invalidation pending entry identity-safe cleanup');
   assertNotIncludes(clientScreenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'Browser screen invalidation must not collapse later writes into a single promise');
-  assertIncludes(revalidateAction, "revalidateTag('screen-data')", 'Canonical menu cache revalidation must refresh digital screen SSR data');
+  assertIncludes(revalidateAction, "revalidateTag('screen-data', { expire: 0 })", 'Canonical menu cache revalidation must refresh digital screen SSR data');
   assertIncludes(revalidateAction, "touchDigitalScreenContentVersionForStoreServer(storeId, 'revalidateMenuCache')", 'Canonical menu cache revalidation must wake live digital screens');
   assertIncludes(serverScreenInvalidation, 'FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED', 'Server screen invalidation feature flag guard');
   assertIncludes(serverScreenInvalidation, "doc(`campaigns_${normalizedStoreId}`)", 'Server screen invalidation canonical screen state read');
@@ -979,7 +979,7 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(serverScreenInvalidation, '}, { merge: false });', 'Server screen invalidation public mirror replacement');
   assertIncludes(serverScreenInvalidation, 'SERVER_SCREEN_TOUCH_FAILED_CODE', 'Server screen invalidation bounded diagnostics');
   assertIncludes(messagingPublish, 'runStorePublicTruthPostCommitEffects({', 'Messaging onboarding publish must independently settle public-truth effects');
-  assertIncludes(messagingPublish, 'revalidate: revalidateTag', 'Messaging onboarding publish must delegate every cache tag to the shared effect runner');
+  assertIncludes(messagingPublish, 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })', 'Messaging onboarding publish must delegate every cache tag to the shared effect runner with immediate Next 16 expiry');
   assertIncludes(messagingPublish, '"messagingOnboardingPublish",', 'Messaging onboarding publish must identify its live-screen touch');
   assertIncludes(messagingPublish, 'tagCount: 4', 'Messaging onboarding publish cache diagnostic tag count');
   assertIncludes(messagingPublish, 'failedEffectCount: postCommit.failedEffectCount', 'Messaging onboarding publish must report aggregate post-commit failures');
@@ -988,7 +988,7 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(tempStatusRoute, 'runStorePublicTruthPostCommitEffects({', 'Temporary Status must isolate public-truth effects after commit');
   assertIncludes(tempStatusRoute, "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')", 'Temporary Status must wake live digital screens after public truth writes');
   [
-    ['src/app/api/public/create-menu/claim/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')"],
+    ['src/app/api/public/create-menu/claim/route.ts', "revalidateTag('screen-data', { expire: 0 })", "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')"],
   ].forEach(([relativePath, cacheNeedle, screenTouchNeedle]) => {
     const source = read(relativePath);
     assertIncludes(source, cacheNeedle, `${relativePath} must refresh digital screen SSR data after public truth writes`);

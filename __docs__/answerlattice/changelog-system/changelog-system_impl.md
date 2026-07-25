@@ -4,6 +4,8 @@
 
 Release and changelog mutations are server-owned. Browser DAL modules prepare bounded payloads, upload approved images, call authenticated routes, and validate bounded responses. Firestore transactions own ordering, idempotency, page mutation, release dependency validation, audits, and invalidation.
 
+One initiating workspace owns the complete operation. The editor captures exact Answerlattice `tId/sId`; upload paths, changelog actions, release create/activate actions, and final publication carry that scope as corroboration. Server executors independently derive permission authority and reject a mismatch before target persistence. Successful responses acknowledge the exact authoritative scope, and browser clients reject a missing or different acknowledgement.
+
 ## Governed publication sequence
 
 For a new or legacy-unlinked versioned entry, the editor uses:
@@ -55,6 +57,8 @@ Public page projection also verifies `pId=AL`, `tId`, and `sId`. Latest and olde
 ## Recovery
 
 If release creation, activation, or final publication fails after the draft write, the editor keeps the saved row private, refreshes the surface summary best-effort, closes with fixed recovery copy, and lets the owner reopen the draft. Deterministic release IDs make the retry replay-safe.
+
+If the active workspace changes, the editor and management list discard prior rows, previews, modal state, delayed results, and notifications. A save already in flight remains server-fenced to its initiating workspace and cannot be cancelled into an ambiguous browser settlement.
 
 ## Verification
 

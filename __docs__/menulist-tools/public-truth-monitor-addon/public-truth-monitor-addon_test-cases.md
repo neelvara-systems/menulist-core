@@ -33,3 +33,9 @@
 | PTM-BOUNDARY-001 | Runtime tries to fetch external sources or call providers | Fail source gate |
 | PTM-BOUNDARY-002 | Production rate-limit provider is unavailable | Summary/refresh fails closed; protected owner-data operation does not bypass admission |
 | PTM-DATA-003 | Two manual refreshes overlap | Each transaction rebuilds from the current summary; one refresh cannot silently overwrite the other's history entry |
+| PTM-AUTH-001 | Compact and nested session tenant/store aliases disagree | 403 before protected monitor reads or writes |
+| PTM-AUTH-002 | Store is reassigned, disabled, deleted, or blocked after initial route admission | Summary transaction rejects current scope; no saved summary is disclosed or written |
+| PTM-AUTH-003 | Tenant is disabled, deleted, or blocked after initial route admission | Summary transaction rejects current scope; no saved summary is disclosed or written |
+| PTM-AUTH-004 | Store role loses `VIEW_ANALYTICS` before final summary transaction | Current permission callback rejects; refresh produces no summary write |
+| PTM-AUTH-005 | Root and nested aliases are equivalent string/number forms | Exact canonical scope is accepted |
+| PTM-AUTH-006 | Paid subscription is revoked or changed after report-input reads but before final persistence | Final transaction rejects current entitlement; no summary write |

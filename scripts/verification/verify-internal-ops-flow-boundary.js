@@ -39,6 +39,7 @@ for (const fieldPath of ['stores', 'projects']) {
 includes(currentAccessRoute, [
   "withPlatformAuth(async (request: NextRequest, session: any) =>",
   'failClosedOnProviderError: true',
+  "const operatorId = resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-session';",
   'const currentPlatformUser = await getCurrentPlatformUser(session);',
   "accessModel: 'current_persisted_platform_user'",
   "'Cache-Control': 'private, no-store'",

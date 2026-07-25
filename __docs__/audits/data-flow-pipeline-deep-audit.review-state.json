@@ -3068,9 +3068,11 @@
   },
   "scripts/verification/verify-answerlattice-runtime-truth.js": {
     "reviewStatus": "in-progress",
-    "auditPass": 575,
-    "reviewedFunctionsOrRanges": "prior Answerlattice evidence families plus chat, changelog, Knowledge Intake, AI-operation, staff/session/access, KB mutation and cache assertions; remaining product verifier families pending; Restarts 457-523 reservation/recovery, scheduler, widget, search, friction and predictive families; Restarts 528-535 deterministic identity/invalidation/context finalization and coverage/trust DTO assertions; Restart 536 integration stored-value admission; Restart 537 app/Functions compiled workspace-profile exact projection and raw bundle-copy rejection; Restart 538 advanced-branding runtime/rules admission parity; Restart 539 root/Functions public-citation separated/camel/compact secret-query rejection and false-positive regression; Restart 540 exact session-identity reload plus latest-request/cleanup settlement guards; Restart 542 Transactions exact-workspace render and initial/load-more settlement; Restarts 569-573 chat deletion recovery, exact insight replacement, literal nullable metric units, conversation export labels and manual/scheduled writer parity; Restarts 574-575 Help Chat initiating reads, actor-bound writes, product-correct signal scope, subtree remount and mounted/current settlement",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "prior Answerlattice evidence families plus chat, changelog, Knowledge Intake, AI-operation, staff/session/access, KB mutation and cache assertions; remaining product verifier families pending; Restarts 457-523 reservation/recovery, scheduler, widget, search, friction and predictive families; Restarts 528-535 deterministic identity/invalidation/context finalization and coverage/trust DTO assertions; Restart 536 integration stored-value admission; Restart 537 app/Functions compiled workspace-profile exact projection and raw bundle-copy rejection; Restart 538 advanced-branding runtime/rules admission parity; Restart 539 root/Functions public-citation separated/camel/compact secret-query rejection and false-positive regression; Restart 540 exact session-identity reload plus latest-request/cleanup settlement guards; Restart 542 Transactions exact-workspace render and initial/load-more settlement; Restarts 569-573 chat deletion recovery, exact insight replacement, literal nullable metric units, conversation export labels and manual/scheduled writer parity; Restarts 574-575 Help Chat initiating reads, actor-bound writes, product-correct signal scope, subtree remount and mounted/current settlement; Restart 578 changelog/release initiating scope, exact acknowledgement and browser settlement",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
+      "AUDIT-AL-CHANGELOG-CACHE-MUTATION-001",
       "AUDIT-AL-HELP-CHAT-MUTATION-SETTLEMENT-001",
       "AUDIT-AL-HELP-CHAT-INITIATING-SCOPE-001",
       "AUDIT-AL-WEEKLY-INSIGHT-WRITER-PARITY-001",
@@ -5030,18 +5032,19 @@
   },
   "scripts/verification/test-pos-sync-boundaries.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 380,
-    "reviewedFunctionsOrRanges": "full pure POS URL/network/version/outcome/payload and delivery-history public-projection behavioral contract",
+    "auditPass": 585,
+    "reviewedFunctionsOrRanges": "full pure POS URL/network/version/outcome/payload and delivery-history public-projection behavioral contract plus transaction-current tenant/store secret scope",
     "findings": [
       "AUDIT-POS-001",
       "AUDIT-POS-002",
       "AUDIT-POS-003",
-      "AUDIT-POS-DELIVERY-HISTORY-PROJECTION-001"
+      "AUDIT-POS-DELIVERY-HISTORY-PROJECTION-001",
+      "AUDIT-POS-SECRET-CURRENT-SCOPE-001"
     ],
     "tests": [
       "npm run test:pos-sync-boundaries"
     ],
-    "reviewedAt": "2026-07-21"
+    "reviewedAt": "2026-07-25"
   },
   "scripts/verification/verify-pos-sync-boundary.js": {
     "reviewStatus": "in-progress",
@@ -5154,17 +5157,21 @@
     "reviewedAt": "2026-07-12"
   },
   "src/database/publicTruthMonitor/server.ts": {
-    "reviewStatus": "in-progress",
-    "auditPass": 19,
-    "reviewedFunctionsOrRanges": "summary scope normalization and listProjectSummariesForStore around lines 95-116; remaining monitor server DAL pending",
+    "reviewStatus": "reviewed",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "full file; Firestore sanitizer, strict IDs, summary-project selection, scoped/legacy project ownership, transaction-current authorized summary read and atomic store/tenant/subscription-authorized summary update",
     "findings": [
-      "AUDIT-SUMMARY-002"
+      "AUDIT-SUMMARY-002",
+      "AUDIT-PUBLIC-TRUTH-MONITOR-TRANSACTION-AUTHORITY-001"
     ],
     "tests": [
       "scripts/verification/test-summary-project-boundaries.ts",
-      "scripts/verification/verify-public-truth-monitor-addon.js"
+      "npm run test:public-truth-monitor-server-scope",
+      "npm run verify:public-truth-monitor-addon",
+      "npm run verify:menulist-api-tenant-safety",
+      "npx tsc --noEmit --incremental false --pretty false"
     ],
-    "reviewedAt": "2026-07-10"
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/multiOutlet/masterOperationalState.ts": {
     "reviewStatus": "reviewed",
@@ -6312,28 +6319,32 @@
   },
   "src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 423,
-    "reviewedFunctionsOrRanges": "full file; canonical session tenant/store scope, bounded store/subscription read order and explicit current-tenant entitlement projection",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "full file; shared exact compact/nested session alias agreement, bounded store/subscription read order, explicit current-tenant entitlement projection and exact admitted-subscription authority return",
     "findings": [
-      "AUDIT-MENULIST-ENTITLEMENT-SUBSCRIPTION-SCOPE-001"
+      "AUDIT-MENULIST-ENTITLEMENT-SUBSCRIPTION-SCOPE-001",
+      "AUDIT-PUBLIC-TRUTH-MONITOR-SESSION-ALIAS-001"
     ],
     "tests": [
+      "npm run test:public-truth-monitor-server-scope",
       "npm run verify:public-truth-monitor-addon",
       "npx tsc --noEmit --incremental false --pretty false"
     ],
-    "reviewedAt": "2026-07-22"
+    "reviewedAt": "2026-07-25"
   },
   "scripts/verification/verify-public-truth-monitor-addon.js": {
     "reviewStatus": "in-progress",
-    "auditPass": 423,
-    "reviewedFunctionsOrRanges": "entitlement/session-scope source boundary plus maintained Public Truth Monitor aggregate; remaining feature-source assertions retain ranged status",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "entitlement/session-scope and transaction-current authority assertions plus maintained Public Truth Monitor aggregate; remaining feature-source assertions retain ranged status",
     "findings": [
-      "AUDIT-MENULIST-ENTITLEMENT-SUBSCRIPTION-SCOPE-001"
+      "AUDIT-MENULIST-ENTITLEMENT-SUBSCRIPTION-SCOPE-001",
+      "AUDIT-PUBLIC-TRUTH-MONITOR-SESSION-ALIAS-001",
+      "AUDIT-PUBLIC-TRUTH-MONITOR-TRANSACTION-AUTHORITY-001"
     ],
     "tests": [
       "npm run verify:public-truth-monitor-addon"
     ],
-    "reviewedAt": "2026-07-22"
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/growthos/serverEntitlements.ts": {
     "reviewStatus": "reviewed",
@@ -7083,8 +7094,8 @@
   },
   "scripts/verification/verify-public-business-truth.js": {
     "reviewStatus": "in-progress",
-    "auditPass": 556,
-    "reviewedFunctionsOrRanges": "Project/store persistence and public-truth source gates plus desktop/mobile Advanced Settings, SEO/Analytics, Business Settings, working-hours, locale, Official Page, Profile, Attributes, domain, Business Copy and time-slot exact-scope settlement; changed-leaf ownership, rollback, partial-commit, current-sibling and media-order assertions; remaining verifier families retain ranged review.",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "Project/store persistence and public-truth source gates plus desktop/mobile Advanced Settings, SEO/Analytics, Business Settings, working-hours, locale, Official Page, Profile, Attributes, domain, Business Copy and time-slot exact-scope settlement; changed-leaf ownership, rollback, partial-commit, current-sibling and media-order assertions; Restart 584 verifyPublicTruthWritesInvalidateScreenData and Temporary Status transaction-current slice; remaining verifier families retain ranged review.",
     "findings": [
       "AUDIT-MOBILE-TEMP-STATUS-STORE-SCOPE-RACE-001",
       "AUDIT-ADVANCED-SETTINGS-STORE-SCOPE-RACE-001",
@@ -7136,14 +7147,17 @@
       "AUDIT-OFFICIAL-PAGE-MEDIA-SAVE-ORDER-001",
       "AUDIT-BASIC-SETTINGS-STORE-SCOPE-RACE-001",
       "AUDIT-BASIC-SETTINGS-PARTIAL-COMMIT-001",
-      "AUDIT-BUSINESS-ATTRIBUTES-STORE-SCOPE-RACE-001"
+      "AUDIT-BUSINESS-ATTRIBUTES-STORE-SCOPE-RACE-001",
+      "AUDIT-VERIFY-SCREEN-DATA-NEXT16-TOKEN-001",
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
     ],
     "tests": [
       "npm run verify:public-business-truth",
+      "npm run verify:temporary-status-boundary",
       "npx tsc --noEmit --incremental false --pretty false",
       "npm run build"
     ],
-    "reviewedAt": "2026-07-14"
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/extraction/applyChanges.ts": {
     "reviewStatus": "reviewed",
@@ -10262,12 +10276,56 @@
     ],
     "reviewedAt": "2026-07-11"
   },
+  "src/lib/permissions/scopeDocumentId.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 582,
+    "reviewedFunctionsOrRanges": "full file; exact positive numeric Firestore document IDs plus compact-root/nested-legacy session alias agreement for tenant/store authorization scope",
+    "findings": [
+      "AUDIT-AI-PACK-STATUS-SCOPE-001"
+    ],
+    "tests": [
+      "npm run test:ai-pack-status-scope-contracts",
+      "npm run verify:menulist-api-tenant-safety",
+      "npm run verify:auth-security-failure-matrix",
+      "npx tsc --noEmit --incremental false --pretty false"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/ai-packs/status/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 582,
+    "reviewedFunctionsOrRanges": "full GET route; dynamic/auth admission, exact session alias agreement, billing permission ordering, scoped capacity/subscription read, boolean-only response and bounded failure diagnostics",
+    "findings": [
+      "AUDIT-AI-PACK-STATUS-SCOPE-001"
+    ],
+    "tests": [
+      "npm run test:ai-pack-status-scope-contracts",
+      "npm run verify:menulist-api-tenant-safety",
+      "npm run verify:auth-security-failure-matrix",
+      "npx tsc --noEmit --incremental false --pretty false",
+      "focused ESLint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-ai-pack-status-scope-contracts.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 582,
+    "reviewedFunctionsOrRanges": "full behavioral/source regression; agreeing and legacy-only aliases, tenant/store conflicts, whitespace, leading zero, zero and unsafe scope plus permission/capacity scope ownership",
+    "findings": [
+      "AUDIT-AI-PACK-STATUS-SCOPE-001"
+    ],
+    "tests": [
+      "npm run test:ai-pack-status-scope-contracts"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
   "src/lib/permissions/server.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 119,
-    "reviewedFunctionsOrRanges": "full file; numeric tenant/store scope normalization, platform bypasses, active/deleted/blocked store admission, store tenant verification, explicit-store helper and mapped-role permission evaluation",
+    "auditPass": 582,
+    "reviewedFunctionsOrRanges": "full file; exact tenant/store session alias agreement, platform bypasses, active/deleted/blocked store admission, store tenant verification, explicit-store helper and mapped-role permission evaluation",
     "findings": [
-      "AUDIT-MULTI-007"
+      "AUDIT-MULTI-007",
+      "AUDIT-AI-PACK-STATUS-SCOPE-001"
     ],
     "tests": [
       "npm run test:store-switch-access-boundary",
@@ -10275,8 +10333,8 @@
       "npm run verify:menulist-api-tenant-safety",
       "npm run typecheck"
     ],
-    "reviewedAt": "2026-07-11",
-    "reviewNotes": "Restart 119 used this helper as the authorization dependency for the analytics route cluster; no new defect found in the reviewed branches."
+    "reviewedAt": "2026-07-25",
+    "reviewNotes": "Restart 582 made the primary session-scoped permission path reject contradictory compact and nested tenant/store aliases before its store read; explicit-store helpers retain their existing exact target normalization."
   },
   "src/app/api/auth/switch-store/route.ts": {
     "reviewStatus": "reviewed",
@@ -10295,19 +10353,21 @@
     "reviewedAt": "2026-07-11"
   },
   "src/lib/ownerBusinessAssistant/server/apiGuards.ts": {
-    "reviewStatus": "in-progress",
-    "auditPass": 81,
-    "reviewedFunctionsOrRanges": "session scope and selected-store normalization/authorization plus limiter identity/diagnostics; remaining tenant-access and response branches queued",
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full file; exact session scope delegation, selected-store normalization/mapped authorization, tenant corroboration, hashed feature limiter and bounded diagnostics",
     "findings": [
-      "AUDIT-MULTI-007"
+      "AUDIT-MULTI-007",
+      "AUDIT-OBA-SESSION-ALIAS-001"
     ],
     "tests": [
       "npm run test:store-switch-access-boundary",
       "npm run verify:owner-business-health-boundary",
       "npm run verify:menulist-api-tenant-safety",
-      "npm run typecheck"
+      "npm run test:owner-business-assistant-session-scope",
+      "npx tsc --noEmit --incremental false --pretty false"
     ],
-    "reviewedAt": "2026-07-11"
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/ownerBusinessAssistant/schemas.ts": {
     "reviewStatus": "in-progress",
@@ -12361,16 +12421,28 @@
   },
   "scripts/verification/test-answerlattice-mcp-session.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 93,
-    "reviewedFunctionsOrRanges": "full file; valid round trip, exact tool capability mapping/membership and extra-segment, string-scope-ID, unknown/duplicate scope, excessive lifetime and unexpected-field refusal",
+    "auditPass": 580,
+    "reviewedFunctionsOrRanges": "full file; pure tool capability import, valid round trip, exact membership and extra-segment, string-scope-ID, unknown/duplicate scope, excessive lifetime and unexpected-field refusal",
     "findings": [
+      "AUDIT-VERIFY-AL-MCP-SERVER-ONLY-IMPORT-001",
       "AUDIT-AL-MCP-TOKEN-001",
       "AUDIT-AL-MCP-SCOPE-002"
     ],
     "tests": [
       "npm run test:answerlattice-mcp-session"
     ],
-    "reviewedAt": "2026-07-11"
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-answerlattice-mcp-contracts.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 580,
+    "reviewedFunctionsOrRanges": "full file; pure tool-registry import plus protocol negotiation, JSON-RPC IDs/notifications, strict arguments, tool annotations and output schemas",
+    "findings": [
+      "AUDIT-VERIFY-AL-MCP-SERVER-ONLY-IMPORT-001",
+      "AUDIT-AL-MCP-SCOPE-002"
+    ],
+    "tests": ["npm run verify:answerlattice-mcp"],
+    "reviewedAt": "2026-07-25"
   },
   "src/database/answerlattice/signalEvents.ts": {
     "reviewStatus": "in-progress",
@@ -12402,9 +12474,10 @@
   },
   "src/lib/answerlattice/mcpTools.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 93,
-    "reviewedFunctionsOrRanges": "full file; exact tool registry/capability map, bounded object serialization, bundle loading, canonical search and deterministic aggregate missing-context write",
+    "auditPass": 580,
+    "reviewedFunctionsOrRanges": "full file; pure exact tool registry/capability map, bounded object serialization, bundle loading, canonical search and lazy server-only governed deterministic missing-context write",
     "findings": [
+      "AUDIT-VERIFY-AL-MCP-SERVER-ONLY-IMPORT-001",
       "AUDIT-AL-MCP-SCOPE-002"
     ],
     "tests": [
@@ -12413,7 +12486,7 @@
       "npm run typecheck",
       "npm run lint"
     ],
-    "reviewedAt": "2026-07-11"
+    "reviewedAt": "2026-07-25"
   },
   "src/database/chatSessions/index.ts": {
     "reviewStatus": "reviewed",
@@ -13020,9 +13093,10 @@
   },
   "src/lib/answerlattice/releaseServer.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 529,
-    "reviewedFunctionsOrRanges": "full file; deterministic creation, exact latest/entity/release/answer admission, activation lease, capped transactional drift/audit plus transaction-current cache/source/manifest invalidation ownership, create-only audit identities, observable failure settlement and replay",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; initiating/current exact workspace corroboration before persistence, deterministic creation, exact latest/entity/release/answer admission, activation lease, capped transactional drift/audit plus transaction-current cache/source/manifest invalidation ownership, create-only audit identities, observable failure settlement, exact response acknowledgement and replay",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-RELEASE-SCOPE-001",
       "AUDIT-AL-RECOVERY-OBS-001",
       "AUDIT-ANSWERLATTICE-INVALIDATION-DETERMINISTIC-OWNERSHIP-001"
@@ -13034,11 +13108,26 @@
     ],
     "reviewedAt": "2026-07-11"
   },
+  "src/lib/answerlattice/releaseContracts.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; strict initiating-workspace create/activate actions, persisted release input/result separation, exact response acknowledgement and stored release normalization",
+    "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001"
+    ],
+    "tests": [
+      "npm run test:answerlattice-release-contracts",
+      "npm run test:answerlattice-release:emulator",
+      "npm run verify:answerlattice-runtime-truth"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
   "src/database/answerlattice/releases.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 99,
-    "reviewedFunctionsOrRanges": "full file; active session scope, product-qualified bounded reads, stored row parser, normalized single ID and bounded server-action request/response",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; initiating/current exact workspace create/activate admission, product-qualified bounded reads, stored row parser, normalized single ID and bounded scoped server-action request/response acknowledgement",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-RELEASE-CLIENT-001",
       "AUDIT-VERIFY-039"
     ],
@@ -13051,9 +13140,10 @@
   },
   "scripts/verification/test-answerlattice-release-contracts.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 99,
-    "reviewedFunctionsOrRanges": "full file; strict create/activate input, entity fan-out/uniqueness, stored product/scope/status and action result contracts",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; strict create/activate input including required initiating workspace, entity fan-out/uniqueness, stored product/scope/status and exact response acknowledgement contracts",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-RELEASE-SCOPE-001",
       "AUDIT-AL-RELEASE-CLIENT-001"
     ],
@@ -13064,9 +13154,10 @@
   },
   "scripts/verification/test-answerlattice-release-emulator.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 99,
-    "reviewedFunctionsOrRanges": "full file; create fingerprint replay/conflict, exact entity scope, activation/drift/audit/context writes, malformed/string-version failure recovery and active replay",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; initiating/current workspace mismatch rejection, create fingerprint replay/conflict, exact entity scope, activation/drift/audit/context writes, malformed/string-version failure recovery and active replay",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-RELEASE-SCOPE-001"
     ],
     "tests": [
@@ -13076,9 +13167,10 @@
   },
   "src/lib/answerlattice/changelogContracts.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 100,
-    "reviewedFunctionsOrRanges": "full file; strict action/result schemas and exact stored entry/page scope, timestamp, counter, KB/file/video/entity/release and page-alignment normalization",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; strict initiating-workspace action and acknowledged-result schemas plus exact stored entry/page scope, timestamp, counter, KB/file/video/entity/release and page-alignment normalization",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-CHANGELOG-CONTRACT-001"
     ],
     "tests": [
@@ -13090,9 +13182,10 @@
   },
   "src/lib/answerlattice/changelogServer.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 529,
-    "reviewedFunctionsOrRanges": "full file; scoped collection, exact page/index admission, deterministic create/update/delete transactions, entry-scoped removed-file projection without global deletion authority, page byte/count caps, tombstones, transaction-current source/manifest invalidation ownership and post-commit cache behavior",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; initiating/current exact workspace corroboration before persistence, scoped collection, exact page/index admission, deterministic create/update/delete transactions, entry-scoped removed-file projection without global deletion authority, page byte/count caps, tombstones, transaction-current source/manifest invalidation ownership, exact response acknowledgement and post-commit cache behavior",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-CHANGELOG-CONTRACT-001",
       "AUDIT-AL-CHANGELOG-MEDIA-SHARED-REFERENCE-001",
       "AUDIT-ANSWERLATTICE-INVALIDATION-DETERMINISTIC-OWNERSHIP-001"
@@ -13106,9 +13199,10 @@
   },
   "src/database/changelog/index.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 577,
-    "reviewedFunctionsOrRanges": "full file; active scope, pending file validation/attempt-only upload compensation, strict action construction, bounded server acknowledgement, persisted removed-file retention and initiating/current exact-scope latest/older page readers",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; initiating/current exact workspace upload and create/update/delete admission, pending file validation/attempt-only compensation, strict scoped action construction, bounded exact-scope server acknowledgement, persisted removed-file retention and exact-scope latest/older readers",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-CHANGELOG-READ-SCOPE-001",
       "AUDIT-AL-CONTENT-FEEDBACK-001",
       "AUDIT-AL-CHANGELOG-CONTRACT-001",
@@ -13123,6 +13217,36 @@
     ],
     "reviewedAt": "2026-07-11"
   },
+  "src/components/templates/platform/changelog/addEditChangelog.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; immutable initiating workspace captured before media/release/changelog publication and derived summary refresh, exact response settlement, scope-switch and unmount guards, save-time drawer closure prevention and release compensation behavior",
+    "findings": [
+      "AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001",
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001"
+    ],
+    "tests": [
+      "npm run verify:answerlattice-runtime-truth",
+      "npx tsc --noEmit --incremental false",
+      "scoped eslint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/platform/changelog/index.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; exact workspace page/list/editor state reset, stale latest/load-more/delete settlement rejection, immutable delete scope, cache-safe copied sorting and validated timestamp ordering",
+    "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
+      "AUDIT-AL-CHANGELOG-CACHE-MUTATION-001"
+    ],
+    "tests": [
+      "npm run verify:answerlattice-runtime-truth",
+      "npx tsc --noEmit --incremental false",
+      "scoped eslint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
   "src/hooks/useChangelogCache.ts": {
     "reviewStatus": "reviewed",
     "auditPass": 577,
@@ -13133,15 +13257,30 @@
   },
   "scripts/verification/test-answerlattice-changelog-contracts.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 100,
-    "reviewedFunctionsOrRanges": "full file; valid page plus string tenant/store/page/counter, missing KB category and partial timestamp rejection",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; required initiating workspace and exact response acknowledgement plus valid page, string tenant/store/page/counter, missing KB category and partial timestamp rejection",
     "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
       "AUDIT-AL-CHANGELOG-CONTRACT-001"
     ],
     "tests": [
       "npm run test:answerlattice-changelog-contracts"
     ],
     "reviewedAt": "2026-07-11"
+  },
+  "scripts/verification/test-answerlattice-changelog-emulator.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 578,
+    "reviewedFunctionsOrRanges": "full file; initiating/current workspace mismatch rejection before persistence plus scoped create/update/delete, replay, media-reference and malformed-page behavior",
+    "findings": [
+      "AUDIT-AL-CHANGELOG-PUBLICATION-SCOPE-001",
+      "AUDIT-AL-CHANGELOG-CONTRACT-001",
+      "AUDIT-AL-CHANGELOG-MEDIA-SHARED-REFERENCE-001"
+    ],
+    "tests": [
+      "npm run test:answerlattice-changelog:emulator"
+    ],
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/answerlattice/compiledContext.ts": {
     "reviewStatus": "in-progress",
@@ -13690,11 +13829,12 @@
   },
   "src/lib/answerlattice/signalEmitter.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 524,
-    "reviewedFunctionsOrRanges": "full file; exact scope, entity/dedup/metadata normalization, tenant/workspace-partitioned process dedupe, server/client dispatch, persistent replay handling and bounded failure diagnostics",
+    "auditPass": 581,
+    "reviewedFunctionsOrRanges": "full file; shared/client exact scope, entity/dedup/metadata normalization, tenant/workspace-partitioned process dedupe, payload fingerprint, injected persistence dispatch and bounded failure diagnostics",
     "findings": [
       "AUDIT-AL-SIGNAL-SCOPE-001",
-      "AUDIT-ANSWERLATTICE-SIGNAL-MEMORY-SCOPE-001"
+      "AUDIT-ANSWERLATTICE-SIGNAL-MEMORY-SCOPE-001",
+      "AUDIT-VERIFY-AL-SIGNAL-OWNER-001"
     ],
     "tests": [
       "npm run test:answerlattice-signal-contracts",
@@ -13702,7 +13842,22 @@
       "npm run typecheck",
       "npm run lint"
     ],
-    "reviewedAt": "2026-07-21"
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/answerlattice/signalEmitterServer.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 581,
+    "reviewedFunctionsOrRanges": "full file; server-only Admin persistence, deterministic scoped document identity, create-only durable replay handling, exact replay comparison and bounded retention/diagnostics boundary",
+    "findings": [
+      "AUDIT-VERIFY-AL-SIGNAL-OWNER-001"
+    ],
+    "tests": [
+      "npm run test:answerlattice-signal-contracts",
+      "npm run verify:answerlattice-runtime-truth",
+      "npm run typecheck",
+      "npm run lint"
+    ],
+    "reviewedAt": "2026-07-25"
   },
   "src/database/answerlattice/mutationProposals.ts": {
     "reviewStatus": "in-progress",
@@ -13749,18 +13904,19 @@
   },
   "scripts/verification/test-answerlattice-signal-contracts.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 524,
-    "reviewedFunctionsOrRanges": "full behavioral/source/index suite; exact scope, persistent and memory identity, all downstream signal product partitions, unresolved entity-index partition and required composite indexes",
+    "auditPass": 581,
+    "reviewedFunctionsOrRanges": "full behavioral/source/index suite; exact scope, shared/client payload and memory identity, server-only deterministic Admin identity/create-only replay/retention, all downstream signal product partitions, unresolved entity-index partition and required composite indexes",
     "findings": [
       "AUDIT-AL-SIGNAL-SCOPE-001",
       "AUDIT-ANSWERLATTICE-SIGNAL-MEMORY-SCOPE-001",
       "AUDIT-ANSWERLATTICE-SIGNAL-CONSUMER-PRODUCT-001",
-      "AUDIT-ANSWERLATTICE-SUPPORT-BOARD-PRODUCT-001"
+      "AUDIT-ANSWERLATTICE-SUPPORT-BOARD-PRODUCT-001",
+      "AUDIT-VERIFY-AL-SIGNAL-OWNER-001"
     ],
     "tests": [
       "npm run test:answerlattice-signal-contracts"
     ],
-    "reviewedAt": "2026-07-21"
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/answerlattice/contentFeedbackServer.ts": {
     "reviewStatus": "in-progress",
@@ -14256,9 +14412,10 @@
   },
   "src/database/answerlattice/productSurfaces.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 533,
-    "reviewedFunctionsOrRanges": "full file; session-derived scope, list/get/create/update/archive/reorder flows, normalized deterministic identity, same-transaction source/manifest ownership and invalidation for save/archive, diagnostics and summary response parsing",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; session/override scope, list/get/create/update/archive flows, normalized deterministic identity, same-transaction source/manifest ownership, exact initiating-scope summary rebuild request/response acknowledgement and bounded diagnostics",
     "findings": [
+      "AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001",
       "AUDIT-AL-SURFACE-SUMMARY-SCOPE-002",
       "AUDIT-ANSWERLATTICE-CLIENT-INVALIDATION-CONTROL-PLANE-001"
     ],
@@ -14268,7 +14425,97 @@
       "npx tsc --noEmit --incremental false --pretty false",
       "npm run lint"
     ],
-    "reviewedAt": "2026-07-23"
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/answerlattice/productSurfaceSummaryContracts.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; strict positive initiating workspace request schema, manual reason allowlist and exact scope comparator",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": [
+      "npm run test:answerlattice-product-surface-summary-contracts",
+      "node scripts/verification/verify-answerlattice-runtime-truth.js"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; feature/auth/rate/permission/body ordering, strict initiating/current workspace corroboration before source I/O, bounded rebuild, exact response acknowledgement and diagnostics",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": [
+      "npm run test:answerlattice-product-surface-summary-contracts",
+      "npm run test:answerlattice-product-surface-summary:emulator",
+      "node scripts/verification/verify-answerlattice-runtime-truth.js"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-answerlattice-product-surface-summary-contracts.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; valid exact request plus absent, string, zero, extra-field and tenant/store mismatch rejection",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": ["npm run test:answerlattice-product-surface-summary-contracts"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-answerlattice-product-surface-summary-emulator.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; bounded exact-workspace source fixture, active/archive replacement, duplicate-key refusal, persisted summary assertions and modular Admin cleanup",
+    "findings": [
+      "AUDIT-VERIFY-AL-PRODUCT-SUMMARY-ADMIN-DELETE-001",
+      "AUDIT-AL-SURFACE-SUMMARY-SCOPE-002"
+    ],
+    "tests": ["npm run test:answerlattice-product-surface-summary:emulator"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "summary rebuild callsites and surrounding save/archive/manual/template settlement; captured initiating workspace is mandatory for every derived rebuild",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": [
+      "node scripts/verification/verify-answerlattice-runtime-truth.js",
+      "npx tsc --noEmit --incremental false",
+      "scoped eslint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "published FAQ save/archive summary-rebuild side effects; exact initiating workspace capture, rejection diagnostics and success/warning settlement",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": [
+      "node scripts/verification/verify-answerlattice-runtime-truth.js",
+      "npx tsc --noEmit --incremental false",
+      "scoped eslint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/platform/knowledgeBase/ArticleModal.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "article create/update summary-rebuild side effects; exact initiating workspace capture, bounded diagnostics and post-write warning behavior",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": [
+      "node scripts/verification/verify-answerlattice-runtime-truth.js",
+      "npx tsc --noEmit --incremental false",
+      "scoped eslint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/platform/supportTickets/TicketDetailView.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 579,
+    "reviewedFunctionsOrRanges": "ticket update derived-summary side effect; persisted ticket workspace becomes immutable expected scope for rebuild and diagnostics",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001"],
+    "tests": [
+      "node scripts/verification/verify-answerlattice-runtime-truth.js",
+      "npx tsc --noEmit --incremental false",
+      "scoped eslint"
+    ],
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/search/searchCore.ts": {
     "reviewStatus": "reviewed",
@@ -15887,13 +16134,44 @@
     "tests": ["npm run verify:ops-control-room-boundary", "npx tsc --noEmit --incremental false"],
     "reviewedAt": "2026-07-23"
   },
+  "src/app/api/owner-referrals/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 583,
+    "reviewedFunctionsOrRanges": "full GET route; acquisition/pilot admission, exact session tenant/store comparison, tenant and persisted billing permission, strict read limiter, paid-wallet eligibility, signed invite issue, bounded scoped recent-referral query, public-safe status/name/date projection, private no-store response and bounded failure diagnostics",
+    "findings": [],
+    "tests": [
+      "npm run verify:owner-referral",
+      "npm run verify:menulist-api-tenant-safety",
+      "npm run verify:auth-security-failure-matrix",
+      "git diff --check"
+    ],
+    "reviewedAt": "2026-07-25",
+    "reviewNotes": "Restart 583 tenant-adversarial re-review confirmed that selected route scope, verifyTenantAccess, billing permission, wallet lookup, limiter partition and referral query use one consistent target. Loose numeric inputs cannot bypass the root-session string comparison."
+  },
+  "src/app/api/projects/master-job-status/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 583,
+    "reviewedFunctionsOrRanges": "full file; project and session scope parsing, compact/nested alias agreement, read limiter, caller-store Admin read, tenant and MANAGE_MENU permission, master/outlet link proof, capped active-job query, public response projection and bounded failure diagnostics",
+    "findings": [
+      "AUDIT-MASTER-JOB-STATUS-SESSION-ALIAS-001"
+    ],
+    "tests": [
+      "npm run test:ai-pack-status-scope-contracts",
+      "npm run verify:menulist-api-tenant-safety",
+      "npx tsc --noEmit --incremental false --pretty false",
+      "focused ESLint",
+      "git diff --check"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
   "src/lib/billing/billingAccess.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 188,
-    "reviewedFunctionsOrRanges": "full file; MenuList platform/store/current role authorization and Answerlattice current persisted MANAGE_BILLING permission bridge",
+    "auditPass": 583,
+    "reviewedFunctionsOrRanges": "full file; MenuList platform/store/current role authorization, exact store/tenant document admission, blocked-state checks, mapped membership role selection and Answerlattice current persisted MANAGE_BILLING permission bridge",
     "findings": ["AUDIT-AL-BILLING-PERMISSION-001"],
     "tests": ["npm run verify:billing-entitlement-boundary", "npm run test:answerlattice-access-user-scope"],
-    "reviewedAt": "2026-07-13"
+    "reviewedAt": "2026-07-25",
+    "reviewNotes": "Restart 583 verified MenuList mutation callers either use the same nested scope as this helper or first pass the product/session provider-scope alias-agreement boundary; no divergent billing target remained after Restart 582."
   },
   "scripts/verification/test-answerlattice-access-user-scope.ts": {
     "reviewStatus": "reviewed",
@@ -16192,10 +16470,10 @@
     "tests": ["npm run verify:public-contact-boundary"], "reviewedAt": "2026-07-13"
   },
   "src/lib/auth/currentPlatformUser.ts": {
-    "reviewStatus": "reviewed", "auditPass": 202,
-    "reviewedFunctionsOrRanges": "full file; generic and platform-specific exact document/email/role/lifecycle/block identity, issuance/revocation parsing/order, one direct Firestore read and fail-closed malformed/legacy markers",
-    "findings": ["AUDIT-REPORT-LEADS-CURRENT-AUTH-001", "AUDIT-REPORT-LEADS-IDENTITY-FALLBACK-001", "OPS-AUTH-001", "OPS-AUTH-002", "AUDIT-AUTH-PASSWORD-CURRENT-AUTH-001"],
-    "tests": ["npm run test:current-platform-user", "npm run test:current-platform-user:emulator", "npm run verify:change-password-boundary", "npm run verify:report-leads-boundary", "npm run verify:ops-current-authorization-boundary"], "reviewedAt": "2026-07-13"
+    "reviewStatus": "reviewed", "auditPass": 588,
+    "reviewedFunctionsOrRanges": "full file; exact root/nested actor alias agreement, generic/platform exact document/email/role/lifecycle/block identity, issuance/revocation parsing/order, one direct Firestore read and fail-closed malformed/legacy markers",
+    "findings": ["AUDIT-REPORT-LEADS-CURRENT-AUTH-001", "AUDIT-REPORT-LEADS-IDENTITY-FALLBACK-001", "OPS-AUTH-001", "OPS-AUTH-002", "AUDIT-AUTH-PASSWORD-CURRENT-AUTH-001", "AUDIT-PLATFORM-CURRENT-ACTOR-ALIAS-001"],
+    "tests": ["npm run test:current-platform-user", "npm run test:current-platform-user:emulator", "npm run verify:change-password-boundary", "npm run verify:report-leads-boundary", "npm run verify:ops-current-authorization-boundary", "npm run verify:ops-control-room-boundary", "npm run verify:internal-ops-flow-boundary"], "reviewedAt": "2026-07-25"
   },
   "src/app/api/ops/report-leads/route.ts": {
     "reviewStatus": "reviewed", "auditPass": 193,
@@ -16222,10 +16500,10 @@
     "tests": ["npm run verify:report-leads-boundary", "npx eslint src/components/templates/main-app/platform/reportLeadMonitor/index.tsx"], "reviewedAt": "2026-07-13"
   },
   "scripts/verification/test-current-platform-user.ts": {
-    "reviewStatus": "reviewed", "auditPass": 202,
-    "reviewedFunctionsOrRanges": "full pure generic/platform behavior matrix for role/lifecycle/verification/email/document identity, issuance, before/equal/after/malformed revocation and Firestore timestamp-like values",
-    "findings": ["AUDIT-REPORT-LEADS-CURRENT-AUTH-001", "AUDIT-AUTH-PASSWORD-CURRENT-AUTH-001"],
-    "tests": ["npm run test:current-platform-user", "npm run verify:change-password-boundary"], "reviewedAt": "2026-07-13"
+    "reviewStatus": "reviewed", "auditPass": 588,
+    "reviewedFunctionsOrRanges": "full pure generic/platform behavior matrix for exact actor aliases, role/lifecycle/verification/email/document identity, issuance, before/equal/after/malformed revocation and Firestore timestamp-like values",
+    "findings": ["AUDIT-REPORT-LEADS-CURRENT-AUTH-001", "AUDIT-AUTH-PASSWORD-CURRENT-AUTH-001", "AUDIT-PLATFORM-CURRENT-ACTOR-ALIAS-001"],
+    "tests": ["npm run test:current-platform-user", "npm run verify:change-password-boundary", "npm run verify:ops-current-authorization-boundary"], "reviewedAt": "2026-07-25"
   },
   "scripts/verification/test-current-platform-user-emulator.ts": {
     "reviewStatus": "reviewed", "auditPass": 202,
@@ -17582,9 +17860,9 @@
     "tests": ["npm run verify:answerlattice-runtime-truth", "npx tsc --noEmit --pretty false", "scoped ESLint"], "reviewedAt": "2026-07-13"
   },
   "src/components/templates/platform/KBGeneration/ReviewModal.tsx": {
-    "reviewStatus": "reviewed", "auditPass": 253,
-    "reviewedFunctionsOrRanges": "full file; transaction-current review navigation calls, immutable state, authoritative UI projection, selected-node refresh and existing publish contract",
-    "findings": ["AUDIT-AL-KB-CALLABLE-TYPE-001", "AUDIT-AL-KB-NAVIGATION-LOST-UPDATE-001"],
+    "reviewStatus": "reviewed", "auditPass": 579,
+    "reviewedFunctionsOrRanges": "full file; transaction-current review navigation calls, immutable state, authoritative UI projection, selected-node refresh, publish contract and initiating-workspace derived-summary refresh",
+    "findings": ["AUDIT-AL-PRODUCT-SUMMARY-REBUILD-SCOPE-001", "AUDIT-AL-KB-CALLABLE-TYPE-001", "AUDIT-AL-KB-NAVIGATION-LOST-UPDATE-001"],
     "tests": ["npm run test:answerlattice-kb-category-mutations", "npm run verify:answerlattice-runtime-truth", "npx tsc --noEmit --pretty false", "scoped ESLint"], "reviewedAt": "2026-07-13"
   },
   "scripts/verification/test-answerlattice-kb-category-mutations.ts": {
@@ -19920,11 +20198,11 @@
   },
   "__docs__/pos-webhook-sync/pos-webhook-sync_impl.md": {
     "reviewStatus": "in-progress",
-    "auditPass": 544,
-    "reviewedFunctionsOrRanges": "mutation integration and exact desktop tenant/store browser-state settlement contract plus prior POS persistence/network sections; remaining prose retains prior inventory status",
-    "findings": ["AUDIT-POS-SYNC-STORE-SCOPE-RACE-001"],
+    "auditPass": 585,
+    "reviewedFunctionsOrRanges": "mutation integration and exact desktop tenant/store browser-state settlement contract plus secret route alias/tenant/store transaction authority and prior POS persistence/network sections; remaining prose retains prior inventory status",
+    "findings": ["AUDIT-POS-SYNC-STORE-SCOPE-RACE-001", "AUDIT-POS-SECRET-CURRENT-SCOPE-001"],
     "tests": ["npm run verify:pos-sync-boundary", "npm run docs:check-links"],
-    "reviewedAt": "2026-07-23"
+    "reviewedAt": "2026-07-25"
   },
   "__docs__/pos-webhook-sync/pos-webhook-sync_mobile-support.md": {
     "reviewStatus": "in-progress",
@@ -20243,5 +20521,263 @@
     "findings": ["AUDIT-AL-ANALYTICS-METRIC-UNITS-001"],
     "tests": ["npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
     "reviewedAt": "2026-07-23"
+  },
+  "src/app/api/store/temp-status/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "full file; feature/auth admission, exact session alias scope, fail-closed limiter, bounded discriminated input, future expiry and message normalization, transaction-current store/tenant/permission authority, atomic set/clear, public cache/screen/Assistant effects, response and bounded diagnostics",
+    "findings": [
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run verify:temporary-status-boundary",
+      "npm run verify:menulist-api-tenant-safety",
+      "npx tsc --noEmit --incremental false --pretty false",
+      "focused ESLint",
+      "npm run docs:check-links",
+      "git diff --check"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/tempStatus/serverMutationScope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "full file; exact persisted tenant ownership plus store/tenant active, deleted and platform-block admission",
+    "findings": [
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run verify:temporary-status-boundary",
+      "npx tsc --noEmit --incremental false --pretty false",
+      "focused ESLint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-temporary-status-boundary.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "full behavioral suite; type/message/expiry/schema/response contracts plus active, mismatched, inactive, blocked and malformed transaction-current scope",
+    "findings": [
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run verify:temporary-status-boundary"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "__docs__/temp-status-layer/temp-status-layer_impl.md": {
+    "reviewStatus": "reviewed",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "full active implementation contract; authenticated transaction-current write, canonical read/expiry, public/structured consumers, owner settlement, special-menu ownership and failure behavior",
+    "findings": [
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run verify:temporary-status-boundary",
+      "npm run docs:check-links"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "__docs__/temp-status-layer/temp-status-layer_firebase.md": {
+    "reviewStatus": "reviewed",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "full active persistence/cost contract; store field shape, transaction reads/write, derived public reads, index exemption and infrastructure boundary",
+    "findings": [
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run verify:temporary-status-boundary",
+      "npm run docs:check-links"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "__docs__/temp-status-layer/temp-status-layer_validation.md": {
+    "reviewStatus": "reviewed",
+    "auditPass": 584,
+    "reviewedFunctionsOrRanges": "full active validation contract; public projection cases, current authority failure cases, security/cost evidence, local gates and external limitations",
+    "findings": [
+      "AUDIT-TEMP-STATUS-TRANSACTION-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run verify:temporary-status-boundary",
+      "npm run docs:check-links"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/pos-sync/secret/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 585,
+    "reviewedFunctionsOrRanges": "full GET/POST/readOrMutateSecret flow; feature/auth admission, strict scope/body, alias agreement, fail-closed limiter, transaction-current tenant/store/permission, canonical secret reveal/migration/ensure/rotation, versioning, private response and bounded diagnostics",
+    "findings": ["AUDIT-POS-SECRET-CURRENT-SCOPE-001"],
+    "tests": ["npm run verify:pos-sync-boundary", "npm run test:pos-sync-boundaries", "npm run verify:menulist-external-integrations", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/posSync/secretScope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 585,
+    "reviewedFunctionsOrRanges": "full file; exact persisted tenant ownership and current tenant/store active/deleted/platform-block admission",
+    "findings": ["AUDIT-POS-SECRET-CURRENT-SCOPE-001"],
+    "tests": ["npm run test:pos-sync-boundaries", "npm run verify:pos-sync-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "__docs__/pos-webhook-sync/pos-webhook-sync_firebase.md": {
+    "reviewStatus": "reviewed",
+    "auditPass": 585,
+    "reviewedFunctionsOrRanges": "full active data model, operation budget, cost controls, rules/deploy dependency and verification contract",
+    "findings": ["AUDIT-POS-SECRET-CURRENT-SCOPE-001"],
+    "tests": ["npm run verify:pos-sync-boundary", "npm run docs:check-links"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/public-truth-monitor/summary/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "full GET flow; feature/auth/rate-limit admission, exact alias agreement, initial tenant corroboration, transaction-current tenant/store lifecycle and permission, entitlement projection, private saved-summary response and bounded failure handling",
+    "findings": ["AUDIT-PUBLIC-TRUTH-MONITOR-SESSION-ALIAS-001", "AUDIT-PUBLIC-TRUTH-MONITOR-TRANSACTION-AUTHORITY-001"],
+    "tests": ["npm run test:public-truth-monitor-server-scope", "npm run verify:public-truth-monitor-addon", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/public-truth-monitor/refresh/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "full POST flow; feature/auth/fail-closed limiter/bounded validation, exact alias agreement, initial store/project/report/entitlement reads, exact admitted-subscription retention, transaction-current tenant/store lifecycle, permission and entitlement, atomic capped summary merge, response and diagnostics",
+    "findings": ["AUDIT-PUBLIC-TRUTH-MONITOR-SESSION-ALIAS-001", "AUDIT-PUBLIC-TRUTH-MONITOR-TRANSACTION-AUTHORITY-001"],
+    "tests": ["npm run test:public-truth-monitor-server-scope", "npm run verify:public-truth-monitor-addon", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/public-truth-tools/publicTruthMonitorServerScope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "full file; exact persisted tenant ownership plus current tenant/store existence, active/deleted and platform-block admission",
+    "findings": ["AUDIT-PUBLIC-TRUTH-MONITOR-TRANSACTION-AUTHORITY-001"],
+    "tests": ["npm run test:public-truth-monitor-server-scope", "npm run verify:public-truth-monitor-addon", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-public-truth-monitor-server-scope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 586,
+    "reviewedFunctionsOrRanges": "full executable regression; valid ownership, mismatch, lifecycle, platform block, missing state and exact agreeing/conflicting session aliases",
+    "findings": ["AUDIT-PUBLIC-TRUTH-MONITOR-SESSION-ALIAS-001", "AUDIT-PUBLIC-TRUTH-MONITOR-TRANSACTION-AUTHORITY-001"],
+    "tests": ["npm run test:public-truth-monitor-server-scope"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/owner-business-assistant/current/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full GET; feature/rate/query admission, exact actor/tenant/store scope, current store permission, bounded health-card context packet and cache metadata response",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/owner-business-assistant/analytics/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full GET; feature/rate/query admission, exact actor/tenant/store scope, current store permission, bounded analytics context packet and cache metadata response",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/owner-business-assistant/answer/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full POST; feature/fail-closed limiter/bounded schema/suggested-question admission, exact selected scope, permission/SAFE_MODE, deterministic answer, actor-owned optional thread and bounded answer-event effects",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001", "AUDIT-OBA-THREAD-ACTOR-OWNERSHIP-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/owner-business-assistant/feedback/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full POST; feature/write limiter/bounded strict body, exact selected actor/tenant/store scope, current permission, strict composed ID and capped-TTL feedback write",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/owner-business-assistant/locations/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full GET and projectors; feature/read limiter/query, exact selected actor/tenant/store scope, current permission, tenant summary/stores summary reads, mapped-store and active-store filtering, bounded sorted DTO",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/owner-business-assistant/thread/[threadId]/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full GET and serializers/projectors; strict route/query, exact actor/tenant/store scope, permission, exact persisted actor ownership, capped allowlisted thread/message DTO and 404 failure behavior",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001", "AUDIT-OBA-THREAD-ACTOR-OWNERSHIP-001", "AUDIT-OBA-THREAD-DTO-PROJECTION-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run test:owner-business-assistant-thread-response", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/ownerBusinessAssistant/server/sessionScope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full file; shared exact numeric tenant/store alias agreement plus exact Firestore-safe actor alias agreement",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/ownerBusinessAssistant/server/threadStore.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full file; strict thread ID, bounded messages/suggestions, exact actor/tenant/store collision ownership, transaction merge, retention and result behavior",
+    "findings": ["AUDIT-OBA-THREAD-ACTOR-OWNERSHIP-001"],
+    "tests": ["npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-owner-business-assistant-session-scope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full executable regression; agreeing scope plus actor, tenant, store and whitespace conflicts",
+    "findings": ["AUDIT-OBA-SESSION-ALIAS-001"],
+    "tests": ["npm run test:owner-business-assistant-session-scope"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/ownerBusinessAssistant/threadResponse.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full file; timestamp serialization plus exact bounded message/source-fact/suggested-question allowlist projection and malformed-row rejection",
+    "findings": ["AUDIT-OBA-THREAD-DTO-PROJECTION-001"],
+    "tests": ["npm run test:owner-business-assistant-thread-response", "npm run verify:owner-business-health-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-owner-business-assistant-thread-response.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 587,
+    "reviewedFunctionsOrRanges": "full executable regression; supported projection, nested and top-level private-field omission, missing identity and unsupported-role rejection",
+    "findings": ["AUDIT-OBA-THREAD-DTO-PROJECTION-001"],
+    "tests": ["npm run test:owner-business-assistant-thread-response"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/platform/current-access/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 588,
+    "reviewedFunctionsOrRanges": "full GET; platform session admission, exact actor alias limiter identity, fail-closed current persisted platform-user read, bounded security logging and private no-store response",
+    "findings": ["AUDIT-PLATFORM-CURRENT-ACTOR-ALIAS-001"],
+    "tests": ["npm run test:current-platform-user", "npm run verify:ops-current-authorization-boundary", "npm run verify:ops-control-room-boundary", "npm run verify:internal-ops-flow-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/screen/seen/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 591,
+    "reviewedFunctionsOrRanges": "full POST and commitCurrentScreenSeen/getUtcDateKey helpers; feature/body/rate admission, non-success limiter acknowledgement, direct target and unique capped legacy candidate resolution, transaction-current summary/store/tenant authority, UTC daily dedupe, bounded response/logging and retry behavior",
+    "findings": ["AUDIT-SCREEN-SEEN-TRANSACTION-AUTHORITY-001", "AUDIT-SCREEN-SEEN-LEGACY-TOKEN-UNIQUENESS-001", "AUDIT-SCREEN-SEEN-LIMITER-FALSE-ACK-001"],
+    "tests": ["npm run test:screen-seen-scope", "npm run verify:digital-screens-boundary", "npm run verify:system-strengthening", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/screen/screenSeenScope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 590,
+    "reviewedFunctionsOrRanges": "full file; unique canonical legacy summary candidate, exact store document/aliases, store-to-tenant ownership, optional tenant identity aliases, lifecycle/deletion/platform-block public eligibility and legacy lifecycle compatibility",
+    "findings": ["AUDIT-SCREEN-SEEN-TRANSACTION-AUTHORITY-001", "AUDIT-SCREEN-SEEN-LEGACY-TOKEN-UNIQUENESS-001"],
+    "tests": ["npm run test:screen-seen-scope", "npm run verify:digital-screens-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-screen-seen-scope.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 590,
+    "reviewedFunctionsOrRanges": "full executable regression; empty/unique/duplicate/malformed/noncanonical legacy candidates plus valid current public scope and store/tenant inactive, deleted, blocked, ownership and identity disagreement cases",
+    "findings": ["AUDIT-SCREEN-SEEN-TRANSACTION-AUTHORITY-001", "AUDIT-SCREEN-SEEN-LEGACY-TOKEN-UNIQUENESS-001"],
+    "tests": ["npm run test:screen-seen-scope"],
+    "reviewedAt": "2026-07-25"
   }
 }

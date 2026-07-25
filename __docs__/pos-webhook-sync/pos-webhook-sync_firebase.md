@@ -1,7 +1,7 @@
 # External Menu Sync — Firebase and Cost Contract
 
 > **Status:** Implemented in source
-> **Last code-truth review:** July 21, 2026
+> **Last code-truth review:** July 25, 2026
 
 ## Data model
 
@@ -34,20 +34,20 @@ Counts below exclude the rate-limit provider and optional platform monitoring.
 ### Open desktop External Menu Sync
 
 - Store details: already loaded by the owner shell.
-- Secret GET: 2 server reads (`store`, `posSyncSecrets`).
+- Secret GET: 3 transaction reads (`store`, `tenant`, `posSyncSecrets`).
 - Legacy migration only: up to 2 writes (`posSyncSecrets`, `store`).
 - Delivery history when enabled: up to 20 client document reads.
 
 ### Open mobile External Menu Sync
 
 - Store details: inherited from `MobileShell`.
-- Secret GET: 2 server reads.
+- Secret GET: 3 transaction reads.
 - Legacy migration only: up to 2 writes.
 - No delivery-log query in the mobile screen.
 
 ### Ensure or rotate secret
 
-- 2 transaction reads (`store`, `posSyncSecrets`).
+- 3 transaction reads (`store`, `tenant`, `posSyncSecrets`).
 - 2 transaction writes (`posSyncSecrets`, `store`).
 - Rotation also appends one non-blocking MOL audit write from the owner surface.
 
@@ -93,6 +93,7 @@ The retention scan is the dominant Firestore cost. It is bounded and normally re
 - Payload is not stored in logs; only bytes and hash.
 - Log history is capped.
 - Secret documents use deterministic IDs and need no query/index.
+- Secret reveal/migration/ensure/rotation revalidates current tenant and store lifecycle plus current persisted integration permission in the same transaction.
 - No secret is copied into a queue or delivery log.
 - No extra store read is added to the project DAL; it uses already-loaded integration context.
 

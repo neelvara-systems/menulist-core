@@ -10,6 +10,8 @@ Answerlattice Product Surface Summary Boundary: stored product-surface documents
 
 Answerlattice Product Surface Ownership And Freshness Boundary: owner mutations are transaction-backed, context keys are immutable, duplicate deterministic keys fail, and client rules cannot set ingestion lineage or undeclared fields. Runtime route matching supports exact and bounded wildcard patterns without copying a raw path into persisted page context. Rebuilds query active surfaces before limits, reject overflow/duplicate keys, omit undefined optional fields, and replace the complete summary so archived mappings cannot remain active indirectly.
 
+Answerlattice Product Surface Rebuild Scope Boundary: every browser-triggered summary rebuild carries the exact initiating `tId/sId`. The authenticated route compares that scope with current Answerlattice authority before any summary source read or write and returns the same scope as an acknowledgement. A workspace transition therefore fails with conflict instead of rebuilding another workspace, and callers treat the derived refresh as failed while preserving the already-confirmed primary write.
+
 ## Documents
 
 - [Spec](product-surface-contexts_spec.md)

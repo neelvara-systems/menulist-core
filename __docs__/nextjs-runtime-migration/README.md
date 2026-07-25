@@ -1,11 +1,11 @@
 # Next.js Runtime Migration
 
-**Status:** LOCALLY IMPLEMENTED AND VERIFIED — deployment not performed
+**Status:** LOCALLY IMPLEMENTED AND VERIFIED — corrected staging redeploy pending
 **Created:** July 13, 2026
 **Scope:** Shared root web runtime for MenuList, Answerlattice, CampaignCue, SignalDesk, MyCodex, public sites, route handlers, and PWAs
 **Previous runtime:** Next.js 14.2.35, React 18.3.1
 **Current frozen runtime verified on July 24, 2026:** Next.js 16.2.11, React 19.2.8
-**Release boundary:** Local source/build/start evidence is complete. No Firebase or Vercel deploy was performed.
+**Release boundary:** The user-deployed staging commit `887f76ad` built successfully but its server-rendered routes returned 500 because the Vercel route trace omitted `@swc/helpers`. The corrected source passes the isolated deployment-bundle gate locally and is not yet redeployed. No Firebase deploy was performed.
 
 ## Decision
 

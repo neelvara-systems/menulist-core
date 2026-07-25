@@ -42,6 +42,7 @@ import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuArchive, LuBookOpen, LuHelpCircle, LuLayers, LuPlus, LuRefreshCw, LuSave, LuSparkles, LuTicket } from 'react-icons/lu';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -81,6 +82,7 @@ const getSurfaceSummary = (
 
 export default function AnswerlatticeProductSurfaces() {
     const session = useClientAuthSession();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
@@ -167,8 +169,10 @@ export default function AnswerlatticeProductSurfaces() {
     }, [form]);
 
     const handleSave = useCallback(async () => {
+        const operationScope = requestScope;
         setSaving(true);
         try {
+            if (!operationScope) throw new Error('Answerlattice workspace is not available.');
             const values = await form.validateFields();
             const key = normalizeSurfaceKey(values.key) || buildSurfaceKeyFromLabel(values.label);
             const saved = await saveProductSurface({
@@ -182,7 +186,7 @@ export default function AnswerlatticeProductSurfaces() {
                 'answerlattice_product_surface_management_save_rejected',
             );
             setSelectedSurfaceId(saved.id || null);
-            await rebuildProductSurfaceContentSummary();
+            await rebuildProductSurfaceContentSummary(operationScope);
             await loadData();
             message.success('Product surface saved');
         } catch {
@@ -190,19 +194,21 @@ export default function AnswerlatticeProductSurfaces() {
         } finally {
             setSaving(false);
         }
-    }, [form, loadData, selectedSurface?.id]);
+    }, [form, loadData, requestScope, selectedSurface?.id]);
 
     const handleArchive = useCallback(async () => {
         if (!selectedSurface) return;
+        const operationScope = requestScope;
         setSaving(true);
         try {
+            if (!operationScope) throw new Error('Answerlattice workspace is not available.');
             const archived = await archiveProductSurface(selectedSurface);
             assertAnswerlatticeProductSurfaceArchiveSucceeded(
                 archived,
                 selectedSurface.id,
                 'answerlattice_product_surface_management_archive_rejected',
             );
-            await rebuildProductSurfaceContentSummary();
+            await rebuildProductSurfaceContentSummary(operationScope);
             await loadData();
             message.success('Product surface archived');
         } catch {
@@ -210,12 +216,14 @@ export default function AnswerlatticeProductSurfaces() {
         } finally {
             setSaving(false);
         }
-    }, [loadData, selectedSurface]);
+    }, [loadData, requestScope, selectedSurface]);
 
     const handleRebuild = useCallback(async () => {
+        const operationScope = requestScope;
         setRebuilding(true);
         try {
-            const nextSummary = await rebuildProductSurfaceContentSummary();
+            if (!operationScope) throw new Error('Answerlattice workspace is not available.');
+            const nextSummary = await rebuildProductSurfaceContentSummary(operationScope);
             setSummary(nextSummary || null);
             message.success('Context summary rebuilt');
         } catch {
@@ -223,9 +231,10 @@ export default function AnswerlatticeProductSurfaces() {
         } finally {
             setRebuilding(false);
         }
-    }, []);
+    }, [requestScope]);
 
     const saveTemplates = useCallback(async (templates: AnswerlatticeSurfaceTemplate[]) => {
+        const operationScope = requestScope;
         const missingTemplates = templates.filter(template => !existingTemplateKeys.has(template.key));
         if (missingTemplates.length === 0) {
             message.info('Those starter surfaces already exist');
@@ -234,6 +243,7 @@ export default function AnswerlatticeProductSurfaces() {
 
         setApplyingTemplates(true);
         try {
+            if (!operationScope) throw new Error('Answerlattice workspace is not available.');
             const saved = [];
             for (const template of missingTemplates) {
                 const result = await saveProductSurface({
@@ -257,7 +267,7 @@ export default function AnswerlatticeProductSurfaces() {
                 );
                 saved.push(result);
             }
-            await rebuildProductSurfaceContentSummary();
+            await rebuildProductSurfaceContentSummary(operationScope);
             await loadData();
             setSelectedSurfaceId(saved[0]?.id || null);
             message.success(`${saved.length} starter surface${saved.length === 1 ? '' : 's'} added`);
@@ -266,7 +276,7 @@ export default function AnswerlatticeProductSurfaces() {
         } finally {
             setApplyingTemplates(false);
         }
-    }, [existingTemplateKeys, loadData]);
+    }, [existingTemplateKeys, loadData, requestScope]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) return null;
 

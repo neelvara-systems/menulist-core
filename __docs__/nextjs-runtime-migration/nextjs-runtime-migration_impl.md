@@ -5,7 +5,7 @@
 **Runtime:** Next.js 16.2.11 / React 19.2.8
 **Bundlers:** Turbopack default; Webpack parity command retained
 **Rollback anchor:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
-**Deployment:** Not performed
+**Deployment:** User-deployed staging commit `887f76ad` exposed a missing runtime trace; corrected source is locally verified and not yet redeployed
 
 ## Implementation outcome
 
@@ -49,6 +49,8 @@ All declarations remain exact and are guarded by `npm run verify:dependency-free
 - Retained `config.cache = false` for the diagnostic Webpack path because persistent Webpack caching reproducibly exceeded the available heap for this repository graph.
 - Default `npm run build` uses Turbopack. `npm run build:webpack` is the full parity path.
 - Vercel Turbopack builds cap V8 at 4096 MiB inside the standard 8 GiB container, keep browser/server source maps disabled, and exclude runtime-only credential/MyCodex filesystem expressions from automatic Turbopack tracing. Required MyCodex Markdown remains explicitly included through `outputFileTracingIncludes`.
+- Output tracing never uses a global `node_modules/@swc/**` exclusion. Next 16's deployed Turbopack route runtime requires `@swc/helpers`; only compiler-specific SWC packages remain excluded.
+- `build:vercel` finishes with `verify:next-deployment-bundle`, which preserves traced files and symlinks in an isolated directory and loads the website route without access to the repository's complete `node_modules`.
 
 ### Server and browser module boundary
 
@@ -86,6 +88,7 @@ This removes reliance on Webpack aliases that previously hid Node built-ins from
 npm run verify:dependency-freeze
 npm run verify:next-runtime-migration
 npm run verify:next-build-compatibility
+npm run verify:next-deployment-bundle
 npm run typecheck
 npm run lint
 npm run build:webpack
@@ -108,4 +111,4 @@ Do not restore `next-pwa`, private Next imports, the server-chunk compatibility 
 
 ## Remaining release evidence
 
-No Vercel deployment was requested or performed. A later release action must still capture preview-host browser/device behavior, install/update/offline worker replacement on real devices, and production-host smoke after explicit deployment authorization. Those are release-certification actions, not missing local migration code.
+The first user-run Vercel staging deployment after the migration exposed the route-trace failure described above. The corrected source is not yet deployed. A later authorized release action must redeploy it and capture preview-host browser/device behavior, install/update/offline worker replacement on real devices, and production-host smoke. Those are release-certification actions, not missing local migration code.

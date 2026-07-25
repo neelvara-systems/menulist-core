@@ -16,13 +16,17 @@ import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTrut
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
-import { requireAnyStorePermission } from "@lib/permissions/server";
+import {
+    requireAnyStorePermissionForStoreData,
+    resolveStorePermissionSessionScope,
+} from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
+import { isTempStatusMutationScopeCurrent } from "@lib/tempStatus/serverMutationScope";
 import { normalizeTempStatusMessage, TEMP_STATUS_TYPES } from "@lib/tempStatus/statusBoundary";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -56,6 +60,13 @@ function normalizeSessionDocumentId(value: unknown): string | null {
         : null;
 }
 
+class TempStatusScopeChangedError extends Error {
+    constructor() {
+        super('temp_status_scope_changed');
+        this.name = 'TempStatusScopeChangedError';
+    }
+}
+
 /**
  * POST /api/store/temp-status
  * 
@@ -72,7 +83,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const tenantId = normalizeSessionDocumentId(rawTenantId);
     const storeId = normalizeSessionDocumentId(rawStoreId);
     const userId = normalizeSessionDocumentId(rawUserId);
-    if (!tenantId || !storeId) {
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (
+        !tenantId
+        || !storeId
+        || !sessionScope
+        || sessionScope.tenantScope.documentId !== tenantId
+        || sessionScope.storeScope.documentId !== storeId
+    ) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
@@ -113,18 +131,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         );
     }
 
-    const permissionError = await requireAnyStorePermission(
-        request,
-        session,
-        [PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE],
-        "temporary status",
-    );
-    if (permissionError) return permissionError;
-
     const db = admin.firestore();
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
+    const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);
 
     try {
+        let storeUpdate: Record<string, unknown>;
         if (validation.data.action === 'set') {
             const { type, message, expiresAt } = validation.data;
 
@@ -138,7 +150,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             const finalMessage = normalizeTempStatusMessage(type, message);
 
-            await storeRef.update({
+            storeUpdate = {
                 tempStatus: {
                     type,
                     message: finalMessage,
@@ -146,13 +158,48 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     createdAt: new Date().toISOString(),
                     createdBy: userId || null,
                 },
-            });
+            };
         } else {
             // Clear: remove tempStatus field
-            await storeRef.update({
+            storeUpdate = {
                 tempStatus: admin.firestore.FieldValue.delete(),
-            });
+            };
         }
+
+        const transactionPermissionError = await db.runTransaction(async (transaction) => {
+            const [freshStoreSnap, freshTenantSnap] = await Promise.all([
+                transaction.get(storeRef),
+                transaction.get(tenantRef),
+            ]);
+            const freshStore = freshStoreSnap.data();
+            const freshTenant = freshTenantSnap.data();
+            if (
+                !freshStoreSnap.exists
+                || !freshTenantSnap.exists
+                || !isTempStatusMutationScopeCurrent({
+                    store: freshStore,
+                    tenant: freshTenant,
+                    tenantDocumentId: tenantId,
+                })
+            ) {
+                throw new TempStatusScopeChangedError();
+            }
+
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshStore,
+                [PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE],
+                "temporary status",
+                storeId,
+                tenantId,
+            );
+            if (freshPermissionError) return freshPermissionError;
+
+            transaction.update(storeRef, storeUpdate);
+            return null;
+        });
+        if (transactionPermissionError) return transactionPermissionError;
 
         const postCommit = await runStorePublicTruthPostCommitEffects({
             chunkSize: 1,
@@ -178,6 +225,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({ effectsPending: postCommit.effectsPending, success: true });
     } catch (error) {
+        if (error instanceof TempStatusScopeChangedError) {
+            logRuntimeFailure("store_temp_status_scope_changed", error, {
+                ...getBoundedRuntimeStringContext("tenantId", tenantId),
+                ...getBoundedRuntimeStringContext("storeId", storeId),
+                action: validation.data.action,
+            });
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
         logRuntimeFailure("store_temp_status_update_failed", error, {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
             ...getBoundedRuntimeStringContext("storeId", storeId),

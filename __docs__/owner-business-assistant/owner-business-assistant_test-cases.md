@@ -38,6 +38,10 @@ Cover:
 
 - unauthenticated current/analytics/answer requests
 - tenant/store/project isolation
+- contradictory compact/nested tenant, store, and actor session aliases
+- same-store staff member attempts to read or append another actor's thread
+- legacy thread without `userId` fails closed
+- unknown/private persisted thread and message fields are absent from the response
 - selected project context
 - oversized answer prompt rejection
 - provider disabled fallback

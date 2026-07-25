@@ -58,6 +58,7 @@ const packageJson = read('package.json');
 const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 const features = read('src/config/features.ts');
 const route = read('src/app/api/store/temp-status/route.ts');
+const serverMutationScope = read('src/lib/tempStatus/serverMutationScope.ts');
 const postCommitHelper = read('src/lib/cache/storePublicTruthPostCommit.ts');
 const statusBoundary = read('src/lib/tempStatus/statusBoundary.ts');
 const activeStatusHook = read('src/hooks/useActiveTempStatus.ts');
@@ -117,7 +118,10 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'const tenantId = normalizeSessionDocumentId(rawTenantId);',
   'const storeId = normalizeSessionDocumentId(rawStoreId);',
   'const userId = normalizeSessionDocumentId(rawUserId);',
-  'requireAnyStorePermission(',
+  'const sessionScope = resolveStorePermissionSessionScope(session);',
+  'sessionScope.tenantScope.documentId !== tenantId',
+  'sessionScope.storeScope.documentId !== storeId',
+  'requireAnyStorePermissionForStoreData(',
   'PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE',
   "getRateLimitForFeature('DATA_WRITE')",
   'failClosedOnProviderError: true',
@@ -129,6 +133,13 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'RequestSchema.safeParse(body)',
   'new Date(expiresAt).getTime() <= Date.now()',
   'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
+  'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
+  'const transactionPermissionError = await db.runTransaction(async (transaction) => {',
+  'transaction.get(storeRef)',
+  'transaction.get(tenantRef)',
+  'isTempStatusMutationScopeCurrent({',
+  'transaction.update(storeRef, storeUpdate);',
+  'if (transactionPermissionError) return transactionPermissionError;',
   'createdBy: userId || null',
   'admin.firestore.FieldValue.delete()',
   'runStorePublicTruthPostCommitEffects({',
@@ -149,8 +160,9 @@ requireOrder(
       "getRateLimitForFeature('DATA_WRITE')",
     'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
     'RequestSchema.safeParse(body)',
-    'requireAnyStorePermission(',
-    'await storeRef.update',
+    'db.runTransaction(async (transaction) =>',
+    'requireAnyStorePermissionForStoreData(',
+    'transaction.update(storeRef, storeUpdate)',
     'runStorePublicTruthPostCommitEffects({',
   ],
   'Temporary Status route admission and cache order',
@@ -158,7 +170,16 @@ requireOrder(
 forbidToken(route, 'key: `temp-status:${userId || session.user?.id}:${storeId}`', 'Temporary Status route raw limiter key');
 forbidToken(route, "hashPublicRateLimitValue(userId || session.user?.id || 'unknown')", 'Temporary Status route raw actor limiter key');
 forbidToken(route, 'doc(String(storeId))', 'Temporary Status route raw store ref');
+forbidToken(route, 'await storeRef.update', 'Temporary Status route stale-authority direct write');
 forbidToken(route, 'console.error', 'Temporary Status route diagnostics');
+
+[
+  'normalizeStorePermissionScopeDocumentId(store.tenantId ?? store.tId)',
+  'persistedTenantScope?.documentId === params.tenantDocumentId',
+  '!isUnavailableEntity(store)',
+  '!isUnavailableEntity(tenant)',
+  'isPlatformEntityBlocked(entity)',
+].forEach((token) => requireToken(serverMutationScope, token, 'Temporary Status transaction-current scope helper'));
 
 [
   'params.deps.revalidate(`menu-store-${storeId}`)',
@@ -392,18 +413,22 @@ forbidToken(readme, 'ENABLE_TEMP_STATUS: false', 'Temporary Status README stale 
   'public pull API hides expired temporary status values',
   'screen-data',
   'Owner Business Assistant',
+  'A Firestore transaction re-reads the current store and tenant',
+  'transaction-current store',
 ].forEach((token) => requireToken(impl, token, 'Temporary Status implementation doc'));
 forbidToken(impl, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status implementation stale OBP path');
 
 [
   '## Source Gate',
   '`npm run verify:temporary-status-boundary`',
-  'validates session tenant/store IDs through the shared Firestore document-ID guard',
+  'validates compact/nested session tenant/store aliases through the shared exact permission-scope guard',
   '4KB bounded JSON',
   '8KB',
   'screen-data',
   'Owner Business Assistant',
   'public pull API returns `null` for expired temporary statuses',
+  'Two transaction reads (current store + tenant)',
+  'current persisted permission',
 ].forEach((token) => requireToken(firebaseDoc, token, 'Temporary Status Firebase doc'));
 
 [
@@ -436,6 +461,7 @@ forbidToken(impl, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status implem
   'src/app/client/obp/OBPResolvedSurface.tsx',
   'default `true`',
   'screen-data',
+  'Transaction-current store and tenant state',
 ].forEach((token) => requireToken(validationDoc, token, 'Temporary Status validation doc'));
 forbidToken(validationDoc, 'default `false`', 'Temporary Status validation stale flag');
 forbidToken(validationDoc, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status validation stale OBP path');
@@ -453,6 +479,8 @@ requireToken(inventory, 'temporary-status boundary source gate passed; browser/m
   '`npm run verify:temporary-status-boundary`',
   'raw `doc(String(storeId))` exclusions',
   'public pull API expired-status hiding',
+  'Temporary Status Transaction-Current Authority',
+  're-evaluates persisted store permission',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 [
   'Mobile Hours/Status Temporary Status docs checkpoint',
@@ -467,6 +495,7 @@ requireToken(inventory, 'temporary-status boundary source gate passed; browser/m
   'raw `doc(String(storeId))` exclusions',
   'verify:temporary-status-boundary',
   'public pull API expired-status hiding',
+  'Temporary Status Transaction-Current Authority',
 ].forEach((token) => requireToken(changelog, token, 'changelog'));
 [
   'Mobile Hours/Status Temporary Status Docs Boundary',

@@ -11,6 +11,7 @@ import {
 const validCreate = {
     action: 'create',
     requestId: 'release_request_123',
+    scope: { tId: 1, sId: 101 },
     versionLabel: '2.4.1',
     versionNormalized: 2_004_001,
     releasedAt: '2026-07-11T10:00:00.000Z',
@@ -18,6 +19,14 @@ const validCreate = {
 };
 
 assert.deepEqual(parseAnswerlatticeReleaseAction(validCreate), validCreate);
+assert.equal(parseAnswerlatticeReleaseAction({
+    ...validCreate,
+    scope: undefined,
+}), null, 'initiating scope is required');
+assert.equal(parseAnswerlatticeReleaseAction({
+    ...validCreate,
+    scope: { tId: 1, sId: 0 },
+}), null, 'initiating scope must use positive integer IDs');
 assert.deepEqual(normalizeAnswerlatticeVersionLabel('v2.4.1'), { label: '2.4.1', normalized: 2_004_001 });
 assert.deepEqual(normalizeAnswerlatticeVersionLabel('2'), { label: '2', normalized: 2_000_000 });
 assert.equal(normalizeAnswerlatticeVersionLabel('2.1000.1'), null);
@@ -31,14 +40,16 @@ assert.equal(parseAnswerlatticeReleaseAction({
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, releasedAt: 'not-a-date' }), null, 'release timestamps must be ISO dates');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, versionNormalized: 2_004_002 }), null, 'version labels and normalized versions must agree');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, versionLabel: 'v2.4.1' }), null, 'stored release labels must use canonical numeric form');
-assert.equal(parseAnswerlatticeReleaseAction({ action: 'activate', requestId: 'activate_12345', releaseId: 'release/unsafe' }), null);
+assert.equal(parseAnswerlatticeReleaseAction({ action: 'activate', requestId: 'activate_12345', scope: validCreate.scope, releaseId: 'release/unsafe' }), null);
 assert.deepEqual(parseAnswerlatticeReleaseAction({
     action: 'activate',
     requestId: 'activate_12345',
+    scope: validCreate.scope,
     releaseId: 'release_safe',
 }), {
     action: 'activate',
     requestId: 'activate_12345',
+    scope: validCreate.scope,
     releaseId: 'release_safe',
 });
 
@@ -72,6 +83,14 @@ assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     evaluatedAnswers: 2,
     driftedAnswers: 1,
     replayed: false,
+    scope: validCreate.scope,
 }).success, true);
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
+    success: true,
+    action: 'create',
+    releaseId: 'release_safe',
+    status: 'pending',
+    replayed: false,
+}).success, false, 'release responses must acknowledge their exact workspace');
 
 process.stdout.write('Answerlattice release contract tests passed.\n');

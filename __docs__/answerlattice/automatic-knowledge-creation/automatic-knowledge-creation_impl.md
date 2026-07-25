@@ -6,9 +6,16 @@
 
 ### 1. Signal Admission
 
-`src/lib/answerlattice/signalEmitter.ts` normalizes exact numeric scope, sanitizes bounded metadata, redacts obvious credentials/contact evidence, derives persistent identities, and emits through the dedicated Answerlattice Firebase client or Admin runtime. Its short-lived process dedupe key includes exact tenant and workspace scope; identical external event identifiers from different tenants cannot suppress one another before the scoped Firestore identity is evaluated.
+`src/lib/answerlattice/signalEmitter.ts` normalizes exact numeric scope, sanitizes bounded metadata, redacts obvious credentials/contact evidence, derives payload fingerprints, and dispatches through an injected browser/server persistence boundary. Its short-lived process dedupe key includes exact tenant and workspace scope; identical external event identifiers from different tenants cannot suppress one another before the scoped Firestore identity is evaluated.
 
 `src/database/answerlattice/signalEvents.ts` enforces session scope for browser writes. Persistent identities use deterministic document IDs. A duplicate is returned only when type, dedup key, entity, and payload fingerprint agree; changed replay throws `answerlattice_signal_replay_conflict`.
+
+`src/lib/answerlattice/signalEmitterServer.ts` is the server-only Admin owner. It
+builds the deterministic scoped document ID, performs create-only persistence,
+verifies an existing replay against exact product/scope/type/dedup/payload
+identity, and owns the server retention timestamp. Contract tests read this file
+for durable persistence assertions rather than attributing Admin behavior to the
+shared/client emitter.
 
 ### 2. Signal Mutation
 

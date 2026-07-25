@@ -28,7 +28,7 @@ Operations:
 
 - runtime search/widget: one small read, server-memory cached
 - rebuild: one write
-- browser rebuild requests use no-store cache, same-origin credentials, and manual redirect handling before responses are capped at 64 KB and required to include a valid `summary` object before local summary state or success copy advances
+- browser rebuild requests use no-store cache, same-origin credentials, and manual redirect handling; they include exact initiating `tId/sId`, which must match current authenticated workspace authority before source reads/writes, and responses are capped at 64 KB and must acknowledge that exact scope with a valid `summary` before local state or success copy advances
 
 Contents:
 
@@ -76,7 +76,7 @@ The rebuild happens on explicit management operations, not every customer page l
 
 Rebuild writes replace the complete `contextContent` document rather than merging the nested `surfaces` map. This removes archived/renamed entries and rejects duplicate active keys before any write. Optional compact fields are omitted instead of written as `undefined`, which keeps the payload valid for Firestore.
 
-Cached, followed-redirect, malformed, oversized, rejected, or summary-less rebuild responses fail before owner success copy. This does not add Firestore reads/writes; it only pins the browser request boundary and validates the existing rebuild response before the browser treats the summary as refreshed.
+Cached, followed-redirect, malformed, oversized, rejected, scope-less, scope-mismatched, or summary-less rebuild responses fail before owner success copy. A session transition is rejected before summary source reads or the summary write. This does not add Firestore reads/writes; it pins the browser request boundary and validates the existing rebuild response before the browser treats the summary as refreshed.
 
 ## Indexes
 

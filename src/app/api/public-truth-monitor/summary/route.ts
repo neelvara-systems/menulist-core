@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { PERMISSIONS } from "@constant/permissions";
-import { readPublicTruthMonitorStoreDataServer, readPublicTruthMonitorSummaryServer } from "@database/publicTruthMonitor/server";
+import {
+    PublicTruthMonitorScopeChangedError,
+    readAuthorizedPublicTruthMonitorSummaryServer,
+} from "@database/publicTruthMonitor/server";
 import { isPublicTruthMonitorEnabled } from "@lib/public-truth-tools/publicTruthMonitorEntitlements";
 import {
     evaluatePublicTruthMonitorServerEntitlement,
@@ -38,24 +41,38 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);
-        const permissionError = requireAnyStorePermissionForStoreData(
-            request,
-            session,
-            storeData,
-            [PERMISSIONS.VIEW_ANALYTICS],
-            "Public Truth Monitor summary",
-            sessionScope.storeScope.numericId,
-            sessionScope.tenantScope.numericId,
-        );
-        if (permissionError) return permissionError;
+        let permissionError: NextResponse | null = null;
+        let authorized: Awaited<ReturnType<typeof readAuthorizedPublicTruthMonitorSummaryServer>>;
+        try {
+            authorized = await readAuthorizedPublicTruthMonitorSummaryServer({
+                authorizeStore: (storeData) => {
+                    permissionError = requireAnyStorePermissionForStoreData(
+                        request,
+                        session,
+                        storeData,
+                        [PERMISSIONS.VIEW_ANALYTICS],
+                        "Public Truth Monitor summary",
+                        sessionScope.storeScope.numericId,
+                        sessionScope.tenantScope.numericId,
+                    );
+                    return permissionError === null;
+                },
+                storeId: sessionScope.storeScope.documentId,
+                tenantId: sessionScope.tenantScope.documentId,
+            });
+        } catch (error) {
+            if (error instanceof PublicTruthMonitorScopeChangedError) {
+                return permissionError || NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+            throw error;
+        }
 
         const entitlement = await evaluatePublicTruthMonitorServerEntitlement({
             session,
-            storeData,
+            storeData: authorized.storeData,
         });
         const summary = entitlement.allowed
-            ? await readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId)
+            ? authorized.summary
             : null;
 
         return NextResponse.json({

@@ -15,6 +15,10 @@ import {
     normalizeSurfaceKey,
     parseProductSurfaceSaveInput,
 } from '@lib/answerlattice/productSurfaceContent';
+import {
+    type AnswerlatticeProductSurfaceSummaryScope,
+    isExactAnswerlatticeProductSurfaceSummaryScope,
+} from '@lib/answerlattice/productSurfaceSummaryContracts';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -38,11 +42,6 @@ const getDocRef = (docId: string) => {
 };
 const getSummaryDocRef = (tId: number, sId: number) =>
     doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, getContextContentSummaryDocId(tId, sId));
-
-type ProductSurfaceScopeInput = {
-    tId?: unknown;
-    sId?: unknown;
-};
 
 type ProductSurfaceSummaryRefreshContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -136,7 +135,11 @@ const readProductSurfaceSummaryRebuildResponse = async (
         throw new Error(ANSWERLATTICE_PRODUCT_SURFACE_SUMMARY_REBUILD_FAILED);
     }
 
-    const summary = isRecord(payload)
+    const responseScope = isRecord(payload)
+        ? normalizeProductSurfaceScope(payload.scope)
+        : null;
+    const summary = isRecord(payload) && responseScope
+        && isExactAnswerlatticeProductSurfaceSummaryScope(responseScope, scope)
         ? normalizeAnswerlatticeSurfaceContentSummary(payload.summary, scope)
         : null;
     if (!summary) {
@@ -151,14 +154,15 @@ const readProductSurfaceSummaryRebuildResponse = async (
     return summary;
 };
 
-const normalizeProductSurfaceScope = (scope?: ProductSurfaceScopeInput | null) => {
-    const tId = normalizeAnswerlatticeScopeDocumentId(scope?.tId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(scope?.sId);
+const normalizeProductSurfaceScope = (scope?: unknown) => {
+    const scopeRecord = isRecord(scope) ? scope : null;
+    const tId = normalizeAnswerlatticeScopeDocumentId(scopeRecord?.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(scopeRecord?.sId);
     if (!tId || !sId) return null;
     return { tId, sId };
 };
 
-const requireScope = async (scopeOverride?: ProductSurfaceScopeInput) => {
+const requireScope = async (scopeOverride?: unknown) => {
     if (scopeOverride) {
         const overrideScope = normalizeProductSurfaceScope(scopeOverride);
         if (!overrideScope) {
@@ -178,7 +182,7 @@ const requireScope = async (scopeOverride?: ProductSurfaceScopeInput) => {
 const buildProductSurfaceDocId = (tId: number, sId: number, key: string) =>
     `${tId}_${sId}_${normalizeSurfaceKey(key)}`;
 
-export const getProductSurfacesForSession = async (scopeOverride?: ProductSurfaceScopeInput) => {
+export const getProductSurfacesForSession = async (scopeOverride?: unknown) => {
     const loadSurfaces = async () => {
         const scope = await requireScope(scopeOverride);
         const q = query(
@@ -345,28 +349,32 @@ export const getProductSurfaceContentSummaryForSession = async () => {
     );
 };
 
-export const rebuildProductSurfaceContentSummary = async () => {
+export const rebuildProductSurfaceContentSummary = async (
+    expectedScope: AnswerlatticeProductSurfaceSummaryScope,
+) => {
     return await apiCallComposer(
         async () => {
-            const scope = await requireScope();
+            const scope = await requireScope(expectedScope);
             const res = await fetch('/api/answerlattice/product-surfaces/rebuild-summary', {
                 ...ANSWERLATTICE_PRODUCT_SURFACE_SUMMARY_REBUILD_REQUEST_POLICY,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason: 'manual' }),
+                body: JSON.stringify({ reason: 'manual', scope }),
             });
             return await readProductSurfaceSummaryRebuildResponse(res, scope);
         },
+        expectedScope,
         'rebuildProductSurfaceContentSummary',
     );
 };
 
 export const rebuildProductSurfaceContentSummaryWithDiagnostics = async (params: {
     failureCode: string;
+    expectedScope: AnswerlatticeProductSurfaceSummaryScope;
     context?: ProductSurfaceSummaryRefreshContext;
 }) => {
     try {
-        await rebuildProductSurfaceContentSummary();
+        await rebuildProductSurfaceContentSummary(params.expectedScope);
         return true;
     } catch (error) {
         logAnswerlatticeFailure(params.failureCode, error, params.context || {});

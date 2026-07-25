@@ -18,7 +18,7 @@
 - **Real-time:** Firebase `onSnapshot` doc listener on `platformSummary/screen_{sId}` (not polling, no internal owner summary exposure)
 - **Screen invalidation:** Browser project/menu public cache invalidation touches `screen.contentVersion` only when an initialized screen token exists, and refreshes `screen.menuProjection` from the automatic default menu when available. Store-profile saves, master-to-outlet propagation, and server-side Functions public-output changes can also touch the version after public cache revalidation when rendered screen output changes.
 - **Content normalization:** Text, price, category, tag, caption, and dedupe logic is shared by projection generation and fallback DAL/render paths.
-- **Estimated Monthly Cost:** **~$0.28-$0.43/month for 1000 screens** depending on projection hit rate, menu-save frequency, and public store eligibility cache hits.
+- **Estimated Monthly Cost:** **~$0.31-$0.45/month for 1000 screens** depending on projection hit rate, menu-save frequency, and the direct-versus-legacy seen-signal mix.
 - **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same menu data resolver, different client render)
 
 ---
@@ -36,7 +36,7 @@
 | Menu items fallback    | `projects`        | Missing/stale projection, special menu active, or old screen state | As needed | Usually 1 default project read after `baseProjectId`; special overlay can read 2 project docs | `database/campaigns/serverScreen.ts` |
 | onSnapshot initial     | `platformSummary/screen_{storeId}` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx`, `MenuBoardDisplay.tsx` |
 | onSnapshot updates     | `platformSummary/screen_{storeId}` | Content changes       | ~1-5x/day      | 1 per change                  | `publicScreenState.ts`, display clients |
-| Daily seen signal      | `platformSummary`, `stores` | 1x/day/screen after declared-size, bounded-body, IP-rate, token-rate, enabled-screen, and public store eligibility checks | 1x/day | 1 direct screen-summary doc get + 0-1 cached store eligibility read | `api/screen/seen/route.ts`, `lib/firestore/clientStoreLookup.ts` |
+| Daily seen signal      | `platformSummary`, `stores`, `tenants` | 1x/day/screen after declared-size, bounded-body, IP-rate, token-rate, unique legacy candidate when needed, and transaction-current screen/store/tenant eligibility checks | 1x/day | 3 transaction reads (screen summary, exact store, exact tenant); the legacy no-store request first performs one token query capped at 2 documents and rejects zero/duplicate/noncanonical candidates | `api/screen/seen/route.ts`, `lib/screen/screenSeenScope.ts` |
 | Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 1                             | `database/campaigns/index.ts:599`     |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
 | Screen version touch   | `platformSummary`, `projects` | Public menu cache invalidation or rendered store-output change | Per menu/store change where screen exists | 1 screen doc get; up to 2 projection rebuild reads for browser project/menu changes; 0 projection reads for store-output-only and Functions touches | `lib/screen/screenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
@@ -45,7 +45,7 @@
 
 | Operation                    | Collection        | Trigger                  | Frequency | Writes                        | Code Evidence                     |
 | ---------------------------- | ----------------- | ------------------------ | --------- | ----------------------------- | --------------------------------- |
-| Daily seen signal            | `platformSummary` | 1x/day/screen after enabled-screen and public store eligibility checks | 1/day     | 1 (update `screenLastSeenAt`) | `api/screen/seen/route.ts`     |
+| Daily seen signal            | `platformSummary` | 1x/day/screen after rate-limit admission and transaction-current token, enabled-screen, exact store/tenant identity, lifecycle, and block checks | 1/day     | 0 when rate-limited/already seen/ineligible; otherwise 1 transaction update of `screenLastSeenAt`. Rate-limit denials are non-success and do not create the browser daily marker. | `api/screen/seen/route.ts`     |
 | Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 2 (`campaigns_{sId}` + safe `screen_{sId}` mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: addPinnedSlide        | `platformSummary` | Upload image             | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |

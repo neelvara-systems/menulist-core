@@ -7,12 +7,14 @@ import { canUserAccessStore, normalizeStoreSwitchStoreId } from '@lib/multiOutle
 import { getBoundedSecurityRouteContext, getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
 import { verifyTenantAccess } from '@/middleware/auth';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
+import { resolveOwnerBusinessAssistantSessionScope } from './sessionScope';
 
 export const getOwnerAssistantSessionScope = (session: any) => {
-  const tId = session?.tId || session?.user?.tenantId;
-  const sId = session?.sId || session?.user?.storeId;
-  const userId = session?.uId || session?.user?.id;
-  return { tId, sId, userId };
+  return resolveOwnerBusinessAssistantSessionScope(session) || {
+    tId: undefined,
+    sId: undefined,
+    userId: undefined,
+  };
 };
 
 const buildSessionUserForStoreAccess = (session: any, fallbackStoreId: string | number) => ({
@@ -29,7 +31,7 @@ export const resolveOwnerAssistantSelectedStoreScope = (
   requestedStoreId?: string | number | null,
 ) => {
   const { tId, sId, userId } = getOwnerAssistantSessionScope(session);
-  if (!tId || !sId) {
+  if (!tId || !sId || !userId) {
     return {
       error: NextResponse.json({ error: 'User not onboarded' }, { status: 400 }),
     };

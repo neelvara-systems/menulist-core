@@ -123,7 +123,12 @@ const nextConfig = {
     ],
     outputFileTracingExcludes: {
         '*': [
-            'node_modules/@swc/**',
+            // Keep @swc/helpers traceable: Next 16's Turbopack server runtime
+            // imports it after deployment. Only omit compiler-only packages.
+            'node_modules/@swc/core/**',
+            'node_modules/@swc/core-*/**',
+            'node_modules/@swc/counter/**',
+            'node_modules/@swc/types/**',
             'node_modules/@esbuild/**',
             'node_modules/webpack/**',
             'node_modules/rollup/**',

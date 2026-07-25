@@ -185,6 +185,15 @@ When an operation is recorded for a session, the writer compares every supplied 
 
 July 1 owner AI permission hardening adds one existing store permission read before expensive AI or capacity work on business copy, campaign caption, description generation, new-item metadata, translation, image generation, image editing, batch image trigger, Menu Card design advisor, SEO generation, AI pack status, and weekly narrative routes. Rejected users can incur the permission read but do not reach capacity checks, media fetches, Cloud Tasks enqueue, provider calls, analytics Firestore reads, insight writes, operation-log writes, or credit consumption. This adds no writes for rejected requests, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
 
+July 25 AI pack status session-scope hardening makes the permission read and
+capacity/subscription lookup consume one exact alias-agreement projection.
+Malformed, whitespace-mutated, leading-zero, unsafe, missing, or contradictory
+root/nested tenant/store aliases fail before the `stores/{sId}` permission read.
+Valid requests keep the existing one permission read and bounded subscription
+lookup; no collection, document shape, rule, index, Function, cache, or normal
+operation count changes. A lazy monthly reset can therefore only target the
+subscription admitted by the same authorized tenant/store scope.
+
 July 1 batch image Cloud Tasks config preflight keeps rejected misconfigured batch requests ahead of AI capacity reads and task fanout. If the app is missing the worker URL, queue id, project location, project id, or worker secret, `/api/image-generation/batch-trigger` marks the existing batch job failed with owner-safe unavailable copy and does not enqueue Cloud Tasks or call providers. Configured runs keep the existing capacity check, task enqueue, worker secret validation, provider call, Storage upload, accounting, and credit-consumption flow. This adds no new collections, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
 
 July 13 batch-trigger admission now treats limiter infrastructure as required for the expensive Cloud Tasks fanout. `checkBatchOperationLimit()` opts into the shared core limiter's strict provider-error mode; provider unavailability or an unexpected helper failure returns fixed `503` copy plus `Retry-After` before request-body parsing, permission/capacity reads, or task enqueue. Caller quota exhaustion remains `429`. Other shared rate-limit convenience wrappers keep their existing default. This changes no Firestore read/write shape, rule, index, Storage object, Cloud Function, task payload, provider accounting, or credit-debit contract.

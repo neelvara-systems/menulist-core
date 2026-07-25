@@ -67,9 +67,11 @@ const feedbackRoute = read('src/app/api/owner-business-assistant/feedback/route.
 const threadRoute = read('src/app/api/owner-business-assistant/thread/[threadId]/route.ts');
 const schemas = read('src/lib/ownerBusinessAssistant/schemas.ts');
 const threadIdBoundary = read('src/lib/ownerBusinessAssistant/threadIdBoundary.ts');
+const threadResponse = read('src/lib/ownerBusinessAssistant/threadResponse.ts');
 const constants = read('src/lib/ownerBusinessAssistant/constants.ts');
 const clientResponses = read('src/lib/ownerBusinessAssistant/clientResponses.ts');
 const apiGuards = read('src/lib/ownerBusinessAssistant/server/apiGuards.ts');
+const sessionScope = read('src/lib/ownerBusinessAssistant/server/sessionScope.ts');
 const contextPacketCache = read('src/lib/ownerBusinessAssistant/server/contextPacketCache.ts');
 const contextPacketBuilder = read('src/lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket.ts');
 const domainMatrix = read('src/lib/ownerBusinessAssistant/server/domainCapabilityMatrix.ts');
@@ -258,7 +260,11 @@ forbidToken(answerRoute, 'logger.warn', 'answer route raw warn logging');
   'requireAnyStorePermissionForStore(',
   'DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS',
   '.doc(parsed.data.threadId)',
+  'isOwnerBusinessAssistantThreadOwnedByScope(thread, scope)',
+  'projectOwnerBusinessAssistantMessage',
+  'threadId: parsed.data.threadId',
 ].forEach((token) => requireToken(threadRoute, token, 'thread route'));
+forbidToken(threadRoute, 'const threadMeta = { ...thread };', 'thread route raw persistence spread');
 requireOrder(
   threadRoute,
   [
@@ -410,6 +416,21 @@ forbidToken(schemas, 'targetKind', 'owner business action target schema');
   "const providerUnavailable = rateLimit.reason === 'provider_unavailable';",
   'status: providerUnavailable ? 503 : 429',
 ].forEach((token) => requireToken(apiGuards, token, 'owner business API guards'));
+[
+  'resolveStorePermissionSessionScope(session)',
+  'normalized.every((actorId) => actorId === first)',
+  'resolveOwnerBusinessAssistantSessionScope',
+].forEach((token) => requireToken(sessionScope, token, 'owner business exact session scope'));
+requireToken(apiGuards, 'resolveOwnerBusinessAssistantSessionScope(session)', 'owner business API exact session scope');
+[
+  'export const projectOwnerBusinessAssistantMessage = (value: unknown) => {',
+  'sourceFactIds:',
+  'suggestedQuestions:',
+  'export function isOwnerBusinessAssistantThreadOwnedByScope(',
+].forEach((token) => requireToken(threadResponse, token, 'owner business thread response projector'));
+forbidToken(threadResponse, '...message', 'owner business thread response raw message spread');
+requireToken(packageJson, 'test:owner-business-assistant-session-scope', 'owner business session-scope regression script');
+requireToken(packageJson, 'test:owner-business-assistant-thread-response', 'owner business thread-response regression script');
 
 [
   "packetProfile !== 'health_card'",
@@ -437,6 +458,7 @@ forbidToken(contextPacketBuilder, 'actionCatalog', 'context packet action catalo
   'if (!threadId) return undefined;',
   'messages: nextMessages',
   'params.request.projectId || params.request.clientContext?.selectedProjectId',
+  'isOwnerBusinessAssistantThreadOwnedByScope(existing, { tId, sId, userId: userId || \'\' })',
 ].forEach((token) => requireToken(threadStore, token, 'thread store'));
 
 [

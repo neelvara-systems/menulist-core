@@ -2,7 +2,10 @@ export const dynamic = 'force-dynamic';
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
-import { requireAnyStorePermission } from "@lib/permissions/server";
+import {
+    requireAnyStorePermission,
+    resolveStorePermissionSessionScope,
+} from "@lib/permissions/server";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
@@ -20,10 +23,9 @@ import { withAuth } from "../../../../middleware/auth";
  */
 export const GET = withAuth(async (request, session) => {
     try {
-        const tenantId = session?.user?.tenantId || session?.tId;
-        const storeId = session?.user?.storeId || session?.sId;
+        const scope = resolveStorePermissionSessionScope(session);
 
-        if (!tenantId || !storeId) {
+        if (!scope) {
             return NextResponse.json(
                 { error: "User not onboarded." },
                 { status: 400 }
@@ -40,8 +42,8 @@ export const GET = withAuth(async (request, session) => {
 
         // Check capacity using a representative paid action (IMAGE_GENERATION is the most common)
         const capacityCheck = await checkAICapacity(
-            Number(tenantId),
-            Number(storeId),
+            scope.tenantScope.numericId,
+            scope.storeScope.numericId,
             AI_ACTIONS_TYPES.IMAGE_GENERATION,
         );
 

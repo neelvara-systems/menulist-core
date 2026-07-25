@@ -56,6 +56,18 @@ maximum 6 reports per store by default
 
 Do not store one document per check, one document per module, or unbounded full report archives.
 
+## Current Authority and Cost
+
+Protected saved-summary reads and writes use one Firestore transaction over:
+
+- `stores/{storeId}`
+- `tenants/{tenantId}`
+- `platformSummary/publicTruthMonitor_{storeId}`
+
+The transaction rejects missing, inactive, deleted, platform-blocked, tenant-mismatched, or currently unauthorized scope. A valid summary GET therefore performs three transaction reads before entitlement projection. A valid manual refresh retains its existing report-input reads and adds the current store and tenant to the final summary transaction, for three final transaction reads and one summary write. Denied entitlement can still incur the authorized summary transaction because current permission and saved-summary disclosure are admitted together. No collection, rule, index, Storage, or Function change is required.
+
+The refresh transaction also reads the exact `subscriptions/{subscriptionId}` document that admitted the report build and re-evaluates current MenuList product/tenant, status/window, and supported-plan entitlement. Its final transaction budget is therefore four reads and one summary write. Subscription revocation during report generation fails before the write.
+
 ## Scheduler Rule
 
 `PUBLIC_TRUTH_MONITOR_SCHEDULER_MODE` is `manual`.

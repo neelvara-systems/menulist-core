@@ -1,5 +1,115 @@
 # MenuList — Changelog
 
+## July 25, 2026 - Screen Seen Acknowledgement Integrity
+
+- **The browser marker now means an admitted transaction completed or current truth was already seen** - anonymous IP/token limiter denials no longer return cached success.
+- **Transient failure remains recoverable** - limiter denials return `429` with `Retry-After`, and unexpected transaction failures return `503`; both leave the browser daily marker unset for a later remount/retry.
+- **Cost protection is unchanged** - limiter keys, hashes, limits, windows, and pre-Firestore ordering remain intact.
+- **No persistence or infrastructure contract changed** - the successful/already-seen DTO, liveness field, rules, indexes, Functions, caches, and providers are unchanged.
+
+## July 25, 2026 - Legacy Screen Seen Token Uniqueness
+
+- **Legacy liveness cannot choose an arbitrary duplicate** - no-store requests now query up to two token matches and proceed only when exactly one canonical `campaigns_{storeId}` summary is found.
+- **Render and liveness admission agree** - duplicate bearer tokens fail closed for both public screen resolution and the legacy seen signal instead of displaying no screen but updating one arbitrary store.
+- **Regression evidence covers empty, unique, duplicate, malformed, and noncanonical candidates** - the behavior suite and Digital Screens/MenuList tenant source gates pin the uniqueness contract.
+- **Cost and infrastructure remain bounded** - legacy lookup may read at most two candidate documents instead of one; direct requests are unchanged. No rule, index, Function, collection, DTO, cache, or provider behavior changed.
+
+## July 25, 2026 - Screen Seen Transaction-Current Authority
+
+- **Liveness records only current public truth** - the daily signal now reads the screen summary, exact store, and exact tenant inside the same transaction that may update `screenLastSeenAt`.
+- **Concurrent lifecycle changes fail closed** - token rotation, screen disablement, store reassignment, deletion, deactivation, platform blocking, or contradictory persisted identity aliases prevent the write.
+- **Direct and legacy paths share one commit boundary** - the legacy token query identifies only a candidate; the transaction independently rechecks the current token and ownership before persistence.
+- **Cost is explicit** - a direct signal performs three transaction reads and up to one write; legacy requests add one capped token query. No rule, index, Function, collection, response DTO, public cache, or provider behavior changed.
+- **Regression evidence is focused** - pure scope tests cover lifecycle, blocking, and identity disagreement, while the Digital Screens, System Strengthening, and MenuList tenant-safety gates pin transaction read/write ordering.
+
+## July 25, 2026 - Current Platform Actor Alias Agreement
+
+- **Platform identity has one exact meaning** - supplied root and nested session user IDs must be Firestore-safe and agree before current persisted authorization.
+- **Cross-tenant monitor admission fails closed** - `/api/platform/current-access` uses the same exact actor for its hashed limiter key and current `users/{userId}` check.
+- **Lifecycle authority remains current** - exact document/email, active/verified/platform role, block/delete/auth-disable, issuance, and revocation checks remain intact.
+- **Cost and infrastructure are unchanged** - valid checks retain one direct user read; no response DTO, rule, index, Function, cache, provider, or public truth behavior changed.
+
+## July 25, 2026 - Business Health Actor-Owned Threads
+
+- **Authenticated scope has one exact identity** - compact and nested tenant, store, and actor aliases must agree before Business Health route work.
+- **Private conversations are actor-owned** - thread append and read require exact persisted tenant, store, and user ownership; store-level analytics permission alone cannot open another staff member's thread.
+- **Thread responses are allowlisted** - browser responses contain bounded supported metadata/message fields and omit unknown legacy or persistence-private fields.
+- **Legacy ambiguity fails closed** - existing actorless threads are not guessed or migrated without ownership proof.
+- **Cost and infrastructure are unchanged** - valid thread reads retain one document read and valid appends retain their existing one-read/one-write transaction; no rule, index, collection, Function, Storage, public truth, or cache change applies.
+
+## July 25, 2026 - Next 16 Vercel Runtime Trace Closure
+
+- **The first successful post-migration build exposed a packaging regression** - staging commit `887f76ad` completed on Vercel, but every server-rendered route on `menulist.online` returned the cached Next 500 page while static metadata routes remained available.
+- **The failure was reproduced outside the full local install** - the website route's `.nft.json` bundle could not load because the broad `node_modules/@swc/**` exclusion removed `@swc/helpers/_/_interop_require_default`, which the Next 16 Turbopack server runtime imports.
+- **Compiler exclusions no longer remove runtime helpers** - output tracing keeps `@swc/helpers` while continuing to omit specific compiler-only SWC packages.
+- **Deployment completeness is now executable** - every `build:vercel` ends by copying the website route's traced files and symlinks into an isolated directory and loading that route without the repository's full `node_modules`.
+- **Current local evidence is green** - the exact Node 22 `build:vercel` passes TypeScript, zero-warning ESLint, 439/439 page generation, and the isolated 313-file route check at a 6,728,482,816-byte peak RSS. Production start returns 200 for the website, sign-in, privacy policy, and robots routes; the homepage renders in Chrome with zero console errors.
+- **No public deployment was performed by Codex** - `menulist.online` remains on the broken `887f76ad` deployment until the corrected source is pushed and Vercel redeploys it.
+
+## July 25, 2026 - Public Truth Monitor Transaction-Current Authority
+
+- **Saved monitor truth uses current authority** - summary disclosure and refresh persistence now transactionally read current tenant, store, and saved summary before returning or writing owner-private history.
+- **Concurrent lifecycle, role, and entitlement changes fail closed** - reassignment, deactivation, deletion, platform blocking, loss of `VIEW_ANALYTICS`, or revocation/change of the exact paid subscription cannot leave a previously admitted request authorized.
+- **Session aliases must agree** - compact and nested tenant/store identities use the shared exact resolver; contradictory aliases fail before protected monitor work.
+- **Cost is explicit** - summary GET performs three transaction reads; refresh's final transaction reads store, tenant, admitted subscription, and summary, then performs one summary write. Persisted shape, DTOs, caches, rules, indexes, Functions, and providers are unchanged.
+- **Regression evidence is focused** - runtime scope tests cover ownership, lifecycle, blocking, missing state, and alias conflict; source and tenant-safety gates pin all transaction reads and the current permission callback.
+
+## July 25, 2026 - POS Signing Secret Current-Scope Authority
+
+- **Signing secrets require one exact authenticated scope** - compact and nested tenant/store aliases must agree with the requested target before protected secret work.
+- **Blocked or stale tenants cannot reveal or rotate secrets** - the transaction now reads current tenant, store, and secret state, then rechecks lifecycle, ownership, and integration permission before reveal, migration, ensure, or rotation.
+- **Concurrency remains atomic** - secret versioning, legacy migration, canonical secret writes, and store marker cleanup stay inside the existing transaction.
+- **Cost is explicit** - secret GET/ensure/rotate now performs three transaction reads and up to the same two writes; no collection, rule, index, Function, response shape, or provider behavior changed.
+
+## July 25, 2026 - Temporary Status Transaction-Current Authority
+
+- **Public status cannot outlive a stale authorization decision** - set and clear now re-read the current store and tenant, re-evaluate persisted permission, and write inside one Firestore transaction.
+- **Concurrent lifecycle changes fail closed** - inactive, deleted, blocked, tenant-mismatched, or permission-revoked scope cannot commit a later temporary-status update from a previously admitted request.
+- **Session aliases remain exact** - compact and nested tenant/store representations must agree before limiter, transaction, or public-truth work.
+- **Cost is explicit** - valid manual set/clear performs two transaction reads and one store write; no collection, rule, index, Function, cache effect, provider call, or response DTO changed.
+- **Regression evidence covers current scope** - the focused behavior suite rejects inactive, blocked, tenant-mismatched, and malformed persisted scope, while source gates require transaction reads, current permission, in-transaction write, and post-commit invalidation order.
+
+## July 25, 2026 - Master Job Status Session Alias Agreement
+
+- **Authenticated scope has one meaning** - compact and nested tenant/store aliases must be canonical positive numeric IDs and agree before master extraction status reads.
+- **Malformed or stale sessions fail before Firestore** - the route now uses the shared permission-scope resolver instead of selecting one store alias and ignoring a conflicting representation.
+- **Valid polling behavior is unchanged** - master-store and linked-outlet validation, permissions, rate limits, active-job query, response shape, and browser polling remain intact.
+- **Regression evidence follows the shared contract** - MenuList API tenant safety rejects restoration of the one-alias fallback, while the focused scope contract exercises agreeing, legacy-only, conflicting, whitespace, leading-zero, zero, and unsafe IDs.
+
+## July 25, 2026 - AI Pack Status Session Scope Isolation
+
+- **Authorization and capacity now use one exact scope** - root and nested tenant/store session aliases must be canonical positive numeric IDs and must agree before the permission read or subscription lookup.
+- **Contradictory sessions fail closed** - a session can no longer authorize one store through root aliases while selecting another store through nested aliases for the capacity check or lazy credit reset.
+- **Regression evidence is adversarial** - the focused scope contract covers conflicting, whitespace, leading-zero, zero, and unsafe IDs; MenuList tenant-safety and the complete auth/security failure matrix pass.
+- **Firebase cost and infrastructure are unchanged** - valid requests retain the same permission and capacity reads, and no rule, index, Function, collection, cache, or document shape changed.
+
+## July 25, 2026 - Answerlattice Signal Contract Ownership Repair
+
+- **The signal verifier matches the runtime split** - shared/client assertions cover scope, sanitization, payload fingerprints, and in-memory deduplication; server assertions cover deterministic Admin IDs, create-only writes, replay checks, and retention.
+- **Server-only persistence remains isolated** - the repair does not move Admin behavior into client code or weaken signal replay handling.
+- **Future drift is pinned in both gates** - the focused contract and aggregate runtime verifier now require deterministic document identity at `signalEmitterServer.ts` and reject it as client-emitter ownership.
+
+## July 25, 2026 - Answerlattice MCP Contract Harness Server Boundary
+
+- **MCP discovery and session contracts stay pure** - the maintained Node/ts-node suites no longer eagerly load the server-only Firebase signal persistence graph.
+- **Production signal authority is preserved** - `report_missing_context` dynamically imports the governed server-only emitter only after tool, scope, argument, bundle, and runtime admission.
+- **The aggregate-discovered regression is closed** - both MCP session and protocol/tool contract suites pass under the pinned Node 22.23.1 runtime, and runtime truth now rejects restoration of the eager import.
+
+## July 25, 2026 - Answerlattice Product-Surface Summary Workspace Isolation
+
+- **Derived publication refresh retains its initiating workspace** - product-surface, FAQ, article, approved generation, changelog, and ticket callers send exact Answerlattice `tId/sId` with every summary rebuild.
+- **The route fails before cross-workspace side effects** - current authenticated scope must match the initiating scope before summary source reads or the compact summary write; successful responses acknowledge the exact same scope.
+- **The maintained emulator gate works on the pinned Admin runtime** - test cleanup now uses modular `deleteApp()` instead of the removed `App.delete()` instance method.
+- **Regression evidence is green** - strict request-scope contracts, the real Firestore summary emulator, runtime truth, exact TypeScript, focused lint, and diff hygiene pass. No Firestore rule, index, Function, collection, or valid-operation count changed.
+
+## July 25, 2026 - Answerlattice Changelog Publication Workspace Isolation
+
+- **The complete publication chain retains one initiating workspace** - image upload, changelog create/update/delete, release registration, release activation, and final linked publication all carry exact Answerlattice `tId/sId` corroboration.
+- **Server authority fails closed on session movement** - authenticated changelog and release executors compare the initiating scope with current permission scope before persistence and return an exact scope acknowledgement; clients reject missing or mismatched acknowledgements.
+- **Obsolete browser state cannot settle** - changelog pages, editors, previews, notifications, and delete results clear or stop when the workspace changes. The editor also prevents cancellation while its governed save is in flight.
+- **Cached data is no longer mutated while sorting** - management ordering copies the page entries before sorting, preserving the authoritative cached page object.
+- **Regression evidence covers contracts and real transactions** - focused contract suites reject missing/invalid scope, Firestore emulator suites reject wrong-workspace changelog/release actions, and exact TypeScript, focused lint, runtime truth, and diff hygiene pass. No collection, rule, index, Function, provider call, or Firebase operation count changed.
+
 ## July 25, 2026 - Vercel Turbopack OOM Closure
 
 - **The staging failure was container memory exhaustion** - typecheck and lint passed, then Vercel killed Turbopack during optimized compilation after the 6 GiB V8 allowance plus native compiler memory exhausted the 8 GiB machine.

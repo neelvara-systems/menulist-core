@@ -52,6 +52,13 @@ Owner-facing AI routes require the existing store-role permission before capacit
 
 `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix` guard this route ordering so future AI routes cannot rely only on authenticated tenant/store scope before consuming AI capacity, reading analytics, enqueuing tasks, or calling provider work.
 
+The AI pack status route also resolves compact root and nested legacy session
+tenant/store aliases through one exact agreement contract. Every supplied alias
+must be a canonical positive numeric Firestore document ID and duplicate aliases
+must agree. The same resolved numeric scope is used by the permission store read
+and the capacity/subscription lookup, so a contradictory session cannot
+authorize one store and inspect or lazily reset another store's subscription.
+
 ## May 13, 2026 Runtime Contract
 
 AI enhancement accounting is now enabled end to end for owner-billable AI operations and auditable for free/internal AI operations.

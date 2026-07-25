@@ -11,21 +11,13 @@ import {
   applyOwnerBusinessAssistantRateLimit,
   resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
+import {
+  isOwnerBusinessAssistantThreadOwnedByScope,
+  projectOwnerBusinessAssistantMessage,
+  serializeOwnerBusinessAssistantThreadValue,
+} from '@lib/ownerBusinessAssistant/threadResponse';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
-
-function serializeOwnerBusinessAssistantThreadValue(value: any): any {
-  if (value == null) return value;
-  if (typeof value.toDate === 'function') return value.toDate().toISOString();
-  if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
-  if (Array.isArray(value)) return value.map(serializeOwnerBusinessAssistantThreadValue);
-  if (typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, serializeOwnerBusinessAssistantThreadValue(entry)]),
-    );
-  }
-  return value;
-}
 
 export const GET = withAuth(async (request: NextRequest, session, params) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS) {
@@ -53,7 +45,7 @@ export const GET = withAuth(async (request: NextRequest, session, params) => {
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);
-  if ('error' in scope && scope.error) return scope.error;
+  if ('error' in scope) return scope.error;
 
   const permissionError = await requireAnyStorePermissionForStore(
     request,
@@ -68,13 +60,30 @@ export const GET = withAuth(async (request: NextRequest, session, params) => {
   const threadRef = firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS).doc(parsed.data.threadId);
   const threadSnap = await threadRef.get();
   const thread = threadSnap.exists ? threadSnap.data() : null;
-  if (!thread || String(thread.tId) !== String(scope.tId) || String(thread.sId) !== String(scope.sId)) {
+  if (!isOwnerBusinessAssistantThreadOwnedByScope(thread, scope)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const messages = Array.isArray(thread.messages) ? thread.messages.slice(-20) : [];
-  const threadMeta = { ...thread };
-  delete (threadMeta as { messages?: unknown }).messages;
+  const messages = Array.isArray(thread.messages)
+    ? thread.messages
+      .slice(-20)
+      .map(projectOwnerBusinessAssistantMessage)
+      .filter((message): message is NonNullable<typeof message> => Boolean(message))
+    : [];
+  const threadMeta = {
+    threadId: parsed.data.threadId,
+    status: typeof thread.status === 'string' && thread.status.length <= 40 ? thread.status : 'active',
+    messageCount: messages.length,
+    firstQuestion: typeof thread.firstQuestion === 'string' && thread.firstQuestion.length <= 240
+      ? thread.firstQuestion
+      : undefined,
+    lastAnswerStatus: typeof thread.lastAnswerStatus === 'string' && thread.lastAnswerStatus.length <= 80
+      ? thread.lastAnswerStatus
+      : undefined,
+    createdAt: serializeOwnerBusinessAssistantThreadValue(thread.createdAt),
+    updatedAt: serializeOwnerBusinessAssistantThreadValue(thread.updatedAt),
+    expiresAt: serializeOwnerBusinessAssistantThreadValue(thread.expiresAt),
+  };
 
   return NextResponse.json({
     data: {

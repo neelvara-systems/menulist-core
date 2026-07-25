@@ -283,6 +283,7 @@
 ".codeiumignore","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"
 ".gitignore","repository-control placeholder with no executable or data contract","not applicable"
 ".kilocodeignore","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"
+".nvmrc","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"
 ".windsurfignore","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"
 ".windsurfrules","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"
 "functions-answerlattice/.env.answerlattice-qa.example","file type has no executable, persistence, routing, contract, test, or public-output role in this repository","not applicable"

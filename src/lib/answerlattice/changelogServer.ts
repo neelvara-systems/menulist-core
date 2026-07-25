@@ -452,7 +452,13 @@ async function deleteEntry(
 export const executeAnswerlatticeChangelogAction = async (
     action: AnswerlatticeChangelogAction,
     access: AnswerlatticeAccessContext,
-): Promise<AnswerlatticeChangelogServerResult> => {
+): Promise<AnswerlatticeChangelogServerResult & { scope: { tId: number; sId: number } }> => {
+    if (
+        action.scope.tId !== access.scope.tenantId
+        || action.scope.sId !== access.scope.storeId
+    ) {
+        throw new AnswerlatticeChangelogError(409, 'The Answerlattice workspace changed. Reopen the changelog entry and try again.');
+    }
     const result = action.action === 'create'
         ? await createEntry(action, access)
         : action.action === 'update'
@@ -472,5 +478,11 @@ export const executeAnswerlatticeChangelogAction = async (
             });
         }
     }
-    return result;
+    return {
+        ...result,
+        scope: {
+            tId: access.scope.tenantId,
+            sId: access.scope.storeId,
+        },
+    };
 };

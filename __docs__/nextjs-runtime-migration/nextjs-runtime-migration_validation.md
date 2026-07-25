@@ -1,10 +1,10 @@
 # Next.js Runtime Migration Validation
 
-**Status:** LOCAL SOURCE, BUILD, AND START VALIDATION PASSED
+**Status:** LOCAL SOURCE, BUILD, ISOLATED DEPLOYMENT TRACE, AND START VALIDATION PASSED
 **Validated:** July 25, 2026
 **Runtime:** Node 22.23.1 / Next.js 16.2.11 / React 19.2.8
 **Worktree base:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
-**Deployment:** Staging attempt at `efc9456` failed during Turbopack compilation from Vercel container OOM; corrected source is locally validated and not yet redeployed
+**Deployment:** `efc9456` failed from Vercel build OOM. The OOM-corrected `887f76ad` built and deployed, but every server-rendered staging route returned 500 because its route trace omitted `@swc/helpers`. The trace correction is locally verified and not yet redeployed.
 
 ## Result
 
@@ -51,6 +51,8 @@ No install used `--force`, `--legacy-peer-deps`, or a peer override. `next-pwa` 
 | Cold Vercel-equivalent build after OOM correction | Passed with a 4096 MiB V8 ceiling, 439/439 pages |
 | Whole-repository filesystem trace warnings | Reduced from four to zero |
 | Exact `build:vercel` peak resident memory | Reduced from 7,292,469,248 to 6,735,249,408 bytes (557,219,840 bytes reclaimed) |
+| Exact `build:vercel` after deployment-trace correction | Passed end to end at 6,728,482,816-byte peak RSS |
+| Isolated website deployment bundle | Passed; 313 traced files and symlinks, including the Next 16 SWC helper runtime |
 
 Expected non-blocking warnings:
 
@@ -58,6 +60,22 @@ Expected non-blocking warnings:
 - Local build workers report missing optional Gemini key slots where the local environment intentionally does not supply them.
 
 The Vercel failure was a total-container OOM, not a TypeScript, lint, or Next compilation diagnostic. The standard build had an 8 GiB machine while `build:vercel` allowed V8 to reserve 6144 MiB alongside Turbopack's native Rust allocations. The corrected command limits V8 to 4096 MiB, disables server source maps explicitly, and marks runtime-only MyCodex/credential filesystem paths with `turbopackIgnore`. Explicit MyCodex Markdown output tracing remains, so required documents still ship without making Turbopack traverse unrelated repository assets.
+
+## Staging runtime-trace regression and closure
+
+The user-deployed staging commit `887f76ad` proved that a successful `next build` and local `next start` were not enough for this migration:
+
+- `https://menulist.online/`, `/signin`, `/privacy-policy`, and a dynamic API path returned the cached Next 500 page.
+- `/robots.txt` and `/sitemap.xml` returned 200 because their static outputs did not need the broken server route bundle.
+- The same build returned 200 locally because the complete repository `node_modules` remained available.
+- Copying only the website route's `.nft.json` files into an isolated directory reproduced `Cannot find module '@swc/helpers/_/_interop_require_default'`.
+- The root cause was the migration's broad `node_modules/@swc/**` tracing exclusion. Next 16's Turbopack server runtime imports `@swc/helpers` after deployment.
+- The corrected configuration traces the helper runtime and excludes only compiler-specific SWC packages.
+- `verify:next-deployment-bundle` now preserves traced symlinks, requires the helper trace, and loads the isolated website route after every Vercel build.
+
+After correction, the exact Node 22.23.1 `npm run build:vercel` passed TypeScript, zero-warning ESLint, compilation, 439/439 page generation, and the isolated 313-file deployment route at 6,728,482,816-byte peak RSS. `next start` returned 200 for `/`, `/signin`, `/privacy-policy`, and `/robots.txt` under the staging hostname contract. Chrome rendered the complete homepage with zero console errors.
+
+This is corrected-source evidence. `menulist.online` remains broken until Vercel receives and deploys this source.
 
 ## Served-runtime HTTP matrix
 
@@ -93,6 +111,7 @@ Passed:
 
 - `npm run verify:next-runtime-migration`
 - `npm run verify:next-build-compatibility`
+- `npm run verify:next-deployment-bundle`
 - `npm run verify:dependency-freeze`
 - `npm run typecheck`
 - `npm run lint`

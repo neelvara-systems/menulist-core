@@ -77,8 +77,18 @@ assert(
 );
 assert(
   packageJson.scripts?.['build:vercel']?.includes('--max-old-space-size=4096')
-    && !packageJson.scripts['build:vercel'].includes('--max-old-space-size=6144'),
+    && !packageJson.scripts['build:vercel'].includes('--max-old-space-size=6144')
+    && packageJson.scripts['build:vercel'].includes('npm run verify:next-deployment-bundle'),
   'The Vercel Turbopack build must leave native compiler headroom inside the 8 GiB build container.',
+);
+assert(
+  !nextConfig.includes("'node_modules/@swc/**'"),
+  'Do not globally exclude @swc from output tracing; Next 16 server routes require @swc/helpers after deployment.',
+);
+assertIncludes(
+  nextConfig,
+  "'node_modules/@swc/core/**'",
+  'Compiler-only SWC packages may remain excluded without removing the runtime helpers.',
 );
 assertIncludes(
   nextConfig,

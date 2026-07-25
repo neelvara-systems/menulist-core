@@ -16,6 +16,9 @@
 - Simulate `archiveProductSurface()` returning a malformed/fallback result and confirm the surface is not shown locally as archived.
 - Simulate starter-template creation returning a malformed/fallback result and confirm the template flow shows fixed failure copy instead of counting the template as added.
 - Simulate a successful rebuild-summary HTTP response without a valid `summary` object and confirm local summary state and success copy do not advance.
+- Omit initiating scope, send string/zero/extra-field scope, or switch from workspace A to B before the rebuild route executes; confirm the request is rejected and neither workspace summary is written.
+- Return a successful summary with a missing or mismatched scope acknowledgement and confirm the browser rejects it.
+- Run `npm run test:answerlattice-product-surface-summary-contracts` and `npm run test:answerlattice-product-surface-summary:emulator`; the latter must compile and clean up the modular Firebase Admin app successfully.
 
 ## Content Linking
 

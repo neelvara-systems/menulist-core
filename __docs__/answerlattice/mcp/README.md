@@ -2,7 +2,7 @@
 
 > **Status:** Implemented, locally audited, and disabled by default
 > **Version:** 1.0.0
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-25
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_MCP` (`false`)
 > **Credential Scope:** `mcp:read`; optional `signals:write`
 
@@ -11,6 +11,8 @@
 Answerlattice MCP is a controlled server-to-agent distribution surface for approved workspace context. It lets an authorized MCP client retrieve bounded product, route, entity, canonical-answer, and release context from immutable private compiled bundles.
 
 An optional tool can report missing context as a governed signal. That report becomes review evidence; it never edits or publishes approved truth.
+
+The tool catalog, argument schemas, annotations, and session-scope helpers remain pure to load in the maintained contract harness. The server-only governed signal persistence module is imported only when `report_missing_context` actually executes; this preserves the production server boundary while keeping discovery/session verification independent of Firebase Admin bootstrap.
 
 ## Product Boundary
 

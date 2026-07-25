@@ -155,17 +155,19 @@ const uploadPendingFiles = async (
 const buildMutationAction = async (
     action: 'create' | 'update',
     entryPayload: unknown,
+    expectedScope: { tId: number; sId: number },
     entryId?: string,
 ): Promise<{ parsed: AnswerlatticeChangelogAction; uploadedUrls: string[] }> => {
     if (!entryPayload || typeof entryPayload !== 'object' || Array.isArray(entryPayload)) throw new Error('Invalid changelog entry');
     const value = entryPayload as Record<string, unknown>;
-    const { session } = await getScope();
+    const { session, tId, sId } = await getExpectedScope(expectedScope);
     const releasedOn = toIsoDate(value.releasedOn);
     if (!releasedOn) throw new Error('Invalid changelog release date');
     const prepared = await uploadPendingFiles(value.files ?? [], session);
     const raw = {
         action,
         requestId: typeof value.requestId === 'string' ? value.requestId : createRuntimeId(`changelog_${action}`),
+        scope: { tId, sId },
         ...(entryId ? { entryId } : {}),
         entry: {
             title: value.title,
@@ -190,7 +192,10 @@ const buildMutationAction = async (
     return { parsed, uploadedUrls: prepared.uploadedUrls };
 };
 
-const executeChangelogAction = async (action: AnswerlatticeChangelogAction) => {
+const executeChangelogAction = async (
+    action: AnswerlatticeChangelogAction,
+    expectedScope: { tId: number; sId: number },
+) => {
     const response = await fetch('/api/answerlattice/changelog', {
         method: 'POST',
         cache: 'no-store',
@@ -206,28 +211,38 @@ const executeChangelogAction = async (action: AnswerlatticeChangelogAction) => {
     }
     const parsed = AnswerlatticeChangelogActionResultSchema.safeParse(payload);
     if (!parsed.success) throw new Error('Changelog action returned an invalid response');
+    if (parsed.data.scope.tId !== expectedScope.tId || parsed.data.scope.sId !== expectedScope.sId) {
+        throw new Error('Changelog action returned the wrong workspace scope');
+    }
     return parsed.data;
 };
 
-export const addChangelogEntry = async (entryPayload: unknown) => apiCallComposer(
+export const addChangelogEntry = async (
+    entryPayload: unknown,
+    expectedScope: { tId: number; sId: number },
+) => apiCallComposer(
     async () => {
-        const prepared = await buildMutationAction('create', entryPayload);
+        const prepared = await buildMutationAction('create', entryPayload, expectedScope);
         try {
-            return await executeChangelogAction(prepared.parsed);
+            return await executeChangelogAction(prepared.parsed, expectedScope);
         } catch (error) {
             logAmbiguousChangelogMediaRetention('create', prepared.uploadedUrls.length);
             throw error;
         }
     },
-    { hasEntryPayload: Boolean(entryPayload) },
+    { hasEntryPayload: Boolean(entryPayload), hasExpectedScope: Boolean(expectedScope) },
     'addChangelogEntry',
 );
 
-export const updateChangelogEntry = async (entryId: string, entryPayload: unknown) => apiCallComposer(
+export const updateChangelogEntry = async (
+    entryId: string,
+    entryPayload: unknown,
+    expectedScope: { tId: number; sId: number },
+) => apiCallComposer(
     async () => {
-        const prepared = await buildMutationAction('update', entryPayload, entryId);
+        const prepared = await buildMutationAction('update', entryPayload, expectedScope, entryId);
         try {
-            const result = await executeChangelogAction(prepared.parsed);
+            const result = await executeChangelogAction(prepared.parsed, expectedScope);
             deferPersistedChangelogMediaCleanup(result.removedFileUrls, 'update_replaced');
             return result;
         } catch (error) {
@@ -235,24 +250,28 @@ export const updateChangelogEntry = async (entryId: string, entryPayload: unknow
             throw error;
         }
     },
-    { entryId, hasEntryPayload: Boolean(entryPayload) },
+    { entryId, hasEntryPayload: Boolean(entryPayload), hasExpectedScope: Boolean(expectedScope) },
     'updateChangelogEntry',
 );
 
-export const deleteChangelogEntry = async (entryId: string) => apiCallComposer(
+export const deleteChangelogEntry = async (
+    entryId: string,
+    expectedScope: { tId: number; sId: number },
+) => apiCallComposer(
     async () => {
-        await getScope();
+        const scope = await getExpectedScope(expectedScope);
         const action = parseAnswerlatticeChangelogAction({
             action: 'delete',
             requestId: createRuntimeId('changelog_delete'),
+            scope: { tId: scope.tId, sId: scope.sId },
             entryId,
         });
         if (!action) throw new Error('Invalid changelog entry ID');
-        const result = await executeChangelogAction(action);
+        const result = await executeChangelogAction(action, expectedScope);
         deferPersistedChangelogMediaCleanup(result.removedFileUrls, 'delete_entry');
         return result;
     },
-    { entryId },
+    { entryId, hasExpectedScope: Boolean(expectedScope) },
     'deleteChangelogEntry',
 );
 

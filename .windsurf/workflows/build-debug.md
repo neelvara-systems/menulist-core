@@ -24,12 +24,13 @@ If build is killed with SIGKILL or times out at 45 minutes:
 3. On the standard 8 GiB Vercel machine, keep the Turbopack V8 ceiling at 4096 MiB so native compiler and platform processes retain headroom.
 4. Fix every Turbopack `matches ... files` or `unexpected file in NFT list` warning. Runtime-only dynamic filesystem paths need `/* turbopackIgnore: true */` at the path expression/read, plus explicit `outputFileTracingIncludes` for assets that must ship.
 5. Verify `serverSourceMaps: false` and `productionBrowserSourceMaps: false`.
-6. Verify `outputFileTracingExcludes` covers heavy unrelated assets and native build packages.
+6. Verify `outputFileTracingExcludes` covers only proven build-only assets and native compiler packages. Never use a global `node_modules/@swc/**` exclusion: Next 16's deployed Turbopack route runtime requires `@swc/helpers`.
 7. Check for `@ant-design/plots` or D3 components missing `"use client"`.
 8. Check for heavy libraries (`jspdf`, `exceljs`, `fabric`) with avoidable static imports; preserve server/client contracts when converting to dynamic imports.
 9. For an actual Webpack build only, verify `config.cache = false`, consider `webpackBuildWorker: true`, and test `webpackMemoryOptimizations`; these controls do not fix a Turbopack compilation.
 10. Verify `vercel.json` removes the unused SWC binary and enable `VERCEL_BUILD_SYSTEM_REPORT=1` while measuring.
 11. Reproduce from a clean output directory with the exact Vercel build command and record peak RSS before claiming closure.
+12. Run `npm run verify:next-deployment-bundle` after the build. It must load the traced website route from an isolated directory without the repository's full `node_modules`.
 
 ## Step 3: Module Not Found Fix
 
@@ -54,10 +55,11 @@ If `TypeScript error in ...`:
 
 If `Failed to collect page data` or Firebase/SDK errors:
 
-1. Check if the error is a missing env var (`auth/invalid-api-key` = missing NEXT_PUBLIC_FIREBASE_API_KEY)
-2. Guard SDK initialization: `const hasConfig = !!config.apiKey; const client = hasConfig ? init(config) : null;`
-3. Remind user to set env vars on Vercel project settings
-4. `NEXT_PUBLIC_*` vars are inlined at BUILD TIME — they must exist during `next build`
+1. If static metadata routes work but all rendered pages return 500, inspect the per-route `.nft.json` deployment trace before changing application behavior. A local `next start` can hide missing traced modules because the full local `node_modules` remains available.
+2. Check if the error is a missing env var (`auth/invalid-api-key` = missing NEXT_PUBLIC_FIREBASE_API_KEY)
+3. Guard SDK initialization: `const hasConfig = !!config.apiKey; const client = hasConfig ? init(config) : null;`
+4. Remind user to set env vars on Vercel project settings
+5. `NEXT_PUBLIC_*` vars are inlined at BUILD TIME — they must exist during `next build`
 
 ## Step 6: Before Every Push
 

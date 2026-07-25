@@ -317,6 +317,7 @@ function assertPublicToolInventoryBoundary() {
     'publicTruthMonitorDiagnostics.ts',
     'publicTruthMonitorEntitlements.ts',
     'publicTruthMonitorReport.ts',
+    'publicTruthMonitorServerScope.ts',
     'publicUrlValidation.ts',
     'serverPublicTruthMonitorEntitlements.ts',
     'shareableToolReport.ts',

@@ -1,7 +1,7 @@
 # Answerlattice MCP - Implementation
 
 > **Status:** Implemented, locally audited, rollout-gated
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-25
 
 ## Connected File Map
 
@@ -111,6 +111,8 @@ Read tools load only validated paths recorded in the ready private bundle manife
 - creates a deterministic hourly request ID;
 - emits the existing `chat_negative` governed signal with redacted bounded metadata;
 - never writes a separate summary map or mutates canonical truth.
+
+`mcpTools.ts` does not eagerly import the `server-only` signal persistence graph. It dynamically imports `signalEmitterServer.ts` only inside the admitted missing-context execution branch. Tool discovery, schema parsing, and session-scope contract tests therefore do not initialize Firebase Admin or require Next's server-only module resolver, while the production mutation still crosses the explicit server-only boundary before persistence.
 
 ## Protocol References
 

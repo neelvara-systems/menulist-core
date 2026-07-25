@@ -979,6 +979,8 @@ function verifyPublicApiAndWidgetIsolation() {
   assertIncludes(mcpTools, 'bundleVersion !== expectedBundleVersion', 'Answerlattice MCP session bundle-version consistency');
   assertIncludes(mcpTools, 'MCP_CONTEXT_CHANGED', 'Answerlattice MCP changed-context failure contract');
   assertIncludes(mcpTools, 'emitAnswerlatticeSignal({', 'Answerlattice MCP governed missing-context signal');
+  assertIncludes(mcpTools, "await import('@lib/answerlattice/signalEmitterServer')", 'Answerlattice MCP lazy server-only signal boundary');
+  assertNotIncludes(mcpTools, "import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitterServer';", 'Answerlattice MCP contract import graph must not eagerly load signal persistence');
   assertNotIncludes(mcpTools, 'DB_COLLECTIONS.PLATFORM_SUMMARY', 'Answerlattice MCP must not use a separate summary write path');
   assertNotIncludes(mcpTools, 'FieldValue.increment', 'Answerlattice MCP must not maintain an unbounded signal map');
 }
@@ -2304,6 +2306,7 @@ function verifyAnswerlatticeRateLimitKeyPrivacy() {
 function verifyAnswerlatticeRebuildSyncRouteGuards() {
   const bundleRebuild = read('src/app/api/answerlattice/bundles/rebuild/route.ts');
   const surfaceSummaryRebuild = read('src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts');
+  const surfaceSummaryContracts = read('src/lib/answerlattice/productSurfaceSummaryContracts.ts');
   const tenantSummary = read('src/app/api/answerlattice/tenant-summary/route.ts');
   const tenantSummaryClient = read('src/lib/answerlattice/tenantSummaryClient.ts');
 
@@ -2339,10 +2342,10 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
   assertNotIncludes(bundleRebuild, 'const storeId = Number(scope?.storeId);', 'Answerlattice bundle rebuild must not loosely coerce session store scope');
 
   assertIncludes(surfaceSummaryRebuild, 'const PRODUCT_SURFACE_SUMMARY_REBUILD_MAX_BODY_BYTES = 2 * 1024;', 'Answerlattice product-surface summary rebuild body cap');
-  assertIncludes(surfaceSummaryRebuild, "const PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES = ['manual'] as const;", 'Answerlattice product-surface summary rebuild reason allowlist');
-  assertIncludes(surfaceSummaryRebuild, 'reason: z.enum(PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES).optional().default', 'Answerlattice product-surface summary rebuild reason enum');
+  assertIncludes(surfaceSummaryContracts, "reason: z.literal('manual').optional().default('manual')", 'Answerlattice product-surface summary rebuild reason allowlist');
+  assertIncludes(surfaceSummaryContracts, 'scope: answerlatticeProductSurfaceSummaryScopeSchema', 'Answerlattice product-surface summary rebuild exact scope schema');
   assertIncludes(surfaceSummaryRebuild, 'readOptionalBoundedJsonBody(request, PRODUCT_SURFACE_SUMMARY_REBUILD_MAX_BODY_BYTES', 'Answerlattice product-surface summary bounded body');
-  assertIncludes(surfaceSummaryRebuild, 'const parsedResult = RebuildRequestSchema.safeParse(bodyResult.data);', 'Answerlattice product-surface summary safe body parse');
+  assertIncludes(surfaceSummaryRebuild, 'const parsedResult = answerlatticeProductSurfaceSummaryRebuildRequestSchema.safeParse(bodyResult.data);', 'Answerlattice product-surface summary safe body parse');
   assertIncludes(surfaceSummaryRebuild, 'if (!parsedResult.success)', 'Answerlattice product-surface summary invalid reason returns input error');
   assertIncludes(surfaceSummaryRebuild, "logRuntimeFailure('answerlattice_product_surface_summary_rebuild_failed'", 'Answerlattice product-surface summary bounded diagnostics');
   assertIncludes(surfaceSummaryRebuild, "getBoundedRuntimeStringContext('tenantId', tenantId)", 'Answerlattice product-surface summary bounded tenant metadata');
@@ -2356,7 +2359,7 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
       'const rateLimit = await checkRateLimit({',
       'requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE)',
       'readOptionalBoundedJsonBody(request, PRODUCT_SURFACE_SUMMARY_REBUILD_MAX_BODY_BYTES',
-      'RebuildRequestSchema.safeParse(bodyResult.data)',
+      'answerlatticeProductSurfaceSummaryRebuildRequestSchema.safeParse(bodyResult.data)',
       'if (!parsedResult.success)',
       'rebuildProductSurfaceContentSummaryServer({',
     ],
@@ -3829,6 +3832,7 @@ function verifySearchAndRetrievalTruth() {
   const knowledgeIntake = read('src/lib/answerlattice/knowledgeIntake.ts');
   const governanceIdBoundary = read('src/lib/answerlattice/governanceIdBoundary.ts');
   const productSurfacesDal = read('src/database/answerlattice/productSurfaces.ts');
+  const surfaceSummaryRebuild = read('src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts');
   const contextBundleBuilderServer = read('src/lib/answerlattice/contextBundleBuilderServer.ts');
   const activationSummaryRoute = read('src/app/api/answerlattice/activation/summary/route.ts');
   const kbGenerationJobs = read('src/database/kb-generation/jobs.ts');
@@ -3841,6 +3845,8 @@ function verifySearchAndRetrievalTruth() {
   const knowledgeBaseCategoryMutations = read('src/lib/answerlattice/knowledgeBaseCategoryMutations.ts');
   const knowledgeBaseReviewMutations = read('src/lib/answerlattice/knowledgeBaseReviewMutations.ts');
   const platformArticleModal = read('src/components/templates/platform/knowledgeBase/ArticleModal.tsx');
+  const platformChangelogAddEdit = read('src/components/templates/platform/changelog/addEditChangelog.tsx');
+  const ticketDetailView = read('src/components/templates/platform/supportTickets/TicketDetailView.tsx');
   const platformArticlePane = read('src/components/templates/platform/knowledgeBase/ArticlePane.tsx');
   const platformCategoryModal = read('src/components/templates/platform/knowledgeBase/CategoryModal.tsx');
   const platformSectionModal = read('src/components/templates/platform/knowledgeBase/SectionModal.tsx');
@@ -4447,7 +4453,8 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(productSurfacesDal, 'const normalizedSurfaceId = normalizeAnswerlatticeProductSurfaceId(surfaceId);', 'Answerlattice product surface read normalizes ID');
   assertIncludes(productSurfacesDal, 'if (!normalizedSurfaceId) return null;', 'Answerlattice product surface read rejects malformed ID before ref');
   assertIncludes(productSurfacesDal, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice product surface DAL imports shared strict scope helpers');
-  assertIncludes(productSurfacesDal, 'const normalizeProductSurfaceScope = (scope?: ProductSurfaceScopeInput | null) =>', 'Answerlattice product surface override scope normalizer');
+  assertIncludes(productSurfacesDal, 'const normalizeProductSurfaceScope = (scope?: unknown) =>', 'Answerlattice product surface override scope normalizer');
+  assertIncludes(productSurfacesDal, 'const scopeRecord = isRecord(scope) ? scope : null;', 'Answerlattice product surface override scope rejects non-record inputs');
   assertIncludes(productSurfacesDal, 'const overrideScope = normalizeProductSurfaceScope(scopeOverride);', 'Answerlattice product surface explicit scope is normalized');
   assertIncludes(productSurfacesDal, 'const scope = resolveAnswerlatticeSessionScope(session);', 'Answerlattice product surface session scope uses shared resolver');
   assertNotIncludes(productSurfacesDal, 'const overrideTId = Number(scopeOverride?.tId);', 'Answerlattice product surface override must not loosely coerce tenant scope');
@@ -4516,6 +4523,17 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(productSurfacesDal, 'answerlattice_product_surface_summary_rebuild_response_parse_failed', 'Answerlattice product surface summary rebuild parse diagnostic');
   assertIncludes(productSurfacesDal, 'answerlattice_product_surface_summary_rebuild_response_rejected', 'Answerlattice product surface summary rebuild rejected diagnostic');
   assertIncludes(productSurfacesDal, 'answerlattice_product_surface_summary_rebuild_response_invalid', 'Answerlattice product surface summary rebuild invalid diagnostic');
+  assertIncludes(productSurfacesDal, "body: JSON.stringify({ reason: 'manual', scope })", 'Answerlattice product surface summary initiating scope request');
+  assertIncludes(productSurfacesDal, 'isExactAnswerlatticeProductSurfaceSummaryScope(responseScope, scope)', 'Answerlattice product surface summary exact response scope acknowledgement');
+  assertIncludes(productSurfacesDal, 'expectedScope: AnswerlatticeProductSurfaceSummaryScope', 'Answerlattice product surface summary diagnostic helper initiating scope');
+  assertIncludes(surfaceSummaryRebuild, 'answerlatticeProductSurfaceSummaryRebuildRequestSchema.safeParse', 'Answerlattice product surface summary strict scoped request parser');
+  assertIncludes(surfaceSummaryRebuild, 'isExactAnswerlatticeProductSurfaceSummaryScope(parsed.scope, activeScope)', 'Answerlattice product surface summary active/request workspace corroboration');
+  assertIncludes(surfaceSummaryRebuild, "{ status: 409 }", 'Answerlattice product surface summary workspace transition rejection');
+  assertIncludes(surfaceSummaryRebuild, 'NextResponse.json({ summary, scope: activeScope })', 'Answerlattice product surface summary exact response scope acknowledgement');
+  assertIncludes(platformChangelogAddEdit, 'expectedScope: operationScope', 'Platform changelog summary refresh initiating scope');
+  assertIncludes(platformArticleModal, 'expectedScope: operationScope', 'Platform KB article summary refresh initiating scope');
+  assertIncludes(kbGenerationReviewModal, 'expectedScope: operationScope', 'KB generation summary refresh initiating scope');
+  assertIncludes(ticketDetailView, 'expectedScope: { tId: ticket.tId, sId: ticket.sId }', 'Support ticket summary refresh initiating scope');
   assertNotIncludes(productSurfacesDal, 'res.json().catch(() => ({}))', 'Answerlattice product surface summary rebuild direct JSON fallback');
   assertIncludes(productSurfacesDal, 'rebuildProductSurfaceContentSummaryWithDiagnostics', 'Answerlattice product surface summary refresh diagnostic helper');
   assertIncludes(productSurfacesDal, 'logAnswerlatticeFailure(params.failureCode, error, params.context || {})', 'Answerlattice product surface summary refresh bounded diagnostic logger');
@@ -6497,6 +6515,9 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   assertIncludes(signalEmitter, 'answerlattice_signal_emit_failed', 'Answerlattice signal emit failure diagnostic');
   assertIncludes(signalEmitter, 'answerlattice_signal_replay_conflict', 'Answerlattice signal conflicting replay rejection');
   assertIncludes(signalEmitter, 'buildAnswerlatticeSignalMemoryDedupKey', 'Answerlattice signal tenant-scoped process dedupe');
+  assertNotIncludes(signalEmitter, 'buildAnswerlatticeSignalDocumentId', 'Answerlattice client signal emitter must not own Admin document persistence');
+  assertIncludes(signalEmitterServer, 'buildAnswerlatticeSignalDocumentId', 'Answerlattice server signal deterministic document identity');
+  assertIncludes(signalEmitterServer, 'await collectionRef.doc(docId).create(payload)', 'Answerlattice server signal create-only deterministic persistence');
   assertIncludes(signalEmitter, 'resolutionEventId', 'Answerlattice ticket resolution lifecycle identity');
   assertIncludes(signalEmitter, 'redactAnswerlatticeSupportEvidenceText', 'Answerlattice support evidence redaction');
   assertNotIncludes(signalEmitter, 'resolvedBy: params.resolvedBy', 'Answerlattice signal stored resolver identity');
@@ -7628,8 +7649,13 @@ function verifyAnswerlatticeReleaseActivationDiagnostics() {
   assertIncludes(releaseContracts, 'sId: z.number().int().positive()', 'Answerlattice persisted release store contract');
   assertIncludes(releaseContracts, 'Release version label and normalized version must match', 'Answerlattice release version consistency contract');
   assertIncludes(releases, "requestId || createRuntimeId('release_activation')", 'Answerlattice release deterministic activation retry support');
+  assertIncludes(releaseContracts, 'scope: actionScopeSchema', 'Answerlattice release initiating workspace contract');
+  assertIncludes(releases, 'parsed.data.scope.tId !== expectedScope.tId', 'Answerlattice release response tenant acknowledgement');
+  assertIncludes(releases, 'parsed.data.scope.sId !== expectedScope.sId', 'Answerlattice release response store acknowledgement');
 
   assertIncludes(releaseServer, 'await db.runTransaction(async (transaction) => {', 'Answerlattice release transaction ownership');
+  assertIncludes(releaseServer, 'action.scope.tId !== access.scope.tenantId', 'Answerlattice release server initiating tenant corroboration');
+  assertIncludes(releaseServer, 'action.scope.sId !== access.scope.storeId', 'Answerlattice release server initiating store corroboration');
   assertIncludes(releaseServer, 'const latest = AnswerlatticeStoredReleaseSchema.safeParse(latestSnapshotDoc.data());', 'Answerlattice latest-release persisted contract');
   assertIncludes(releaseServer, 'entity?.tId !== access.scope.tenantId', 'Answerlattice release entity exact tenant ownership');
   assertIncludes(releaseServer, 'entity?.sId !== access.scope.storeId', 'Answerlattice release entity exact store ownership');
@@ -7664,6 +7690,7 @@ function verifyAnswerlatticeChangelogRuntimeBoundary() {
   const server = read('src/lib/answerlattice/changelogServer.ts');
   const client = read('src/database/changelog/index.ts');
   const editor = read('src/components/templates/platform/changelog/addEditChangelog.tsx');
+  const management = read('src/components/templates/platform/changelog/index.tsx');
   const surfaceSummary = read('src/lib/answerlattice/productSurfaceContentServer.ts');
   const appBundleBuilder = read('src/lib/answerlattice/contextBundleBuilderServer.ts');
   const functionsBundleBuilder = read('functions-answerlattice/src/answerlattice/contextBundleBuilder.ts');
@@ -7685,8 +7712,11 @@ function verifyAnswerlatticeChangelogRuntimeBoundary() {
   assertNotIncludes(contracts, 'entries: entries as', 'Answerlattice changelog unsafe entry assertion');
   assertIncludes(contracts, 'Published versioned entries require an active release link', 'Answerlattice published changelog release-link contract');
   assertIncludes(contracts, 'export const isAnswerlatticeChangelogEntryPublished', 'Answerlattice shared explicit publication predicate');
+  assertIncludes(contracts, 'scope: actionScopeSchema', 'Answerlattice changelog initiating workspace contract');
 
   assertIncludes(server, 'normalizeAnswerlatticeStoredChangelogPage(value, pageId, {', 'Answerlattice server reuses exact page contract');
+  assertIncludes(server, 'action.scope.tId !== access.scope.tenantId', 'Answerlattice changelog server initiating tenant corroboration');
+  assertIncludes(server, 'action.scope.sId !== access.scope.storeId', 'Answerlattice changelog server initiating store corroboration');
   assertIncludes(server, 'value.tId !== access.scope.tenantId', 'Answerlattice changelog index exact tenant scope');
   assertIncludes(server, 'value.sId !== access.scope.storeId', 'Answerlattice changelog index exact store scope');
   assertNotIncludes(server, 'Number(value.tId)', 'Answerlattice changelog server loose tenant scope');
@@ -7701,12 +7731,18 @@ function verifyAnswerlatticeChangelogRuntimeBoundary() {
   assertIncludes(client, "credentials: 'same-origin'", 'Answerlattice changelog browser same-origin credentials');
   assertIncludes(client, "redirect: 'manual'", 'Answerlattice changelog browser redirect boundary');
   assertIncludes(client, 'readJsonResponseWithLimit<unknown>(response, CHANGELOG_ACTION_RESPONSE_MAX_BYTES)', 'Answerlattice changelog bounded response parser');
+  assertIncludes(client, 'const { session, tId, sId } = await getExpectedScope(expectedScope);', 'Answerlattice changelog upload initiating workspace');
+  assertIncludes(client, 'parsed.data.scope.tId !== expectedScope.tId', 'Answerlattice changelog response tenant acknowledgement');
+  assertIncludes(client, 'parsed.data.scope.sId !== expectedScope.sId', 'Answerlattice changelog response store acknowledgement');
   assertIncludes(client, "typeof size !== 'number'", 'Answerlattice changelog exact pending-file size');
   assertNotIncludes(client, 'response.json()', 'Answerlattice changelog raw response parser');
   assertNotIncludes(client, 'const size = Number(file.size);', 'Answerlattice changelog loose file-size coercion');
   assertIncludes(editor, 'stagedEntryPayload = { ...entryPayload, published: false, releaseId: null };', 'Answerlattice versioned changelog draft-first publication');
-  assertIncludes(editor, 'await activateRelease(release.releaseId, `${releaseRequestId}:activate`);', 'Answerlattice deterministic release activation request');
+  assertIncludes(editor, 'await activateRelease(release.releaseId, `${releaseRequestId}:activate`, operationScope);', 'Answerlattice deterministic scoped release activation request');
+  assertIncludes(editor, 'currentScopeKeyRef.current !== operationScopeKey || !isFormActive.current', 'Answerlattice changelog obsolete editor settlement guard');
   assertIncludes(editor, 'The entry was saved as a draft because release propagation did not finish.', 'Answerlattice safe release failure recovery copy');
+  assertIncludes(management, 'setEntries([]);', 'Answerlattice changelog workspace transition state clearing');
+  assertIncludes(management, 'await deleteChangelogEntry(entryId, expectedScope);', 'Answerlattice changelog initiating-scope delete');
   assertIncludes(surfaceSummary, '.filter(isAnswerlatticeChangelogEntryPublished)', 'Answerlattice product-surface summary excludes drafts');
   assertIncludes(appBundleBuilder, '.filter(isAnswerlatticeChangelogEntryPublished)', 'Answerlattice app bundle excludes drafts');
   assertIncludes(functionsBundleBuilder, 'entry?.published === true', 'Answerlattice Functions bundle requires explicit publication');

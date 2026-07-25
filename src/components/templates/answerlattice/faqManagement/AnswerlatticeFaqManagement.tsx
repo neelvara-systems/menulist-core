@@ -16,6 +16,7 @@ import {
 } from '@database/answerlattice/productSurfaces';
 import { getCategories } from '@database/knowledgeBase/categories';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     ANSWERLATTICE_FAQ_STATUS,
@@ -119,6 +120,7 @@ const flattenArticleOptions = (categoriesData?: KnowledgeBaseCategoriesType | nu
 
 export default function AnswerlatticeFaqManagement() {
     const session = useClientAuthSession();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
@@ -233,6 +235,7 @@ export default function AnswerlatticeFaqManagement() {
     }, [form]);
 
     const handleSave = useCallback(async () => {
+        const operationScope = requestScope;
         setSaving(true);
         try {
             const values = await form.validateFields();
@@ -263,7 +266,8 @@ export default function AnswerlatticeFaqManagement() {
             let summaryRefreshFailed = false;
             if (wasPublished || willBePublished) {
                 try {
-                    await rebuildProductSurfaceContentSummary();
+                    if (!operationScope) throw new Error('Answerlattice workspace is not available.');
+                    await rebuildProductSurfaceContentSummary(operationScope);
                 } catch (summaryError) {
                     summaryRefreshFailed = true;
                     logAnswerlatticeFailure('answerlattice_faq_summary_refresh_after_save_failed', summaryError, {
@@ -283,10 +287,11 @@ export default function AnswerlatticeFaqManagement() {
         } finally {
             setSaving(false);
         }
-    }, [articleOptions, form, selectedFaq]);
+    }, [articleOptions, form, requestScope, selectedFaq]);
 
     const handleArchive = useCallback(async () => {
         if (!selectedFaq?.id) return;
+        const operationScope = requestScope;
         setSaving(true);
         try {
             const wasPublished = selectedFaq.status === ANSWERLATTICE_FAQ_STATUS.PUBLISHED && selectedFaq.active !== false;
@@ -301,7 +306,8 @@ export default function AnswerlatticeFaqManagement() {
             let summaryRefreshFailed = false;
             if (wasPublished) {
                 try {
-                    await rebuildProductSurfaceContentSummary();
+                    if (!operationScope) throw new Error('Answerlattice workspace is not available.');
+                    await rebuildProductSurfaceContentSummary(operationScope);
                 } catch (summaryError) {
                     summaryRefreshFailed = true;
                     logAnswerlatticeFailure('answerlattice_faq_summary_refresh_after_archive_failed', summaryError, {
@@ -321,7 +327,7 @@ export default function AnswerlatticeFaqManagement() {
         } finally {
             setSaving(false);
         }
-    }, [selectedFaq]);
+    }, [requestScope, selectedFaq]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) return null;
 

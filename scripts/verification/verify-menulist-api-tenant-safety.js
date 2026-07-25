@@ -487,6 +487,8 @@ function verifyCoreAuthHelpers() {
       [
       "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
       'export function normalizeStorePermissionScopeDocumentId(',
+      'export function resolveStorePermissionSessionScope(',
+      'normalized.every((scope) => scope?.numericId === first.numericId)',
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
     ],
     'store permission scope document ID helper',
@@ -494,9 +496,9 @@ function verifyCoreAuthHelpers() {
   assertIncludes(
       'src/lib/permissions/server.ts',
       [
-      'import { normalizeStorePermissionScopeDocumentId } from "./scopeDocumentId";',
-      'const storeScope = normalizeStorePermissionScopeDocumentId(getRawSessionStoreId(session));',
-      'const tenantScope = normalizeStorePermissionScopeDocumentId(getRawSessionTenantId(session));',
+      'resolveStorePermissionSessionScope,',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const { storeScope, tenantScope } = sessionScope;',
       'const storeScope = normalizeStorePermissionScopeDocumentId(storeId);',
       'const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);',
       '.doc(storeScope.documentId)',
@@ -1072,15 +1074,14 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     [
       'withAuth',
       'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
-      'const MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;',
-      'const MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;',
-      'function normalizeMasterJobStatusSessionDocumentId(value: unknown): MasterJobStatusSessionDocumentScope | null',
+      'resolveStorePermissionSessionScope,',
       'querySchema.safeParse',
       '.refine(isValidFirestoreDocumentId, "Invalid project ID")',
-      'const sessionStoreScope = normalizeMasterJobStatusSessionDocumentId(session.sId ?? session.user?.storeId);',
-      'if (!sessionStoreScope || !verifyTenantAccess(session, tenantId, sessionStoreScope.numericId, request))',
-      'const sessionStoreId = sessionStoreScope.numericId;',
-      'db.doc(`${DB_COLLECTIONS.STORES}/${sessionStoreScope.documentId}`)',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'sessionScope.tenantScope.numericId !== tenantId',
+      '!verifyTenantAccess(session, tenantId, sessionScope.storeScope.numericId, request)',
+      'const sessionStoreId = sessionScope.storeScope.numericId;',
+      'db.doc(`${DB_COLLECTIONS.STORES}/${sessionScope.storeScope.documentId}`)',
       'Number(sessionStore?.tenantId) !== tenantId',
       'requireAnyStorePermissionForStoreData(',
       'if (sessionStoreId !== masterStoreId) {',
@@ -1102,6 +1103,8 @@ function verifyCallerSuppliedTenantStoreRoutes() {
   const masterJobStatusRoute = read('src/app/api/projects/master-job-status/route.ts');
   assert(!masterJobStatusRoute.includes('const projectIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);'), 'master job status route must not keep regex-only project ID validation');
   assert(!masterJobStatusRoute.includes('const sessionStoreId = Number(session.sId || session.user?.storeId);'), 'master job status route must not coerce session store IDs before document access');
+  assert(!masterJobStatusRoute.includes('session.sId ?? session.user?.storeId'), 'master job status route must not select one session store alias while ignoring a contradictory alias');
+  assert(!masterJobStatusRoute.includes('normalizeMasterJobStatusSessionDocumentId'), 'master job status route must use the shared authenticated session-scope resolver');
   assert(!masterJobStatusRoute.includes('db.doc(`${DB_COLLECTIONS.STORES}/${sessionStoreId}`)'), 'master job status route must not build store refs from numeric-coerced session store IDs');
   assert(!masterJobStatusRoute.includes('sessionStoreId !== masterStoreId && sessionStore?.isMaster !== true'), 'master job status route must not let master stores query other stores without an outlet link');
   assert(!masterJobStatusRoute.includes('key: `${MASTER_JOB_STATUS_RATE_LIMIT_KEY}:${userId}:${tenantId}:${storeId}`'), 'master job status route must not store raw user/tenant/store IDs in rate-limit keys');
@@ -1819,12 +1822,10 @@ function verifySessionScopedPublicTruthRoutes() {
         'getPublicTruthMonitorSessionScope',
         'const sessionScope = getPublicTruthMonitorSessionScope(session);',
         'verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)',
-        'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
-        'const permissionError = requireAnyStorePermissionForStoreData(',
+        'requireAnyStorePermissionForStoreData(',
         '[PERMISSIONS.VIEW_ANALYTICS]',
         'sessionScope.storeScope.numericId',
         'sessionScope.tenantScope.numericId',
-        'if (permissionError) return permissionError;',
         'evaluatePublicTruthMonitorServerEntitlement',
       ],
       `${label} session-scoped permission and entitlement guard`,
@@ -1837,10 +1838,11 @@ function verifySessionScopedPublicTruthRoutes() {
       'const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read", {',
       'const sessionScope = getPublicTruthMonitorSessionScope(session);',
       'if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request))',
-      'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
-      'const permissionError = requireAnyStorePermissionForStoreData(',
+      'authorized = await readAuthorizedPublicTruthMonitorSummaryServer({',
+      'authorizeStore: (storeData) => {',
+      'permissionError = requireAnyStorePermissionForStoreData(',
       'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
-      '? await readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId)',
+      '? authorized.summary',
     ],
     'Public Truth Monitor summary must rate-limit, tenant-check, permission-check, then read saved summary',
   );
@@ -1854,8 +1856,13 @@ function verifySessionScopedPublicTruthRoutes() {
       'if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request))',
       'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
       'const permissionError = requireAnyStorePermissionForStoreData(',
-      'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
-      'await updatePublicTruthMonitorSummaryServer({',
+      'const entitlementEvaluation = await evaluatePublicTruthMonitorServerEntitlementWithAuthority({',
+      'const { activeSubscription, entitlement } = entitlementEvaluation;',
+      'summary = await updatePublicTruthMonitorSummaryServer({',
+      'authorizeSubscription: (subscriptionData, currentStoreData) => (',
+      'authorizeStore: (currentStoreData) => {',
+      'finalPermissionError = requireAnyStorePermissionForStoreData(',
+      'subscriptionId: activeSubscription.id',
     ],
     'Public Truth Monitor refresh must rate-limit, validate, tenant-check, permission-check, then write summary',
   );
@@ -2231,7 +2238,10 @@ function verifySessionScopedPublicTruthRoutes() {
       'const tenantId = normalizeSessionDocumentId(rawTenantId);',
       'const storeId = normalizeSessionDocumentId(rawStoreId);',
       'const userId = normalizeSessionDocumentId(rawUserId);',
-      'requireAnyStorePermission(',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'sessionScope.tenantScope.documentId !== tenantId',
+      'sessionScope.storeScope.documentId !== storeId',
+      'requireAnyStorePermissionForStoreData(',
       "getRateLimitForFeature('DATA_WRITE')",
       'const userRateLimitHash = hashPublicRateLimitValue(userId || \'unknown\');',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
@@ -2239,8 +2249,13 @@ function verifySessionScopedPublicTruthRoutes() {
       'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
       'RequestSchema.safeParse(body)',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
+      'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
+      'const transactionPermissionError = await db.runTransaction(async (transaction) => {',
+      'transaction.get(storeRef)',
+      'transaction.get(tenantRef)',
+      'isTempStatusMutationScopeCurrent({',
       'createdBy: userId || null',
-      'storeRef.update',
+      'transaction.update(storeRef, storeUpdate);',
       'runStorePublicTruthPostCommitEffects({',
       "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')",
       'invalidateOwnerBusinessAssistantPacketCache',
@@ -3081,13 +3096,17 @@ function verifyPublicTruthMutationBoundedBodies() {
       'key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`',
       'const bodyResult = await readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
       'const validation = RequestSchema.safeParse(body);',
-      'const permissionError = await requireAnyStorePermission(',
       'const db = admin.firestore();',
-      'storeRef.update',
+      'const transactionPermissionError = await db.runTransaction(async (transaction) => {',
+      'transaction.get(storeRef)',
+      'transaction.get(tenantRef)',
+      'requireAnyStorePermissionForStoreData(',
+      'transaction.update(storeRef, storeUpdate);',
       'runStorePublicTruthPostCommitEffects({',
     ],
     'temporary status permission, limiter, bounded body, and cache ordering',
   );
+  assert(!read('src/app/api/store/temp-status/route.ts').includes('await storeRef.update'), 'temporary status must not write after a stale out-of-transaction authorization read');
 
   assertOrder(
     'src/app/api/store/public-api-key/route.ts',
@@ -4414,7 +4433,11 @@ function verifyAnalyticsErrorBoundary() {
     'src/app/api/ai-packs/status/route.ts',
     [
       'import { PERMISSIONS }',
-      'import { requireAnyStorePermission }',
+      'requireAnyStorePermission,',
+      'resolveStorePermissionSessionScope,',
+      'const scope = resolveStorePermissionSessionScope(session);',
+      'scope.tenantScope.numericId',
+      'scope.storeScope.numericId',
       'const permissionError = await requireAnyStorePermission(',
       '[PERMISSIONS.ACCESS_BILLING]',
       'if (permissionError) return permissionError;',
@@ -4424,13 +4447,19 @@ function verifyAnalyticsErrorBoundary() {
   assertOrder(
     'src/app/api/ai-packs/status/route.ts',
     [
-      'if (!tenantId || !storeId) {',
+      'const scope = resolveStorePermissionSessionScope(session);',
+      'if (!scope) {',
       'const permissionError = await requireAnyStorePermission(',
       'if (permissionError) return permissionError;',
       'const capacityCheck = await checkAICapacity(',
     ],
     'AI pack status route must check billing permission before capacity reads',
   );
+  const aiPackStatusRoute = read('src/app/api/ai-packs/status/route.ts');
+  assert(!aiPackStatusRoute.includes('const tenantId = session?.user?.tenantId || session?.tId'), 'AI pack status must not prefer a conflicting legacy tenant alias for datastore scope');
+  assert(!aiPackStatusRoute.includes('const storeId = session?.user?.storeId || session?.sId'), 'AI pack status must not prefer a conflicting legacy store alias for datastore scope');
+  assert(!aiPackStatusRoute.includes('Number(tenantId)'), 'AI pack status must not loose-coerce tenant scope');
+  assert(!aiPackStatusRoute.includes('Number(storeId)'), 'AI pack status must not loose-coerce store scope');
   [
     [
       'src/app/api/business-copy/route.ts',
@@ -6877,8 +6906,10 @@ function verifyOwnerUtilitySecureLogging() {
   const ownerBusinessAssistantSchemas = read('src/lib/ownerBusinessAssistant/schemas.ts');
   const ownerBusinessAssistantProjectIdBoundary = read('src/lib/ownerBusinessAssistant/projectIdBoundary.ts');
   const ownerBusinessAssistantThreadIdBoundary = read('src/lib/ownerBusinessAssistant/threadIdBoundary.ts');
+  const ownerBusinessAssistantThreadResponse = read('src/lib/ownerBusinessAssistant/threadResponse.ts');
   const ownerBusinessAssistantAnswerEventLogger = read('src/lib/ownerBusinessAssistant/server/answerEventLogger.ts');
   const ownerBusinessAssistantApiGuards = read('src/lib/ownerBusinessAssistant/server/apiGuards.ts');
+  const ownerBusinessAssistantSessionScope = read('src/lib/ownerBusinessAssistant/server/sessionScope.ts');
   const ownerBusinessAssistantClientResponses = read('src/lib/ownerBusinessAssistant/clientResponses.ts');
   const ownerBusinessAssistantCurrentHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts');
   const ownerBusinessAssistantAnalyticsHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts');
@@ -6918,6 +6949,9 @@ function verifyOwnerUtilitySecureLogging() {
   assert(!ownerBusinessAssistantApiGuards.includes('sessionStoreId: sId'), 'Owner Business Assistant API guards must not raw-log selected-store violation session store IDs');
   assert(!ownerBusinessAssistantApiGuards.includes('storeId: sId,\n    tenantId: tId,\n    userId,'), 'Owner Business Assistant API guards must not raw-log rate-limit scope IDs');
   assert(!ownerBusinessAssistantApiGuards.includes('buildSecurityContext'), 'Owner Business Assistant API guards must not spread raw security context into guard security logs');
+  assert(ownerBusinessAssistantSessionScope.includes('resolveStorePermissionSessionScope(session)'), 'Owner Business Assistant scope must require exact root/nested tenant and store alias agreement');
+  assert(ownerBusinessAssistantSessionScope.includes('normalized.every((actorId) => actorId === first)'), 'Owner Business Assistant scope must require exact root/nested actor alias agreement');
+  assert(ownerBusinessAssistantApiGuards.includes('resolveOwnerBusinessAssistantSessionScope(session)'), 'Owner Business Assistant API guards must use exact authenticated scope');
   assert(ownerBusinessAssistantSchemas.includes('normalizeStoreSwitchStoreId(value) !== null'), 'Owner Business Assistant store schema must require exact canonical store IDs');
   assert(!ownerBusinessAssistantSchemas.includes("z.string().min(1).max(80).regex(/^\\d+$/).optional()"), 'Owner Business Assistant store schema must not admit leading-zero or unsafe numeric strings');
   [
@@ -6969,6 +7003,12 @@ function verifyOwnerUtilitySecureLogging() {
   assert(ownerBusinessAssistantThreadRoute.includes('OwnerBusinessAssistantThreadParamsSchema.safeParse(params)'), 'Owner Business Assistant thread route must schema-validate route params');
   assert(ownerBusinessAssistantThreadRoute.includes('resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId)'), 'Owner Business Assistant thread route must resolve selected store scope');
   assert(ownerBusinessAssistantThreadRoute.includes('requireAnyStorePermissionForStore('), 'Owner Business Assistant thread route must require store permission before thread reads');
+  assert(ownerBusinessAssistantThreadRoute.includes('isOwnerBusinessAssistantThreadOwnedByScope(thread, scope)'), 'Owner Business Assistant thread route must require exact actor ownership');
+  assert(ownerBusinessAssistantThreadRoute.includes('projectOwnerBusinessAssistantMessage'), 'Owner Business Assistant thread route must project allowlisted messages');
+  assert(!ownerBusinessAssistantThreadRoute.includes('const threadMeta = { ...thread };'), 'Owner Business Assistant thread route must not expose raw persisted thread fields');
+  assert(ownerBusinessAssistantThreadResponse.includes('export const projectOwnerBusinessAssistantMessage = (value: unknown) => {'), 'Owner Business Assistant thread messages must use a pure allowlist projector');
+  assert(ownerBusinessAssistantThreadResponse.includes('export function isOwnerBusinessAssistantThreadOwnedByScope('), 'Owner Business Assistant thread ownership must use a pure exact scope predicate');
+  assert(!ownerBusinessAssistantThreadResponse.includes('...message'), 'Owner Business Assistant thread projector must not spread raw persisted messages');
   assert(ownerBusinessAssistantSchemas.includes("import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';"), 'Owner Business Assistant schemas must import shared document-ID guard');
   assert(ownerBusinessAssistantProjectIdBoundary.includes('projectId === value'), 'Owner Business Assistant project ID helper must reject whitespace-mutated project IDs');
   assert(ownerBusinessAssistantThreadIdBoundary.includes('threadId === value'), 'Owner Business Assistant thread ID helper must reject whitespace-mutated thread IDs');
@@ -7603,8 +7643,7 @@ function verifyPublicOperationalSignalCheapFail() {
       'readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
       'const screenTokenHash = hashPublicRateLimitValue(token);',
       'key: `screen-seen:token:${storeHashSegment}:${screenTokenHash}`',
-      'const screen = docSnap.data()?.screen;',
-      'const store = await getEligiblePublicScreenStore(normalizedStoreId);',
+      'const commitResult = await commitCurrentScreenSeen({',
       "logScreenDisplayFailure('screen_seen_route_failed'",
     ],
     'screen seen public endpoint cheap-fail ordering',
@@ -7614,29 +7653,53 @@ function verifyPublicOperationalSignalCheapFail() {
   assert(!read('src/app/api/screen/seen/route.ts').includes('storeId: normalizedStoreId || undefined'), 'screen seen success diagnostics must not log raw store IDs');
   assert(!read('src/app/api/screen/seen/route.ts').includes("key: `screen-seen:token:${normalizedStoreId || 'legacy'}:${token}`"), 'screen seen must not store raw screen token in rate-limit keys');
   assert(!read('src/app/api/screen/seen/route.ts').includes('key: `screen-seen:ip:${getClientIp(request)}`'), 'screen seen must not store raw IP in rate-limit keys');
+  assert(!/if \(!tokenRateLimit\.allowed\) \{\s+return cachedSeenResponse\(\);\s+\}/.test(read('src/app/api/screen/seen/route.ts')), 'screen seen token limiter must not acknowledge an unverified liveness write');
+  assert(!/if \(!ipRateLimit\.allowed\) \{\s+return cachedSeenResponse\(\);\s+\}/.test(read('src/app/api/screen/seen/route.ts')), 'screen seen IP limiter must not create an unverified browser daily marker');
 
   assertIncludes(
     'src/app/api/screen/seen/route.ts',
     [
       'SCREEN_TOKEN_PATTERN',
       'STORE_ID_PATTERN',
-      'CAMPAIGNS_SUMMARY_ID_PATTERN',
-      'import { getPublicStoreById } from "@lib/firestore/clientStoreLookup";',
-      'const getEligiblePublicScreenStore = async (storeId: string) => {',
-      'return getPublicStoreById(storeId);',
-      'const directRef = summaryRef.doc(`campaigns_${normalizedStoreId}`);',
-      'screen?.screenToken !== token || screen?.enabled !== true',
-      'const store = await getEligiblePublicScreenStore(normalizedStoreId);',
-      'if (!store) {',
-      "summaryRef.where('screen.screenToken', '==', token).limit(1).get()",
-      'const docIdMatch = docSnap.id.match(CAMPAIGNS_SUMMARY_ID_PATTERN);',
-      "const legacyStoreId = docIdMatch?.[1] || '';",
-      'const store = await getEligiblePublicScreenStore(legacyStoreId);',
+      'rateLimitedSeenResponse',
+      "status: 429",
+      "'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS)",
+      'firestoreAdmin.runTransaction',
+      'transaction.get(params.screenRef)',
+      'transaction.get(storeRef)',
+      'transaction.get(tenantRef)',
+      'screen?.screenToken !== params.token',
+      'screen?.enabled !== true',
+      'isCurrentScreenSeenPublicScope({',
+      "summaryRef.where('screen.screenToken', '==', token).limit(2).get()",
+      'resolveUniqueLegacyScreenSeenStoreId(',
+      'storeId: targetStoreId',
+      'transaction.update(params.screenRef',
       "'screen.screenLastSeenAt': FieldValue.serverTimestamp()",
       "getBoundedScreenStringContext('screenToken', token)",
       "getBoundedScreenStringContext('storeId', normalizedStoreId)",
     ],
     'screen seen token/store guard',
+  );
+  assertIncludes(
+    'src/lib/screen/screenSeenScope.ts',
+    [
+      'CAMPAIGNS_SUMMARY_ID_PATTERN',
+      'if (summaryDocumentIds.length !== 1) return null;',
+      'normalizeStorePermissionScopeDocumentId(match[1])',
+    ],
+    'screen seen legacy candidate uniqueness',
+  );
+  assertOrder(
+    'src/app/api/screen/seen/route.ts',
+    [
+      'transaction.get(params.screenRef)',
+      'transaction.get(storeRef)',
+      'transaction.get(tenantRef)',
+      'isCurrentScreenSeenPublicScope({',
+      'transaction.update(params.screenRef',
+    ],
+    'screen seen transaction must recheck current authority before its liveness write',
   );
 }
 

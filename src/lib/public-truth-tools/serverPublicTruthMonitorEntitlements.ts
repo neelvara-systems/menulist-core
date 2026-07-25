@@ -1,6 +1,7 @@
 import { getActiveSubscriptionForStoreServer } from "@database/subscriptions/server";
 import { readPublicTruthMonitorStoreDataServer } from "@database/publicTruthMonitor/server";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { resolveStorePermissionSessionScope } from "@lib/permissions/scopeDocumentId";
 import {
     evaluatePublicTruthMonitorEntitlement,
     type PublicTruthMonitorEntitlementInput,
@@ -33,15 +34,16 @@ export function normalizePublicTruthMonitorSessionScopeDocumentId(
 }
 
 export function getPublicTruthMonitorSessionScope(session: any): PublicTruthMonitorSessionScope | null {
-    const tenantScope = normalizePublicTruthMonitorSessionScopeDocumentId(session?.tId);
-    const storeScope = normalizePublicTruthMonitorSessionScopeDocumentId(session?.sId);
-    return tenantScope && storeScope ? { tenantScope, storeScope } : null;
+    return resolveStorePermissionSessionScope(session);
 }
 
-export async function evaluatePublicTruthMonitorServerEntitlement(params: {
+export async function evaluatePublicTruthMonitorServerEntitlementWithAuthority(params: {
     session: any;
     storeData?: PublicTruthMonitorEntitlementInput["storeDetails"];
-}): Promise<PublicTruthMonitorEntitlementResult> {
+}): Promise<{
+    activeSubscription: Awaited<ReturnType<typeof getActiveSubscriptionForStoreServer>>;
+    entitlement: PublicTruthMonitorEntitlementResult;
+}> {
     const sessionScope = getPublicTruthMonitorSessionScope(params.session);
     const storeData = params.storeData || (sessionScope ? await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId) : null);
     const preliminary = evaluatePublicTruthMonitorEntitlement({
@@ -50,17 +52,31 @@ export async function evaluatePublicTruthMonitorServerEntitlement(params: {
         tenantId: sessionScope?.tenantScope.numericId,
     });
     if (preliminary.reason !== "not_paid") {
-        return preliminary;
+        return {
+            activeSubscription: null,
+            entitlement: preliminary,
+        };
     }
 
     const activeSubscription = sessionScope
         ? await getActiveSubscriptionForStoreServer(sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId)
         : null;
 
-    return evaluatePublicTruthMonitorEntitlement({
+    return {
         activeSubscription,
-        storeDetails: storeData,
-        storeId: sessionScope?.storeScope.numericId,
-        tenantId: sessionScope?.tenantScope.numericId,
-    });
+        entitlement: evaluatePublicTruthMonitorEntitlement({
+            activeSubscription,
+            storeDetails: storeData,
+            storeId: sessionScope?.storeScope.numericId,
+            tenantId: sessionScope?.tenantScope.numericId,
+        }),
+    };
+}
+
+export async function evaluatePublicTruthMonitorServerEntitlement(params: {
+    session: any;
+    storeData?: PublicTruthMonitorEntitlementInput["storeDetails"];
+}): Promise<PublicTruthMonitorEntitlementResult> {
+    const result = await evaluatePublicTruthMonitorServerEntitlementWithAuthority(params);
+    return result.entitlement;
 }

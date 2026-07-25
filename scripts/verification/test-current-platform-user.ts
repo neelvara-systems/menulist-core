@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
     isCurrentPlatformUserRecordEligible,
     isCurrentUserRecordEligible,
+    resolveCurrentSessionUserDocumentId,
 } from '../../src/lib/auth/currentPlatformUser';
 
 const session = {
@@ -25,6 +26,23 @@ const currentUser = {
 };
 
 assert.equal(isCurrentPlatformUserRecordEligible({ documentId: 'platform-user-1', session, userData: currentUser }), true);
+assert.equal(resolveCurrentSessionUserDocumentId(session), 'platform-user-1');
+assert.equal(resolveCurrentSessionUserDocumentId({
+    ...session,
+    user: { ...session.user, id: 'platform-user-2' },
+}), null, 'contradictory root and nested user aliases must fail closed');
+assert.equal(resolveCurrentSessionUserDocumentId({
+    ...session,
+    uId: ' platform-user-1',
+}), null, 'whitespace-mutated user aliases must fail closed');
+assert.equal(isCurrentPlatformUserRecordEligible({
+    documentId: 'platform-user-1',
+    session: {
+        ...session,
+        user: { ...session.user, id: 'platform-user-2' },
+    },
+    userData: currentUser,
+}), false, 'current persisted platform authority must reject contradictory user aliases');
 assert.equal(isCurrentUserRecordEligible({
     documentId: 'platform-user-1',
     session,

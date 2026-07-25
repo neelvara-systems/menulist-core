@@ -32,6 +32,7 @@ Google GenAI SDK (@google/genai v0.12.0)
 Build Tools:
 Node.js (v22; .nvmrc v22.23.1)
 Vercel Next/Turbopack builds: 4096 MiB V8 ceiling inside the standard 8 GiB container; browser/server source maps disabled; runtime-only filesystem paths require guarded Turbopack ignore plus explicit output tracing
+Vercel deployment trace: never globally exclude node_modules/@swc/**; Next 16 routes require @swc/helpers, and build:vercel must pass verify:next-deployment-bundle from an isolated traced route bundle
 SASS (v1.101.7)
 ESLint (v9.39.5)
 

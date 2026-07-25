@@ -17,6 +17,10 @@ const requestIdSchema = z.string()
     .min(8)
     .max(180)
     .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
+const actionScopeSchema = z.object({
+    tId: z.number().int().positive(),
+    sId: z.number().int().positive(),
+}).strict();
 
 const entityChangesSchema = z.array(strictDocumentId('Entity ID'))
     .min(1)
@@ -60,6 +64,7 @@ const addVersionConsistencyIssue = (
 export const AnswerlatticeCreateReleaseActionSchema = z.object({
     action: z.literal('create'),
     requestId: requestIdSchema,
+    scope: actionScopeSchema,
     versionLabel: z.string().trim().min(1).max(64),
     versionNormalized: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     releasedAt: z.string().datetime({ offset: true }),
@@ -69,6 +74,7 @@ export const AnswerlatticeCreateReleaseActionSchema = z.object({
 export const AnswerlatticeActivateReleaseActionSchema = z.object({
     action: z.literal('activate'),
     requestId: requestIdSchema,
+    scope: actionScopeSchema,
     releaseId: strictDocumentId('Release ID'),
 }).strict();
 
@@ -84,6 +90,7 @@ export const AnswerlatticeReleaseActionSchema = z.discriminatedUnion('action', [
 export type AnswerlatticeCreateReleaseAction = {
     action: 'create';
     requestId: string;
+    scope: z.infer<typeof actionScopeSchema>;
     versionLabel: string;
     versionNormalized: number;
     releasedAt: string;
@@ -93,6 +100,7 @@ export type AnswerlatticeCreateReleaseAction = {
 export type AnswerlatticeActivateReleaseAction = {
     action: 'activate';
     requestId: string;
+    scope: z.infer<typeof actionScopeSchema>;
     releaseId: string;
 };
 
@@ -111,6 +119,7 @@ export const parseAnswerlatticeReleaseAction = (value: unknown): AnswerlatticeRe
         return {
             action: 'create',
             requestId: data.requestId,
+            scope: data.scope,
             versionLabel: data.versionLabel,
             versionNormalized: data.versionNormalized,
             releasedAt: data.releasedAt,
@@ -120,7 +129,7 @@ export const parseAnswerlatticeReleaseAction = (value: unknown): AnswerlatticeRe
     if (data.action === 'activate'
         && typeof data.requestId === 'string'
         && typeof data.releaseId === 'string') {
-        return { action: 'activate', requestId: data.requestId, releaseId: data.releaseId };
+        return { action: 'activate', requestId: data.requestId, scope: data.scope, releaseId: data.releaseId };
     }
     return null;
 };
@@ -169,7 +178,7 @@ export const AnswerlatticeStoredReleaseSchema = z.object({
     modifiedBy: z.string().trim().min(1).max(200),
 }).passthrough().superRefine(addVersionConsistencyIssue);
 
-export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('action', [
+const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action', [
     z.object({
         success: z.literal(true),
         action: z.literal('create'),
@@ -188,7 +197,29 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
     }).strict(),
 ]);
 
-export type AnswerlatticeReleaseActionResult = z.infer<typeof AnswerlatticeReleaseActionResultSchema>;
+export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('action', [
+    z.object({
+        success: z.literal(true),
+        action: z.literal('create'),
+        releaseId: strictDocumentId('Release ID'),
+        status: releaseStatusSchema,
+        replayed: z.boolean(),
+        scope: actionScopeSchema,
+    }).strict(),
+    z.object({
+        success: z.literal(true),
+        action: z.literal('activate'),
+        releaseId: strictDocumentId('Release ID'),
+        status: z.literal('active'),
+        evaluatedAnswers: z.number().int().nonnegative(),
+        driftedAnswers: z.number().int().nonnegative(),
+        replayed: z.boolean(),
+        scope: actionScopeSchema,
+    }).strict(),
+]);
+
+export type AnswerlatticeReleaseActionResult = z.infer<typeof answerlatticeReleasePersistenceResultSchema>;
+export type AnswerlatticeReleaseActionResponse = z.infer<typeof AnswerlatticeReleaseActionResultSchema>;
 
 export const getAnswerlatticeTimestampMillis = (value: unknown): number => {
     if (!value || typeof value !== 'object' || typeof (value as { toMillis?: unknown }).toMillis !== 'function') return 0;

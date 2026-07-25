@@ -52,7 +52,10 @@ const normalizeReleaseRecord = (
     return { id, ...parsed.data } as AnswerlatticeRelease;
 };
 
-const executeReleaseAction = async (body: Record<string, unknown>) => {
+const executeReleaseAction = async (
+    body: Record<string, unknown>,
+    expectedScope: { tId: number; sId: number },
+) => {
     const response = await fetch('/api/answerlattice/releases', {
         method: 'POST',
         cache: 'no-store',
@@ -68,6 +71,9 @@ const executeReleaseAction = async (body: Record<string, unknown>) => {
     }
     const parsed = AnswerlatticeReleaseActionResultSchema.safeParse(payload);
     if (!parsed.success) throw new Error('Release action returned an invalid response');
+    if (parsed.data.scope.tId !== expectedScope.tId || parsed.data.scope.sId !== expectedScope.sId) {
+        throw new Error('Release action returned the wrong workspace scope');
+    }
     return parsed.data;
 };
 
@@ -123,17 +129,24 @@ export const getReleaseById = async (releaseId: string) => apiCallComposer(
     'getReleaseById',
 );
 
-export const addRelease = async (data: Omit<AnswerlatticeRelease, 'id'>) => apiCallComposer(
+export const addRelease = async (
+    data: Omit<AnswerlatticeRelease, 'id'>,
+    expectedScope: { tId: number; sId: number },
+) => apiCallComposer(
     async () => {
-        await getActiveReleaseScope({ tId: data.tId, sId: data.sId });
+        const scope = await getActiveReleaseScope(expectedScope);
+        if (data.tId !== scope.tId || data.sId !== scope.sId) {
+            throw new Error('Release data scope does not match the initiating workspace');
+        }
         const result = await executeReleaseAction({
             action: 'create',
             requestId: data.requestId || createRuntimeId('release'),
+            scope,
             versionLabel: data.versionLabel,
             versionNormalized: data.versionNormalized,
             releasedAt: data.releasedAt.toDate().toISOString(),
             entityChanges: data.entityChanges,
-        });
+        }, expectedScope);
         if (result.action !== 'create') throw new Error('Unexpected release action response');
         return result;
     },
@@ -141,19 +154,24 @@ export const addRelease = async (data: Omit<AnswerlatticeRelease, 'id'>) => apiC
     'addRelease',
 );
 
-export const activateRelease = async (releaseId: string, requestId?: string) => apiCallComposer(
+export const activateRelease = async (
+    releaseId: string,
+    requestId: string | undefined,
+    expectedScope: { tId: number; sId: number },
+) => apiCallComposer(
     async () => {
         const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);
         if (!normalizedReleaseId) throw new Error('Invalid Answerlattice release ID');
-        await getActiveReleaseScope();
+        const scope = await getActiveReleaseScope(expectedScope);
         const result = await executeReleaseAction({
             action: 'activate',
             requestId: requestId || createRuntimeId('release_activation'),
+            scope,
             releaseId: normalizedReleaseId,
-        });
+        }, expectedScope);
         if (result.action !== 'activate') throw new Error('Unexpected release action response');
         return result;
     },
-    { releaseId, hasRequestId: Boolean(requestId) },
+    { releaseId, hasRequestId: Boolean(requestId), hasExpectedScope: Boolean(expectedScope) },
     'activateRelease',
 );

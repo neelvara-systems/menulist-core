@@ -34,6 +34,8 @@ Isolates webpack in separate worker. Stops generating server source maps.
 ### Fix 3: `outputFileTracingExcludes` for heavy node_modules
 Skips scanning @swc, esbuild, webpack, firebase-admin etc during build trace phase.
 
+**Next 16 correction (July 25, 2026):** Never exclude `node_modules/@swc/**` globally. That historical pattern also removes `@swc/helpers`, which the deployed Turbopack server runtime imports. Exclude only proven compiler packages and run `npm run verify:next-deployment-bundle` after the build.
+
 ### Fix 4: `"use client"` on @ant-design/plots components
 D3-based charts (~2MB) were being traced into server bundle without this directive.
 
@@ -86,6 +88,7 @@ const firebaseClient = firebaseApp ? getFirestore() : null as any;
 3. **Check for local scripts before adding npm packages:** `find src/ -name "*.min.js"`
 4. **Guard all SDK inits that need env vars.** Module-scope code runs during `next build`.
 5. **Set Vercel env vars BEFORE pushing builds.** `NEXT_PUBLIC_*` vars are inlined at build time.
+6. **Test the packaged trace, not only `next start`.** A full local `node_modules` can hide a missing Vercel route dependency.
 
 ---
 

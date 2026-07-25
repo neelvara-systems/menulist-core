@@ -15,6 +15,7 @@ import {
     AnswerlatticeStoredReleaseSchema,
     getAnswerlatticeTimestampMillis,
     type AnswerlatticeReleaseAction,
+    type AnswerlatticeReleaseActionResponse,
     type AnswerlatticeReleaseActionResult,
 } from './releaseContracts';
 import {
@@ -553,7 +554,21 @@ async function activateRelease(
 export const executeAnswerlatticeReleaseAction = async (
     action: AnswerlatticeReleaseAction,
     access: AnswerlatticeAccessContext,
-): Promise<AnswerlatticeReleaseActionResult> => {
-    if (action.action === 'create') return createRelease(action, access);
-    return activateRelease(action, access);
+): Promise<AnswerlatticeReleaseActionResponse> => {
+    if (
+        action.scope.tId !== access.scope.tenantId
+        || action.scope.sId !== access.scope.storeId
+    ) {
+        throw new AnswerlatticeReleaseError(409, 'The Answerlattice workspace changed. Reopen the changelog entry and try again.');
+    }
+    const result = action.action === 'create'
+        ? await createRelease(action, access)
+        : await activateRelease(action, access);
+    return {
+        ...result,
+        scope: {
+            tId: access.scope.tenantId,
+            sId: access.scope.storeId,
+        },
+    };
 };

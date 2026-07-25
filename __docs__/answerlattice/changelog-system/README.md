@@ -36,12 +36,15 @@ Non-versioned announcements may publish without a release. Versioned public entr
 ## Verified boundaries
 
 - Management mutations use authenticated server routes and `MANAGE_KNOWLEDGE` permission.
+- Image upload, changelog mutation, release registration/activation, and browser settlement retain one initiating `tId/sId`; current server authority must match before persistence.
+- Successful changelog and release mutations acknowledge their exact workspace and browser clients reject mismatched responses.
 - Release and changelog document IDs are server-owned or validated Firestore IDs.
 - A release label and its normalized integer must agree.
 - Activation is leased, retryable, audited, and fail-closed.
 - Public projection requires exact `AL`, tenant, and store ownership.
 - Public page reads scan past draft-only physical pages within a bounded 25-page window.
 - Browser reads re-enter runtime DTO validation.
+- Workspace changes clear management rows, previews, editors, and obsolete async settlement before later-workspace truth can render.
 
 ## External evidence still required
 

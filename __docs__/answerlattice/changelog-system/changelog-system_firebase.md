@@ -50,8 +50,13 @@ Versioned public entries require an exact active release dependency. The changel
 - Browser clients cannot create or activate releases.
 - Browser clients cannot write changelog pages or entry-index rows.
 - API routes require exact Answerlattice session scope, rate limits, and `MANAGE_KNOWLEDGE`.
+- Changelog and release actions include initiating `tId/sId` only as corroboration; server permission scope remains authoritative and a mismatch fails before persistence.
+- Mutation responses acknowledge exact authoritative `tId/sId`; browser DALs fail closed on missing or mismatched acknowledgement.
 - Public content is projected through an allowlist and contains no internal release linkage, entity changes, context keys, actor identity, or audit data.
 - Storage upload occurs before mutation; ambiguous persistence retains uploaded media and logs a bounded diagnostic rather than risking deletion of a committed reference.
+- Upload path generation uses the same initiating workspace that the later changelog/release actions must corroborate.
+
+The workspace fencing and acknowledgement fields add no Firestore or Storage operations and require no rule, index, Function, or schema migration.
 
 ## Deployment
 

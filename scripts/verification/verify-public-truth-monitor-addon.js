@@ -47,6 +47,7 @@ const REQUIRED_FILES = [
   'src/types/publicTruthMonitor.ts',
   'src/lib/public-truth-tools/publicTruthMonitorDiagnostics.ts',
   'src/lib/public-truth-tools/publicTruthMonitorEntitlements.ts',
+  'src/lib/public-truth-tools/publicTruthMonitorServerScope.ts',
   'src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts',
   'src/lib/public-truth-tools/publicTruthMonitorReport.ts',
   'src/lib/validation/publicTruthMonitorSchemas.ts',
@@ -57,6 +58,7 @@ const REQUIRED_FILES = [
   'src/app/api/public-truth-monitor/refresh/route.ts',
   'src/components/templates/main-app/ownerBusinessAssistant/PublicTruthMonitorPanel.tsx',
   'src/components/mobile/components/MobilePublicTruthMonitorCard.tsx',
+  'scripts/verification/test-public-truth-monitor-server-scope.ts',
   'scripts/verification/verify-public-truth-monitor-addon.js',
   '__docs__/menulist-tools/public-truth-monitor-addon/README.md',
   '__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_spec.md',
@@ -75,6 +77,7 @@ const features = read('src/config/features.ts');
 const constants = read('src/constants/publicTruthMonitor.ts');
 const types = read('src/types/publicTruthMonitor.ts');
 const entitlement = read('src/lib/public-truth-tools/publicTruthMonitorEntitlements.ts');
+const serverScope = read('src/lib/public-truth-tools/publicTruthMonitorServerScope.ts');
 const serverEntitlement = read('src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts');
 const report = read('src/lib/public-truth-tools/publicTruthMonitorReport.ts');
 const validation = read('src/lib/validation/publicTruthMonitorSchemas.ts');
@@ -120,11 +123,18 @@ assertIncludes(serverEntitlement, 'import { isValidFirestoreDocumentId } from "@
 assertIncludes(serverEntitlement, 'export function normalizePublicTruthMonitorSessionScopeDocumentId(', 'server entitlement session scope normalizer');
 assertIncludes(serverEntitlement, 'documentId !== raw || !/^[1-9]\\d*$/.test(documentId) || !isValidFirestoreDocumentId(documentId)', 'server entitlement exact numeric scope guard');
 assertIncludes(serverEntitlement, 'export function getPublicTruthMonitorSessionScope(session: any): PublicTruthMonitorSessionScope | null', 'server entitlement session scope helper');
+assertIncludes(serverEntitlement, 'return resolveStorePermissionSessionScope(session);', 'server entitlement exact root and nested session alias agreement');
+assertIncludes(serverEntitlement, 'export async function evaluatePublicTruthMonitorServerEntitlementWithAuthority(', 'server entitlement exposes exact subscription authority');
+assertIncludes(serverEntitlement, 'activeSubscription,', 'server entitlement returns the admitted subscription');
 assertIncludes(serverEntitlement, 'const sessionScope = getPublicTruthMonitorSessionScope(params.session);', 'server entitlement normalized session scope');
 assertIncludes(serverEntitlement, 'readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId)', 'server entitlement normalized store read');
 assertIncludes(serverEntitlement, 'getActiveSubscriptionForStoreServer(sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId)', 'server entitlement normalized subscription lookup');
 assertNotIncludes(serverEntitlement, 'const tenantId = Number(params.session?.tId);', 'server entitlement must not loose-coerce tenant scope');
 assertNotIncludes(serverEntitlement, 'const storeId = Number(params.session?.sId);', 'server entitlement must not loose-coerce store scope');
+assertIncludes(serverScope, 'export function isCurrentPublicTruthMonitorStoreScope(', 'current monitor store scope helper');
+assertIncludes(serverScope, 'persistedTenantId === params.tenantDocumentId', 'current monitor exact store ownership');
+assertIncludes(serverScope, '!isPlatformEntityBlocked(params.storeData)', 'current monitor store block guard');
+assertIncludes(serverScope, '!isPlatformEntityBlocked(params.tenantData)', 'current monitor tenant block guard');
 
 assertIncludes(report, 'buildPublicTruthMonitorHistoryEntry', 'history builder');
 assertIncludes(report, 'buildPublicTruthMonitorExportText', 'export renderer');
@@ -171,9 +181,10 @@ assertIncludes(summaryRoute, 'evaluatePublicTruthMonitorServerEntitlement', 'sum
 assertIncludes(summaryRoute, 'getPublicTruthMonitorSessionScope', 'summary route session scope normalizer');
 assertIncludes(summaryRoute, 'const sessionScope = getPublicTruthMonitorSessionScope(session);', 'summary route normalized session scope');
 assertIncludes(summaryRoute, 'verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)', 'summary route normalized tenant access');
-assertIncludes(summaryRoute, 'readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId)', 'summary route normalized store read');
+assertIncludes(summaryRoute, 'readAuthorizedPublicTruthMonitorSummaryServer({', 'summary route transaction-authorized summary read');
+assertIncludes(summaryRoute, 'authorizeStore: (storeData) => {', 'summary route transaction-current permission callback');
 assertIncludes(summaryRoute, 'sessionScope.storeScope.numericId', 'summary route normalized store permission scope');
-assertIncludes(summaryRoute, 'readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId)', 'summary route normalized summary read');
+assertIncludes(summaryRoute, 'tenantId: sessionScope.tenantScope.documentId', 'summary route transaction-current tenant scope');
 assertNotIncludes(summaryRoute, 'Number(session.sId)', 'summary route must not loose-coerce store scope');
 assertNotIncludes(summaryRoute, 'Number(session.tId)', 'summary route must not loose-coerce tenant scope');
 assertIncludes(refreshRoute, 'withAuth', 'refresh route auth');
@@ -184,6 +195,9 @@ assertIncludes(refreshRoute, 'verifyTenantAccess', 'refresh route tenant check')
 assertIncludes(refreshRoute, 'requireAnyStorePermissionForStoreData', 'refresh route store permission check');
 assertIncludes(refreshRoute, 'PERMISSIONS.VIEW_ANALYTICS', 'refresh route Business Health permission');
 assertIncludes(refreshRoute, 'updatePublicTruthMonitorSummaryServer', 'refresh route atomic summary write');
+assertIncludes(refreshRoute, 'evaluatePublicTruthMonitorServerEntitlementWithAuthority({', 'refresh route retains admitted subscription authority');
+assertIncludes(refreshRoute, 'authorizeSubscription: (subscriptionData, currentStoreData) => (', 'refresh route transaction-current subscription callback');
+assertIncludes(refreshRoute, 'subscriptionId: activeSubscription.id', 'refresh route exact admitted subscription ref');
 assertIncludes(refreshRoute, 'buildSummary: (current) => buildPublicTruthMonitorSummary({', 'refresh route atomic current-summary merge');
 assertIncludes(refreshRoute, 'failClosedOnProviderError: process.env.NODE_ENV === "production"', 'refresh route production fail-closed rate limit');
 assertIncludes(refreshRoute, 'buildOwnerPublicTruthReadinessReport', 'refresh route owner readiness reuse');
@@ -194,12 +208,21 @@ assertIncludes(refreshRoute, 'readPublicTruthMonitorStoreDataServer(sessionScope
 assertIncludes(refreshRoute, 'readPublicTruthMonitorProjectSummariesServer(sessionScope.storeScope.documentId)', 'refresh route normalized project summary read');
 assertIncludes(refreshRoute, 'tId: sessionScope.tenantScope.documentId', 'refresh route normalized project read tenant scope');
 assertIncludes(refreshRoute, 'storeId: sessionScope.storeScope.documentId', 'refresh route normalized summary write scope');
+assertIncludes(refreshRoute, 'tenantId: sessionScope.tenantScope.documentId', 'refresh route transaction-current tenant scope');
+assertIncludes(refreshRoute, 'authorizeStore: (currentStoreData) => {', 'refresh route transaction-current permission callback');
 assertNotIncludes(refreshRoute, 'Number(session.sId)', 'refresh route must not loose-coerce store scope');
 assertNotIncludes(refreshRoute, 'Number(session.tId)', 'refresh route must not loose-coerce tenant scope');
 assertIncludes(summaryRoute, 'failClosedOnProviderError: process.env.NODE_ENV === "production"', 'summary route production fail-closed rate limit');
 assertIncludes(serverDal, 'export async function updatePublicTruthMonitorSummaryServer(', 'server DAL atomic summary updater');
+assertIncludes(serverDal, 'export async function readAuthorizedPublicTruthMonitorSummaryServer(', 'server DAL transaction-authorized summary reader');
 assertIncludes(serverDal, 'firestoreAdmin.runTransaction', 'server DAL transaction boundary');
-assertIncludes(serverDal, 'const snapshot = await transaction.get(summaryRef);', 'server DAL reads current summary inside transaction');
+assertIncludes(serverDal, 'transaction.get(storeRef)', 'server DAL reads current store inside transaction');
+assertIncludes(serverDal, 'transaction.get(subscriptionRef)', 'server DAL reads current subscription inside refresh transaction');
+assertIncludes(serverDal, 'transaction.get(tenantRef)', 'server DAL reads current tenant inside transaction');
+assertIncludes(serverDal, 'transaction.get(summaryRef)', 'server DAL reads current summary inside transaction');
+assertIncludes(serverDal, 'isCurrentPublicTruthMonitorStoreScope({', 'server DAL current ownership and lifecycle guard');
+assertIncludes(serverDal, '|| !params.authorizeStore(storeData!)', 'server DAL current permission guard');
+assertIncludes(serverDal, '|| !params.authorizeSubscription(subscriptionData, storeData!)', 'server DAL current entitlement guard');
 assertIncludes(serverDal, 'transaction.set(summaryRef', 'server DAL writes summary inside transaction');
 
 assertIncludes(clientDal, '/api/public-truth-monitor/summary', 'client summary endpoint');

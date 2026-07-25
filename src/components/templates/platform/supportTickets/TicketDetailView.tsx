@@ -117,6 +117,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
             let summaryRefreshSucceeded = true;
             if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                 summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                    expectedScope: { tId: ticket.tId, sId: ticket.sId },
                     failureCode: 'answerlattice_ticket_summary_refresh_after_update_failed',
                     context: {
                         ...getBoundedAnswerlatticeStringContext('ticketId', ticket.id),

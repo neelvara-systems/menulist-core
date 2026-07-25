@@ -29,9 +29,9 @@ signed PLATFORM session
                -> bounded reads/writes/provider work
 ```
 
-`src/lib/auth/currentPlatformUser.ts` is the current persisted authority boundary. It requires exact user document identity, matching normalized email, `active`, `isVerified`, exact platform role, valid lifecycle/block state, issued-at evidence and no later session/token/access revocation.
+`src/lib/auth/currentPlatformUser.ts` is the current persisted authority boundary. It requires exact agreement between supplied `session.uId` and `session.user.id`, exact user document identity, matching normalized email, `active`, `isVerified`, exact platform role, valid lifecycle/block state, issued-at evidence and no later session/token/access revocation.
 
-`/api/platform/current-access` exists for direct browser Firestore monitors and MobileShell sub-screens. `src/lib/auth/currentPlatformAccessClient.ts` caps its response at 4KB and requires `{ authorized: true, accessModel: 'current_persisted_platform_user' }`. `usePlatformStoreSummaryOptions()` runs this check before reading `platformSummary/storesSummary`.
+`/api/platform/current-access` exists for direct browser Firestore monitors and MobileShell sub-screens. Root and nested session user-ID aliases must agree before the limiter identity and exact current `users/{userId}` read; contradictory aliases fail closed. `src/lib/auth/currentPlatformAccessClient.ts` caps its response at 4KB and requires `{ authorized: true, accessModel: 'current_persisted_platform_user' }`. `usePlatformStoreSummaryOptions()` runs this check before reading `platformSummary/storesSummary`.
 
 ## Control Room snapshot
 

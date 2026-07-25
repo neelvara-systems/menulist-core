@@ -290,11 +290,11 @@ Restaurant screens operate in:
 | Screen page load      | Per TV boot       | 2-4 typical reads (screen, store, optional project summary/fallback) |
 | Real-time listener    | On content change | 1 read per change (onSnapshot) |
 | 6hr proactive refresh | 3x/day            | 2-4 typical reads per refresh  |
-| Daily seen signal     | 1x/day            | 1-2 reads + 1 write (screen summary plus cached public store eligibility when needed) |
+| Daily seen signal     | 1x/day            | Direct: 3 transaction reads + up to 1 write; legacy fallback adds a token query capped at 2 candidates |
 | Owner view            | Occasional        | 1 screen summary read          |
 | Owner upload          | Rare              | 1 write + storage              |
 
-**Estimated daily cost per store:** ~13-21 reads + 1 write = **~$0.00029-$0.00043/month per screen** (see `digital-screens_firebase.md` for full breakdown)
+**Estimated daily cost per store:** ~15-23 reads + 1 write = **~$0.00031-$0.00045/month per screen** (see `digital-screens_firebase.md` for full breakdown)
 
 ---
 

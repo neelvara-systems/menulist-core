@@ -45,6 +45,8 @@ support event
 ## Primary Source Files
 
 - `src/lib/answerlattice/signalEmitter.ts`
+- `src/lib/answerlattice/signalEmitterServer.ts`
+- `src/lib/answerlattice/signalIdentity.ts`
 - `src/database/answerlattice/signalEvents.ts`
 - `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`
 - `functions-answerlattice/src/answerlattice/draftGenerator.ts`
@@ -62,6 +64,11 @@ support event
 - `node scripts/verification/verify-answerlattice-runtime-truth.js`
 - `npx tsc --noEmit --pretty false`
 - `npm --prefix functions-answerlattice run build`
+
+The focused signal contract follows the current runtime split: the shared/client
+emitter owns exact scope, metadata, payload fingerprints, and process-local
+deduplication; the server-only emitter owns Admin persistence, deterministic
+document IDs, create-only replay handling, and server retention timestamps.
 
 ## Documents
 

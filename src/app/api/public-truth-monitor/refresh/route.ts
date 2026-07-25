@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { PERMISSIONS } from "@constant/permissions";
 import {
     pickPublicTruthMonitorProjectId,
+    PublicTruthMonitorScopeChangedError,
     readPublicTruthMonitorProjectDataServer,
     readPublicTruthMonitorProjectSummariesServer,
     readPublicTruthMonitorStoreDataServer,
@@ -14,13 +15,16 @@ import {
     getPublicTruthMonitorSecurityLogContext,
     logPublicTruthMonitorApiFailure,
 } from "@lib/public-truth-tools/publicTruthMonitorDiagnostics";
-import { isPublicTruthMonitorEnabled } from "@lib/public-truth-tools/publicTruthMonitorEntitlements";
+import {
+    evaluatePublicTruthMonitorEntitlement,
+    isPublicTruthMonitorEnabled,
+} from "@lib/public-truth-tools/publicTruthMonitorEntitlements";
 import {
     buildPublicTruthMonitorHistoryEntry,
     buildPublicTruthMonitorSummary,
 } from "@lib/public-truth-tools/publicTruthMonitorReport";
 import {
-    evaluatePublicTruthMonitorServerEntitlement,
+    evaluatePublicTruthMonitorServerEntitlementWithAuthority,
     getPublicTruthMonitorSessionScope,
 } from "@lib/public-truth-tools/serverPublicTruthMonitorEntitlements";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
@@ -31,6 +35,7 @@ import {
     parsePublicTruthMonitorJsonBody,
     PublicTruthMonitorRefreshRequestSchema,
 } from "@lib/validation/publicTruthMonitorSchemas";
+import type { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
@@ -91,16 +96,20 @@ export const POST = withAuth(async (request, session) => {
         );
         if (permissionError) return permissionError;
 
-        const entitlement = await evaluatePublicTruthMonitorServerEntitlement({
+        const entitlementEvaluation = await evaluatePublicTruthMonitorServerEntitlementWithAuthority({
             session,
             storeData,
         });
+        const { activeSubscription, entitlement } = entitlementEvaluation;
         if (!entitlement.allowed) {
             return NextResponse.json({
                 error: "Public truth history unavailable",
                 message: entitlement.message,
                 reason: entitlement.reason,
             }, { status: entitlement.reason === "feature_off" ? 404 : 403 });
+        }
+        if (!activeSubscription?.id) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
         const generatedAt = new Date().toISOString();
@@ -126,17 +135,51 @@ export const POST = withAuth(async (request, session) => {
             sId: sessionScope.storeScope.documentId,
             tId: sessionScope.tenantScope.documentId,
         });
-        const summary = await updatePublicTruthMonitorSummaryServer({
-            storeId: sessionScope.storeScope.documentId,
-            buildSummary: (current) => buildPublicTruthMonitorSummary({
-                current,
-                entitlement,
-                entry,
-                generatedByUserId: session.uId || session.user?.id,
-                sId: sessionScope.storeScope.documentId,
-                tId: sessionScope.tenantScope.documentId,
-            }),
-        });
+        let finalPermissionError: NextResponse | null = null;
+        let summary: Awaited<ReturnType<typeof updatePublicTruthMonitorSummaryServer>>;
+        try {
+            summary = await updatePublicTruthMonitorSummaryServer({
+                authorizeSubscription: (subscriptionData, currentStoreData) => (
+                    evaluatePublicTruthMonitorEntitlement({
+                        activeSubscription: {
+                            ...subscriptionData,
+                            id: activeSubscription.id,
+                        } as FirestoreSubscriptionDoc,
+                        storeDetails: currentStoreData,
+                        storeId: sessionScope.storeScope.numericId,
+                        tenantId: sessionScope.tenantScope.numericId,
+                    }).allowed
+                ),
+                authorizeStore: (currentStoreData) => {
+                    finalPermissionError = requireAnyStorePermissionForStoreData(
+                        request,
+                        session,
+                        currentStoreData,
+                        [PERMISSIONS.VIEW_ANALYTICS],
+                        "Public Truth Monitor refresh",
+                        sessionScope.storeScope.numericId,
+                        sessionScope.tenantScope.numericId,
+                    );
+                    return finalPermissionError === null;
+                },
+                storeId: sessionScope.storeScope.documentId,
+                subscriptionId: activeSubscription.id,
+                tenantId: sessionScope.tenantScope.documentId,
+                buildSummary: (current) => buildPublicTruthMonitorSummary({
+                    current,
+                    entitlement,
+                    entry,
+                    generatedByUserId: session.uId || session.user?.id,
+                    sId: sessionScope.storeScope.documentId,
+                    tId: sessionScope.tenantScope.documentId,
+                }),
+            });
+        } catch (error) {
+            if (error instanceof PublicTruthMonitorScopeChangedError) {
+                return finalPermissionError || NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+            throw error;
+        }
 
         return NextResponse.json({
             data: {

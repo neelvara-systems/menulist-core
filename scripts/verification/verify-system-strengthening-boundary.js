@@ -157,7 +157,12 @@ function verifyScreenSeenRateLimit() {
     'hashPublicRateLimitValue(getClientIp(request))',
     'hashPublicRateLimitValue(token)',
     'readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
-    'getEligiblePublicScreenStore',
+    'rateLimitedSeenResponse',
+    "status: 429",
+    "'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS)",
+    'commitCurrentScreenSeen',
+    'isCurrentScreenSeenPublicScope',
+    'transaction.update(params.screenRef',
   ].forEach((token) => {
     assertIncludes(source, token, `${route} must retain public screen signal guard ${token}`);
   });
@@ -169,9 +174,21 @@ function verifyScreenSeenRateLimit() {
       "key: `screen-seen:ip:${ipHash}`",
       'readBoundedJsonBody(request, SCREEN_SEEN_MAX_BODY_BYTES',
       "key: `screen-seen:token:${storeHashSegment}:${screenTokenHash}`",
-      "await docRef.update({",
+      'const commitResult = await commitCurrentScreenSeen({',
     ],
-    'cheap public rate limits must run before the daily Firestore write',
+    'cheap public rate limits must run before the current-authority transaction',
+  );
+  assertOrder(
+    source,
+    route,
+    [
+      'transaction.get(params.screenRef)',
+      'transaction.get(storeRef)',
+      'transaction.get(tenantRef)',
+      'isCurrentScreenSeenPublicScope({',
+      'transaction.update(params.screenRef',
+    ],
+    'all current screen/store/tenant authority reads must precede the daily Firestore write',
   );
 }
 

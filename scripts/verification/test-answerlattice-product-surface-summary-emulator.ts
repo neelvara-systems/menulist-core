@@ -7,6 +7,7 @@ import {
     answerlatticeFirestoreAdmin,
 } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
+import { deleteApp } from 'firebase-admin/app';
 import { Timestamp } from 'firebase-admin/firestore';
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -175,10 +176,10 @@ async function run(): Promise<void> {
 
 void run()
     .then(async () => {
-        if (answerlatticeAdminApp) await answerlatticeAdminApp.delete();
+        if (answerlatticeAdminApp) await deleteApp(answerlatticeAdminApp);
     })
     .catch(async (error) => {
         console.error(error);
-        if (answerlatticeAdminApp) await answerlatticeAdminApp.delete().catch(() => undefined);
+        if (answerlatticeAdminApp) await deleteApp(answerlatticeAdminApp).catch(() => undefined);
         process.exit(1);
     });

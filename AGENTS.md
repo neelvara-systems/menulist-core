@@ -276,7 +276,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 ### Build Discipline Summary
 
-- **Vercel Turbopack Memory Boundary**: The standard 8 GiB Vercel build uses `build:vercel` with a 4096 MiB V8 ceiling and disabled browser/server source maps. Runtime-only dynamic filesystem reads must use `turbopackIgnore` only when their required deploy assets are covered by explicit output tracing. `npm run verify:next-build-compatibility` guards this contract.
+- **Vercel Turbopack Memory And Trace Boundary**: The standard 8 GiB Vercel build uses `build:vercel` with a 4096 MiB V8 ceiling and disabled browser/server source maps. Runtime-only dynamic filesystem reads must use `turbopackIgnore` only when their required deploy assets are covered by explicit output tracing. Never globally exclude `node_modules/@swc/**`: Next 16's deployed Turbopack routes require `@swc/helpers`. `build:vercel` must finish with `npm run verify:next-deployment-bundle`, which loads the traced website route without the repository's full `node_modules`; `npm run verify:next-build-compatibility` guards the source contract.
 - **Search Before Creating**: Look for existing utilities, hooks, components, DAL functions, constants, and patterns before adding new ones.
 - **DAL First**: Prefer client-side DAL and existing database patterns when server-only behavior is not required.
 - **Feature Flags**: New features must be guarded by `src/config/features.ts`; mirror Cloud Function flags when applicable.

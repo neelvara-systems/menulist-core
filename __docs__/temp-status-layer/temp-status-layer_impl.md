@@ -1,7 +1,7 @@
 # Temporary Status Layer - Implementation
 
 **Status:** Current runtime evidence; not deploy approval
-**Last reviewed:** July 16, 2026
+**Last reviewed:** July 25, 2026
 
 ## Source Gate
 
@@ -18,10 +18,11 @@ npm run verify:temporary-status-boundary
 1. `withAuth()` and `ENABLE_TEMP_STATUS` admit the route.
 2. Session tenant/store/actor values are normalized as bounded Firestore document IDs. Session tenant/store IDs pass through the shared Firestore document-ID guard before limiter material, permission work, document refs, effects, or diagnostics.
 3. A hashed owner/store `DATA_WRITE` limiter runs with `failClosedOnProviderError: true` before request-body parsing or permission-backed Firestore work.
-4. The route reads at most 4KB, validates the discriminated Zod request, then requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE`.
-5. `set` rejects non-future expiry, normalizes the message, and updates `stores/{storeId}.tempStatus`. `clear` deletes that field.
-6. `runStorePublicTruthPostCommitEffects()` attempts menu, store, client-store, and `screen-data` tags with `Promise.allSettled`. The route also touches Digital Screens and invalidates the Owner Business Assistant packet cache through that helper.
-7. A post-commit effect failure returns `{ success: true, effectsPending: true }`; only a failed store mutation returns the fixed 500 response.
+4. The route reads at most 4KB and validates the discriminated Zod request.
+5. A Firestore transaction re-reads the current store and tenant, rejects missing, inactive, deleted, blocked, tenant-mismatched, or permission-revoked authority, then requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE` from the transaction-current store.
+6. Within that transaction, `set` writes a future-expiry normalized `stores/{storeId}.tempStatus`; `clear` deletes that field. Concurrent store/tenant authority changes conflict and retry rather than permitting a stale permission decision to write public truth.
+7. `runStorePublicTruthPostCommitEffects()` attempts menu, store, client-store, and `screen-data` tags with `Promise.allSettled`. The route also touches Digital Screens and invalidates the Owner Business Assistant packet cache through that helper.
+8. A post-commit effect failure returns `{ success: true, effectsPending: true }`; only a failed store mutation returns the fixed 500 response.
 
 This ordering prevents expensive/authorized work on rate-limit-provider outage and prevents owner clients from rolling back after persisted truth has already committed.
 
@@ -73,4 +74,4 @@ The current audit did not change Functions source; it verified the already-shipp
 
 ## Verification
 
-`scripts/verification/test-temporary-status-boundary.ts` deterministically covers normalization, exact expiry, invalid truth, timezone closure schema, kitchen-only omission, and response-envelope compatibility. `scripts/verification/verify-temporary-status-boundary.js` guards source/docs wiring and acknowledgement order.
+`scripts/verification/test-temporary-status-boundary.ts` deterministically covers normalization, exact expiry, invalid truth, timezone closure schema, kitchen-only omission, response-envelope compatibility, and transaction-current store/tenant admission. `scripts/verification/verify-temporary-status-boundary.js` guards transaction-current authorization/write ordering, source/docs wiring, and acknowledgement order.

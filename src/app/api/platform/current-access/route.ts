@@ -1,6 +1,9 @@
 export const dynamic = 'force-dynamic';
 
-import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
+import {
+  getCurrentPlatformUser,
+  resolveCurrentSessionUserDocumentId,
+} from '@lib/auth/currentPlatformUser';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -19,7 +22,7 @@ import { withPlatformAuth } from '../../../../middleware/auth';
  */
 export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
   const rateLimitConfig = getRateLimitForFeature('DATA_READ');
-  const operatorId = String(session?.uId || session?.user?.id || 'platform');
+  const operatorId = resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-session';
   const rateLimit = await checkRateLimit({
     key: `platform-current-access:${hashPublicRateLimitValue(operatorId)}`,
     ...rateLimitConfig,

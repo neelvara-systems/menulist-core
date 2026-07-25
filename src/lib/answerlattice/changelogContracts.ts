@@ -11,6 +11,10 @@ export const ANSWERLATTICE_CHANGELOG_MAX_FILES = 4;
 
 const documentIdSchema = z.string().trim().min(1).max(180).refine(isValidFirestoreDocumentId);
 const requestIdSchema = z.string().trim().min(8).max(180).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
+const actionScopeSchema = z.object({
+    tId: z.number().int().positive(),
+    sId: z.number().int().positive(),
+}).strict();
 const boundedString = (max: number) => z.string().transform((value) => value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()).pipe(z.string().min(1).max(max));
 const uniqueStrings = (maxItems: number, maxLength: number) => z.array(boundedString(maxLength)).max(maxItems).superRefine((values, context) => {
     if (new Set(values).size !== values.length) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Values must be unique' });
@@ -92,10 +96,12 @@ export const isAnswerlatticeChangelogEntryPublished = (value: unknown): boolean 
 };
 
 export const AnswerlatticeChangelogActionSchema = z.discriminatedUnion('action', [
-    z.object({ action: z.literal('create'), requestId: requestIdSchema, entry: changelogEntrySchema }).strict(),
-    z.object({ action: z.literal('update'), requestId: requestIdSchema, entryId: documentIdSchema, entry: changelogEntrySchema }).strict(),
-    z.object({ action: z.literal('delete'), requestId: requestIdSchema, entryId: documentIdSchema }).strict(),
+    z.object({ action: z.literal('create'), requestId: requestIdSchema, scope: actionScopeSchema, entry: changelogEntrySchema }).strict(),
+    z.object({ action: z.literal('update'), requestId: requestIdSchema, scope: actionScopeSchema, entryId: documentIdSchema, entry: changelogEntrySchema }).strict(),
+    z.object({ action: z.literal('delete'), requestId: requestIdSchema, scope: actionScopeSchema, entryId: documentIdSchema }).strict(),
 ]);
+
+export type AnswerlatticeChangelogActionScope = z.infer<typeof actionScopeSchema>;
 
 export type AnswerlatticeChangelogEntryInput = {
     title: string;
@@ -113,23 +119,25 @@ export type AnswerlatticeChangelogEntryInput = {
 };
 
 export type AnswerlatticeChangelogAction =
-    | { action: 'create'; requestId: string; entry: AnswerlatticeChangelogEntryInput }
-    | { action: 'update'; requestId: string; entryId: string; entry: AnswerlatticeChangelogEntryInput }
-    | { action: 'delete'; requestId: string; entryId: string };
+    | { action: 'create'; requestId: string; scope: AnswerlatticeChangelogActionScope; entry: AnswerlatticeChangelogEntryInput }
+    | { action: 'update'; requestId: string; scope: AnswerlatticeChangelogActionScope; entryId: string; entry: AnswerlatticeChangelogEntryInput }
+    | { action: 'delete'; requestId: string; scope: AnswerlatticeChangelogActionScope; entryId: string };
 
 export const parseAnswerlatticeChangelogAction = (value: unknown): AnswerlatticeChangelogAction | null => {
     const parsed = AnswerlatticeChangelogActionSchema.safeParse(value);
     if (!parsed.success) return null;
-    const data = parsed.data as Record<string, any>;
+    const data = parsed.data;
     if (data.action === 'delete' && typeof data.requestId === 'string' && typeof data.entryId === 'string') {
-        return { action: 'delete', requestId: data.requestId, entryId: data.entryId };
+        return { action: 'delete', requestId: data.requestId, scope: data.scope, entryId: data.entryId };
     }
     if ((data.action === 'create' || data.action === 'update') && data.entry && typeof data.requestId === 'string') {
+        // Zod has already validated and defaulted the strict entry schema. This
+        // narrows an optional-looking Zod v3 inference to its actual output contract.
         const entry = data.entry as AnswerlatticeChangelogEntryInput;
         return data.action === 'create'
-            ? { action: 'create', requestId: data.requestId, entry }
+            ? { action: 'create', requestId: data.requestId, scope: data.scope, entry }
             : typeof data.entryId === 'string'
-                ? { action: 'update', requestId: data.requestId, entryId: data.entryId, entry }
+                ? { action: 'update', requestId: data.requestId, scope: data.scope, entryId: data.entryId, entry }
                 : null;
     }
     return null;
@@ -142,6 +150,7 @@ export const AnswerlatticeChangelogActionResultSchema = z.object({
     pageId: documentIdSchema,
     replayed: z.boolean(),
     removedFileUrls: z.array(z.string().url().max(2_000)).max(ANSWERLATTICE_CHANGELOG_MAX_FILES),
+    scope: actionScopeSchema,
 }).strict();
 
 const toIsoTimestamp = (value: unknown): string | null => {

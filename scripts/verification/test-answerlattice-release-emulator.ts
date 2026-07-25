@@ -17,10 +17,12 @@ const access: AnswerlatticeAccessContext = {
     storeName: 'Example',
     user: { id: 'owner-1', email: 'owner@example.com', name: 'Owner' },
 };
+const scope = { tId: 1, sId: 101 };
 
 const createAction = (requestId: string, versionNormalized: number, entityChanges = ['billing']) => ({
     action: 'create' as const,
     requestId,
+    scope,
     versionLabel: String(versionNormalized),
     versionNormalized: versionNormalized * 1_000_000,
     releasedAt: '2026-07-11T10:00:00.000Z',
@@ -85,6 +87,7 @@ async function run(): Promise<void> {
     const activation = await executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_1',
+        scope,
         releaseId: created.releaseId,
     }, access);
     assert.equal(activation.action, 'activate');
@@ -113,6 +116,7 @@ async function run(): Promise<void> {
     const activeReplay = await executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_replay',
+        scope,
         releaseId: created.releaseId,
     }, access);
     assert.equal(activeReplay.replayed, true);
@@ -126,6 +130,7 @@ async function run(): Promise<void> {
     await assert.rejects(executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_2',
+        scope,
         releaseId: second.releaseId,
     }, access));
     const failed = (await db.collection('answerlattice_releases').doc(second.releaseId).get()).data();
@@ -140,6 +145,7 @@ async function run(): Promise<void> {
     await assert.rejects(executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_string_version',
+        scope,
         releaseId: second.releaseId,
     }, access));
     await db.collection('answerlattice_canonicalAnswers').doc('malformed-answer').update({
@@ -148,6 +154,7 @@ async function run(): Promise<void> {
     const retried = await executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_3',
+        scope,
         releaseId: second.releaseId,
     }, access);
     assert.equal(retried.status, 'active');
@@ -160,6 +167,7 @@ async function run(): Promise<void> {
     await assert.rejects(executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_foreign_source',
+        scope,
         releaseId: third.releaseId,
     }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
     assert.equal((await sourceVersionsRef.get()).data()?.marker, 'foreign-source');
@@ -172,9 +180,20 @@ async function run(): Promise<void> {
     const thirdRetry = await executeAnswerlatticeReleaseAction({
         action: 'activate',
         requestId: 'release_activate_foreign_source_retry',
+        scope,
         releaseId: third.releaseId,
     }, access);
     assert.equal(thirdRetry.status, 'active');
+
+    await assert.rejects(executeAnswerlatticeReleaseAction({
+        action: 'create',
+        requestId: 'release_wrong_scope',
+        scope: { tId: 2, sId: 202 },
+        versionLabel: '5',
+        versionNormalized: 5_000_000,
+        releasedAt: '2026-07-11T10:00:00.000Z',
+        entityChanges: ['billing'],
+    }, access), (error: unknown) => Number((error as { status?: unknown })?.status) === 409);
 
     const audit = await db.collection('answerlattice_auditLogs')
         .where('pId', '==', 'AL')

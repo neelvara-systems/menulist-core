@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import { isTempStatusMutationScopeCurrent } from '@lib/tempStatus/serverMutationScope';
 import {
     getActiveTempStatus,
     normalizeTempStatusMessage,
@@ -28,6 +29,32 @@ assert.deepEqual(getActiveTempStatus({
 assert.equal(getActiveTempStatus({ expiresAt: now.toISOString(), type: 'closed_today' }, now.getTime()), null);
 assert.equal(getActiveTempStatus({ expiresAt: 'not-a-date', type: 'closed_today' }, now.getTime()), null);
 assert.equal(getActiveTempStatus({ expiresAt: future, type: 'unknown' }, now.getTime()), null);
+
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, tenantId: 11 },
+    tenant: { active: true },
+    tenantDocumentId: '11',
+}), true);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, tenantId: 12 },
+    tenant: { active: true },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: false, tenantId: 11 },
+    tenant: { active: true },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, tenantId: 11 },
+    tenant: { blockDetails: { blocked: true } },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, tenantId: ' 11' },
+    tenant: { active: true },
+    tenantDocumentId: '11',
+}), false);
 
 assert.deepEqual(buildTempStatusSchema({
     expiresAt: future,

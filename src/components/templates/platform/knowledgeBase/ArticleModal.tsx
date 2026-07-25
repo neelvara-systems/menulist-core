@@ -4,6 +4,7 @@ import { getFaqsByArticleId } from '@database/answerlattice/faqs';
 import { getProductSurfacesForSession, rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
 import { addArticle, assertKnowledgeBaseArticleWriteSucceeded, updateArticle } from '@database/knowledgeBase/articles';
 import { useAppDispatch } from "@hook/useAppDispatch";
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { extractEditortextForComparison } from "@lib/vectorEmbeddings/articleEmbeddings";
@@ -141,6 +142,7 @@ const readArticleModalResponse = async <T,>(
 
 const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, selectedCategory, selectedSection, categoriesData, from }: ArticleModalProps) => {
     const dispatch = useAppDispatch();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
     const [surfaceOptions, setSurfaceOptions] = useState<Array<{ label: string; value: string }>>([]);
     const [faqOptions, setFaqOptions] = useState<Array<{ label: string; value: string }>>([]);
@@ -364,6 +366,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
 
         const isEditing = !!editingArticle;
         const action = isEditing ? 'Updating' : 'Creating';
+        const operationScope = requestScope;
         dispatch(startLoader(`${action} article`));
         try {
             if (editingArticle) {
@@ -390,7 +393,9 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                 const mergedArticle = { ...data, ...updatedArticle, id: editingArticle.id } as KnowledgeBaseArticleType;
                 let summaryRefreshSucceeded = true;
                 if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                    if (!operationScope) throw new Error('Answerlattice workspace is not available.');
                     summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                        expectedScope: operationScope,
                         failureCode: 'answerlattice_article_summary_refresh_after_update_failed',
                         context: {
                             ...getBoundedAnswerlatticeStringContext('articleId', editingArticle.id),
@@ -431,7 +436,9 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                 );
                 let summaryRefreshSucceeded = true;
                 if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
+                    if (!operationScope) throw new Error('Answerlattice workspace is not available.');
                     summaryRefreshSucceeded = await rebuildProductSurfaceContentSummaryWithDiagnostics({
+                        expectedScope: operationScope,
                         failureCode: 'answerlattice_article_summary_refresh_after_create_failed',
                         context: {
                             ...getBoundedAnswerlatticeStringContext('articleId', createdArticle.id),

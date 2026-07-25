@@ -13,11 +13,16 @@ import { hasAnyPermission } from "./permissionRequirements";
 import type { PermissionKey } from "@constant/permissions";
 import { getPermissionsForRole } from "./hasPermission";
 import type { StoreRoleDataType } from "@type/platform/roles";
-import { normalizeStorePermissionScopeDocumentId } from "./scopeDocumentId";
+import {
+    normalizeStorePermissionScopeDocumentId,
+    resolveStorePermissionSessionScope,
+} from "./scopeDocumentId";
 
 export {
     normalizeStorePermissionScopeDocumentId,
+    resolveStorePermissionSessionScope,
     type StorePermissionScopeDocumentId,
+    type StorePermissionSessionScope,
 } from "./scopeDocumentId";
 
 const getRawSessionStoreId = (session: any) => session?.sId ?? session?.user?.storeId;
@@ -42,11 +47,11 @@ export async function requireAnyStorePermission(
 ) {
     if (isPlatformSession(session)) return null;
 
-    const storeScope = normalizeStorePermissionScopeDocumentId(getRawSessionStoreId(session));
-    const tenantScope = normalizeStorePermissionScopeDocumentId(getRawSessionTenantId(session));
-    if (!storeScope || !tenantScope) {
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (!sessionScope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { storeScope, tenantScope } = sessionScope;
 
     const storeDoc = await admin.firestore()
         .collection(DB_COLLECTIONS.STORES)

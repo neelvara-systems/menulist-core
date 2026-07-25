@@ -4,19 +4,18 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
+import {
+    answerlatticeProductSurfaceSummaryRebuildRequestSchema,
+    isExactAnswerlatticeProductSurfaceSummaryScope,
+} from '@lib/answerlattice/productSurfaceSummaryContracts';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
-const PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES = ['manual'] as const;
-const RebuildRequestSchema = z.object({
-    reason: z.enum(PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES).optional().default('manual'),
-}).strict();
 const PRODUCT_SURFACE_SUMMARY_REBUILD_MAX_BODY_BYTES = 2 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -54,11 +53,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const parsedResult = RebuildRequestSchema.safeParse(bodyResult.data);
+        const parsedResult = answerlatticeProductSurfaceSummaryRebuildRequestSchema.safeParse(bodyResult.data);
         if (!parsedResult.success) {
             return NextResponse.json({ error: 'Invalid rebuild request.' }, { status: 400 });
         }
         const parsed = parsedResult.data;
+        const activeScope = { tId: tenantId, sId: storeId };
+        if (!isExactAnswerlatticeProductSurfaceSummaryScope(parsed.scope, activeScope)) {
+            return NextResponse.json(
+                { error: 'Answerlattice workspace changed before summary rebuild.' },
+                { status: 409 },
+            );
+        }
         const summary = await rebuildProductSurfaceContentSummaryServer({
             tId: tenantId,
             sId: storeId,
@@ -72,7 +78,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             surfaceCount: summary.surfaceCount,
         });
 
-        return NextResponse.json({ summary });
+        return NextResponse.json({ summary, scope: activeScope });
     } catch (error) {
         logRuntimeFailure('answerlattice_product_surface_summary_rebuild_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', tenantId),

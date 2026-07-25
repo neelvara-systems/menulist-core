@@ -233,7 +233,7 @@ type StoreRole = 'OWNER' | 'MANAGER' | 'STAFF' | 'VIEWER';
 High-risk platform routes must therefore:
 
 1. Apply their per-operator rate limiter before the authorization read.
-2. Read the exact `users/{session.uId}` document through `src/lib/auth/currentPlatformUser.ts`.
+2. Require every supplied root/nested session user-ID alias to normalize exactly and agree, then read that exact `users/{userId}` document through `src/lib/auth/currentPlatformUser.ts`.
 3. Require exact document/user/email identity, `platformRole === 'PLATFORM'`, `active === true`, `isVerified === true`, no block/delete/auth-disable state, and revocation timestamps no newer than the session issuance timestamp. Negative lifecycle/block markers are fail-closed: only absent, `null`, or explicit boolean `false` is treated as unblocked/enabled; malformed legacy strings or objects cannot retain platform authority.
 4. Return generic `403 Forbidden` before platform data reads, provider calls, or writes when that current check fails.
 5. Never fall back to an email query or another user document when the canonical user document is missing.

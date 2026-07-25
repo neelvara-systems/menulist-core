@@ -33,6 +33,20 @@ const normalizeCurrentPlatformUserDocumentId = (value: unknown): string | null =
     return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
 };
 
+export const resolveCurrentSessionUserDocumentId = (session: unknown): string | null => {
+    if (!isUnknownRecord(session)) return null;
+    const sessionUser = isUnknownRecord(session.user) ? session.user : {};
+    const supplied = [session.uId, sessionUser.id]
+        .filter((value) => value !== undefined && value !== null);
+    if (supplied.length === 0) return null;
+
+    const normalized = supplied.map(normalizeCurrentPlatformUserDocumentId);
+    const [first] = normalized;
+    return first && normalized.every((documentId) => documentId === first)
+        ? first
+        : null;
+};
+
 const normalizeCurrentPlatformEmail = (value: unknown): string | null => {
     if (typeof value !== 'string') return null;
     const email = value.toLowerCase().trim();
@@ -94,7 +108,7 @@ export function isCurrentUserRecordEligible(params: {
     const sessionUser = isUnknownRecord(session.user)
         ? session.user
         : {};
-    const sessionUserId = normalizeCurrentPlatformUserDocumentId(session.uId ?? sessionUser.id);
+    const sessionUserId = resolveCurrentSessionUserDocumentId(session);
     const storedUserIdValue = userData.id ?? userData.uId;
     const storedUserId = storedUserIdValue === undefined || storedUserIdValue === null
         ? params.documentId
@@ -151,7 +165,7 @@ export async function getCurrentUser(session: unknown): Promise<{
     const sessionUser = isUnknownRecord(sessionRecord.user)
         ? sessionRecord.user
         : {};
-    const userDocumentId = normalizeCurrentPlatformUserDocumentId(sessionRecord.uId ?? sessionUser.id);
+    const userDocumentId = resolveCurrentSessionUserDocumentId(sessionRecord);
     const email = normalizeCurrentPlatformEmail(sessionUser.email);
     if (!userDocumentId || !email) return null;
 
