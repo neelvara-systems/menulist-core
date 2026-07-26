@@ -1,5 +1,83 @@
 # MenuList — Changelog
 
+## July 26, 2026 - Database Operation Logger Runtime Boundary
+
+- **Unknown logger inputs are no longer erased to `any`** - operation payloads, results, errors, optional data, and the stats sink retain explicit runtime or array contracts.
+- **Diagnostic metadata cannot replace the original outcome** - error code/status fields and Proxy key enumeration use non-throwing projectors instead of unknown-value coercion.
+- **Valid development diagnostics remain compatible** - scalar provider codes, numeric status strings, payload/result key counts, and in-memory operation statistics retain their existing outputs.
+- **The broader diagnostic sweep is active** - the same legacy metadata-coercion pattern was found in additional diagnostic families and remains an in-progress repository-wide repair, not a closed audit claim.
+
+## July 26, 2026 - Platform Entity Block Response Privacy
+
+- **Persisted entity documents no longer cross the API response boundary** - tenant, store, and user block mutations return only the entity-specific ID, blocked state, and bounded block audit details.
+- **The browser sends only the mutation contract** - the selected tenant/store/user record is no longer serialized into a request that never needed it.
+- **Acknowledgements fail closed** - extra/private fields, mismatched identity or state, malformed audit details, and values requiring string coercion are rejected before local state updates.
+- **Persistence and invalidation behavior is unchanged** - existing transactions, Firebase Auth reconciliation, public-truth effects, and pending-effect reporting retain their established order and cost.
+
+## July 26, 2026 - Todos DAL Runtime Contract
+
+- **Reusable todo operations now validate runtime scope and IDs** - tenant, store, actor, and document identities fail before Firestore reference or query construction when malformed.
+- **Mutation transport fields stay out of persisted patches** - update IDs select the document but are not copied into its data, while existing todo business fields remain compatible.
+- **Config reads and writes use an exact bounded shape** - malformed or duplicate status/tag entries are rejected, and missing config returns an empty tag list instead of throwing.
+- **Tenant isolation is emulator-proved** - current-store todo/config access succeeds and a foreign tenant cannot read or write either path.
+
+## July 26, 2026 - Special Menu Lifecycle Status Integrity
+
+- **Persisted lifecycle status is no longer coerced** - the shared app/Functions due-marker projector accepts only literal active or scheduled status strings.
+- **Malformed sibling summary data cannot stop valid transitions** - a legacy or crafted object with throwing string conversion is ignored instead of aborting activation, expiry, cancellation, marker repair, or the store scheduler pass.
+- **Both runtimes remain byte-identical and regression-gated** - the lifecycle verifier pins the exact non-coercing boundary, and focused behavior runs with the client-rules and Admin-transaction emulators.
+- **QA Functions remain pending** - the scoped `menulistMaintenanceScheduler` and `computeDecisionBlocksScores` deployment failed before upload because the Firebase CLI is not authenticated.
+
+## July 26, 2026 - Diagnostic Context Coercion Safety
+
+- **Core failure loggers no longer coerce unknown objects** - every active presence/length diagnostic helper found across API, owner UI, persistence, auth, billing, cache, Firebase, operations, runtime, security, and service code uses one non-throwing scalar shape projector.
+- **Raw values remain absent** - diagnostics continue to emit presence/length only; objects and symbols are marked present without invoking custom string conversion.
+- **Error handling keeps its original outcome** - a legacy or crafted object whose `toString()` throws cannot replace the operation failure being logged.
+- **Repository-wide restoration is source-gated** - the focused regression recursively scans TypeScript source, rejects either legacy helper quote variant, requires the canonical projector at every consumer, and runs within the auth/security aggregate.
+
+## July 26, 2026 - Legacy Storage Upload Contract Integrity
+
+- **Reusable upload helpers no longer accept erased inputs** - legacy template blob, font, and JSON exports validate unknown runtime values before constructing Storage references.
+- **Bytes keep truthful metadata** - template assets preserve their admitted content type instead of labeling every upload JPEG; fonts and JSON receive exact metadata accepted by current Storage rules.
+- **Paths and payloads fail closed** - traversal/control/empty segments, unsupported MIME types, circular or undefined JSON, empty payloads, and data beyond the existing 10 MB rules ceiling stop before network work.
+- **Dormant exports remain safe to reactivate** - repository tracing found no active runtime imports, while the full Storage aggregate now protects these documented reusable boundaries.
+
+## July 26, 2026 - Storage Delete Response Integrity
+
+- **Malformed delete targets fail before Firebase reference construction** - blank, whitespace-only, and non-string runtime inputs return the existing invalid-argument response.
+- **Provider failures preserve the declared type contract** - error codes are string-only, trimmed, and capped; malformed provider exceptions fall back to `unknown`.
+- **Idempotent cleanup is unchanged** - `storage/object-not-found` still returns success, while other failures retain generic owner-safe text and bounded secure diagnostics.
+- **The full Storage aggregate owns regression proof** - focused adversarial behavior now runs alongside Storage source gates, cleanup contracts, and the real immutable-media Storage rules emulator.
+
+## July 26, 2026 - Public Cache Post-Commit Failure Isolation
+
+- **One cache failure no longer skips later effects** - menu, store, discovery, and Digital Screen tags settle independently after a committed public-truth write.
+- **Live-screen and assistant invalidation remain attempted** - a synchronous Next cache exception cannot prevent later Digital Screen versioning or Owner Business Assistant packet invalidation.
+- **Callers still receive the real failure** - the original first error is rethrown only after all effects settle, preserving existing refresh-pending responses and bounded route diagnostics.
+- **Regression proof covers synchronous failure** - the post-commit suite proves every store/global effect runs after a simulated Next cache exception, and the public-business-truth gate pins the shared runner boundary.
+
+## July 26, 2026 - Generated Image Provider-Output Integrity
+
+- **Provider bytes are validated before owner delivery** - Gemini image parts must be canonical base64 JPEG, PNG, or WebP with matching magic bytes.
+- **Response memory and media cardinality are bounded** - each generated image is capped at 15 MB and each provider response at four admitted images.
+- **Generation, editing, and batch work share one projector** - malformed, unsupported, mismatched, or oversized parts cannot reach either browser draft or the batch upload pipeline.
+- **Typed provider requests replace an erased input contract** - the shared runner now uses the Google SDK `ContentListUnion` instead of `any`.
+- **Regression proof is aggregate-gated** - AI accounting verification runs exact MIME, magic-byte, malformed-shape, count, and size-boundary behavior.
+
+## July 26, 2026 - CSP Report Envelope and Severity Integrity
+
+- **Parsed JSON still crosses an exact runtime boundary** - only object-shaped legacy `csp-report` envelopes are projected; primitives, arrays, and malformed nested values return a bounded client error rather than triggering route failure logging.
+- **External script severity cannot be substring-downgraded** - every blocked HTTP(S) script is high severity, including attacker-controlled hosts whose names merely contain `google`.
+- **Report fields are defensively normalized** - control characters, whitespace, length, and numeric source positions are bounded before security classification.
+- **Focused regression protection is aggregate-gated** - the MenuList tenant-safety verifier now runs executable CSP envelope and severity behavior checks.
+
+## July 26, 2026 - Business Health Monitor Response Integrity
+
+- **One malformed timestamp cannot fail the monitor** - Firestore, Date, numeric, and legacy ISO values cross a defensive projector; invalid or throwing values become unavailable rather than crashing serialization.
+- **Refresh responses have explicit ownership** - only the latest mounted platform request may settle monitor data, error, or loading state.
+- **Unsafe session and timestamp casts are removed** - the route and platform surface use the augmented NextAuth contract and unknown-input normalization.
+- **Focused behavior is aggregate-gated** - the Owner Business Assistant verifier runs timestamp adversarial coverage alongside its existing hardening checks.
+
 ## July 26, 2026 - Founder Monitor Status and Period Integrity
 
 - **Unknown snapshot status fails safe** - missing, malformed, or future status values now render as setup required instead of healthy.

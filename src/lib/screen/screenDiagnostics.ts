@@ -1,4 +1,5 @@
 import { secureError } from "@lib/security/secureLogger";
+import { getBoundedLogValueContext } from "@lib/monitoring/boundedLogContext";
 
 type ScreenLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -9,12 +10,7 @@ export const getBoundedScreenStringContext = (
     label: string,
     value: unknown,
 ): ScreenLogContext => {
-    const normalized = value === undefined || value === null ? "" : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const hasScreenClipboardWrite = (): boolean => (

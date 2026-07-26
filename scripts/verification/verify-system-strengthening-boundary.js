@@ -114,6 +114,19 @@ function verifyFreshDalSessions() {
     assertNoRegex(source, /\blet\s+session\s*[:=]/, `${route} must not keep a module-level session cache`);
     assertNotIncludes(source, 'session = Boolean(session)', `${route} must not reuse stale module-level sessions`);
   });
+
+  const todoDal = read('src/database/todos/index.ts');
+  [
+    'requireTodoScope(session)',
+    'requireTodoMutation(data, { requireId: true })',
+    'parseTodoConfig(docSnap.data())',
+    'return config?.tags || []',
+  ].forEach((token) => {
+    assertIncludes(todoDal, token, `Todos DAL must retain runtime boundary token ${token}`);
+  });
+  assertNotIncludes(todoDal, 'session: any', 'Todos DAL must not restore erased session scope');
+  assertNotIncludes(todoDal, 'data: any', 'Todos DAL must not restore erased mutation input');
+  assertNotIncludes(todoDal, 'docSnap.data() as TodoConfig', 'Todos DAL must validate persisted config');
 }
 
 function verifyBatchWorkerAdmission() {

@@ -1,4 +1,5 @@
 import { secureError, secureLog } from "@lib/security/secureLogger";
+import { getBoundedLogValueContext } from "@lib/monitoring/boundedLogContext";
 
 type PricingLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -12,12 +13,7 @@ export const getBoundedPricingStringContext = (
     label: string,
     value: unknown,
 ): PricingLogContext => {
-    const normalized = value === undefined || value === null ? "" : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getPricingErrorName = (error: unknown): string | undefined => {

@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 
 type SupportTicketLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -6,12 +7,7 @@ export const getBoundedSupportTicketStringContext = (
     label: string,
     value: unknown,
 ): SupportTicketLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getSupportTicketErrorName = (error: unknown): string | undefined => {

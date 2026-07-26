@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostics';
 import type { NextRequest } from 'next/server';
@@ -14,12 +15,7 @@ export const getBoundedAnswerlatticeStringContext = (
     label: string,
     value: unknown,
 ): AnswerlatticeLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getAnswerlatticeErrorName = (error: unknown): string | undefined => {

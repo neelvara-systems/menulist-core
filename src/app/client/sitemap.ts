@@ -27,6 +27,7 @@
  * @see __docs__/discovery-infrastructure/deep-architecture-audit.md — freshness
  */
 
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
@@ -93,11 +94,7 @@ const getBoundedSitemapStringContext = (
     label: string,
     value: unknown,
 ): Record<string, boolean | number> => {
-    const normalized = value === undefined || value === null ? '' : String(value).trim();
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, typeof value === 'string' ? value.trim() : value);
 };
 
 const getTenantSitemapFailureContext = (

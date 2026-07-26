@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 
 type AuthLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -12,12 +13,7 @@ export const getBoundedAuthStringContext = (
     label: string,
     value: unknown,
 ): AuthLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getAuthErrorName = (error: unknown): string | undefined => {

@@ -96,6 +96,8 @@ requireText(maintenanceScheduler, ".where('specialMenuNextTransitionAt', '<=', n
 requireText(maintenanceScheduler, 'transitionScheduledSpecialMenu({', 'maintenance scheduler must use the Admin transaction helper');
 requireText(maintenanceScheduler, 'revalidatePublicClientCacheForStore(', 'scheduled transitions must refresh public and configured-screen state');
 if (sharedSchedule !== functionSharedSchedule) failures.push('app and Functions special-menu schedule helpers must remain byte-identical');
+requireText(sharedSchedule, "typeof project.specialMenuStatus !== 'string'", 'due-work marker must reject non-string persisted status without coercion');
+forbidText(sharedSchedule, "String(project.specialMenuStatus || '')", 'due-work marker must not execute persisted status coercion');
 requireText(mobileProjectSelector, 'const specialMenuResult = await updateSpecialMenuProject({', 'alternate mobile edit path must use the canonical special-menu transaction');
 forbidText(mobileProjectSelector, '_specialMenu: {\n                            displayName: localizedName,', 'alternate mobile edit path must not partially overwrite lifecycle metadata');
 requireText(mobileSpecialMenuScreen, 'Adjust the dates so only one special menu can be active.', 'mobile scheduling must enforce the one-active non-overlap boundary');

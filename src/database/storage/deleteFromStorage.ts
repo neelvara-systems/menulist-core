@@ -1,4 +1,8 @@
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
+import {
+    normalizeStorageDeleteErrorCode,
+    normalizeStorageDeleteTarget,
+} from "@lib/storage/storageDeleteBoundary";
 import { deleteObject, ref, type FirebaseStorage } from "firebase/storage";
 import {
     getBoundedStringLogContext,
@@ -16,14 +20,15 @@ import {
  * - unauthorized: No permission to delete
  * - unknown: Other errors
  */
-export const deleteFileByUrl = async (url: string, storageOverride?: FirebaseStorage | null): Promise<{
+export const deleteFileByUrl = async (url: unknown, storageOverride?: FirebaseStorage | null): Promise<{
     success: boolean;
     error?: string;
     code?: string;
 }> => {
     try {
         // Validate input
-        if (!url || typeof url !== 'string') {
+        const normalizedUrl = normalizeStorageDeleteTarget(url);
+        if (!normalizedUrl) {
             logStorageHelperFailure(
                 "storage_delete_invalid_url",
                 new Error("storage_delete_invalid_url"),
@@ -36,15 +41,15 @@ export const deleteFileByUrl = async (url: string, storageOverride?: FirebaseSto
             };
         }
 
-        const storageRef = ref(storageOverride || firebaseStorage, url);
+        const storageRef = ref(storageOverride || firebaseStorage, normalizedUrl);
 
         // Delete the file
         await deleteObject(storageRef);
 
         return { success: true };
 
-    } catch (error: any) {
-        const errorCode = error.code || 'unknown';
+    } catch (error: unknown) {
+        const errorCode = normalizeStorageDeleteErrorCode(error);
 
         // File not found is acceptable (already deleted)
         if (errorCode === 'storage/object-not-found') {

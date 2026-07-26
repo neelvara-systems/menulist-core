@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from './secureLogger';
 
 type SecurityLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -27,12 +28,7 @@ export const getBoundedSecurityStringContext = (
     label: string,
     value: unknown,
 ): SecurityLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const getBoundedSecurityRouteContext = (

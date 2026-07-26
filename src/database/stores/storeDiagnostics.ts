@@ -1,4 +1,5 @@
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 
 type StoreDataLogContext = Record<string, boolean | number | string | undefined>;
 
@@ -11,12 +12,7 @@ export const getBoundedStoreStringContext = (
     label: string,
     value: unknown,
 ): StoreDataLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getStoreDataErrorName = (error: unknown): string | undefined => {

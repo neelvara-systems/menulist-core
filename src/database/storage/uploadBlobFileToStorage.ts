@@ -1,5 +1,9 @@
 
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
+import {
+    normalizeLegacyStoragePathSegment,
+    normalizePlatformAssetBlob,
+} from "@lib/storage/legacyUploadBoundary";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import {
     getBoundedStringLogContext,
@@ -7,24 +11,30 @@ import {
 } from "./storageDiagnostics";
 
 
-type fileData = {
-    componentId: any,
-    url: any,
-    name: any,
+type FileData = {
+    componentId: unknown,
+    url: unknown,
+    name: unknown,
 }
-const uploadBlobFileToStorage = (fileData: fileData): Promise<string | null> => {
+const uploadBlobFileToStorage = (fileData: FileData): Promise<string | null> => {
     return new Promise((resolve) => {
         try {
+            const componentId = normalizeLegacyStoragePathSegment(fileData.componentId);
+            const name = normalizeLegacyStoragePathSegment(fileData.name);
+            const upload = normalizePlatformAssetBlob(fileData.url);
+            if (!componentId || !name || !upload) {
+                throw new TypeError("storage_blob_upload_input_invalid");
+            }
+
             // Create the file metadata
-            /** @type {any} */
             const metadata = {
-                componentId: fileData.componentId,
-                contentType: 'image/jpeg'
+                customMetadata: { componentId },
+                contentType: upload.contentType,
             };
 
             // Upload file and metadata to the object 'images/mountains.jpg'
-            const storageRef = ref(firebaseStorage, 'templates/' + fileData.componentId + "/" + fileData.name);
-            const uploadTask = uploadBytesResumable(storageRef, fileData.url, metadata);
+            const storageRef = ref(firebaseStorage, `templates/${componentId}/${name}`);
+            const uploadTask = uploadBytesResumable(storageRef, upload.bytes, metadata);
 
             // Listen for state changes, errors, and completion of the upload.
             uploadTask.on('state_changed',

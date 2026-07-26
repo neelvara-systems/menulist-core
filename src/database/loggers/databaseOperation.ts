@@ -6,7 +6,7 @@ import {
     logDatabaseLoggerFailure,
 } from './loggerDiagnostics';
 
-export const logDatabaseOperation = (operation: string, collection: string, payload?: any) => {
+export const logDatabaseOperation = (operation: string, collection: string, payload?: unknown) => {
     if (process.env.NODE_ENV !== 'development') return;
     logDatabaseLoggerDiagnostic('database_operation_observed', {
         ...getBoundedDatabaseLoggerStringContext('collection', collection),
@@ -15,7 +15,7 @@ export const logDatabaseOperation = (operation: string, collection: string, payl
     });
 };
 
-export const logOperationResult = (operation: string, result: any, error?: any) => {
+export const logOperationResult = (operation: string, result: unknown, error?: unknown) => {
     if (process.env.NODE_ENV !== 'development') return;
     if (error) {
         logDatabaseLoggerFailure('database_operation_failed', error, {
@@ -39,11 +39,11 @@ export interface OperationStats {
     deletes: number;
     cacheHits: number;
     cacheMisses: number;
-    data?: any;
-    payload?: any
+    data?: unknown;
+    payload?: unknown;
 }
 
-export const logOperation = (operationStats, stats: OperationStats) => {
+export const logOperation = (operationStats: OperationStats[], stats: OperationStats): void => {
     operationStats.push(stats);
     if (process.env.NODE_ENV === 'development') {
         logDatabaseLoggerDiagnostic('firebase_operation_stats_recorded', {

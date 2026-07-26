@@ -1,3 +1,5 @@
+import { getBoundedLogValueContext } from "@lib/monitoring/boundedLogContext";
+
 const MAX_EVENT_METADATA_KEYS = 40;
 const MAX_EVENT_METADATA_STRING_LENGTH = 96;
 
@@ -26,11 +28,7 @@ function getBoundedMessagingEventMetadataContext(
   label: string,
   value: unknown,
 ): Record<string, boolean | number> {
-  const normalized = value === undefined || value === null ? "" : String(value);
-  return {
-    [`${label}Present`]: normalized.length > 0,
-    [`${label}Length`]: normalized.length,
-  };
+  return getBoundedLogValueContext(label, value);
 }
 
 function isSafeMessagingEventMetadataKey(key: string): boolean {

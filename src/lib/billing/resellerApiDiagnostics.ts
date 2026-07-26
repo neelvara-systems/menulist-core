@@ -1,4 +1,5 @@
 import { secureError } from "@lib/security/secureLogger";
+import { getBoundedLogValueContext } from "@lib/monitoring/boundedLogContext";
 
 export type ResellerApiLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -12,12 +13,7 @@ export const getBoundedResellerApiStringContext = (
     label: string,
     value: unknown,
 ): ResellerApiLogContext => {
-    const normalized = value === undefined || value === null ? "" : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getResellerApiErrorName = (error: unknown): string | undefined => {

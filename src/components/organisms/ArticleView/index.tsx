@@ -17,6 +17,7 @@
 
 'use client';
 
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import { getTiptapExtensions } from '@config/tiptap';
@@ -53,12 +54,7 @@ const getBoundedArticleViewStringContext = (
     label: string,
     value: unknown,
 ): ArticleViewLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getArticleViewErrorName = (error: unknown): string | undefined => {

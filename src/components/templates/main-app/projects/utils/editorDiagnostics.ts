@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 
 export type MenuEditorLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -6,12 +7,7 @@ export const getBoundedMenuEditorStringContext = (
     label: string,
     value: unknown,
 ): MenuEditorLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const getMenuEditorProjectLogContext = (

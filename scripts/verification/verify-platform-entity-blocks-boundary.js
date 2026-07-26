@@ -97,7 +97,7 @@ function verifyRoute(route) {
     'runStorePublicTruthPostCommitEffects({',
     'chunkSize: TENANT_BLOCK_EFFECT_CHUNK_SIZE',
     'storeIds: result.affectedStoreIds.map(String)',
-    'revalidate: (tag) => revalidateTag(tag)',
+    'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
     "touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')",
     'platform_entity_block_tenant_post_commit_effect_failed',
     'effectsPending: postCommit.effectsPending',
@@ -136,6 +136,7 @@ function verifyRoute(route) {
     'prepareStaffAccessStateScope(db, entitySnap.data() || {})',
     'readStaffAccessStateInTransaction(transaction, db, staffAccessScope)',
     'writeStaffBlockedAccessStateInTransaction(',
+    'buildPlatformEntityBlockAcknowledgement({',
   ].forEach((token) => assertIncludes(route, token, 'Platform entity-block route'));
 
   assertOrder(route, [
@@ -199,6 +200,8 @@ function verifyRoute(route) {
     'const authSync = await syncUserBlockAuthState({\n        blocked,',
     'key: `platform-entity-block:${getPlatformEntityBlockOperatorId(session)}`',
     'key: `platform-entity-block:${session',
+    '...result.entity',
+    '...reconciled.entity',
   ].forEach((token) => assertNotIncludes(route, token, 'Platform entity-block route boundary'));
 }
 
@@ -226,8 +229,7 @@ function verifyClient(client) {
     "fetch('/api/platform/entity-blocks'",
     '...PLATFORM_ENTITY_BLOCK_REQUEST_POLICY',
     'value.success !== true',
-    'value.entity.blocked === expected.blocked',
-    'String(getResponseEntityId(expected.entityType, value.entity)) === String(expected.entityId)',
+    'return parsePlatformEntityBlockAcknowledgement(value.entity, expected);',
     'platform_entity_block_response_parse_failed',
     'platform_entity_block_response_rejected',
     'platform_entity_block_response_invalid',
@@ -240,8 +242,9 @@ function verifyClient(client) {
     "const response = await fetch('/api/platform/entity-blocks'",
     'const payload = await readPlatformEntityBlockResponseJson(response, responseContext);',
     'if (!response.ok) {',
-    'if (!isPlatformEntityBlockResponse(payload, responseContext)) {',
-    'return payload.entity;',
+    'const entity = parsePlatformEntityBlockResponse(payload, responseContext);',
+    'if (!entity) {',
+    'return entity;',
   ], 'Platform entity-block client response order');
 
   [
@@ -249,6 +252,9 @@ function verifyClient(client) {
     '.json().catch',
     'error.message',
     'await navigator.clipboard.writeText',
+    'entity?: any',
+    'getResponseEntityId',
+    'isPlatformEntityBlockResponse',
   ].forEach((token) => assertNotIncludes(client, token, 'Platform entity-block client boundary'));
 }
 
@@ -281,7 +287,6 @@ function verifyDesktopSurface(component) {
     "message.warning('Add a reason before saving')",
     'updatePlatformEntityBlockState({',
     'blocked: nextBlockedState',
-    'entity: selectedEntity',
     'entityId: selectedEntityId',
     'entityType,',
     'reason: trimmedReason',
@@ -295,6 +300,7 @@ function verifyDesktopSurface(component) {
     'response.json()',
     '.json().catch',
     'error.message',
+    'entity: selectedEntity',
   ].forEach((token) => assertNotIncludes(component, token, 'Entity Blocks desktop settings boundary'));
 }
 
@@ -344,8 +350,13 @@ function verifyMobileSurface(mobileShell, mobileMore, mobilePlatformInternal) {
 function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, changelog, lowercaseChangelog) {
   assertIncludes(
     packageJson,
-    '"verify:platform-entity-blocks-boundary": "node scripts/verification/verify-platform-entity-blocks-boundary.js"',
+    '"verify:platform-entity-blocks-boundary": "node scripts/verification/verify-platform-entity-blocks-boundary.js && npm run test:platform-entity-block-acknowledgement"',
     'package.json entity-block verifier',
+  );
+  assertIncludes(
+    packageJson,
+    '"test:platform-entity-block-acknowledgement": "ts-node --compiler-options',
+    'package.json entity-block acknowledgement test',
   );
 
   [
@@ -372,6 +383,9 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, changelog, lowercas
     'Drifted identity cannot redirect fanout',
     'User access state is durable before provider work',
     'Concurrent user block actions converge to the latest decision',
+    'Platform Entity Block Response Privacy',
+    'Persisted entity documents no longer cross the API response boundary',
+    'Acknowledgements fail closed',
   ].forEach((token) => {
     assertIncludes(changelog, token, 'Changelog entity-block ID boundary');
     assertIncludes(lowercaseChangelog, token, 'Lowercase changelog entity-block ID boundary');

@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 
 type OpsLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -6,12 +7,7 @@ export const getBoundedOpsStringContext = (
   label: string,
   value: unknown,
 ): OpsLogContext => {
-  const normalized = value === undefined || value === null ? '' : String(value);
-
-  return {
-    [`${label}Present`]: normalized.length > 0,
-    [`${label}Length`]: normalized.length,
-  };
+  return getBoundedLogValueContext(label, value);
 };
 
 const getOpsErrorName = (error: unknown): string | undefined => {

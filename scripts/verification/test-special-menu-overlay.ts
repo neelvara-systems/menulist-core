@@ -157,5 +157,29 @@ assert.equal(
     null,
     'terminal special menus must not keep a due-work marker',
 );
+let malformedStatusCoercionAttempted = false;
+assert.equal(
+    resolveNextSpecialMenuTransitionAt({
+        malformed: {
+            active: true,
+            isSpecialMenu: true,
+            specialMenuStatus: {
+                toString() {
+                    malformedStatusCoercionAttempted = true;
+                    throw new Error('persisted special-menu status must not execute coercion');
+                },
+            },
+            specialMenuStartsAt: '2026-07-20T09:00:00.000Z',
+            specialMenuEndsAt: '2026-07-20T12:00:00.000Z',
+        },
+    }),
+    null,
+    'malformed persisted status must be ignored without aborting lifecycle marker repair',
+);
+assert.equal(
+    malformedStatusCoercionAttempted,
+    false,
+    'lifecycle marker projection must not invoke persisted object coercion',
+);
 
 console.log("Special menu overlay projection tests passed.");

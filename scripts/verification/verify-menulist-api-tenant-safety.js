@@ -2559,11 +2559,12 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'platform_entity_block_response_parse_failed',
       'platform_entity_block_response_rejected',
       'platform_entity_block_response_invalid',
-      'isPlatformEntityBlockResponse',
+      'parsePlatformEntityBlockResponse',
       'value.success !== true',
-      'value.entity.blocked === expected.blocked',
-      'getResponseEntityId(expected.entityType, value.entity)',
-      'String(expected.entityId)',
+      'parsePlatformEntityBlockAcknowledgement(value.entity, expected)',
+      'const entity = parsePlatformEntityBlockResponse(payload, responseContext);',
+      'if (!entity) {',
+      'return entity;',
       "new Error(PLATFORM_ENTITY_BLOCK_FAILED_MESSAGE)",
       'error.status = response.status',
       'error.code = code.slice(0, 64)',
@@ -2573,6 +2574,8 @@ function verifyPlatformAdminMutationBoundedBodies() {
   assert(!platformEntityBlocksClient.includes('payload?.error ||'), 'platform entity blocks client helper must not throw raw API response text');
   assert(!platformEntityBlocksClient.includes('response.json()'), 'platform entity blocks client helper must not parse unbounded response JSON');
   assert(!platformEntityBlocksClient.includes('.json().catch'), 'platform entity blocks client helper must not silently swallow malformed response JSON');
+  assert(!platformEntityBlocksClient.includes('getResponseEntityId'), 'platform entity blocks client helper must use the exact acknowledgement parser');
+  assert(!platformEntityBlocksClient.includes('String(expected.entityId)'), 'platform entity blocks client helper must not coerce untrusted response IDs');
   assertIncludes(
     'src/components/templates/platform/settings/EntityBlockSettings.tsx',
     [
@@ -7583,8 +7586,9 @@ function verifyPublicOperationalSignalCheapFail() {
       'const ipHash = hashPublicRateLimitValue(getClientIp(request));',
       'key: `csp-report:${ipHash}`',
       'readBoundedTextBody(request, CSP_REPORT_MAX_BYTES',
-      'let report: CSPReport;',
+      'let report: unknown;',
       'report = JSON.parse(body);',
+      'const normalizedReport = normalizeCspViolationReport(report);',
       "logSecurityFailure('csp_report_processing_failed'",
     ],
     'CSP report public endpoint cheap-fail ordering',
@@ -7595,7 +7599,7 @@ function verifyPublicOperationalSignalCheapFail() {
   assertIncludes(
     'src/app/api/csp-report/route.ts',
     [
-      'const getCspViolationLogContext = (violation: CSPViolationDetails) => ({',
+      'const getCspViolationLogContext = (violation: CSPViolationLogDetails) => ({',
       'blockedUriKind: getBlockedUriKind(violation.blockedUri)',
       'directiveCategory: getDirectiveCategory(violation.violatedDirective)',
       "getBoundedSecurityStringContext('blockedUri', violation.blockedUri)",
@@ -7611,9 +7615,23 @@ function verifyPublicOperationalSignalCheapFail() {
       "getBoundedSecurityStringContext('reportUrl', request.headers.get('referer'))",
       "getBoundedSecurityStringContext('requestUrl', request.url)",
       "getBoundedSecurityStringContext('requestIpHash', hashPublicRateLimitValue(getClientIp(request)))",
+      'determineCspViolationSeverity(violation)',
+      'normalizeCspViolationReport(report)',
     ],
     'CSP report bounded failure diagnostics',
   );
+  assertIncludes(
+    'src/lib/security/cspReport.ts',
+    [
+      'export const normalizeCspViolationReport = (value: unknown)',
+      "const report = value['csp-report'];",
+      'if (!isRecord(report)) return null;',
+      "directive.includes('script-src') && /^https?:\\/\\//.test(blockedUri)",
+    ],
+    'CSP report exact envelope and severity boundary',
+  );
+  assert(!read('src/app/api/csp-report/route.ts').includes('determineCSPSeverity(violation: any)'), 'CSP report severity must not accept an untyped report');
+  assert(!read('src/lib/security/cspReport.ts').includes("blockedUri.includes('google')"), 'CSP report severity must not trust a host-name substring');
   assert(!read('src/app/api/csp-report/route.ts').includes('JSON.parse(body);\n        } catch {\n            return new Response(null, { status: 204 });'), 'CSP report must not silently drop malformed JSON reports without diagnostics');
   assert(!read('src/app/api/csp-report/route.ts').includes('body.slice'), 'CSP report malformed JSON diagnostics must not log raw body previews');
   assert(!read('src/app/api/csp-report/route.ts').includes("getBoundedSecurityStringContext('requestIp', getClientIp(request))"), 'CSP report must not log raw request IPs');

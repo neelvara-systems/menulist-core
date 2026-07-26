@@ -7,6 +7,8 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
+import { normalizeOwnerBusinessAssistantMonitorTimestamp } from '@lib/ownerBusinessAssistant/monitorProjection';
+import type { Session } from 'next-auth';
 import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -18,7 +20,7 @@ const QuerySchema = z.object({
 });
 const OWNER_BUSINESS_ASSISTANT_MONITOR_RATE_LIMIT_KEY = 'owner-business-assistant-monitor';
 
-async function checkOwnerBusinessAssistantMonitorRateLimit(session: any) {
+async function checkOwnerBusinessAssistantMonitorRateLimit(session: Session) {
   const rateLimitConfig = getRateLimitForFeature('DATA_READ');
   const userId = session?.uId || session?.user?.id || 'platform';
   const userRateLimitHash = hashPublicRateLimitValue(userId);
@@ -50,14 +52,6 @@ async function checkOwnerBusinessAssistantMonitorRateLimit(session: any) {
       status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
     },
   );
-}
-
-function toIso(value: any): string | null {
-  if (!value) return null;
-  if (typeof value.toDate === 'function') return value.toDate().toISOString();
-  if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
-  if (typeof value === 'string') return value;
-  return null;
 }
 
 function safeNumber(value: unknown): number {
@@ -129,7 +123,7 @@ function serializeFeedbackDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     answerId: getOptionalMonitorIdentifierSummary('answerId', data.answerId),
     rating: getFeedbackRatingLabel(data.rating),
     reason: getOptionalMonitorTextSummary('Feedback reason', data.reason || data.comment || data.message || data.text),
-    createdAt: toIso(data.createdAt),
+    createdAt: normalizeOwnerBusinessAssistantMonitorTimestamp(data.createdAt),
   };
 }
 
@@ -153,7 +147,7 @@ function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     cacheSource: data.cacheSource ? String(data.cacheSource) : null,
     packetProfile: data.packetProfile ? String(data.packetProfile) : null,
     packetAgeMinutes: data.packetAgeMinutes == null ? null : safeNumber(data.packetAgeMinutes),
-    packetValidUntil: toIso(data.packetValidUntil),
+    packetValidUntil: normalizeOwnerBusinessAssistantMonitorTimestamp(data.packetValidUntil),
     route: data.route ? String(data.route) : null,
     firestoreReadCount: data.firestoreReadCount == null ? null : safeNumber(data.firestoreReadCount),
     firestoreWriteCount: data.firestoreWriteCount == null ? null : safeNumber(data.firestoreWriteCount),
@@ -175,7 +169,7 @@ function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     realCostPaise: safeNumber(data.realCostPaise),
     ownerChargePaise: safeNumber(data.ownerChargePaise),
     billingMode: String(data.billingMode || 'free'),
-    createdAt: toIso(data.createdAt),
+    createdAt: normalizeOwnerBusinessAssistantMonitorTimestamp(data.createdAt),
   };
 }
 
@@ -248,7 +242,7 @@ function buildSummary(events: ReturnType<typeof serializeDoc>[]) {
   };
 }
 
-export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
+export const GET = withPlatformAuth(async (request: NextRequest, session: Session) => {
   let failureContext: Record<string, boolean | number | string | null | undefined> = {
     route: '/api/platform/owner-business-assistant/monitor',
     ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),

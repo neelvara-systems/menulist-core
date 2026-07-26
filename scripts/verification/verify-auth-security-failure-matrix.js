@@ -2124,19 +2124,11 @@ assertIncludes(
 );
 assertIncludes(
     databaseLoggerDiagnostics,
-    'sourceErrorName: getDatabaseLoggerErrorName(error)',
-    'Database logger diagnostics must log source error names only.',
+    '...getBoundedErrorLogContext(error)',
+    'Database logger diagnostics must use the non-coercing error metadata projector.',
 );
-assertIncludes(
-    databaseLoggerDiagnostics,
-    'sourceErrorCode: getDatabaseLoggerErrorCode(error)',
-    'Database logger diagnostics must log bounded source error codes only.',
-);
-assertIncludes(
-    databaseLoggerDiagnostics,
-    'sourceStatusCode: getDatabaseLoggerErrorStatus(error)',
-    'Database logger diagnostics must log numeric source status only.',
-);
+assert(!databaseLoggerDiagnostics.includes('String(code)'), 'Database logger diagnostics must not coerce unknown error codes.');
+assert(!databaseLoggerDiagnostics.includes('Number(statusValue)'), 'Database logger diagnostics must not coerce unknown error status values.');
 assert(!/\bconsole\./.test(databaseLoggerDiagnostics), 'Database logger diagnostics must not direct-console failures.');
 [
     ['database operation logger', databaseOperationLogger],
@@ -2148,6 +2140,10 @@ assert(!/\bconsole\./.test(databaseLoggerDiagnostics), 'Database logger diagnost
 });
 assertIncludes(databaseOperationLogger, 'payloadKeyCount: getObjectKeyCount(payload)', 'Database operation logger must log payload key counts only.');
 assertIncludes(databaseOperationLogger, 'resultKeyCount: getObjectKeyCount(result)', 'Database operation logger must log result key counts only.');
+assertIncludes(databaseOperationLogger, 'payload?: unknown', 'Database operation logger payload must retain its runtime-unknown boundary.');
+assertIncludes(databaseOperationLogger, 'result: unknown', 'Database operation logger result must retain its runtime-unknown boundary.');
+assertIncludes(databaseOperationLogger, 'operationStats: OperationStats[]', 'Database operation stats sink must be explicitly typed.');
+assert(!databaseOperationLogger.includes('?: any'), 'Database operation logger must not erase optional runtime values.');
 assert(!databaseOperationLogger.includes('Object.keys(payload'), 'Database operation logger must not log payload key names.');
 assert(!databaseOperationLogger.includes('Object.keys(result'), 'Database operation logger must not log result key names.');
 assertIncludes(applicationLogger, "logDatabaseLoggerFailure('application_log_write_failed'", 'Application logger must securely log write failures.');

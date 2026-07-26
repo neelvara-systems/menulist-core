@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { GenerateContentResponse, Modality } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
+import { normalizeGeneratedImagesFromProvider } from "@lib/ai/generatedImageOutput";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
@@ -57,7 +58,7 @@ async function editImageViaFlash(
         const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage, {
             storageScope: referenceImageStorageScope,
         });
-        let promptImagesBase64Data: { base64: string; mimeType: string }[] = [];
+        const promptImagesBase64Data: { base64: string; mimeType: string }[] = [];
         if (generationConfig.promptImages && generationConfig.promptImages.length > 0) {
             for (const promptImage of generationConfig.promptImages) {
                 const { base64ImageData, mimeType } = await getImageAsBase64(promptImage, {
@@ -78,16 +79,7 @@ async function editImageViaFlash(
                 responseModalities: [Modality.TEXT, Modality.IMAGE],
             },
         });
-        let genratedImages: { base64: string; mimeType: string }[] = [];
-        if (response.candidates && response.candidates.length > 0 && response.candidates[0].content && response.candidates[0].content.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    const base64Image = part.inlineData.data;
-                    const mimeType = `image/${part.inlineData.mimeType.split('/').pop()}`; // Extract extension
-                    genratedImages.push({ base64: base64Image, mimeType });
-                }
-            }
-        }
+        const genratedImages = normalizeGeneratedImagesFromProvider(response);
         return { images: genratedImages, response };
     } catch (error) {
         logAIRouteFailure('image_editing_flash_failed', error, {
@@ -227,7 +219,7 @@ export const POST = withAuth(async (request, session) => {
         }
         generationConfig.prompt = generatedPrompt;
         const promptImages = (generationConfig.promptImages || []).filter((image): image is UserUploadedFileType => Boolean(image?.url));
-        let imageEditGemeiniResponse = await editImageViaFlash({
+        const imageEditGemeiniResponse = await editImageViaFlash({
             ...generationConfig,
             promptImages,
         }, {

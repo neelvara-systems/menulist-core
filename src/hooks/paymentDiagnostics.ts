@@ -1,4 +1,5 @@
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 
 type PaymentLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -6,12 +7,7 @@ export const getBoundedPaymentStringContext = (
     label: string,
     value: unknown,
 ): PaymentLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getPaymentErrorName = (error: unknown): string | undefined => {

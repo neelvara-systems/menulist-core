@@ -52,6 +52,36 @@ async function run(): Promise<void> {
     });
     assert.deepEqual(success, { effectsPending: false, failedEffectCount: 0, firstError: null });
 
+    const syncFailure = new Error('next cache rejected tag');
+    const syncAttempted: string[] = [];
+    const syncResult = await runStorePublicTruthPostCommitEffects({
+        chunkSize: 1,
+        storeIds: ['151'],
+        tenantId: '55',
+        deps: {
+            invalidateAssistant: async (storeId) => {
+                syncAttempted.push(`assistant:${storeId}`);
+            },
+            revalidate: (tag) => {
+                syncAttempted.push(`cache:${tag}`);
+                if (tag === 'menu-store-151') throw syncFailure;
+            },
+            touchScreen: async (storeId) => {
+                syncAttempted.push(`screen:${storeId}`);
+            },
+        },
+    });
+    assert.equal(syncResult.effectsPending, true);
+    assert.equal(syncResult.firstError, syncFailure);
+    assert.deepEqual(syncAttempted, [
+        'cache:menu-store-151',
+        'cache:store-151',
+        'screen:151',
+        'assistant:151',
+        'cache:client-stores',
+        'cache:screen-data',
+    ], 'a synchronous Next cache failure must not skip later public-truth effects');
+
     const brandTags: string[] = [];
     await runStorePublicTruthPostCommitEffects({
         chunkSize: 20,

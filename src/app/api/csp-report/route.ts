@@ -13,6 +13,11 @@ import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedTextBody } from '@lib/security/boundedRequestBody';
+import {
+    CSPViolationDetails,
+    determineCspViolationSeverity,
+    normalizeCspViolationReport,
+} from '@lib/security/cspReport';
 import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from '@lib/security/securityDiagnostics';
 import { NextRequest } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -24,23 +29,7 @@ const MAX_CSP_REPORT_JSON_PARSE_DIAGNOSTICS = 25;
 
 const reportedCspReportJsonParseFailures = new Set<string>();
 
-interface CSPReport {
-    'csp-report': {
-        'blocked-uri'?: string;
-        'violated-directive'?: string;
-        'original-policy'?: string;
-        'source-file'?: string;
-        'line-number'?: number;
-        'column-number'?: number;
-    };
-}
-
-type CSPViolationDetails = {
-    blockedUri?: string;
-    violatedDirective?: string;
-    sourceFile?: string;
-    lineNumber?: number;
-    columnNumber?: number;
+type CSPViolationLogDetails = CSPViolationDetails & {
     userAgent?: string;
     reportUrl?: string;
 };
@@ -51,17 +40,10 @@ const getClientIp = (request: NextRequest): string => {
     return request.headers.get('x-real-ip') || request.headers.get('cf-connecting-ip') || 'unknown';
 };
 
-const safeReportField = (value: unknown): string | undefined => {
+const safeRequestField = (value: unknown): string | undefined => {
     if (typeof value !== 'string') return undefined;
-    const normalized = value.replace(/[\r\n\t]/g, ' ').trim();
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
     return normalized ? normalized.slice(0, CSP_REPORT_FIELD_MAX_LENGTH) : undefined;
-};
-
-const safeReportNumber = (value: unknown): number | undefined => {
-    const numberValue = Number(value);
-    return Number.isSafeInteger(numberValue) && numberValue >= 0 && numberValue <= 1_000_000
-        ? numberValue
-        : undefined;
 };
 
 const getDirectiveCategory = (directive: unknown): string => {
@@ -89,7 +71,7 @@ const getBlockedUriKind = (blockedUri: unknown): string => {
     return 'other';
 };
 
-const getCspViolationLogContext = (violation: CSPViolationDetails) => ({
+const getCspViolationLogContext = (violation: CSPViolationLogDetails) => ({
     blockedUriKind: getBlockedUriKind(violation.blockedUri),
     columnNumber: violation.columnNumber,
     directiveCategory: getDirectiveCategory(violation.violatedDirective),
@@ -169,7 +151,7 @@ export async function POST(request: NextRequest) {
         }
         const body = bodyResult.body;
 
-        let report: CSPReport;
+        let report: unknown;
         try {
             report = JSON.parse(body);
         } catch (parseError) {
@@ -181,22 +163,17 @@ export async function POST(request: NextRequest) {
             }
             return new Response(null, { status: 204 });
         }
-        const cspReport = report['csp-report'];
-
-        if (!cspReport) {
+        const normalizedReport = normalizeCspViolationReport(report);
+        if (!normalizedReport) {
             return new Response('Invalid report format', { status: 400 });
         }
 
         // Extract violation details
         const violation = {
-            blockedUri: safeReportField(cspReport['blocked-uri']),
-            violatedDirective: safeReportField(cspReport['violated-directive']),
-            sourceFile: safeReportField(cspReport['source-file']),
-            lineNumber: safeReportNumber(cspReport['line-number']),
-            columnNumber: safeReportNumber(cspReport['column-number']),
-            userAgent: safeReportField(request.headers.get('user-agent')),
+            ...normalizedReport,
+            userAgent: safeRequestField(request.headers.get('user-agent')),
             // Add URL context
-            reportUrl: safeReportField(request.headers.get('referer')) || 'unknown',
+            reportUrl: safeRequestField(request.headers.get('referer')) || 'unknown',
         };
 
         // 🚨 SECURITY LOGGING
@@ -205,7 +182,7 @@ export async function POST(request: NextRequest) {
             // See: src/app/layout.tsx for client-side CSP violation monitoring
         } else {
             // In production: Log to Sentry
-            const severity = determineCSPSeverity(violation);
+            const severity = determineCspViolationSeverity(violation);
             logger.security('CSP Violation Detected', getCspViolationLogContext(violation), severity);
         }
 
@@ -220,35 +197,4 @@ export async function POST(request: NextRequest) {
         });
         return new Response('Internal Server Error', { status: 500 });
     }
-}
-
-/**
- * Determine severity of CSP violation based on type
- */
-function determineCSPSeverity(violation: any): 'low' | 'medium' | 'high' | 'critical' {
-    const directive = violation.violatedDirective || '';
-    const blockedUri = violation.blockedUri || '';
-
-    // Critical: eval() or inline scripts trying to execute
-    if (directive.includes('script-src') && (blockedUri === 'eval' || blockedUri === 'inline')) {
-        return 'high';
-    }
-
-    // High: Unknown external scripts
-    if (directive.includes('script-src') && blockedUri.startsWith('http') && !blockedUri.includes('google')) {
-        return 'high';
-    }
-
-    // Medium: Style violations (less dangerous)
-    if (directive.includes('style-src')) {
-        return 'low';
-    }
-
-    // Medium: Known safe violations (fonts, images)
-    if (directive.includes('font-src') || directive.includes('img-src')) {
-        return 'low';
-    }
-
-    // Default
-    return 'medium';
 }

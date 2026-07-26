@@ -620,6 +620,8 @@ assert.doesNotMatch(platformMonitorRoute, /actionOptionCount/);
 assert.match(platformMonitorRoute, /owner_business_assistant_monitor_route_failed/);
 assert.match(platformMonitorRoute, /logRuntimeFailure/);
 assert.match(platformMonitorRoute, /getBoundedRuntimeStringContext\('requestPath', request\.nextUrl\.pathname\)/);
+assert.match(platformMonitorRoute, /normalizeOwnerBusinessAssistantMonitorTimestamp/);
+assert.doesNotMatch(platformMonitorRoute, /function toIso\(value: any\)/);
 assert.doesNotMatch(platformMonitorRoute, /secureError\('\[OwnerBusinessAssistantMonitor\] Failed to load monitor data'/);
 
 const currentRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/current/route.ts'), 'utf8');

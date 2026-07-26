@@ -968,8 +968,11 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(clientScreenInvalidation, '} while (entry.rerunRequested);', 'Browser screen invalidation trailing touch loop');
   assertIncludes(clientScreenInvalidation, 'if (pendingScreenTouches.get(normalizedStoreId) === entry)', 'Browser screen invalidation pending entry identity-safe cleanup');
   assertNotIncludes(clientScreenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'Browser screen invalidation must not collapse later writes into a single promise');
-  assertIncludes(revalidateAction, "revalidateTag('screen-data', { expire: 0 })", 'Canonical menu cache revalidation must refresh digital screen SSR data');
-  assertIncludes(revalidateAction, "touchDigitalScreenContentVersionForStoreServer(storeId, 'revalidateMenuCache')", 'Canonical menu cache revalidation must wake live digital screens');
+  assertIncludes(revalidateAction, 'runStorePublicTruthPostCommitEffects({', 'Canonical menu cache revalidation must independently settle every public-truth effect');
+  assertIncludes(revalidateAction, 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })', 'Canonical menu cache revalidation must delegate every cache tag with immediate Next 16 expiry');
+  assertIncludes(revalidateAction, 'touchDigitalScreenContentVersionForStoreServer(', 'Canonical menu cache revalidation must wake live digital screens');
+  assertIncludes(revalidateAction, 'if (postCommit.effectsPending)', 'Canonical menu cache revalidation must expose aggregate effect failure to its callers');
+  assertIncludes(revalidateAction, 'throw postCommit.firstError', 'Canonical menu cache revalidation must preserve the original cache failure after all effects settle');
   assertIncludes(serverScreenInvalidation, 'FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED', 'Server screen invalidation feature flag guard');
   assertIncludes(serverScreenInvalidation, "doc(`campaigns_${normalizedStoreId}`)", 'Server screen invalidation canonical screen state read');
   assertIncludes(serverScreenInvalidation, 'if (!screen?.screenToken) return;', 'Server screen invalidation must not create partial screen state');

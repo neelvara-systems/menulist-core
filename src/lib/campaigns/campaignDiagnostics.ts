@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 
 export type CampaignLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -6,12 +7,7 @@ export const getBoundedCampaignStringContext = (
     label: string,
     value: unknown,
 ): CampaignLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getCampaignErrorName = (error: unknown): string | undefined => {

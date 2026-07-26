@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 
 type FirebaseAdminLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -38,12 +39,7 @@ export const getBoundedFirebaseAdminStringContext = (
     label: string,
     value: unknown,
 ): FirebaseAdminLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const logFirebaseAdminDiagnostic = (

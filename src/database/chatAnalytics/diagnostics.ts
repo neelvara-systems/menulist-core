@@ -1,4 +1,5 @@
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 
 type ChatAnalyticsLogContext = Record<string, boolean | number | string | undefined>;
 
@@ -11,12 +12,7 @@ export const getBoundedChatAnalyticsStringContext = (
     label: string,
     value: unknown,
 ): ChatAnalyticsLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getChatAnalyticsErrorName = (error: unknown): string | undefined => {

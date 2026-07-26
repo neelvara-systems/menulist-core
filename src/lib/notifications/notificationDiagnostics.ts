@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 
 type NotificationLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -15,12 +16,7 @@ export const getBoundedNotificationStringContext = (
     label: string,
     value: unknown,
 ): NotificationLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const getNotificationPayloadLogContext = (

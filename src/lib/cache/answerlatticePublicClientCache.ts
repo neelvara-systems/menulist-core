@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import type { AnswerlatticePublicCacheSegment } from '@lib/actions/revalidateAnswerlatticePublicCache';
 import { secureError } from '@lib/security/secureLogger';
 
@@ -35,12 +36,7 @@ const getBoundedAnswerlatticePublicCacheStringContext = (
     label: string,
     value: unknown,
 ) => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const logAnswerlatticePublicClientCacheFailure = (

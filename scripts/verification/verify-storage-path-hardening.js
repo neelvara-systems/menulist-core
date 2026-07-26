@@ -20,6 +20,43 @@ function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
+const storageDeleteHelper = read('src/database/storage/deleteFromStorage.ts');
+const legacyBlobUploadHelper = read('src/database/storage/uploadBlobFileToStorage.ts');
+const legacyFontUploadHelper = read('src/database/storage/uploadFontToStorage.ts');
+const legacyJsonUploadHelper = read('src/database/storage/uploadJSONToStorage.ts');
+assert(
+  storageDeleteHelper.includes('normalizeStorageDeleteTarget(url)'),
+  'Storage delete helper must reject malformed runtime targets before Firebase reference construction',
+);
+assert(
+  storageDeleteHelper.includes('normalizeStorageDeleteErrorCode(error)'),
+  'Storage delete helper must project provider error codes into its declared response contract',
+);
+assert(
+  storageDeleteHelper.includes('catch (error: unknown)'),
+  'Storage delete helper must not erase provider failures with any',
+);
+assert(
+  !storageDeleteHelper.includes('catch (error: any)'),
+  'Storage delete helper must not restore an any-typed provider failure',
+);
+[
+  ['blob', legacyBlobUploadHelper, 'normalizePlatformAssetBlob(fileData.url)'],
+  ['font', legacyFontUploadHelper, 'normalizeFontUploadBytes(data.file)'],
+  ['JSON', legacyJsonUploadHelper, 'serializeBoundedStorageJson(jsonData.data)'],
+].forEach(([label, source, token]) => {
+  assert(source.includes(token), `${label} legacy Storage helper must use its runtime upload boundary`);
+  assert(!source.includes(': any'), `${label} legacy Storage helper must not restore any-typed input`);
+});
+assert(
+  legacyBlobUploadHelper.includes('contentType: upload.contentType'),
+  'Blob legacy Storage helper must preserve validated content type instead of relabeling every file as JPEG',
+);
+assert(
+  legacyJsonUploadHelper.includes('{ contentType: "application/json" }'),
+  'JSON legacy Storage helper must persist exact JSON metadata',
+);
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -631,12 +668,20 @@ assert(
 );
 
 assert(
-  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:admin-immutable-object-boundary && npm run test:note-attachment-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',
+  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary && npm run test:storage-delete-boundary && npm run test:legacy-storage-upload-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:admin-immutable-object-boundary && npm run test:note-attachment-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',
   'package.json exposes verify:storage-paths',
 );
 assert(
   packageJson.scripts?.['test:storage-path-boundary'] === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/test-storage-path-boundary.ts',
   'package.json exposes the executable Storage path regression',
+);
+assert(
+  packageJson.scripts?.['test:storage-delete-boundary']?.includes('scripts/verification/test-storage-delete-boundary.ts'),
+  'package.json exposes the Storage delete response regression',
+);
+assert(
+  packageJson.scripts?.['test:legacy-storage-upload-boundary']?.includes('scripts/verification/test-legacy-storage-upload-boundary.ts'),
+  'package.json exposes the legacy Storage upload regression',
 );
 assert(
   packageJson.scripts?.['test:storage-replacement-boundary']?.includes('scripts/verification/test-storage-replacement-boundary.ts'),

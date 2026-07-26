@@ -13,6 +13,7 @@ import {
 } from "@lib/firebase/firebaseAdminDiagnostics";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { buildPlatformBlockDetails } from "@lib/platform/entityBlock";
+import { buildPlatformEntityBlockAcknowledgement } from "@lib/platform/entityBlockAcknowledgement";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -226,7 +227,7 @@ async function updateTenantBlockStateAtomically({
     reason: string;
     session: any;
     tenantScope: PlatformEntityBlockDocumentScope;
-}): Promise<{ affectedStoreIds: string[]; blockDetails: ReturnType<typeof buildPlatformBlockDetails>; entity: Record<string, unknown> }> {
+}): Promise<{ affectedStoreIds: string[]; blockDetails: ReturnType<typeof buildPlatformBlockDetails> }> {
     const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
     const storeQueries = getTenantStoreQueryValues(tenantScope).flatMap((tenantQueryValue) => (
         TENANT_STORE_SCOPE_FIELDS.map((field) => db
@@ -303,7 +304,6 @@ async function updateTenantBlockStateAtomically({
         return {
             affectedStoreIds,
             blockDetails,
-            entity: { ...tenant, id: tenantSnap.id },
         };
     });
 }
@@ -579,10 +579,12 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 effectsPending: postCommit.effectsPending,
                 failedEffectCount: postCommit.failedEffectCount,
                 entity: {
-                    ...result.entity,
-                    tenantId,
-                    blocked,
-                    blockDetails: result.blockDetails,
+                    ...buildPlatformEntityBlockAcknowledgement({
+                        blocked,
+                        blockDetails: result.blockDetails,
+                        entityId: tenantId,
+                        entityType: 'tenant',
+                    }),
                 },
                 success: true,
             });
@@ -645,7 +647,6 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 }, { merge: true });
                 return {
                     blockDetails,
-                    entity: { ...freshStore, id: freshStoreSnap.id },
                     modifiedOn,
                     tenantDocumentId: tenantScope?.documentId,
                 };
@@ -678,11 +679,12 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 effectsPending: postCommit.effectsPending,
                 failedEffectCount: postCommit.failedEffectCount,
                 entity: {
-                    ...result.entity,
-                    storeId,
-                    blocked,
-                    blockDetails: result.blockDetails,
-                    modifiedOn: result.modifiedOn,
+                    ...buildPlatformEntityBlockAcknowledgement({
+                        blocked,
+                        blockDetails: result.blockDetails,
+                        entityId: storeId,
+                        entityType: 'store',
+                    }),
                 },
                 success: true,
             });
@@ -786,12 +788,12 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({
             entity: {
-                ...reconciled.entity,
-                authDisabled: reconciled.authDisabled,
-                authSynced: reconciled.authSynced,
-                blocked,
-                blockDetails: started.blockDetails,
-                modifiedOn: started.modifiedOn,
+                ...buildPlatformEntityBlockAcknowledgement({
+                    blocked,
+                    blockDetails: started.blockDetails,
+                    entityId: entityScope.documentId,
+                    entityType: 'user',
+                }),
             },
             success: true,
         });

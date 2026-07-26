@@ -1,4 +1,5 @@
 import { secureError, secureLog } from '@lib/security/secureLogger';
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 
 export type ProjectPersistenceLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -6,12 +7,7 @@ export const getBoundedProjectPersistenceStringContext = (
     label: string,
     value: unknown,
 ): ProjectPersistenceLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const getProjectPersistenceProjectLogContext = (

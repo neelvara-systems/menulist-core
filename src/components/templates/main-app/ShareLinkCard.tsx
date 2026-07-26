@@ -1,5 +1,6 @@
 'use client';
 
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { secureError } from '@lib/security/secureLogger';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
@@ -70,12 +71,7 @@ const copyShareLinkCardTextToClipboard = async (
 };
 
 const getBoundedShareLinkStringContext = (label: string, value: unknown): ShareLinkCardLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getShareLinkErrorName = (error: unknown): string | undefined => {

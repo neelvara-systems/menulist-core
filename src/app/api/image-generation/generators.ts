@@ -8,8 +8,9 @@
  * - Gemini 2.5 Flash Image: Production image generation and editing path.
  */
 
-import { GenerateContentResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
+import { ContentListUnion, GenerateContentResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
 import { GEMINI_MODELS } from "@constant/AI/models";
+import { normalizeGeneratedImagesFromProvider } from "@lib/ai/generatedImageOutput";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
@@ -85,7 +86,7 @@ export async function generateGeminiImageViaFlash(
 ): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null> {
     try {
         logger.info('Image generation started (Gemini Flash)', { promptLength: prompt.length });
-        let contents: any = `${SYSTEM_INSTRUCTION}\n\n${prompt}\n\nDo not include any text in image unless specifically requested.`;
+        let contents: ContentListUnion = `${SYSTEM_INSTRUCTION}\n\n${prompt}\n\nDo not include any text in image unless specifically requested.`;
         if (generationConfig.referanceImage) {
             const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage, {
                 storageScope: options.referenceImageStorageScope,
@@ -110,16 +111,7 @@ export async function generateGeminiImageViaFlash(
             },
         });
 
-        let generatedImages: { base64: string; mimeType: string }[] = [];
-        if (response.candidates && response.candidates.length > 0 && response.candidates[0].content && response.candidates[0].content.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    const base64Image = part.inlineData.data;
-                    const mimeType = `image/${part.inlineData.mimeType.split('/').pop()}`;
-                    generatedImages.push({ base64: base64Image, mimeType });
-                }
-            }
-        }
+        const generatedImages = normalizeGeneratedImagesFromProvider(response);
 
         logger.info('Image generation completed (Gemini Flash)', { imageCount: generatedImages.length });
         await writeLogEntry({

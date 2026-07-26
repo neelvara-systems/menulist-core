@@ -189,7 +189,6 @@ export default function EntityBlockSettings() {
                 try {
                     const updated = await updatePlatformEntityBlockState({
                         blocked: nextBlockedState,
-                        entity: selectedEntity,
                         entityId: selectedEntityId,
                         entityType,
                         reason: trimmedReason,
@@ -197,7 +196,6 @@ export default function EntityBlockSettings() {
                     updateLocalEntity({
                         ...selectedEntity,
                         ...updated,
-                        blocked: nextBlockedState,
                     });
                     setReason('');
                     message.success(nextBlockedState ? 'Entity blocked' : 'Entity unblocked');

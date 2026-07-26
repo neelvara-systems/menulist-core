@@ -1,17 +1,16 @@
 import type { PlatformBlockEntityType } from '@type/platform/blocking';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import {
+    parsePlatformEntityBlockAcknowledgement,
+    type PlatformEntityBlockAcknowledgement,
+} from '@lib/platform/entityBlockAcknowledgement';
 
 export const PLATFORM_ENTITY_BLOCK_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 export const PLATFORM_ENTITY_BLOCK_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
     cache: 'no-store',
     credentials: 'same-origin',
     redirect: 'manual',
-};
-
-type PlatformEntityBlockResponse = {
-    entity: Record<string, any>;
-    success: true;
 };
 
 type PlatformEntityBlockClientError = Error & {
@@ -21,33 +20,23 @@ type PlatformEntityBlockClientError = Error & {
 
 const PLATFORM_ENTITY_BLOCK_FAILED_MESSAGE = 'Could not update block status';
 
-const isRecord = (value: unknown): value is Record<string, any> => (
+const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const getResponseEntityId = (
-    entityType: PlatformBlockEntityType,
-    entity: Record<string, any>,
-): unknown => {
-    if (entityType === 'tenant') return entity.tenantId;
-    if (entityType === 'store') return entity.storeId;
-    return entity.id;
-};
-
-const isPlatformEntityBlockResponse = (
+const parsePlatformEntityBlockResponse = (
     value: unknown,
     expected: {
         blocked: boolean;
         entityId: string | number;
         entityType: PlatformBlockEntityType;
     },
-): value is PlatformEntityBlockResponse => {
+): PlatformEntityBlockAcknowledgement | null => {
     if (!isRecord(value) || value.success !== true || !isRecord(value.entity)) {
-        return false;
+        return null;
     }
 
-    return value.entity.blocked === expected.blocked
-        && String(getResponseEntityId(expected.entityType, value.entity)) === String(expected.entityId);
+    return parsePlatformEntityBlockAcknowledgement(value.entity, expected);
 };
 
 const getPlatformEntityBlockResponseContext = ({
@@ -107,13 +96,11 @@ async function readPlatformEntityBlockResponseJson(
 
 export async function updatePlatformEntityBlockState({
     blocked,
-    entity,
     entityId,
     entityType,
     reason,
 }: {
     blocked: boolean;
-    entity?: any;
     entityId: string | number;
     entityType: PlatformBlockEntityType;
     reason: string;
@@ -122,7 +109,6 @@ export async function updatePlatformEntityBlockState({
         ...PLATFORM_ENTITY_BLOCK_REQUEST_POLICY,
         body: JSON.stringify({
             blocked,
-            entity,
             entityId,
             entityType,
             reason,
@@ -153,7 +139,8 @@ export async function updatePlatformEntityBlockState({
         throw error;
     }
 
-    if (!isPlatformEntityBlockResponse(payload, responseContext)) {
+    const entity = parsePlatformEntityBlockResponse(payload, responseContext);
+    if (!entity) {
         const error = createPlatformEntityBlockError(response, 'PLATFORM_ENTITY_BLOCK_RESPONSE_INVALID');
         logRuntimeFailure(
             'platform_entity_block_response_invalid',
@@ -166,5 +153,5 @@ export async function updatePlatformEntityBlockState({
         throw error;
     }
 
-    return payload.entity;
+    return entity;
 }

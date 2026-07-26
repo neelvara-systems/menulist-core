@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 import { createRuntimeUuid } from '@lib/runtime/randomId';
 
@@ -50,12 +51,7 @@ export const getBoundedResellerStringContext = (
     label: string,
     value: unknown,
 ): ResellerLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const hasResellerClipboardWrite = (): boolean => (

@@ -32,7 +32,8 @@ export function resolveNextSpecialMenuTransitionAt(
             project.active === false
             || project.deleted === true
             || project.isSpecialMenu !== true
-            || !ACTIVE_SPECIAL_MENU_STATUSES.has(String(project.specialMenuStatus || ''))
+            || typeof project.specialMenuStatus !== 'string'
+            || !ACTIVE_SPECIAL_MENU_STATUSES.has(project.specialMenuStatus)
         ) {
             continue;
         }

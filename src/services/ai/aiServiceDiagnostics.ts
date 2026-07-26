@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
@@ -26,12 +27,7 @@ export const getBoundedAiServiceStringContext = (
     label: string,
     value: unknown,
 ): AiServiceLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getAiServiceErrorName = (error: unknown): string | undefined => {

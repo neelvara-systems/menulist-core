@@ -1,3 +1,4 @@
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 
 type PublicFeedbackLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -6,12 +7,7 @@ export const getBoundedPublicFeedbackStringContext = (
     label: string,
     value: unknown,
 ): PublicFeedbackLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getPublicFeedbackErrorName = (error: unknown): string | undefined => {

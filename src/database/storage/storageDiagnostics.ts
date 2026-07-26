@@ -1,4 +1,5 @@
 import { secureError } from "@lib/security/secureLogger";
+import { getBoundedLogValueContext } from "@lib/monitoring/boundedLogContext";
 
 const getLogErrorName = (error: unknown): string => (
     error instanceof Error ? error.name : typeof error
@@ -14,11 +15,10 @@ export const getBoundedStringLogContext = (
     label: string,
     value: unknown,
 ): Record<string, unknown> => {
-    const normalized = String(value ?? "").trim();
-    return {
-        [`${label}Present`]: Boolean(normalized),
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(
+        label,
+        typeof value === "string" ? value.trim() : value,
+    );
 };
 
 export const logStorageHelperFailure = (

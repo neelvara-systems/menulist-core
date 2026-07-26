@@ -1,5 +1,6 @@
 'use client';
 
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { secureError } from '@lib/security/secureLogger';
 import type { IngestionJobCategoriesMap } from '@type/knowledgeBase';
@@ -14,12 +15,7 @@ const getBoundedFirebaseCallableStringContext = (
     label: string,
     value: unknown,
 ): FirebaseCallableLogContext => {
-    const normalized = value === undefined || value === null ? '' : String(value);
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 const getFirebaseCallableErrorName = (error: unknown): string | undefined => {

@@ -8,10 +8,11 @@ import {
   type OwnerBusinessAssistantMonitorEvent,
 } from '@lib/ownerBusinessAssistant/clientResponses';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -30,19 +31,28 @@ const formatTimestamp = (value?: string | null) => {
 
 export default function OwnerBusinessAssistantMonitor() {
   const { data: session, status } = useSession();
-  const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+  const platformRole = session?.platformRole || session?.user?.platformRole;
   const isPlatform = platformRole === 'PLATFORM';
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<OwnerBusinessAssistantMonitorData | null>(null);
+  const isMountedRef = useRef(true);
+  const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+  if (!requestGuardRef.current) requestGuardRef.current = createLatestRequestGuard();
 
   if (status !== 'loading' && session && !isPlatform) {
     redirect('/dashboard');
   }
 
   const loadData = useCallback(async () => {
+    const requestGuard = requestGuardRef.current;
+    if (!requestGuard) return;
+    const requestId = requestGuard.begin();
     if (status === 'loading') return;
     if (!isPlatform) {
-      setLoading(false);
+      if (isMountedRef.current && requestGuard.isCurrent(requestId)) {
+        setData(null);
+        setLoading(false);
+      }
       return;
     }
     setLoading(true);
@@ -54,16 +64,28 @@ export default function OwnerBusinessAssistantMonitor() {
         limit: 50,
       });
       if (!payload) throw new Error('owner_business_assistant_monitor_load_unavailable');
+      if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;
       setData(payload.data);
     } catch (error) {
+      if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;
       logRuntimeFailure('owner_business_assistant_monitor_load_failed', error, {
         ...getBoundedRuntimeStringContext('limit', 50),
       });
       message.error('Failed to load Business Health monitor');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && requestGuard.isCurrent(requestId)) {
+        setLoading(false);
+      }
     }
   }, [isPlatform, status]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      requestGuardRef.current?.invalidate();
+    };
+  }, []);
 
   useEffect(() => {
     void loadData();

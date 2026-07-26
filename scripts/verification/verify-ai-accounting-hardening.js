@@ -210,6 +210,8 @@ for (const route of billableRoutes) {
   assert(!batchWorker.includes('logType: \'BATCH_GENERATION_IMAGE_GEN_STARTED\',\n            data: {\n                generationConfig: sanitizeImageGenerationConfigForLogging'), 'batch worker start logs must not write raw generation config payloads');
 
   const singleImageRoute = read('src/app/api/image-generation/route.ts');
+  const generatedImageOutput = read('src/lib/ai/generatedImageOutput.ts');
+  const imageGenerators = read('src/app/api/image-generation/generators.ts');
   const singleImageTransactionStart = singleImageRoute.indexOf('// Update the transaction object with calculated values and other details');
   const singleImageTransactionEnd = singleImageRoute.indexOf('// Add the operation to the database', singleImageTransactionStart);
   const singleImageTransactionInput = singleImageRoute.slice(singleImageTransactionStart, singleImageTransactionEnd);
@@ -233,6 +235,24 @@ for (const route of billableRoutes) {
   assert(!singleImageTransactionInput.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), 'single image generation AI accounting input must not persist raw generation config');
   assert(!singleImageRoute.includes('transaction: transactionObject'), 'single image generation local logs must not write full transaction objects');
   assert(!singleImageRoute.includes('data: transactionObject'), 'single image generation local error logs must not write full transaction objects');
+  [
+    'normalizeGeneratedImagesFromProvider(response)',
+    'let contents: ContentListUnion',
+  ].forEach((token) => {
+    assert(imageGenerators.includes(token), `shared image provider runner uses exact output/input token ${token}`);
+  });
+  [
+    'GENERATED_IMAGE_MAX_BYTES = 15 * 1024 * 1024',
+    'GENERATED_IMAGE_MAX_COUNT = 4',
+    'normalizeMediaUploadMimeType(inlineData.mimeType)',
+    'getBase64DecodedSize(base64)',
+    'validateMagicBytes(exactArrayBuffer, mimeType).valid',
+    'export const normalizeGeneratedImagesFromProvider',
+  ].forEach((token) => {
+    assert(generatedImageOutput.includes(token), `generated image provider output boundary includes ${token}`);
+  });
+  assert(!imageGenerators.includes('let contents: any'), 'shared image provider runner must not erase Gemini request input types');
+  assert(!imageGenerators.includes("part.inlineData.mimeType.split('/')"), 'shared image provider runner must not construct an image MIME type from an untrusted suffix');
   assert(!singleImageRoute.includes('request: {\n                    generationConfig:'), 'single image generation local success logs must not write raw request payloads');
   assert(!singleImageRoute.includes('generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),\n                    itemDetails,'), 'single image generation no-image logs must not write raw config/item payloads');
   assert(!singleImageRoute.includes('writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId'), 'single image generation validation local logs must not write raw project IDs into local log fields');
@@ -267,6 +287,8 @@ for (const route of billableRoutes) {
   assert(!imageEditingRoute.includes("logger.debug('Started image edit via flash'"), 'image editing must not debug-log provider-start breadcrumbs');
   assert(!imageEditingRoute.includes("logger.debug('Completed image edit via flash'"), 'image editing must not debug-log provider-complete breadcrumbs');
   assert(!imageEditingRoute.includes("logger.debug('Prompt generated for image edit'"), 'image editing must not debug-log generated-prompt breadcrumbs');
+  assert(imageEditingRoute.includes('normalizeGeneratedImagesFromProvider(response)'), 'image editing must use the exact generated-image provider output boundary');
+  assert(!imageEditingRoute.includes("part.inlineData.mimeType.split('/')"), 'image editing must not construct an image MIME type from an untrusted suffix');
 
   const paidProviderReservationRoutes = [
     ['src/app/api/reviews/suggest/route.ts', 'const result = await model.generateContent({'],
@@ -274,7 +296,7 @@ for (const route of billableRoutes) {
     ['src/app/api/menu-card-export/design-advisor/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/descriptions/route.ts', 'response = await genAIClient.models.generateContent({'],
     ['src/app/api/translations/route.ts', 'response = await genAIClient.models.generateContent({'],
-    ['src/app/api/image-editing/route.ts', 'let imageEditGemeiniResponse = await editImageViaFlash({'],
+    ['src/app/api/image-editing/route.ts', 'const imageEditGemeiniResponse = await editImageViaFlash({'],
     ['src/app/api/image-generation/route.ts', 'const promptRun = await runImageGenerationPrompts({'],
   ];
   for (const [route, providerToken] of paidProviderReservationRoutes) {
