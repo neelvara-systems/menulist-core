@@ -11,6 +11,7 @@ import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import { prepareMediaImage, toPreparedUploadName, type PreparedMediaImage } from "@lib/media/prepareMediaImage";
 import { normalizeOwnerSlideCaption } from "@lib/screen/screenContent";
 import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
+import { screenTimestampToMillis } from "@lib/screen/screenTimestamp";
 import MediaImageCard from "@/components/shared/media/MediaImageCard";
 import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import { ScreenSlide } from "@type/campaigns";
@@ -168,9 +169,10 @@ export default function OwnerUploads({
         }
     };
 
-    const getDaysRemaining = (validUntil?: any): number => {
+    const getDaysRemaining = (validUntil: ScreenSlide["validUntil"]): number => {
         if (!validUntil) return uploadExpiryDays;
-        const expiryMs = validUntil.toMillis ? validUntil.toMillis() : validUntil;
+        const expiryMs = screenTimestampToMillis(validUntil);
+        if (expiryMs === null) return 0;
         const daysMs = expiryMs - Date.now();
         return Math.max(0, Math.ceil(daysMs / (1000 * 60 * 60 * 24)));
     };

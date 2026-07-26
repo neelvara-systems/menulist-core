@@ -2156,7 +2156,7 @@ contains(
     'deleted: false',
     'index: 0',
     "message: ''",
-    'revalidateTag(`menu-store-${result.storeId}`)',
+    'revalidateTag(`menu-store-${result.storeId}`, { expire: 0 })',
   ],
   'Public draft claim validates durable DTOs, supports idempotent owner retry, and writes the standard project file shape',
 );
@@ -3436,7 +3436,7 @@ contains(
 	    'DB_COLLECTIONS.PLATFORM_SUMMARY',
 	    'slug: projectSlug',
 	    'runStorePublicTruthPostCommitEffects({',
-	    'revalidate: revalidateTag',
+	    'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
 	    'touchScreen: () => touchDigitalScreenContentVersionForStoreServer(',
 	    '"messagingOnboardingPublish",',
 	    'invalidateOwnerBusinessAssistantPacketCache({',

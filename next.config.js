@@ -8,7 +8,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const withNextIntl = createNextIntlPlugin();
-const firebaseAdminExternals = [
+const firebaseAdminClientAliases = [
     'firebase-admin',
     'firebase-admin/firestore',
 ];
@@ -119,7 +119,6 @@ const nextConfig = {
         '@serwist/build',
         '@serwist/turbopack',
         'browserslist',
-        'firebase-admin',
     ],
     outputFileTracingExcludes: {
         '*': [
@@ -164,7 +163,10 @@ const nextConfig = {
             ? { exclude: ['error', 'warn', 'info'] }
             : false,
     },
-    transpilePackages: ['antd-mobile', 'pdfjs-dist'],
+    // Firebase Admin 14 pulls jwks-rsa 4, whose CommonJS entry loads ESM-only
+    // jose 6. Bundle that dependency boundary so deployed Turbopack routes do
+    // not fall back to native require() for firebase-admin/auth.
+    transpilePackages: ['antd-mobile', 'firebase-admin', 'pdfjs-dist'],
     turbopack: {
         rules: {
             '*.svg': {
@@ -190,7 +192,6 @@ const nextConfig = {
         if (isServer) {
             config.externals = [
                 ...config.externals,
-                ...firebaseAdminExternals,
                 ...nativeCanvasExternals,
                 '@google-cloud/tasks',
                 'exceljs',
@@ -207,7 +208,7 @@ const nextConfig = {
         if (!isServer) {
             config.resolve.alias = {
                 ...config.resolve.alias,
-                ...Object.fromEntries(firebaseAdminExternals.map((external) => [external, false])),
+                ...Object.fromEntries(firebaseAdminClientAliases.map((external) => [external, false])),
             };
             config.resolve.fallback = {
                 ...config.resolve.fallback,

@@ -1,4 +1,15 @@
-import { ResellerProfile, ResellerTransaction } from "@type/reseller";
+import {
+    isResellerClientsResponse,
+    type ResellerClientRecord,
+} from "@lib/reseller/resellerClientRecord";
+import {
+    isResellerSelfProfile,
+    type ResellerSelfProfile,
+} from "@lib/reseller/resellerSelfProfile";
+import {
+    isResellerMonthlySummary,
+    type ResellerMonthlySummary,
+} from "@lib/reseller/resellerMonthlySummary";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import useSWR from "swr";
 import { logHookFailure } from "./hookDiagnostics";
@@ -7,31 +18,6 @@ import { logHookFailure } from "./hookDiagnostics";
 // Reseller Dashboard — SWR Hooks
 // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md
 // ═══════════════════════════════════════════════════════════════
-
-export type ResellerMonthlySummary = {
-    month: string;
-    resellers: Array<{
-        resellerId: string;
-        resellerName: string;
-        resellerEmail: string;
-        clientCount: number;
-        transactionCount: number;
-        offlineCollectedPaise: number;
-        onlineActivePaise: number;
-        onlinePendingPaise: number;
-        recognizedRevenuePaise: number;
-        totalExpectedPaise: number;
-    }>;
-    totals: {
-        clientCount: number;
-        transactionCount: number;
-        offlineCollectedPaise: number;
-        onlineActivePaise: number;
-        onlinePendingPaise: number;
-        recognizedRevenuePaise: number;
-        totalExpectedPaise: number;
-    };
-};
 
 const RESELLER_DASHBOARD_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 const RESELLER_DASHBOARD_REQUEST_POLICY: RequestInit = {
@@ -46,14 +32,10 @@ type ResellerProfileResponse = {
     profile?: unknown;
 };
 
-type ResellerClientsResponse = {
-    isPartial?: unknown;
-    transactions?: unknown;
-};
-
 type ResellerClientsResult = {
+    invalidRowCount: number;
     isPartial: boolean;
-    transactions: ResellerTransaction[];
+    transactions: ResellerClientRecord[];
 };
 
 const createResellerDashboardResponseError = (
@@ -105,13 +87,9 @@ function logInvalidResellerDashboardResponse(
     );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
 const fetchMonthlySummary = async (): Promise<ResellerMonthlySummary> => {
     const response = await fetch('/api/reseller/monthly-summary', RESELLER_DASHBOARD_REQUEST_POLICY);
-    const data = await readResellerDashboardResponseJson<ResellerMonthlySummary>(
+    const data = await readResellerDashboardResponseJson<unknown>(
         response,
         'monthly_summary',
     );
@@ -122,7 +100,7 @@ const fetchMonthlySummary = async (): Promise<ResellerMonthlySummary> => {
         );
         throw new Error('Failed to load reseller monthly summary');
     }
-    if (!isRecord(data) || !Array.isArray(data.resellers) || !isRecord(data.totals)) {
+    if (!isResellerMonthlySummary(data)) {
         logInvalidResellerDashboardResponse(
             response,
             'monthly_summary',
@@ -133,7 +111,7 @@ const fetchMonthlySummary = async (): Promise<ResellerMonthlySummary> => {
     return data;
 };
 
-const fetchResellerProfile = async (): Promise<ResellerProfile> => {
+const fetchResellerProfile = async (): Promise<ResellerSelfProfile> => {
     const response = await fetch('/api/reseller/profile', RESELLER_DASHBOARD_REQUEST_POLICY);
     const data = await readResellerDashboardResponseJson<ResellerProfileResponse>(
         response,
@@ -146,7 +124,7 @@ const fetchResellerProfile = async (): Promise<ResellerProfile> => {
         );
         throw new Error('Failed to load reseller profile');
     }
-    if (!isRecord(data?.profile)) {
+    if (!isResellerSelfProfile(data?.profile)) {
         logInvalidResellerDashboardResponse(
             response,
             'profile',
@@ -154,12 +132,12 @@ const fetchResellerProfile = async (): Promise<ResellerProfile> => {
         );
         throw new Error('Failed to load reseller profile');
     }
-    return data.profile as unknown as ResellerProfile;
+    return data.profile;
 };
 
 const fetchResellerClients = async (): Promise<ResellerClientsResult> => {
     const response = await fetch('/api/reseller/clients', RESELLER_DASHBOARD_REQUEST_POLICY);
-    const data = await readResellerDashboardResponseJson<ResellerClientsResponse>(
+    const data = await readResellerDashboardResponseJson<unknown>(
         response,
         'clients',
     );
@@ -170,7 +148,7 @@ const fetchResellerClients = async (): Promise<ResellerClientsResult> => {
         );
         throw new Error('Failed to load reseller clients');
     }
-    if (!Array.isArray(data?.transactions) || typeof data?.isPartial !== 'boolean') {
+    if (!isResellerClientsResponse(data)) {
         logInvalidResellerDashboardResponse(
             response,
             'clients',
@@ -179,8 +157,9 @@ const fetchResellerClients = async (): Promise<ResellerClientsResult> => {
         throw new Error('Failed to load reseller clients');
     }
     return {
+        invalidRowCount: data.invalidRowCount,
         isPartial: data.isPartial,
-        transactions: data.transactions as ResellerTransaction[],
+        transactions: data.transactions,
     };
 };
 
@@ -189,7 +168,7 @@ const fetchResellerClients = async (): Promise<ResellerClientsResult> => {
  * Uses SWR for caching and deduplication.
  */
 export function useResellerDashboard(resellerId: string, isPlatform: boolean = false, resellerEmail?: string | null) {
-    const { data: profile, error: profileError, isLoading: profileLoading, mutate: mutateProfile } = useSWR<ResellerProfile | null>(
+    const { data: profile, error: profileError, isLoading: profileLoading, mutate: mutateProfile } = useSWR<ResellerSelfProfile | null>(
         resellerId && !isPlatform ? `reseller-profile-${resellerId}-${resellerEmail || ''}` : null,
         fetchResellerProfile,
         { revalidateOnFocus: false, dedupingInterval: 60000 }
@@ -212,21 +191,17 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         ? Array.from(
             transactions.reduce((byStore, transaction) => {
                 const existing = byStore.get(transaction.storeId);
-                const currentCreatedOn = (transaction.createdOn as any)?.toMillis?.()
-                    || (transaction.createdOn as any)?.toDate?.()?.getTime?.()
-                    || new Date(transaction.createdOn as any).getTime()
-                    || 0;
+                const currentCreatedOn = transaction.createdOn
+                    ? Date.parse(transaction.createdOn)
+                    : 0;
                 const existingCreatedOn = existing
-                    ? ((existing.createdOn as any)?.toMillis?.()
-                        || (existing.createdOn as any)?.toDate?.()?.getTime?.()
-                        || new Date(existing.createdOn as any).getTime()
-                        || 0)
+                    ? (existing.createdOn ? Date.parse(existing.createdOn) : 0)
                     : -1;
                 if (!existing || currentCreatedOn >= existingCreatedOn) {
                     byStore.set(transaction.storeId, transaction);
                 }
                 return byStore;
-            }, new Map<number, ResellerTransaction>()).values()
+            }, new Map<number, ResellerClientRecord>()).values()
         )
         : [];
 
@@ -241,8 +216,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         expired: clients.filter(t => t.status === 'expired').length,
         expiringSoon: clients.filter(t => {
             if (t.status !== 'active' || !t.validUntil) return false;
-            const expiry = (t.validUntil as any).toDate ? (t.validUntil as any).toDate() : new Date(t.validUntil as any);
-            const daysUntilExpiry = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            const daysUntilExpiry = Math.ceil((Date.parse(t.validUntil) - Date.now()) / (1000 * 60 * 60 * 24));
             return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
         }).length,
     } : null;
@@ -255,6 +229,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         isLoading,
         error,
         isClientListPartial: clientsResult?.isPartial === true,
+        invalidClientRowCount: clientsResult?.invalidRowCount || 0,
         mutateProfile,
         mutateTransactions,
         refresh: () => {

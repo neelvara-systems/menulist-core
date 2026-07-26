@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { normalizeSeoGenerationResult } from "@lib/ai/seoOutput";
 import { getModelName } from "@constant/AI/models";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
@@ -25,6 +26,25 @@ const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "seo-generation.log";
 const SEO_AI_MAX_BODY_BYTES = 256 * 1024;
 const MAX_SEO_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+
+function getSeoAttemptedInputSummary(value: unknown) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return getAIRouteLogContext({ categoryCount: 0, itemCount: 0 });
+    }
+    const record = value as Record<string, unknown>;
+    const menu = record.menu && typeof record.menu === 'object' && !Array.isArray(record.menu)
+        ? record.menu as Record<string, unknown>
+        : {};
+    const store = record.store && typeof record.store === 'object' && !Array.isArray(record.store)
+        ? record.store as Record<string, unknown>
+        : {};
+
+    return getAIRouteLogContext({
+        categoryCount: Array.isArray(menu.categories) ? menu.categories.length : 0,
+        itemCount: Array.isArray(menu.items) ? menu.items.length : 0,
+        storeName: store.name,
+    });
+}
 
 function getSeoClientResponseSummary(response: {
     keywords?: string[];
@@ -114,7 +134,7 @@ function logSeoProviderResponseParseFailure(
 function parseSeoProviderResponse(
     responseText: string | undefined,
     context: SeoProviderResponseParseContext,
-): Record<string, any> {
+): unknown {
     const rawText = String(responseText || '');
     const trimmedText = rawText.trim();
     const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
@@ -190,16 +210,12 @@ export const POST = withAuth(async (request, session) => {
         const bodyResult = await readBoundedJsonBody(request, SEO_AI_MAX_BODY_BYTES);
         if (bodyResult.ok === false) return bodyResult.response;
 
-        const rawData = bodyResult.data as any;
+        const rawData = bodyResult.data;
         const validation = validateAPIInput(SeoGenerationRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-            const attemptedData = getAIRouteLogContext({
-                categoryCount: Array.isArray(rawData?.menu?.categories) ? rawData.menu.categories.length : 0,
-                itemCount: Array.isArray(rawData?.menu?.items) ? rawData.menu.items.length : 0,
-                storeName: rawData?.store?.name,
-            });
+            const attemptedData = getSeoAttemptedInputSummary(rawData);
             logger.security('Input Validation Failed', {
                 ...getAIRouteSecurityContext(session, request),
                 endpoint: '/api/seo',
@@ -302,7 +318,7 @@ export const POST = withAuth(async (request, session) => {
             throw generationError;
         }
 
-        let generatedData: any;
+        let generatedData: unknown;
         try {
             generatedData = parseSeoProviderResponse(response.text, {
                 action,
@@ -347,8 +363,9 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'SEO generation failed' }, { status: 500 });
         }
 
-        if (!generatedData || typeof generatedData !== 'object' || Array.isArray(generatedData)) {
-            logAIRouteFailure('seo_generation_non_object_response', undefined, {
+        const cleaned = normalizeSeoGenerationResult(generatedData);
+        if (!cleaned) {
+            logAIRouteFailure('seo_generation_invalid_shape_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
                 requestId,
@@ -360,7 +377,7 @@ export const POST = withAuth(async (request, session) => {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 userId,
-                logType: 'NON_OBJECT_RESPONSE',
+                logType: 'INVALID_SHAPE_RESPONSE',
                 data: {
                     isArray: Array.isArray(generatedData),
                     model: AI_MODEL,
@@ -373,15 +390,6 @@ export const POST = withAuth(async (request, session) => {
             });
             return NextResponse.json({ error: 'SEO generation failed' }, { status: 500 });
         }
-
-        const cleaned = {
-            metaTitle: String(generatedData.metaTitle || '').trim().slice(0, 60),
-            metaDescription: String(generatedData.metaDescription || '').trim().slice(0, 160),
-            tagline: String(generatedData.tagline || '').trim().slice(0, 100),
-            keywords: Array.isArray(generatedData.keywords)
-                ? generatedData.keywords.map((value: unknown) => String(value || '').trim()).filter(Boolean).slice(0, 10)
-                : [],
-        };
 
         const processingTime = Date.now() - startTime;
         const transactionObject: any = {

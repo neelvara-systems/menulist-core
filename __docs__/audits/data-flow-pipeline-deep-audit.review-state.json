@@ -3044,16 +3044,18 @@
     "reviewedAt": "2026-07-22"
   },
   "scripts/verification/test-reseller-onboarding-billing-emulator.ts": {
-    "reviewStatus": "in-progress",
-    "auditPass": 419,
-    "reviewedFunctionsOrRanges": "subscription producer range: offline-cap admission/no-write, exact ML online/offline subscription creation and emulator execution; remaining reseller onboarding fixture assertions retain inventory status",
+    "reviewStatus": "reviewed",
+    "auditPass": 602,
+    "reviewedFunctionsOrRanges": "full file; exact ML aliases, offline cap/replay, transaction-current malformed/overflow/foreign initial profile denial, one-time online recognition, missing-profile repair, non-online/foreign/malformed convergence denial and modular Admin cleanup",
     "findings": [
-      "AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001"
+      "AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001",
+      "AUDIT-RESELLER-ONLINE-REVENUE-CONVERGENCE-001",
+      "AUDIT-RESELLER-ONBOARDING-COUNTER-INTEGRITY-001"
     ],
     "tests": [
       "npm run test:reseller-onboarding-billing:emulator"
     ],
-    "reviewedAt": "2026-07-22"
+    "reviewedAt": "2026-07-25"
   },
   "functions/src/constants/database.ts": {
     "reviewStatus": "in-progress",
@@ -3491,22 +3493,64 @@
     ],
     "reviewedAt": "2026-07-13"
   },
+  "src/app/api/reseller/manage/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 607,
+    "reviewedFunctionsOrRanges": "full GET/POST route; platform auth/feature/rate/body/schema admission, exact allowlisted GET profile projection with invalid/capped partial evidence, exact ID/email and canonical textual username normalization, detached early duplicate checks, Firebase Auth create/update/claim/cleanup/rollback/password ordering, transaction-current profile/user create/update, bounded responses and diagnostics",
+    "findings": [
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001",
+      "AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001"
+    ],
+    "tests": [
+      "npm run test:reseller-management-profile",
+      "npm run test:reseller-profile-admission:emulator",
+      "npm run verify:reseller-dashboard-boundary",
+      "npx tsc --noEmit --incremental false --pretty false",
+      "focused ESLint"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/types/reseller.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 594,
+    "reviewedFunctionsOrRanges": "full file; reseller transaction/action/payment/status and profile identity/cap/revenue/lifecycle/timestamp contracts including legacy soft-delete compatibility",
+    "findings": [
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001"
+    ],
+    "tests": [
+      "npm run test:reseller-profile-admission:emulator",
+      "npm run verify:reseller-dashboard-boundary",
+      "npx tsc --noEmit --incremental false --pretty false"
+    ],
+    "reviewedAt": "2026-07-25"
+  },
   "src/database/reseller/server.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 417,
-    "reviewedFunctionsOrRanges": "full file; reseller profile/transaction reads, onboarding/revenue stat writes, sorted transaction projection, shared Firestore sanitizer atomicTransform use, and typed timestamp-like normalization for Admin writes; Restart 417: exact dual product-alias query, mutation, index/rule, verifier or documented-contract range in the subscription/top-up reverse trace",
+    "auditPass": 608,
+    "reviewedFunctionsOrRanges": "full file; actor-bound direct/legacy/by-ID profile resolution with terminal soft-delete exclusion; bounded 51-document platform management query returning raw records only to the strict route projector; atomic profile create/update admission; exact onboarding billing input, transaction-current profile ownership/counter/cap validation and overflow-safe exact counters; shared Firestore sanitizer and typed Admin timestamps",
     "findings": [
       "AUDIT-FIRESTORE-SANITIZER-001",
-      "AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001"
+      "AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001",
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001",
+      "AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001",
+      "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001",
+      "AUDIT-RESELLER-ONBOARDING-COUNTER-INTEGRITY-001",
+      "AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001",
+      "AUDIT-RESELLER-SOFT-DELETE-AUTHORITY-001"
     ],
     "tests": [
       "npm run verify:reseller-dashboard-boundary",
+      "npm run test:reseller-management-profile",
+      "npm run test:reseller-onboarding-boundary",
+      "npm run test:reseller-profile-admission:emulator",
+      "npm run test:reseller-onboarding-billing:emulator",
       "npm run test:reseller-owner-claim:emulator",
       "npx tsc --noEmit --incremental false --pretty false",
       "npm run verify:billing-entitlement-boundary",
       "npx tsc --noEmit --incremental false"
     ],
-    "reviewedAt": "2026-07-22"
+    "reviewedAt": "2026-07-25"
   },
   "src/database/subscriptions/index.ts": {
     "reviewStatus": "reviewed",
@@ -5262,8 +5306,8 @@
   },
   "firestore.rules": {
     "reviewStatus": "in-progress",
-    "auditPass": 538,
-    "reviewedFunctionsOrRanges": "platformSummary including source/manifest exact missing/owned gets, complete creates, monotonic source updates, immutable manifest pointers and exact advanced-branding URL/email profile admission; answerlattice_cacheVersions exact source/path/version transitions; storesSummary/Menu Presence, billing, feedback, analytics, shared chat/insights, nested menu truth and previously listed domains remain reviewed; remaining rules domains pending",
+    "auditPass": 612,
+    "reviewedFunctionsOrRanges": "resellerProfiles and resellerTransactions exact Admin-only read/write denial; platformSummary including source/manifest exact missing/owned gets, complete creates, monotonic source updates, immutable manifest pointers and exact advanced-branding URL/email profile admission; answerlattice_cacheVersions exact source/path/version transitions; storesSummary/Menu Presence, billing, feedback, analytics, shared chat/insights, nested menu truth and previously listed domains remain reviewed; remaining rules domains pending",
     "findings": [
       "AUDIT-SUMMARY-004",
       "AUDIT-PRESENCE-001",
@@ -5298,7 +5342,8 @@
       "AUDIT-BILLING-TRANSACTION-SCOPE-ALIAS-001",
       "AUDIT-BILLING-TOPUP-SNAPSHOT-SCOPE-001",
       "AUDIT-ANSWERLATTICE-CLIENT-INVALIDATION-CONTROL-PLANE-001",
-      "AUDIT-ANSWERLATTICE-ADVANCED-BRANDING-ADMISSION-PARITY-001"
+      "AUDIT-ANSWERLATTICE-ADVANCED-BRANDING-ADMISSION-PARITY-001",
+      "AUDIT-RESELLER-DIRECT-FIRESTORE-AUTHORITY-001"
     ],
     "tests": [
       "scripts/verification/test-stores-summary-rules.ts",
@@ -5328,11 +5373,12 @@
       "npm run test:menu-intelligence:rules",
       "npm run test:answerlattice-billing:shared-rules",
       "npm run test:answerlattice-platform-summary:shared-rules",
+      "npm run test:reseller:rules",
       "firebase deploy --project menulist-qa --config firebase.json --only firestore:rules --non-interactive (blocked: Firebase CLI authentication unavailable)",
       "npm run verify:billing-entitlement-boundary",
       "npx tsc --noEmit --incremental false"
     ],
-    "reviewedAt": "2026-07-23"
+    "reviewedAt": "2026-07-26"
   },
   "firestore-campaigncue.rules": {
     "reviewStatus": "reviewed",
@@ -6107,9 +6153,10 @@
   },
   "scripts/verification/verify-menulist-api-tenant-safety.js": {
     "reviewStatus": "in-progress",
-    "auditPass": 573,
-    "reviewedFunctionsOrRanges": "Prior linked-outlet/image-batch/messaging/analytics/delegation/AI-ledger and billing families plus Mobile Staff/Role and desktop/mobile Advanced Settings/SEO/Analytics/Business Settings/working-hours/locale/Official Page/Profile/Attributes exact-scope settlement; Restart 573 Answerlattice comparison literal feedback-share unit/unavailable assertions; remaining API families stay pending.",
+    "auditPass": 599,
+    "reviewedFunctionsOrRanges": "Restart 599 reseller exact current-client DTO type token plus prior linked-outlet/image-batch/messaging/analytics/delegation/AI-ledger/billing and owner/mobile exact-scope families; remaining API families stay pending.",
     "findings": [
+      "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001",
       "AUDIT-AL-COMPARISON-FEEDBACK-UNITS-001",
       "AUDIT-MOBILE-USERS-STORE-SCOPE-RACE-001",
       "AUDIT-STAFF-LIST-DTO-CONTRACT-001",
@@ -6228,9 +6275,16 @@
   },
   "__docs__/audits/menulist-production-readiness-audit.md": {
     "reviewStatus": "in-progress",
-    "auditPass": 575,
-    "reviewedFunctionsOrRanges": "Prior named production checkpoints through Restart 575 Help Chat initiating-session/cache, actor-bound mutation and exact-current subtree settlement closure; remaining production-readiness domains pending",
+    "auditPass": 600,
+    "reviewedFunctionsOrRanges": "July 25 reseller paid-mutation/client/monthly DTO integrity/current authority/profile/auth checkpoints plus prior named production checkpoints; remaining production-readiness domains pending",
     "findings": [
+      "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001",
+      "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001",
+      "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001",
+      "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001",
+      "AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001",
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001",
       "AUDIT-AL-HELP-CHAT-MUTATION-SETTLEMENT-001",
       "AUDIT-AL-HELP-CHAT-INITIATING-SCOPE-001",
       "AUDIT-MOBILE-EXTRACTION-MONITOR-REQUEST-ORDER-001",
@@ -6548,9 +6602,16 @@
   },
   "__docs__/changelog.md": {
     "reviewStatus": "in-progress",
-    "auditPass": 575,
-    "reviewedFunctionsOrRanges": "July 23 Help Chat initiating-read and actor-bound mutation settlement, insight metric, mobile Extraction Monitor, Guest Feedback, Special Menu/projects and earlier owner-state scope entries plus prior audited ranges; historical changelog remains inventory-only",
+    "auditPass": 600,
+    "reviewedFunctionsOrRanges": "July 25 reseller paid-mutation/client/monthly DTO integrity/current authority/profile/auth entries plus July 23 and prior audited owner-state ranges; historical changelog remains inventory-only",
     "findings": [
+      "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001",
+      "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001",
+      "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001",
+      "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001",
+      "AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001",
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001",
       "AUDIT-AL-HELP-CHAT-MUTATION-SETTLEMENT-001",
       "AUDIT-AL-HELP-CHAT-INITIATING-SCOPE-001",
       "AUDIT-MOBILE-EXTRACTION-MONITOR-REQUEST-ORDER-001",
@@ -7094,8 +7155,8 @@
   },
   "scripts/verification/verify-public-business-truth.js": {
     "reviewStatus": "in-progress",
-    "auditPass": 584,
-    "reviewedFunctionsOrRanges": "Project/store persistence and public-truth source gates plus desktop/mobile Advanced Settings, SEO/Analytics, Business Settings, working-hours, locale, Official Page, Profile, Attributes, domain, Business Copy and time-slot exact-scope settlement; changed-leaf ownership, rollback, partial-commit, current-sibling and media-order assertions; Restart 584 verifyPublicTruthWritesInvalidateScreenData and Temporary Status transaction-current slice; remaining verifier families retain ranged review.",
+    "auditPass": 608,
+    "reviewedFunctionsOrRanges": "Reseller hook/desktop/mobile exact self-profile/client/monthly/onboarding/management response assertions aligned through restart 608; Project/store persistence and public-truth source gates plus desktop/mobile Advanced Settings, SEO/Analytics, Business Settings, working-hours, locale, Official Page, Profile, Attributes, domain, Business Copy and time-slot exact-scope settlement; changed-leaf ownership, rollback, partial-commit, current-sibling and media-order assertions; Restart 584 screen-data and Temporary Status transaction-current slice; remaining verifier families retain ranged review.",
     "findings": [
       "AUDIT-MOBILE-TEMP-STATUS-STORE-SCOPE-RACE-001",
       "AUDIT-ADVANCED-SETTINGS-STORE-SCOPE-RACE-001",
@@ -7157,7 +7218,7 @@
       "npx tsc --noEmit --incremental false --pretty false",
       "npm run build"
     ],
-    "reviewedAt": "2026-07-25"
+    "reviewedAt": "2026-07-26"
   },
   "src/lib/extraction/applyChanges.ts": {
     "reviewStatus": "reviewed",
@@ -9998,19 +10059,29 @@
     ],
     "reviewedAt": "2026-07-13"
   },
+  "src/lib/auth/loginIdentifiers.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 595,
+    "reviewedFunctionsOrRanges": "full file; canonical textual username, phone/staff digit, display, candidate, internal-email and primary-label normalization contracts",
+    "findings": ["AUDIT-RESELLER-USERNAME-LOGIN-001"],
+    "tests": ["npm run test:reseller-profile-admission:emulator", "npm run verify:reseller-dashboard-boundary", "npm run verify:auth-security-failure-matrix", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
   "src/lib/auth/index.ts": {
     "reviewStatus": "in-progress",
-    "auditPass": 212,
-    "reviewedFunctionsOrRanges": "getDatabaseUserForSession compact user projection, precise NextAuth Session augmentation and session callback store-role/JWT-to-session construction; remaining sign-in, credentials, entity inheritance, cache and provider branches retain inventory/ranged state",
+    "auditPass": 595,
+    "reviewedFunctionsOrRanges": "credentials non-email username/phone admission through exact server resolution plus compact user/session projection; remaining OAuth, entity inheritance, cache and provider branches retain prior ranged state",
     "findings": [
       "AUDIT-AUTH-SESSION-MEMBERSHIP-COERCION-001",
       "AUDIT-AUTH-SESSION-ROLE-AMBIGUITY-001",
-      "AUDIT-AUTH-SESSION-RUNTIME-CONTRACT-001"
+      "AUDIT-AUTH-SESSION-RUNTIME-CONTRACT-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001"
     ],
     "tests": [
       "npm run test:auth-session-user-boundary",
       "npm run test:auth-session-response-boundary",
       "npm run verify:auth-security-failure-matrix",
+      "npm run test:reseller-profile-admission:emulator",
       "npx tsc --noEmit --incremental false --pretty false"
     ],
     "reviewedAt": "2026-07-13"
@@ -10525,15 +10596,17 @@
   },
   "src/lib/auth/serverUserContext.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 84,
-    "reviewedFunctionsOrRanges": "full file; fail-closed unique email/cross-field login lookup, shared deterministic global-email/OAuth identity, create transaction, Admin serialization and exact tenant/store entity snapshot reads",
+    "auditPass": 595,
+    "reviewedFunctionsOrRanges": "full file; fail-closed unique canonical textual username plus email/phone/staff cross-field login lookup, deterministic global-email/OAuth identity, create transaction, Admin serialization and exact tenant/store entity snapshot reads",
     "findings": [
       "AUDIT-AUTH-001",
       "AUDIT-AUTH-CLAIM-001",
-      "AUDIT-AUTH-IDENTITY-001"
+      "AUDIT-AUTH-IDENTITY-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001"
     ],
     "tests": [
       "npm run verify:auth-security-failure-matrix",
+      "npm run test:reseller-profile-admission:emulator",
       "npm run test:phone-otp-transaction:emulator",
       "npm run test:staff-concurrency:emulator",
       "npm run test:claim-account-concurrency:emulator",
@@ -10603,14 +10676,16 @@
   },
   "src/database/users/index.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 84,
-    "reviewedFunctionsOrRanges": "full file; login lookups, bounded numeric/string platform user scope projection, image/update path, acknowledgement guard and removal of dead unsafe exports",
+    "auditPass": 595,
+    "reviewedFunctionsOrRanges": "full file; canonical textual username then compatible phone login lookups, bounded numeric/string platform user scope projection, image/update path, acknowledgement guard and removal of dead unsafe exports",
     "findings": [
       "AUDIT-PLATFORM-003",
-      "AUDIT-USER-DAL-001"
+      "AUDIT-USER-DAL-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001"
     ],
     "tests": [
       "npm run verify:platform-entity-blocks-boundary",
+      "npm run test:reseller-profile-admission:emulator",
       "npm run typecheck",
       "npm run lint"
     ],
@@ -10647,26 +10722,34 @@
   },
   "src/app/api/reseller/onboard/route.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 84,
-    "reviewedFunctionsOrRanges": "full file; platform/reseller admission, owner uniqueness/Auth preparation, transaction-first owner claim and tenant/store/user creation, online/offline billing, compensation, custom claims, caches, logs and response/error paths",
+    "auditPass": 610,
+    "reviewedFunctionsOrRanges": "full file; current authority, exact offline-capacity preflight before side effects, exact operation/resource replay and paid evidence, owner/Auth preparation with unknown error narrowing, tenant/store/user creation, runtime-projected Razorpay subscription identity/URL, online/offline billing/counters, compensation/caches/logs, allowlisted response and errors",
     "findings": [
       "AUDIT-RESELLER-001",
       "AUDIT-ONBOARD-002",
-      "AUDIT-AUTH-IDENTITY-001"
+      "AUDIT-AUTH-IDENTITY-001",
+      "AUDIT-RESELLER-ONBOARD-REPLAY-SCALAR-001",
+      "AUDIT-RESELLER-ONBOARD-RESPONSE-INTEGRITY-001",
+      "AUDIT-RESELLER-ONBOARD-REPLAY-RESOURCE-AUTHORITY-001",
+      "AUDIT-RESELLER-OFFLINE-CAPACITY-PREFLIGHT-001",
+      "AUDIT-RESELLER-PROVIDER-SUBSCRIPTION-DTO-001"
     ],
     "tests": [
       "npm run test:reseller-owner-claim:emulator",
+      "npm run test:reseller-onboarding-response",
+      "npm run test:reseller-mutation-state",
+      "npm run test:reseller-provider-subscription",
       "npm run verify:reseller-dashboard-boundary",
       "npm run verify:menulist-api-tenant-safety",
       "npm run typecheck",
       "npm run lint"
     ],
-    "reviewedAt": "2026-07-11"
+    "reviewedAt": "2026-07-26"
   },
   "src/lib/reseller/resellerOwnerClaim.ts": {
     "reviewStatus": "reviewed",
-    "auditPass": 84,
-    "reviewedFunctionsOrRanges": "full file; exact user ID, existing/new owner transaction claim, email/Auth/unlinked invariants and Auth compensation ownership read",
+    "auditPass": 611,
+    "reviewedFunctionsOrRanges": "full file; exact user ID, unknown-record existing/new owner transaction claim, email/Auth/unlinked invariants and Auth compensation ownership read",
     "findings": [
       "AUDIT-RESELLER-001"
     ],
@@ -10675,7 +10758,7 @@
       "npm run verify:reseller-dashboard-boundary",
       "npm run typecheck"
     ],
-    "reviewedAt": "2026-07-11"
+    "reviewedAt": "2026-07-26"
   },
   "scripts/verification/test-reseller-owner-claim-emulator.ts": {
     "reviewStatus": "reviewed",
@@ -10689,10 +10772,25 @@
     ],
     "reviewedAt": "2026-07-11"
   },
+  "scripts/verification/test-reseller-profile-admission-emulator.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 608,
+    "reviewedFunctionsOrRanges": "full real Firestore emulator suite; exact actor/claim selection, unbound and soft-deleted direct/legacy denial, canonical textual username login, duplicate create contention, exact total-cap, competing update and profile/user identity agreement",
+    "findings": [
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001",
+      "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001",
+      "AUDIT-RESELLER-SOFT-DELETE-AUTHORITY-001"
+    ],
+    "tests": [
+      "npm run test:reseller-profile-admission:emulator"
+    ],
+    "reviewedAt": "2026-07-26"
+  },
   "scripts/verification/verify-reseller-dashboard-boundary.js": {
     "reviewStatus": "in-progress",
-    "auditPass": 430,
-    "reviewedFunctionsOrRanges": "manual confirmation current-authority, transaction/admission, replay and pure/emulator regression assertions; reseller onboarding owner-claim/compensation assertions plus exact client-list subscription scope projection and prior management/admission/UI families; remaining unrelated dashboard domains retain prior review states",
+    "auditPass": 612,
+    "reviewedFunctionsOrRanges": "exact Admin-only Firestore rules/source-emulator evidence; offline-capacity pre-side-effect order and exact provider-subscription response/no-any evidence; soft-delete reader/authority evidence, management-profile projection/response/private-field/counter/cap evidence plus onboarding operation/resource replay, paid evidence and exact response, initial/mutation counters, online revenue/client/monthly/current-authority assertions; remaining unrelated dashboard domains retain prior review states",
     "findings": [
       "AUDIT-RESELLER-001",
       "AUDIT-RESELLER-CONFIRM-STATE-001",
@@ -10700,14 +10798,42 @@
       "AUDIT-RESELLER-CONFIRM-REPLAY-001",
       "AUDIT-RESELLER-CONFIRM-CURRENT-AUTH-001",
       "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001",
-      "AUDIT-BILLING-FUNCTIONS-SCOPE-ALIAS-001"
+      "AUDIT-BILLING-FUNCTIONS-SCOPE-ALIAS-001",
+      "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001",
+      "AUDIT-RESELLER-USERNAME-LOGIN-001",
+      "AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001",
+      "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001",
+      "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001",
+      "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001",
+      "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001",
+      "AUDIT-RESELLER-ONLINE-REVENUE-CONVERGENCE-001",
+      "AUDIT-RESELLER-ONBOARD-REPLAY-SCALAR-001",
+      "AUDIT-RESELLER-ONBOARDING-COUNTER-INTEGRITY-001",
+      "AUDIT-RESELLER-MUTATION-PROFILE-COUNTER-001",
+      "AUDIT-RESELLER-ONBOARD-RESPONSE-INTEGRITY-001",
+      "AUDIT-RESELLER-ONBOARD-REPLAY-RESOURCE-AUTHORITY-001",
+      "AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001",
+      "AUDIT-RESELLER-SOFT-DELETE-AUTHORITY-001",
+      "AUDIT-RESELLER-OFFLINE-CAPACITY-PREFLIGHT-001",
+      "AUDIT-RESELLER-PROVIDER-SUBSCRIPTION-DTO-001",
+      "AUDIT-RESELLER-DIRECT-FIRESTORE-AUTHORITY-001"
     ],
     "tests": [
       "npm run verify:reseller-dashboard-boundary",
+      "npm run test:reseller-management-profile",
+      "npm run test:reseller-onboarding-boundary",
+      "npm run test:reseller-provider-subscription",
+      "npm run test:reseller:rules",
+      "npm run test:reseller-mutation-state",
+      "npm run test:reseller-client-record",
+      "npm run test:reseller-monthly-summary",
+      "npm run test:reseller-onboarding-boundary",
+      "npm run test:reseller-onboarding-billing:emulator",
+      "npm run test:reseller-profile-admission:emulator",
       "npm run test:reseller-confirm-payment-boundary",
       "npm run test:reseller-confirm-payment:emulator"
     ],
-    "reviewedAt": "2026-07-13"
+    "reviewedAt": "2026-07-25"
   },
   "src/app/api/auth/claim-account/route.ts": {
     "reviewStatus": "reviewed",
@@ -16422,10 +16548,10 @@
     "tests": ["npm run test:messaging-replacement-upload-lifecycle:emulator", "npx tsc --noEmit --incremental false", "cmp with Functions mirror"], "reviewedAt": "2026-07-13"
   },
   "src/lib/messaging-onboarding/fixRequestTransaction.ts": {
-    "reviewStatus": "reviewed", "auditPass": 191,
-    "reviewedFunctionsOrRanges": "full file; exact session/token/expiry/state admission, idempotent fix mutation, delivery claim reset, cleanup pointer persistence and retry behavior",
+    "reviewStatus": "reviewed", "auditPass": 614,
+    "reviewedFunctionsOrRanges": "full file clean-room re-review; exact request/session/token/expiry/state/history/counter/upload contract, timing-safe token comparison, transaction-current correction cap/reset, durable cleanup pointer, post-commit drain and retry behavior",
     "findings": ["AUDIT-MSG-DELIVERY-POISON-034", "AUDIT-MSG-EXPIRY-037", "AUDIT-MSG-CLEANUP-POSTCOMMIT-040"],
-    "tests": ["npm run test:messaging-fix-request:emulator", "npm run verify:menu-extraction-pipeline", "npx tsc --noEmit --incremental false"], "reviewedAt": "2026-07-13"
+    "tests": ["npm run test:messaging-fix-request:emulator", "npm run verify:menu-extraction-pipeline", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false"], "reviewedAt": "2026-07-26"
   },
   "src/lib/messaging-onboarding/uploadCleanup.ts": {
     "reviewStatus": "reviewed", "auditPass": 191,
@@ -16813,16 +16939,16 @@
     "reviewedAt": "2026-07-13"
   },
   "__docs__/reseller-dashboard/reseller-dashboard_impl.md": {
-    "reviewStatus": "in-progress", "auditPass": 429,
-    "reviewedFunctionsOrRanges": "manual payment confirmation plus exact renewal/location-capacity subscription scope sections; wider reseller implementation document retains prior review state",
-    "findings": ["AUDIT-RESELLER-CONFIRM-STATE-001", "AUDIT-RESELLER-CONFIRM-CONCURRENCY-001", "AUDIT-RESELLER-CONFIRM-REPLAY-001", "AUDIT-RESELLER-CONFIRM-CURRENT-AUTH-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001"],
+    "reviewStatus": "in-progress", "auditPass": 600,
+    "reviewedFunctionsOrRanges": "exact renewal/add-location replay/current-state/profile binding plus client/monthly DTO/partial evidence/current authority, profile creation/auth compensation, username login and manual confirmation sections; wider document retains prior review state",
+    "findings": ["AUDIT-RESELLER-CONFIRM-STATE-001", "AUDIT-RESELLER-CONFIRM-CONCURRENCY-001", "AUDIT-RESELLER-CONFIRM-REPLAY-001", "AUDIT-RESELLER-CONFIRM-CURRENT-AUTH-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001", "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001", "AUDIT-RESELLER-USERNAME-LOGIN-001", "AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001", "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001", "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001", "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001"],
     "tests": ["npm run verify:reseller-dashboard-boundary", "npm run docs:check-links"],
     "reviewedAt": "2026-07-13"
   },
   "__docs__/reseller-dashboard/reseller-dashboard_firebase.md": {
-    "reviewStatus": "in-progress", "auditPass": 429,
-    "reviewedFunctionsOrRanges": "current authority, transaction/replay, derived repair cost and exact manual subscription query/mutation scope sections; wider cost document retains prior review state",
-    "findings": ["AUDIT-RESELLER-CONFIRM-CONCURRENCY-001", "AUDIT-RESELLER-CONFIRM-REPLAY-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001"],
+    "reviewStatus": "in-progress", "auditPass": 600,
+    "reviewedFunctionsOrRanges": "renew/add-location exact replay/current safe-state/profile-binding cost-neutral section plus client/monthly DTO/partial evidence, current protected read-authority costs and profile management transactions; wider cost document retains prior review state",
+    "findings": ["AUDIT-RESELLER-CONFIRM-CONCURRENCY-001", "AUDIT-RESELLER-CONFIRM-REPLAY-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001", "AUDIT-RESELLER-PROFILE-ADMISSION-CONCURRENCY-001", "AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001", "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001", "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001", "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001"],
     "tests": ["npm run verify:reseller-dashboard-boundary", "npm run docs:check-links"],
     "reviewedAt": "2026-07-13"
   },
@@ -18847,16 +18973,16 @@
     "tests": ["npm run verify:owner-control-usage-boundary"], "reviewedAt": "2026-07-21"
   },
   "src/components/templates/main-app/settings/DigitalScreenSettings/index.tsx": {
-    "reviewStatus": "in-progress", "auditPass": 384,
-    "reviewedFunctionsOrRanges": "handleOverrideToggle persisted-success assertion, owner-control tracking order and bounded failure path; remaining component behavior retains inventory status",
-    "findings": ["AUDIT-OWNER-CONTROL-EFFECT-ORDER-001"],
-    "tests": ["npm run verify:owner-control-usage-boundary", "scoped ESLint", "npx tsc --noEmit --incremental false --pretty false"], "reviewedAt": "2026-07-21"
+    "reviewStatus": "in-progress", "auditPass": 592,
+    "reviewedFunctionsOrRanges": "settings state/fetch screenLastSeenAt canonical timestamp contract and existing handleOverrideToggle persisted-success assertion, owner-control tracking order and bounded failure path; remaining component behavior retains ranged status",
+    "findings": ["AUDIT-OWNER-CONTROL-EFFECT-ORDER-001", "AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run verify:digital-screens-boundary", "npm run verify:owner-control-usage-boundary", "scoped ESLint", "npx tsc --noEmit --incremental false --pretty false"], "reviewedAt": "2026-07-25"
   },
   "src/components/mobile/screens/MobileDigitalScreensScreen.tsx": {
-    "reviewStatus": "in-progress", "auditPass": 384,
-    "reviewedFunctionsOrRanges": "handleOverrideToggle persisted-success assertion, owner-control tracking order and bounded failure path; remaining mobile screen behavior retains prior/inventory status",
-    "findings": ["AUDIT-OWNER-CONTROL-EFFECT-ORDER-001"],
-    "tests": ["npm run verify:owner-control-usage-boundary", "scoped ESLint", "npx tsc --noEmit --incremental false --pretty false"], "reviewedAt": "2026-07-21"
+    "reviewStatus": "in-progress", "auditPass": 593,
+    "reviewedFunctionsOrRanges": "screenLastSeenAt typed state/shared defensive formatter, slide expiry countdown/sorting, and existing handleOverrideToggle persisted-success assertion, owner-control tracking order and bounded failure path; remaining mobile screen behavior retains ranged status",
+    "findings": ["AUDIT-OWNER-CONTROL-EFFECT-ORDER-001", "AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001", "AUDIT-SCREEN-SLIDE-EXPIRY-NORMALIZATION-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run verify:digital-screens-boundary", "npm run verify:owner-control-usage-boundary", "scoped ESLint", "npx tsc --noEmit --incremental false --pretty false"], "reviewedAt": "2026-07-25"
   },
   "__docs__/internal-tracking/menulist-internal-tracking-system.md": {
     "reviewStatus": "in-progress", "auditPass": 384,
@@ -19077,28 +19203,28 @@
     "reviewedAt": "2026-07-22"
   },
   "src/app/api/reseller/add-location-capacity/route.ts": {
-    "reviewStatus": "in-progress",
-    "auditPass": 429,
-    "reviewedFunctionsOrRanges": "subscription reverse trace: exact dual-ML/duplicate-scope query plus pre-read and transaction-current scope projection before prepaid location-capacity mutation; remaining route paths retain inventory status",
-    "findings": ["AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001"],
-    "tests": ["npm run test:reseller-confirm-payment-boundary", "npm run verify:reseller-dashboard-boundary"],
-    "reviewedAt": "2026-07-22"
+    "reviewStatus": "reviewed",
+    "auditPass": 603,
+    "reviewedFunctionsOrRanges": "full POST; bounded admission/current authority, exact subscription/replay/expiry/amount/quantity/profile binding, transaction-current safe profile counters, atomic subscription/ledger/profile mutation and bounded acknowledgement/errors",
+    "findings": ["AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001", "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001", "AUDIT-RESELLER-MUTATION-PROFILE-COUNTER-001"],
+    "tests": ["npm run test:reseller-mutation-state", "npm run test:reseller-confirm-payment-boundary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
   },
   "src/app/api/reseller/clients/route.ts": {
-    "reviewStatus": "in-progress",
-    "auditPass": 430,
-    "reviewedFunctionsOrRanges": "subscription reverse trace: bounded reseller client query post-projects exact dual-ML and agreeing tenant/store aliases before tenant lookup, entitlement projection and response serialization; remaining route paths retain inventory status",
-    "findings": ["AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001", "AUDIT-BILLING-FUNCTIONS-SCOPE-ALIAS-001"],
-    "tests": ["npm run verify:reseller-dashboard-boundary"],
-    "reviewedAt": "2026-07-22"
+    "reviewStatus": "reviewed",
+    "auditPass": 599,
+    "reviewedFunctionsOrRanges": "full GET; feature/read limiter, current persisted platform/exact active reseller authority, bounded newest-first exact MenuList subscription query, exact scope/identity/status/mode/safe-money/quantity/timestamp projection, invalid-row partial accounting and bounded diagnostics",
+    "findings": ["AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001", "AUDIT-BILLING-FUNCTIONS-SCOPE-ALIAS-001", "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001", "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-client-record", "npm run test:reseller-profile-admission:emulator", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
   },
   "src/app/api/reseller/renew/route.ts": {
-    "reviewStatus": "in-progress",
-    "auditPass": 429,
-    "reviewedFunctionsOrRanges": "subscription reverse trace: exact dual-ML/duplicate-scope renewal query plus pre-read and transaction-current scope projection before subscription/profile mutation; remaining route paths retain inventory status",
-    "findings": ["AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001"],
-    "tests": ["npm run test:reseller-confirm-payment-boundary", "npm run verify:reseller-dashboard-boundary"],
-    "reviewedAt": "2026-07-22"
+    "reviewStatus": "reviewed",
+    "auditPass": 603,
+    "reviewedFunctionsOrRanges": "full POST; bounded admission/current authority, exact subscription/replay/expiry/amount/quantity/profile binding, transaction-current safe profile counters and exact cap, atomic subscription/ledger/profile mutation and post-commit entitlement/referral effects",
+    "findings": ["AUDIT-BILLING-RESOURCE-PRODUCT-ISOLATION-001", "AUDIT-BILLING-SECONDARY-CONSUMER-SCOPE-ALIAS-001", "AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001", "AUDIT-RESELLER-MUTATION-PROFILE-COUNTER-001"],
+    "tests": ["npm run test:reseller-mutation-state", "npm run test:reseller-confirm-payment-boundary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
   },
   "src/lib/billing/topupSettlementServer.ts": {
     "reviewStatus": "reviewed",
@@ -20779,5 +20905,405 @@
     "findings": ["AUDIT-SCREEN-SEEN-TRANSACTION-AUTHORITY-001", "AUDIT-SCREEN-SEEN-LEGACY-TOKEN-UNIQUENESS-001"],
     "tests": ["npm run test:screen-seen-scope"],
     "reviewedAt": "2026-07-25"
+  },
+  "src/lib/screen/screenTimestamp.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 593,
+    "reviewedFunctionsOrRanges": "full file; canonical owner timestamp alias, defensive Date/Firestore/millisecond/seconds/string conversion, exact millisecond projection and missing-versus-malformed fail-closed expiry policy",
+    "findings": ["AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001", "AUDIT-SCREEN-SLIDE-EXPIRY-NORMALIZATION-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run verify:digital-screens-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-screen-timestamp.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 593,
+    "reviewedFunctionsOrRanges": "full executable regression; Date/ISO/millisecond/seconds/Firestore forms, malformed conversion rejection, exact milliseconds and missing/future/past/malformed expiry policy",
+    "findings": ["AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001", "AUDIT-SCREEN-SLIDE-EXPIRY-NORMALIZATION-001"],
+    "tests": ["npm run test:screen-timestamp"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/settings/DigitalScreenSettings/ScreenLink.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 592,
+    "reviewedFunctionsOrRanges": "full file; canonical seen timestamp prop, shared defensive relative-time projection, link/QR/mode presentation, acknowledged copy/open effects and bounded failure diagnostics",
+    "findings": ["AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run verify:digital-screens-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/useMenuList/types.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 592,
+    "reviewedFunctionsOrRanges": "full Output Center data/link/project/state contract with canonical Digital Screen seen timestamp field",
+    "findings": ["AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001"],
+    "tests": ["npm run verify:digital-screens-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/useMenuList/index.tsx": {
+    "reviewStatus": "in-progress",
+    "auditPass": 592,
+    "reviewedFunctionsOrRanges": "Digital Screen getScreenState -> canonical screenLastSeenAt local/output projection plus adjacent screen link construction/error path; remaining Output Center aggregation/UI behavior retains inventory status",
+    "findings": ["AUDIT-SCREEN-SEEN-OWNER-TIMESTAMP-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run verify:digital-screens-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/screen/utils.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 593,
+    "reviewedFunctionsOrRanges": "full file; screen token/state/URL, owner expiry construction, fail-closed slide expiry/filter/cap and guarded reload timing/storage/diagnostic behavior",
+    "findings": ["AUDIT-SCREEN-SLIDE-EXPIRY-NORMALIZATION-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run test:digital-screens:lifecycle", "npm run verify:digital-screens-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 593,
+    "reviewedFunctionsOrRanges": "full file; upload preparation/save, caption mutation, deletion acknowledgement, precise defensive expiry countdown, pending/edit state and bounded owner diagnostics",
+    "findings": ["AUDIT-SCREEN-SLIDE-EXPIRY-NORMALIZATION-001"],
+    "tests": ["npm run test:screen-timestamp", "npm run verify:digital-screens-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/reseller/monthly-summary/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 598,
+    "reviewedFunctionsOrRanges": "full GET; feature/read limiter, strict India-month admission, current platform/exact active reseller authority, bounded profile/monthly queries, exact transaction projection, safe-integer aggregation, partial evidence accounting, exact DTO serialization and bounded diagnostics",
+    "findings": ["AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001", "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-monthly-summary", "npm run test:reseller-profile-admission:emulator", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/reseller/profile/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 597,
+    "reviewedFunctionsOrRanges": "full GET; feature/read limiter, exact current active actor/profile authority, allowlisted self-profile projection and bounded diagnostics",
+    "findings": ["AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001", "AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001"],
+    "tests": ["npm run test:reseller-profile-admission:emulator", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/reseller/resellerSelfProfile.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 596,
+    "reviewedFunctionsOrRanges": "full file; exact allowlisted reseller self-profile DTO, defensive scalar/counter/timestamp normalization and exact browser runtime validator",
+    "findings": ["AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001"],
+    "tests": ["npm run test:reseller-profile-admission:emulator", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/hooks/useResellerDashboard.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 599,
+    "reviewedFunctionsOrRanges": "full file; bounded profile/monthly/client fetch policy and exact validators, SWR identities, ISO-only client dedupe/expiry stats, derived counts, mutation handles, partial evidence fields and error settlement",
+    "findings": ["AUDIT-RESELLER-SELF-PROFILE-PRIVATE-FIELD-001", "AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-client-record", "npm run test:reseller-monthly-summary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/reseller/resellerMonthlySummary.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 598,
+    "reviewedFunctionsOrRanges": "full file; exact monthly DTO/period/row/totals validation and persisted transaction identity/payment/status/store/non-negative-safe-integer paise projection",
+    "findings": ["AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-monthly-summary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-reseller-monthly-summary.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 598,
+    "reviewedFunctionsOrRanges": "full pure regression; canonical transaction/DTO acceptance and negative, fractional, non-finite, string paise, private-key, non-finite-total and invalid-period rejection",
+    "findings": ["AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-monthly-summary"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/reseller/ResellerDashboard.tsx": {
+    "reviewStatus": "in-progress",
+    "auditPass": 606,
+    "reviewedFunctionsOrRanges": "monthly/client exact DTO consumption, ISO client contract, invalid/capped warnings and typed augmented session identity/platform-role access; remaining dashboard mutations retain prior ranged status",
+    "findings": ["AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-client-record", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/reseller/ResellerManagement.tsx": {
+    "reviewStatus": "in-progress",
+    "auditPass": 607,
+    "reviewedFunctionsOrRanges": "profile-list load/shared exact DTO/state/table/invalid-and-capped warning, monthly-summary exact DTO/state/table/warning and typed augmented session platform-role access; remaining create/update behavior retains prior ranged status",
+    "findings": ["AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001"],
+    "tests": ["npm run test:reseller-management-profile", "npm run test:reseller-monthly-summary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/components/mobile/screens/MobileResellerDashboardScreen.tsx": {
+    "reviewStatus": "in-progress",
+    "auditPass": 606,
+    "reviewedFunctionsOrRanges": "monthly/client exact DTO, ISO contract, touch-safe partial warnings and typed augmented session identity/platform-role access; remaining mobile mutations retain prior ranged status",
+    "findings": ["AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-client-record", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/mobile/screens/MobileResellerManagementScreen.tsx": {
+    "reviewStatus": "in-progress",
+    "auditPass": 607,
+    "reviewedFunctionsOrRanges": "profile-list load/shared exact DTO/state/cards/touch-safe invalid-and-capped warning, monthly-summary exact DTO/state/list/warning and typed augmented session platform-role access; remaining mobile create/update behavior retains prior ranged status",
+    "findings": ["AUDIT-RESELLER-MONTHLY-SUMMARY-INTEGRITY-001", "AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001"],
+    "tests": ["npm run test:reseller-management-profile", "npm run test:reseller-monthly-summary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/reseller/resellerManagementProfile.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 607,
+    "reviewedFunctionsOrRanges": "full file; exact allowlisted management profile/response DTO, Firestore document identity, bounded optional/required strings, safe profile counters, unknown-key rejection and partial-evidence consistency",
+    "findings": ["AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001"],
+    "tests": ["npm run test:reseller-management-profile", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-reseller-management-profile.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 607,
+    "reviewedFunctionsOrRanges": "full pure regression; canonical projection, private password/Auth UID omission, malformed counter/cap rejection, exact response/private-key rejection and capped partial evidence",
+    "findings": ["AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001"],
+    "tests": ["npm run test:reseller-management-profile"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/reseller/resellerClientRecord.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 599,
+    "reviewedFunctionsOrRanges": "full file; exact current-client/response DTO, scope/identity/status/mode/safe quantity and paise admission, defensive ISO timestamp projection and exact runtime validation",
+    "findings": ["AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-client-record", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-reseller-client-record.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 599,
+    "reviewedFunctionsOrRanges": "full pure regression; canonical client/response acceptance and negative, fractional, non-finite, string, multiplied-overflow, unexpected-key and non-ISO timestamp rejection",
+    "findings": ["AUDIT-RESELLER-CLIENT-DTO-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-client-record"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/reseller/resellerMutationState.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 609,
+    "reviewedFunctionsOrRanges": "full file; exact pre-side-effect offline-capacity projection with missing legacy defaults/present-field fail-closed behavior, defensive date conversion, safe integer arithmetic, exact add-location/renew replay, profile document-ID binding, transaction-current profile counter/cap projection and overflow denial",
+    "findings": ["AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001", "AUDIT-RESELLER-MUTATION-PROFILE-COUNTER-001", "AUDIT-RESELLER-OFFLINE-CAPACITY-PREFLIGHT-001"],
+    "tests": ["npm run test:reseller-mutation-state", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-reseller-mutation-state.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 609,
+    "reviewedFunctionsOrRanges": "full pure regression; missing/canonical/malformed offline-capacity projection, overflow/string rejection, exact profile counter addition/cap/malformed/overflow behavior, throwing timestamp denial, replay/date-order and profile binding",
+    "findings": ["AUDIT-RESELLER-MUTATION-STATE-INTEGRITY-001", "AUDIT-RESELLER-MUTATION-PROFILE-COUNTER-001", "AUDIT-RESELLER-OFFLINE-CAPACITY-PREFLIGHT-001"],
+    "tests": ["npm run test:reseller-mutation-state"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/reseller/resellerProviderSubscription.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 610,
+    "reviewedFunctionsOrRanges": "full file; exact external Razorpay subscription projection with Firestore-safe trimmed provider ID and approved checkout URL",
+    "findings": ["AUDIT-RESELLER-PROVIDER-SUBSCRIPTION-DTO-001"],
+    "tests": ["npm run test:reseller-provider-subscription", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-reseller-provider-subscription.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 610,
+    "reviewedFunctionsOrRanges": "full pure regression; canonical provider response and missing, path-containing, non-string ID plus foreign checkout URL rejection",
+    "findings": ["AUDIT-RESELLER-PROVIDER-SUBSCRIPTION-DTO-001"],
+    "tests": ["npm run test:reseller-provider-subscription"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-reseller-rules.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 612,
+    "reviewedFunctionsOrRanges": "full real Firestore rules emulator; seeded profile/transaction and reseller/platform client denial for direct document, query and write paths",
+    "findings": ["AUDIT-RESELLER-DIRECT-FIRESTORE-AUTHORITY-001"],
+    "tests": ["npm run test:reseller:rules", "npm run verify:reseller-dashboard-boundary"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/app/api/reseller/readRateLimit.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 611,
+    "reviewedFunctionsOrRanges": "full file; augmented NextAuth session identity/profile claim, hashed per-route limiter key, cheap-fail headers and retry timing",
+    "findings": [],
+    "tests": ["npm run verify:reseller-dashboard-boundary", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/reseller/resellerLedger.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 601,
+    "reviewedFunctionsOrRanges": "full file; bounded deferred-row query, transaction-current activation/repair, exact online/profile/reseller/amount admission, profile ownership and overflow-safe exact revenue convergence",
+    "findings": ["AUDIT-RESELLER-ONLINE-REVENUE-CONVERGENCE-001"],
+    "tests": ["npm run test:reseller-onboarding-billing:emulator", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/lib/reseller/resellerOnboardingOperation.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 605,
+    "reviewedFunctionsOrRanges": "full file; credential-sensitive fingerprint, exact action/actor/fingerprint/scalar projection and exact current subscription scope/reseller plus store tenant/lifecycle replay admission",
+    "findings": ["AUDIT-RESELLER-ONBOARD-REPLAY-SCALAR-001", "AUDIT-RESELLER-ONBOARD-REPLAY-RESOURCE-AUTHORITY-001"],
+    "tests": ["npm run test:reseller-onboarding-boundary", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-reseller-onboarding-boundary.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 608,
+    "reviewedFunctionsOrRanges": "full pure regression; fingerprint/actor/scalar denial, current resource scope/reseller/lifecycle admission and active/deleted profile authority cases",
+    "findings": ["AUDIT-RESELLER-ONBOARD-REPLAY-SCALAR-001", "AUDIT-RESELLER-ONBOARD-REPLAY-RESOURCE-AUTHORITY-001", "AUDIT-RESELLER-SOFT-DELETE-AUTHORITY-001"],
+    "tests": ["npm run test:reseller-onboarding-boundary"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/reseller/resellerProfileAuthority.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 608,
+    "reviewedFunctionsOrRanges": "full file; exact actor/profile/Auth-UID/session-claim/email normalization and equality plus active and terminal soft-delete authority",
+    "findings": ["AUDIT-RESELLER-READ-CURRENT-AUTHORITY-001", "AUDIT-RESELLER-SOFT-DELETE-AUTHORITY-001"],
+    "tests": ["npm run test:reseller-onboarding-boundary", "npm run test:reseller-profile-admission:emulator", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/reseller/resellerOnboardingResponse.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 604,
+    "reviewedFunctionsOrRanges": "full file; allowlisted owner-handoff DTO and exact safe scope/location/status/operation/bounded optional-string runtime validation",
+    "findings": ["AUDIT-RESELLER-ONBOARD-RESPONSE-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-onboarding-response", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-25"
+  },
+  "scripts/verification/test-reseller-onboarding-response.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 604,
+    "reviewedFunctionsOrRanges": "full pure regression; canonical DTO acceptance and string/fractional scope, invalid status, private extra field and mismatched operation rejection",
+    "findings": ["AUDIT-RESELLER-ONBOARD-RESPONSE-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-onboarding-response"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/templates/main-app/reseller/OnboardingWizard.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 604,
+    "reviewedFunctionsOrRanges": "full component; form/operation intent, bounded request/response, shared exact acknowledgement, handoff rendering/copy and error/loading state",
+    "findings": ["AUDIT-RESELLER-ONBOARD-RESPONSE-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-onboarding-response", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/components/mobile/screens/MobileResellerOnboardingScreen.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 604,
+    "reviewedFunctionsOrRanges": "full component; mobile draft/operation intent, bounded request/response, shared exact acknowledgement, touch handoff/copy/share and error/loading state",
+    "findings": ["AUDIT-RESELLER-ONBOARD-RESPONSE-INTEGRITY-001"],
+    "tests": ["npm run test:reseller-onboarding-response", "npm run verify:reseller-dashboard-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-25"
+  },
+  "src/app/api/seo/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 613,
+    "reviewedFunctionsOrRanges": "full route; bounded request and attempted-input diagnostics, current session store permission/capacity authority, prompt/provider call, bounded JSON parsing, exact generated-output normalization, accounting, logging and response projection",
+    "findings": ["AUDIT-SEO-PROVIDER-OUTPUT-CONTRACT-001"],
+    "tests": ["npm run test:seo-output-boundary", "node scripts/verification/verify-ai-accounting-hardening.js", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/app/api/seo/prompt.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 613,
+    "reviewedFunctionsOrRanges": "full file; validated request DTO consumption, control/template-character normalization, bounded list/scalar interpolation, factual prompt constraints and exact requested output shape",
+    "findings": [],
+    "tests": ["node scripts/verification/verify-ai-accounting-hardening.js", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/ai/seoOutput.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 613,
+    "reviewedFunctionsOrRanges": "full file; exact generated SEO DTO, required field types, control/whitespace normalization, field caps, keyword deduplication/cap and fail-closed malformed/empty behavior",
+    "findings": ["AUDIT-SEO-PROVIDER-OUTPUT-CONTRACT-001"],
+    "tests": ["npm run test:seo-output-boundary", "node scripts/verification/verify-ai-accounting-hardening.js", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/services/ai/seo/generateSeoViaAPI.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 613,
+    "reviewedFunctionsOrRanges": "full browser service; authoritative request type reuse, no-store same-origin bounded POST, capacity response handling, bounded response envelope, balance sync and shared exact generated-output normalization",
+    "findings": ["AUDIT-SEO-PROVIDER-OUTPUT-CONTRACT-001"],
+    "tests": ["npm run test:seo-output-boundary", "node scripts/verification/verify-ai-accounting-hardening.js", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-seo-output-boundary.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 613,
+    "reviewedFunctionsOrRanges": "full pure regression; canonical normalization plus primitive/array/object-field/empty/mixed-keyword rejection and exact length/list caps",
+    "findings": ["AUDIT-SEO-PROVIDER-OUTPUT-CONTRACT-001"],
+    "tests": ["npm run test:seo-output-boundary"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/app/api/msg-preview/[sessionId]/fix/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 614,
+    "reviewedFunctionsOrRanges": "full POST; exact route ID, hashed session/IP limiter, declared and streamed 4KB body caps, strict issue/token/note validation, transaction result/status mapping, bounded post-commit event projection, response and generic failure diagnostics",
+    "findings": [],
+    "tests": ["npm run test:messaging-fix-request:emulator", "npm run verify:menu-extraction-pipeline", "npm run verify:menulist-api-tenant-safety", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/messaging-onboarding/previewClientResponse.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 614,
+    "reviewedFunctionsOrRanges": "full file; bounded response JSON, exact preview/approve/fix DTO projection, public menu/published-result delegation, safe status/code/retry/max extraction, fixed diagnostics and rejected/invalid response behavior",
+    "findings": [],
+    "tests": ["npm run test:messaging-preview-response-boundary", "npm run verify:menu-extraction-pipeline", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-messaging-fix-request-emulator.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 614,
+    "reviewedFunctionsOrRanges": "full real Firestore regression; ten-way final-slot serialization, exact reset/cleanup pointer persistence and max/token/session/issue/duplicate/expiry rejection without mutation",
+    "findings": [],
+    "tests": ["npm run test:messaging-fix-request:emulator"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/app/(global-pages)/msg-preview/[sessionId]/page.tsx": {
+    "reviewStatus": "in-progress",
+    "auditPass": 614,
+    "reviewedFunctionsOrRanges": "fix-request UI/event slice: issue toggle/note state, duplicate-submit admission, token/session request, shared bounded response acknowledgement, max-reached/fixed error copy and success settlement; preview rendering/approve/published handoff ranges remain inventory-only",
+    "findings": [],
+    "tests": ["npm run test:messaging-preview-response-boundary", "npm run verify:menu-extraction-pipeline", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/app/api/platform/founder-monitor/route.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 615,
+    "reviewedFunctionsOrRanges": "full GET; feature/query/rate/current persisted platform admission, capped summary/daily/movement reads, IST window aggregation, financial/growth/scorecard/status projection, source coverage, response and fixed failure diagnostics",
+    "findings": ["AUDIT-FOUNDER-MONITOR-STATUS-FAILSAFE-001"],
+    "tests": ["npm run verify:platform-founder-monitor-boundary", "npm run test:founder-monitor-status-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/lib/ops/founderMonitorTypes.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 615,
+    "reviewedFunctionsOrRanges": "full authoritative API/row/summary/status contracts plus fail-safe persisted status normalization",
+    "findings": ["AUDIT-FOUNDER-MONITOR-STATUS-FAILSAFE-001"],
+    "tests": ["npm run verify:platform-founder-monitor-boundary", "npm run test:founder-monitor-status-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/database/ops/founderMonitor.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 615,
+    "reviewedFunctionsOrRanges": "full browser DAL; no-store same-origin bounded GET, fixed rejected/parse/invalid diagnostics and complete runtime shape validation for every nested monitor structure",
+    "findings": [],
+    "tests": ["npm run verify:platform-founder-monitor-boundary", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/components/templates/main-app/platform/founderMonitor/index.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 615,
+    "reviewedFunctionsOrRanges": "full component; typed session platform gate, period/refresh admission, latest mounted request settlement, fixed error/loading/empty behavior, all scorecard/revenue/store/source tables and bounded internal navigation",
+    "findings": ["AUDIT-FOUNDER-MONITOR-PERIOD-RACE-001"],
+    "tests": ["npm run verify:platform-founder-monitor-boundary", "npm run test:latest-request-guard", "npx tsc --noEmit --incremental false --pretty false", "focused ESLint"],
+    "reviewedAt": "2026-07-26"
+  },
+  "src/app/(main)/platform/founder-monitor/page.tsx": {
+    "reviewStatus": "reviewed",
+    "auditPass": 615,
+    "reviewedFunctionsOrRanges": "full page wrapper; delegates rendering and authorization-aware client lifecycle to the canonical Founder Monitor component",
+    "findings": [],
+    "tests": ["npm run verify:platform-founder-monitor-boundary", "npx tsc --noEmit --incremental false --pretty false"],
+    "reviewedAt": "2026-07-26"
+  },
+  "scripts/verification/test-founder-monitor-status-boundary.ts": {
+    "reviewStatus": "reviewed",
+    "auditPass": 615,
+    "reviewedFunctionsOrRanges": "full pure regression; all admitted statuses plus missing/null/empty/unknown/object fail-safe behavior",
+    "findings": ["AUDIT-FOUNDER-MONITOR-STATUS-FAILSAFE-001"],
+    "tests": ["npm run test:founder-monitor-status-boundary"],
+    "reviewedAt": "2026-07-26"
   }
 }

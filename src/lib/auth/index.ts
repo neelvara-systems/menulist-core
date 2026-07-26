@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from "@constant/product";
-import { getDisplayEmail } from "@lib/auth/loginIdentifiers";
+import { getDisplayEmail, normalizeLoginUsername } from "@lib/auth/loginIdentifiers";
 import { firebaseAuth, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
@@ -399,15 +399,16 @@ export const authOptions: NextAuthOptions = {
                     }
                 } else {
                     const phoneUsername = normalizePhoneUsername(loginIdentifier);
-                    if (phoneUsername.length < 10) {
+                    const loginUsername = normalizeLoginUsername(loginIdentifier);
+                    if (!loginUsername && phoneUsername.length < 10) {
                         await logFailedLogin(loginIdentifier, 'invalid_username', 'credentials');
                         throw new Error("Invalid email/phone or password");
                     }
-                    dbUser = await getAuthUserByLoginIdentifier(phoneUsername);
+                    dbUser = await getAuthUserByLoginIdentifier(loginIdentifier);
                     email = typeof dbUser?.email === 'string' ? dbUser.email.toLowerCase().trim() : '';
                     const resolvedEmailValidation = validateEmail(email);
                     if (!resolvedEmailValidation.valid) {
-                        await logFailedLogin(phoneUsername, 'username_not_found', 'credentials');
+                        await logFailedLogin(loginUsername || phoneUsername, 'username_not_found', 'credentials');
                         throw new Error("Invalid email/phone or password");
                     }
                 }

@@ -8,7 +8,12 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
-import { formatStaffLoginId, getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
+import {
+    formatStaffLoginId,
+    getPhoneLookupCandidates,
+    normalizeLoginDigits,
+    normalizeLoginUsername,
+} from "@lib/auth/loginIdentifiers";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/server";
@@ -83,14 +88,19 @@ export const getAuthUserByLoginIdentifier = async (identifier: string) => {
         return getAuthUserByEmail(normalizedIdentifier);
     }
 
+    const loginUsername = normalizeLoginUsername(normalizedIdentifier);
     const phoneUsername = normalizePhoneUsername(normalizedIdentifier);
-    if (!phoneUsername) return null;
+    if (!loginUsername && !phoneUsername) return null;
 
-    const lookupPairs: Array<[field: string, value: string]> = [
-        ['username', phoneUsername],
-        ['loginUsername', phoneUsername],
-        ['phoneUsername', phoneUsername],
-    ];
+    const lookupPairs: Array<[field: string, value: string]> = [];
+    if (loginUsername) lookupPairs.push(['username', loginUsername]);
+    if (phoneUsername) {
+        lookupPairs.push(
+            ['username', phoneUsername],
+            ['loginUsername', phoneUsername],
+            ['phoneUsername', phoneUsername],
+        );
+    }
 
     const staffLoginId = formatStaffLoginId(phoneUsername);
     if (staffLoginId) {

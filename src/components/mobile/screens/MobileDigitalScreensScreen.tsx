@@ -18,6 +18,11 @@ import {
     hasScreenCopyFallback,
     logScreenSettingsFailure,
 } from '@lib/screen/screenDiagnostics';
+import {
+    screenTimestampToMillis,
+    screenTimestampToDate,
+    type DigitalScreenSeenTimestamp,
+} from '@lib/screen/screenTimestamp';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { ScreenSlide } from '@type/campaigns';
@@ -58,28 +63,16 @@ interface MobileScreenLinkCardProps {
 const MAX_UPLOADS = FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS;
 const UPLOAD_EXPIRY_DAYS = FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS;
 
-function getDaysRemaining(validUntil?: any): number {
+function getDaysRemaining(validUntil: ScreenSlide["validUntil"]): number {
     if (!validUntil) return UPLOAD_EXPIRY_DAYS;
-    const expiryMs = validUntil?.toMillis ? validUntil.toMillis() : validUntil;
+    const expiryMs = screenTimestampToMillis(validUntil);
+    if (expiryMs === null) return 0;
     const daysMs = expiryMs - Date.now();
     return Math.max(0, Math.ceil(daysMs / (1000 * 60 * 60 * 24)));
 }
 
-function timestampToDate(value?: any): Date | null {
-    if (!value) return null;
-    try {
-        if (typeof value.toDate === 'function') return value.toDate();
-        if (typeof value.toMillis === 'function') return new Date(value.toMillis());
-        if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-    } catch {
-        return null;
-    }
-}
-
-function formatLastSeen(value?: any): string {
-    const date = timestampToDate(value);
+function formatLastSeen(value?: DigitalScreenSeenTimestamp): string {
+    const date = screenTimestampToDate(value);
     if (!date) return 'Waiting for first TV connection';
 
     const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
@@ -187,7 +180,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [screenUrl, setScreenUrl] = useState('');
-    const [screenLastSeenAt, setScreenLastSeenAt] = useState<any>(null);
+    const [screenLastSeenAt, setScreenLastSeenAt] = useState<DigitalScreenSeenTimestamp>(null);
     const [ownerOverride, setOwnerOverride] = useState(false);
     const [pinnedSlides, setPinnedSlides] = useState<ScreenSlide[]>([]);
     const [pendingSlide, setPendingSlide] = useState<AdjustableUploadedFile | null>(null);
@@ -204,7 +197,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const compactMenuUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
     const compactHighlightsUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
     const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
-    const hasSeenSignal = Boolean(timestampToDate(screenLastSeenAt));
+    const hasSeenSignal = Boolean(screenTimestampToDate(screenLastSeenAt));
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
     const buildMobileDigitalScreenLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
         surface: 'mobile_digital_screens',
@@ -235,8 +228,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     const sortedSlides = useMemo(
         () => [...pinnedSlides].sort((left, right) => {
-            const leftTime = left.validUntil?.toMillis ? left.validUntil.toMillis() : 0;
-            const rightTime = right.validUntil?.toMillis ? right.validUntil.toMillis() : 0;
+            const leftTime = screenTimestampToMillis(left.validUntil) ?? 0;
+            const rightTime = screenTimestampToMillis(right.validUntil) ?? 0;
             return rightTime - leftTime;
         }),
         [pinnedSlides]

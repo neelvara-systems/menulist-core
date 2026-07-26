@@ -3,7 +3,7 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 17, 2026
+**Last Updated:** July 25, 2026
 **Audience:** Developers
 
 ---
@@ -43,9 +43,13 @@
 | Refresh public cache             | Next.js cache tags     | CACHE | 0 Firebase ops | Calls `revalidateMenuCache(storeId, { tId })` after tenant/store transaction commit; failures are bounded and fail open |
 | **Replay**                       | operation + subscription + store | READ | bounded | Exact retry returns existing handoff and writes nothing |
 
+The initial billing transaction treats reseller counters as transaction-current financial data. Missing counters normalize to zero for legacy compatibility, but present values and a present offline cap must be exact safe integers. The profile document must match the ledger reseller, every addition must remain safe, and exact next values are written instead of `FieldValue.increment`; malformed/foreign/overflowing state aborts before any subscription, operation, or profile write. Read/write counts are unchanged.
+
+Renewal and add-location transactions apply the same rule to `totalTransactions`, `totalRevenueCollectedPaise`, and expired-renewal `currentActiveOfflineStores`/`maxOfflineActivations`. One already-required profile read supplies the current state; exact projected counters replace atomic increments, so valid read/write counts are unchanged.
+
 ### 3.2 Reseller Onboarding (Create Store — Online)
 
-Online uses the same account transaction and local billing transaction plus the external Razorpay Subscription call. The local operation starts `pending_payment` with `profileRevenueRecognized: false`; profile revenue remains unchanged until webhook activation transactionally converges the ledger and increments it once. Provider/local persistence failures follow cancel-before-compensate recovery.
+Online uses the same account transaction and local billing transaction plus the external Razorpay Subscription call. The local operation starts `pending_payment` with `profileRevenueRecognized: false`; profile revenue remains unchanged until webhook activation transactionally converges the ledger. The convergence query is bounded to ten rows for the exact subscription and false marker. Its transaction re-reads those rows plus each referenced profile, validates exact online status/identity and safe-integer paise/current total, then writes the exact next profile total and marker together. A missing/mismatched/malformed profile leaves the row marker-false; the row may still activate, and a later active-row replay can repair revenue without reporting another activation. This adds at most one profile read per distinct referenced profile in the bounded transaction and no new collection/index/Function. Provider/local persistence failures follow cancel-before-compensate recovery.
 
 July 16 onboarding consolidation adds one deterministic operation read and one subscription-absence read (plus profile when present) to the local billing transaction, while removing separate subscription, transaction, and profile commits. This is a correctness trade: cap enforcement, subscription truth, ledger truth, and counters can no longer diverge. Exact browser retries are write-free.
 
@@ -77,7 +81,17 @@ July 1 reseller management update acknowledgement hardening is Firebase-cost neu
 
 July 5 platform reseller management profile-id boundary is Firebase-cost neutral. `/api/reseller/manage` validates the exact raw update `profileId` through the shared Firestore document-ID boundary before reseller profile lookup, Firebase Auth sync, or profile merge work, so whitespace-mutated IDs fail before Firestore reads/writes. This changes no valid `/api/reseller/manage` reads/writes, Firebase Auth operations, route calls, reseller profile writes, monthly summary reads, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
+July 26 platform management profile transport hardening keeps the same one-query read pattern and raises its bounded document limit from 50 to 51 solely to expose whether the displayed 50-row result is capped. Persisted rows cross an exact allowlisted projector before serialization; invalid rows are excluded and counted, and private/unknown fields never enter the response. This adds at most one Firestore document read per platform list refresh and changes no writes, rules, indexes, Functions, cache invalidation, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 26 soft-delete authority hardening is Firebase-cost neutral. The existing direct profile read and at-most-two-row legacy email fallback now reject `deleted: true` before returning current authority, and platform by-ID management lookup does the same. No query, read/write count, rule, index, Function, cache, Firebase deploy requirement, or Vercel deploy action changes.
+
+July 26 offline-capacity/provider-response hardening is Firebase-cost neutral on valid requests. Existing profile state is projected before owner/store side effects; missing legacy capacity retains the same defaults, while malformed present fields fail before new Auth/Firestore/provider work. The existing Razorpay response must expose a valid Firestore-safe subscription ID and approved checkout URL before the existing subscription/ledger transaction. No reads/writes, rules, indexes, Functions, cache behavior, Firebase deploy requirement, or Vercel deploy action change for valid onboarding.
+
 Desktop and mobile reseller onboarding callers send `/api/reseller/onboard` requests with no-store cache, same-origin credentials, and manual redirect handling, cap response JSON at 16KB, log bounded parse failures, and require matching store, tenant, subscription, request operation/transaction ID, and status fields before rendering returned login/link details. This browser acknowledgement validation adds no Firebase operation.
+
+July 25 response-contract hardening is also Firebase-cost neutral. Both clients now use one exact allowlisted acknowledgement with positive safe-integer tenant/store/location IDs, known active/pending status, matching operation ID and bounded optional handoff strings. The route no longer returns the unused owner Firebase Auth UID. No Firestore/Auth operation or persisted subscription user identity changes.
+
+July 25 replay-authority hardening is Firebase-cost neutral. Existing operation, subscription and store reads remain bounded and unchanged, but the current subscription must carry exact matching MenuList scope/reseller truth and the store must carry agreeing tenant aliases plus eligible lifecycle before replay side effects/output. Malformed paid time fails support review rather than becoming retry time.
 
 July 1 add-location request/response hardening is also Firebase-cost neutral. Desktop and mobile reseller dashboard callers send `/api/reseller/add-location-capacity` requests with no-store cache, same-origin credentials, and manual redirect handling, cap response JSON at 8KB, log `desktop_reseller_dashboard_add_location_response_parse_failed` / `mobile_reseller_dashboard_add_location_response_parse_failed` for malformed or oversized responses, and require `success: true`, positive numeric `amountExpected`, the requested store id, requested tenant id, and requested location count before showing the amount to collect. This adds no Firestore reads/writes/deletes beyond existing valid add-location writes, Storage operations, Firebase Auth changes, new route calls, billing writes beyond existing valid capacity updates, transaction writes beyond existing valid capacity updates, cache invalidations, rules, indexes, schema changes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
@@ -88,6 +102,9 @@ June 30 reseller copy acknowledgement hardening is browser-local and Firebase-co
 | Operation | Collection | Type | Count | Notes |
 | --- | --- | --- | ---: | --- |
 | Re-read current authority | `resellerProfiles` or `users` | READ | 1 | Exact active reseller identity or current platform authority |
+| Platform profile create admission | `resellerProfiles`, `users` | READ + WRITE | 4 bounded transaction query/document reads + 2 writes | Exact profile/email/username/cap admission; profile and login-user truth commit together |
+| Platform profile update admission | `resellerProfiles`, `users` | READ + WRITE | 3 bounded transaction query/document reads + 2 writes | Exact current profile/email/username admission; profile and login-user truth commit together |
+| Reseller self-profile | `resellerProfiles` | READ | 1 direct read; legacy fallback adds up to 2 candidate reads | Exact active identity and allowlisted private DTO |
 | Transactionally read subscription | `subscriptions` | READ | 1 | Exact ownership/product/scope/manual/pending admission |
 | Confirm subscription | `subscriptions` | WRITE | 0-1 | One write on first confirmation; no write for an idempotent replay |
 | Reconcile entitlement/referral | `stores`, `platformSummary`, `subscriptions`, referral settlement state | READ/WRITE | state-dependent | Existing safe repair paths run after both first success and replay; public/assistant cache invalidation follows entitlement truth |
@@ -98,9 +115,10 @@ Concurrent confirmations serialize on the subscription document. Only one reques
 
 | Operation | Collection | Type | Count | Notes |
 | --------- | ---------- | ---- | ----- | ----- |
+| Re-read current authority | `resellerProfiles` or `users` | READ | 1 direct; legacy reseller fallback adds up to 2 candidate reads | Stale, disabled, revoked, inactive, identity-mismatched, or ambiguous sessions fail before subscriptions |
 | Query current clients | `subscriptions` | READ | up to 101 reseller / 201 platform | Direct current-subscription projection ordered by `createdOn desc` before the cap; final row is overflow detection. Composite indexes cover reseller and platform filters. |
-| Return bounded state | none | LOCAL | 0 | Normalizes pending status/payment URL and returns `isPartial`; browser dedupes historical replacement subscriptions by store |
-| **Total** | | | **one bounded subscription query** | Removes the former ledger query plus exact subscription `getAll()` fan-out. Deterministic newest-first ordering prevents the cap from returning an arbitrary historical window without increasing reads. |
+| Validate/return bounded state | none | LOCAL | 0 | Exact scope/identity/status/mode/quantity/paise/timestamp projection excludes and counts malformed rows, normalizes pending status/payment URL, and returns `isPartial`; browser validates the exact DTO and dedupes by store |
+| **Total** | | | **one authority read + one bounded subscription query** | Removes the former ledger query plus exact subscription `getAll()` fan-out. Deterministic newest-first ordering prevents the cap from returning an arbitrary historical window without increasing reads. |
 
 The daily leased billing/reseller maintenance task also repairs the shared `billingEntitlementSyncPending` marker before checking the reseller feature flag. This keeps ordinary Razorpay cancellation/paused-cycle mirror failures recoverable even when the reseller dashboard is disabled. The repair query remains capped at five 100-row pages and adds only one empty-query minimum on a disabled-reseller day.
 
@@ -126,9 +144,11 @@ There is no separate reseller client-detail route. Renewal/add-location mutation
 
 | Operation | Collection | Type | Count | Notes |
 | --------- | ---------- | ---- | ----- | ----- |
+| Re-read current authority | `resellerProfiles` or `users` | READ | 1 direct; legacy reseller fallback adds up to 2 candidate reads | Runs before monthly transaction/profile disclosure |
 | Query transactions | `resellerTransactions` | READ | up to 2000 monthly rows | Date range scoped; non-platform also filters `resellerId` |
-| Read visible profile docs | `resellerProfiles` | READ | 1-2 reseller / up to 50 platform | Reseller users no longer read the full profile collection |
-| **Total** | | | **bounded monthly rows + bounded profile docs** | |
+| Read visible profile docs | `resellerProfiles` | READ | 0 additional reseller / up to 50 platform | Reseller output reuses the already-authorized current profile; platform enrichment stays bounded |
+| Validate/aggregate rows | none | LOCAL | 0 | Invalid identity/status/mode/store/paise or overflow-causing rows are excluded and make the response explicitly partial |
+| **Total** | | | **current authority + bounded monthly rows + bounded profile docs** | |
 
 ### 3.7 Reseller Management
 
@@ -150,6 +170,15 @@ There is no separate reseller client-detail route. Renewal/add-location mutation
 | Create operation      | `resellerTransactions` | WRITE | 0-1 | Deterministic immutable renewal result |
 | Update profile        | `resellerProfiles`     | WRITE | 0-1 | Revenue/transaction counters; expired renewal also reacquires one active-offline slot after a cap check |
 | **Replay**            |                        |       | **2R, 0W** | Existing exact operation is returned without another extension |
+
+Renewal and add-location replay/current-state validation is local and does not
+add reads. Persisted operation IDs, scope, action, pricing/duration/location
+inputs, safe-integer result fields and timestamps must match exactly; string
+coercion is not accepted. Transaction-current subscription amount/quantity
+must remain safe, active renewal expiry must be valid, and a non-platform
+profile counter write requires the subscription profile ID to equal the exact
+admitted reseller profile. This prevents malformed legacy state or a mismatched
+profile reference from changing paid capacity or another profile's counters.
 
 ### 3.8A Add Manual Location Capacity
 
@@ -268,25 +297,15 @@ Do not use the former fixed monthly total for forecasting: billed reads depend o
 ```
 // firestore.rules additions
 match /resellerTransactions/{docId} {
-  allow read: if isAuthenticated()
-    && (isPlatformAdmin()
-      || resource.data.resellerId == request.auth.uid
-      || resource.data.resellerId == request.auth.token.uId);
-  allow write: if false;
+  allow read, write: if false;
 }
 
 match /resellerProfiles/{profileId} {
-  allow read: if isAuthenticated()
-    && (isPlatformAdmin()
-      || resource.data.authUserId == request.auth.uid
-      || resource.data.authUserId == request.auth.token.uId
-      || profileId == request.auth.uid
-      || profileId == request.auth.token.uId);
-  allow write: if false;
+  allow read, write: if false;
 }
 ```
 
-Reseller mutations go through API routes (server-side with `withAuth`), `DATA_WRITE` rate limiting with hashed reseller/user key material, bounded JSON parsing, and Zod validation. Browser dashboard reads also use server APIs with the shared `DATA_READ` cheap-fail gate; direct rules remain least-privilege compatible for authenticated platform/own-profile history reads and deny every client write. The shared hook caps response parsing and shape-checks profile, clients (including `isPartial`), and monthly-summary responses before UI state updates.
+Reseller mutations and reads go through API routes using `withAuth()`, current persisted platform/profile authority, bounded rate limiting/input/output, runtime projection, and the Admin SDK. Direct browser reads and writes are denied for resellers and platform users alike, preventing stale signed claims from bypassing current lifecycle/soft-delete checks. The shared hook caps response parsing and shape-checks profile, clients (including `isPartial`), and monthly-summary responses before UI state updates. `npm run test:reseller:rules` proves direct own-profile, own-transaction, query, write, and platform-client access all fail.
 
 ---
 

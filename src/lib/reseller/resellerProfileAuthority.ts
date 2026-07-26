@@ -30,6 +30,7 @@ export function isActiveResellerProfileForSession(params: {
     if (
         !profile
         || profile.active !== true
+        || profile.deleted === true
         || !actorId
         || !profileId
         || !sessionEmail

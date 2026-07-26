@@ -12,8 +12,8 @@ import type {
   FounderMonitorRevenueSummary,
   FounderMonitorScorecard,
   FounderMonitorSourceCoverage,
-  FounderMonitorStatus,
 } from '@lib/ops/founderMonitorTypes';
+import { normalizeFounderMonitorStatus, type FounderMonitorStatus } from '@lib/ops/founderMonitorTypes';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -85,14 +85,6 @@ function getRecentIndiaDayKeys(days: number): string[] {
 
 function getTodayWindowLabel(): string {
   return 'Since 12:00 AM IST';
-}
-
-function normalizeMonitorStatus(value: unknown): FounderMonitorStatus {
-  const status = cleanText(value, 40);
-  if (status === 'healthy' || status === 'watch' || status === 'action_required' || status === 'setup_required') {
-    return status;
-  }
-  return 'healthy';
 }
 
 function addCleanIds(value: unknown, target: Set<string>) {
@@ -428,7 +420,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     const revenue = buildRevenueSummary(revenueRead.data, periodDaily, todayDaily);
     const growth = buildGrowthSummary(growthRead.data);
     const status: FounderMonitorStatus = snapshotRead.coverage.status === 'available' && revenueRead.coverage.status === 'available'
-      ? normalizeMonitorStatus(snapshotRead.data.status)
+      ? normalizeFounderMonitorStatus(snapshotRead.data.status)
       : 'setup_required';
     const scorecard = {
       ...defaultScorecard(getTodayWindowLabel()),

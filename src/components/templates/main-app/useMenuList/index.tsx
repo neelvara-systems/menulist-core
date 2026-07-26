@@ -38,6 +38,7 @@ import {
     hasFeedbackPresenceReadiness,
     hasPublishedMenuProject,
 } from '@lib/menuPresence/presenceReadiness';
+import type { DigitalScreenSeenTimestamp } from '@lib/screen/screenTimestamp';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
 import {
@@ -297,7 +298,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
             // Get screen state
             let screenToken: string | null = null;
-            let screenLastSeenAt: any = null;
+            let screenLastSeenAt: DigitalScreenSeenTimestamp = null;
             if (canAccessDigitalScreens) {
                 try {
                     const screenState = await getScreenState();

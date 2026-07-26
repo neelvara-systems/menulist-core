@@ -4,6 +4,10 @@ import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPT
 import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import {
+    isResellerOnboardingResponse,
+    type ResellerOnboardingResponse,
+} from "@lib/reseller/resellerOnboardingResponse";
 import { formatInrPaise } from "@util/formatters";
 import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
@@ -27,22 +31,6 @@ import {
 const { Title, Text, Paragraph } = Typography;
 const RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 
-interface OnboardResult {
-    dashboardUrl?: string;
-    loginEmail?: string;
-    locationCount?: number;
-    ownerUsername?: string;
-    passwordSet?: boolean;
-    publicUrl?: string;
-    storeId: number;
-    subdomain?: string;
-    tenantId: number;
-    subscriptionId: string;
-    shortUrl?: string;
-    status: string;
-    transactionId: string;
-}
-
 type ResellerOnboardingCopyKind =
     | 'dashboard_link'
     | 'login_email'
@@ -50,23 +38,6 @@ type ResellerOnboardingCopyKind =
     | 'owner_username'
     | 'payment_link'
     | 'public_link';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isValidOnboardResult(data: unknown, expectedOperationId: string): data is OnboardResult {
-    if (!isRecord(data)) return false;
-    const storeId = Number(data.storeId);
-    const tenantId = Number(data.tenantId);
-    return Number.isFinite(storeId)
-        && Number.isFinite(tenantId)
-        && typeof data.subscriptionId === 'string'
-        && data.subscriptionId.length > 0
-        && typeof data.status === 'string'
-        && data.status.length > 0
-        && data.transactionId === expectedOperationId;
-}
 
 async function readOnboardResponse(
     response: Response,
@@ -95,10 +66,10 @@ function OnboardingWizard() {
     const [form] = Form.useForm();
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<OnboardResult | null>(null);
+    const [result, setResult] = useState<ResellerOnboardingResponse | null>(null);
 
     const tiers = getActiveResellerTiers();
-    const businessTypeOptions = BUSINESS_TYPES.map((bt: any) => ({
+    const businessTypeOptions = BUSINESS_TYPES.map((bt) => ({
         label: bt.label || bt.value,
         value: bt.value,
     }));
@@ -202,7 +173,7 @@ function OnboardingWizard() {
                 throw createResellerStatusError('desktop_reseller_onboard_rejected', response.status);
             }
 
-            if (!isValidOnboardResult(data, operationId)) {
+            if (!isResellerOnboardingResponse(data, operationId)) {
                 const invalidResponseError = createResellerStatusError(
                     'desktop_reseller_onboard_response_invalid',
                     response.status,

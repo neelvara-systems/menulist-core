@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
     getResellerOnboardingOperationFingerprint,
     isMatchingResellerOnboardingOperation,
+    isMatchingResellerOnboardingReplayResources,
 } from '../../src/lib/reseller/resellerOnboardingOperation';
 import { isActiveResellerProfileForSession } from '../../src/lib/reseller/resellerProfileAuthority';
 
@@ -46,9 +47,60 @@ assert.equal(isMatchingResellerOnboardingOperation({
     operationId,
     resellerId: 'reseller_auth_uid',
 }), false);
+
+const replaySubscription = {
+    pId: 'ML',
+    productId: 'ML',
+    resellerId: 'reseller_auth_uid',
+    sId: 41,
+    storeId: 41,
+    tId: 31,
+    tenantId: 31,
+};
+const replayStore = { active: true, tId: 31, tenantId: 31 };
+assert.equal(isMatchingResellerOnboardingReplayResources({
+    resellerId: 'reseller_auth_uid',
+    storeData: replayStore,
+    storeId: 41,
+    subscriptionData: replaySubscription,
+    tenantId: 31,
+}), true);
+assert.equal(isMatchingResellerOnboardingReplayResources({
+    resellerId: 'reseller_auth_uid',
+    storeData: { ...replayStore, tenantId: 32 },
+    storeId: 41,
+    subscriptionData: replaySubscription,
+    tenantId: 31,
+}), false);
+assert.equal(isMatchingResellerOnboardingReplayResources({
+    resellerId: 'reseller_auth_uid',
+    storeData: { ...replayStore, active: false },
+    storeId: 41,
+    subscriptionData: replaySubscription,
+    tenantId: 31,
+}), false);
+assert.equal(isMatchingResellerOnboardingReplayResources({
+    resellerId: 'reseller_auth_uid',
+    storeData: replayStore,
+    storeId: 41,
+    subscriptionData: { ...replaySubscription, resellerId: 'another-reseller' },
+    tenantId: 31,
+}), false);
 assert.equal(isMatchingResellerOnboardingOperation({
     fingerprint,
     operationData: { ...operation, operationFingerprint: 'different' },
+    operationId,
+    resellerId: 'reseller_auth_uid',
+}), false);
+assert.equal(isMatchingResellerOnboardingOperation({
+    fingerprint,
+    operationData: { ...operation, storeId: '41' },
+    operationId,
+    resellerId: 'reseller_auth_uid',
+}), false);
+assert.equal(isMatchingResellerOnboardingOperation({
+    fingerprint,
+    operationData: { ...operation, tenantId: Number.MAX_SAFE_INTEGER + 1 },
     operationId,
     resellerId: 'reseller_auth_uid',
 }), false);
@@ -80,6 +132,12 @@ assert.equal(isActiveResellerProfileForSession({
 assert.equal(isActiveResellerProfileForSession({
     actorId: 'reseller_auth_uid',
     profile: { ...profile, active: false },
+    sessionEmail: 'reseller@example.com',
+    sessionProfileId: 'legacy_profile_id',
+}), false);
+assert.equal(isActiveResellerProfileForSession({
+    actorId: 'reseller_auth_uid',
+    profile: { ...profile, deleted: true },
     sessionEmail: 'reseller@example.com',
     sessionProfileId: 'legacy_profile_id',
 }), false);

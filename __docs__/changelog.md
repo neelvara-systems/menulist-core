@@ -1,5 +1,158 @@
 # MenuList — Changelog
 
+## July 26, 2026 - Founder Monitor Status and Period Integrity
+
+- **Unknown snapshot status fails safe** - missing, malformed, or future status values now render as setup required instead of healthy.
+- **Selected periods own their response** - changing the 7/30/60/90-day window invalidates older in-flight requests, so a slow prior response cannot replace current metrics.
+- **Unmounted screens cannot settle state** - data, error, and loading updates require both mounted ownership and the latest request token.
+- **Focused regression protection is aggregated** - the Founder Monitor verifier runs exact status-boundary behavior and source-gates request ownership.
+
+## July 26, 2026 - SEO Provider Output Integrity
+
+- **Generated SEO copy is runtime-validated** - meta title, description, tagline, and keywords must have the exact expected field types before accounting or owner delivery.
+- **Malformed provider JSON fails closed** - objects and mixed arrays can no longer be coerced into public metadata such as `"[object Object]"`.
+- **One normalization contract protects both boundaries** - the server route and browser service share exact trimming, control-character removal, deduplication, and field/list caps.
+- **Regression proof covers adversarial output** - focused tests cover valid output, malformed object fields, mixed keyword arrays, empty fields, normalization, deduplication, and caps.
+
+## July 26, 2026 - Reseller Direct-Firestore Denial
+
+- **Protected reseller data is API-only** - Firestore client reads and writes for `resellerProfiles` and `resellerTransactions` are denied for reseller and platform identities.
+- **Stale claims cannot bypass current authority** - disabled or soft-deleted reseller sessions must pass the API’s current persisted user/profile checks rather than reading historical collections directly.
+- **Emulator proof covers alternate paths** - own profile, own transaction, reseller query, client write, and platform-client reads all fail under the deployed rules contract.
+- **QA deployment remains blocked** - the scoped `firestore:rules` deploy could not authenticate through the local Firebase CLI; source and emulator closure are complete, but QA still requires an authenticated deploy.
+
+## July 26, 2026 - Reseller Onboarding Boundary Integrity
+
+- **Malformed offline capacity fails before side effects** - present profile count/cap fields must be exact safe integers; missing legacy values retain documented defaults, while malformed state returns support review before owner Auth or tenant/store creation.
+- **Exhausted capacity is a conflict** - the early check uses the exact projected current/cap values and returns `409` before onboarding work.
+- **Razorpay success is runtime-validated** - provider subscription ID must be a valid Firestore document identity and checkout URL must pass the approved Razorpay URL boundary before billing persistence.
+- **Unsafe provider/Auth casts are removed** - the onboarding route uses exact provider state and `unknown` Firebase errors with explicit code narrowing.
+
+## July 26, 2026 - Production Sign-In Firebase Admin Bundle Repair
+
+- **The website Login route no longer depends on native Firebase Admin loading** - root Next server builds bundle and transpile Firebase Admin instead of externalizing it into a Vercel runtime `require()`.
+- **The CommonJS-to-ESM failure is permanently build-gated** - every Vercel build first validates Node 22.23.1 and the frozen Firebase Admin 14.2.0 → JWKS-RSA 4.1.0 → JOSE 6.2.4 chain, rejects dependency overrides or server re-externalization, then isolated-loads the website, sign-in, and NextAuth API deployment traces.
+- **The exact production flow passes locally** - a clean Node 22.23.1 Vercel-style build completed 439/439 pages; Chrome followed the desktop homepage Login link to “Welcome back”, direct reload worked, `/api/auth/session` returned 200, and browser logs contained no warning or error.
+- **Release remains explicit** - no dependency version, Firebase infrastructure, or application behavior changed, and no Vercel deploy was performed. The currently deployed production route remains on the prior failing bundle until the corrected source is released.
+
+## July 26, 2026 - Reseller Soft-Delete Authority
+
+- **Deleted profiles cannot retain access** - current reseller authority explicitly denies `deleted: true` even if legacy state still says `active: true`.
+- **Readers fail closed at origin** - direct Auth-UID, bounded legacy-email, and platform-by-ID profile readers exclude soft-deleted documents before callers can use them.
+- **Regression evidence covers both identity paths** - pure authority tests and the real Firestore emulator prove deleted direct and legacy profiles resolve to no usable current profile.
+
+## July 26, 2026 - Reseller Management Profile Contract
+
+- **Persisted profiles cross an allowlisted boundary** - the platform list returns only the exact management fields consumed by desktop/mobile; passwords, Auth UIDs, creator metadata, timestamps, and unknown legacy fields stay internal.
+- **Counters retain financial and capacity integrity** - profile caps must be positive safe integers and every activity/revenue counter must be a non-negative safe integer before entering platform state.
+- **Incomplete evidence is visible** - malformed profiles are excluded and counted, while a 51-document probe reports when the displayed 50-row list is capped.
+- **One validator protects both clients** - desktop and mobile share the exact response contract and warn when invalid or capped evidence makes the view partial.
+
+## July 25, 2026 - Reseller Onboarding Replay Authority
+
+- **An operation pointer is not resource authority** - replay now re-binds current subscription scope/reseller and store tenant/lifecycle truth to the exact persisted operation before side effects or output.
+- **Inactive or conflicting resources fail support review** - foreign subscription resellers, mismatched tenant/store aliases, and inactive compensated stores cannot produce a successful handoff.
+- **Paid evidence is never fabricated** - manual replay requires a defensively parsed persisted payment date instead of defaulting malformed data to the retry time.
+- **Current subscription owns displayed status** - replay acknowledgement reflects authoritative subscription lifecycle rather than a potentially stale ledger field.
+
+## July 25, 2026 - Reseller Onboarding Response Contract
+
+- **Desktop and mobile share one exact acknowledgement** - safe tenant/store/location integers, known status, matching operation ID, bounded handoff strings, and an allowlisted key set are validated before success state.
+- **Numeric-looking scope is not typed scope** - strings, fractions, unsafe values, unexpected keys, and invalid statuses fail the client boundary.
+- **Owner Auth UID stays internal** - onboarding success and replay responses no longer expose the created owner's unused Firebase identity.
+- **Regression evidence covers the transport boundary** - the focused suite and reseller source gate protect both clients and both route success shapes.
+
+## July 25, 2026 - Reseller Mutation Profile Counters
+
+- **Renewal and add-location validate profile counters** - present transaction/revenue/offline-slot counters must be non-negative safe integers; missing legacy values retain zero compatibility.
+- **Expired renewal preserves exact cap semantics** - a present cap must be a positive safe integer, and cap exhaustion remains a typed conflict rather than a generic failure.
+- **Paid counter changes cannot reset or overflow** - both transactions write checked exact next values instead of unchecked Firestore increments.
+- **Focused regressions cover malformed state** - string counters, maximum-safe overflow, valid additions, and cap exhaustion are source-gated.
+
+## July 25, 2026 - Reseller Onboarding Counter Integrity
+
+- **Initial billing commits validate current profile truth** - exact profile ownership, safe counters, safe collected paise, and a valid offline cap are required inside the transaction before subscription or ledger writes.
+- **Malformed legacy counters fail closed** - missing counters still normalize to zero, but present strings, fractions, negatives, non-finite values, and invalid caps cannot be silently reset through Firestore increments.
+- **Counter additions cannot overflow** - onboarded-store, transaction, online/offline, active-offline, and revenue totals use checked safe-integer addition and exact next values.
+- **Cross-profile counter writes are denied** - the referenced profile document must belong to the ledger reseller by exact document ID or Auth UID.
+- **Atomic regression evidence is real** - emulator cases prove malformed, overflowing, and foreign profiles leave the subscription absent.
+
+## July 25, 2026 - Reseller Online Revenue Convergence
+
+- **Payment activation cannot lose deferred revenue** - an online onboarding row is marked revenue-recognized only after its exact reseller profile exists, belongs to the ledger reseller, and accepts the safe-integer amount; missing or invalid profiles leave the marker false for repair.
+- **Repair replays converge without double activation** - active marker-false rows remain eligible, so a later retry can recognize revenue once while returning zero newly activated transactions.
+- **Financial state fails closed** - string, negative, fractional, non-finite, malformed, or overflow-causing amounts/profile totals cannot update reseller revenue.
+- **Onboarding replay IDs are exact** - persisted tenant/store IDs must be positive safe-integer numbers; numeric-looking strings and unsafe integers no longer pass through coercion.
+- **Emulator evidence covers failure recovery** - focused Firestore tests prove missing-profile repair, cross-profile denial, malformed-amount denial, one-time recognition, and replay behavior.
+
+## July 25, 2026 - Reseller Paid-Mutation State Integrity
+
+- **Renewal and add-location replays are exact** - persisted operation scope, action, subscription, pricing/duration/location inputs, safe-integer results, and defensive dates must match; numeric strings and malformed timestamp methods no longer pass through `Number(...)` or optional chaining.
+- **Paid capacity cannot overflow or coerce legacy state** - transaction-current subscription amount and quantity plus calculated results must remain non-negative safe integers before any write.
+- **Active renewal requires real expiry truth** - an active manual subscription with missing or malformed current expiry fails closed instead of silently anchoring a new period at the request time.
+- **Profile counters stay with the admitted reseller** - a subscription profile reference must equal the current reseller's exact profile before renewal/location revenue counters change; malformed platform-selected profile IDs also fail closed.
+- **Request bodies remain unknown until schema validation** - onboarding, confirmation, renewal, and add-location routes no longer cast bounded JSON bodies to `any`.
+
+## July 25, 2026 - Reseller Client-List Contract
+
+- **Subscription documents do not become trusted client rows by assertion** - one projector now requires exact MenuList scope, reseller identity, status, billing mode, positive safe quantity, non-negative safe paise, safe online multiplication, and defensive ISO timestamps.
+- **Malformed rows are visible as incomplete evidence** - invalid or overflow-causing subscriptions are excluded and counted; the response sets `isPartial`, and desktop/mobile dashboards explain whether invalid rows were excluded or the list cap was reached.
+- **The browser validates every field** - the shared hook replaces its `as ResellerTransaction[]` assertion with one exact response/row validator before SWR state updates.
+- **Date logic uses serialized truth** - store deduplication and expiring-soon stats use validated ISO strings rather than unchecked `any` casts and arbitrary `toDate()`/`toMillis()` calls.
+- **Regression evidence covers legacy and adversarial shapes** - focused tests reject negative, fractional, non-finite, string, and multiplied-overflow paise, unexpected response fields, and non-serialized timestamps.
+
+## July 25, 2026 - Reseller Monthly Report Integrity
+
+- **Monthly money is never permissively coerced** - transaction amount, store, reseller, payment-mode, and status fields must pass one runtime projector; negative, fractional, non-finite, string-encoded, malformed, or overflow-causing financial rows are excluded.
+- **Incomplete evidence is explicit** - the response carries `invalidRowCount` and sets `isPartial` for invalid rows or the 2,000-row cap; desktop and mobile dashboard/management surfaces show an incomplete-report warning.
+- **One exact DTO is shared everywhere** - the dashboard hook and both platform management clients validate the same keys, safe-integer counters, calendar month, India period, timestamp, row, and total contract before state updates.
+- **Reseller enrichment reuses authorized identity** - a reseller's monthly report uses the already-admitted current profile rather than issuing another arbitrary direct/email profile query; platform enrichment remains capped at 50 profiles.
+- **Regression evidence covers malformed financial truth** - focused tests reject negative, fractional, non-finite, and string paise plus private response fields and invalid periods.
+
+## July 25, 2026 - Reseller Read Authority Refresh
+
+- **Protected reads use current persisted authority** - client-list and monthly-summary routes now re-read the active reseller profile or current platform user before protected subscription, transaction, revenue, or profile data is queried.
+- **Stale sessions fail before disclosure** - disabled/revoked platform users, inactive reseller profiles, identity mismatches, and ambiguous legacy email candidates receive access denial even when an older NextAuth session still carries a reseller/platform role.
+- **Legacy fallback is actor-bound** - direct Auth-UID profile documents remain preferred; at most two same-email legacy candidates are considered, and exactly one must match the Auth UID or signed profile claim.
+- **Mutation and read authority are consistent** - onboarding, renewal, add-location, confirmation, profile, client-list, and monthly-summary paths pass the signed profile claim through the same current-profile resolver.
+- **Regression evidence covers duplicate legacy profiles** - the Firestore emulator proves the signed actor/claim resolves only its matching profile and an unbound same-email actor fails closed.
+
+## July 25, 2026 - Reseller Self-Profile Privacy Boundary
+
+- **The self-profile response is allowlisted** - reseller dashboard reads expose only the reseller's own contact, cap, count, revenue, lifecycle, and normalized timestamp fields; founder notes, Auth IDs, password metadata, creator identity, and unknown legacy fields cannot escape through object spread.
+- **Legacy email fallback is identity-bound** - up to two email candidates are checked and exactly one must satisfy current active profile ID/Auth UID/session claim/email authority; duplicate or mismatched candidates fail closed.
+- **The browser validates the exact DTO** - unexpected keys, malformed timestamps, invalid counters, inactive state, and private-field additions are rejected before dashboard state updates.
+- **Regression evidence covers private and malformed data** - the focused suite proves founder notes, legacy password, Auth UID, and unknown fields are omitted, invalid time becomes null, and non-finite revenue becomes zero.
+
+## July 25, 2026 - Reseller Username Login Contract
+
+- **Provisioned reseller usernames can authenticate** - credential login now preserves validated lowercase usernames such as `reseller_rahul` for exact `users.username` lookup instead of stripping all non-digits and rejecting the result.
+- **Phone and staff identifiers keep their existing behavior** - digit normalization, phone candidates, staff IDs, duplicate-identity rejection, email resolution, Firebase Auth password verification, lockout, and lifecycle checks remain intact.
+- **New username writes are canonical** - platform reseller create/update trims, lowercases, length-bounds, and restricts usernames to letters, digits, dot, underscore, and hyphen before uniqueness admission.
+- **Regression evidence uses the real server DAL** - the reseller Firestore emulator writes the profile/user pair and resolves ` RESELLER_RAHUL ` back to the exact user; the reseller source gate pins both server and browser lookup paths.
+
+## July 25, 2026 - Reseller Profile Admission Concurrency
+
+- **Profile admission is transaction-current** - reseller create rechecks the total-account cap plus normalized email and username uniqueness in the same Firestore transaction that creates the profile.
+- **Competing updates cannot fork identity truth** - reseller profile and matching `users/{authUserId}` identity fields merge in one transaction after current uniqueness checks; a losing request cannot leave a duplicate username in the user document.
+- **Cross-service failure is recoverable** - newly created Auth accounts are removed when Firestore admission fails, existing Auth metadata/claims are restored when a profile transaction loses admission, and existing-account password rotation runs only after the profile/user commit.
+- **Regression evidence exercises real contention** - the focused Firestore emulator proves one winner for duplicate creates and updates, exact global-cap admission, and profile/user username agreement.
+- **Scope is unchanged** - platform-only authorization, reseller billing, entitlement, pricing, rules, indexes, Functions, caches, and public truth are unchanged.
+
+## July 25, 2026 - Digital Screen Slide Expiry Normalization
+
+- **Malformed expiry fails closed** - a custom slide with a present but invalid/throwing expiry is treated as expired rather than remaining eligible for public Highlights output.
+- **Owner countdowns and ordering are defensive** - desktop/mobile use validated milliseconds, show zero days for malformed values, and cannot throw from arbitrary `toMillis()` results.
+- **Missing expiry keeps its deliberate meaning** - generated evergreen slides without `validUntil` remain non-expiring.
+- **Regression evidence covers lifecycle policy** - timestamp tests pin missing/future/past/malformed behavior; the Digital Screens gate rejects restoration of unsafe expiry casts and broad owner expiry types.
+
+## July 25, 2026 - Digital Screen Owner Timestamp Contract
+
+- **Owner surfaces share one timestamp boundary** - desktop settings, mobile settings, and Output Center retain the canonical `screenLastSeenAt` type and use one defensive conversion helper.
+- **Malformed legacy or serialized values cannot crash relative-time rendering** - invalid `toDate`/`toMillis` results, thrown conversion methods, non-finite values, malformed seconds, invalid dates, and whitespace-mutated strings return the established waiting state.
+- **Regression evidence spans supported runtime forms** - focused tests cover Firestore-style methods, Admin/JSON seconds forms, `Date`, ISO, milliseconds, and adversarial malformed inputs.
+- **Data and cost are unchanged** - no read, write, DTO payload, rule, index, Function, cache, or provider behavior changed.
+
 ## July 25, 2026 - Screen Seen Acknowledgement Integrity
 
 - **The browser marker now means an admitted transaction completed or current truth was already seen** - anonymous IP/token limiter denials no longer return cached success.

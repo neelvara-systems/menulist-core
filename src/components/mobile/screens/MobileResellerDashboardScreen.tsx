@@ -4,13 +4,13 @@ import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITM
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
+import type { ResellerClientRecord } from '@lib/reseller/resellerClientRecord';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import {
     clearResellerOperationId,
     getOrCreateResellerOperationId,
     RESELLER_REQUEST_POLICY,
 } from '@template/main-app/reseller/resellerDiagnostics';
-import type { ResellerTransaction } from '@type/reseller';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatInrPaise } from '@util/formatters';
 import { useSession } from 'next-auth/react';
@@ -114,16 +114,16 @@ type MobileResellerRenewResponse = {
     validUntil?: unknown;
 };
 
-function formatDate(value: any, formatter: IntlFormatter) {
+function formatDate(value: string | null, formatter: IntlFormatter) {
     if (!value) return 'Auto-renew';
-    const date = value?.toDate ? value.toDate() : new Date(value);
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Auto-renew';
     return formatDateTime(date, 'date', formatter);
 }
 
-function getDaysLeft(value: any) {
+function getDaysLeft(value: string | null) {
     if (!value) return null;
-    const date = value?.toDate ? value.toDate() : new Date(value);
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
@@ -232,11 +232,11 @@ function ClientCard({
     onRenew,
     transaction,
 }: {
-    onAddLocation: (transaction: ResellerTransaction) => void;
-    onCopyPaymentLink: (transaction: ResellerTransaction) => void;
-    onOpenPaymentLink: (transaction: ResellerTransaction) => void;
-    onRenew: (transaction: ResellerTransaction) => void;
-    transaction: ResellerTransaction;
+    onAddLocation: (transaction: ResellerClientRecord) => void;
+    onCopyPaymentLink: (transaction: ResellerClientRecord) => void;
+    onOpenPaymentLink: (transaction: ResellerClientRecord) => void;
+    onRenew: (transaction: ResellerClientRecord) => void;
+    transaction: ResellerClientRecord;
 }) {
     const formatter = useFormatter();
     const daysLeft = getDaysLeft(transaction.validUntil);
@@ -303,15 +303,24 @@ export default function MobileResellerDashboardScreen({
     onOpenOnboarding: () => void;
 }) {
     const { data: session } = useSession();
-    const resellerId = (session as any)?.user?.id || '';
-    const resellerEmail = (session as any)?.user?.email || '';
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const resellerId = session?.user?.id || '';
+    const resellerEmail = session?.user?.email || '';
+    const platformRole = session?.platformRole || session?.user?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const { profile, monthlySummary, transactions, stats, isClientListPartial, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
-    const [selectedClient, setSelectedClient] = useState<ResellerTransaction | null>(null);
+    const {
+        profile,
+        monthlySummary,
+        transactions,
+        stats,
+        invalidClientRowCount,
+        isClientListPartial,
+        isLoading,
+        refresh,
+    } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const [selectedClient, setSelectedClient] = useState<ResellerClientRecord | null>(null);
     const [locationCount, setLocationCount] = useState('1');
     const [addingLocation, setAddingLocation] = useState(false);
-    const [renewalClient, setRenewalClient] = useState<ResellerTransaction | null>(null);
+    const [renewalClient, setRenewalClient] = useState<ResellerClientRecord | null>(null);
     const [renewalMonths, setRenewalMonths] = useState('3');
     const [renewing, setRenewing] = useState(false);
     const parsedLocationCount = Math.max(1, Number(locationCount || 1));
@@ -463,7 +472,7 @@ export default function MobileResellerDashboardScreen({
         }
     };
 
-    const copyPaymentLink = async (transaction: ResellerTransaction) => {
+    const copyPaymentLink = async (transaction: ResellerClientRecord) => {
         const link = normalizeRazorpaySubscriptionCheckoutUrl(transaction.subscriptionShortUrl);
         if (!link) {
             Toast.show({ content: 'Payment link is unavailable', duration: 2200 });
@@ -488,7 +497,7 @@ export default function MobileResellerDashboardScreen({
         }
     };
 
-    const openPaymentLink = (transaction: ResellerTransaction) => {
+    const openPaymentLink = (transaction: ResellerClientRecord) => {
         const link = normalizeRazorpaySubscriptionCheckoutUrl(transaction.subscriptionShortUrl);
         if (!link) {
             Toast.show({ content: 'Payment link is unavailable', duration: 2200 });
@@ -576,6 +585,13 @@ export default function MobileResellerDashboardScreen({
 
                 {monthlySummary ? (
                     <Card title={`This month (${monthlySummary.month})`}>
+                        {monthlySummary.isPartial ? (
+                            <Text type="warning">
+                                This report is incomplete{monthlySummary.invalidRowCount > 0
+                                    ? `; ${monthlySummary.invalidRowCount} invalid transaction ${monthlySummary.invalidRowCount === 1 ? 'row was' : 'rows were'} excluded`
+                                    : ' because the monthly limit was reached'}.
+                            </Text>
+                        ) : null}
                         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                             {[
                                 ['Clients', monthlySummary.totals.clientCount],
@@ -611,7 +627,13 @@ export default function MobileResellerDashboardScreen({
                     <Flex gap={10} vertical>
                         <Title level={5} style={{ margin: 0 }}>Clients</Title>
                         {isClientListPartial ? (
-                            <Card><Text type="warning">Showing a bounded client list. Monthly reporting has its own completeness indicator.</Text></Card>
+                            <Card>
+                                <Text type="warning">
+                                    This client list is incomplete{invalidClientRowCount > 0
+                                        ? `; ${invalidClientRowCount} invalid subscription ${invalidClientRowCount === 1 ? 'row was' : 'rows were'} excluded`
+                                        : ' because the list limit was reached'}.
+                                </Text>
+                            </Card>
                         ) : null}
                         {transactions.map((transaction) => (
                             <ClientCard

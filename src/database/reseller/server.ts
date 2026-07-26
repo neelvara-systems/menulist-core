@@ -3,12 +3,40 @@ import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { RESELLER_CAPS } from "@config/resellerPricing";
 import { composeInitialSubscriptionPayloadServer } from "@database/subscriptions/server";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
+import {
+    addNonNegativeSafeIntegers,
+    isNonNegativeSafeInteger,
+} from "@lib/reseller/resellerMutationState";
 import { ResellerProfile, ResellerTransaction } from "@type/reseller";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 
 const TRANSACTIONS_COLLECTION = DB_COLLECTIONS.RESELLER_TRANSACTIONS;
 const PROFILES_COLLECTION = DB_COLLECTIONS.RESELLER_PROFILES;
+
+export type ResellerProfileAdmissionConflict =
+    | "email"
+    | "profile"
+    | "total-cap"
+    | "username";
+
+export class ResellerProfileAdmissionError extends Error {
+    readonly conflict: ResellerProfileAdmissionConflict;
+
+    constructor(conflict: ResellerProfileAdmissionConflict) {
+        super(`reseller_profile_admission_conflict:${conflict}`);
+        this.name = "ResellerProfileAdmissionError";
+        Object.setPrototypeOf(this, new.target.prototype);
+        this.conflict = conflict;
+    }
+}
+
+export const getResellerProfileAdmissionConflict = (
+    error: unknown,
+): ResellerProfileAdmissionConflict | null => (
+    error instanceof ResellerProfileAdmissionError ? error.conflict : null
+);
 
 export class ResellerOfflineCapExceededError extends Error {
     readonly cap: number;
@@ -16,6 +44,7 @@ export class ResellerOfflineCapExceededError extends Error {
     constructor(cap: number) {
         super(`reseller_offline_cap_exceeded:${cap}`);
         this.name = 'ResellerOfflineCapExceededError';
+        Object.setPrototypeOf(this, new.target.prototype);
         this.cap = cap;
     }
 }
@@ -40,7 +69,7 @@ const isTimestampLike = (value: unknown): value is TimestampLike => (
     && typeof (value as Partial<TimestampLike>).seconds === "number"
 );
 
-const sanitizeForAdminFirestore = (value: any): any => {
+const sanitizeForAdminFirestore = <T>(value: T): T => {
     return sanitizeForFirestore(value, {
         atomicTransform: (atomicValue) => {
             if (!isTimestampLike(atomicValue)) return { handled: false };
@@ -49,14 +78,20 @@ const sanitizeForAdminFirestore = (value: any): any => {
     });
 };
 
-const toResellerProfile = (docSnap: admin.firestore.DocumentSnapshot): ResellerProfile => {
+const toResellerProfile = (
+    docSnap: admin.firestore.DocumentSnapshot,
+): ResellerProfile | null => {
     const { password: _password, ...data } = docSnap.data() || {};
+    if (data.deleted === true) return null;
     return { ...data, id: docSnap.id } as ResellerProfile;
 };
+
+export type ResellerProfileDocument = Record<string, unknown> & { id: string };
 
 export const getResellerProfileServer = async (
     userId: string,
     email?: string | null,
+    claimedProfileId?: string | null,
 ): Promise<ResellerProfile | null> => {
     const directSnap = await firestoreAdmin.collection(PROFILES_COLLECTION).doc(userId).get();
     if (directSnap.exists) return toResellerProfile(directSnap);
@@ -67,23 +102,30 @@ export const getResellerProfileServer = async (
     const emailSnapshot = await firestoreAdmin
         .collection(PROFILES_COLLECTION)
         .where("email", "==", normalizedEmail)
-        .limit(1)
+        .limit(2)
         .get();
 
-    if (emailSnapshot.empty) return null;
-    return toResellerProfile(emailSnapshot.docs[0]);
+    const normalizedClaim = claimedProfileId?.trim();
+    const matchingProfiles = emailSnapshot.docs
+        .map(toResellerProfile)
+        .filter((profile) => profile !== null)
+        .filter((profile) => (
+            profile.authUserId === userId
+            || (normalizedClaim && profile.id === normalizedClaim)
+        ));
+    return matchingProfiles.length === 1 ? matchingProfiles[0] : null;
 };
 
-export const getAllResellerProfilesServer = async (): Promise<ResellerProfile[]> => {
+export const getAllResellerProfilesServer = async (): Promise<ResellerProfileDocument[]> => {
     const snapshot = await firestoreAdmin
         .collection(PROFILES_COLLECTION)
         .orderBy("createdOn", "desc")
-        .limit(50)
+        .limit(51)
         .get();
 
     return snapshot.docs
-        .map(toResellerProfile)
-        .filter((profile) => !(profile as any).deleted);
+        .filter((doc) => doc.data()?.deleted !== true)
+        .map((doc) => ({ ...(doc.data() || {}), id: doc.id })) as ResellerProfileDocument[];
 };
 
 export const getResellerProfileByIdServer = async (
@@ -92,6 +134,86 @@ export const getResellerProfileByIdServer = async (
     const docSnap = await firestoreAdmin.collection(PROFILES_COLLECTION).doc(profileId).get();
     if (!docSnap.exists) return null;
     return toResellerProfile(docSnap);
+};
+
+/**
+ * Creates the reseller profile only after transaction-current uniqueness and
+ * platform-cap checks. Query reads must stay inside the same transaction as
+ * the create so concurrent platform requests cannot both pass stale checks.
+ */
+export const createResellerProfileServer = async (params: {
+    email: string;
+    maxProfiles: number;
+    profile: Record<string, unknown>;
+    profileId: string;
+    user: Record<string, unknown>;
+    userId: string;
+    username: string;
+}): Promise<void> => {
+    const profiles = firestoreAdmin.collection(PROFILES_COLLECTION);
+    const profileRef = profiles.doc(params.profileId);
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(params.userId);
+    const emailQuery = profiles.where("email", "==", params.email).limit(1);
+    const usernameQuery = profiles.where("username", "==", params.username).limit(1);
+    const capQuery = profiles.limit(params.maxProfiles);
+
+    await firestoreAdmin.runTransaction(async (transaction) => {
+        const [profileSnapshot, emailSnapshot, usernameSnapshot, capSnapshot] = await Promise.all([
+            transaction.get(profileRef),
+            transaction.get(emailQuery),
+            transaction.get(usernameQuery),
+            transaction.get(capQuery),
+        ]);
+
+        if (profileSnapshot.exists) throw new ResellerProfileAdmissionError("profile");
+        if (!emailSnapshot.empty) throw new ResellerProfileAdmissionError("email");
+        if (!usernameSnapshot.empty) throw new ResellerProfileAdmissionError("username");
+        if (capSnapshot.size >= params.maxProfiles) {
+            throw new ResellerProfileAdmissionError("total-cap");
+        }
+
+        transaction.set(userRef, sanitizeForAdminFirestore(params.user), { merge: true });
+        transaction.create(profileRef, sanitizeForAdminFirestore(params.profile));
+    });
+};
+
+/**
+ * Applies a profile merge only after transaction-current uniqueness checks.
+ * The profile read also prevents an update from recreating a concurrently
+ * removed reseller.
+ */
+export const updateResellerProfileServer = async (params: {
+    email: string;
+    profileId: string;
+    updates: Record<string, unknown>;
+    user: Record<string, unknown>;
+    userId: string;
+    username: string;
+}): Promise<void> => {
+    const profiles = firestoreAdmin.collection(PROFILES_COLLECTION);
+    const profileRef = profiles.doc(params.profileId);
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(params.userId);
+    const emailQuery = profiles.where("email", "==", params.email).limit(2);
+    const usernameQuery = profiles.where("username", "==", params.username).limit(2);
+
+    await firestoreAdmin.runTransaction(async (transaction) => {
+        const [profileSnapshot, emailSnapshot, usernameSnapshot] = await Promise.all([
+            transaction.get(profileRef),
+            transaction.get(emailQuery),
+            transaction.get(usernameQuery),
+        ]);
+
+        if (!profileSnapshot.exists) throw new ResellerProfileAdmissionError("profile");
+        if (emailSnapshot.docs.some((doc) => doc.id !== params.profileId)) {
+            throw new ResellerProfileAdmissionError("email");
+        }
+        if (usernameSnapshot.docs.some((doc) => doc.id !== params.profileId)) {
+            throw new ResellerProfileAdmissionError("username");
+        }
+
+        transaction.set(userRef, sanitizeForAdminFirestore(params.user), { merge: true });
+        transaction.set(profileRef, sanitizeForAdminFirestore(params.updates), { merge: true });
+    });
 };
 
 type ResellerOnboardingTransactionInput = Omit<
@@ -113,6 +235,24 @@ export const createResellerOnboardingBillingServer = async (params: {
     subscriptionId: string;
     transaction: ResellerOnboardingTransactionInput;
 }): Promise<{ replayed: boolean; transactionId: string }> => {
+    const hasExactDocumentId = (value: unknown): value is string => (
+        isValidFirestoreDocumentId(value) && value === value.trim()
+    );
+    if (
+        !hasExactDocumentId(params.subscriptionId)
+        || !hasExactDocumentId(params.transaction.operationId)
+        || !hasExactDocumentId(params.transaction.resellerId)
+        || !isNonNegativeSafeInteger(params.transaction.amountExpected)
+        || !["offline", "online"].includes(params.transaction.paymentMode)
+        || (params.profileId !== undefined
+            && params.profileId !== null
+            && !hasExactDocumentId(params.profileId))
+        || (params.profileId
+            && params.transaction.resellerProfileId !== params.profileId)
+    ) {
+        throw new Error("Reseller onboarding billing input is invalid.");
+    }
+
     const subscriptionRef = firestoreAdmin
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
         .doc(params.subscriptionId);
@@ -152,6 +292,7 @@ export const createResellerOnboardingBillingServer = async (params: {
             throw new Error('Reseller onboarding subscription already exists without its operation ledger.');
         }
 
+        let profileUpdates: Record<string, unknown> | null = null;
         if (profileRef) {
             if (!profileSnapshot?.exists) {
                 throw new Error('Reseller profile disappeared during onboarding.');
@@ -160,17 +301,77 @@ export const createResellerOnboardingBillingServer = async (params: {
             if (profile.active !== true) {
                 throw new Error('Reseller profile is no longer active.');
             }
-            if (params.transaction.paymentMode === 'offline') {
-                const capValue = Number(profile.maxOfflineActivations);
-                const cap = Number.isSafeInteger(capValue) && capValue > 0
-                    ? capValue
-                    : RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER;
-                const currentValue = Number(profile.currentActiveOfflineStores);
-                const current = Number.isSafeInteger(currentValue) && currentValue > 0
-                    ? currentValue
-                    : 0;
-                if (current >= cap) throw new ResellerOfflineCapExceededError(cap);
+            if (
+                profileRef.id !== params.transaction.resellerId
+                && profile.authUserId !== params.transaction.resellerId
+            ) {
+                throw new Error("Reseller onboarding profile identity is invalid.");
             }
+            const readCounter = (field: string): number | null => {
+                const value = profile[field];
+                return value === undefined ? 0 : (isNonNegativeSafeInteger(value) ? value : null);
+            };
+            const totalStoresOnboarded = readCounter("totalStoresOnboarded");
+            const totalTransactions = readCounter("totalTransactions");
+            const totalRevenueCollectedPaise = readCounter("totalRevenueCollectedPaise");
+            const currentActiveOfflineStores = readCounter("currentActiveOfflineStores");
+            const totalOfflineStores = readCounter("totalOfflineStores");
+            const totalOnlineStores = readCounter("totalOnlineStores");
+            if (
+                totalStoresOnboarded === null
+                || totalTransactions === null
+                || totalRevenueCollectedPaise === null
+                || currentActiveOfflineStores === null
+                || totalOfflineStores === null
+                || totalOnlineStores === null
+            ) {
+                throw new Error("Reseller onboarding profile counters are invalid.");
+            }
+            const nextTotalStores = addNonNegativeSafeIntegers(totalStoresOnboarded, 1);
+            const nextTransactions = addNonNegativeSafeIntegers(totalTransactions, 1);
+            const nextRevenue = addNonNegativeSafeIntegers(
+                totalRevenueCollectedPaise,
+                params.transaction.paymentMode === "offline"
+                    ? params.transaction.amountExpected
+                    : 0,
+            );
+            const nextOfflineActive = params.transaction.paymentMode === "offline"
+                ? addNonNegativeSafeIntegers(currentActiveOfflineStores, 1)
+                : currentActiveOfflineStores;
+            const nextOfflineTotal = params.transaction.paymentMode === "offline"
+                ? addNonNegativeSafeIntegers(totalOfflineStores, 1)
+                : totalOfflineStores;
+            const nextOnlineTotal = params.transaction.paymentMode === "online"
+                ? addNonNegativeSafeIntegers(totalOnlineStores, 1)
+                : totalOnlineStores;
+            if (
+                nextTotalStores === null
+                || nextTransactions === null
+                || nextRevenue === null
+                || nextOfflineActive === null
+                || nextOfflineTotal === null
+                || nextOnlineTotal === null
+            ) {
+                throw new Error("Reseller onboarding profile counters would overflow.");
+            }
+            if (params.transaction.paymentMode === 'offline') {
+                const persistedCap = profile.maxOfflineActivations;
+                const cap = persistedCap === undefined
+                    ? RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER
+                    : persistedCap;
+                if (!isNonNegativeSafeInteger(cap) || cap < 1) {
+                    throw new Error("Reseller onboarding offline cap is invalid.");
+                }
+                if (currentActiveOfflineStores >= cap) throw new ResellerOfflineCapExceededError(cap);
+            }
+            profileUpdates = {
+                currentActiveOfflineStores: nextOfflineActive,
+                totalOfflineStores: nextOfflineTotal,
+                totalOnlineStores: nextOnlineTotal,
+                totalRevenueCollectedPaise: nextRevenue,
+                totalStoresOnboarded: nextTotalStores,
+                totalTransactions: nextTransactions,
+            };
         }
 
         const now = admin.firestore.Timestamp.now();
@@ -185,24 +386,11 @@ export const createResellerOnboardingBillingServer = async (params: {
             modifiedOn: now,
         }));
 
-        if (profileRef) {
-            const updates: Record<string, unknown> = {
+        if (profileRef && profileUpdates) {
+            firestoreTransaction.update(profileRef, {
+                ...profileUpdates,
                 modifiedOn: now,
-                totalStoresOnboarded: admin.firestore.FieldValue.increment(1),
-                totalTransactions: admin.firestore.FieldValue.increment(1),
-                totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(
-                    params.transaction.paymentMode === 'offline'
-                        ? params.transaction.amountExpected
-                        : 0,
-                ),
-            };
-            if (params.transaction.paymentMode === 'offline') {
-                updates.currentActiveOfflineStores = admin.firestore.FieldValue.increment(1);
-                updates.totalOfflineStores = admin.firestore.FieldValue.increment(1);
-            } else {
-                updates.totalOnlineStores = admin.firestore.FieldValue.increment(1);
-            }
-            firestoreTransaction.update(profileRef, updates);
+            });
         }
 
         return { replayed: false, transactionId: transactionRef.id };
@@ -212,4 +400,6 @@ export const createResellerOnboardingBillingServer = async (params: {
 export const getResellerProfile = getResellerProfileServer;
 export const getAllResellerProfiles = getAllResellerProfilesServer;
 export const getResellerProfileById = getResellerProfileByIdServer;
+export const createResellerProfile = createResellerProfileServer;
+export const updateResellerProfile = updateResellerProfileServer;
 export const createResellerOnboardingBilling = createResellerOnboardingBillingServer;

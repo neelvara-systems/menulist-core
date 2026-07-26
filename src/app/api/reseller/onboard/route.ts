@@ -34,9 +34,19 @@ import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import {
+    projectResellerProviderSubscription,
+    type ResellerProviderSubscription,
+} from "@lib/reseller/resellerProviderSubscription";
+import {
     getResellerOnboardingOperationFingerprint,
+    getMatchingResellerOnboardingOperation,
     isMatchingResellerOnboardingOperation,
+    isMatchingResellerOnboardingReplayResources,
 } from "@lib/reseller/resellerOnboardingOperation";
+import {
+    projectResellerOfflineCapacity,
+    resellerMutationDate,
+} from "@lib/reseller/resellerMutationState";
 import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
@@ -61,11 +71,16 @@ const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFire
     undefinedObjectValue: "omit",
 });
 
+const getFirebaseAuthErrorCode = (error: unknown): string | null => {
+    if (!error || typeof error !== "object" || !("code" in error)) return null;
+    return typeof error.code === "string" ? error.code : null;
+};
+
 async function getAuthUserByEmail(email: string) {
     try {
         return await authAdmin.getUserByEmail(email);
-    } catch (error: any) {
-        if (error?.code === 'auth/user-not-found') return null;
+    } catch (error: unknown) {
+        if (getFirebaseAuthErrorCode(error) === 'auth/user-not-found') return null;
         throw error;
     }
 }
@@ -102,14 +117,14 @@ async function prepareOwnerAuthUser(params: {
     active: boolean;
     displayName: string;
     email: string;
-    existingOwnerData?: admin.firestore.DocumentData;
+    existingOwnerData?: Record<string, unknown>;
     existingOwnerDocId?: string;
     password: string;
 }) {
     const existingAuthId = params.existingOwnerData?.firebaseUid || params.existingOwnerDocId;
     let authUser = existingAuthId
-        ? await authAdmin.getUser(String(existingAuthId)).catch((error: any) => {
-            if (error?.code === 'auth/user-not-found') return null;
+        ? await authAdmin.getUser(String(existingAuthId)).catch((error: unknown) => {
+            if (getFirebaseAuthErrorCode(error) === 'auth/user-not-found') return null;
             throw error;
         })
         : null;
@@ -227,8 +242,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
-        const validation = validateAPIInput(ResellerOnboardSchema, body);
+        const validation = validateAPIInput(ResellerOnboardSchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Reseller Onboard Input Validation Failed', {
@@ -244,7 +258,11 @@ export const POST = withAuth(async (request, session) => {
         // 3. Validate reseller profile exists and is active
         const resellerProfile = isPlatformUser
             ? null
-            : await getResellerProfile(resellerId, session.user.email);
+            : await getResellerProfile(
+                resellerId,
+                session.user.email,
+                session.user.resellerProfileId,
+            );
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
                 return NextResponse.json({ error: "Access denied." }, { status: 403 });
@@ -273,11 +291,21 @@ export const POST = withAuth(async (request, session) => {
             if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
                 return NextResponse.json({ error: "Offline payment mode is no longer available." }, { status: 400 });
             }
-            const offlineCap = resellerProfile?.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER;
-            if (!isPlatformUser && resellerProfile && resellerProfile.currentActiveOfflineStores >= offlineCap) {
+            const offlineCapacity = isPlatformUser
+                ? null
+                : projectResellerOfflineCapacity(
+                    resellerProfile,
+                    RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
+                );
+            if (!isPlatformUser && !offlineCapacity) {
                 return NextResponse.json({
-                    error: `Maximum offline activations reached (${offlineCap}). Use online payment mode or wait for existing stores to expire.`,
-                }, { status: 400 });
+                    error: "Reseller profile capacity needs support review.",
+                }, { status: 409 });
+            }
+            if (offlineCapacity && offlineCapacity.current >= offlineCapacity.cap) {
+                return NextResponse.json({
+                    error: `Maximum offline activations reached (${offlineCapacity.cap}). Use online payment mode or wait for existing stores to expire.`,
+                }, { status: 409 });
             }
         }
 
@@ -327,18 +355,19 @@ export const POST = withAuth(async (request, session) => {
         const existingOperationSnapshot = await operationRef.get();
         if (existingOperationSnapshot.exists) {
             const operation = existingOperationSnapshot.data() || {};
-            if (!isMatchingResellerOnboardingOperation({
+            const matchingOperation = getMatchingResellerOnboardingOperation({
                 fingerprint: operationFingerprint,
                 operationData: operation,
                 operationId,
                 resellerId,
-            })) {
+            });
+            if (!matchingOperation) {
                 return NextResponse.json({ error: "This onboarding retry belongs to another request." }, { status: 409 });
             }
 
-            const replaySubscriptionId = String(operation.subscriptionId);
-            const replayStoreId = Number(operation.storeId);
-            const replayTenantId = Number(operation.tenantId);
+            const replaySubscriptionId = matchingOperation.subscriptionId;
+            const replayStoreId = matchingOperation.storeId;
+            const replayTenantId = matchingOperation.tenantId;
             const [replaySubscription, replayStoreSnapshot] = await Promise.all([
                 getSubscriptionById(replaySubscriptionId),
                 db.collection(DB_COLLECTIONS.STORES).doc(String(replayStoreId)).get(),
@@ -346,12 +375,26 @@ export const POST = withAuth(async (request, session) => {
             if (!replaySubscription || !replayStoreSnapshot.exists) {
                 return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
             }
-            const replaySubdomain = String(replayStoreSnapshot.data()?.subdomain || '').trim() || undefined;
+            const replayStore = replayStoreSnapshot.data() || {};
+            if (!isMatchingResellerOnboardingReplayResources({
+                resellerId,
+                storeData: replayStore,
+                storeId: replayStoreId,
+                subscriptionData: replaySubscription,
+                tenantId: replayTenantId,
+            })) {
+                return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
+            }
+            const replaySubdomain = String(replayStore.subdomain || '').trim() || undefined;
             const replayShortUrl = normalizeRazorpaySubscriptionCheckoutUrl(replaySubscription.shortUrl) || undefined;
             if (replaySubscription.billingMode === 'auto' && !replayShortUrl) {
                 return NextResponse.json({ error: "This payment link needs support review." }, { status: 409 });
             }
             if (replaySubscription.billingMode === 'manual' && replaySubscription.status === 'active') {
+                const replayPaidAt = resellerMutationDate(operation.validFrom);
+                if (!replayPaidAt) {
+                    return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
+                }
                 await safeSyncStorePlanEntitlementFromSubscription(
                     replaySubscription,
                     'api:reseller-onboard-offline-replay',
@@ -359,7 +402,7 @@ export const POST = withAuth(async (request, session) => {
                 await safelyRecordOwnerReferralPaymentAndRepair({
                     paidScope: { tenantId: replayTenantId, storeId: replayStoreId },
                     evidence: {
-                        paidAt: operation.validFrom?.toDate?.() || new Date(),
+                        paidAt: replayPaidAt,
                         paymentEvidenceId: operationId,
                         source: 'api:reseller-onboard-offline-replay',
                         subscriptionId: replaySubscriptionId,
@@ -375,13 +418,12 @@ export const POST = withAuth(async (request, session) => {
                 passwordSet: true,
                 publicUrl: replaySubdomain ? getMenuUrl(replaySubdomain) : undefined,
                 shortUrl: replayShortUrl,
-                status: operation.status === 'active' ? 'active' : 'pending',
+                status: replaySubscription.status === 'active' ? 'active' : 'pending',
                 storeId: replayStoreId,
                 subdomain: replaySubdomain,
                 subscriptionId: replaySubscriptionId,
                 tenantId: replayTenantId,
                 transactionId: operationId,
-                userId: replaySubscription.userId,
             });
         }
 
@@ -618,7 +660,7 @@ export const POST = withAuth(async (request, session) => {
         if (paymentMode === 'online') {
             const totalCount = billingInterval === 'MONTH' ? 36 : 3;
             let razorpayPlanId = '';
-            let razorpaySubscription: any;
+            let razorpaySubscription: ResellerProviderSubscription | null = null;
 
             try {
                 razorpayPlanId = await getOrCreateRazorpayPlan({
@@ -628,7 +670,7 @@ export const POST = withAuth(async (request, session) => {
                     userType: 'B2C',
                     planId: tier.planId,
                 });
-                razorpaySubscription = await razorpayClient.subscriptions.create({
+                const providerSubscription = await razorpayClient.subscriptions.create({
                     plan_id: razorpayPlanId,
                     total_count: totalCount,
                     quantity: locationCount,
@@ -649,8 +691,11 @@ export const POST = withAuth(async (request, session) => {
                         remainingCredits: 0,
                     },
                 });
-                shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || undefined;
-                if (!shortUrl) throw new Error('Razorpay subscription did not return a valid checkout URL.');
+                razorpaySubscription = projectResellerProviderSubscription(providerSubscription);
+                if (!razorpaySubscription) {
+                    throw new Error('Razorpay subscription response is invalid.');
+                }
+                shortUrl = razorpaySubscription.checkoutUrl;
             } catch (providerError) {
                 if (razorpaySubscription?.id) {
                     try {
@@ -675,6 +720,9 @@ export const POST = withAuth(async (request, session) => {
                 throw providerError;
             }
 
+            if (!razorpaySubscription) {
+                throw new Error('Razorpay subscription response is invalid.');
+            }
             subscriptionId = razorpaySubscription.id;
             const subscriptionPayload: Omit<FirestoreSubscriptionDoc, "id"> = {
                 paymentProvider: 'razorpay',
@@ -693,14 +741,14 @@ export const POST = withAuth(async (request, session) => {
                 lastWebhook: null,
                 planId: tier.planId,
                 planName: tier.displayName,
-                cycleStartDate: null as any,
-                subscriptionEndDate: null as any,
-                subscriptionStartDate: null as any,
-                pastDueSinceAt: null as any,
+                cycleStartDate: null,
+                subscriptionEndDate: null,
+                subscriptionStartDate: null,
+                pastDueSinceAt: null,
                 totalPaymentsNeededCount: totalCount,
                 totalPaymentsMadeCount: 0,
-                cycleEndDate: null as any,
-                renewsOn: null as any,
+                cycleEndDate: null,
+                renewsOn: null,
                 monthlyCreditsAllowance: tier.monthlyCredits,
                 monthlyCredits: tier.monthlyCredits,
                 topUpCredits: 0,
@@ -803,11 +851,11 @@ export const POST = withAuth(async (request, session) => {
                 cycleStartDate: paidAtTimestamp,
                 subscriptionEndDate: validUntilTimestamp,
                 subscriptionStartDate: paidAtTimestamp,
-                pastDueSinceAt: null as any,
+                pastDueSinceAt: null,
                 totalPaymentsNeededCount: 1,
                 totalPaymentsMadeCount: 1,
                 cycleEndDate: validUntilTimestamp,
-                renewsOn: null as any,
+                renewsOn: null,
                 monthlyCreditsAllowance: tier.monthlyCredits,
                 monthlyCredits: tier.monthlyCredits,
                 topUpCredits: 0,
@@ -925,7 +973,6 @@ export const POST = withAuth(async (request, session) => {
             passwordSet: true,
             locationCount,
             subdomain: result.subdomain,
-            userId: result.userId,
             status: paymentMode === 'offline' ? 'active' : 'pending',
             transactionId,
         });

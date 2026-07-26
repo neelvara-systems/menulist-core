@@ -13,8 +13,16 @@ import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { appendBoundedBillingStatusHistory } from '@lib/billing/subscriptionStatusHistory';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
-import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import {
+    isNonNegativeSafeInteger,
+    isPositiveSafeInteger,
+    projectResellerMutationProfileCounters,
+    projectRenewReplay,
+    resellerMutationDate,
+    resolveResellerMutationProfileId,
+} from "@lib/reseller/resellerMutationState";
 import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { checkRateLimit } from "@lib/rateLimit";
@@ -65,8 +73,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
-        const validation = validateAPIInput(ResellerRenewSchema, body);
+        const validation = validateAPIInput(ResellerRenewSchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
@@ -77,7 +84,11 @@ export const POST = withAuth(async (request, session) => {
         // Validate reseller profile
         const resellerProfile = isPlatformUser
             ? null
-            : await getResellerProfile(resellerId, session.user.email);
+            : await getResellerProfile(
+                resellerId,
+                session.user.email,
+                session.user.resellerProfileId,
+            );
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
                 return NextResponse.json({ error: "Access denied." }, { status: 403 });
@@ -161,27 +172,19 @@ export const POST = withAuth(async (request, session) => {
             ]);
             if (operationSnap.exists) {
                 const storedOperation = operationSnap.data() || {};
-                if (
-                    storedOperation.operationId !== operationId
-                    || storedOperation.action !== 'RENEW'
-                    || storedOperation.resellerId !== resellerId
-                    || Number(storedOperation.storeId) !== storeId
-                    || Number(storedOperation.tenantId) !== tenantId
-                    || storedOperation.pricingTier !== pricingTier
-                    || Number(storedOperation.commitmentMonths) !== durationMonths
-                    || storedOperation.subscriptionId !== existingSub.id
-                ) {
+                const replay = projectRenewReplay(storedOperation, {
+                    durationMonths,
+                    operationId,
+                    pricingTier,
+                    resellerId,
+                    storeId,
+                    subscriptionId: existingSub.id,
+                    tenantId,
+                });
+                if (!replay) {
                     throw new Error('Reseller operation id is already used by another action.');
                 }
-                const validFrom = storedOperation.validFrom?.toDate?.();
-                const validUntil = storedOperation.validUntil?.toDate?.();
-                if (!validFrom || !validUntil) throw new Error('Stored renewal result is incomplete.');
-                return {
-                    amountExpected: Number(storedOperation.amountExpected),
-                    locationCount: Number(storedOperation.locationCount),
-                    validFrom,
-                    validUntil,
-                };
+                return replay;
             }
             if (!subscriptionSnap.exists) throw new Error('Manual subscription disappeared during renewal.');
 
@@ -199,38 +202,61 @@ export const POST = withAuth(async (request, session) => {
                 throw new Error('Manual subscription is no longer eligible for renewal.');
             }
 
-            const previousExpiry = currentSubscription.validUntil?.toDate?.();
+            const previousExpiry = resellerMutationDate(currentSubscription.validUntil);
             const wasExpired = currentSubscription.status === 'expired';
+            if (!wasExpired && !previousExpiry) {
+                throw new Error('Active manual subscription has invalid expiry state.');
+            }
             const renewalStart = previousExpiry && previousExpiry > requestNow ? previousExpiry : requestNow;
             const newValidUntil = new Date(renewalStart);
             newValidUntil.setMonth(newValidUntil.getMonth() + durationMonths);
-            const subscriptionQuantity = Math.max(1, Number(currentSubscription.quantity || 1));
+            const subscriptionQuantity = currentSubscription.quantity === undefined
+                ? 1
+                : currentSubscription.quantity;
+            if (!isPositiveSafeInteger(subscriptionQuantity)) {
+                throw new Error('Manual subscription has invalid quantity state.');
+            }
             const totalAmount = calculateOfflineAmount(pricingTier, durationMonths, subscriptionQuantity);
+            if (!isNonNegativeSafeInteger(totalAmount)) {
+                throw new Error('Manual subscription renewal amount is invalid.');
+            }
             const nowTimestamp = Timestamp.fromDate(requestNow);
             const validFromTimestamp = Timestamp.fromDate(renewalStart);
             const validUntilTimestamp = Timestamp.fromDate(newValidUntil);
-            const profileId = currentSubscription.resellerProfileId || resellerProfile?.id || null;
+            const profileId = resolveResellerMutationProfileId(
+                currentSubscription.resellerProfileId,
+                resellerProfile?.id,
+                isPlatformUser,
+            );
+            if (!isPlatformUser && !profileId) {
+                throw new Error('Manual subscription reseller profile no longer matches current authority.');
+            }
+            if (isPlatformUser && currentSubscription.resellerProfileId != null && !profileId) {
+                throw new Error('Manual subscription has invalid reseller profile identity.');
+            }
             const profileRef = profileId
                 ? firestoreAdmin.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(profileId)
                 : null;
+            let profileCounterUpdates: Record<string, number> | null = null;
             if (profileRef) {
                 const profileSnap = await tx.get(profileRef);
                 if (!profileSnap.exists) throw new Error('Reseller profile disappeared during renewal.');
                 if (!isPlatformUser && profileSnap.data()?.active !== true) {
                     throw new Error('Reseller profile is no longer active.');
                 }
-                if (wasExpired) {
-                    const profile = profileSnap.data() || {};
-                    const capValue = Number(profile.maxOfflineActivations);
-                    const cap = Number.isSafeInteger(capValue) && capValue > 0
-                        ? capValue
-                        : RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER;
-                    const currentValue = Number(profile.currentActiveOfflineStores);
-                    const current = Number.isSafeInteger(currentValue) && currentValue > 0
-                        ? currentValue
-                        : 0;
-                    if (current >= cap) throw new ResellerOfflineCapExceededError(cap);
+                const counterResult = projectResellerMutationProfileCounters(
+                    profileSnap.data(),
+                    totalAmount,
+                    {
+                        addOfflineSlot: wasExpired,
+                        defaultOfflineCap: RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
+                    },
+                );
+                if (counterResult.status === "cap-exceeded") {
+                    throw new ResellerOfflineCapExceededError(counterResult.cap);
                 }
+                if (counterResult.status !== "ok") throw new Error("Reseller profile counters are invalid.");
+                profileCounterUpdates = counterResult.updates;
             }
 
             tx.set(subscriptionRef, {
@@ -277,13 +303,9 @@ export const POST = withAuth(async (request, session) => {
                 createdOn: nowTimestamp,
                 modifiedOn: nowTimestamp,
             });
-            if (profileRef) {
+            if (profileRef && profileCounterUpdates) {
                 tx.update(profileRef, {
-                    ...(wasExpired ? {
-                        currentActiveOfflineStores: admin.firestore.FieldValue.increment(1),
-                    } : {}),
-                    totalTransactions: admin.firestore.FieldValue.increment(1),
-                    totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(totalAmount),
+                    ...profileCounterUpdates,
                     modifiedOn: nowTimestamp,
                 });
             }

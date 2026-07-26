@@ -33,6 +33,7 @@ Build Tools:
 Node.js (v22; .nvmrc v22.23.1)
 Vercel Next/Turbopack builds: 4096 MiB V8 ceiling inside the standard 8 GiB container; browser/server source maps disabled; runtime-only filesystem paths require guarded Turbopack ignore plus explicit output tracing
 Vercel deployment trace: never globally exclude node_modules/@swc/**; Next 16 routes require @swc/helpers, and build:vercel must pass verify:next-deployment-bundle from an isolated traced route bundle
+Next server Firebase Admin bundle: keep firebase-admin in transpilePackages and out of serverExternalPackages/custom server externals; client aliases still block browser imports, build:verify runs the source/dependency-chain guard before compilation, and isolated sign-in plus NextAuth API traces must reject hashed native Firebase Admin externals that can trigger jwks-rsa CommonJS to jose 6 ERR_REQUIRE_ESM on Vercel
 SASS (v1.101.7)
 ESLint (v9.39.5)
 

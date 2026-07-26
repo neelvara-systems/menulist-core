@@ -4477,10 +4477,12 @@ function verifyAnalyticsErrorBoundary() {
     [
       'src/app/api/seo/route.ts',
       [
-        'const attemptedData = getAIRouteLogContext({',
-        'categoryCount: Array.isArray(rawData?.menu?.categories) ? rawData.menu.categories.length : 0',
-        'itemCount: Array.isArray(rawData?.menu?.items) ? rawData.menu.items.length : 0',
-        'storeName: rawData?.store?.name',
+        'const attemptedData = getSeoAttemptedInputSummary(rawData)',
+        "typeof record.menu === 'object'",
+        "typeof record.store === 'object'",
+        'categoryCount: Array.isArray(menu.categories) ? menu.categories.length : 0',
+        'itemCount: Array.isArray(menu.items) ? menu.items.length : 0',
+        'storeName: store.name',
         'attemptedData,',
         'writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, attemptedData)',
       ],
@@ -8882,7 +8884,7 @@ function verifyPaymentMutationBoundedJson() {
     {
       route: 'src/app/api/reseller/manage/route.ts',
       key: 'manage',
-      before: 'const profiles = await getAllResellerProfiles();',
+      before: 'const persistedProfiles = await getAllResellerProfiles();',
     },
   ].forEach(({ route, key, before }) => {
     assertIncludes(
@@ -8957,7 +8959,7 @@ function verifyPaymentMutationBoundedJson() {
 	    assert(onboardRoute.includes('reason: \'reseller_online_provider_setup_failed\''), 'reseller online provider failure compensation must record stable reason');
 	    assert(onboardRoute.includes('await authAdmin.setCustomUserClaims(params.authUid, {'), 'reseller provider failure compensation must clear just-set owner auth scope claims');
 	    assert(onboardRoute.includes('await compensateResellerOnboardingFailure({'), 'reseller online provider catch must call compensation before rethrow');
-	    assert(onboardRoute.includes('normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url)'), 'reseller online onboarding must allowlist the provider checkout URL');
+	    assert(onboardRoute.includes('projectResellerProviderSubscription(providerSubscription)'), 'reseller online onboarding must validate provider identity and allowlist the checkout URL');
 	    assertOrder(
 	      'src/app/api/reseller/onboard/route.ts',
 	      [
@@ -9107,7 +9109,7 @@ function verifyPaymentMutationBoundedJson() {
 	        'mobile_reseller_dashboard_payment_link_copy_failed',
 	        'mobile_reseller_dashboard_payment_link_open_failed',
 	        'mobile_reseller_dashboard_payment_link_open_blocked',
-	        'copyPaymentLink = async (transaction: ResellerTransaction)',
+	        'copyPaymentLink = async (transaction: ResellerClientRecord)',
 	        'copyMobileResellerDashboardText(link)',
 	        'MOBILE_RESELLER_DASHBOARD_COPY_UNAVAILABLE',
 	        'MOBILE_RESELLER_DASHBOARD_COPY_FALLBACK_FAILED',
@@ -9116,8 +9118,8 @@ function verifyPaymentMutationBoundedJson() {
 	        "const copied = document.execCommand('copy');",
 	        "window.open(link, '_blank', 'noopener,noreferrer')",
 	        "getBoundedMobileOwnerStringContext('paymentLink', link)",
-	        'onCopyPaymentLink: (transaction: ResellerTransaction) => void',
-        'onOpenPaymentLink: (transaction: ResellerTransaction) => void',
+	        'onCopyPaymentLink: (transaction: ResellerClientRecord) => void',
+        'onOpenPaymentLink: (transaction: ResellerClientRecord) => void',
       ],
     ],
     [

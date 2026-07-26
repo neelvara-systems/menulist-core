@@ -98,6 +98,7 @@ export interface ResellerProfile {
 
     // ── Status ──
     active: boolean;
+    deleted?: boolean;                          // Legacy soft-delete compatibility; omitted for current profiles
     activatedAt: Timestamp;
     deactivatedAt?: Timestamp | null;
 

@@ -1,10 +1,10 @@
 # Next.js Runtime Migration Validation
 
 **Status:** LOCAL SOURCE, BUILD, ISOLATED DEPLOYMENT TRACE, AND START VALIDATION PASSED
-**Validated:** July 25, 2026
+**Validated:** July 26, 2026
 **Runtime:** Node 22.23.1 / Next.js 16.2.11 / React 19.2.8
 **Worktree base:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
-**Deployment:** `efc9456` failed from Vercel build OOM. The OOM-corrected `887f76ad` built and deployed, but every server-rendered staging route returned 500 because its route trace omitted `@swc/helpers`. The trace correction is locally verified and not yet redeployed.
+**Deployment:** `efc9456` failed from Vercel build OOM. The OOM-corrected `887f76ad` exposed an omitted `@swc/helpers` trace. After that source correction, production `/signin` exposed native Firebase Admin loading across the `jwks-rsa` CommonJS and ESM-only `jose` boundary. Both packaging corrections are locally verified and not yet redeployed.
 
 ## Result
 
@@ -53,6 +53,9 @@ No install used `--force`, `--legacy-peer-deps`, or a peer override. `next-pwa` 
 | Exact `build:vercel` peak resident memory | Reduced from 7,292,469,248 to 6,735,249,408 bytes (557,219,840 bytes reclaimed) |
 | Exact `build:vercel` after deployment-trace correction | Passed end to end at 6,728,482,816-byte peak RSS |
 | Isolated website deployment bundle | Passed; 313 traced files and symlinks, including the Next 16 SWC helper runtime |
+| Exact `build:vercel` after permanent Firebase Admin build-contract enforcement | Passed end to end at 7,044,726,784-byte peak RSS; 439/439 pages |
+| Isolated sign-in deployment bundle | Passed; 429 traced files, no hashed Firebase Admin native external, and no raw `jwks-rsa` or nested `jose` entry |
+| Isolated NextAuth API deployment bundle | Passed; 329 traced files, no hashed Firebase Admin native external, and successful route load without the repository's full `node_modules` |
 
 Expected non-blocking warnings:
 
@@ -76,6 +79,26 @@ The user-deployed staging commit `887f76ad` proved that a successful `next build
 After correction, the exact Node 22.23.1 `npm run build:vercel` passed TypeScript, zero-warning ESLint, compilation, 439/439 page generation, and the isolated 313-file deployment route at 6,728,482,816-byte peak RSS. `next start` returned 200 for `/`, `/signin`, `/privacy-policy`, and `/robots.txt` under the staging hostname contract. Chrome rendered the complete homepage with zero console errors.
 
 This is corrected-source evidence. `menulist.online` remains broken until Vercel receives and deploys this source.
+
+## Production sign-in Firebase Admin regression and closure
+
+On July 26, Chrome reproduced the current production failure by clicking the desktop website header Login link:
+
+- The header correctly navigated to `/signin?callbackUrl=%2Fdashboard`.
+- Vercel returned 500 while loading the hashed `firebase-admin-<hash>/auth` external.
+- The deployed Node runtime then executed `jwks-rsa/src/utils.js` as CommonJS, whose `require('jose')` reached the nested ESM-only `jose` 6 web API entry and raised `ERR_REQUIRE_ESM`.
+- Local `next start` with the repository's complete `node_modules` did not expose the same packaging failure, so status-only local checks were not sufficient.
+
+The correction removes Firebase Admin from Next and Webpack server externals, adds it to `transpilePackages`, and retains client-only aliases that keep Admin SDK imports out of browser bundles. This is now a build-enforced architecture rather than a mutable configuration convention:
+
+- `build:verify` executes the Next source/dependency contract before TypeScript and lint on every Vercel build.
+- The contract freezes Node 22.23.1 and the installed Firebase Admin 14.2.0 → `jwks-rsa` 4.1.0 → nested `jose` 6.2.4 chain.
+- It rejects `jwks-rsa`/`jose` overrides, Firebase Admin server externalization, and removal from `transpilePackages`.
+- The post-build gate rejects hashed Firebase Admin externals and isolated-loads the website, sign-in, and NextAuth API route traces without the repository's full `node_modules`.
+
+After correction, the exact Node 22.23.1 `npm run build:vercel` passed TypeScript, zero-warning ESLint, compilation, 439/439 page generation, and all isolated route contracts. The latest isolated counts are website 315, sign-in 429, and NextAuth API 329 traced files. Under `next start`, Chrome followed the exact desktop homepage Login link to the full “Welcome back” screen, a direct sign-in reload retained the screen, and the browser console contained zero warnings or errors. Host-forwarded HTTP probes returned 200 for both `/signin?callbackUrl=%2Fdashboard` and `/api/auth/session`; no Firebase Admin, `jwks-rsa`, `jose`, or `ERR_REQUIRE_ESM` error appeared in the server log.
+
+This proves the corrected local source and deployment bundle. The currently deployed production URL will continue returning the old 500 until an explicitly authorized Vercel release carries this source.
 
 ## Served-runtime HTTP matrix
 

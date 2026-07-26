@@ -10,6 +10,15 @@ import { appendBoundedBillingStatusHistory } from '@lib/billing/subscriptionStat
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import {
+    addNonNegativeSafeIntegers,
+    isNonNegativeSafeInteger,
+    isPositiveSafeInteger,
+    projectAddLocationReplay,
+    projectResellerMutationProfileCounters,
+    resellerMutationDate,
+    resolveResellerMutationProfileId,
+} from "@lib/reseller/resellerMutationState";
 import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -22,13 +31,6 @@ import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
-
-const toDate = (value: any): Date | null => {
-    if (!value) return null;
-    if (typeof value?.toDate === "function") return value.toDate();
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
 
 /**
  * POST /api/reseller/add-location-capacity
@@ -63,8 +65,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
-        const validation = validateAPIInput(ResellerAddLocationCapacitySchema, body);
+        const validation = validateAPIInput(ResellerAddLocationCapacitySchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             logger.security('Reseller Add Location Capacity Input Validation Failed', {
@@ -79,7 +80,11 @@ export const POST = withAuth(async (request, session) => {
 
         const resellerProfile = isPlatformUser
             ? null
-            : await getResellerProfile(resellerId, session.user.email);
+            : await getResellerProfile(
+                resellerId,
+                session.user.email,
+                session.user.resellerProfileId,
+            );
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
                 return NextResponse.json({ error: "Access denied." }, { status: 403 });
@@ -142,12 +147,12 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const validUntil = existingSubData.validUntil || existingSubData.cycleEndDate || existingSubData.subscriptionEndDate;
-        const validUntilDate = toDate(validUntil);
+        const validUntilDate = resellerMutationDate(validUntil);
         if (!validUntilDate || validUntilDate.getTime() <= Date.now()) {
             return NextResponse.json({ error: "Renew this client before adding another location." }, { status: 400 });
         }
 
-        const topup = calculateOfflineLocationTopup({ locationCount, pricingTier, validUntil });
+        const topup = calculateOfflineLocationTopup({ locationCount, pricingTier, validUntil: validUntilDate });
         if (topup.daysRemaining <= 0 || topup.amountPaise <= 0) {
             return NextResponse.json({ error: "Renew this client before adding another location." }, { status: 400 });
         }
@@ -161,24 +166,18 @@ export const POST = withAuth(async (request, session) => {
             ]);
             if (operationSnap.exists) {
                 const storedOperation = operationSnap.data() || {};
-                if (
-                    storedOperation.operationId !== operationId
-                    || storedOperation.action !== 'ADD_LOCATION'
-                    || storedOperation.resellerId !== resellerId
-                    || Number(storedOperation.storeId) !== storeId
-                    || Number(storedOperation.tenantId) !== tenantId
-                    || Number(storedOperation.locationCount) !== locationCount
-                    || storedOperation.subscriptionId !== existingSub.id
-                ) {
+                const replay = projectAddLocationReplay(storedOperation, {
+                    locationCount,
+                    operationId,
+                    resellerId,
+                    storeId,
+                    subscriptionId: existingSub.id,
+                    tenantId,
+                });
+                if (!replay) {
                     throw new Error('Reseller operation id is already used by another action.');
                 }
-                return {
-                    amountExpected: Number(storedOperation.amountExpected),
-                    daysRemaining: Number(storedOperation.daysRemaining),
-                    locationCount: Number(storedOperation.locationCount),
-                    quantity: Number(storedOperation.subscriptionQuantity),
-                    validUntil: toDate(storedOperation.validUntil),
-                };
+                return replay;
             }
             if (!subscriptionSnap.exists) throw new Error('Manual subscription disappeared during update.');
 
@@ -198,7 +197,7 @@ export const POST = withAuth(async (request, session) => {
             const currentValidUntil = currentSubscription.validUntil
                 || currentSubscription.cycleEndDate
                 || currentSubscription.subscriptionEndDate;
-            const currentValidUntilDate = toDate(currentValidUntil);
+            const currentValidUntilDate = resellerMutationDate(currentValidUntil);
             if (!currentPricingTier || !currentValidUntilDate || currentValidUntilDate.getTime() <= Date.now()) {
                 throw new Error('Manual subscription must be renewed before adding a location.');
             }
@@ -206,26 +205,63 @@ export const POST = withAuth(async (request, session) => {
             const currentTopup = calculateOfflineLocationTopup({
                 locationCount,
                 pricingTier: currentPricingTier,
-                validUntil: currentValidUntil,
+                validUntil: currentValidUntilDate,
             });
             if (currentTopup.daysRemaining <= 0 || currentTopup.amountPaise <= 0) {
                 throw new Error('Manual subscription must be renewed before adding a location.');
             }
 
-            const currentQuantity = Math.max(1, Number(currentSubscription.quantity || 1));
-            const nextQuantity = currentQuantity + currentTopup.locationCount;
-            const nextAmount = Number(currentSubscription.amount || 0) + currentTopup.amountPaise;
+            const currentQuantity = currentSubscription.quantity === undefined
+                ? 1
+                : currentSubscription.quantity;
+            const currentAmount = currentSubscription.amount;
+            const nextQuantity = addNonNegativeSafeIntegers(
+                currentQuantity,
+                currentTopup.locationCount,
+            );
+            const nextAmount = addNonNegativeSafeIntegers(
+                currentAmount,
+                currentTopup.amountPaise,
+            );
+            if (
+                !isPositiveSafeInteger(currentQuantity)
+                || !isNonNegativeSafeInteger(currentAmount)
+                || !isPositiveSafeInteger(nextQuantity)
+                || nextAmount === null
+            ) {
+                throw new Error('Manual subscription has invalid quantity or amount state.');
+            }
             const now = admin.firestore.Timestamp.now();
-            const profileId = currentSubscription.resellerProfileId || resellerProfile?.id || null;
+            const profileId = resolveResellerMutationProfileId(
+                currentSubscription.resellerProfileId,
+                resellerProfile?.id,
+                isPlatformUser,
+            );
+            if (!isPlatformUser && !profileId) {
+                throw new Error('Manual subscription reseller profile no longer matches current authority.');
+            }
+            if (isPlatformUser && currentSubscription.resellerProfileId != null && !profileId) {
+                throw new Error('Manual subscription has invalid reseller profile identity.');
+            }
             const profileRef = profileId
                 ? firestoreAdmin.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(profileId)
                 : null;
+            let profileCounterUpdates: Record<string, number> | null = null;
             if (profileRef) {
                 const profileSnap = await tx.get(profileRef);
                 if (!profileSnap.exists) throw new Error('Reseller profile disappeared during update.');
                 if (!isPlatformUser && profileSnap.data()?.active !== true) {
                     throw new Error('Reseller profile is no longer active.');
                 }
+                const counterResult = projectResellerMutationProfileCounters(
+                    profileSnap.data(),
+                    currentTopup.amountPaise,
+                    { addOfflineSlot: false, defaultOfflineCap: 1 },
+                );
+                if (counterResult.status !== "ok") {
+                    throw new Error("Reseller profile counters are invalid.");
+                }
+                profileCounterUpdates = counterResult.updates;
             }
 
             tx.set(subscriptionRef, {
@@ -267,10 +303,9 @@ export const POST = withAuth(async (request, session) => {
                 createdOn: now,
                 modifiedOn: now,
             });
-            if (profileRef) {
+            if (profileRef && profileCounterUpdates) {
                 tx.update(profileRef, {
-                    totalTransactions: admin.firestore.FieldValue.increment(1),
-                    totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(currentTopup.amountPaise),
+                    ...profileCounterUpdates,
                     modifiedOn: now,
                 });
             }

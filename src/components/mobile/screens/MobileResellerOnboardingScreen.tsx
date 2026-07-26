@@ -3,6 +3,10 @@
 import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import {
+    isResellerOnboardingResponse,
+    type ResellerOnboardingResponse,
+} from '@lib/reseller/resellerOnboardingResponse';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import {
     clearResellerOperationId,
@@ -34,22 +38,6 @@ type OnboardDraft = {
     ownerPhone: string;
     paymentMode: PaymentMode | '';
     pricingTier: string;
-};
-
-type OnboardResult = {
-    dashboardUrl?: string;
-    loginEmail?: string;
-    locationCount?: number;
-    ownerUsername?: string;
-    passwordSet?: boolean;
-    publicUrl?: string;
-    shortUrl?: string;
-    status: string;
-    storeId: number;
-    subdomain?: string;
-    subscriptionId: string;
-    tenantId: number;
-    transactionId: string;
 };
 
 type MobileResellerOnboardingHandoffKind =
@@ -114,28 +102,11 @@ const copyMobileResellerOnboardingText = async (value: string): Promise<void> =>
     }
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
 function createMobileResellerOnboardStatusError(code: string, status?: number) {
     const error = new Error(code) as Error & { code?: string; status?: number };
     error.code = code;
     error.status = status;
     return error;
-}
-
-function isValidMobileOnboardResult(data: unknown, expectedOperationId: string): data is OnboardResult {
-    if (!isRecord(data)) return false;
-    const storeId = Number(data.storeId);
-    const tenantId = Number(data.tenantId);
-    return Number.isFinite(storeId)
-        && Number.isFinite(tenantId)
-        && typeof data.subscriptionId === 'string'
-        && data.subscriptionId.length > 0
-        && typeof data.status === 'string'
-        && data.status.length > 0
-        && data.transactionId === expectedOperationId;
 }
 
 const initialDraft: OnboardDraft = {
@@ -156,14 +127,14 @@ const initialDraft: OnboardDraft = {
 export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () => void }) {
     const { token } = theme.useToken();
     const tiers = useMemo(() => getActiveResellerTiers(), []);
-    const businessTypeOptions = useMemo(() => BUSINESS_TYPES.map((businessType: any) => ({
-        label: businessType.label || businessType.name || businessType.value,
+    const businessTypeOptions = useMemo(() => BUSINESS_TYPES.map((businessType) => ({
+        label: businessType.label || businessType.value,
         value: businessType.value,
     })), []);
     const [step, setStep] = useState(0);
     const [draft, setDraft] = useState<OnboardDraft>(initialDraft);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<OnboardResult | null>(null);
+    const [result, setResult] = useState<ResellerOnboardingResponse | null>(null);
     const selectedTier = tiers.find((tier) => tier.id === draft.pricingTier);
     const normalizedOwnerPhone = normalizePhoneNumberForStorage({
         countryCode: draft.ownerCountryCode,
@@ -301,7 +272,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
             if (!response.ok) {
                 throw createMobileResellerOnboardStatusError('mobile_reseller_onboard_rejected', response.status);
             }
-            if (!isValidMobileOnboardResult(data, operationId)) {
+            if (!isResellerOnboardingResponse(data, operationId)) {
                 const invalidResponseError = createMobileResellerOnboardStatusError(
                     'mobile_reseller_onboard_response_invalid',
                     response.status,

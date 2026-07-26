@@ -2,10 +2,14 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
+import { getResellerProfile } from "@database/reseller/server";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
+import { projectResellerClientRecord } from "@lib/reseller/resellerClientRecord";
+import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { applyResellerReadRateLimit } from "../readRateLimit";
@@ -29,6 +33,25 @@ export const GET = withAuth(async (request, session) => {
 
         const isPlatform = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
         const resellerId = session.user.id;
+        if (isPlatform) {
+            if (!await getCurrentPlatformUser(session)) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        } else {
+            const currentProfile = await getResellerProfile(
+                resellerId,
+                session.user.email,
+                session.user.resellerProfileId,
+            );
+            if (!isActiveResellerProfileForSession({
+                actorId: resellerId,
+                profile: currentProfile,
+                sessionEmail: session.user.email,
+                sessionProfileId: session.user.resellerProfileId,
+            })) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        }
         const db = admin.firestore();
 
         const resultLimit = isPlatform ? 200 : 100;
@@ -47,49 +70,27 @@ export const GET = withAuth(async (request, session) => {
                 .orderBy('createdOn', 'desc')
                 .limit(resultLimit + 1);
         const snapshot = await subscriptionsQuery.get();
-        const exactSubscriptionDocs = snapshot.docs.flatMap((doc) => {
+        const projectedTransactions = snapshot.docs.flatMap((doc) => {
             const scope = getMenuListSubscriptionEntitlementScope(doc.data());
-            return scope ? [{ doc, scope }] : [];
-        });
-        const isPartial = snapshot.size > resultLimit || exactSubscriptionDocs.length > resultLimit;
-        const transactions = exactSubscriptionDocs.slice(0, resultLimit).map(({ doc, scope }) => {
+            if (!scope) return [];
             const subscription = doc.data() || {};
-            const quantity = Math.max(1, Number(subscription.quantity || 1));
-            const isManual = subscription.billingMode === 'manual';
-            const subscriptionStatus = String(subscription.status || '');
-            const amount = Math.max(0, Number(subscription.amount || 0));
-            return {
-                action: 'ONBOARD',
-                amountExpected: isManual ? amount : amount * quantity,
-                billingInterval: subscription.planType === 'YEAR' ? 'YEAR' : 'MONTH',
-                commitmentMonths: subscription.commitmentPeriodMonths || null,
-                createdOn: subscription.createdOn?.toDate?.()?.toISOString?.() || subscription.createdOn || null,
-                currency: 'INR',
-                id: doc.id,
-                locationCount: quantity,
-                modifiedOn: subscription.modifiedOn?.toDate?.()?.toISOString?.() || subscription.modifiedOn || null,
-                paymentMode: isManual ? 'offline' : 'online',
-                pricingTier: subscription.resellerPricingTier || '',
-                resellerEmail: '',
-                resellerId: subscription.resellerId || '',
-                resellerProfileId: subscription.resellerProfileId || null,
-                status: subscriptionStatus === 'pending' ? 'pending_payment' : subscriptionStatus,
-                storeId: scope.storeId,
-                storeName: subscription.name || '',
-                subscriptionAmount: amount,
-                subscriptionBillingMode: subscription.billingMode,
-                subscriptionId: doc.id,
-                subscriptionQuantity: quantity,
-                subscriptionShortUrl: normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl),
-                subscriptionStatus,
-                tenantId: scope.tenantId,
-                validUntil: subscription.validUntil?.toDate?.()?.toISOString?.()
-                    || subscription.cycleEndDate?.toDate?.()?.toISOString?.()
-                    || null,
-            };
+            const transaction = projectResellerClientRecord(
+                doc.id,
+                subscription,
+                scope,
+                normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl),
+            );
+            return transaction ? [transaction] : [];
         });
+        const invalidRowCount = snapshot.size - projectedTransactions.length;
+        const isPartial = (
+            snapshot.size > resultLimit
+            || projectedTransactions.length > resultLimit
+            || invalidRowCount > 0
+        );
+        const transactions = projectedTransactions.slice(0, resultLimit);
 
-        return NextResponse.json({ isPartial, transactions });
+        return NextResponse.json({ invalidRowCount, isPartial, transactions });
 
     } catch (error) {
         logResellerApiFailure('reseller_clients_route_failed', error, {

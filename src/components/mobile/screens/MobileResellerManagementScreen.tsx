@@ -3,8 +3,16 @@
 import { RESELLER_CAPS } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import {
+    isResellerMonthlySummary,
+    type ResellerMonthlySummary,
+} from '@lib/reseller/resellerMonthlySummary';
 import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
-import type { ResellerProfile } from '@type/reseller';
+import {
+    isResellerManagementProfilesResponse,
+    type ResellerManagementProfile,
+    type ResellerManagementProfilesResponse,
+} from '@lib/reseller/resellerManagementProfile';
 import { formatInrPaise } from '@util/formatters';
 import { getBoundedMobileOwnerStringContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 import { useSession } from 'next-auth/react';
@@ -31,35 +39,6 @@ type ResellerDraft = {
     username: string;
 };
 
-type ResellerMonthlySummary = {
-    month: string;
-    resellers: Array<{
-        resellerId: string;
-        resellerName: string;
-        resellerEmail: string;
-        clientCount: number;
-        transactionCount: number;
-        offlineCollectedPaise: number;
-        onlineActivePaise: number;
-        onlinePendingPaise: number;
-        recognizedRevenuePaise: number;
-        totalExpectedPaise: number;
-    }>;
-    totals: {
-        clientCount: number;
-        transactionCount: number;
-        offlineCollectedPaise: number;
-        onlineActivePaise: number;
-        onlinePendingPaise: number;
-        recognizedRevenuePaise: number;
-        totalExpectedPaise: number;
-    };
-};
-
-type ResellerProfilesResponse = {
-    profiles: ResellerProfile[];
-};
-
 type ResellerManagementSaveResponse = {
     action: 'created' | 'updated';
     profileId: string;
@@ -80,68 +59,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isFiniteNumber = (value: unknown): value is number => (
-    typeof value === 'number' && Number.isFinite(value)
-);
-
 const isNonEmptyString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
-);
-
-const isValidMobileResellerProfile = (value: unknown): value is ResellerProfile => (
-    isRecord(value)
-    && isNonEmptyString(value.id)
-    && isNonEmptyString(value.name)
-    && isNonEmptyString(value.phone)
-    && isNonEmptyString(value.email)
-    && isNonEmptyString(value.username)
-    && typeof value.active === 'boolean'
-    && isFiniteNumber(value.maxOfflineActivations)
-    && isFiniteNumber(value.currentActiveOfflineStores)
-    && isFiniteNumber(value.totalStoresOnboarded)
-    && isFiniteNumber(value.totalOnlineStores)
-    && isFiniteNumber(value.totalOfflineStores)
-    && isFiniteNumber(value.totalRevenueCollectedPaise)
-    && isFiniteNumber(value.totalTransactions)
-);
-
-const isValidMobileResellerProfilesResponse = (data: unknown): data is ResellerProfilesResponse => (
-    isRecord(data)
-    && Array.isArray(data.profiles)
-    && data.profiles.every(isValidMobileResellerProfile)
-);
-
-const isValidMobileMonthlySummaryTotals = (value: unknown): value is ResellerMonthlySummary['totals'] => (
-    isRecord(value)
-    && isFiniteNumber(value.clientCount)
-    && isFiniteNumber(value.transactionCount)
-    && isFiniteNumber(value.offlineCollectedPaise)
-    && isFiniteNumber(value.onlineActivePaise)
-    && isFiniteNumber(value.onlinePendingPaise)
-    && isFiniteNumber(value.recognizedRevenuePaise)
-    && isFiniteNumber(value.totalExpectedPaise)
-);
-
-const isValidMobileMonthlySummaryRow = (value: unknown): value is ResellerMonthlySummary['resellers'][number] => (
-    isRecord(value)
-    && isNonEmptyString(value.resellerId)
-    && isNonEmptyString(value.resellerName)
-    && typeof value.resellerEmail === 'string'
-    && isFiniteNumber(value.clientCount)
-    && isFiniteNumber(value.transactionCount)
-    && isFiniteNumber(value.offlineCollectedPaise)
-    && isFiniteNumber(value.onlineActivePaise)
-    && isFiniteNumber(value.onlinePendingPaise)
-    && isFiniteNumber(value.recognizedRevenuePaise)
-    && isFiniteNumber(value.totalExpectedPaise)
-);
-
-const isValidMobileResellerMonthlySummary = (data: unknown): data is ResellerMonthlySummary => (
-    isRecord(data)
-    && isNonEmptyString(data.month)
-    && Array.isArray(data.resellers)
-    && data.resellers.every(isValidMobileMonthlySummaryRow)
-    && isValidMobileMonthlySummaryTotals(data.totals)
 );
 
 const isValidMobileResellerManagementSaveResponse = (data: unknown): data is ResellerManagementSaveResponse => (
@@ -198,7 +117,7 @@ const emptyDraft = (): ResellerDraft => ({
     username: '',
 });
 
-function draftFromProfile(profile: ResellerProfile): ResellerDraft {
+function draftFromProfile(profile: ResellerManagementProfile): ResellerDraft {
     return {
         active: profile.active !== false,
         addressLine: profile.addressLine || '',
@@ -218,14 +137,15 @@ function draftFromProfile(profile: ResellerProfile): ResellerDraft {
 
 export default function MobileResellerManagementScreen({ onBack }: { onBack: () => void }) {
     const { data: session } = useSession();
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const [profiles, setProfiles] = useState<ResellerProfile[]>([]);
+    const [profiles, setProfiles] = useState<ResellerManagementProfile[]>([]);
+    const [profileEvidence, setProfileEvidence] = useState<Pick<ResellerManagementProfilesResponse, "invalidProfileCount" | "isCapped" | "isPartial"> | null>(null);
     const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);
     const [loading, setLoading] = useState(false);
     const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [editingProfile, setEditingProfile] = useState<ResellerProfile | null>(null);
+    const [editingProfile, setEditingProfile] = useState<ResellerManagementProfile | null>(null);
     const [draft, setDraft] = useState<ResellerDraft>(emptyDraft);
     const isEditing = Boolean(editingProfile);
     const buildResellerMobileLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
@@ -257,7 +177,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 throw createMobileResellerManagementStatusError('mobile_reseller_profiles_rejected', response.status);
             }
             const data = await readMobileResellerManagementResponse(response, buildResellerMobileLogContext('profiles_load'));
-            if (!isValidMobileResellerProfilesResponse(data)) {
+            if (!isResellerManagementProfilesResponse(data)) {
                 const invalidResponseError = createMobileResellerManagementStatusError('mobile_reseller_management_profiles_response_invalid', response.status);
                 logMobileOwnerFailure('mobile_reseller_management_profiles_response_invalid', invalidResponseError, buildResellerMobileLogContext('profiles_load', {
                     responseOk: response.ok,
@@ -266,6 +186,11 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 throw invalidResponseError;
             }
             setProfiles(data.profiles);
+            setProfileEvidence({
+                invalidProfileCount: data.invalidProfileCount,
+                isCapped: data.isCapped,
+                isPartial: data.isPartial,
+            });
         } catch (error) {
             logMobileOwnerFailure('mobile_reseller_profiles_load_failed', error, buildResellerMobileLogContext('profiles_load'));
             Toast.show({ content: 'Could not load reseller profiles', duration: 2200 });
@@ -282,7 +207,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 throw createMobileResellerManagementStatusError('mobile_reseller_monthly_summary_rejected', response.status);
             }
             const data = await readMobileResellerManagementResponse(response, buildResellerMobileLogContext('monthly_summary_load'));
-            if (!isValidMobileResellerMonthlySummary(data)) {
+            if (!isResellerMonthlySummary(data)) {
                 const invalidResponseError = createMobileResellerManagementStatusError('mobile_reseller_management_monthly_summary_response_invalid', response.status);
                 logMobileOwnerFailure('mobile_reseller_management_monthly_summary_response_invalid', invalidResponseError, buildResellerMobileLogContext('monthly_summary_load', {
                     responseOk: response.ok,
@@ -311,7 +236,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
         setDraft(emptyDraft());
     };
 
-    const openEdit = (profile: ResellerProfile) => {
+    const openEdit = (profile: ResellerManagementProfile) => {
         setEditingProfile(profile);
         setDraft(draftFromProfile(profile));
     };
@@ -467,6 +392,15 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 title="Reseller Management"
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                {profileEvidence?.isPartial ? (
+                    <Card style={{ borderColor: '#f59e0b' }}>
+                        <Text>
+                            {profileEvidence.invalidProfileCount > 0
+                                ? `${profileEvidence.invalidProfileCount} invalid reseller profile${profileEvidence.invalidProfileCount === 1 ? '' : 's'} excluded.`
+                                : 'Only the newest 50 reseller profiles are shown.'}
+                        </Text>
+                    </Card>
+                ) : null}
                 <Card>
                     <Button block onClick={openCreate} style={{ minHeight: 44 }}>
                         <Flex align="center" gap={6} justify="center"><LuPlus size={16} /> Add Reseller</Flex>
@@ -491,6 +425,13 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
 
                 <Card title={`This month${monthlySummary?.month ? ` (${monthlySummary.month})` : ''}`}>
                     <Flex gap={10} vertical>
+                        {monthlySummary?.isPartial ? (
+                            <Text type="warning">
+                                This report is incomplete{monthlySummary.invalidRowCount > 0
+                                    ? `; ${monthlySummary.invalidRowCount} invalid transaction ${monthlySummary.invalidRowCount === 1 ? 'row was' : 'rows were'} excluded`
+                                    : ' because the monthly limit was reached'}.
+                            </Text>
+                        ) : null}
                         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                             {[
                                 ['Clients', monthlySummary?.totals.clientCount || 0],

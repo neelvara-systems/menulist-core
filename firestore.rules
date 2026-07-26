@@ -1112,25 +1112,11 @@ service cloud.firestore {
     // Reseller Dashboard — Admin SDK only (API routes with withAuth)
     // @see __docs__/reseller-dashboard/reseller-dashboard_firebase.md §8
     match /resellerTransactions/{docId} {
-      allow read: if isAuthenticated()
-        && (
-          isPlatformAdmin()
-          || resource.data.resellerId == request.auth.uid
-          || resource.data.resellerId == request.auth.token.uId
-        );
-      allow write: if false;
+      allow read, write: if false;
     }
     
     match /resellerProfiles/{profileId} {
-      allow read: if isAuthenticated()
-        && (
-          isPlatformAdmin()
-          || resource.data.authUserId == request.auth.uid
-          || resource.data.authUserId == request.auth.token.uId
-          || profileId == request.auth.uid
-          || profileId == request.auth.token.uId
-        );
-      allow write: if false;
+      allow read, write: if false;
     }
     
     // Reviews & Reputation — Server-only writes, auth reads

@@ -6050,9 +6050,9 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(hook, 'reseller_dashboard_clients_response_invalid', 'Reseller dashboard clients invalid response code');
   assertIncludes(hook, 'responseStatus: response.status', 'Reseller dashboard bounded response status context');
   assertIncludes(hook, 'responseOk: response.ok', 'Reseller dashboard bounded response ok context');
-  assertIncludes(hook, 'Array.isArray(data.resellers)', 'Reseller dashboard monthly summary shape guard');
-  assertIncludes(hook, 'isRecord(data?.profile)', 'Reseller dashboard profile shape guard');
-  assertIncludes(hook, 'Array.isArray(data?.transactions)', 'Reseller dashboard clients shape guard');
+  assertIncludes(hook, 'isResellerMonthlySummary(data)', 'Reseller dashboard exact monthly summary shape guard');
+  assertIncludes(hook, 'isResellerSelfProfile(data?.profile)', 'Reseller dashboard exact self-profile shape guard');
+  assertIncludes(hook, 'isResellerClientsResponse(data)', 'Reseller dashboard exact clients shape guard');
   assertNotIncludes(hook, 'response.json().catch(() => ({}))', 'Reseller dashboard silent JSON fallback');
   assertNotIncludes(hook, 'return Array.isArray(data.transactions) ? data.transactions : []', 'Reseller dashboard silent clients fallback');
   assertNotIncludes(hook, 'throw new Error(data', 'Reseller dashboard raw API response error text');
@@ -6097,10 +6097,7 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(desktopOnboarding, 'RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024', 'Desktop reseller onboarding response byte cap');
   assertIncludes(desktopOnboarding, 'desktop_reseller_onboard_response_parse_failed', 'Desktop reseller onboarding response parse diagnostics');
   assertIncludes(desktopOnboarding, 'desktop_reseller_onboard_response_invalid', 'Desktop reseller onboarding invalid response diagnostics');
-  assertIncludes(desktopOnboarding, 'isValidOnboardResult(data, operationId)', 'Desktop reseller onboarding shape guard');
-  assertIncludes(desktopOnboarding, 'typeof data.subscriptionId === \'string\'', 'Desktop reseller onboarding subscription guard');
-  assertIncludes(desktopOnboarding, 'typeof data.status === \'string\'', 'Desktop reseller onboarding status guard');
-  assertIncludes(desktopOnboarding, 'data.transactionId === expectedOperationId', 'Desktop reseller onboarding operation acknowledgement guard');
+  assertIncludes(desktopOnboarding, 'isResellerOnboardingResponse(data, operationId)', 'Desktop reseller onboarding exact shared shape guard');
   assertNotIncludes(desktopOnboarding, 'response.json().catch(() => ({}))', 'Desktop reseller onboarding silent JSON fallback');
   assertNotIncludes(desktopOnboarding, 'const data = await response.json()', 'Desktop reseller onboarding unbounded success JSON parsing');
 
@@ -6109,10 +6106,7 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(mobileOnboarding, 'MOBILE_RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024', 'Mobile reseller onboarding response byte cap');
   assertIncludes(mobileOnboarding, 'mobile_reseller_onboard_response_parse_failed', 'Mobile reseller onboarding response parse diagnostics');
   assertIncludes(mobileOnboarding, 'mobile_reseller_onboard_response_invalid', 'Mobile reseller onboarding invalid response diagnostics');
-  assertIncludes(mobileOnboarding, 'isValidMobileOnboardResult(data, operationId)', 'Mobile reseller onboarding shape guard');
-  assertIncludes(mobileOnboarding, 'typeof data.subscriptionId === \'string\'', 'Mobile reseller onboarding subscription guard');
-  assertIncludes(mobileOnboarding, 'typeof data.status === \'string\'', 'Mobile reseller onboarding status guard');
-  assertIncludes(mobileOnboarding, 'data.transactionId === expectedOperationId', 'Mobile reseller onboarding operation acknowledgement guard');
+  assertIncludes(mobileOnboarding, 'isResellerOnboardingResponse(data, operationId)', 'Mobile reseller onboarding exact shared shape guard');
   assertNotIncludes(mobileOnboarding, 'response.json().catch(() => ({}))', 'Mobile reseller onboarding silent JSON fallback');
   assertNotIncludes(mobileOnboarding, 'const data = await response.json()', 'Mobile reseller onboarding unbounded success JSON parsing');
 
@@ -6125,12 +6119,12 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(desktopManagement, 'desktop_reseller_management_profiles_response_invalid', 'Desktop reseller management profile-list invalid response diagnostics');
   assertIncludes(desktopManagement, 'desktop_reseller_management_monthly_summary_response_invalid', 'Desktop reseller management monthly-summary invalid response diagnostics');
   assertIncludes(desktopManagement, 'desktop_reseller_management_save_response_invalid', 'Desktop reseller management save invalid response diagnostics');
-  assertIncludes(desktopManagement, 'isValidResellerProfilesResponse(data)', 'Desktop reseller management profiles shape guard');
-  assertIncludes(desktopManagement, 'isValidResellerMonthlySummary(data)', 'Desktop reseller management monthly-summary shape guard');
+  assertIncludes(desktopManagement, 'isResellerManagementProfilesResponse(data)', 'Desktop reseller management exact shared profiles shape guard');
+  assertIncludes(desktopManagement, 'isResellerMonthlySummary(data)', 'Desktop reseller management exact shared monthly-summary shape guard');
   assertIncludes(desktopManagement, 'isExpectedResellerManagementSaveResponse(result, editingProfile?.id)', 'Desktop reseller management save acknowledgement shape guard');
   assertIncludes(desktopManagement, 'data.profileId === expectedProfileId', 'Desktop reseller management update acknowledgement must match edited profile id');
   assertIncludes(desktopManagement, 'hasExpectedProfileId', 'Desktop reseller management invalid save diagnostics include profile id match');
-  assertIncludes(desktopManagement, 'data.profiles.every(isValidResellerProfile)', 'Desktop reseller management profile entries shape guard');
+  assertIncludes(desktopManagement, 'profileEvidence?.isPartial', 'Desktop reseller management partial profile evidence');
   assertIncludes(desktopManagement, "(data.action === 'created' || data.action === 'updated')", 'Desktop reseller management save action guard');
   assertNotIncludes(desktopManagement, 'response.json().catch(() => ({}))', 'Desktop reseller management silent JSON fallback');
   assertNotIncludes(desktopManagement, 'res.json().catch(() => ({}))', 'Desktop reseller management silent res JSON fallback');
@@ -6146,12 +6140,12 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(mobileManagement, 'mobile_reseller_management_profiles_response_invalid', 'Mobile reseller management profile-list invalid response diagnostics');
   assertIncludes(mobileManagement, 'mobile_reseller_management_monthly_summary_response_invalid', 'Mobile reseller management monthly-summary invalid response diagnostics');
   assertIncludes(mobileManagement, 'mobile_reseller_management_save_response_invalid', 'Mobile reseller management save invalid response diagnostics');
-  assertIncludes(mobileManagement, 'isValidMobileResellerProfilesResponse(data)', 'Mobile reseller management profiles shape guard');
-  assertIncludes(mobileManagement, 'isValidMobileResellerMonthlySummary(data)', 'Mobile reseller management monthly-summary shape guard');
+  assertIncludes(mobileManagement, 'isResellerManagementProfilesResponse(data)', 'Mobile reseller management exact shared profiles shape guard');
+  assertIncludes(mobileManagement, 'isResellerMonthlySummary(data)', 'Mobile reseller management exact shared monthly-summary shape guard');
   assertIncludes(mobileManagement, 'isExpectedMobileResellerManagementSaveResponse(data, editingProfile?.id)', 'Mobile reseller management save acknowledgement shape guard');
   assertIncludes(mobileManagement, 'data.profileId === expectedProfileId', 'Mobile reseller management update acknowledgement must match edited profile id');
   assertIncludes(mobileManagement, 'hasExpectedProfileId', 'Mobile reseller management invalid save diagnostics include profile id match');
-  assertIncludes(mobileManagement, 'data.profiles.every(isValidMobileResellerProfile)', 'Mobile reseller management profile entries shape guard');
+  assertIncludes(mobileManagement, 'profileEvidence?.isPartial', 'Mobile reseller management partial profile evidence');
   assertIncludes(mobileManagement, "(data.action === 'created' || data.action === 'updated')", 'Mobile reseller management save action guard');
   assertNotIncludes(mobileManagement, 'response.json().catch(() => ({}))', 'Mobile reseller management silent JSON fallback');
   assertNotIncludes(mobileManagement, 'const data = await response.json()', 'Mobile reseller management unbounded JSON parsing');

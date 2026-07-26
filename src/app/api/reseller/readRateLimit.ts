@@ -1,9 +1,10 @@
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import type { Session } from 'next-auth';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
-export async function applyResellerReadRateLimit(session: any, routeKey: string) {
+export async function applyResellerReadRateLimit(session: Session, routeKey: string) {
     const rateLimitConfig = getRateLimitForFeature('DATA_READ');
     const userId = session?.uId || session?.user?.id || 'unknown';
     const resellerProfileId = session?.user?.resellerProfileId || 'unknown';

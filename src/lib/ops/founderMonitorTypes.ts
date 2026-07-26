@@ -1,5 +1,14 @@
 export type FounderMonitorStatus = 'healthy' | 'watch' | 'action_required' | 'setup_required';
 
+export function normalizeFounderMonitorStatus(value: unknown): FounderMonitorStatus {
+  return value === 'healthy'
+    || value === 'watch'
+    || value === 'action_required'
+    || value === 'setup_required'
+    ? value
+    : 'setup_required';
+}
+
 export type FounderMonitorSourceStatus = 'available' | 'empty' | 'error' | 'setup_required';
 
 export type FounderMonitorRiskLevel = 'none' | 'watch' | 'action_required';

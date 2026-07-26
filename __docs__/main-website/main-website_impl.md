@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.116 How It Works Mobile Source Map Repair
-**Last Updated:** July 19, 2026
+**Status:** IMPLEMENTED — v3.6.117 Homepage Private Preview Surface Polish
+**Last Updated:** July 25, 2026
 **Audience:** Developers
 
 ---
@@ -9,6 +9,8 @@
 ## 1. Architecture Overview
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
+
+The v3.6.117 homepage preview repair keeps `CreateMenuPreviewSection` code-native and interactive instead of replacing it with a static marketing asset. The contrast-panel header uses the dedicated contrast token family. The selected photo or owned-link example renders inside one preview sheet with semantic list rows, a responsive three-step review rail, and a compact guardrail footer. Phone layouts stack the review rail without introducing nested bordered cards or horizontal overflow; desktop keeps the same two-column conversion composition. The selector still changes browser-local example copy only and continues to route the real action to `/create-menu`.
 
 The v3.6.116 `/how-it-works` source-map repair keeps separate connector networks for each layout topology instead of stretching one SVG across incompatible card grids. `ProductPage.tsx` retains the existing desktop network, uses the established compact network from 521px through 768px, and adds a phone-specific network at 520px and below. The phone paths meet source and output card edges through the empty center gutter, remain behind the cards, and preserve the source -> owner review -> customer outputs story. CSS makes exactly one responsive connector network visible at a time. Reduced-motion behavior continues to suppress the pulse overlay while leaving the static path available.
 

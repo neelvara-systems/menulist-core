@@ -36,6 +36,7 @@ function verifyPackageScript() {
   const packageJson = JSON.parse(read('package.json'));
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'node scripts/verification/verify-digital-screens-boundary.js', 'Digital Screens package verifier script');
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:screen-seen-scope', 'Digital Screens current seen-scope behavior gate');
+  assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:screen-timestamp', 'Digital Screens timestamp behavior gate');
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:digital-screens:lifecycle', 'Digital Screens package verifier lifecycle gate');
   assertIncludes(packageJson.scripts['verify:digital-screens-boundary'] || '', 'npm run test:digital-screens:rules', 'Digital Screens package verifier rules gate');
   assertIncludes(packageJson.scripts['test:digital-screens:rules'] || '', 'test-digital-screens-rules.ts', 'Digital Screens Firestore rules package script');
@@ -210,6 +211,9 @@ function verifyInvalidationAndOwnerSettings() {
   const preparedMediaUpload = read('src/database/storage/uploadPreparedMediaImage.ts');
   const desktopSettings = read('src/components/templates/main-app/settings/DigitalScreenSettings/index.tsx');
   const desktopLink = read('src/components/templates/main-app/settings/DigitalScreenSettings/ScreenLink.tsx');
+  const useMenuListTypes = read('src/components/templates/main-app/useMenuList/types.ts');
+  const screenTimestamp = read('src/lib/screen/screenTimestamp.ts');
+  const screenUtils = read('src/lib/screen/utils.ts');
   const desktopUploads = read('src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx');
   const mobile = read('src/components/mobile/screens/MobileDigitalScreensScreen.tsx');
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
@@ -300,6 +304,26 @@ function verifyInvalidationAndOwnerSettings() {
   assertNotIncludes(preparedMediaUpload, 'prepared_media_partial_variant_cleanup_failed', 'Prepared media no longer exposes unsafe shared-path rollback cleanup');
   assertNotIncludes(campaignDal, 'export const getScreenDataByToken =', 'Digital Screens must not retain rules-incompatible browser public token resolver');
   assertNotIncludes(campaignDal, 'export const getMenuItemsForScreen =', 'Digital Screens must not retain Admin-parity browser project fallback');
+  assertIncludes(screenTimestamp, 'export function screenTimestampToDate(value: unknown)', 'Digital Screens timestamp unknown-input boundary');
+  assertIncludes(screenTimestamp, 'return validDateOrNull(timestamp.toDate());', 'Digital Screens timestamp toDate result validation');
+  assertIncludes(screenTimestamp, 'typeof milliseconds === "number" && Number.isFinite(milliseconds)', 'Digital Screens timestamp millisecond validation');
+  assertIncludes(screenTimestamp, 'export function isScreenExpiryValueExpired(', 'Digital Screens expiry fail-closed policy');
+  assertIncludes(screenTimestamp, 'return expiryMilliseconds === null || expiryMilliseconds < nowMilliseconds;', 'Digital Screens malformed expiry rejection');
+  assertIncludes(screenUtils, 'return isScreenExpiryValueExpired(slide.validUntil);', 'Digital Screens lifecycle shared expiry policy');
+  assertIncludes(desktopLink, 'screenTimestampToDate(screenLastSeenAt)', 'Digital Screens desktop shared timestamp normalization');
+  assertIncludes(mobile, 'screenTimestampToDate(screenLastSeenAt)', 'Digital Screens mobile shared timestamp normalization');
+  assertIncludes(mobile, 'screenTimestampToMillis(left.validUntil) ?? 0', 'Digital Screens mobile safe expiry ordering');
+  assertIncludes(mobile, 'function getDaysRemaining(validUntil: ScreenSlide["validUntil"])', 'Digital Screens mobile precise slide expiry contract');
+  assertIncludes(desktopUploads, 'const getDaysRemaining = (validUntil: ScreenSlide["validUntil"])', 'Digital Screens desktop precise slide expiry contract');
+  assertIncludes(desktopUploads, 'screenTimestampToMillis(validUntil)', 'Digital Screens desktop safe slide expiry projection');
+  assertIncludes(desktopSettings, 'screenLastSeenAt?: DigitalScreenSeenTimestamp;', 'Digital Screens desktop settings precise seen timestamp');
+  assertIncludes(useMenuListTypes, 'screenLastSeenAt: DigitalScreenSeenTimestamp;', 'Digital Screens Output Center precise seen timestamp');
+  assertNotIncludes(desktopLink, 'screenLastSeenAt?: any;', 'Digital Screens desktop link broad seen timestamp');
+  assertNotIncludes(mobile, 'useState<any>(null)', 'Digital Screens mobile broad seen timestamp state');
+  assertNotIncludes(mobile, 'function getDaysRemaining(validUntil?: any)', 'Digital Screens mobile broad slide expiry contract');
+  assertNotIncludes(desktopUploads, 'const getDaysRemaining = (validUntil?: any)', 'Digital Screens desktop broad slide expiry contract');
+  assertNotIncludes(screenUtils, 'slide.validUntil as any', 'Digital Screens lifecycle unsafe expiry cast');
+  assertNotIncludes(useMenuListTypes, 'screenLastSeenAt: any;', 'Digital Screens Output Center broad seen timestamp');
 
   [
     [desktopSettings, 'desktop settings'],

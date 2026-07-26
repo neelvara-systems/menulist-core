@@ -3,8 +3,14 @@ import { MSG_EMAIL_DOMAIN, STAFF_EMAIL_DOMAIN } from "@constant/urls";
 export type AuthLoginMethod = "email" | "staff_id" | "whatsapp_phone";
 
 export const STAFF_LOGIN_DISPLAY_PREFIX = "S-";
+export const LOGIN_USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{2,49}$/;
 
 export const normalizeLoginDigits = (value?: string | null) => String(value || "").replace(/[^0-9]/g, "");
+
+export const normalizeLoginUsername = (value?: string | null) => {
+    const normalized = String(value || "").toLowerCase().trim();
+    return LOGIN_USERNAME_PATTERN.test(normalized) ? normalized : "";
+};
 
 export const normalizeStaffLoginUsername = (value?: string | null) => normalizeLoginDigits(value);
 

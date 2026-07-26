@@ -3,8 +3,8 @@
 import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
+import type { ResellerClientRecord } from "@lib/reseller/resellerClientRecord";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
-import { ResellerTransaction } from "@type/reseller";
 import { formatDateTime, type IntlFormatter } from "@util/dateTime";
 import { formatInrPaise } from "@util/formatters";
 import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Select, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
@@ -70,9 +70,9 @@ type ResellerRenewResponse = {
     validUntil?: unknown;
 };
 
-function formatDate(value: any, formatter: IntlFormatter) {
+function formatDate(value: string | null, formatter: IntlFormatter) {
     if (!value) return 'Auto-renew';
-    const date = value?.toDate ? value.toDate() : new Date(value);
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Auto-renew';
     return formatDateTime(date, 'date', formatter);
 }
@@ -169,15 +169,24 @@ function ResellerDashboard() {
     const formatter = useFormatter();
     const { data: session } = useSession();
     const router = useRouter();
-    const resellerId = (session as any)?.user?.id || '';
-    const resellerEmail = (session as any)?.user?.email || '';
-    const isPlatform = (session as any)?.platformRole === 'PLATFORM' || (session?.user as any)?.platformRole === 'PLATFORM';
+    const resellerId = session?.user?.id || '';
+    const resellerEmail = session?.user?.email || '';
+    const isPlatform = session?.platformRole === 'PLATFORM' || session?.user?.platformRole === 'PLATFORM';
 
-    const { profile, monthlySummary, transactions, stats, isClientListPartial, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
-    const [selectedClient, setSelectedClient] = useState<ResellerTransaction | null>(null);
+    const {
+        profile,
+        monthlySummary,
+        transactions,
+        stats,
+        invalidClientRowCount,
+        isClientListPartial,
+        isLoading,
+        refresh,
+    } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const [selectedClient, setSelectedClient] = useState<ResellerClientRecord | null>(null);
     const [locationCount, setLocationCount] = useState(1);
     const [addingLocation, setAddingLocation] = useState(false);
-    const [renewalClient, setRenewalClient] = useState<ResellerTransaction | null>(null);
+    const [renewalClient, setRenewalClient] = useState<ResellerClientRecord | null>(null);
     const [renewalMonths, setRenewalMonths] = useState<number>(3);
     const [renewing, setRenewing] = useState(false);
     const locationTopup = selectedClient
@@ -315,7 +324,7 @@ function ResellerDashboard() {
 
     const buildResellerDashboardHandoffLogContext = (
         action: string,
-        record?: ResellerTransaction | null,
+        record?: ResellerClientRecord | null,
         metadata: ResellerLogContext = {},
     ): ResellerLogContext => ({
         action,
@@ -331,7 +340,7 @@ function ResellerDashboard() {
         ...metadata,
     });
 
-    const copyPaymentLink = async (link?: string | null, record?: ResellerTransaction | null) => {
+    const copyPaymentLink = async (link?: string | null, record?: ResellerClientRecord | null) => {
         const checkoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(link);
         if (!checkoutUrl) {
             message.error('Payment link is unavailable.');
@@ -350,7 +359,7 @@ function ResellerDashboard() {
         }
     };
 
-    const openPaymentLink = (link?: string | null, record?: ResellerTransaction | null) => {
+    const openPaymentLink = (link?: string | null, record?: ResellerClientRecord | null) => {
         const checkoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(link);
         if (!checkoutUrl) {
             message.error('Payment link is unavailable.');
@@ -411,7 +420,7 @@ function ResellerDashboard() {
             title: 'Locations',
             dataIndex: 'subscriptionQuantity',
             key: 'subscriptionQuantity',
-            render: (_: number, record: ResellerTransaction) => (
+            render: (_: number, record: ResellerClientRecord) => (
                 <Text>{record.subscriptionQuantity || record.locationCount || 1}</Text>
             ),
         },
@@ -430,9 +439,9 @@ function ResellerDashboard() {
             title: 'Expires',
             dataIndex: 'validUntil',
             key: 'validUntil',
-            render: (val: any) => {
+            render: (val: string | null) => {
                 if (!val) return <Text type="secondary">Auto-renew</Text>;
-                const date = val?.toDate ? val.toDate() : new Date(val);
+                const date = new Date(val);
                 const daysLeft = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                 const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
                 return (
@@ -447,7 +456,7 @@ function ResellerDashboard() {
             title: 'Created',
             dataIndex: 'createdOn',
             key: 'createdOn',
-            render: (val: any) => {
+            render: (val: string | null) => {
                 if (!val) return '-';
                 return <Text type="secondary">{formatDateTime(val, 'date', formatter)}</Text>;
             },
@@ -455,7 +464,7 @@ function ResellerDashboard() {
         {
             title: 'Actions',
             key: 'actions',
-            render: (_: unknown, record: ResellerTransaction) => {
+            render: (_: unknown, record: ResellerClientRecord) => {
                 const isManual = record.paymentMode === 'offline' || record.subscriptionBillingMode === 'manual';
                 const canAddLocation = isManual && record.status === 'active';
                 const canRenew = isManual && ['active', 'expired'].includes(record.status);
@@ -546,6 +555,13 @@ function ResellerDashboard() {
                     title={`This Month (${monthlySummary.month})`}
                     style={{ marginBottom: 16 }}
                 >
+                    {monthlySummary.isPartial ? (
+                        <Text type="warning">
+                            This report is incomplete{monthlySummary.invalidRowCount > 0
+                                ? `; ${monthlySummary.invalidRowCount} invalid transaction ${monthlySummary.invalidRowCount === 1 ? 'row was' : 'rows were'} excluded`
+                                : ' because the monthly limit was reached'}.
+                        </Text>
+                    ) : null}
                     <Row gutter={[16, 16]}>
                         <Col xs={12} sm={6}>
                             <Statistic title="Clients" value={monthlySummary.totals.clientCount} />
@@ -583,7 +599,11 @@ function ResellerDashboard() {
             {/* Clients Table */}
             {isClientListPartial ? (
                 <Card size="small" style={{ marginBottom: 16 }}>
-                    <Text type="warning">Showing a bounded client list. Monthly reporting has its own completeness indicator.</Text>
+                    <Text type="warning">
+                        This client list is incomplete{invalidClientRowCount > 0
+                            ? `; ${invalidClientRowCount} invalid subscription ${invalidClientRowCount === 1 ? 'row was' : 'rows were'} excluded`
+                            : ' because the list limit was reached'}.
+                    </Text>
                 </Card>
             ) : null}
             {transactions.length === 0 ? (

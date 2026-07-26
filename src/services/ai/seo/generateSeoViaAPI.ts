@@ -1,48 +1,14 @@
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
+import {
+    normalizeSeoGenerationResult,
+    type SeoGenerationResult,
+} from "@lib/ai/seoOutput";
+import type { SeoGenerationRequest } from "@lib/validation/apiSchemas";
 
-export interface SeoGenerationPayload {
-    menu?: {
-        categories?: string[];
-        items?: string[];
-        projectDescription?: string;
-        projectName?: string;
-    };
-    store: {
-        addressLine?: string;
-        businessAttributes?: string[];
-        businessCategory?: string;
-        businessType?: string;
-        city?: string;
-        country?: string;
-        description?: string;
-        name: string;
-        publicPresence?: {
-            accentColor?: string;
-            descriptor?: string;
-            establishedYear?: number;
-            googleMapsUrl?: string;
-            googleReviewUrl?: string;
-            knownFor?: string;
-            orderUrl?: string;
-            reservationUrl?: string;
-            whatsappNumber?: string;
-        };
-        pwaShortName?: string;
-        socialMedia?: string[];
-        state?: string;
-        tagline?: string;
-        tenantName?: string;
-    };
-}
-
-export interface SeoGenerationResult {
-    keywords: string[];
-    metaDescription: string;
-    metaTitle: string;
-    tagline: string;
-}
+export type SeoGenerationPayload = SeoGenerationRequest;
+export type { SeoGenerationResult } from "@lib/ai/seoOutput";
 
 const SEO_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
@@ -75,7 +41,7 @@ export default async function generateSeoViaAPI(payload: SeoGenerationPayload): 
             parseFailureCode: 'ai_seo_generation_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
-        return responseJson.data || null;
+        return normalizeSeoGenerationResult(responseJson.data);
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
         logAiServiceFailure('ai_seo_generation_api_failed', error, {

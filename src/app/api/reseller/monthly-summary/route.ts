@@ -2,8 +2,16 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { getResellerProfile } from "@database/reseller/server";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import {
+    projectResellerMonthlyTransaction,
+    type ResellerMonthlySummaryTotals,
+} from "@lib/reseller/resellerMonthlySummary";
+import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
+import type { ResellerProfile } from "@type/reseller";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { applyResellerReadRateLimit } from "../readRateLimit";
@@ -28,6 +36,45 @@ type ResellerMonthlyRow = {
     recognizedRevenuePaise: number;
     totalExpectedPaise: number;
 };
+
+type ResellerMonthlyProfile = {
+    authUserId?: string;
+    email: string;
+    id: string;
+    name: string;
+};
+
+const boundedString = (value: unknown, maxLength: number): string => (
+    typeof value === "string" ? value.trim().slice(0, maxLength) : ""
+);
+
+const projectMonthlyProfile = (
+    id: string,
+    value: unknown,
+): ResellerMonthlyProfile | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const data = value as Record<string, unknown>;
+    const profileId = boundedString(id, 128);
+    if (!profileId) return null;
+    const authUserId = boundedString(data.authUserId, 128);
+    return {
+        ...(authUserId ? { authUserId } : {}),
+        email: boundedString(data.email, 320),
+        id: profileId,
+        name: boundedString(data.name, 100),
+    };
+};
+
+const safeAdd = (left: number, right: number): number | null => {
+    const sum = left + right;
+    return Number.isSafeInteger(sum) && sum >= 0 ? sum : null;
+};
+
+const hasNoNullValues = <T extends Record<string, number | null>>(
+    value: T,
+): value is { [K in keyof T]: Exclude<T[K], null> } => (
+    Object.values(value).every((item) => item !== null)
+);
 
 function getCurrentIndiaMonth() {
     const parts = new Intl.DateTimeFormat("en-CA", {
@@ -65,39 +112,22 @@ function parseMonth(value: string | null) {
     return { end, month, start };
 }
 
-const toMillis = (value: any) => {
-    if (!value) return 0;
-    if (typeof value.toMillis === "function") return value.toMillis();
-    if (typeof value.toDate === "function") return value.toDate().getTime();
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : 0;
-};
-
 async function getVisibleProfileDocs(
     db: admin.firestore.Firestore,
     isPlatform: boolean,
-    resellerId: string,
-    email?: string | null,
-) {
+    currentProfile: ResellerProfile | null,
+): Promise<ResellerMonthlyProfile[]> {
     if (isPlatform) {
         const snapshot = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).limit(50).get();
-        return snapshot.docs;
+        return snapshot.docs.flatMap((doc) => {
+            const profile = projectMonthlyProfile(doc.id, doc.data());
+            return profile ? [profile] : [];
+        });
     }
 
-    const directDocPromise = db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get();
-    const normalizedEmail = email?.toLowerCase()?.trim();
-    const emailSnapshotPromise = normalizedEmail
-        ? db.collection(DB_COLLECTIONS.RESELLER_PROFILES)
-            .where("email", "==", normalizedEmail)
-            .limit(1)
-            .get()
-        : Promise.resolve(null);
-
-    const [directDoc, emailSnapshot] = await Promise.all([directDocPromise, emailSnapshotPromise]);
-    const docs = new Map<string, admin.firestore.QueryDocumentSnapshot | admin.firestore.DocumentSnapshot>();
-    if (directDoc.exists) docs.set(directDoc.id, directDoc);
-    emailSnapshot?.docs?.forEach((doc) => docs.set(doc.id, doc));
-    return Array.from(docs.values());
+    if (!currentProfile) return [];
+    const profile = projectMonthlyProfile(currentProfile.id, currentProfile);
+    return profile ? [profile] : [];
 }
 
 export const GET = withAuth(async (request: NextRequest, session) => {
@@ -120,6 +150,26 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const { month, start, end } = parsedMonth;
         reportMonth = month;
         const db = admin.firestore();
+        let currentResellerProfile: ResellerProfile | null = null;
+        if (isPlatform) {
+            if (!await getCurrentPlatformUser(session)) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        } else {
+            currentResellerProfile = await getResellerProfile(
+                sessionResellerId,
+                session.user.email,
+                session.user.resellerProfileId,
+            );
+            if (!isActiveResellerProfileForSession({
+                actorId: sessionResellerId,
+                profile: currentResellerProfile,
+                sessionEmail: session.user.email,
+                sessionProfileId: session.user.resellerProfileId,
+            })) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        }
         let transactionQuery = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS)
             .where("createdOn", ">=", admin.firestore.Timestamp.fromDate(start))
             .where("createdOn", "<", admin.firestore.Timestamp.fromDate(end));
@@ -129,29 +179,39 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         }
 
         const [profileDocs, transactionSnapshot] = await Promise.all([
-            getVisibleProfileDocs(db, isPlatform, sessionResellerId, session.user.email),
+            getVisibleProfileDocs(db, isPlatform, currentResellerProfile),
             transactionQuery
                 .orderBy("createdOn", "desc")
                 .limit(MONTHLY_TRANSACTION_LIMIT)
                 .get(),
         ]);
 
-        const profilesById = new Map<string, any>();
-        profileDocs.forEach((doc) => {
-            const data = doc.data();
-            profilesById.set(doc.id, { id: doc.id, ...data });
-            if (typeof data.authUserId === "string") profilesById.set(data.authUserId, { id: doc.id, ...data });
+        const profilesById = new Map<string, ResellerMonthlyProfile>();
+        profileDocs.forEach((profile) => {
+            profilesById.set(profile.id, profile);
+            if (profile.authUserId) profilesById.set(profile.authUserId, profile);
         });
 
         const rows = new Map<string, ResellerMonthlyRow & { storeIds: Set<number> }>();
+        const totals: ResellerMonthlySummaryTotals = {
+            clientCount: 0,
+            offlineCollectedPaise: 0,
+            onlineActivePaise: 0,
+            onlinePendingPaise: 0,
+            recognizedRevenuePaise: 0,
+            totalExpectedPaise: 0,
+            transactionCount: 0,
+        };
+        let invalidRowCount = 0;
 
         transactionSnapshot.docs.forEach((doc) => {
-            const transaction = doc.data();
-            const resellerId = String(transaction.resellerProfileId || transaction.resellerId || "unknown");
-            const profile = profilesById.get(resellerId) || profilesById.get(String(transaction.resellerId || ""));
-            const amount = Number(transaction.amountExpected || 0);
-            const status = String(transaction.status || "");
-            const paymentMode = String(transaction.paymentMode || "");
+            const transaction = projectResellerMonthlyTransaction(doc.data());
+            if (!transaction || (!isPlatform && transaction.resellerId !== sessionResellerId)) {
+                invalidRowCount += 1;
+                return;
+            }
+            const resellerId = transaction.resellerProfileId || transaction.resellerId;
+            const profile = profilesById.get(resellerId) || profilesById.get(transaction.resellerId);
             const existing = rows.get(resellerId) || {
                 resellerEmail: transaction.resellerEmail || profile?.email || "",
                 resellerId,
@@ -166,22 +226,42 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 storeIds: new Set<number>(),
             };
 
-            existing.transactionCount += 1;
-            existing.totalExpectedPaise += amount;
-            if (typeof transaction.storeId === "number") existing.storeIds.add(transaction.storeId);
+            const isOfflineActive = transaction.paymentMode === "offline" && transaction.status === "active";
+            const isOnlineActive = transaction.paymentMode === "online" && transaction.status === "active";
+            const isOnlinePending = transaction.paymentMode === "online" && transaction.status === "pending_payment";
+            const isRecognized = isOfflineActive || isOnlineActive;
+            const nextValues = {
+                rowExpected: safeAdd(existing.totalExpectedPaise, transaction.amountExpected),
+                rowOffline: safeAdd(existing.offlineCollectedPaise, isOfflineActive ? transaction.amountExpected : 0),
+                rowOnlineActive: safeAdd(existing.onlineActivePaise, isOnlineActive ? transaction.amountExpected : 0),
+                rowOnlinePending: safeAdd(existing.onlinePendingPaise, isOnlinePending ? transaction.amountExpected : 0),
+                rowRecognized: safeAdd(existing.recognizedRevenuePaise, isRecognized ? transaction.amountExpected : 0),
+                rowTransactions: safeAdd(existing.transactionCount, 1),
+                totalExpected: safeAdd(totals.totalExpectedPaise, transaction.amountExpected),
+                totalOffline: safeAdd(totals.offlineCollectedPaise, isOfflineActive ? transaction.amountExpected : 0),
+                totalOnlineActive: safeAdd(totals.onlineActivePaise, isOnlineActive ? transaction.amountExpected : 0),
+                totalOnlinePending: safeAdd(totals.onlinePendingPaise, isOnlinePending ? transaction.amountExpected : 0),
+                totalRecognized: safeAdd(totals.recognizedRevenuePaise, isRecognized ? transaction.amountExpected : 0),
+                totalTransactions: safeAdd(totals.transactionCount, 1),
+            };
+            if (!hasNoNullValues(nextValues)) {
+                invalidRowCount += 1;
+                return;
+            }
 
-            if (paymentMode === "offline" && status === "active") {
-                existing.offlineCollectedPaise += amount;
-                existing.recognizedRevenuePaise += amount;
-            }
-            if (paymentMode === "online" && status === "active") {
-                existing.onlineActivePaise += amount;
-                existing.recognizedRevenuePaise += amount;
-            }
-            if (paymentMode === "online" && status === "pending_payment") {
-                existing.onlinePendingPaise += amount;
-            }
-
+            existing.totalExpectedPaise = nextValues.rowExpected;
+            existing.offlineCollectedPaise = nextValues.rowOffline;
+            existing.onlineActivePaise = nextValues.rowOnlineActive;
+            existing.onlinePendingPaise = nextValues.rowOnlinePending;
+            existing.recognizedRevenuePaise = nextValues.rowRecognized;
+            existing.transactionCount = nextValues.rowTransactions;
+            existing.storeIds.add(transaction.storeId);
+            totals.totalExpectedPaise = nextValues.totalExpected;
+            totals.offlineCollectedPaise = nextValues.totalOffline;
+            totals.onlineActivePaise = nextValues.totalOnlineActive;
+            totals.onlinePendingPaise = nextValues.totalOnlinePending;
+            totals.recognizedRevenuePaise = nextValues.totalRecognized;
+            totals.transactionCount = nextValues.totalTransactions;
             rows.set(resellerId, existing);
         });
 
@@ -189,27 +269,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             .map(({ storeIds, ...row }) => ({ ...row, clientCount: storeIds.size }))
             .sort((a, b) => b.recognizedRevenuePaise - a.recognizedRevenuePaise || b.totalExpectedPaise - a.totalExpectedPaise);
 
-        const totals = resellers.reduce((sum, row) => ({
-            clientCount: sum.clientCount + row.clientCount,
-            offlineCollectedPaise: sum.offlineCollectedPaise + row.offlineCollectedPaise,
-            onlineActivePaise: sum.onlineActivePaise + row.onlineActivePaise,
-            onlinePendingPaise: sum.onlinePendingPaise + row.onlinePendingPaise,
-            recognizedRevenuePaise: sum.recognizedRevenuePaise + row.recognizedRevenuePaise,
-            totalExpectedPaise: sum.totalExpectedPaise + row.totalExpectedPaise,
-            transactionCount: sum.transactionCount + row.transactionCount,
-        }), {
-            clientCount: 0,
-            offlineCollectedPaise: 0,
-            onlineActivePaise: 0,
-            onlinePendingPaise: 0,
-            recognizedRevenuePaise: 0,
-            totalExpectedPaise: 0,
-            transactionCount: 0,
-        });
+        totals.clientCount = resellers.reduce((sum, row) => sum + row.clientCount, 0);
 
         return NextResponse.json({
             generatedAt: new Date().toISOString(),
-            isPartial: transactionSnapshot.size >= MONTHLY_TRANSACTION_LIMIT,
+            invalidRowCount,
+            isPartial: transactionSnapshot.size >= MONTHLY_TRANSACTION_LIMIT || invalidRowCount > 0,
             month: reportMonth,
             period: { end: end.toISOString(), start: start.toISOString(), timeZone: INDIA_TZ },
             resellers,

@@ -7,6 +7,7 @@ import { Timestamp } from "@firebase/firestore";
 import { normalizeBaseUrl, getPublicBaseUrl } from "@constant/urls";
 import { DigitalScreenState, ScreenSlide } from "@type/campaigns";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "./screenDiagnostics";
+import { isScreenExpiryValueExpired } from "./screenTimestamp";
 
 /**
  * Generate high-entropy screen token for URL security
@@ -50,12 +51,7 @@ export function getOwnerUploadExpiry(expiryDays: number): Timestamp {
  * Check if a slide is expired
  */
 export function isSlideExpired(slide: ScreenSlide): boolean {
-    if (!slide.validUntil) return false;
-    // Defensive: handle Firestore Timestamp, serialized object, or number
-    const expiry = typeof slide.validUntil === 'number'
-        ? slide.validUntil
-        : (slide.validUntil as any).toMillis?.() ?? (slide.validUntil as any)._seconds * 1000;
-    return Number(expiry) < Date.now();
+    return isScreenExpiryValueExpired(slide.validUntil);
 }
 
 /**

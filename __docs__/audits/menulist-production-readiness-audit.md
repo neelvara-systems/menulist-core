@@ -1,5 +1,95 @@
 # MenuList Production Readiness Audit
 
+## Reseller Onboarding Replay Authority - July 25, 2026
+
+- Lost-response replay now re-authorizes current subscription scope/reseller and store tenant/lifecycle against the exact operation before entitlement/referral effects or handoff.
+- Manual replay requires a real defensively parsed persisted paid date, and response lifecycle follows current subscription truth. Foreign, conflicting, inactive or malformed resources fail support review.
+- Pure/source/type gates cover conflicting store aliases, inactive stores and foreign subscription resellers. No read/write count, rule, index, Function, cache behavior or deploy target changed.
+
+## Reseller Onboarding Response Contract - July 25, 2026
+
+- Desktop/mobile onboarding now share one exact allowlisted response validator with safe tenant/store/location IDs, known status, exact operation acknowledgement and bounded optional handoff strings.
+- Both route success branches omit the unused owner Firebase Auth UID; owner login/link handoff fields remain unchanged.
+- Focused behavior/source/type gates reject strings, fractions, unknown keys/status and mismatched operations. No persistence, cache, rule, index, Function or deploy target changed.
+
+## Reseller Mutation Profile Counters - July 25, 2026
+
+- Renewal and add-location transactions now validate transaction-current profile revenue, transaction and offline-slot counters and compute overflow-safe exact next values before any coupled write.
+- Missing legacy counters retain zero compatibility; malformed present values and invalid expired-renewal caps fail closed, while cap exhaustion retains its typed conflict.
+- Pure/source/type gates cover valid addition, string rejection, overflow and cap exhaustion. No rules, indexes, Functions, cache behavior or deploy target changed.
+
+## Reseller Onboarding Counter Integrity - July 25, 2026
+
+- The initial subscription/operation/profile transaction now validates exact document IDs, known payment mode, safe paise, exact profile reference, current profile ownership, counters and offline cap before any write.
+- Missing legacy counters retain zero compatibility; malformed present values fail closed. All onboarding count/revenue additions are overflow-safe and persisted as exact next values rather than permissive atomic increments.
+- The real Firestore emulator proves malformed string counters, maximum-safe overflow and foreign profile identity reject atomically with no subscription creation. No rules, indexes, Functions, cache behavior or deploy target changed.
+
+## Reseller Online Revenue Convergence - July 25, 2026
+
+- Deferred online onboarding revenue is now recognized only inside a transaction that re-reads exact marker-false rows, validates exact online/payment/profile/reseller identity, reads the referenced reseller profile, validates its current non-negative safe-integer total, and computes an overflow-safe exact next value.
+- Missing, mismatched, malformed, or overflowed profile state leaves the ledger marker false for repair; already-active marker-false rows can converge on a later activation retry without reporting a second activation. Deterministic onboarding replay also rejects numeric-string or unsafe tenant/store IDs.
+- Focused pure/source gates and the real Firestore emulator cover one-time recognition, missing-profile repair, foreign-profile denial, malformed string amount denial, and exact replay scalars. No Firestore rule, index, Function, or public cache changed; no Firebase or Vercel deploy applies.
+
+## Reseller Paid-Mutation State Integrity - July 25, 2026
+
+- Closed a local P1 billing/data-integrity defect across manual renewal and add-location capacity: replay and transaction-current values were coerced with `Number(...)`, timestamps used unchecked methods, arithmetic could overflow, active renewal could silently replace malformed expiry with request time, and a subscription's mismatched `resellerProfileId` could direct revenue/cap counters to another profile.
+- One pure mutation boundary now projects exact replay identity/results, defensively normalizes dates, requires safe-integer arithmetic, and resolves profile identity against the admitted reseller. Active renewal requires valid current expiry; malformed platform profile IDs fail closed. All reseller bounded-body routes pass unknown data directly into runtime schemas without `any`.
+- Focused mutation-state/source, exact TypeScript and focused ESLint pass. Transaction reads/writes and successful DTOs remain unchanged. No rule, index, Function, cache, provider, or public-output path changed; app release and malformed/replay concurrency smoke remain external.
+
+## Reseller Client-List Contract - July 25, 2026
+
+- Closed a local P1 protected billing-truth defect: `/api/reseller/clients` permissively coerced subscription quantity/amount, passed through loosely serialized timestamps/status/identity, and the shared hook accepted any transaction array through `as ResellerTransaction[]` before running unchecked `any` date conversions.
+- One exact subscription projector now requires canonical scope/identity/status/mode, safe quantity and paise, overflow-safe online amount, bounded strings, and defensive ISO time conversion. Invalid rows are excluded/counted and make the response partial.
+- The shared hook validates the exact response and row keys/types before SWR settlement. Desktop/mobile surface invalid/capped incompleteness; client dedupe and expiry stats operate only on ISO timestamps.
+- Focused behavior/source, exact TypeScript and focused ESLint pass. Query/read bounds are unchanged and validation is local. No write, rule, index, Function, cache, provider, or public-output path changed; app release and malformed-subscription browser smoke remain external.
+
+## Reseller Monthly Report Integrity - July 25, 2026
+
+- Closed a local P1 private financial-truth defect: monthly aggregation used `Number(transaction.amountExpected || 0)`, accepted malformed/negative/fractional/non-finite persisted values, enriched reseller rows from a second arbitrary email candidate, and returned a DTO that the shared dashboard hook checked only for root object/array presence.
+- One runtime projector now admits canonical transaction identity, positive store ID, known payment/status values, and non-negative safe-integer paise. Safe-add checks prevent overflow. Invalid rows are excluded and counted; either invalid evidence or the 2,000-row cap makes the response explicitly partial.
+- One exact monthly DTO/validator now owns route-to-hook, desktop management, and mobile management contracts. All dashboard/management surfaces warn when the report is incomplete. Reseller enrichment reuses the exact current profile; platform enrichment remains capped at 50.
+- Focused behavior/source, exact TypeScript and focused ESLint pass. Normal monthly transaction reads are unchanged; reseller reporting removes the redundant post-authority profile read. No write, rule, index, Function, cache, provider, or public-output path changed; app release and malformed-fixture browser smoke remain external.
+
+## Reseller Protected-Read Current Authority - July 25, 2026
+
+- Closed a local P1 authorization-lifetime defect: `/api/reseller/clients` and `/api/reseller/monthly-summary` trusted the reseller/platform role in the signed session without re-reading current persisted lifecycle/role state before returning private client, subscription, transaction, revenue, or profile data.
+- Client-list, monthly-summary, and self-profile now require the current platform user or one exact active reseller actor/profile match. Direct Auth-UID profiles remain preferred; a bounded two-candidate legacy email lookup accepts exactly one Auth UID or signed profile-claim match. Related mutation routes pass the same signed claim.
+- The focused Firestore emulator proves duplicate same-email legacy rows resolve only for their bound actor/claim and fail closed for an unbound actor. The reseller source gate, auth/tenant gates, exact TypeScript, focused ESLint, docs links and diff hygiene are closure gates.
+- Each protected read adds one current-authority read; legacy fallback can add a missing direct read plus up to two candidate reads. Existing response DTOs, query limits, billing mutations, public caches, rules, indexes, and Functions remain unchanged; app release and authenticated revocation-timing smoke remain external.
+
+## Reseller Self-Profile Privacy Boundary - July 25, 2026
+
+- Closed a local P1 private-data exposure: `/api/reseller/profile` spread every field from the Admin `resellerProfiles` document and removed only `password`. The authoritative type labels `notes` as founder-internal, while Auth IDs, password timestamps, creator identity, soft-delete state, and arbitrary legacy fields also had no reseller-dashboard need.
+- The route now requires the current active profile to match actor ID, optional session profile claim, and normalized email. Legacy fallback reads at most two email candidates and accepts exactly one matching identity. An allowlisted self-profile projector emits only required contact/cap/count/revenue/lifecycle fields and defensive ISO timestamps; the browser validates the same exact key/type contract.
+- The focused Firestore/behavior suite proves private and unknown keys are absent, malformed timestamps become null, invalid counters fail safe, and valid projected DTOs pass while added private fields fail. The reseller source gate, auth/tenant gates, exact TypeScript, focused ESLint, docs links and diff hygiene are closure gates.
+- Direct current profiles retain one read. A legacy-ID fallback costs one missing direct read plus up to two email candidates instead of one. No write, rule, index, Function, billing, entitlement, cache, provider, or public-output behavior changed; app release and authenticated legacy/duplicate-profile smoke remain external.
+
+## Reseller Username Login Contract - July 25, 2026
+
+- Closed a local P2 authentication contract defect: reseller management advertised and stored usernames such as `reseller_rahul`, but credential login normalized every non-email identifier to digits and rejected values shorter than ten digits. The account remained reachable by email, but the explicitly provisioned username could never authenticate.
+- New reseller usernames are trimmed, lowercased, length-bounded, and restricted to a canonical safe character set. Server and browser user lookup first attempt exact canonical `users.username` resolution, then preserve the existing digit/phone/staff lookup matrix. Credential admission passes the original normalized identifier to the duplicate-safe server resolver.
+- The real Firestore reseller emulator proves a mixed-case/whitespace login resolves the canonical reseller user. The reseller source gate, auth failure matrix, exact TypeScript, focused ESLint, docs links and diff hygiene are closure gates.
+- Firebase Auth password verification, email lookup, lockout, account lifecycle/block checks, rules, indexes, Functions, billing, entitlement, caches, providers, and public output are unchanged. Existing noncanonical reseller usernames remain email-login compatible and normalize on the next platform profile save; app release and authenticated credential smoke remain external.
+
+## Reseller Profile Admission Concurrency - July 25, 2026
+
+- Closed a local P1 identity/data-integrity race: `/api/reseller/manage` checked username/email uniqueness and the ten-profile platform cap through detached reads, then created or merged the profile later. Concurrent platform requests could both pass, producing duplicate usernames or exceeding the cap.
+- Create and update now use transaction-current profile queries and commit the reseller profile plus matching `users/{authUserId}` fields atomically. Newly provisioned Auth accounts are cleaned up on failed admission; existing Auth metadata/claims are restored when the Firestore transaction fails. Existing-account password rotation is delayed until after the profile/user commit because a prior Firebase Auth password cannot be read back for compensation.
+- The focused Firestore emulator proves one winner under eight concurrent duplicate-username creates, exactly three winners under a cap of three, one winner for competing username updates, and exact profile/user identity agreement. The reseller source gate, exact TypeScript, focused ESLint, docs links and diff hygiene are closure gates.
+- Valid successful work retains the existing Auth operations and Firestore profile/user writes but moves the two Firestore documents into one transaction and adds bounded transaction-current profile/email/username/cap reads. No rule, index, Function, collection, billing, entitlement, cache, provider, or public-output contract changed; app release and authenticated Firebase Auth failure-injection smoke remain external.
+
+## Digital Screen Slide Expiry Normalization - July 25, 2026
+
+- Closed a local P2 public-output/legacy-data defect: `isSlideExpired()` used `any` casts and an unchecked `toMillis()`/`_seconds` expression. A present malformed or unsupported expiry produced `NaN`, which compared as not expired and could retain stale custom artwork in public Highlights; throwing conversion methods could break the pipeline. Desktop/mobile countdowns and mobile sorting duplicated the unsafe assumption.
+- The shared timestamp boundary now supplies validated milliseconds and an explicit expiry policy: missing means non-expiring, valid future/past values behave normally, and any present malformed value fails closed as expired. Owner countdowns return zero and ordering remains deterministic.
+- Focused timestamp/lifecycle behavior, Digital Screens source, exact TypeScript, focused ESLint, dependency freeze, docs links and diff hygiene are local closure gates. No persisted shape, read/write, rule, index, Function, cache, or provider changed.
+
+## Digital Screen Owner Timestamp Contract - July 25, 2026
+
+- Closed a local P3 runtime/type defect: desktop, mobile, and Output Center widened the canonical Firestore `screenLastSeenAt` field to `any` and maintained duplicate formatters. A value whose `toDate()` returned a non-Date truthy value escaped the helper and threw in relative-time rendering; compile-time producer/consumer drift was invisible.
+- One shared unknown-input normalizer now validates Firestore methods, seconds forms, `Date`, ISO, and millisecond inputs and rejects malformed/throwing/non-finite/invalid values. Owner state and props retain the canonical `DigitalScreenState["screenLastSeenAt"] | null` contract.
+- Focused timestamp behavior, Digital Screens source, exact TypeScript, focused ESLint, dependency freeze, docs links and diff hygiene are local closure gates. Persistence, DTO transport, reads/writes, rules, indexes, Functions, caches, and providers are unchanged.
+
 ## Screen Seen Acknowledgement Integrity - July 25, 2026
 
 - Closed a local P2 liveness reliability defect: both anonymous limiter branches returned `{ok:true,cached:true}` without checking or writing current liveness. Because display clients persist their browser daily marker after any 2xx response, a transient transaction failure consumed the token bucket and the retry then falsely suppressed all same-browser attempts for the day.
@@ -5979,7 +6069,9 @@ Reseller management:
 
 1. Page/mobile screen permits only `platformRole === 'PLATFORM'`.
 2. Runtime loads reseller profiles and monthly summary through existing platform-only APIs.
-3. No client-bundled password or static secret is used.
+3. Persisted profile documents cross one allowlisted DTO; malformed rows are excluded/countable, private Auth/password/unknown fields remain internal, and capped evidence is visible.
+4. Desktop and mobile validate the same exact response shape before state updates.
+5. No client-bundled password or static secret is used.
 
 ### C. Correctness Checks
 

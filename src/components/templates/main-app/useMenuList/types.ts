@@ -4,6 +4,8 @@
  * @see __docs__/use-menulist/use-menulist_impl.md
  */
 
+import type { DigitalScreenSeenTimestamp } from '@lib/screen/screenTimestamp';
+
 export interface ProjectLink {
     projectId: string;
     name: string | Record<string, string>;
@@ -32,7 +34,7 @@ export interface UseMenuListData {
     screenToken: string | null;
     menuBoardLink: string | null;
     highlightsLink: string | null;
-    screenLastSeenAt: any;
+    screenLastSeenAt: DigitalScreenSeenTimestamp;
 
     // Store info
     storeName: string;

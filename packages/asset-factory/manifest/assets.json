@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-19",
+  "updatedAt": "2026-07-25",
   "productBoundary": {
     "publicRuntime": false,
     "publicMarketing": false,
@@ -23,9 +23,9 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "f8a7b7ffa36dfd785e3a0f8d68d4c2ef552652ec439877c7537d32be1d5a7ca9",
           "scripts/website-assets/generate-stage6-assets.mjs": "3a571dc2f7e39e9b27df70c649f47ae01ffefa41fb8cbe38138907f1f96446e8",
-          "src/styles/website.css": "4ff5e73a2e91c990390953ae9402fa8e17473118ba6d22e4cf3525acefc5e5b6"
+          "src/styles/website.css": "f3f250be199671e54bb8f44b2e04c8a34a3daf877dd11247e7bdb935a0dae8b8"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-19."
+        "notes": "Locked by assets:fingerprint on 2026-07-25."
       },
       "review": {
         "decision": "approved",
@@ -305,9 +305,9 @@
           "public/icons/icon-512x512.png": "2ef92365aadbc02eeaf609c077a17523eba7f2815eecca24f3d6c8d6a04dd380",
           "src/components/website/home/HeroSection.tsx": "d27ef4fe1b2615481be892a08d111cdda0d5cbaede08ad144706b51fbb36670b",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
-          "src/styles/website.css": "4ff5e73a2e91c990390953ae9402fa8e17473118ba6d22e4cf3525acefc5e5b6"
+          "src/styles/website.css": "f3f250be199671e54bb8f44b2e04c8a34a3daf877dd11247e7bdb935a0dae8b8"
         },
-        "notes": "Locked by assets:fingerprint on 2026-07-19."
+        "notes": "Locked by assets:fingerprint on 2026-07-25."
       },
       "review": {
         "decision": "approved",

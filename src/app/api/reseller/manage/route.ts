@@ -3,15 +3,20 @@ import { FEATURE_FLAGS } from "@config/features";
 import { RESELLER_CAPS } from "@config/resellerPricing";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
+    createResellerProfile,
     getAllResellerProfiles,
     getResellerProfileById,
+    getResellerProfileAdmissionConflict,
+    updateResellerProfile,
 } from "@database/reseller/server";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { logger } from "@lib/monitoring/logger";
+import { projectResellerManagementProfile } from "@lib/reseller/resellerManagementProfile";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
+import { LOGIN_USERNAME_PATTERN } from "@lib/auth/loginIdentifiers";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { z } from "zod";
@@ -40,8 +45,18 @@ export const GET = withAuth(async (request, session) => {
         const rateLimitResponse = await applyResellerReadRateLimit(session, "manage");
         if (rateLimitResponse) return rateLimitResponse;
 
-        const profiles = await getAllResellerProfiles();
-        return NextResponse.json({ profiles });
+        const persistedProfiles = await getAllResellerProfiles();
+        const projectedProfiles = persistedProfiles
+            .slice(0, 50)
+            .map(projectResellerManagementProfile);
+        const profiles = projectedProfiles.filter((profile) => profile !== null);
+        const invalidProfileCount = projectedProfiles.length - profiles.length;
+        return NextResponse.json({
+            invalidProfileCount,
+            isCapped: persistedProfiles.length > 50,
+            isPartial: persistedProfiles.length > 50 || invalidProfileCount > 0,
+            profiles,
+        });
     } catch (error) {
         logResellerApiFailure('reseller_manage_get_route_failed', error, {
             ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
@@ -55,7 +70,7 @@ const CreateResellerSchema = z.object({
     name: z.string().min(2).max(100),
     phone: z.string().min(10).max(15),
     email: z.string().email(),
-    username: z.string().min(3).max(50),
+    username: z.string().trim().toLowerCase().min(3).max(50).regex(LOGIN_USERNAME_PATTERN),
     password: z.string().min(6).max(100),
     addressLine: z.string().max(200).optional(),
     city: z.string().max(100).optional(),
@@ -72,7 +87,7 @@ const UpdateResellerSchema = z.object({
     name: z.string().min(2).max(100).optional(),
     phone: z.string().min(10).max(15).optional(),
     email: z.string().email().optional(),
-    username: z.string().min(3).max(50).optional(),
+    username: z.string().trim().toLowerCase().min(3).max(50).regex(LOGIN_USERNAME_PATTERN).optional(),
     password: z.string().min(6).max(100).optional(),
     addressLine: z.string().max(200).optional(),
     city: z.string().max(100).optional(),
@@ -94,10 +109,39 @@ const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFire
     undefinedObjectValue: "omit",
 });
 
+type FirebaseErrorLike = {
+    code?: unknown;
+};
+
+const getFirebaseErrorCode = (error: unknown): string | null => {
+    if (!error || typeof error !== "object" || !("code" in error)) return null;
+    const code = (error as FirebaseErrorLike).code;
+    return typeof code === "string" ? code : null;
+};
+
+const getProfileAdmissionResponse = (error: unknown): NextResponse | null => {
+    const conflict = getResellerProfileAdmissionConflict(error);
+    if (conflict === "email") {
+        return NextResponse.json({ error: "A reseller profile already uses this email." }, { status: 409 });
+    }
+    if (conflict === "username") {
+        return NextResponse.json({ error: "A reseller profile already uses this username." }, { status: 409 });
+    }
+    if (conflict === "profile") {
+        return NextResponse.json({ error: "Reseller profile changed while this request was running." }, { status: 409 });
+    }
+    if (conflict === "total-cap") {
+        return NextResponse.json({
+            error: `Maximum reseller accounts reached (${RESELLER_CAPS.MAX_TOTAL_RESELLERS}).`,
+        }, { status: 409 });
+    }
+    return null;
+};
+
 async function cleanupCreatedResellerLoginAccount(
     db: admin.firestore.Firestore,
     uid: string,
-): Promise<void> {
+): Promise<boolean> {
     const cleanupResults = await Promise.allSettled([
         db.collection(DB_COLLECTIONS.USERS).doc(uid).delete(),
         authAdmin.deleteUser(uid),
@@ -108,6 +152,36 @@ async function cleanupCreatedResellerLoginAccount(
             ...getBoundedResellerApiStringContext('authUserId', uid),
         });
     });
+    return cleanupResults.every((result) => result.status === "fulfilled");
+}
+
+type ResellerAuthRollbackState = {
+    customClaims?: Record<string, unknown>;
+    disabled: boolean;
+    displayName?: string;
+    email?: string;
+    emailVerified: boolean;
+    uid: string;
+};
+
+async function restoreExistingResellerLoginAccount(
+    rollback: ResellerAuthRollbackState,
+): Promise<boolean> {
+    try {
+        await authAdmin.updateUser(rollback.uid, {
+            disabled: rollback.disabled,
+            displayName: rollback.displayName || null,
+            emailVerified: rollback.emailVerified,
+            ...(rollback.email ? { email: rollback.email } : {}),
+        });
+        await authAdmin.setCustomUserClaims(rollback.uid, rollback.customClaims || null);
+        return true;
+    } catch (error) {
+        logResellerApiFailure('reseller_manage_auth_rollback_failed', error, {
+            ...getBoundedResellerApiStringContext('authUserId', rollback.uid),
+        });
+        return false;
+    }
 }
 
 async function assertResellerUniqueness(
@@ -122,8 +196,8 @@ async function assertResellerUniqueness(
         db.collection(DB_COLLECTIONS.RESELLER_PROFILES).where('username', '==', username).limit(1).get(),
         db.collection(DB_COLLECTIONS.USERS).where('email', '==', email).limit(1).get(),
     ]);
-    const authUser = await authAdmin.getUserByEmail(email).catch((error: any) => {
-        if (error?.code === 'auth/user-not-found') return null;
+    const authUser = await authAdmin.getUserByEmail(email).catch((error: unknown) => {
+        if (getFirebaseErrorCode(error) === 'auth/user-not-found') return null;
         throw error;
     });
 
@@ -149,20 +223,23 @@ async function assertResellerUniqueness(
     return null;
 }
 
-async function findAuthUser(existingProfile: any, email: string) {
+async function findAuthUser(
+    existingProfile: { authUserId?: string; id?: string },
+    email: string,
+) {
     const candidateIds = [existingProfile?.authUserId, existingProfile?.id].filter(Boolean);
     for (const uid of candidateIds) {
         try {
             return await authAdmin.getUser(String(uid));
-        } catch (error: any) {
-            if (error?.code !== 'auth/user-not-found') throw error;
+        } catch (error: unknown) {
+            if (getFirebaseErrorCode(error) !== 'auth/user-not-found') throw error;
         }
     }
 
     try {
         return await authAdmin.getUserByEmail(email);
-    } catch (error: any) {
-        if (error?.code === 'auth/user-not-found') return null;
+    } catch (error: unknown) {
+        if (getFirebaseErrorCode(error) === 'auth/user-not-found') return null;
         throw error;
     }
 }
@@ -175,15 +252,21 @@ async function syncResellerLoginAccount(params: {
     name: string;
     password?: string;
     resellerProfileId?: string;
-    username: string;
 }) {
-    const now = admin.firestore.Timestamp.now();
     const authUser = params.authUserId
         ? await findAuthUser({ authUserId: params.authUserId, id: params.authUserId }, params.email)
         : null;
 
     let uid = authUser?.uid;
     let createdAuthUser = false;
+    const rollback = authUser ? {
+        customClaims: authUser.customClaims,
+        disabled: authUser.disabled,
+        displayName: authUser.displayName,
+        email: authUser.email,
+        emailVerified: authUser.emailVerified,
+        uid: authUser.uid,
+    } satisfies ResellerAuthRollbackState : undefined;
     if (uid) {
         const updatePayload: admin.auth.UpdateRequest = {
             disabled: !params.active,
@@ -191,9 +274,9 @@ async function syncResellerLoginAccount(params: {
             email: params.email,
             emailVerified: true,
         };
-        if (params.password) updatePayload.password = params.password;
         await authAdmin.updateUser(uid, updatePayload);
     } else {
+        if (!params.password) throw new Error("Reseller login password is required.");
         const createdUser = await authAdmin.createUser({
             disabled: !params.active,
             displayName: params.name,
@@ -214,29 +297,39 @@ async function syncResellerLoginAccount(params: {
             uId: uid,
         });
 
-        await params.db.collection(DB_COLLECTIONS.USERS).doc(uid).set({
-            active: params.active,
-            email: params.email,
-            isVerified: true,
-            modifiedOn: now,
-            name: params.name,
-            onboardingSource: 'RESELLER_MANAGEMENT',
-            platformRole: 'RESELLER',
-            profileImage: '',
-            resellerProfileId,
-            role: '',
-            storeIds: [],
-            stores: [],
-            username: params.username,
-            ...(params.authUserId ? {} : { createdOn: now, createdVia: 'reseller-management' }),
-        }, { merge: true });
     } catch (error) {
         if (createdAuthUser) await cleanupCreatedResellerLoginAccount(params.db, uid);
+        else if (rollback) await restoreExistingResellerLoginAccount(rollback);
         throw error;
     }
 
-    return uid;
+    return { createdAuthUser, rollback, uid };
 }
+
+const getResellerUserWrite = (params: {
+    active: boolean;
+    createdAuthUser: boolean;
+    email: string;
+    name: string;
+    now: admin.firestore.Timestamp;
+    resellerProfileId: string;
+    username: string;
+}): Record<string, unknown> => ({
+    active: params.active,
+    email: params.email,
+    isVerified: true,
+    modifiedOn: params.now,
+    name: params.name,
+    onboardingSource: 'RESELLER_MANAGEMENT',
+    platformRole: 'RESELLER',
+    profileImage: '',
+    resellerProfileId: params.resellerProfileId,
+    role: '',
+    storeIds: [],
+    stores: [],
+    username: params.username,
+    ...(params.createdAuthUser ? { createdOn: params.now, createdVia: 'reseller-management' } : {}),
+});
 
 export const POST = withAuth(async (request, session) => {
     try {
@@ -261,8 +354,13 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data as any;
-        const isUpdate = Boolean(body.profileId);
+        const body = bodyResult.data;
+        const isUpdate = (
+            typeof body === "object"
+            && body !== null
+            && "profileId" in body
+            && Boolean(body.profileId)
+        );
         const db = getDb();
 
         if (isUpdate) {
@@ -306,7 +404,7 @@ export const POST = withAuth(async (request, session) => {
                 }, { status: 409 });
             }
 
-            const authUserId = await syncResellerLoginAccount({
+            const syncedAccount = await syncResellerLoginAccount({
                 active: updates.active ?? existing.active !== false,
                 authUserId: existingAuthUser?.uid,
                 db,
@@ -314,19 +412,57 @@ export const POST = withAuth(async (request, session) => {
                 name: updates.name || existing.name,
                 password: updates.password,
                 resellerProfileId: profileId,
-                username: nextUsername,
             });
 
             const { password: _password, ...profileUpdates } = updates;
-            await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(profileId).set(removeUndefinedFields({
-                ...profileUpdates,
-                authUserId,
-                email: nextEmail,
-                modifiedOn: admin.firestore.Timestamp.now(),
-                password: admin.firestore.FieldValue.delete(),
-                passwordSetAt: updates.password ? admin.firestore.Timestamp.now() : existing.passwordSetAt || null,
-                username: nextUsername,
-            }), { merge: true });
+            const modifiedOn = admin.firestore.Timestamp.now();
+            try {
+                await updateResellerProfile({
+                    email: nextEmail,
+                    profileId,
+                    updates: removeUndefinedFields({
+                        ...profileUpdates,
+                        authUserId: syncedAccount.uid,
+                        email: nextEmail,
+                        modifiedOn,
+                        password: admin.firestore.FieldValue.delete(),
+                        passwordSetAt: syncedAccount.createdAuthUser
+                            ? modifiedOn
+                            : existing.passwordSetAt || null,
+                        username: nextUsername,
+                    }),
+                    user: getResellerUserWrite({
+                        active: updates.active ?? existing.active !== false,
+                        createdAuthUser: syncedAccount.createdAuthUser,
+                        email: nextEmail,
+                        name: updates.name || existing.name,
+                        now: modifiedOn,
+                        resellerProfileId: profileId,
+                        username: nextUsername,
+                    }),
+                    userId: syncedAccount.uid,
+                    username: nextUsername,
+                });
+            } catch (error) {
+                let compensationSucceeded = true;
+                if (syncedAccount.createdAuthUser) {
+                    compensationSucceeded = await cleanupCreatedResellerLoginAccount(db, syncedAccount.uid);
+                } else if (syncedAccount.rollback) {
+                    compensationSucceeded = await restoreExistingResellerLoginAccount(syncedAccount.rollback);
+                }
+                if (!compensationSucceeded) throw new Error("Reseller login compensation failed.");
+                const admissionResponse = getProfileAdmissionResponse(error);
+                if (admissionResponse) return admissionResponse;
+                throw error;
+            }
+
+            if (updates.password && !syncedAccount.createdAuthUser) {
+                await authAdmin.updateUser(syncedAccount.uid, { password: updates.password });
+                await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(profileId).update({
+                    modifiedOn: admin.firestore.Timestamp.now(),
+                    passwordSetAt: admin.firestore.Timestamp.now(),
+                });
+            }
 
             logger.info('Reseller profile updated', {
                 endpoint: request.nextUrl.pathname,
@@ -351,70 +487,81 @@ export const POST = withAuth(async (request, session) => {
                 return NextResponse.json({ error: getEmailValidationError(email) }, { status: 400 });
             }
 
-            const existingProfiles = await getAllResellerProfiles();
-            if (existingProfiles.length >= RESELLER_CAPS.MAX_TOTAL_RESELLERS) {
-                return NextResponse.json({
-                    error: `Maximum reseller accounts reached (${RESELLER_CAPS.MAX_TOTAL_RESELLERS}). Deactivate an existing reseller before adding another.`,
-                }, { status: 400 });
-            }
-
             const username = data.username.trim();
             const duplicateError = await assertResellerUniqueness(db, email, username);
             if (duplicateError) {
                 return NextResponse.json({ error: duplicateError }, { status: 409 });
             }
 
-            const authUserId = await syncResellerLoginAccount({
+            const syncedAccount = await syncResellerLoginAccount({
                 active: data.active !== undefined ? data.active : true,
                 db,
                 email,
                 name: data.name,
                 password: data.password,
-                username,
             });
 
             const now = admin.firestore.Timestamp.now();
             try {
-                await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(authUserId).set(removeUndefinedFields({
-                    active: data.active !== undefined ? data.active : true,
-                    activatedAt: now,
-                    addressLine: data.addressLine,
-                    authUserId,
-                    city: data.city,
-                    country: data.country,
-                    createdBy: session.user?.email || 'platform',
-                    createdOn: now,
-                    currentActiveOfflineStores: 0,
+                await createResellerProfile({
                     email,
-                    id: authUserId,
-                    maxOfflineActivations: data.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
-                    modifiedOn: now,
-                    name: data.name,
-                    notes: data.notes,
-                    phone: data.phone,
-                    passwordSetAt: now,
-                    postalCode: data.postalCode,
-                    state: data.state,
-                    totalOfflineStores: 0,
-                    totalOnlineStores: 0,
-                    totalRevenueCollectedPaise: 0,
-                    totalStoresOnboarded: 0,
-                    totalTransactions: 0,
+                    maxProfiles: RESELLER_CAPS.MAX_TOTAL_RESELLERS,
+                    profile: removeUndefinedFields({
+                        active: data.active !== undefined ? data.active : true,
+                        activatedAt: now,
+                        addressLine: data.addressLine,
+                        authUserId: syncedAccount.uid,
+                        city: data.city,
+                        country: data.country,
+                        createdBy: session.user?.email || 'platform',
+                        createdOn: now,
+                        currentActiveOfflineStores: 0,
+                        email,
+                        id: syncedAccount.uid,
+                        maxOfflineActivations: data.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
+                        modifiedOn: now,
+                        name: data.name,
+                        notes: data.notes,
+                        phone: data.phone,
+                        passwordSetAt: now,
+                        postalCode: data.postalCode,
+                        state: data.state,
+                        totalOfflineStores: 0,
+                        totalOnlineStores: 0,
+                        totalRevenueCollectedPaise: 0,
+                        totalStoresOnboarded: 0,
+                        totalTransactions: 0,
+                        username,
+                    }),
+                    profileId: syncedAccount.uid,
+                    user: getResellerUserWrite({
+                        active: data.active !== undefined ? data.active : true,
+                        createdAuthUser: syncedAccount.createdAuthUser,
+                        email,
+                        name: data.name,
+                        now,
+                        resellerProfileId: syncedAccount.uid,
+                        username,
+                    }),
+                    userId: syncedAccount.uid,
                     username,
-                }));
+                });
             } catch (error) {
-                await cleanupCreatedResellerLoginAccount(db, authUserId);
+                const cleanupSucceeded = await cleanupCreatedResellerLoginAccount(db, syncedAccount.uid);
+                if (!cleanupSucceeded) throw new Error("Reseller login cleanup failed.");
+                const admissionResponse = getProfileAdmissionResponse(error);
+                if (admissionResponse) return admissionResponse;
                 throw error;
             }
 
             logger.info('Reseller profile created', {
                 endpoint: request.nextUrl.pathname,
-                ...getBoundedResellerApiStringContext('profileId', authUserId),
+                ...getBoundedResellerApiStringContext('profileId', syncedAccount.uid),
                 ...getBoundedResellerApiStringContext('resellerName', data.name),
                 ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
             });
 
-            return NextResponse.json({ success: true, profileId: authUserId, action: 'created' });
+            return NextResponse.json({ success: true, profileId: syncedAccount.uid, action: 'created' });
         }
     } catch (error) {
         logResellerApiFailure('reseller_manage_post_route_failed', error, {

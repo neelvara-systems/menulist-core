@@ -26,6 +26,7 @@ const trustItems = [
 export default function CreateMenuPreviewSection() {
   const t = useTranslations('Website');
   const [activeSource, setActiveSource] = useState<SourceKey>('photo');
+  const ActiveSourceIcon = activeSource === 'photo' ? LuCamera : LuLink;
 
   return (
     <SectionWrapper className="ws-create-preview-section" id="create-menu-preview">
@@ -82,32 +83,38 @@ export default function CreateMenuPreviewSection() {
               <em>{t('CreateMenuPreview.previewStatus')}</em>
             </div>
 
-            <div className="ws-create-preview__phone">
-              <div className="ws-create-preview__phone-bar">
-                <span />
-                <span />
-                <span />
+            <div className="ws-create-preview__sheet">
+              <div className="ws-create-preview__sheet-header">
+                <span className="ws-create-preview__sheet-icon" aria-hidden="true">
+                  <ActiveSourceIcon size={20} />
+                </span>
+                <div>
+                  <span className="ws-create-preview__sheet-kicker">
+                    {t(`CreateMenuPreview.${activeSource}PreviewKicker`)}
+                  </span>
+                  <strong className="ws-create-preview__sheet-title">
+                    {t(`CreateMenuPreview.${activeSource}PreviewTitle`)}
+                  </strong>
+                </div>
               </div>
-              <div className="ws-create-preview__phone-hero">
-                <span>{t(`CreateMenuPreview.${activeSource}PreviewKicker`)}</span>
-                <strong>{t(`CreateMenuPreview.${activeSource}PreviewTitle`)}</strong>
-              </div>
-              <div className="ws-create-preview__sample-list" aria-label={t('CreateMenuPreview.sampleLabel')}>
+
+              <ul className="ws-create-preview__sample-list" aria-label={t('CreateMenuPreview.sampleLabel')}>
                 {sampleRows.map((key) => (
-                  <div className="ws-create-preview__sample-row" key={key}>
-                    <span aria-hidden="true" />
+                  <li className="ws-create-preview__sample-row" key={key}>
+                    <LuCheck size={17} aria-hidden="true" />
                     <p>{t(`CreateMenuPreview.${activeSource}${key}`)}</p>
-                  </div>
+                  </li>
                 ))}
-              </div>
-              <div className="ws-create-preview__preview-list">
+              </ul>
+
+              <ol className="ws-create-preview__preview-list">
                 {previewSteps.map((key, index) => (
-                  <div className="ws-create-preview__preview-step" key={key}>
+                  <li className="ws-create-preview__preview-step" key={key}>
                     <span>{String(index + 1).padStart(2, '0')}</span>
                     <p>{t(`CreateMenuPreview.${key}`)}</p>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </div>
 
             <div className="ws-create-preview__trust-row">

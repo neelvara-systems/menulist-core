@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.116 (How It Works Mobile Source Map Repair)
+**Version:** 3.6.117 (Homepage Private Preview Surface Polish)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 19, 2026
+**Last Updated:** July 25, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,11 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.116** | **How It Works Mobile Source Map Repair** | **The How It Works source-to-review-to-output diagram now keeps its connector story visible and correctly routed across phone, tablet, and desktop layouts.** | **ACTIVE** |
+| **3.6.117** | **Homepage Private Preview Surface Polish** | **The try-first homepage preview now uses one readable, responsive product surface instead of nested card layers and low-contrast panel text.** | **ACTIVE** |
+
+Version 3.6.117 repairs the homepage `CreateMenuPreviewSection` presentation across phone, tablet, and desktop. The private-preview header now uses contrast-panel tokens, the selected photo/link example is presented as one code-native preview sheet, prepared rows use semantic checks and dividers instead of repeated cards, review steps form a compact responsive progress rail, and preview limits sit in a restrained contrast footer. The visual remains live localized HTML so source selection, light/dark themes, accessibility, and future copy changes stay maintainable; no static screenshot was added. The stale typed-list example reference was removed from website content governance because the current public bridge supports photo/image and owned public-link examples only. This is component/CSS/docs work only; intake, extraction, review, publishing, customer surfaces, owner data, Firebase, Cloud Functions, pricing/payment, Vercel deployment, and production builds were not changed.
+
+Version 3.6.116 remains How It Works Mobile Source Map Repair and is preserved below as the previous website version note.
 
 Version 3.6.116 repairs the `/how-it-works` source-map connector network on narrow phones. The page now uses a dedicated phone SVG for its two-column source and output grids, routed through the empty center gutter so connector lines remain behind content and do not cross labels. The proven compact tablet network remains active from 521px through 768px, desktop keeps its existing geometry, and only one responsive connector network is visible at each supported layout. The static dotted path remains available when reduced motion disables the pulse overlay. This is component/CSS/docs work only; intake, extraction, review, publishing, customer surfaces, owner data, Firebase, Cloud Functions, pricing/payment, Vercel deployment, and production builds were not changed.
 
@@ -941,6 +945,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.117 | July 25, 2026 | Rebuilt the homepage private-preview visual as one responsive, theme-aware product surface with correct contrast, divider-based prepared rows, a compact review rail, and restrained limit/status proof instead of repeated nested cards. |
 | 3.6.116 | July 19, 2026 | Repaired the `/how-it-works` mobile source map with dedicated phone and tablet connector geometry so the source-to-review-to-output story remains visible without crossing card content or changing desktop behavior. |
 | 3.6.115 | July 18, 2026 | Audited the owner journey end to end; aligned supported intake and seven-day pricing truth, removed public placeholder/editorial copy, localized pricing comparison details, fixed alias/navigation/contact/accessibility gaps, and clarified truth-first doctrine without changing product or payment runtime. |
 | 3.6.114 | July 16, 2026 | Made canonical/`/ml` website links and resource-language switching alias-safe, corrected legal/retention/payment/output-rights claims, and aligned cancelled/paused paid-cycle plan mirrors with owner-visible access through a bounded hourly expiry task. |

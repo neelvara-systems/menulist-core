@@ -3,18 +3,23 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 16, 2026
+**Last Updated:** July 25, 2026
 **Audience:** Developers
 
 July 14, 2026 payment lifecycle corrections:
 
+- Initial onboarding billing validates exact operation/subscription/reseller/profile document IDs, payment mode and safe paise before composing Firestore refs. Inside the transaction, the profile must belong to the ledger reseller; present counters/cap must be exact safe integers; all counter additions are overflow-safe and written as exact next values.
+- Renewal and add-location use the same strict counter principle: present profile transaction/revenue/offline-slot values must be safe integers, expired-renewal cap state must be exact, and checked next values are written instead of atomic increments.
+- Successful onboarding/replay returns only the owner handoff fields consumed by resellers; the owner's Firebase Auth UID stays server-internal. Desktop/mobile accept one shared exact response DTO with safe scope/location IDs and matching operation acknowledgement.
+- A deterministic replay re-authorizes its current resources: subscription scope/reseller, store tenant aliases and active lifecycle must match the operation before entitlement/referral repair or handoff. Manual paid time must be a real persisted date; current subscription status owns the response.
 - Manual renewal and add-location requests require a browser-retained UUID `operationId`. Desktop and mobile keep the same UUID across timeout/retry and clear it only after a valid success acknowledgement.
 - Each route uses `resellerTransactions/{operationId}` as its deterministic operation ledger. One Firestore transaction reads the operation plus transaction-current subscription (and reseller profile when present), then writes the subscription, immutable operation result, and profile revenue counters together. A replay returns the stored result without extending prepaid validity, adding quantity, or incrementing revenue twice; reuse for different inputs fails closed.
 - Manual/prepaid subscriptions remain provider-free. Owner Billing hides Razorpay self-service, and shared recurring mutation routes reject `manual_...` provider identities before provider work.
 - Reseller online onboarding now handles the provider-created/local-persistence gap. It re-reads an ambiguous subscription write; when definitively absent, it cancels the Razorpay subscription before compensating tenant/store/user onboarding. If provider cancellation itself fails, local access remains available for support/reconciliation instead of deleting the only scope linked to a live provider subscription.
 - Reseller pending recurring checkouts retain and expose their provider `shortUrl`; payment activation uses the same verified MenuList subscription/webhook path as self-serve checkout.
 - Onboarding itself now uses a browser-retained UUID. The subscription, onboarding operation, offline-cap reservation, and profile counters commit atomically; an exact lost-response retry recovers the stored subscription/store handoff before owner uniqueness checks.
-- Online onboarding records `profileRevenueRecognized: false` and does not count pending checkout value as collected revenue. The Razorpay activation/charge ledger transaction changes the pending onboarding row to active and increments the reseller profile once. Legacy rows without the explicit marker are not recounted.
+- Online onboarding records `profileRevenueRecognized: false` and does not count pending checkout value as collected revenue. Razorpay activation changes the pending onboarding row to active, but marks revenue recognized only after an exact, identity-bound reseller profile accepts exact safe-integer paise. Missing/mismatched/malformed profiles stay marker-false and can converge on a later activation retry; already-active repair rows do not report another activation. Legacy rows without the explicit marker are not recounted.
+- Deterministic onboarding replay accepts only exact positive safe-integer persisted tenant/store IDs and the exact non-empty subscription ID. Numeric strings and unsafe IDs fail closed before subscription/store reads.
 - Desktop and mobile now expose the existing manual renewal API. Renewal acknowledgements are scope/operation validated, active or expired manual status is required, the stored tier cannot be changed, and an expired renewal atomically reacquires an offline-cap slot.
 - `/api/reseller/clients` reads bounded current reseller subscriptions directly instead of querying ledger rows and then fetching each subscription. This produces one current client row, removes duplicate renewal/location entries, and roughly halves the feature read shape.
 
@@ -57,7 +62,7 @@ June 29, 2026 runtime corrections:
 
 June 11, 2026 runtime corrections:
 
-- Reseller routes are server-owned through `withAuth()` and Admin SDK writes; Firestore client writes to reseller billing collections remain denied.
+- Reseller routes are server-owned through `withAuth()` and current persisted authority; Firestore client reads and writes to `resellerProfiles` and `resellerTransactions` are denied so stale claims cannot bypass API lifecycle checks.
 - Platform reseller management no longer uses a client-bundled password gate. The hardcoded `ECOMSAI_PLATFORM_PASSWORD` constant was removed; `/reseller/manage`, `/api/reseller/manage`, and `/api/reseller/monthly-summary` rely on platform-role checks instead of shipping a secret to the browser.
 - Reseller client lists use one bounded current-subscription query: up to 101 rows for reseller users or 201 for platform users, including the overflow row used to expose partial results. There is no ledger-to-subscription read fan-out.
 - Reseller monthly summary no longer reads all reseller profiles for a normal reseller. Platform users read up to 50 profiles; reseller users read only direct/email-matched profile docs.
@@ -193,6 +198,27 @@ Reseller profile creation also creates a real MenuList login account:
 - `users/{authUserId}` document with `platformRole: 'RESELLER'`, no store assignment, and `resellerProfileId`.
 - `resellerProfiles/{authUserId}` document for direct low-cost lookup.
 - Passwords are never stored in Firestore; password changes update Firebase Auth only.
+
+Profile admission is transaction-current. The create transaction reads the
+candidate profile, normalized email, normalized username, and bounded platform
+cap before atomically creating `resellerProfiles/{authUserId}` and merging the
+matching `users/{authUserId}` identity. Updates transactionally re-read the
+profile plus email/username candidates and merge both Firestore documents
+together. Detached checks remain an early user-facing rejection only.
+
+Firebase Auth is necessarily outside the Firestore transaction. A newly
+provisioned Auth account is removed if profile admission fails. For an existing
+account, pre-change Auth metadata and claims are restored when the Firestore
+transaction fails. Existing-account password rotation runs only after the
+profile/user commit because Firebase Auth does not expose the prior password for
+rollback; retrying the same validated update safely completes a failed rotation.
+
+Reseller usernames are canonical lowercase login identifiers. Management trims
+them and accepts 3-50 characters from letters, digits, dot, underscore, and
+hyphen, beginning with a letter or digit. Credential login queries the exact
+canonical `users.username` before retaining the existing phone/staff lookup
+fallbacks. The resolved user email remains the Firebase Auth sign-in identity,
+so password verification, lockout, lifecycle, and block checks do not fork.
 
 ### 2.4 Constants Addition
 
@@ -514,11 +540,14 @@ const ConfirmPaymentSchema = z.object({
 
 **Logic:**
 
-1. Query current `subscriptions` by `resellerId` (100 + one overflow row) or `onboardingSource: RESELLER_ONBOARDING` for platform (200 + one overflow row), ordered by `createdOn desc` before applying the cap
-2. Project only current client fields, normalize the Razorpay `shortUrl`, and return `isPartial`
-3. Browser deduplication by store handles historical replacement subscriptions without exposing operation fingerprints or reading every ledger row
+1. Re-read the current platform user or exact active reseller profile and reject a stale, disabled, revoked, identity-mismatched, or ambiguous legacy session before subscription data is read
+2. Query current `subscriptions` by `resellerId` (100 + one overflow row) or `onboardingSource: RESELLER_ONBOARDING` for platform (200 + one overflow row), ordered by `createdOn desc` before applying the cap
+3. Project every persisted subscription through one exact current-client contract: tenant/store scope, reseller identity, status, billing mode, quantity and paise must be canonical safe values; timestamp methods are invoked defensively and serialized to ISO strings
+4. Exclude/count malformed or overflow-causing rows and set `isPartial`; desktop/mobile show an incomplete-list warning instead of presenting the bounded subset as complete
+5. Validate the exact response DTO in the shared hook before state settlement; ISO timestamps then drive deduplication and expiry stats without `any` casts or unchecked Firestore methods
+6. Browser deduplication by store handles historical replacement subscriptions without exposing operation fingerprints or reading every ledger row
 
-**Firebase cost:** one bounded subscription query; billed reads equal returned documents (up to 101 reseller / 201 platform). The former transaction-query plus up-to-N exact subscription reads is removed.
+**Firebase cost:** one current-authority read plus one bounded subscription query; billed subscription reads equal returned documents (up to 101 reseller / 201 platform). Validation/projection is local. A legacy reseller profile can require one missing direct read plus up to two bounded email candidates. The former transaction-query plus up-to-N exact subscription reads is removed.
 
 ### 4.4 `POST /api/reseller/renew` — Renew Existing License
 
@@ -544,9 +573,11 @@ const RenewSchema = z.object({
 3. Verify reseller ownership or platform role
 4. Require active or expired manual status; reject a different tier when the subscription already has a reseller tier
 5. Read `resellerTransactions/{operationId}` and the transaction-current subscription in one Firestore transaction
-6. If the exact operation already exists, return its stored amount/dates without another mutation; mismatched reuse fails closed
-7. Create the new period using the renewal anchor rule and calculate `tier × duration × subscription.quantity`
-8. Atomically update subscription, create the operation ledger, update profile revenue counters, and reacquire one active-offline slot when renewing from expired; sync entitlement after commit
+6. If the exact operation already exists, project its identity, safe-integer amount/quantity and defensive dates; malformed or differently scoped reuse fails closed without coercion
+7. Require transaction-current quantity and calculated paise to be safe integers; active subscriptions require a valid current expiry before the renewal anchor is chosen
+8. Bind any subscription `resellerProfileId` to the exact admitted reseller profile before counter writes; platform mutations reject malformed profile document IDs
+9. Create the new period using the renewal anchor rule and calculate `tier × duration × subscription.quantity`
+10. Atomically update subscription, create the operation ledger, update profile revenue counters, and reacquire one active-offline slot when renewing from expired; sync entitlement after commit
 
 Desktop and mobile both expose this action with 3/6/12-month selection, calculated collection amount, 8KB bounded response parsing, exact store/tenant/subscription/operation acknowledgement checks, and the same retained UUID on transport failure.
 
@@ -576,8 +607,10 @@ const AddLocationCapacitySchema = z.object({
 3. Require `billingMode: "manual"` and active, non-expired prepaid access
 4. Calculate prorated amount until the existing `validUntil`
 5. Read `resellerTransactions/{operationId}` and the transaction-current subscription in one Firestore transaction
-6. If the exact operation exists, return its stored acknowledgement; mismatched reuse fails closed
-7. Atomically update `subscriptions/{subId}` (`quantity += locationCount`, `amount += topupAmount`), create the `ADD_LOCATION` operation ledger, and update tracked revenue
+6. If the exact operation exists, project its exact identity, safe-integer amount/days/quantity and defensive expiry; malformed/string-coerced reuse fails closed
+7. Recalculate against the validated transaction-current expiry and require existing/next amount and quantity to remain non-negative safe integers
+8. Bind any subscription `resellerProfileId` to the exact admitted reseller profile before counter writes; platform mutations reject malformed profile document IDs
+9. Atomically update `subscriptions/{subId}` (`quantity += locationCount`, `amount += topupAmount`), create the `ADD_LOCATION` operation ledger, and update tracked revenue
 
 Desktop and mobile retain the UUID in `sessionStorage` across network/response failures and clear it only after the acknowledgement passes shape and scope checks.
 
@@ -589,9 +622,46 @@ Desktop and mobile retain the UUID in `sessionStorage` across network/response f
 
 **Auth:** `withAuth({ requiredPlatformRole: 'RESELLER' })` (or `PLATFORM`)
 
-**Returns:** Reseller profile with caps, counts, status.
+**Returns:** an exact self-profile DTO containing the reseller's contact fields,
+caps, counts, revenue, active status, and defensive ISO timestamps. Founder
+notes, Auth IDs, password metadata, creator identity, soft-delete state, and
+unknown persisted fields are never projected.
 
-**Firebase cost:** 1 read
+The direct Auth-UID document must satisfy current active actor/profile
+claim/email authority. Legacy email fallback reads at most two candidates and
+accepts exactly one authority match; duplicates or mismatches fail closed.
+
+**Firebase cost:** 1 read for the current direct-ID shape; legacy fallback adds
+up to 2 bounded email-candidate reads after the missing direct document.
+
+### 4.7 `GET /api/reseller/monthly-summary` — Bounded Revenue Summary
+
+**Auth:** `withAuth({ requiredPlatformRole: 'RESELLER' })` (or `PLATFORM`)
+
+Before any monthly transaction or visible-profile query, the route re-reads
+the current platform user or exact active reseller profile. A stale role,
+disabled/revoked account, inactive profile, identity mismatch, or ambiguous
+legacy email fallback returns `403` and no protected summary data. The existing
+calendar validation, month range, 2,000-row cap, reseller transaction predicate,
+and 50-profile platform cap remain unchanged.
+
+Every persisted monthly transaction is projected through one runtime contract:
+reseller/profile identity, store ID and status/payment mode must be canonical;
+paise values must be non-negative safe integers; and all running sums must
+remain safe integers. Invalid or overflow-causing rows are excluded,
+`invalidRowCount` is incremented, and `isPartial` is set. The exact shared DTO
+validator is used by the dashboard hook and desktop/mobile platform management.
+All four owner surfaces display an incomplete-report warning instead of silently
+presenting excluded or capped evidence as a complete financial report.
+
+For a reseller, the already-authorized current profile supplies name/email
+enrichment; the route does not run a second arbitrary email lookup. Platform
+reporting retains the bounded 50-profile enrichment query.
+
+**Firebase cost:** one current-authority read before the existing bounded monthly
+transaction read. A legacy reseller authority lookup can require one missing
+direct read plus up to two email candidates. A reseller no longer pays a second
+profile enrichment read; platform reporting retains up to 50 profile reads.
 
 ---
 
@@ -788,6 +858,10 @@ if (
 - Reseller write APIs parse JSON through a 16KB bounded body helper before Zod validation.
 - Oversized, malformed, or rate-limited reseller action requests fail before Firestore reads/writes, Razorpay calls, Firebase Auth user creation, or entitlement sync.
 - Security logs for reseller onboarding, renewal, add-location capacity, and offline-payment confirmation use bounded route metadata plus bounded reseller identifiers. Platform reseller management success breadcrumbs use bounded reseller metadata. Raw `buildSecurityContext()` output is not spread or imported into these reseller route diagnostics.
+- Platform reseller profile reads project persisted documents through `src/lib/reseller/resellerManagementProfile.ts` before HTTP serialization. The exact DTO omits Auth/password/creator/timestamp/unknown fields, admits only valid bounded identity/contact fields and safe profile counters, and shares one strict response validator across desktop/mobile. The route probes at most 51 documents, returns at most 50 valid projected profiles, and reports invalid/capped partial evidence instead of silently presenting it as complete.
+- Current reseller authority treats legacy `deleted: true` as terminal regardless of a stale `active` flag. Direct Auth-UID reads, bounded email fallback and platform by-ID resolution all exclude deleted rows, while the shared authority helper repeats the denial as defense in depth.
+- Offline onboarding projects current profile capacity before any owner Auth, subdomain, tenant/store/user or provider work. Missing legacy count/cap fields retain zero/configured defaults; present fields must be exact safe integers, malformed capacity returns support review, and exhaustion returns a conflict.
+- Razorpay subscription creation crosses `resellerProviderSubscription.ts`: the provider ID must be a trimmed valid Firestore document ID and `short_url` must pass the approved Razorpay checkout URL normalizer before local subscription/ledger persistence or handoff.
 
 ---
 

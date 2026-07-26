@@ -20,6 +20,7 @@ import { trackOwnerControlUsage } from "@database/ownerControlUsage";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { hasAnyPermission } from "@lib/permissions/permissionRequirements";
 import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
+import type { DigitalScreenSeenTimestamp } from "@lib/screen/screenTimestamp";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ScreenSlide } from "@type/campaigns";
@@ -40,7 +41,7 @@ interface ScreenSettingsData {
     pinnedSlides: ScreenSlide[];
     maxUploads: number;
     uploadExpiryDays: number;
-    screenLastSeenAt?: any;
+    screenLastSeenAt?: DigitalScreenSeenTimestamp;
 }
 
 export default function DigitalScreenSettings() {

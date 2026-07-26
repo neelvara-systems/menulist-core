@@ -34,6 +34,13 @@ function assertOrder(source, tokens, label) {
 function verifyPackageScript(packageJson) {
   [
     '"verify:reseller-dashboard-boundary": "node scripts/verification/verify-reseller-dashboard-boundary.js"',
+    '"test:reseller-client-record":',
+    '"test:reseller-management-profile":',
+    '"test:reseller-monthly-summary":',
+    '"test:reseller-mutation-state":',
+    '"test:reseller-profile-admission:emulator":',
+    '"test:reseller-provider-subscription":',
+    '"test:reseller:rules":',
     '"test:reseller-confirm-payment-boundary":',
     '"test:reseller-confirm-payment:emulator":',
     '"test:reseller-onboarding-boundary":',
@@ -67,7 +74,7 @@ function verifyCommonMutationRoute(route, routeLabel, schemaName, rateLimitKey) 
     'const resellerRateLimitHash = hashPublicRateLimitValue(resellerId);',
     `key: \`${rateLimitKey}:\${resellerRateLimitHash}\``,
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
-    `validateAPIInput(${schemaName}, body)`,
+    `validateAPIInput(${schemaName}, bodyResult.data)`,
     'getBoundedResellerApiStringContext',
     'logResellerApiFailure',
     "requiredPlatformRole: 'RESELLER'",
@@ -78,7 +85,7 @@ function verifyCommonMutationRoute(route, routeLabel, schemaName, rateLimitKey) 
     "getRateLimitForFeature('DATA_WRITE')",
     'const rateLimitResult = await checkRateLimit({',
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
-    `validateAPIInput(${schemaName}, body)`,
+    `validateAPIInput(${schemaName}, bodyResult.data)`,
   ], `${routeLabel} admission order`);
 
   [
@@ -96,6 +103,12 @@ function verifyManageRoute(route) {
     'POST /api/reseller/manage',
     "requiredPlatformRole: 'PLATFORM'",
     'applyResellerReadRateLimit(session, "manage")',
+    'const persistedProfiles = await getAllResellerProfiles();',
+    '.slice(0, 50)',
+    '.map(projectResellerManagementProfile)',
+    'const invalidProfileCount = projectedProfiles.length - profiles.length;',
+    'isCapped: persistedProfiles.length > 50',
+    'isPartial: persistedProfiles.length > 50 || invalidProfileCount > 0',
     'const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;',
     "getRateLimitForFeature('DATA_WRITE')",
     'const userRateLimitHash = hashPublicRateLimitValue(session.user.id);',
@@ -106,6 +119,10 @@ function verifyManageRoute(route) {
     'isValidFirestoreDocumentId',
     "profileId: z.string().min(1).max(128).refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid profile ID')",
     'assertResellerUniqueness(',
+    'createResellerProfile({',
+    'updateResellerProfile({',
+    'getResellerProfileAdmissionConflict(error)',
+    'restoreExistingResellerLoginAccount(syncedAccount.rollback)',
     'await authAdmin.createUser({',
     'await authAdmin.updateUser(uid, updatePayload);',
     'await authAdmin.setCustomUserClaims(uid, {',
@@ -113,12 +130,12 @@ function verifyManageRoute(route) {
     'const resellerProfileId = params.resellerProfileId || uid;',
     'resellerProfileId,',
     'resellerProfileId: profileId',
-    'cleanupCreatedResellerLoginAccount(db, authUserId)',
+    'cleanupCreatedResellerLoginAccount(db, syncedAccount.uid)',
     'authUserId: existingAuthUser?.uid',
-    'storeIds: [],',
-    'stores: [],',
+    'getResellerUserWrite({',
     'const { password: _password, ...profileUpdates } = updates;',
     'password: admin.firestore.FieldValue.delete()',
+    'if (updates.password && !syncedAccount.createdAuthUser)',
     "logResellerApiFailure('reseller_manage_post_route_failed'",
   ].forEach((token) => assertIncludes(route, token, 'Reseller management API'));
 
@@ -126,16 +143,17 @@ function verifyManageRoute(route) {
     "getRateLimitForFeature('DATA_WRITE')",
     'const rateLimitResult = await checkRateLimit({',
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
-    'const isUpdate = Boolean(body.profileId);',
+    'const isUpdate = (',
     'validateAPIInput(UpdateResellerSchema, body)',
   ], 'Reseller management update admission order');
 
   assertOrder(route, [
-    'const isUpdate = Boolean(body.profileId);',
+    'const isUpdate = (',
     '} else {',
     'validateAPIInput(CreateResellerSchema, body)',
     'assertResellerUniqueness(db, email, username)',
     'syncResellerLoginAccount({',
+    'createResellerProfile({',
   ], 'Reseller management create admission order');
 
   [
@@ -147,6 +165,121 @@ function verifyManageRoute(route) {
     "profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID')",
     "profileId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/'))",
   ].forEach((token) => assertNotIncludes(route, token, 'Reseller management API boundary'));
+}
+
+function verifyManagementProfileBoundary(
+  resellerServer,
+  managementProfile,
+  managementProfileTest,
+) {
+  [
+    '.limit(51)',
+    '.filter((doc) => doc.data()?.deleted !== true)',
+    'ResellerProfileDocument[]',
+  ].forEach((token) => assertIncludes(resellerServer, token, 'Reseller management query boundary'));
+
+  [
+    'export type ResellerManagementProfile',
+    'export type ResellerManagementProfilesResponse',
+    'projectResellerManagementProfile',
+    'isValidFirestoreDocumentId(value.id)',
+    'isPositiveSafeInteger(value.maxOfflineActivations)',
+    'isNonNegativeSafeInteger(value.totalRevenueCollectedPaise)',
+    'Object.keys(value).every((key) => PROFILE_KEYS.has(key))',
+    'value.profiles.length <= 50',
+    'value.isPartial === (value.isCapped || value.invalidProfileCount > 0)',
+  ].forEach((token) => assertIncludes(managementProfile, token, 'Reseller management profile boundary'));
+
+  [
+    'assert.equal("password" in projected, false);',
+    'assert.equal("authUserId" in projected, false);',
+    'totalTransactions: -1',
+    'totalRevenueCollectedPaise: 1.5',
+    'maxOfflineActivations: "20"',
+    'profiles: [{ ...projected, authUserId: "private-auth-user" }]',
+    'isCapped: true',
+  ].forEach((token) => assertIncludes(
+    managementProfileTest,
+    token,
+    'Reseller management profile regression',
+  ));
+}
+
+function verifyProfileAdmissionTransaction(resellerServer, profileAdmissionEmulatorTest) {
+  [
+    'export class ResellerProfileAdmissionError extends Error',
+    'claimedProfileId?: string | null',
+    '.limit(2)',
+    'profile.authUserId === userId',
+    'profile.id === normalizedClaim',
+    'return matchingProfiles.length === 1 ? matchingProfiles[0] : null;',
+    'createResellerProfileServer',
+    'updateResellerProfileServer',
+    'firestoreAdmin.runTransaction(async (transaction) =>',
+    'transaction.get(emailQuery)',
+    'transaction.get(usernameQuery)',
+    'transaction.get(capQuery)',
+    'transaction.create(profileRef, sanitizeForAdminFirestore(params.profile));',
+    'transaction.set(userRef, sanitizeForAdminFirestore(params.user), { merge: true });',
+    'transaction.set(profileRef, sanitizeForAdminFirestore(params.updates), { merge: true });',
+  ].forEach((token) => assertIncludes(resellerServer, token, 'Reseller profile admission transaction'));
+
+  [
+    'Promise.allSettled(',
+    'getResellerProfileAdmissionConflict(result.reason), "username"',
+    'getResellerProfileAdmissionConflict(result.reason), "total-cap"',
+    'updateResellerProfileServer({',
+    'assert.equal(updateResults.filter((result) => result.status === "fulfilled").length, 1);',
+    'getResellerProfileServer(`${prefix}-actor-b`, legacyEmail, legacyProfileB)',
+    'getResellerProfileServer(`${prefix}-unknown`, legacyEmail)',
+    'deletedDirectProfile',
+    'await getResellerProfileServer(`${prefix}-actor-b`, legacyEmail, legacyProfileB)',
+  ].forEach((token) => assertIncludes(
+    profileAdmissionEmulatorTest,
+    token,
+    'Reseller profile admission emulator regression',
+  ));
+}
+
+function verifyResellerUsernameLogin(
+  manageRoute,
+  loginIdentifiers,
+  serverUserContext,
+  authConfig,
+  usersDal,
+  profileAdmissionEmulatorTest,
+) {
+  [
+    'LOGIN_USERNAME_PATTERN',
+    'z.string().trim().toLowerCase().min(3).max(50).regex(LOGIN_USERNAME_PATTERN)',
+  ].forEach((token) => assertIncludes(manageRoute, token, 'Reseller username write boundary'));
+
+  [
+    'export const LOGIN_USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{2,49}$/;',
+    'export const normalizeLoginUsername =',
+  ].forEach((token) => assertIncludes(loginIdentifiers, token, 'Login username normalization'));
+
+  [
+    'const loginUsername = normalizeLoginUsername(normalizedIdentifier);',
+    "if (loginUsername) lookupPairs.push(['username', loginUsername]);",
+  ].forEach((token) => assertIncludes(serverUserContext, token, 'Server username login lookup'));
+
+  [
+    'const loginUsername = normalizeLoginUsername(loginIdentifier);',
+    'if (!loginUsername && phoneUsername.length < 10)',
+    'dbUser = await getAuthUserByLoginIdentifier(loginIdentifier);',
+  ].forEach((token) => assertIncludes(authConfig, token, 'Credential username admission'));
+
+  [
+    'const loginUsername = normalizeLoginUsername(normalizedIdentifier);',
+    "getFirstUserByField('username', loginUsername)",
+  ].forEach((token) => assertIncludes(usersDal, token, 'Browser username lookup'));
+
+  assertIncludes(
+    profileAdmissionEmulatorTest,
+    'getAuthUserByLoginIdentifier(" RESELLER_RAHUL ")',
+    'Reseller username login emulator regression',
+  );
 }
 
 function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, onboardingOperation, profileAuthority, onboardingBoundaryTest, onboardingEmulatorTest) {
@@ -173,11 +306,21 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'await revalidateMenuCache(result.storeId, { tId: result.tenantId });',
     'getOrCreateRazorpayPlan({',
     'razorpayClient.subscriptions.create({',
+    'getFirebaseAuthErrorCode(error)',
     'await compensateResellerOnboardingFailure({',
     'createResellerOnboardingBilling({',
     'getResellerOnboardingOperationFingerprint({',
     'isMatchingResellerOnboardingOperation({',
-    'normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url)',
+    'normalizeRazorpaySubscriptionCheckoutUrl(replaySubscription.shortUrl)',
+    'projectResellerProviderSubscription(providerSubscription)',
+    "throw new Error('Razorpay subscription response is invalid.')",
+    'const replayPaidAt = resellerMutationDate(operation.validFrom);',
+    'isMatchingResellerOnboardingReplayResources({',
+    'projectResellerOfflineCapacity(',
+    'error: "Reseller profile capacity needs support review."',
+    'offlineCapacity.current >= offlineCapacity.cap',
+    'paidAt: replayPaidAt,',
+    "status: replaySubscription.status === 'active' ? 'active' : 'pending'",
     'const transactionId = operationId;',
     "subscriptionId = `manual_${operationId}`;",
     "'reseller_offline_cap_rejected'",
@@ -198,8 +341,8 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
 
   assertOrder(route, [
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
-    'validateAPIInput(ResellerOnboardSchema, body)',
-    'getResellerProfile(resellerId, session.user.email)',
+    'validateAPIInput(ResellerOnboardSchema, bodyResult.data)',
+    'getResellerProfile(',
     'preCheckSubdomain(db, businessName)',
     'assertOwnerLoginIsAvailable({',
     'prepareOwnerAuthUser({',
@@ -220,6 +363,12 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     '|| hasStore',
     "return !(await db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId).get()).exists;",
   ].forEach((token) => assertIncludes(ownerClaim, token, 'Reseller owner claim transaction boundary'));
+  assertOrder(route, [
+    'projectResellerOfflineCapacity(',
+    'await writeLogEntry({',
+    'preCheckSubdomain(db, businessName)',
+    'prepareOwnerAuthUser({',
+  ], 'Reseller offline capacity preflight before owner/store side effects');
   [
     'const currentStores = Array.isArray(existingOwnerData?.stores)',
     'transaction.update(existingOwnerDoc.ref',
@@ -237,16 +386,24 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'firestoreAdmin.runTransaction(async (firestoreTransaction) =>',
     'firestoreTransaction.create(\n            subscriptionRef,',
     'firestoreTransaction.create(transactionRef,',
-    'current >= cap',
-    'totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(',
+    'currentActiveOfflineStores >= cap',
+    'profile.authUserId !== params.transaction.resellerId',
+    'isNonNegativeSafeInteger(params.transaction.amountExpected)',
+    'addNonNegativeSafeIntegers(\n                totalRevenueCollectedPaise,',
+    'totalRevenueCollectedPaise: nextRevenue',
   ].forEach((token) => assertIncludes(resellerServer, token, 'Reseller onboarding billing transaction'));
 
   [
     'db.runTransaction(async (transaction) =>',
-    "data.profileRevenueRecognized !== false",
-    'totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(amount)',
-    'profileRevenueRecognized: true',
-    "status: 'active'",
+    '.where("profileRevenueRecognized", "==", false)',
+    'data?.profileRevenueRecognized === false',
+    'data.paymentMode === "online"',
+    'data.subscriptionId === subscriptionId',
+    'profile.authUserId === row.resellerId',
+    'addNonNegativeSafeIntegers(nextRevenue, row.amount)',
+    'totalRevenueCollectedPaise: nextRevenue',
+    'recognized ? { profileRevenueRecognized: true }',
+    'status: "active"',
   ].forEach((token) => assertIncludes(resellerLedger, token, 'Reseller payment ledger convergence'));
 
   [
@@ -254,17 +411,28 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'input.ownerPassword',
     "data.action === 'ONBOARD'",
     'data.operationFingerprint === params.fingerprint',
+    "typeof data.storeId === 'number'",
+    'Number.isSafeInteger(data.storeId)',
+    "typeof data.tenantId === 'number'",
+    'subscriptionScope?.storeId === params.storeId',
+    'subscription.resellerId === params.resellerId',
+    'storeTenantScope?.numericId === params.tenantId',
+    'isMenuListPublicEntityEligible(store)',
   ].forEach((token) => assertIncludes(onboardingOperation, token, 'Reseller onboarding operation boundary'));
 
   [
     'profileEmail !== sessionEmail',
     'sessionProfileId !== profileId',
     'actorId === authUserId',
+    'profile.deleted === true',
   ].forEach((token) => assertIncludes(profileAuthority, token, 'Reseller profile authority boundary'));
 
   [
     "ownerPassword: 'changed-password'",
     'sessionProfileId: \'different_profile\'',
+    "operationData: { ...operation, storeId: '41' }",
+    "storeData: { ...replayStore, active: false }",
+    "subscriptionData: { ...replaySubscription, resellerId: 'another-reseller' }",
   ].forEach((token) => assertIncludes(onboardingBoundaryTest, token, 'Reseller onboarding pure regression'));
 
   [
@@ -273,7 +441,19 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'getResellerOfflineCapFromError(error) === 1',
     'markResellerTransactionsActiveForSubscription(onlineSubscriptionId',
     "assert.equal(onlineLedger?.profileRevenueRecognized, true)",
+    "assert.equal((await nonOnlineTransactionRef.get()).data()?.status, 'pending_payment')",
+    "assert.equal((await repairTransactionRef.get()).data()?.profileRevenueRecognized, false)",
+    "assert.equal((await repairTransactionRef.get()).data()?.profileRevenueRecognized, true)",
+    "assert.equal((await foreignProfileRef.get()).data()?.totalRevenueCollectedPaise, 0)",
+    "amountExpected: '40000'",
+    "/profile counters are invalid/",
+    "/profile counters would overflow/",
+    "/profile identity is invalid/",
   ].forEach((token) => assertIncludes(onboardingEmulatorTest, token, 'Reseller onboarding emulator regression'));
+  [
+    'let razorpaySubscription: any',
+    'catch (error: any)',
+  ].forEach((token) => assertNotIncludes(route, token, 'Reseller onboarding typed boundary'));
 }
 
 function verifyConfirmPaymentRoute(route, boundary, subscriptionServer, boundaryTest, emulatorTest) {
@@ -281,7 +461,7 @@ function verifyConfirmPaymentRoute(route, boundary, subscriptionServer, boundary
 
   [
     'getCurrentPlatformUser(session)',
-    'getResellerProfile(resellerId, session.user.email)',
+    'getResellerProfile(',
     'isActiveResellerProfileForSession({',
     'confirmManualSubscriptionPayment({',
     "confirmation.kind === 'not_found'",
@@ -341,7 +521,7 @@ function verifyRenewRoute(route) {
   verifyCommonMutationRoute(route, 'Reseller renew API', 'ResellerRenewSchema', 'reseller-renew');
 
   [
-    'getResellerProfile(resellerId, session.user.email)',
+    'getResellerProfile(',
     'getCurrentPlatformUser(session)',
     'isActiveResellerProfileForSession({',
     "paymentMode !== 'offline'",
@@ -356,6 +536,13 @@ function verifyRenewRoute(route) {
     'existingSubData.resellerId !== resellerId && !isPlatformUser',
     "logger.security('Reseller Renew - Unauthorized Access'",
     'const renewalStart = previousExpiry && previousExpiry > requestNow ? previousExpiry : requestNow;',
+    'projectRenewReplay(storedOperation, {',
+    'resellerMutationDate(currentSubscription.validUntil)',
+    'if (!isPositiveSafeInteger(subscriptionQuantity))',
+    'if (!isNonNegativeSafeInteger(totalAmount))',
+    'Active manual subscription has invalid expiry state.',
+    'resolveResellerMutationProfileId(',
+    'Manual subscription reseller profile no longer matches current authority.',
     'firestoreAdmin.runTransaction(async (tx) =>',
     'collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS).doc(operationId)',
     'tx.set(subscriptionRef, {',
@@ -365,11 +552,12 @@ function verifyRenewRoute(route) {
     "!['active', 'expired'].includes(String(currentSubscription.status || ''))",
     'existingSubData.resellerPricingTier !== pricingTier',
     'const wasExpired = currentSubscription.status === \'expired\';',
-    'if (current >= cap) throw new ResellerOfflineCapExceededError(cap);',
-    'currentActiveOfflineStores: admin.firestore.FieldValue.increment(1)',
+    'projectResellerMutationProfileCounters(',
+    'throw new ResellerOfflineCapExceededError(counterResult.cap);',
+    '...profileCounterUpdates,',
     'storeId,\n            subscriptionId: existingSub.id,\n            tenantId,',
     'tx.create(transactionRef, {',
-    'totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(totalAmount)',
+    'Reseller profile counters are invalid.',
     'paymentEvidenceId: operationId',
   ].forEach((token) => assertIncludes(route, token, 'Reseller renew API'));
 }
@@ -378,7 +566,7 @@ function verifyAddLocationRoute(route) {
   verifyCommonMutationRoute(route, 'Reseller add-location API', 'ResellerAddLocationCapacitySchema', 'reseller-add-location');
 
   [
-    'calculateOfflineLocationTopup({ locationCount, pricingTier, validUntil })',
+    'calculateOfflineLocationTopup({ locationCount, pricingTier, validUntil: validUntilDate })',
     ".where('billingMode', '==', 'manual')",
     ".where('tId', '==', tenantId)",
     ".where('sId', '==', storeId)",
@@ -389,32 +577,118 @@ function verifyAddLocationRoute(route) {
     "logger.security('Reseller Add Location Capacity - Unauthorized Access'",
     "existingSubData.status !== 'active'",
     'validUntilDate.getTime() <= Date.now()',
-    'const nextQuantity = currentQuantity + currentTopup.locationCount;',
+    'projectAddLocationReplay(storedOperation, {',
+    'resellerMutationDate(currentValidUntil)',
+    'addNonNegativeSafeIntegers(',
+    'Manual subscription has invalid quantity or amount state.',
+    'resolveResellerMutationProfileId(',
+    'Manual subscription reseller profile no longer matches current authority.',
     'firestoreAdmin.runTransaction(async (tx) =>',
     'collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS).doc(operationId)',
     'tx.set(subscriptionRef, {',
     'quantity: nextQuantity',
     'tx.create(transactionRef, {',
     "action: 'ADD_LOCATION'",
-    'totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(currentTopup.amountPaise)',
+    'projectResellerMutationProfileCounters(',
+    '...profileCounterUpdates,',
+    'Reseller profile counters are invalid.',
     'amountExpected: operationResult.amountExpected',
   ].forEach((token) => assertIncludes(route, token, 'Reseller add-location API'));
 }
 
-function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
+function verifyMutationStateBoundary(boundary, test) {
+  [
+    'export const addNonNegativeSafeIntegers =',
+    'export const projectResellerOfflineCapacity =',
+    'export const projectResellerMutationProfileCounters =',
+    'export const resellerMutationDate =',
+    'export const projectAddLocationReplay =',
+    'export const projectRenewReplay =',
+    'export const resolveResellerMutationProfileId =',
+    'value.storeId !== expected.storeId',
+    'value.commitmentMonths !== expected.durationMonths',
+    'validUntil <= validFrom',
+  ].forEach((token) => assertIncludes(boundary, token, 'Reseller mutation persisted-state boundary'));
+  [
+    'Number.MAX_SAFE_INTEGER, 1',
+    'amountExpected: "20000"',
+    'storeId: "101"',
+    'locationCount: 1.5',
+    'toDate: () => { throw new Error("bad"); }',
+    'resolveResellerMutationProfileId("profile-2", "profile-1", false), null',
+    'totalRevenueCollectedPaise: Number.MAX_SAFE_INTEGER',
+    'status: "cap-exceeded"',
+    'currentActiveOfflineStores: "2"',
+    'maxOfflineActivations: "5"',
+  ].forEach((token) => assertIncludes(test, token, 'Reseller mutation-state regression'));
+}
+
+function verifyProviderSubscriptionBoundary(boundary, test) {
+  [
+    'export type ResellerProviderSubscription',
+    'projectResellerProviderSubscription',
+    'isValidFirestoreDocumentId(value.id)',
+    'value.id !== value.id.trim()',
+    'normalizeRazorpaySubscriptionCheckoutUrl(value.short_url)',
+  ].forEach((token) => assertIncludes(boundary, token, 'Reseller provider subscription boundary'));
+  [
+    'id: "sub_Qa123"',
+    'id: "sub/foreign"',
+    'https://example.test/not-razorpay',
+    'id: 123',
+  ].forEach((token) => assertIncludes(test, token, 'Reseller provider subscription regression'));
+}
+
+function verifyResellerRules(rules, test) {
+  const transactionsStart = rules.indexOf('match /resellerTransactions/{docId} {');
+  const profilesStart = rules.indexOf('match /resellerProfiles/{profileId} {');
+  const profilesEnd = rules.indexOf('match /reviews/{tId}/{sId}/{docId} {');
+  assert(transactionsStart >= 0 && profilesStart > transactionsStart && profilesEnd > profilesStart, 'Reseller Firestore rule paths must exist in order');
+  const blocks = [
+    rules.slice(transactionsStart, profilesStart),
+    rules.slice(profilesStart, profilesEnd),
+  ];
+  blocks.forEach((block) => {
+    assertIncludes(block, 'allow read, write: if false;', 'Reseller Admin-only Firestore rule');
+    assertNotIncludes(block, 'isPlatformAdmin()', 'Reseller direct platform client read');
+    assertNotIncludes(block, 'request.auth.uid', 'Reseller direct UID client read');
+  });
+  [
+    'getDoc(doc(resellerDb, PROFILE_PATH))',
+    'getDoc(doc(resellerDb, TRANSACTION_PATH))',
+    'where("resellerId", "==", "reseller-auth-1")',
+    'setDoc(doc(resellerDb, PROFILE_PATH)',
+    'getDoc(doc(platformDb, PROFILE_PATH))',
+    'getDocs(collection(platformDb, "resellerTransactions"))',
+  ].forEach((token) => assertIncludes(test, token, 'Reseller Firestore rules regression'));
+}
+
+function verifyReadRoutes(
+  clientsRoute,
+  monthlyRoute,
+  profileRoute,
+  selfProfile,
+  clientRecordBoundary,
+  clientRecordTest,
+  monthlySummaryBoundary,
+  monthlySummaryTest,
+) {
   [
     'applyResellerReadRateLimit(session, "clients")',
+    'getCurrentPlatformUser(session)',
+    'isActiveResellerProfileForSession({',
+    'sessionProfileId: session.user.resellerProfileId',
     ".where('onboardingSource', '==', 'RESELLER_ONBOARDING')",
     ".where('resellerId', '==', resellerId)",
     ".orderBy('createdOn', 'desc')",
     '.limit(resultLimit + 1)',
-    'const exactSubscriptionDocs = snapshot.docs.flatMap((doc) => {',
+    'const projectedTransactions = snapshot.docs.flatMap((doc) => {',
     'getMenuListSubscriptionEntitlementScope(doc.data())',
-    'const isPartial = snapshot.size > resultLimit || exactSubscriptionDocs.length > resultLimit;',
-    'const quantity = Math.max(1, Number(subscription.quantity || 1));',
-    'subscriptionStatus === \'pending\'',
+    'projectResellerClientRecord(',
+    'const invalidRowCount = snapshot.size - projectedTransactions.length;',
+    '|| invalidRowCount > 0',
     'normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl)',
-    'return NextResponse.json({ isPartial, transactions });',
+    'return NextResponse.json({ invalidRowCount, isPartial, transactions });',
     'logResellerApiFailure(\'reseller_clients_route_failed\'',
     "requiredPlatformRole: 'RESELLER'",
   ].forEach((token) => assertIncludes(clientsRoute, token, 'Reseller clients API'));
@@ -426,6 +700,19 @@ function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
   ].forEach((token) => assertNotIncludes(clientsRoute, token, 'Reseller clients current-subscription read boundary'));
 
   assertNotIncludes(clientsRoute, '}).sort((a, b) =>', 'Reseller clients must order before the bounded Firestore limit');
+  [
+    'export const isResellerClientsResponse =',
+    'export const projectResellerClientRecord =',
+    'Number.isSafeInteger(value)',
+    'hasExactKeys(value, RESPONSE_KEYS)',
+    'timestampToIso(value.validUntil) || timestampToIso(value.cycleEndDate)',
+  ].forEach((token) => assertIncludes(clientRecordBoundary, token, 'Reseller client-record shared boundary'));
+  [
+    'Number.POSITIVE_INFINITY',
+    'Number.MAX_SAFE_INTEGER',
+    'internal: true',
+    'validUntil: { seconds: 1 }',
+  ].forEach((token) => assertIncludes(clientRecordTest, token, 'Reseller client-record regression'));
 
   [
     'const MONTHLY_TRANSACTION_LIMIT = 2000;',
@@ -433,17 +720,40 @@ function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
     'const MIN_REPORT_YEAR = 2020;',
     'const MAX_REPORT_YEAR = 2100;',
     'applyResellerReadRateLimit(session, "monthly-summary")',
+    'getCurrentPlatformUser(session)',
+    'isActiveResellerProfileForSession({',
     'const parsedMonth = parseMonth(request.nextUrl.searchParams.get("month"));',
     'return NextResponse.json({ error: "Invalid month filter." }, { status: 400 });',
     'db.collection(DB_COLLECTIONS.RESELLER_PROFILES).limit(50).get()',
-    'db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get()',
-    '.where("email", "==", normalizedEmail)',
+    'getVisibleProfileDocs(db, isPlatform, currentResellerProfile)',
+    'projectResellerMonthlyTransaction(doc.data())',
+    'new Map<string, ResellerMonthlyProfile>()',
+    'let invalidRowCount = 0;',
+    'isPartial: transactionSnapshot.size >= MONTHLY_TRANSACTION_LIMIT || invalidRowCount > 0',
     'transactionQuery = transactionQuery.where("resellerId", "==", sessionResellerId);',
     '.limit(MONTHLY_TRANSACTION_LIMIT)',
     'isPartial: transactionSnapshot.size >= MONTHLY_TRANSACTION_LIMIT',
     "logResellerApiFailure(\"reseller_monthly_summary_route_failed\"",
     "requiredPlatformRole: \"RESELLER\"",
   ].forEach((token) => assertIncludes(monthlyRoute, token, 'Reseller monthly-summary API'));
+  [
+    'new Map<string, any>()',
+    'Number(transaction.amountExpected',
+    '.where("email", "==", normalizedEmail)',
+  ].forEach((token) => assertNotIncludes(monthlyRoute, token, 'Reseller monthly-summary persisted-data boundary'));
+
+  [
+    'export const isResellerMonthlySummary =',
+    'export const projectResellerMonthlyTransaction =',
+    'Number.isSafeInteger(value)',
+    'hasExactKeys(value, SUMMARY_KEYS)',
+    'value.period.timeZone !== "Asia/Kolkata"',
+  ].forEach((token) => assertIncludes(monthlySummaryBoundary, token, 'Reseller monthly-summary shared boundary'));
+  [
+    'Number.POSITIVE_INFINITY',
+    'privateNotes: "no"',
+    'isResellerMonthlySummary(summary), true',
+  ].forEach((token) => assertIncludes(monthlySummaryTest, token, 'Reseller monthly-summary regression'));
 
   [
     'if (!match) return null;',
@@ -455,12 +765,26 @@ function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
 
   [
     'applyResellerReadRateLimit(session, "profile")',
-    'db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get()',
-    '.where("email", "==", normalizedEmail)',
-    'const { password: _password, ...profileData } = profileDoc.data() || {};',
+    'getResellerProfile(',
+    'isActiveResellerProfileForSession({',
+    'sessionProfileId: session.user.resellerProfileId',
+    'projectResellerSelfProfile(',
     "logResellerApiFailure('reseller_profile_route_failed'",
     "requiredPlatformRole: 'RESELLER'",
   ].forEach((token) => assertIncludes(profileRoute, token, 'Reseller profile API'));
+
+  [
+    'export const isResellerSelfProfile =',
+    'export const projectResellerSelfProfile =',
+    'SELF_PROFILE_KEYS',
+    'totalRevenueCollectedPaise: nonNegativeInteger(data.totalRevenueCollectedPaise)',
+  ].forEach((token) => assertIncludes(selfProfile, token, 'Reseller self-profile DTO'));
+  [
+    '"notes"',
+    '"password"',
+    '"authUserId"',
+    '...data',
+  ].forEach((token) => assertNotIncludes(selfProfile, token, 'Reseller self-profile private-field boundary'));
 
   [
     clientsRoute,
@@ -482,11 +806,11 @@ function verifyHookAndDiagnostics(hook, diagnostics) {
     "type ResellerDashboardResponsePhase = 'monthly_summary' | 'profile' | 'clients';",
     'readJsonResponseWithLimit<T>',
     "logHookFailure(\n            'reseller_dashboard_response_parse_failed'",
-    'isRecord(data) || !Array.isArray(data.resellers) || !isRecord(data.totals)',
-    '!isRecord(data?.profile)',
-    '!Array.isArray(data?.transactions)',
-    "typeof data?.isPartial !== 'boolean'",
+    '!isResellerMonthlySummary(data)',
+    '!isResellerSelfProfile(data?.profile)',
+    '!isResellerClientsResponse(data)',
     'isClientListPartial: clientsResult?.isPartial === true',
+    'invalidClientRowCount: clientsResult?.invalidRowCount || 0',
     "fetch('/api/reseller/monthly-summary', RESELLER_DASHBOARD_REQUEST_POLICY)",
     "fetch('/api/reseller/profile', RESELLER_DASHBOARD_REQUEST_POLICY)",
     "fetch('/api/reseller/clients', RESELLER_DASHBOARD_REQUEST_POLICY)",
@@ -542,7 +866,8 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     'data.transactionId === expected.operationId',
     "const operationIntentKey = `renew:${renewalClient.subscriptionId}:${renewalClient.pricingTier}:${renewalMonths}`",
     'Confirm prepaid renewal',
-    'Showing a bounded client list. Monthly reporting has its own completeness indicator.',
+    'invalidClientRowCount > 0',
+    'monthlySummary.invalidRowCount > 0',
   ].forEach((token) => assertIncludes(dashboard, token, 'Desktop reseller dashboard'));
 
   [
@@ -552,8 +877,11 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     "fetch('/api/reseller/manage', RESELLER_REQUEST_POLICY)",
     "fetch('/api/reseller/monthly-summary', RESELLER_REQUEST_POLICY)",
     'readJsonResponseWithLimit<unknown>',
-    'isValidResellerProfilesResponse(data)',
-    'isValidResellerMonthlySummary(data)',
+    'isResellerManagementProfilesResponse(data)',
+    'isResellerMonthlySummary(data)',
+    'monthlySummary.invalidRowCount > 0',
+    'profileEvidence?.isPartial',
+    'invalid reseller profile',
     'isExpectedResellerManagementSaveResponse(result, editingProfile?.id)',
     'hasExpectedProfileId',
   ].forEach((token) => assertIncludes(management, token, 'Desktop reseller management'));
@@ -563,12 +891,11 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     "fetch('/api/reseller/onboard'",
     '...RESELLER_REQUEST_POLICY',
     'readJsonResponseWithLimit<unknown>',
-    'isValidOnboardResult(data, operationId)',
+    'isResellerOnboardingResponse(data, operationId)',
     'normalizePhoneNumberForStorage({',
     'ownerPassword: values.ownerPassword',
     "getResellerOperationIntentKey('onboard-client'",
     'getOrCreateResellerOperationId(operationIntentKey)',
-    'data.transactionId === expectedOperationId',
     'clearResellerOperationId(operationIntentKey)',
     'operationId,',
     'copyResellerTextToClipboard(copyValue)',
@@ -581,7 +908,7 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     management,
     onboarding,
   ].forEach((component, index) => {
-    ['response.json()', '.json().catch', 'console.error', 'error.message'].forEach((token) => (
+    ['response.json()', '.json().catch', 'console.error', 'error.message', 'as any'].forEach((token) => (
       assertNotIncludes(component, token, `Desktop reseller component ${index} boundary`)
     ));
   });
@@ -611,7 +938,8 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     'data.transactionId === expected.operationId',
     "const operationIntentKey = `renew:${renewalClient.subscriptionId}:${renewalClient.pricingTier}:${renewalMonths}`",
     'Renew manual access',
-    'Showing a bounded client list. Monthly reporting has its own completeness indicator.',
+    'invalidClientRowCount > 0',
+    'monthlySummary.invalidRowCount > 0',
   ].forEach((token) => assertIncludes(dashboard, token, 'Mobile reseller dashboard'));
 
   [
@@ -620,8 +948,11 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     "fetch('/api/reseller/manage', RESELLER_REQUEST_POLICY)",
     "fetch('/api/reseller/monthly-summary', RESELLER_REQUEST_POLICY)",
     'readJsonResponseWithLimit<unknown>',
-    'isValidMobileResellerProfilesResponse(data)',
-    'isValidMobileResellerMonthlySummary(data)',
+    'isResellerManagementProfilesResponse(data)',
+    'isResellerMonthlySummary(data)',
+    'monthlySummary.invalidRowCount > 0',
+    'profileEvidence?.isPartial',
+    'invalid reseller profile',
     'isExpectedMobileResellerManagementSaveResponse(data, editingProfile?.id)',
     'if (!isPlatform) {',
     'Only platform admins can use this screen.',
@@ -633,11 +964,10 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     "fetch('/api/reseller/onboard'",
     '...RESELLER_REQUEST_POLICY',
     'readJsonResponseWithLimit<unknown>',
-    'isValidMobileOnboardResult(data, operationId)',
+    'isResellerOnboardingResponse(data, operationId)',
     'normalizePhoneNumberForStorage({',
     "getResellerOperationIntentKey('onboard-client'",
     'getOrCreateResellerOperationId(operationIntentKey)',
-    'data.transactionId === expectedOperationId',
     'clearResellerOperationId(operationIntentKey)',
     'operationId,',
     'copyMobileResellerOnboardingText(link)',
@@ -673,10 +1003,43 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     management,
     onboarding,
   ].forEach((component, index) => {
-    ['response.json()', '.json().catch', 'console.error', 'error.message'].forEach((token) => (
+    ['response.json()', '.json().catch', 'console.error', 'error.message', 'as any'].forEach((token) => (
       assertNotIncludes(component, token, `Mobile reseller component ${index} boundary`)
     ));
   });
+
+  [
+    'isValidResellerProfilesResponse',
+    'isValidMobileResellerProfilesResponse',
+    'const isFiniteNumber =',
+  ].forEach((token) => assertNotIncludes(
+    dashboard + management + onboarding,
+    token,
+    'Reseller duplicated profile response boundary',
+  ));
+}
+
+function verifyOnboardingResponseBoundary(boundary, test, route) {
+  [
+    'export type ResellerOnboardingResponse =',
+    'Object.keys(record).some((key) => !RESPONSE_KEYS.has(key))',
+    'Number.isSafeInteger(record.storeId)',
+    'Number.isSafeInteger(record.tenantId)',
+    'record.transactionId === expectedOperationId',
+    'record.passwordSet === true',
+  ].forEach((token) => assertIncludes(boundary, token, 'Reseller onboarding response boundary'));
+  [
+    'storeId: "41"',
+    'tenantId: 31.5',
+    'status: "completed"',
+    'userId: "private-auth-uid"',
+  ].forEach((token) => assertIncludes(test, token, 'Reseller onboarding response regression'));
+  [
+    'userId: replaySubscription.userId',
+    'userId: result.userId,\n            status:',
+    'null as any',
+  ].forEach((token) => assertNotIncludes(route, token, 'Reseller onboarding private response field'));
+  assertNotIncludes(route, 'operation.validFrom?.toDate?.() || new Date()', 'Reseller onboarding replay fabricated paid time');
 }
 
 function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, firebaseDoc, mobileDoc, auditDoc, changelog) {
@@ -804,6 +1167,18 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
   ].forEach((token) => assertIncludes(impl, token, 'Reseller implementation monthly-summary query boundary'));
 
   [
+    'Reseller Paid-Mutation State Integrity',
+    'Renewal and add-location replays are exact',
+    'Profile counters stay with the admitted reseller',
+    'Reseller Client-List Contract',
+    'Subscription documents do not become trusted client rows by assertion',
+    'Malformed rows are visible as incomplete evidence',
+    'Reseller Monthly Report Integrity',
+    'Monthly money is never permissively coerced',
+    'Incomplete evidence is explicit',
+    'Reseller Read Authority Refresh',
+    'Protected reads use current persisted authority',
+    'Stale sessions fail before disclosure',
     'Reseller Management Profile ID Boundary',
     'Reseller profile IDs are validated before updates',
     'old trim/slash-only guard removal',
@@ -846,14 +1221,23 @@ const files = {
   packageJson: read('package.json'),
   readRateLimit: read('src/app/api/reseller/readRateLimit.ts'),
   manageRoute: read('src/app/api/reseller/manage/route.ts'),
+  loginIdentifiers: read('src/lib/auth/loginIdentifiers.ts'),
+  serverUserContext: read('src/lib/auth/serverUserContext.ts'),
+  authConfig: read('src/lib/auth/index.ts'),
+  usersDal: read('src/database/users/index.ts'),
   onboardRoute: read('src/app/api/reseller/onboard/route.ts'),
   ownerClaim: read('src/lib/reseller/resellerOwnerClaim.ts'),
   resellerServer: read('src/database/reseller/server.ts'),
+  managementProfile: read('src/lib/reseller/resellerManagementProfile.ts'),
+  managementProfileTest: read('scripts/verification/test-reseller-management-profile.ts'),
   resellerLedger: read('src/lib/reseller/resellerLedger.ts'),
   onboardingOperation: read('src/lib/reseller/resellerOnboardingOperation.ts'),
   profileAuthority: read('src/lib/reseller/resellerProfileAuthority.ts'),
   onboardingBoundaryTest: read('scripts/verification/test-reseller-onboarding-boundary.ts'),
   onboardingEmulatorTest: read('scripts/verification/test-reseller-onboarding-billing-emulator.ts'),
+  onboardingResponseBoundary: read('src/lib/reseller/resellerOnboardingResponse.ts'),
+  onboardingResponseTest: read('scripts/verification/test-reseller-onboarding-response.ts'),
+  profileAdmissionEmulatorTest: read('scripts/verification/test-reseller-profile-admission-emulator.ts'),
   confirmPaymentRoute: read('src/app/api/reseller/confirm-payment/route.ts'),
   confirmPaymentBoundary: read('src/lib/billing/manualSubscriptionConfirmation.ts'),
   subscriptionServer: read('src/database/subscriptions/server.ts'),
@@ -861,9 +1245,20 @@ const files = {
   confirmPaymentEmulatorTest: read('scripts/verification/test-reseller-confirm-payment-emulator.ts'),
   renewRoute: read('src/app/api/reseller/renew/route.ts'),
   addLocationRoute: read('src/app/api/reseller/add-location-capacity/route.ts'),
+  mutationStateBoundary: read('src/lib/reseller/resellerMutationState.ts'),
+  mutationStateTest: read('scripts/verification/test-reseller-mutation-state.ts'),
+  providerSubscriptionBoundary: read('src/lib/reseller/resellerProviderSubscription.ts'),
+  providerSubscriptionTest: read('scripts/verification/test-reseller-provider-subscription.ts'),
+  firestoreRules: read('firestore.rules'),
+  resellerRulesTest: read('scripts/verification/test-reseller-rules.ts'),
   clientsRoute: read('src/app/api/reseller/clients/route.ts'),
   monthlyRoute: read('src/app/api/reseller/monthly-summary/route.ts'),
+  monthlySummaryBoundary: read('src/lib/reseller/resellerMonthlySummary.ts'),
+  monthlySummaryTest: read('scripts/verification/test-reseller-monthly-summary.ts'),
   profileRoute: read('src/app/api/reseller/profile/route.ts'),
+  selfProfile: read('src/lib/reseller/resellerSelfProfile.ts'),
+  clientRecordBoundary: read('src/lib/reseller/resellerClientRecord.ts'),
+  clientRecordTest: read('scripts/verification/test-reseller-client-record.ts'),
   hook: read('src/hooks/useResellerDashboard.ts'),
   diagnostics: read('src/components/templates/main-app/reseller/resellerDiagnostics.ts'),
   desktopDashboard: read('src/components/templates/main-app/reseller/ResellerDashboard.tsx'),
@@ -889,6 +1284,20 @@ const files = {
 verifyPackageScript(files.packageJson);
 verifyReadRateLimit(files.readRateLimit);
 verifyManageRoute(files.manageRoute);
+verifyProfileAdmissionTransaction(files.resellerServer, files.profileAdmissionEmulatorTest);
+verifyManagementProfileBoundary(
+  files.resellerServer,
+  files.managementProfile,
+  files.managementProfileTest,
+);
+verifyResellerUsernameLogin(
+  files.manageRoute,
+  files.loginIdentifiers,
+  files.serverUserContext,
+  files.authConfig,
+  files.usersDal,
+  files.profileAdmissionEmulatorTest,
+);
 verifyOnboardRoute(
   files.onboardRoute,
   files.ownerClaim,
@@ -899,6 +1308,11 @@ verifyOnboardRoute(
   files.onboardingBoundaryTest,
   files.onboardingEmulatorTest,
 );
+verifyOnboardingResponseBoundary(
+  files.onboardingResponseBoundary,
+  files.onboardingResponseTest,
+  files.onboardRoute,
+);
 verifyConfirmPaymentRoute(
   files.confirmPaymentRoute,
   files.confirmPaymentBoundary,
@@ -908,7 +1322,22 @@ verifyConfirmPaymentRoute(
 );
 verifyRenewRoute(files.renewRoute);
 verifyAddLocationRoute(files.addLocationRoute);
-verifyReadRoutes(files.clientsRoute, files.monthlyRoute, files.profileRoute);
+verifyMutationStateBoundary(files.mutationStateBoundary, files.mutationStateTest);
+verifyProviderSubscriptionBoundary(
+  files.providerSubscriptionBoundary,
+  files.providerSubscriptionTest,
+);
+verifyResellerRules(files.firestoreRules, files.resellerRulesTest);
+verifyReadRoutes(
+  files.clientsRoute,
+  files.monthlyRoute,
+  files.profileRoute,
+  files.selfProfile,
+  files.clientRecordBoundary,
+  files.clientRecordTest,
+  files.monthlySummaryBoundary,
+  files.monthlySummaryTest,
+);
 verifyHookAndDiagnostics(files.hook, files.diagnostics);
 verifyDesktopSurfaces(files.desktopDashboard, files.desktopManagement, files.desktopOnboarding);
 verifyMobileSurfaces(

@@ -31,6 +31,8 @@ The implementation follows the internal platform monitor pattern:
 
 ## Revenue Read Model
 
+**July 26 status and request-lifetime hardening:** the API resolves persisted snapshot status through `normalizeFounderMonitorStatus()`. Only `healthy`, `watch`, `action_required`, and `setup_required` are admitted; missing, malformed, object, or future values fail to `setup_required` rather than presenting unknown operational truth as healthy. The desktop/mobile-wrapper command center uses the shared latest-request guard and mounted ownership for every period load. Switching between 7, 30, 60, and 90 days clears the prior view, invalidates older requests, and permits only the latest selected period to settle data, error, and loading state.
+
 Revenue is not calculated by scanning subscriptions or payment transactions during dashboard refresh. Runtime billing paths write idempotent movement IDs:
 
 - `cash:<paymentId>` for collected Razorpay subscription/order payments.

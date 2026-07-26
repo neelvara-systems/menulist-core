@@ -1,10 +1,9 @@
 'use client';
 
 import { RESELLER_CAPS } from "@config/resellerPricing";
-import { ResellerProfile } from "@type/reseller";
 import { formatInrPaise } from "@util/formatters";
 import {
-    Badge, Button, Card, Col, Descriptions, Drawer, Empty, Flex, Form, Input, InputNumber,
+    Alert, Badge, Button, Card, Col, Descriptions, Drawer, Empty, Flex, Form, Input, InputNumber,
     message,
     Row, Space, Spin, Statistic, Switch, Table,
     Typography,
@@ -14,10 +13,19 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
+    isResellerManagementProfilesResponse,
+    type ResellerManagementProfile,
+    type ResellerManagementProfilesResponse,
+} from "@lib/reseller/resellerManagementProfile";
+import {
     LuCheck, LuPencil,
     LuPhone, LuPlus, LuRefreshCw, LuUser, LuUsers
 } from "react-icons/lu";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import {
+    isResellerMonthlySummary,
+    type ResellerMonthlySummary,
+} from "@lib/reseller/resellerMonthlySummary";
 import {
     RESELLER_REQUEST_POLICY,
     createResellerStatusError,
@@ -27,33 +35,6 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 const RESELLER_MANAGEMENT_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
-
-type ResellerMonthlySummary = {
-    month: string;
-    resellers: Array<{
-        resellerId: string;
-        resellerName: string;
-        resellerEmail: string;
-        clientCount: number;
-        transactionCount: number;
-        offlineCollectedPaise: number;
-        onlinePendingPaise: number;
-        recognizedRevenuePaise: number;
-        totalExpectedPaise: number;
-    }>;
-    totals: {
-        clientCount: number;
-        transactionCount: number;
-        offlineCollectedPaise: number;
-        onlinePendingPaise: number;
-        recognizedRevenuePaise: number;
-        totalExpectedPaise: number;
-    };
-};
-
-type ResellerProfilesResponse = {
-    profiles: ResellerProfile[];
-};
 
 type ResellerManagementSaveResponse = {
     action: 'created' | 'updated';
@@ -66,70 +47,28 @@ type ResellerManagementResponseContext = {
     isEditing?: boolean;
 };
 
+type ResellerManagementFormValues = {
+    active?: boolean;
+    addressLine?: string;
+    city?: string;
+    country?: string;
+    email?: string;
+    maxOfflineActivations?: number;
+    name?: string;
+    notes?: string;
+    password?: string;
+    phone?: string;
+    postalCode?: string;
+    state?: string;
+    username?: string;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isFiniteNumber = (value: unknown): value is number => (
-    typeof value === 'number' && Number.isFinite(value)
-);
-
 const isNonEmptyString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
-);
-
-const isValidResellerProfile = (value: unknown): value is ResellerProfile => (
-    isRecord(value)
-    && isNonEmptyString(value.id)
-    && isNonEmptyString(value.name)
-    && isNonEmptyString(value.phone)
-    && isNonEmptyString(value.email)
-    && isNonEmptyString(value.username)
-    && typeof value.active === 'boolean'
-    && isFiniteNumber(value.maxOfflineActivations)
-    && isFiniteNumber(value.currentActiveOfflineStores)
-    && isFiniteNumber(value.totalStoresOnboarded)
-    && isFiniteNumber(value.totalOnlineStores)
-    && isFiniteNumber(value.totalOfflineStores)
-    && isFiniteNumber(value.totalRevenueCollectedPaise)
-    && isFiniteNumber(value.totalTransactions)
-);
-
-const isValidResellerProfilesResponse = (data: unknown): data is ResellerProfilesResponse => (
-    isRecord(data)
-    && Array.isArray(data.profiles)
-    && data.profiles.every(isValidResellerProfile)
-);
-
-const isValidMonthlySummaryTotals = (value: unknown): value is ResellerMonthlySummary['totals'] => (
-    isRecord(value)
-    && isFiniteNumber(value.clientCount)
-    && isFiniteNumber(value.transactionCount)
-    && isFiniteNumber(value.offlineCollectedPaise)
-    && isFiniteNumber(value.onlinePendingPaise)
-    && isFiniteNumber(value.recognizedRevenuePaise)
-    && isFiniteNumber(value.totalExpectedPaise)
-);
-
-const isValidMonthlySummaryRow = (value: unknown): value is ResellerMonthlySummary['resellers'][number] => (
-    isRecord(value)
-    && isNonEmptyString(value.resellerId)
-    && isNonEmptyString(value.resellerName)
-    && typeof value.resellerEmail === 'string'
-    && isFiniteNumber(value.clientCount)
-    && isFiniteNumber(value.transactionCount)
-    && isFiniteNumber(value.offlineCollectedPaise)
-    && isFiniteNumber(value.onlinePendingPaise)
-    && isFiniteNumber(value.recognizedRevenuePaise)
-    && isFiniteNumber(value.totalExpectedPaise)
-);
-
-const isValidResellerMonthlySummary = (data: unknown): data is ResellerMonthlySummary => (
-    isRecord(data)
-    && isNonEmptyString(data.month)
-    && Array.isArray(data.resellers)
-    && data.resellers.every(isValidMonthlySummaryRow)
-    && isValidMonthlySummaryTotals(data.totals)
 );
 
 const isValidResellerManagementSaveResponse = (data: unknown): data is ResellerManagementSaveResponse => (
@@ -186,17 +125,18 @@ const readResellerManagementResponse = async (
 function ResellerManagement() {
     const { token } = theme.useToken();
     const { data: session } = useSession();
-    const [profiles, setProfiles] = useState<ResellerProfile[]>([]);
+    const [profiles, setProfiles] = useState<ResellerManagementProfile[]>([]);
+    const [profileEvidence, setProfileEvidence] = useState<Pick<ResellerManagementProfilesResponse, "invalidProfileCount" | "isCapped" | "isPartial"> | null>(null);
     const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);
     const [loading, setLoading] = useState(false);
     const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [editingProfile, setEditingProfile] = useState<ResellerProfile | null>(null);
+    const [editingProfile, setEditingProfile] = useState<ResellerManagementProfile | null>(null);
     const [saving, setSaving] = useState(false);
-    const [form] = Form.useForm();
+    const [form] = Form.useForm<ResellerManagementFormValues>();
 
     // Gate: PLATFORM role only
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user?.platformRole;
     if (session && platformRole !== 'PLATFORM') {
         redirect('/dashboard');
     }
@@ -207,7 +147,7 @@ function ResellerManagement() {
             const res = await fetch('/api/reseller/manage', RESELLER_REQUEST_POLICY);
             if (!res.ok) throw createResellerStatusError('desktop_reseller_profiles_load_rejected', res.status);
             const data = await readResellerManagementResponse(res, { action: 'load_profiles' });
-            if (!isValidResellerProfilesResponse(data)) {
+            if (!isResellerManagementProfilesResponse(data)) {
                 const invalidResponseError = createResellerStatusError('desktop_reseller_management_profiles_response_invalid', res.status);
                 logResellerFailure('desktop_reseller_management_profiles_response_invalid', invalidResponseError, {
                     action: 'load_profiles',
@@ -217,6 +157,11 @@ function ResellerManagement() {
                 throw invalidResponseError;
             }
             setProfiles(data.profiles);
+            setProfileEvidence({
+                invalidProfileCount: data.invalidProfileCount,
+                isCapped: data.isCapped,
+                isPartial: data.isPartial,
+            });
         } catch (error) {
             logResellerFailure('desktop_reseller_profiles_load_failed', error, {
                 action: 'load_profiles',
@@ -233,7 +178,7 @@ function ResellerManagement() {
             const res = await fetch('/api/reseller/monthly-summary', RESELLER_REQUEST_POLICY);
             if (!res.ok) throw createResellerStatusError('desktop_reseller_monthly_summary_load_rejected', res.status);
             const data = await readResellerManagementResponse(res, { action: 'load_monthly_summary' });
-            if (!isValidResellerMonthlySummary(data)) {
+            if (!isResellerMonthlySummary(data)) {
                 const invalidResponseError = createResellerStatusError('desktop_reseller_management_monthly_summary_response_invalid', res.status);
                 logResellerFailure('desktop_reseller_management_monthly_summary_response_invalid', invalidResponseError, {
                     action: 'load_monthly_summary',
@@ -260,7 +205,7 @@ function ResellerManagement() {
         }
     }, [loadMonthlySummary, loadProfiles, platformRole]);
 
-    const handleCreateOrUpdate = async (values: any) => {
+    const handleCreateOrUpdate = async (values: ResellerManagementFormValues) => {
         setSaving(true);
         try {
             const payload = editingProfile
@@ -321,7 +266,7 @@ function ResellerManagement() {
         setDrawerOpen(true);
     };
 
-    const openEditDrawer = (profile: ResellerProfile) => {
+    const openEditDrawer = (profile: ResellerManagementProfile) => {
         setEditingProfile(profile);
         form.setFieldsValue({
             name: profile.name,
@@ -347,7 +292,7 @@ function ResellerManagement() {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
-            render: (name: string, record: ResellerProfile) => (
+            render: (name: string, record: ResellerManagementProfile) => (
                 <Flex vertical>
                     <Text strong>{name}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>@{record.username}</Text>
@@ -357,7 +302,7 @@ function ResellerManagement() {
         {
             title: 'Contact',
             key: 'contact',
-            render: (_: any, record: ResellerProfile) => (
+            render: (_: unknown, record: ResellerManagementProfile) => (
                 <Flex vertical>
                     <Text>{record.phone}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>{record.email}</Text>
@@ -376,7 +321,7 @@ function ResellerManagement() {
             title: 'Stores',
             dataIndex: 'totalStoresOnboarded',
             key: 'stores',
-            render: (total: number, record: ResellerProfile) => (
+            render: (total: number, record: ResellerManagementProfile) => (
                 <Flex vertical>
                     <Text strong>{total || 0}</Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
@@ -388,7 +333,7 @@ function ResellerManagement() {
         {
             title: 'Offline Cap',
             key: 'cap',
-            render: (_: any, record: ResellerProfile) => (
+            render: (_: unknown, record: ResellerManagementProfile) => (
                 <Text>
                     {record.currentActiveOfflineStores || 0} / {record.maxOfflineActivations || 20}
                 </Text>
@@ -405,7 +350,7 @@ function ResellerManagement() {
         {
             title: 'Actions',
             key: 'actions',
-            render: (_: any, record: ResellerProfile) => (
+            render: (_: unknown, record: ResellerManagementProfile) => (
                 <Button size="small" icon={<LuPencil />} onClick={() => openEditDrawer(record)}>
                     Edit
                 </Button>
@@ -427,6 +372,17 @@ function ResellerManagement() {
                     </Button>
                 </Space>
             </Flex>
+
+            {profileEvidence?.isPartial ? (
+                <Alert
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="warning"
+                    message={profileEvidence.invalidProfileCount > 0
+                        ? `${profileEvidence.invalidProfileCount} invalid reseller profile${profileEvidence.invalidProfileCount === 1 ? "" : "s"} excluded.`
+                        : "Only the newest 50 reseller profiles are shown."}
+                />
+            ) : null}
 
             {/* Summary Stats */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -463,6 +419,13 @@ function ResellerManagement() {
                 title={`This Month${monthlySummary?.month ? ` (${monthlySummary.month})` : ''}`}
                 style={{ marginBottom: 24 }}
             >
+                {monthlySummary?.isPartial ? (
+                    <Text type="warning">
+                        This report is incomplete{monthlySummary.invalidRowCount > 0
+                            ? `; ${monthlySummary.invalidRowCount} invalid transaction ${monthlySummary.invalidRowCount === 1 ? 'row was' : 'rows were'} excluded`
+                            : ' because the monthly limit was reached'}.
+                    </Text>
+                ) : null}
                 <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                     <Col xs={12} md={6}>
                         <Statistic title="Clients" value={monthlySummary?.totals.clientCount || 0} />

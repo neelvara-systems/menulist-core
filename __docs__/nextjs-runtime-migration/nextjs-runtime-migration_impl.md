@@ -5,7 +5,7 @@
 **Runtime:** Next.js 16.2.11 / React 19.2.8
 **Bundlers:** Turbopack default; Webpack parity command retained
 **Rollback anchor:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
-**Deployment:** User-deployed staging commit `887f76ad` exposed a missing runtime trace; corrected source is locally verified and not yet redeployed
+**Deployment:** User deployments exposed missing SWC trace and Firebase Admin ESM interop boundaries; corrected source is locally verified and not yet redeployed
 
 ## Implementation outcome
 
@@ -50,7 +50,10 @@ All declarations remain exact and are guarded by `npm run verify:dependency-free
 - Default `npm run build` uses Turbopack. `npm run build:webpack` is the full parity path.
 - Vercel Turbopack builds cap V8 at 4096 MiB inside the standard 8 GiB container, keep browser/server source maps disabled, and exclude runtime-only credential/MyCodex filesystem expressions from automatic Turbopack tracing. Required MyCodex Markdown remains explicitly included through `outputFileTracingIncludes`.
 - Output tracing never uses a global `node_modules/@swc/**` exclusion. Next 16's deployed Turbopack route runtime requires `@swc/helpers`; only compiler-specific SWC packages remain excluded.
-- `build:vercel` finishes with `verify:next-deployment-bundle`, which preserves traced files and symlinks in an isolated directory and loads the website route without access to the repository's complete `node_modules`.
+- Root `firebase-admin` stays in `transpilePackages` and out of `serverExternalPackages` and custom Webpack server externals. This bundles the Firebase Admin 14 → `jwks-rsa` 4 CommonJS → ESM-only `jose` 6 boundary instead of leaving deployed routes to native `require()`.
+- Browser builds still map Firebase Admin imports to `false`; bundling the server dependency does not make Admin SDK code available to client graphs.
+- `build:verify` runs `verify:next-build-compatibility` before TypeScript and lint. It freezes Node 22.23.1 plus Firebase Admin 14.2.0 → `jwks-rsa` 4.1.0 → nested `jose` 6.2.4, rejects dependency overrides/downgrades, and rejects every source configuration that could restore native Firebase Admin loading.
+- `build:vercel` finishes with `verify:next-deployment-bundle`, which preserves traced files and symlinks in isolated directories, rejects hashed native Firebase Admin externals in the sign-in and NextAuth API graphs, and loads website, sign-in, and NextAuth API routes without access to the repository's complete `node_modules`.
 
 ### Server and browser module boundary
 
@@ -111,4 +114,4 @@ Do not restore `next-pwa`, private Next imports, the server-chunk compatibility 
 
 ## Remaining release evidence
 
-The first user-run Vercel staging deployment after the migration exposed the route-trace failure described above. The corrected source is not yet deployed. A later authorized release action must redeploy it and capture preview-host browser/device behavior, install/update/offline worker replacement on real devices, and production-host smoke. Those are release-certification actions, not missing local migration code.
+User-run Vercel deployments after the migration exposed the route-trace and Firebase Admin ESM interop failures described above. The corrected source is not yet deployed. A later authorized release action must redeploy it and capture the homepage-to-sign-in flow, preview-host browser/device behavior, install/update/offline worker replacement on real devices, and production-host smoke. Those are release-certification actions, not missing local migration code.

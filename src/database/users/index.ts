@@ -2,7 +2,11 @@ import { DB_COLLECTIONS } from "@constant/database";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
+import {
+    getPhoneLookupCandidates,
+    normalizeLoginDigits,
+    normalizeLoginUsername,
+} from "@lib/auth/loginIdentifiers";
 import { normalizeStoreSwitchStoreId } from "@lib/multiOutlet/storeSwitchAccess";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
@@ -84,9 +88,14 @@ export const getUserByLoginIdentifier = async (identifier: string) => {
         return getUserByEmail(normalizedIdentifier);
     }
 
+    const loginUsername = normalizeLoginUsername(normalizedIdentifier);
+    if (loginUsername) {
+        const user = await getFirstUserByField('username', loginUsername);
+        if (user) return user;
+    }
+
     const phoneUsername = normalizePhoneUsername(normalizedIdentifier);
     if (!phoneUsername) return null;
-
     for (const field of ['username', 'loginUsername', 'phoneUsername']) {
         const user = await getFirstUserByField(field, phoneUsername);
         if (user) return user;

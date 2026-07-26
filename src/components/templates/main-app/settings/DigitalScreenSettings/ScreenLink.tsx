@@ -13,6 +13,10 @@ import {
     hasScreenCopyFallback,
     logScreenSettingsFailure,
 } from "@lib/screen/screenDiagnostics";
+import {
+    screenTimestampToDate,
+    type DigitalScreenSeenTimestamp,
+} from "@lib/screen/screenTimestamp";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuQrCode } from "react-icons/lu";
@@ -21,7 +25,7 @@ const { Text, Title } = Typography;
 
 interface ScreenLinkProps {
     screenUrl: string;
-    screenLastSeenAt?: any;
+    screenLastSeenAt?: DigitalScreenSeenTimestamp;
 }
 
 type ScreenMode = "menu" | "highlights";
@@ -39,21 +43,8 @@ interface ScreenModeCardProps {
     title: string;
 }
 
-function toDate(value?: any): Date | null {
-    if (!value) return null;
-    try {
-        if (typeof value.toDate === "function") return value.toDate();
-        if (typeof value.toMillis === "function") return new Date(value.toMillis());
-        if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-    } catch {
-        return null;
-    }
-}
-
-function formatLastSeen(value?: any): string {
-    const date = toDate(value);
+function formatLastSeen(value?: DigitalScreenSeenTimestamp): string {
+    const date = screenTimestampToDate(value);
     if (!date) return "Waiting for first TV";
 
     const diff = Date.now() - date.getTime();
@@ -161,7 +152,7 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
     const menuCompactUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
     const highlightsCompactUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
     const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
-    const hasSeenSignal = Boolean(toDate(screenLastSeenAt));
+    const hasSeenSignal = Boolean(screenTimestampToDate(screenLastSeenAt));
 
     const handleOpen = (url: string, type: ScreenMode) => {
         try {

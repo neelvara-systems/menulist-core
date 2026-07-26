@@ -24,7 +24,7 @@ export const readResellerOwnerClaimInTransaction = async ({
     transaction: FirebaseFirestore.Transaction;
     userId: string;
 }): Promise<{
-    data: FirebaseFirestore.DocumentData;
+    data: Record<string, unknown>;
     ref: FirebaseFirestore.DocumentReference;
 }> => {
     const normalizedUserId = normalizeOnboardingUserId(userId);

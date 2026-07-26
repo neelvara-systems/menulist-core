@@ -38,7 +38,7 @@ function verifyRoute(route) {
     'days: z.coerce.number().int().min(1).max(90).optional().default(30)',
     'function cleanText(value: unknown, max = 180): string',
     'function getRecentIndiaDayKeys(days: number): string[]',
-    'function normalizeMonitorStatus(value: unknown): FounderMonitorStatus',
+    "import { normalizeFounderMonitorStatus, type FounderMonitorStatus } from '@lib/ops/founderMonitorTypes';",
     'function addCleanIds(value: unknown, target: Set<string>)',
     'async function readPlatformSummaryDoc(',
     'async function readDailyRevenueDocs(',
@@ -67,6 +67,7 @@ function verifyRoute(route) {
     'readRevenueMovements()',
     'newTenantsToday: todayDaily.newTenantIds.size',
     'newStoresToday: todayDaily.newStoreIds.size',
+    'normalizeFounderMonitorStatus(snapshotRead.data.status)',
     "detail: 'The first revenue movement or 30-minute reconciliation has not populated platformSummary/founderMonitorRevenue yet.'",
     'return NextResponse.json({ data });',
     "logRuntimeFailure('founder_monitor_route_failed'",
@@ -474,6 +475,10 @@ function verifyDesktop(component) {
     'getPlatformFounderMonitor(days)',
     "logRuntimeFailure('founder_monitor_load_failed'",
     "message.error('Failed to load founder monitor')",
+    'createLatestRequestGuard',
+    'const requestId = requestGuard.begin();',
+    'if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;',
+    'requestGuardRef.current?.invalidate();',
     'Founder Monitor',
     'Trusted Live Stores',
     'Net New MRR',
@@ -495,6 +500,8 @@ function verifyDesktop(component) {
     '.json().catch',
     'console.error',
     'error.message',
+    '(session as any)',
+    '(session?.user as any)',
   ].forEach((token) => assertNotIncludes(component, token, 'Founder Monitor desktop boundary'));
 }
 

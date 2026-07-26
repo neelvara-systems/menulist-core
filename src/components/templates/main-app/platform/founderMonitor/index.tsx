@@ -10,13 +10,14 @@ import type {
   FounderMonitorStatus,
   FounderMonitorStoreRow,
 } from '@lib/ops/founderMonitorTypes';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { formatInrPaise } from '@util/formatters';
 import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tabs, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -72,33 +73,55 @@ function MetricCard({
 
 export default function PlatformFounderMonitor() {
   const { data: session, status } = useSession();
-  const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+  const platformRole = session?.platformRole || session?.user?.platformRole;
   const isPlatform = platformRole === 'PLATFORM';
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
   const [data, setData] = useState<FounderMonitorData | null>(null);
+  const isMountedRef = useRef(true);
+  const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+  if (!requestGuardRef.current) requestGuardRef.current = createLatestRequestGuard();
 
   if (status !== 'loading' && session && !isPlatform) {
     redirect('/dashboard');
   }
 
   const loadData = useCallback(async () => {
+    const requestGuard = requestGuardRef.current;
+    if (!requestGuard) return;
+    const requestId = requestGuard.begin();
     if (status === 'loading') return;
     if (!isPlatform) {
-      setLoading(false);
+      if (isMountedRef.current && requestGuard.isCurrent(requestId)) {
+        setData(null);
+        setLoading(false);
+      }
       return;
     }
+    setData(null);
     setLoading(true);
     try {
       const payload = await getPlatformFounderMonitor(days);
+      if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;
       setData(payload);
     } catch (error) {
+      if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;
       logRuntimeFailure('founder_monitor_load_failed', error, { days });
       message.error('Failed to load founder monitor');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && requestGuard.isCurrent(requestId)) {
+        setLoading(false);
+      }
     }
   }, [days, isPlatform, status]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      requestGuardRef.current?.invalidate();
+    };
+  }, []);
 
   useEffect(() => {
     void loadData();

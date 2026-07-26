@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
-import { DB_COLLECTIONS } from "@constant/database";
+import { getResellerProfile } from "@database/reseller/server";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
-import { admin } from "@lib/firebase/firebaseAdmin";
+import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
+import { projectResellerSelfProfile } from "@lib/reseller/resellerSelfProfile";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { applyResellerReadRateLimit } from "../readRateLimit";
@@ -24,31 +25,23 @@ export const GET = withAuth(async (request, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         const resellerId = session.user.id;
-        const db = admin.firestore();
-        const directDoc = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get();
-        let profileDoc = directDoc.exists ? directDoc : null;
-
-        if (!profileDoc && session.user.email) {
-            const normalizedEmail = session.user.email.toLowerCase().trim();
-            const emailSnapshot = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES)
-                .where("email", "==", normalizedEmail)
-                .limit(1)
-                .get();
-            profileDoc = emailSnapshot.docs[0] || null;
-        }
-
-        if (!profileDoc) {
+        const profileData = await getResellerProfile(
+            resellerId,
+            session.user.email,
+            session.user.resellerProfileId,
+        );
+        if (!isActiveResellerProfileForSession({
+            actorId: resellerId,
+            profile: profileData,
+            sessionEmail: session.user.email,
+            sessionProfileId: session.user.resellerProfileId,
+        })) {
             return NextResponse.json({ error: "Reseller profile not found." }, { status: 404 });
         }
-
-        const { password: _password, ...profileData } = profileDoc.data() || {};
-        const profile = {
-            ...profileData,
-            id: profileDoc.id,
-            activatedAt: profileData.activatedAt?.toDate?.()?.toISOString?.() || profileData.activatedAt || null,
-            createdOn: profileData.createdOn?.toDate?.()?.toISOString?.() || profileData.createdOn || null,
-            modifiedOn: profileData.modifiedOn?.toDate?.()?.toISOString?.() || profileData.modifiedOn || null,
-        };
+        const profile = projectResellerSelfProfile(
+            profileData.id,
+            profileData,
+        );
 
         return NextResponse.json({ profile });
 

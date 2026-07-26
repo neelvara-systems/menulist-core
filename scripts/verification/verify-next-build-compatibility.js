@@ -23,8 +23,18 @@ function assertIncludes(haystack, needle, message) {
 
 const nextConfig = read('next.config.js');
 const packageJson = JSON.parse(read('package.json'));
+const packageLock = JSON.parse(read('package-lock.json'));
 const proxy = read('src/proxy.ts');
 const myCodexDocs = read('src/lib/mycodex/docs.ts');
+const firebaseAdminLock = packageLock.packages?.['node_modules/firebase-admin'];
+const jwksRsaLock = packageLock.packages?.['node_modules/jwks-rsa'];
+const nestedJoseLock = packageLock.packages?.['node_modules/jwks-rsa/node_modules/jose'];
+const serverExternalPackagesBlock = nextConfig.match(
+  /serverExternalPackages:\s*\[([\s\S]*?)\],/,
+)?.[1] || '';
+const webpackServerExternalsBlock = nextConfig.match(
+  /if \(isServer\) \{([\s\S]*?)\/\/ Prevent server-only modules/,
+)?.[1] || '';
 const runtimeCredentialReaders = [
   'src/lib/firebase/answerlatticeFirebaseAdmin.ts',
   'src/lib/firebase/campaigncueFirebaseAdmin.ts',
@@ -89,6 +99,44 @@ assertIncludes(
   nextConfig,
   "'node_modules/@swc/core/**'",
   'Compiler-only SWC packages may remain excluded without removing the runtime helpers.',
+);
+assertIncludes(
+  nextConfig,
+  "transpilePackages: ['antd-mobile', 'firebase-admin', 'pdfjs-dist']",
+  'Firebase Admin must be bundled so jwks-rsa does not native-require ESM-only jose in deployed routes.',
+);
+assert(
+  packageJson.engines?.node === '22' && read('.nvmrc').trim() === '22.23.1',
+  'The root runtime must remain on the Node 22.23.1 line required by Firebase Admin 14 and jwks-rsa 4.',
+);
+assert(
+  firebaseAdminLock?.version === '14.2.0'
+    && firebaseAdminLock.dependencies?.['jwks-rsa'] === '^4.0.1',
+  'The frozen Firebase Admin 14.2.0 to jwks-rsa 4 dependency contract changed; perform an explicit migration review.',
+);
+assert(
+  jwksRsaLock?.version === '4.1.0'
+    && jwksRsaLock.dependencies?.jose === '^6.1.3'
+    && jwksRsaLock.engines?.node === '^20.19.0 || ^22.12.0 || >= 23.0.0',
+  'The frozen jwks-rsa 4.1.0 CommonJS boundary changed; perform an explicit migration review.',
+);
+assert(
+  nestedJoseLock?.version === '6.2.4',
+  'The frozen ESM-only jose dependency beneath jwks-rsa changed; perform an explicit migration review.',
+);
+assert(
+  packageJson.overrides?.['jwks-rsa'] === undefined
+    && packageJson.overrides?.jose === undefined,
+  'Do not downgrade or override jwks-rsa/jose to hide the module boundary; use the supported Next server bundle contract.',
+);
+assert(
+  !serverExternalPackagesBlock.includes("'firebase-admin'"),
+  'Firebase Admin must not be explicitly server-externalized.',
+);
+assert(
+  !webpackServerExternalsBlock.includes("'firebase-admin'")
+    && !webpackServerExternalsBlock.includes('firebaseAdminClientAliases'),
+  'The Webpack server path must not re-externalize Firebase Admin.',
 );
 assertIncludes(
   nextConfig,

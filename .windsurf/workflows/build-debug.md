@@ -56,10 +56,12 @@ If `TypeScript error in ...`:
 If `Failed to collect page data` or Firebase/SDK errors:
 
 1. If static metadata routes work but all rendered pages return 500, inspect the per-route `.nft.json` deployment trace before changing application behavior. A local `next start` can hide missing traced modules because the full local `node_modules` remains available.
-2. Check if the error is a missing env var (`auth/invalid-api-key` = missing NEXT_PUBLIC_FIREBASE_API_KEY)
-3. Guard SDK initialization: `const hasConfig = !!config.apiKey; const client = hasConfig ? init(config) : null;`
-4. Remind user to set env vars on Vercel project settings
-5. `NEXT_PUBLIC_*` vars are inlined at BUILD TIME — they must exist during `next build`
+2. If the deployed error is `firebase-admin-<hash>/auth` plus `jwks-rsa` requiring ESM-only `jose`, do not downgrade Firebase Admin, override `jose`, patch `node_modules`, or hide the import. Keep root `firebase-admin` in `transpilePackages`, remove it from `serverExternalPackages` and custom server externals, then rebuild.
+3. Run `npm run build:verify` before compilation and `npm run verify:next-deployment-bundle` after it; the isolated sign-in and NextAuth API routes must load without the full repository `node_modules` and must contain no hashed native Firebase Admin external alias.
+4. Check if the error is a missing env var (`auth/invalid-api-key` = missing NEXT_PUBLIC_FIREBASE_API_KEY)
+5. Guard SDK initialization: `const hasConfig = !!config.apiKey; const client = hasConfig ? init(config) : null;`
+6. Remind user to set env vars on Vercel project settings
+7. `NEXT_PUBLIC_*` vars are inlined at BUILD TIME — they must exist during `next build`
 
 ## Step 6: Before Every Push
 

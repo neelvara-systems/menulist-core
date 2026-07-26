@@ -55,8 +55,7 @@ export const POST = withAuth(async (request, session) => {
             invalidJsonMessage: 'Invalid input',
         });
         if (bodyResult.ok === false) return bodyResult.response;
-        const body = bodyResult.data;
-        const validation = validateAPIInput(ResellerConfirmPaymentSchema, body);
+        const validation = validateAPIInput(ResellerConfirmPaymentSchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
@@ -69,7 +68,11 @@ export const POST = withAuth(async (request, session) => {
                 return NextResponse.json({ error: "Access denied." }, { status: 403 });
             }
         } else {
-            const resellerProfile = await getResellerProfile(resellerId, session.user.email);
+            const resellerProfile = await getResellerProfile(
+                resellerId,
+                session.user.email,
+                session.user.resellerProfileId,
+            );
             if (!isActiveResellerProfileForSession({
                 actorId: resellerId,
                 profile: resellerProfile,
